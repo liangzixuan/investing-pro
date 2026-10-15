@@ -1,3 +1,4 @@
+import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import {
   Children,
   isValidElement,
@@ -155,6 +156,7 @@ function findScreen(node: ReactNode):
       androidBack?: AndroidBackAdapter;
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
+      reportDelivery?: CompanyReportDeliveryAdapter;
     }>
   | undefined {
   const children: ReactNode[] = [];
@@ -173,6 +175,7 @@ function findScreen(node: ReactNode):
         androidBack?: AndroidBackAdapter;
         warnOnBrowserLeave?: boolean;
         exportDelivery?: WatchlistExportDeliveryAdapter;
+        reportDelivery?: CompanyReportDeliveryAdapter;
       }>;
     }
     const found = findScreen(child.props.children);
@@ -230,6 +233,7 @@ describe("native shared workspace composition", () => {
           ? [["InvestmentAuth"], ["InvestmentWatchlistExport"]]
           : [["InvestmentAuth"]],
       );
+      expect(screen?.props.reportDelivery).toBeUndefined();
       expect(typeof screen?.props.exportDelivery?.deliver).toBe(
         config.environment === "production" ? "function" : "undefined",
       );

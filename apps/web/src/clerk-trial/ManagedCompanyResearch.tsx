@@ -1,3 +1,5 @@
+import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
+import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import { ManagedCompanyReport } from "./ManagedCompanyReport";
 import { ManagedCompanySnapshot } from "./ManagedCompanySnapshot";
@@ -22,6 +24,8 @@ import { ManagedResearchCompanyNavigation } from "./ManagedResearchCompanyNaviga
 
 export function ManagedCompanyResearch({
   research,
+  reportDelivery,
+  readReportWatchlist,
   annual,
   filings,
   eod,
@@ -41,6 +45,10 @@ export function ManagedCompanyResearch({
   onOpenCompany,
 }: {
   research: ManagedResearchVisit;
+  reportDelivery?: CompanyReportDeliveryAdapter;
+  readReportWatchlist?: (
+    selection: ManagedResearchSelection,
+  ) => ResearchWatchlistState;
   annual: AnnualModel;
   filings: FilingsModel;
   eod: EodModel;
@@ -108,6 +116,8 @@ export function ManagedCompanyResearch({
         annual={annual}
         filings={filings}
         watchlist={watchlist}
+        {...(reportDelivery ? { reportDelivery } : {})}
+        {...(readReportWatchlist ? { readReportWatchlist } : {})}
         onSection={onSection}
       />
       <div className="managed-research-body">

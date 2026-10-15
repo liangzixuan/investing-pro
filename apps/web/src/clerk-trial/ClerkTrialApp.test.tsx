@@ -1,3 +1,5 @@
+import { browserCompanyReportAdapter } from "./browser-company-report";
+import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -143,10 +145,12 @@ describe("official Clerk browser adapter", () => {
       apiOrigin: string;
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
+      reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.apiOrigin).toBe(config.apiOrigin);
     expect(props.warnOnBrowserLeave).toBeUndefined();
     expect(props.exportDelivery).toBeUndefined();
+    expect(props.reportDelivery).toBeUndefined();
     expect(await props.session.getToken()).toBe("synthetic-token");
     await props.session.signOut();
     expect(getToken).toHaveBeenCalledTimes(1);
@@ -215,9 +219,11 @@ describe("official Clerk browser adapter", () => {
       session: TrialSession;
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
+      reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.warnOnBrowserLeave).toBe(true);
     expect(props.exportDelivery).toBe(browserWatchlistExportAdapter);
+    expect(props.reportDelivery).toBe(browserCompanyReportAdapter);
     expect(props.session).toMatchObject({
       userId: "user_owner",
       sessionId: "session_owner",

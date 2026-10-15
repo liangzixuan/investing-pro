@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
+import type { ManagedResearchSelection } from "./managed-research-selection";
+import { companySnapshotEvidence } from "./managed-company-snapshot";
+import { ManagedCompanyReportDownload } from "./ManagedCompanyReportDownload";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ResearchWatchlistState } from "./managed-workspace";
 import { CompanySnapshotEvidenceView } from "./ManagedCompanySnapshot";
 import { CompanyReportDocument } from "./CompanyReportDocument";
@@ -16,10 +20,16 @@ import "./managed-company-report.css";
 
 export function ManagedCompanyReport({
   watchlist,
+  reportDelivery,
+  readReportWatchlist,
   onSection,
   ...models
 }: CompanyEvidenceModels & {
   watchlist: ResearchWatchlistState;
+  reportDelivery?: CompanyReportDeliveryAdapter;
+  readReportWatchlist?: (
+    selection: ManagedResearchSelection,
+  ) => ResearchWatchlistState;
   onSection: (section: "eod" | "annual" | "filings") => void;
 }) {
   const evidence = useCompanySnapshotEvidence(models);
@@ -49,6 +59,27 @@ export function ManagedCompanyReport({
       }
       onClear={() => setPreview({ report: null, invalidated: false })}
       onSection={onSection}
+      download={
+        report && current && reportDelivery && readReportWatchlist ? (
+          <ManagedCompanyReportDownload
+            report={report}
+            delivery={reportDelivery}
+            isCurrent={() =>
+              companyReportIsCurrent(
+                report,
+                models.selection,
+                companySnapshotEvidence(
+                  models.selection,
+                  models.price.getSnapshot(),
+                  models.annual.getSnapshot(),
+                  models.filings.getSnapshot(),
+                ),
+                readReportWatchlist(models.selection),
+              )
+            }
+          />
+        ) : null
+      }
     />
   );
 }
@@ -58,6 +89,7 @@ export function CompanyReportView({
   block,
   current,
   invalidated,
+  download,
   onPrepare,
   onClear,
   onSection,
@@ -66,6 +98,7 @@ export function CompanyReportView({
   block: string | null;
   current: boolean;
   invalidated: boolean;
+  download?: ReactNode;
   onPrepare: () => void;
   onClear: () => void;
   onSection: (section: "eod" | "annual" | "filings") => void;
@@ -113,6 +146,7 @@ export function CompanyReportView({
             Prepared <time>{report.preparedAt}</time>. Preparation does not
             renew the source dates below.
           </p>
+          {download}
           <section aria-labelledby="managed-report-note-heading">
             <h4 id="managed-report-note-heading">
               Your watchlist draft at preparation

@@ -51,12 +51,35 @@ fails, it refuses the complete document without clipping or changing the draft.
 The parent report's source, draft and visit checks also remove its document view.
 No session, credential, pending operation or unrelated note is serialized.
 
-This inspection is available in browser and Android. It does not download, save,
-upload or restore a file. File delivery needs a separate report purpose and
-appropriate browser/native adapters. The existing Android saved-watchlist writer
-has a smaller byte bound and must not receive this report under that contract.
+This inspection is available in browser and Android. Opening it does not download,
+Save, upload or restore a file.
 
-This is M4's report-document layer. Report export, durable report storage, verified
-claim citations, outside opinions and AI analysis remain separate work. It has a
-separate document purpose and state from saved-watchlist export; it does not use
-or relax that export's validators or download adapters.
+## Download the prepared report
+
+In the managed browser, select **Download report (JSON)** in a current prepared
+report. You can download without opening the inspection field. The explicit
+handoff contains the same complete UTF-8 JSON, including the exact authored draft
+and unsaved edits. The filename identifies its ticker, exchange MIC and original
+preparation time. The browser chooses its normal download destination or asks
+for one, according to its settings.
+
+The control checks the actual current draft, selected visit and source models
+before handing off. Changes or session retirement refuse stale delivery. Closing
+the report aborts pending cleanup and prevents late status messages. A download
+already handed to the browser can remain at its destination; clearing the report
+cannot remove that file. The status says **Download requested**, because the
+application cannot establish that the file was saved or opened. There is no
+automatic retry, source read, financial calculation or watchlist Save.
+
+Downloaded copies do not update after later edits. No server-side report store,
+backup, import or restore is added. If the complete document exceeds its limit,
+it is refused without clipping. Report files have their own purpose, filename
+and byte admission. Browser report and saved-watchlist delivery share only the
+temporary Blob/anchor transport and cleanup; their document contracts stay
+separate.
+
+Android and disconnected clients do not receive the browser adapter. Their
+read-only inspection remains available where the report is supported. The Android
+saved-watchlist writer has a smaller byte bound and must not receive a report
+under its contract. Native report delivery, durable report storage, verified
+claim citations, outside opinions and AI analysis remain separate M4 work.

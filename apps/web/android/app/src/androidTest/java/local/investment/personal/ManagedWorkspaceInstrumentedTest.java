@@ -1834,7 +1834,10 @@ public class ManagedWorkspaceInstrumentedTest {
             "return value.purpose === 'investment.company-research' && value.schemaVersion === '1.0.0' && " +
             "value.authoredResearch.status === 'watchlist_draft' && value.authoredResearch.note === " + JSONObject.quote(NOTE) + " && " +
             "value.listing.listingId === 'listing-zero' && value.listing.symbol === 'ZERO' && " +
-            "value.sources.price.response.completedAt === '2026-09-20T00:00:02.000Z' && " +
+            "value.sources.price.response.completedAt === '2026-09-20T00:00:01.000Z' && " +
+            "value.sources.annual.response.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z' && " +
+            "value.sources.filings.response.completedAt === '2026-09-20T00:00:02.000Z' && " +
+            "document.querySelector('.managed-report-download') === null && " +
             "value.sources.annual.response.evidence.cashGeneration.resolution !== undefined && " +
             "value.sources.annual.response.evidence.liquidity.resolution !== undefined && " +
             "Array.isArray(value.sources.annual.response.evidence.observations) && " +
@@ -3714,6 +3717,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE));
         awaitPage("clearing the phrase removes all search-only note excerpts",
             "document.querySelectorAll('[data-watchlist-note-context]').length === 0");
+        closeSoftKeyboard();
         chooseNativeSelectOption("#managed-watchlist-search-scope", "identity", "Listing identity");
         assertCompanyNoteDraft(1, true);
         assertCompanyNoteCounts(0, 1);
