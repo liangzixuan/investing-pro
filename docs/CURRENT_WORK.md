@@ -27,11 +27,21 @@ to managed Annual cash generation. It reuses complete admitted observations for
 up to three adjacent periods from the same filing, preserves exact values and
 references, and stops at the first refusal. Current cash and note actions remain
 independent. It adds no API field, schema, feed, automatic request or saved state.
-All 351 affected analytics, UI/composed and fixture cases, web types, scoped
-lint/format, Java syntax and source boundaries pass. Actual Chrome review,
-new-head native execution and live publication remain separate. A synthetic provider receipt also tightens the prior
+All 366 affected analytics, UI/composed, fixture and API regression cases, web/API types, scoped
+lint/format, Java syntax and source boundaries pass. Chrome at 1440/390/320
+confirms exact values and references, contained keyboard scrolling, retained
+failed/cancelled reads, late-response fencing, draft retention and retirement.
+The browser check made only its four explicit Annual reads, with zero Save,
+other-source reads or console warnings. Native bundle maximum loader is
+2,433,477 bytes under the unchanged 4 MiB cap, with exact notices. New-head
+native execution and live publication remain separate. A synthetic provider
+receipt also tightens the prior
 report cancellation regression: it must prove normal release and descriptor
-return, rather than accepting a provider timeout as that path.
+return, rather than accepting a provider timeout as that path. The observed
+native input-clipping failure is addressed by centering the test field while
+retaining strict geometry checks. The combined portfolio route test is split
+into independent upgrade and post-split-sale cases, each with its own vault and
+real close/reopen. All prior assertions and the five-second deadline remain.
 
 The preceding report increment adds explicit Android JSON saving through the system
 file picker. Its fixed report purpose, identity/time filename and complete UTF-8
@@ -49,9 +59,15 @@ system picker execution. Chrome confirms the shared screen at 1440/390/320,
 and establishes no Android file write. The native bundle's maximum loader is
 2,427,866 bytes under the unchanged 4 MiB cap with exact notices.
 
-The new native journey exercises the complete report bound, malformed input,
-cancelled/retired handles and a held provider open; its new 31-case hosted
-execution and live publication remain separate.
+The original native run passed 30 of 31 cases. Its new report journey failed
+at the first native note touch because the input was outside the visual viewport,
+before picker or file-write checks. The original Windows job also failed a
+five-second timeout in an existing combined portfolio route test; Ubuntu,
+parser isolation and dependency review passed. These failed outcomes remain
+recorded; Android report saving is not yet accepted. The next source addresses
+the observed checks and adds stronger held-provider proof. CodeScene reports
+16 warnings and 13 notices; focused review found no concrete production defect,
+and maintenance debt remains recorded. Live publication is separate.
 
 The preceding report increment adds explicit JSON download in the managed browser.
 It checks the actual draft and source models before the file handoff and fences

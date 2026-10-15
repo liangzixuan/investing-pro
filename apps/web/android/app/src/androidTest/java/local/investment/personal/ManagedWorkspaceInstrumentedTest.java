@@ -5868,9 +5868,10 @@ public class ManagedWorkspaceInstrumentedTest {
     private void touchInput(String id, ViewAction rollbackAction) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> observed = new AtomicReference<>();
+        // Center both axes before enforcing full visibility at fractional viewport edges.
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
             "(() => { const input = document.getElementById(" + JSONObject.quote(id) + ");" +
-            " if (!input) return null; input.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
+            " if (!input) return null; input.scrollIntoView({block:'center',inline:'center',behavior:'instant'});" +
             " const r = input.getBoundingClientRect(), v = visualViewport;" +
             " const x = r.left + r.width / 2, y = r.top + r.height / 2;" +
             " return {x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom," +
