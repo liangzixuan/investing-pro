@@ -9,6 +9,7 @@ import {
   type PersonalSecAnnualOperatingResolutionInput,
   type PersonalSecAnnualOperatingUnavailableReason,
   type PersonalSecAnnualOperatingValueDto,
+  type PersonalSecAnnualRevenueConcept,
   type PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
@@ -232,6 +233,7 @@ function amount(
   input: Input,
   refused: Reason | null,
   currentUseEligible: boolean,
+  periodEnd?: string,
 ): Value {
   if (refused !== null)
     return unavailable(
@@ -240,7 +242,7 @@ function amount(
       rows.map((row) => row.id),
     );
   requireValid(input.target.status === "target");
-  const reportDate = input.target.reportDate;
+  const reportDate = periodEnd ?? input.target.reportDate;
   const selected = rows.filter((row) => row.endDate === reportDate);
   if (selected.length === 0) return unavailable("USD", "no_report_period");
   const ids = selected.map((row) => row.id);
@@ -329,5 +331,107 @@ export function resolvePersonalSecAnnualOperatingResults(
       };
     }),
     utilityAge,
+  });
+}
+
+export type PersonalSecAnnualOperatingHistoryReason =
+  PersonalSecAnnualOperatingUnavailableReason | "current_use_unavailable";
+
+/** Comparative amounts in one selected filing; no new current-use qualification. */
+export type PersonalSecAnnualOperatingHistoryPeriod = Readonly<{
+  startDate: string;
+  endDate: string;
+  operatingIncome: string;
+  revenue: string;
+  operatingMarginPercent: string;
+  observationIds: readonly `sec-fact:${string}`[];
+}>;
+
+export type PersonalSecAnnualOperatingHistory =
+  | Readonly<{
+      status: "unavailable";
+      reason: PersonalSecAnnualOperatingHistoryReason;
+    }>
+  | Readonly<{
+      status: "available";
+      concept: PersonalSecAnnualRevenueConcept;
+      accessionNumber: string;
+      /** Newest first; at most three adjacent annual periods. */
+      periods: readonly PersonalSecAnnualOperatingHistoryPeriod[];
+      stoppedReason: PersonalSecAnnualOperatingHistoryReason | null;
+    }>;
+
+function historyPeriod(
+  operating: Extract<Value, { status: "available" }>,
+  revenue: Extract<Value, { status: "available" }>,
+  calculated: Extract<Value<"percent">, { status: "available" }>,
+): PersonalSecAnnualOperatingHistoryPeriod {
+  return {
+    startDate: operating.startDate,
+    endDate: operating.endDate,
+    operatingIncome: operating.value,
+    revenue: revenue.value,
+    operatingMarginPercent: calculated.value,
+    observationIds: [...calculated.observationIds],
+  };
+}
+
+/** Same-filing comparatives from complete admitted rows; never borrow net-income eligibility. */
+export function resolvePersonalSecAnnualOperatingHistory(
+  input: Input,
+  concept: PersonalSecAnnualRevenueConcept,
+): PersonalSecAnnualOperatingHistory {
+  requireValid(PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.includes(concept));
+  // Preserve full input, scan, identifier and current-resolution admission.
+  const current = resolvePersonalSecAnnualOperatingResults(input);
+  const basis = current.margins.find(
+    (candidate) => candidate.concept === concept,
+  )!;
+  const operating = current.operatingIncome;
+  const revenue = basis.revenue;
+  const calculated = basis.operatingMargin;
+  if (calculated.status === "unavailable")
+    return freeze({ status: "unavailable", reason: calculated.reason });
+  requireValid(
+    operating.status === "available" && revenue.status === "available",
+  );
+  if (!calculated.currentUseEligible)
+    return freeze({ status: "unavailable", reason: "current_use_unavailable" });
+  const periods = [historyPeriod(operating, revenue, calculated)];
+  let stoppedReason: PersonalSecAnnualOperatingHistoryReason | null = null;
+  const revenues = input.observations.filter(
+    (row) => row.metric === "revenue" && row.concept === concept,
+  );
+  while (periods.length < 3) {
+    const next = periods.at(-1)!;
+    const end = new Date(Date.parse(`${next.startDate}T00:00:00Z`) - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    // Candidate flow end varies; annual row admission keeps the original filing reportDate.
+    const priorOperating = amount(
+      input.operatingResults.operatingIncome.observations,
+      input,
+      null,
+      false,
+      end,
+    );
+    const priorRevenue = amount(revenues, input, null, false, end);
+    const priorMargin = margin(priorOperating, priorRevenue);
+    if (priorMargin.status === "unavailable") {
+      stoppedReason = priorMargin.reason;
+      break;
+    }
+    requireValid(
+      priorOperating.status === "available" &&
+        priorRevenue.status === "available",
+    );
+    periods.push(historyPeriod(priorOperating, priorRevenue, priorMargin));
+  }
+  return freeze({
+    status: "available",
+    concept,
+    accessionNumber: calculated.accessionNumber,
+    periods,
+    stoppedReason,
   });
 }

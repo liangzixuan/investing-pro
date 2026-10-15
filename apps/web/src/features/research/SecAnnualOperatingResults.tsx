@@ -44,6 +44,12 @@ const reasons: Record<PersonalSecAnnualOperatingUnavailableReason, string> = {
   nonpositive_revenue: "Operating margin requires revenue greater than zero.",
 };
 
+export function annualOperatingUnavailableReasonText(
+  reason: PersonalSecAnnualOperatingUnavailableReason,
+): string {
+  return reasons[reason];
+}
+
 export function SecAnnualOperatingValueContent({
   value,
 }: {
@@ -76,10 +82,14 @@ export function SecAnnualOperatingValueContent({
 export function SecAnnualOperatingResults({
   response,
   renderOperatingAction,
+  renderHistory,
   headingTarget,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly renderOperatingAction?: (
+    basis: PersonalSecAnnualOperatingMarginDto,
+  ) => ReactNode;
+  readonly renderHistory?: (
     basis: PersonalSecAnnualOperatingMarginDto,
   ) => ReactNode;
   readonly headingTarget?: {
@@ -136,6 +146,7 @@ export function SecAnnualOperatingResults({
             </div>
           </dl>
           {renderOperatingAction?.(basis)}
+          {renderHistory?.(basis)}
         </section>
       ))}
       <p className="sec-quarterly-message">

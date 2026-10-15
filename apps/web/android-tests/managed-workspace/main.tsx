@@ -31,6 +31,7 @@ if (
   scenario !== "annual-note" &&
   scenario !== "annual-cash-history" &&
   scenario !== "annual-operating-results" &&
+  scenario !== "annual-operating-history" &&
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
   scenario !== "company-price-ranges" &&
@@ -312,10 +313,13 @@ function Fixture() {
         <button
           id="settle-cancelled-read"
           disabled={
-            scenario === "annual-operating-results"
+            scenario === "annual-operating-history"
               ? state.aborted !== state.lateResolved + 1 ||
-                ![3, 4].includes(state.annual)
-              : state.aborted !== 1 || state.lateResolved !== 0
+                ![3, 5].includes(state.annual)
+              : scenario === "annual-operating-results"
+                ? state.aborted !== state.lateResolved + 1 ||
+                  ![3, 4].includes(state.annual)
+                : state.aborted !== 1 || state.lateResolved !== 0
           }
           onClick={fixture.settleCancelledRead}
         >

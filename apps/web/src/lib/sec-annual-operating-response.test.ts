@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualOperatingResults } from "@research-cockpit/personal-financial-analytics";
+import {
+  resolvePersonalSecAnnualOperatingHistory,
+  resolvePersonalSecAnnualOperatingResults,
+} from "@research-cockpit/personal-financial-analytics";
 import {
   operatingResponse,
   operatingRow,
@@ -12,6 +15,73 @@ const parse = (value: unknown, signal = new AbortController().signal) =>
   parseSecAnnualEvidenceResponse(value, request(), signal);
 
 describe("strict Annual operating response", () => {
+  it("retains all comparative periods and their original filing metadata for operating history", async () => {
+    const periods = [2025, 2024, 2023].map((year) => ({
+      startDate: `${year}-01-01`,
+      endDate: `${year}-12-31`,
+      durationDays: year === 2024 ? 366 : 365,
+      frame: `CY${year}`,
+    }));
+    const wire = await operatingResponse(
+      periods.map((period, index) =>
+        operatingRow(["-25.125", "0", "60"][index], {
+          ...period,
+          sourceLocator: `/facts/us-gaap/OperatingIncomeLoss/units/USD/${index}`,
+        }),
+      ),
+      periods.map((period, index) =>
+        row("Revenues", ["1000", "800", "600"][index], {
+          ...period,
+          sourceLocator: `/facts/us-gaap/Revenues/units/USD/${index}`,
+        }),
+      ),
+    );
+    const actual = await parse(wire);
+    expect(actual).toEqual(wire);
+    expect(actual).not.toBe(wire);
+    expect(actual!.evidence.generation).toEqual(wire.evidence.generation);
+    expect(actual!.evidence.target).toEqual(wire.evidence.target);
+    expect(
+      actual!.evidence.operatingResults.operatingIncome.observations,
+    ).toHaveLength(3);
+    expect(actual!.evidence.observations).toHaveLength(3);
+    const history = resolvePersonalSecAnnualOperatingHistory(
+      actual!.evidence,
+      "Revenues",
+    );
+    expect(history).toMatchObject({
+      status: "available",
+      periods: [
+        {
+          endDate: "2025-12-31",
+          operatingIncome: "-25.125",
+          revenue: "1000",
+          operatingMarginPercent: "-2.51",
+        },
+        {
+          endDate: "2024-12-31",
+          operatingIncome: "0",
+          revenue: "800",
+          operatingMarginPercent: "0",
+        },
+        {
+          endDate: "2023-12-31",
+          operatingIncome: "60",
+          revenue: "600",
+          operatingMarginPercent: "10",
+        },
+      ],
+      stoppedReason: null,
+    });
+    for (const observation of [
+      ...actual!.evidence.observations,
+      ...actual!.evidence.operatingResults.operatingIncome.observations,
+    ]) {
+      expect(observation.filing.reportDate).toBe("2025-12-31");
+      expect(Object.isFrozen(observation.filing)).toBe(true);
+    }
+  });
+
   it("owns and freezes exact negative operating results without requiring net income", async () => {
     const wire = await operatingResponse(
       [operatingRow("-25.125")],

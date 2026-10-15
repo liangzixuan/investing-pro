@@ -495,9 +495,48 @@ basis. Pending loads, stale choices, duplicate excerpts and notes above the comp
 evidence with its previous-report qualification. Review the full note and use the
 existing explicit whole-watchlist Save. No source request or save occurs on append.
 
-This increment covers the selected annual period. Operating history, growth,
-adjusted earnings, peer ranking and full financial-statement coverage remain open.
+Current operating values and note excerpts cover the selected annual period.
+The managed history disclosure below provides bounded same-filing comparatives.
+Growth, adjusted earnings, peer ranking and full financial-statement coverage remain open.
 Synthetic acceptance does not establish current SEC coverage for the real cohort.
+
+### Read reported operating history
+
+In managed company Annual, open **Reported operating history** below a named
+operating revenue basis. Each disclosure starts closed and uses the loaded
+filing. It shows up to three adjacent annual periods, newest first: exact,
+unscaled USD operating income and revenue, followed by operating margin as a
+labelled app calculation. The selected revenue concept stays the same across
+the table. Different bases can have different available periods.
+
+History requires an available current operating margin within the existing
+current-use limits at that load. Net income is not required. Negative or zero
+operating income is valid; each margin requires positive revenue from the same
+accession and exact period. A refused shared income scan cannot supply revenue.
+Independent current values remain readable when history is unavailable.
+
+The next period must end one day before the newer period starts and meet the
+existing 335–395-day annual rules. Missing, invalid or conflicting inputs stop
+the sequence and leave accepted newer periods visible. An older year cannot fill
+a gap. No other concept, currency or accession is substituted. Earlier periods
+retain the selected filing's original report date and metadata; they are
+historical comparatives without a new current-use claim. Restatements and
+accounting changes are unadjusted, so this is not as-originally-filed history or
+a forecast.
+
+**History calculation references** lists all agreeing input identifiers for each
+period. Their complete observations remain in **Operating sources and calculation
+inputs**. The table keeps the original completion time and uses the same checked
+margin formula and rounding as current operating results. Opening disclosures
+makes no request or saved change. The narrow layout keeps the table in a labelled,
+keyboard-focusable horizontal scroll region.
+
+Failed refresh and Cancel retain the previous packet and its dates. A successful
+replacement uses the new packet; closing the company visit or retiring the
+session clears it. The complete prepared-report JSON preserves the comparative
+observations and original clocks so the same history can be reproduced. Snapshot,
+comparison and current note excerpts retain their current-period scope. Annual
+schema/definition stay `4.0.0`, and the report document stays `1.0.0`.
 
 ### Version boundary
 

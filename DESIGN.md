@@ -125,6 +125,13 @@ must fit the viewport. Keep source references in a second closed disclosure.
 Missing or refused earlier periods leave a clear explanation beside the accepted
 table. Earlier comparative amounts must not inherit a current-use label.
 
+Reported operating history uses the same closed disclosure and contained table
+below each named operating revenue basis. Keep operating income and revenue
+labelled as reported USD; label the margin as an app calculation. Show exact
+periods, original completion time and a separate calculation-reference disclosure.
+Each basis keeps its own accepted periods and first refusal. Opening history
+does not load sources or change the current-period note action.
+
 Use these semantic managed tokens:
 
 | Role             | Token                      | Value     |
