@@ -5772,13 +5772,13 @@ public class ManagedWorkspaceInstrumentedTest {
         String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
         String originalLocation = readFixtureString("location.href");
         String originalHistoryLength = readFixtureString("String(history.length)");
-        awaitPage("loaded report has five explicit destinations and initially closed source details",
+        awaitPage("loaded report has six explicit destinations and initially closed source details",
             "(() => { const nav = document.querySelector('nav[aria-label=\"On this report\"]');" +
             " const links = [...(nav?.querySelectorAll('a') || [])];" +
-            " return links.length === 5 && links.map(a => a.textContent).join('|') === 'Revenue and net income|Operating results|Cash generation|Liquidity|Report source details'" +
+            " return links.length === 6 && links.map(a => a.textContent).join('|') === 'Revenue and net income|Operating results|Cash generation|Liquidity|Balance sheet totals|Report source details'" +
             " && links.every(a => a.getBoundingClientRect().height >= 44 && document.getElementById(a.getAttribute('href').slice(1))?.getAttribute('data-annual-report-target') === a.getAttribute('data-annual-report-jump'))" +
             " && document.querySelector('.managed-annual-provenance')?.open === false; })()");
-        for (String section : new String[] {"income", "operating", "cash", "liquidity", "sources"}) {
+        for (String section : new String[] {"income", "operating", "cash", "liquidity", "balanceSheet", "sources"}) {
             click("a[data-annual-report-jump='" + section + "']");
             awaitPage("report jump focuses its visible destination without changing history or draft: " + section,
                 "(() => { const target = document.querySelector('[data-annual-report-target=\"" + section + "\"]');" +
