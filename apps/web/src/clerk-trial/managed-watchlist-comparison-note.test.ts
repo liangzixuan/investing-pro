@@ -63,6 +63,7 @@ function row(
         listing,
       }),
       available: true,
+      selectedRange: "1m",
       response,
       responseOrigin: "watchlist" as const,
       showingPrevious: false,

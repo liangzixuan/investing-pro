@@ -447,6 +447,7 @@ export class ManagedMarkets {
     try {
       const response = await this.access.request(
         { catalogSnapshotSha256: digest, listing },
+        "1m",
         signal,
       );
       if (!current()) return false;

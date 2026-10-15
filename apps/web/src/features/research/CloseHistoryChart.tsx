@@ -157,7 +157,7 @@ export function CloseHistoryChart({
       aria-label={`${symbol} exact raw closing prices`}
     >
       <table>
-        <caption>One-month raw closing prices in USD</caption>
+        <caption>Raw closing prices in USD</caption>
         <thead>
           <tr>
             <th scope="col">Trading date</th>
@@ -190,7 +190,7 @@ export function CloseHistoryChart({
         ref={element}
         className="managed-eod-chart-canvas"
         role="img"
-        aria-label={`${symbol} one-month raw close history in USD; exact values follow in the table`}
+        aria-label={`${symbol} raw close history in USD; exact values follow in the table`}
       />
       {appearance === "precision-desk" && help}
       {actions}

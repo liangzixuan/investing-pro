@@ -64,6 +64,13 @@ Keep both in the existing wrapping grid, with the same 44px targets and focus
 style. The preview places purpose and horizon before the thesis; neither choice
 establishes a position or starts monitoring.
 
+Company Price uses a labelled native **History range** selector above the
+explicit Load/Refresh actions. Keep its 44px target, managed field/focus tokens
+and wrapping layout. Staging a range makes no request. Disable the selector
+while loading. Show the loaded packet's actual range and observed-date coverage
+beside the close summary; keep the requested window in source details. Retained
+history must keep its original range when another range is staged or fails.
+
 ## Color and surfaces
 
 The company snapshot uses an initially closed native disclosure below company

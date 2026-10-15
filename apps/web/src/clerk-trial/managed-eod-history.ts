@@ -2,6 +2,7 @@ import {
   membershipMatchesResult,
   parseManagedEodHistoryResponse,
   type ManagedEodHistoryResponseDto,
+  type ManagedEodHistoryRange,
   type ManagedEodIdentity,
 } from "@research-cockpit/contracts";
 import type { TrialApiError } from "./api";
@@ -34,6 +35,7 @@ export interface ManagedEodHistorySeed {
 export interface ManagedEodHistoryState {
   readonly selection: EodHistorySelection | null;
   readonly available: boolean;
+  readonly selectedRange: ManagedEodHistoryRange;
   readonly response: ManagedEodHistoryResponseDto | null;
   readonly responseOrigin: "markets" | "watchlist" | "company" | null;
   readonly showingPrevious: boolean;
@@ -45,6 +47,7 @@ export interface ManagedEodHistoryState {
 const empty = (): ManagedEodHistoryState => ({
   selection: null,
   available: false,
+  selectedRange: "1m",
   response: null,
   responseOrigin: null,
   showingPrevious: false,
@@ -124,6 +127,10 @@ export class ManagedEodHistory {
     const admitted = seed ? captureManagedEodHistorySeed(captured, seed) : null;
     const response = admitted?.response ?? null;
     const source = captured.origin === "watchlist" ? "watchlist" : "Markets";
+    const guidance =
+      this.requestOrigin === "company"
+        ? "Choose a range and load raw closing prices when you are ready."
+        : "Load one month of raw closing prices when you are ready.";
     this.update({
       selection: captured,
       available: true,
@@ -138,8 +145,8 @@ export class ManagedEodHistory {
       message: response
         ? `Loaded ${source} history is available in this company visit.`
         : seed !== undefined
-          ? `The loaded ${source} history could not be reused. Load one month of raw closing prices when you are ready.`
-          : "Load one month of raw closing prices when you are ready.",
+          ? `The loaded ${source} history could not be reused. ${guidance}`
+          : guidance,
     });
   }
   close() {
@@ -161,12 +168,26 @@ export class ManagedEodHistory {
       showingPrevious: this.state.response !== null,
       error: false,
       message: this.state.response
-        ? "Close history refresh cancelled. Refresh again when ready."
-        : "Close history request cancelled. Load again when ready.",
+        ? "Close history refresh cancelled. Try again when ready."
+        : "Close history request cancelled. Try again when ready.",
     });
+  }
+  selectRange(range: ManagedEodHistoryRange) {
+    if (
+      this.retired ||
+      this.requestOrigin !== "company" ||
+      !this.state.available ||
+      this.operation ||
+      this.state.catalogChanged ||
+      (range !== "1m" && range !== "1y") ||
+      range === this.state.selectedRange
+    )
+      return;
+    this.update({ selectedRange: range });
   }
   async load() {
     const selection = this.state.selection;
+    const range = this.state.selectedRange;
     if (
       this.retired ||
       !selection ||
@@ -200,13 +221,20 @@ export class ManagedEodHistory {
         : `Loading close history for ${selection.listing.symbol}…`,
     });
     try {
-      const response = await this.access.request(selection, operation.signal);
+      const response = await this.access.request(
+        selection,
+        range,
+        operation.signal,
+      );
       if (!current()) return;
       this.update({
         response,
         responseOrigin: this.requestOrigin,
         showingPrevious: false,
-        message: "One-month raw closing prices loaded.",
+        message:
+          range === "1m"
+            ? "One-month raw closing prices loaded."
+            : "Raw closing prices loaded for the one-year request.",
       });
     } catch (error) {
       if (!current()) return;
@@ -218,8 +246,8 @@ export class ManagedEodHistory {
       const showingPrevious =
         this.state.response !== null && isManagedEodTransientError(error);
       let message = showingPrevious
-        ? "The close history refresh failed. Select Refresh to try again."
-        : "Close history could not be loaded. Select Load to try again.";
+        ? "The close history refresh failed. Try again when ready."
+        : "Close history could not be loaded. Try again when ready.";
       let catalogChanged = false;
       if (error instanceof ManagedCatalogChangedError) {
         catalogChanged = true;
@@ -234,17 +262,16 @@ export class ManagedEodHistory {
         return;
       } else if (error instanceof ManagedEodHistoryError) {
         if (error.code === "source_rate_limited")
-          message = showingPrevious
-            ? "Tiingo is limiting requests. Try refreshing again later; no reset time was provided."
-            : "Tiingo is limiting requests. Try loading again later; no reset time was provided.";
+          message =
+            "Tiingo is limiting requests. Try again later; no reset time was provided.";
         else if (error.code === "not_configured")
           message = "Close history is not configured for this workspace.";
         else if (error.code === "unsupported_listing")
           message = "Close history is not available for this exact listing.";
         else if (error.code === "request_timeout")
           message = showingPrevious
-            ? "The close history refresh timed out. Select Refresh to try again."
-            : "The close history request timed out. Select Load to try again.";
+            ? "The close history refresh timed out. Try again when ready."
+            : "The close history request timed out. Try again when ready.";
       }
       this.update({
         response: showingPrevious ? this.state.response : null,
@@ -262,8 +289,6 @@ export class ManagedEodHistory {
     }
   }
   private cooldownMessage(nextAllowedAt: string) {
-    return this.state.response
-      ? `Refresh deferred. Close history is available to request after ${nextAllowedAt}. Select Refresh again then.`
-      : `Close history is available to request after ${nextAllowedAt}. Select Load again then.`;
+    return `Close history is available to request after ${nextAllowedAt}. Try again then.`;
   }
 }

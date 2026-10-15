@@ -183,6 +183,25 @@ describe("managed browser transport", () => {
     expect(fetcher).toHaveBeenCalledOnce();
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
   });
+  it("sends the exact staged year request and rejects a month packet without fallback", async () => {
+    const { api, fetcher, abort } = fixture();
+    fetcher
+      .mockResolvedValueOnce(Response.json(eodResponse("1y")))
+      .mockResolvedValueOnce(Response.json(eodResponse()));
+    expect((await api.eodHistory(eodRequest("1y"), abort.signal)).range).toBe(
+      "1y",
+    );
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify(eodRequest("1y")),
+    );
+    await expect(
+      api.eodHistory(eodRequest("1y"), abort.signal),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetcher.mock.calls)
+      expect(init?.body).toBe(JSON.stringify(eodRequest("1y")));
+  });
+
   it("captures the EOD request before token acquisition and owns the parsed exact close packet", async () => {
     const { api, fetcher, session, abort } = fixture();
     const token = deferred<string>();

@@ -326,7 +326,7 @@ describe("managed close history panel", () => {
       "101.5",
       "Source request completed",
       "2026-09-20T00:00:01.000Z",
-      "One-month raw closing prices in USD",
+      "Raw closing prices in USD",
       "Refresh close history",
     ])
       expect(output).toContain(text);
@@ -363,12 +363,12 @@ describe("managed close history panel", () => {
   it.each([
     {
       error: new ManagedEodHistoryError("unavailable"),
-      message: "The close history refresh failed. Select Refresh to try again.",
+      message: "The close history refresh failed. Try again when ready.",
     },
     {
       error: new ManagedEodHistoryError("source_rate_limited"),
       message:
-        "Tiingo is limiting requests. Try refreshing again later; no reset time was provided.",
+        "Tiingo is limiting requests. Try again later; no reset time was provided.",
     },
   ])(
     "keeps the dated table through pending, $error, Cancel and explicit recovery",
@@ -430,7 +430,7 @@ describe("managed close history panel", () => {
       await next;
       const cancelled = expectPrevious();
       expect(cancelled).toContain(
-        "Close history refresh cancelled. Refresh again when ready.",
+        "Close history refresh cancelled. Try again when ready.",
       );
       expect(cancelled).not.toContain("999.75");
       expect(cancelled).not.toContain('role="alert"');
@@ -469,7 +469,7 @@ describe("managed close history panel", () => {
     await model.load();
     const output = renderToStaticMarkup(<Panel model={model} />);
     expect(output).toContain(
-      "Close history could not be loaded. Select Load to try again.",
+      "Close history could not be loaded. Try again when ready.",
     );
     expect(output).toContain("Load one-month close history");
     expect(output).not.toContain('class="managed-eod-previous"');
@@ -532,4 +532,51 @@ it("offers the company action with the displayed response, both exact endpoints 
     (node) => node.type === CloseHistoryChart,
   ) as React.ReactElement<React.ComponentProps<typeof CloseHistoryChart>>;
   expect(plain.props.renderAction).toBeUndefined();
+});
+
+describe("company Price range presentation", () => {
+  it("keeps a retained packet labelled by its own range while staging, loading and cancelling another range", async () => {
+    const read = vi
+      .fn<ManagedApi["eodHistory"]>()
+      .mockResolvedValueOnce(eodResponse());
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+      eodSelection.listing,
+    ]);
+    model.open(eodSelection);
+    await model.load();
+    model.selectRange("1y");
+    const html = () => renderToStaticMarkup(<Panel model={model} />);
+    expect(html()).toContain('for="managed-eod-range"');
+    expect(html()).toContain(
+      '<option value="1y" selected="">One year</option>',
+    );
+    expect(html()).toContain("Load one-year close history");
+    expect(html()).toContain("Loaded request range: One month.");
+    expect(html()).toContain("2 reported closes from 2026-09-18 to 2026-09-19");
+    expect(read).toHaveBeenCalledOnce();
+    let resolve!: (value: ReturnType<typeof eodResponse>) => void;
+    read.mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const pending = model.load();
+    expect(html()).toContain('<select id="managed-eod-range" disabled="">');
+    expect(html()).toContain("Loaded request range: One month.");
+    model.cancel();
+    resolve(eodResponse("1y"));
+    await pending;
+    expect(html()).toContain("Loaded request range: One month.");
+    expect(html()).toContain("2026-08-20 to 2026-09-20");
+    read.mockResolvedValueOnce(eodResponse("1y"));
+    await model.load();
+    const year = html();
+    expect(year).toContain("Loaded request range: One year.");
+    expect(year).toContain("3 reported closes from 2025-09-22 to 2026-09-19");
+    expect(year).toContain("2025-09-20 to 2026-09-20");
+    expect(year).not.toContain("one-month raw close history");
+    expect(year).not.toContain("One-month raw closing prices");
+    expect(year).toContain("Raw closing prices in USD");
+    expect(read).toHaveBeenCalledTimes(3);
+  });
 });

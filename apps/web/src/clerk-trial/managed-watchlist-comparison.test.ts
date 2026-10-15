@@ -69,6 +69,7 @@ function row(
         origin: "watchlist" as const,
       }),
       available: true,
+      selectedRange: "1m",
       response: closes ? response(listing, closes) : null,
       responseOrigin: closes ? ("watchlist" as const) : null,
       showingPrevious: false,

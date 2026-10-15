@@ -6,10 +6,30 @@ carry its validated history into Price without another request, including when
 Annual opens first. The panel identifies this origin and retains the row's
 previous-history status and original timestamps. Company Refresh replaces that
 copy independently of the board. Direct links and other entry points start
-unloaded. The first slice requests one calendar month
+unloaded. Company Price can request one calendar month or one calendar year
 of daily raw USD closes and shows the last observed trading-date close, chart,
 exact decimal table, requested dates, completion time and Tiingo attribution.
 It does not calculate adjusted returns or claim that the last close is a live quote.
+
+## Choose the company history range
+
+**History range** starts at **One month**. Choose **One year**, then select
+**Load one-year close history** to request it. Changing the selector makes no
+request, write or automatic retry. The selector stays disabled during a read.
+Markets, watchlist summaries and their comparisons keep their one-month requests.
+A one-month handoff from either surface starts as one month in company Price.
+
+The loaded range label, reported-close count, first and last observed dates,
+requested window and request times all come from the admitted packet. Staging a
+new range does not relabel the history already shown. Loading, Cancel and typed
+transient failures retain that packet with its original dates. A successful read
+replaces it as a whole. The source may return fewer dates than the requested
+window; this is not a complete-year or adjusted-return claim.
+
+Notes, snapshot and report documents keep that actual packet and window. A staged
+range change invalidates an existing prepared report through its current source
+state guard, even before a read. Preparing again can include the still-loaded
+packet, labelled with its actual range. This makes no source request or saved change.
 
 The company visit renders either Annual or Price. Validated price rows stay in
 that visit's memory when switching sections. An explicit refresh keeps the last validated history
@@ -19,8 +39,8 @@ notice shows the original completion time; the rows, requested window and source
 timestamps remain unchanged. A valid successful response replaces the whole
 history and removes that notice. Initial-load failures have no previous history.
 
-Back, selection changes, catalog changes and session retirement clear prices. Authentication loss, unsupported or unconfigured listings, malformed
-responses or cooldowns, identity mismatches and unknown errors also clear them.
+Back, company selection changes, catalog changes and session retirement clear prices. Authentication loss, unsupported or unconfigured listings, malformed
+responses or cooldown packets, identity mismatches and unknown errors also clear them.
 Late responses cannot restore cleared rows or overwrite history after Cancel.
 The mounted workspace retains its unsaved notes and order. Android Back closes
 the panel through the same action and restores focus to its opening control.
@@ -72,7 +92,7 @@ Start is initially empty and End is initially the latest loaded date. Choosing a
 Start after or equal to the selected End clears End and asks for a new ending
 date. End offers only dates after Start. Histories with fewer than two observations
 explain why comparison is unavailable. Both selectors contain only observed dates;
-they do not interpolate prices or assume that the requested month is fully covered.
+they do not interpolate prices or assume that the requested window is fully covered.
 The date selectors and full exact-value table support keyboard use. The separate
 latest-price readout continues to show the last loaded observation when a past
 ending date is selected.
@@ -139,17 +159,27 @@ and [selected evidence added to an existing note with source context](https://ww
 
 Authenticated `POST /v1/managed/eod-history` accepts at most 4 KiB and returns at
 most 64 KiB. The caller supplies the current catalog digest, exact listing ID and
-fixed `1m` range. The server resolves the full admitted identity before budget or
+explicit `1m` or `1y` range. The server resolves the full admitted identity before budget or
 provider work. Fixed candidates keep AAPL, GOOG and GOOGL distinct, including
 their security and share-class IDs. A catalog identity alone does not establish
 Tiingo coverage or currency; each enabled mapping needs separate acceptance.
 
 The service reuses the existing Tiingo history adapter with quote loading
-disabled and a 32 KiB source-body cap. An available response must contain 1–32
-strictly increasing, unique, in-window trading dates and positive canonical
-decimal closes. The client also checks the complete selected identity, requested
+disabled. One-month reads admit at most 32 rows and a 32 KiB source body;
+one-year reads admit at most 367 inclusive calendar dates and a 256 KiB source
+body. The request window subtracts one or twelve UTC calendar months and clamps
+the day to the target month. Available rows must be strictly increasing, unique,
+in-window trading dates with positive canonical decimal closes. The client also checks the complete selected identity, requested
 window and response chronology before showing it. Decimal strings are preserved
 in the table; the chart converts them only for plotting.
+
+The response representation remains schema `1.0.0`; the accepted range domain
+now includes `1y`. All one-month packet fields and bounds keep their original
+meaning. Responses bind to the captured request range and exact derived window.
+An older service rejects `1y` before admission or provider work. There is no
+fallback month read or version negotiation. Live one-year availability and the
+larger source cap need their own provider acceptance; invented tests do not
+establish coverage or account entitlement.
 
 The function's ten-second lifetime starts before account and catalog checks.
 Admission must finish within two seconds. Source work gets at most 7.5 seconds
@@ -174,7 +204,7 @@ transport slot is reserved for rollback before a commit starts. Malformed,
 future or overfull reservation data closes admission.
 
 The app budgets 1 MiB per attempt conservatively while capping each source body
-at 32 KiB. This is an application allowance, not a measurement of account-wide
+at 32 KiB for a month or 256 KiB for a year. This is an application allowance, not a measurement of account-wide
 bandwidth or the Tiingo account balance. Calls from other clients remain unknown.
 The Annual report budget is separate and unchanged. A local quota response gives
 the calculated next allowed time; an upstream rate-limit response gives no

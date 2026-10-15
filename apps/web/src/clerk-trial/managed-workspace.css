@@ -821,6 +821,17 @@
 .managed-frame .managed-eod-chart-canvas {
   height: 300px;
 }
+.managed-frame .managed-eod-range {
+  display: grid;
+  gap: 8px;
+  max-width: 20rem;
+  font-size: 14px;
+}
+.managed-frame .managed-eod-range select {
+  min-height: 44px;
+  min-width: 0;
+  width: 100%;
+}
 .managed-frame .managed-eod-quote {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

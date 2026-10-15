@@ -161,7 +161,7 @@ describe("session-only managed EOD history", () => {
       .mockRejectedValueOnce(new ManagedEodCooldownError(nextAllowedAt));
     const access = new ManagedEodAccess(read);
     await expect(
-      access.request(eodSelection, new AbortController().signal),
+      access.request(eodSelection, "1m", new AbortController().signal),
     ).rejects.toMatchObject({ nextAllowedAt });
     const model = new ManagedEodHistory(read, vi.fn(), access, [
       eodSelection.listing,
@@ -173,7 +173,7 @@ describe("session-only managed EOD history", () => {
     model.close();
     model.retire();
     await expect(
-      access.request(eodSelection, new AbortController().signal),
+      access.request(eodSelection, "1m", new AbortController().signal),
     ).rejects.toMatchObject({ nextAllowedAt });
     expect(read).toHaveBeenCalledTimes(1);
   });
@@ -197,7 +197,7 @@ describe("session-only managed EOD history", () => {
     await model.load();
     expect(model.getSnapshot().message).toContain(nextAllowedAt);
     await expect(
-      access.request(eodSelection, new AbortController().signal),
+      access.request(eodSelection, "1m", new AbortController().signal),
     ).rejects.toMatchObject({ nextAllowedAt });
     expect(read).toHaveBeenCalledTimes(2);
   });
@@ -438,7 +438,12 @@ describe("session-only managed EOD history", () => {
       });
       expect(model.getSnapshot().response).toBe(previous);
       expect(JSON.stringify(previous)).toBe(originalBytes);
-      expect(model.getSnapshot().message.toLowerCase()).toContain("refresh");
+      expect(model.getSnapshot().message.toLowerCase()).toContain(
+        error instanceof ManagedEodHistoryError &&
+          error.code === "source_rate_limited"
+          ? "tiingo is limiting requests"
+          : "refresh",
+      );
       expect(readError).not.toHaveBeenCalled();
       expect(read).toHaveBeenCalledTimes(2);
     },
@@ -462,7 +467,9 @@ describe("session-only managed EOD history", () => {
       running: false,
     });
     expect(model.getSnapshot().response).toBe(previous);
-    expect(model.getSnapshot().message).toContain("Refresh deferred.");
+    expect(model.getSnapshot().message).toBe(
+      "Close history is available to request after 2026-10-02T00:00:20.000Z. Try again then.",
+    );
     await model.load();
     expect(read).toHaveBeenCalledTimes(2);
     expect(model.getSnapshot().response).toBe(previous);
@@ -816,7 +823,7 @@ describe.each(["markets", "watchlist"] as const)(
         .mockResolvedValueOnce(refreshed);
       const access = new ManagedEodAccess(read);
       await expect(
-        access.request(selection, new AbortController().signal),
+        access.request(selection, "1m", new AbortController().signal),
       ).rejects.toMatchObject({ nextAllowedAt });
       const model = new ManagedEodHistory(read, vi.fn(), access, [
         eodSelection.listing,
@@ -915,3 +922,145 @@ describe.each(["markets", "watchlist"] as const)(
     );
   },
 );
+
+describe("company Price request ranges", () => {
+  it("stages a year without a read and preserves a seeded month with its original dates", async () => {
+    const { model, read } = fixture();
+    model.open(
+      { ...eodSelection, origin: "markets" },
+      { response: eodResponse(), showingPrevious: false },
+    );
+    const seeded = model.getSnapshot().response;
+    model.selectRange("1y");
+    expect(model.getSnapshot()).toMatchObject({
+      selectedRange: "1y",
+      responseOrigin: "markets",
+      running: false,
+    });
+    expect(model.getSnapshot().response).toBe(seeded);
+    expect(seeded?.range).toBe("1m");
+    expect(read).not.toHaveBeenCalled();
+    read.mockResolvedValue(eodResponse("1y"));
+    await model.load();
+    expect(read).toHaveBeenCalledExactlyOnceWith(
+      eodRequest("1y"),
+      expect.any(AbortSignal),
+    );
+    expect(model.getSnapshot()).toMatchObject({
+      responseOrigin: "company",
+      response: { range: "1y", window: { startDate: "2025-09-20" } },
+    });
+  });
+
+  it.each(["cancel", "failure"] as const)(
+    "retains a month after a year %s, fences late completion and requires a new explicit read",
+    async (outcome) => {
+      const { model, read } = fixture();
+      read.mockResolvedValueOnce(eodResponse());
+      await model.load();
+      const month = model.getSnapshot().response;
+      const held = deferred<ReturnType<typeof eodResponse>>();
+      read.mockReturnValueOnce(held.promise);
+      model.selectRange("1y");
+      const pending = model.load();
+      model.selectRange("1m");
+      expect(model.getSnapshot()).toMatchObject({
+        running: true,
+        selectedRange: "1y",
+        showingPrevious: true,
+      });
+      expect(model.getSnapshot().response).toBe(month);
+      if (outcome === "cancel") {
+        model.cancel();
+        held.resolve(eodResponse("1y"));
+      } else held.reject(new ManagedEodHistoryError("unavailable"));
+      await pending;
+      expect(model.getSnapshot()).toMatchObject({
+        selectedRange: "1y",
+        running: false,
+        showingPrevious: true,
+        response: { range: "1m", window: { startDate: "2026-08-20" } },
+      });
+      expect(model.getSnapshot().response).toBe(month);
+      expect(read).toHaveBeenCalledTimes(2);
+      const settledMessage = model.getSnapshot().message;
+      expect(settledMessage).toContain("Try again when ready.");
+      model.selectRange("1m");
+      expect(model.getSnapshot().message).toBe(settledMessage);
+      expect(read).toHaveBeenCalledTimes(2);
+      model.selectRange("1y");
+      read.mockResolvedValueOnce(eodResponse("1y"));
+      await model.load();
+      expect(model.getSnapshot().response?.range).toBe("1y");
+      expect(read).toHaveBeenCalledTimes(3);
+    },
+  );
+
+  it("retains the loaded year when a staged month fails, and refuses a year as a month handoff", async () => {
+    const { model, read } = fixture();
+    model.selectRange("1y");
+    read.mockResolvedValueOnce(eodResponse("1y"));
+    await model.load();
+    const year = model.getSnapshot().response!;
+    model.selectRange("1m");
+    read.mockRejectedValueOnce(new ManagedEodHistoryError("request_timeout"));
+    await model.load();
+    expect(model.getSnapshot().response).toBe(year);
+    expect(model.getSnapshot()).toMatchObject({
+      selectedRange: "1m",
+      showingPrevious: true,
+    });
+    model.open(
+      { ...eodSelection, origin: "watchlist" },
+      { response: year, showingPrevious: false },
+    );
+    expect(model.getSnapshot()).toMatchObject({
+      selectedRange: "1m",
+      response: null,
+      error: true,
+    });
+  });
+
+  it.each(["close", "company", "retire"] as const)(
+    "discards a year completion after %s",
+    async (boundary) => {
+      const { model, read } = fixture();
+      const held = deferred<ReturnType<typeof eodResponse>>();
+      read.mockReturnValue(held.promise);
+      model.selectRange("1y");
+      const pending = model.load();
+      if (boundary === "close") model.close();
+      else if (boundary === "retire") model.retire();
+      else model.open({ ...eodSelection, origin: "route" });
+      held.resolve(eodResponse("1y"));
+      await pending;
+      expect(model.getSnapshot()).toMatchObject({
+        selectedRange: "1m",
+        response: null,
+        running: false,
+      });
+      expect(read).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps the watchlist reader month-only even when a caller stages a year", async () => {
+    const read = vi
+      .fn<ManagedApi["eodHistory"]>()
+      .mockResolvedValue(eodResponse());
+    const model = new ManagedEodHistory(
+      read,
+      vi.fn(),
+      undefined,
+      [eodSelection.listing],
+      "watchlist",
+    );
+    model.open({ ...eodSelection, origin: "watchlist" });
+    model.selectRange("1y");
+    expect(model.getSnapshot().selectedRange).toBe("1m");
+    await model.load();
+    expect(read).toHaveBeenCalledExactlyOnceWith(
+      eodRequest(),
+      expect.any(AbortSignal),
+    );
+  });
+});

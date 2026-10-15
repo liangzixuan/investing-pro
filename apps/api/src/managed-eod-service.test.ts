@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as securityMaster from "@research-cockpit/personal-security-master";
-import type { ManagedEodHistoryRequestDto } from "@research-cockpit/contracts";
+import {
+  MANAGED_EOD_HISTORY_RANGE_LIMITS,
+  type ManagedEodHistoryRange,
+  type ManagedEodHistoryRequestDto,
+} from "@research-cockpit/contracts";
 import { createManagedEodService } from "./managed-eod-service";
 import { ManagedEodAdmissionError } from "./managed-eod-admission";
 import {
@@ -15,12 +19,15 @@ import {
 const ENTRY = "2026-10-02T12:00:00.000Z",
   TOKEN = "invented-EOD-token";
 const PRINCIPAL = { userId: "invented-owner" };
-const command = (symbol = "AAPL"): ManagedEodHistoryRequestDto => ({
+const command = (
+  symbol = "AAPL",
+  range: ManagedEodHistoryRange = "1m",
+): ManagedEodHistoryRequestDto => ({
   catalogSnapshotSha256: getManagedWorkspaceCatalog().snapshotSha256,
   listingId: MANAGED_EOD_MAPPING_CANDIDATES.find(
     (x) => x.security.symbol === symbol,
   )!.security.listingId,
-  range: "1m",
+  range,
 });
 function bar(date = "2026-10-01", extra: Record<string, unknown> = {}) {
   return {
@@ -45,10 +52,11 @@ function fixture(
     enabledSymbols: ["AAPL", "GOOG", "GOOGL"],
   },
   token: string | undefined = TOKEN,
+  enteredAt = ENTRY,
 ) {
   let elapsed = 0;
   const reserve = vi.fn(() =>
-    Promise.resolve({ version: 2, reservedAt: ENTRY }),
+    Promise.resolve({ version: 2, reservedAt: enteredAt }),
   );
   const close = vi.fn(() => Promise.resolve());
   const openAdmission = vi.fn(() => ({ admission: { reserve }, close }));
@@ -61,11 +69,11 @@ function fixture(
       configuration,
       token,
       catalog: getManagedWorkspaceCatalog(),
-      enteredAt: ENTRY,
+      enteredAt,
       startedAt: 0,
       openAdmission,
       monotonic: () => elapsed,
-      now: () => new Date(Date.parse(ENTRY) + elapsed),
+      now: () => new Date(Date.parse(enteredAt) + elapsed),
       fetch,
     });
   return {
@@ -85,11 +93,16 @@ afterEach(() => {
 });
 
 describe("managed EOD history service", () => {
-  it.each(["AAPL", "GOOG", "GOOGL"])(
-    "preserves the complete %s class and makes one admitted history-only read",
-    async (symbol) => {
+  it.each(
+    (["1m", "1y"] as const).flatMap((range) =>
+      ["AAPL", "GOOG", "GOOGL"].map((symbol) => ({ range, symbol })),
+    ),
+  )(
+    "preserves the complete $symbol class and makes one admitted $range history-only read",
+    async ({ symbol, range }) => {
       const f = fixture();
-      const request = command(symbol);
+      const request = command(symbol, range);
+      const startDate = range === "1m" ? "2026-09-02" : "2025-10-02";
       const result = await f
         .make()
         .load(request, PRINCIPAL, new AbortController().signal);
@@ -103,7 +116,8 @@ describe("managed EOD history service", () => {
         priceBasis: "raw_close",
         provider: "Tiingo",
         currency: "USD",
-        window: { startDate: "2026-09-02", endDate: "2026-10-02" },
+        range,
+        window: { startDate, endDate: "2026-10-02" },
       });
       expect(f.reserve).toHaveBeenCalledExactlyOnceWith(
         PRINCIPAL,
@@ -113,7 +127,7 @@ describe("managed EOD history service", () => {
       expect(f.fetch).toHaveBeenCalledTimes(1);
       const [url, init] = f.fetch.mock.calls[0]!;
       expect(url).toBe(
-        `https://api.tiingo.com/tiingo/daily/${symbol}/prices?startDate=2026-09-02&endDate=2026-10-02`,
+        `https://api.tiingo.com/tiingo/daily/${symbol}/prices?startDate=${startDate}&endDate=2026-10-02`,
       );
       expect(init).toMatchObject({
         method: "GET",
@@ -131,6 +145,213 @@ describe("managed EOD history service", () => {
       expect(f.close).toHaveBeenCalledTimes(1);
       expect(JSON.stringify(result)).not.toContain(TOKEN);
       expect(Object.isFrozen(result.rows[0])).toBe(true);
+    },
+  );
+  it.each([
+    {
+      range: "1m",
+      enteredAt: "2026-08-31T23:59:59.000Z",
+      startDate: "2026-07-31",
+      count: 32,
+      accepted: true,
+    },
+    {
+      range: "1m",
+      enteredAt: "2026-08-31T23:59:59.000Z",
+      startDate: "2026-07-31",
+      count: 33,
+      accepted: false,
+    },
+    {
+      range: "1y",
+      enteredAt: "2024-03-01T00:00:00.000Z",
+      startDate: "2023-03-01",
+      count: 367,
+      accepted: true,
+    },
+    {
+      range: "1y",
+      enteredAt: "2024-03-01T00:00:00.000Z",
+      startDate: "2023-03-01",
+      count: 368,
+      accepted: false,
+    },
+  ] as const)(
+    "keeps $range inclusive source dates bounded at $count rows",
+    async ({ range, enteredAt, startDate, count, accepted }) => {
+      const f = fixture(undefined, undefined, enteredAt);
+      const first = Date.parse(`${startDate}T00:00:00.000Z`);
+      const bars = Array.from({ length: count }, (_, index) =>
+        bar(new Date(first + index * 86_400_000).toISOString().slice(0, 10)),
+      );
+      f.fetch.mockResolvedValue(Response.json(bars));
+      const pending = f
+        .make()
+        .load(command("AAPL", range), PRINCIPAL, new AbortController().signal);
+      if (accepted) {
+        const result = await pending;
+        expect(result.range).toBe(range);
+        expect(result.rows).toHaveLength(count);
+        expect(result.rows[0]?.date).toBe(startDate);
+        expect(result.rows.at(-1)?.date).toBe(enteredAt.slice(0, 10));
+        expect(result.window).toEqual({
+          startDate,
+          endDate: enteredAt.slice(0, 10),
+        });
+      } else {
+        await expect(pending).rejects.toMatchObject({ code: "unavailable" });
+      }
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+      expect(f.reserve).toHaveBeenCalledTimes(1);
+      expect(f.close).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("uses the calendar-clamped year window on leap day", async () => {
+    const f = fixture(undefined, undefined, "2024-02-29T12:00:00.000Z");
+    f.fetch.mockResolvedValue(
+      Response.json([bar("2023-02-28"), bar("2024-02-29")]),
+    );
+    const result = await f
+      .make()
+      .load(command("AAPL", "1y"), PRINCIPAL, new AbortController().signal);
+    expect(result.window).toEqual({
+      startDate: "2023-02-28",
+      endDate: "2024-02-29",
+    });
+    expect(result.rows.map((row) => row.date)).toEqual([
+      "2023-02-28",
+      "2024-02-29",
+    ]);
+    expect(f.fetch).toHaveBeenCalledTimes(1);
+    expect(f.fetch.mock.calls[0]?.[0]).toBe(
+      "https://api.tiingo.com/tiingo/daily/AAPL/prices?startDate=2023-02-28&endDate=2024-02-29",
+    );
+  });
+  it.each(
+    (["1m", "1y"] as const).flatMap((range) =>
+      [false, true].map((declared) => ({ range, declared })),
+    ),
+  )(
+    "admits a complete $range source at its exact byte cap (declared=$declared)",
+    async ({ range, declared }) => {
+      const f = fixture();
+      const cap = MANAGED_EOD_HISTORY_RANGE_LIMITS[range].sourceBytes;
+      const json = JSON.stringify([bar()]);
+      const text =
+        json + " ".repeat(cap - new TextEncoder().encode(json).byteLength);
+      expect(new TextEncoder().encode(text)).toHaveLength(cap);
+      f.fetch.mockResolvedValue(
+        new Response(text, {
+          headers: declared ? { "content-length": String(cap) } : {},
+        }),
+      );
+      const result = await f
+        .make()
+        .load(command("AAPL", range), PRINCIPAL, new AbortController().signal);
+      expect(result.range).toBe(range);
+      expect(result.rows).toEqual([{ date: "2026-10-01", close: "103.125" }]);
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+      expect(f.reserve).toHaveBeenCalledTimes(1);
+      expect(f.close).toHaveBeenCalledTimes(1);
+      expect(f.fetch.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+    },
+  );
+  it.each(
+    (["1m", "1y"] as const).flatMap((range) =>
+      [false, true].map((declared) => ({ range, declared })),
+    ),
+  )(
+    "refuses one byte beyond the $range source cap without fallback (declared=$declared)",
+    async ({ range, declared }) => {
+      const f = fixture();
+      const cap = MANAGED_EOD_HISTORY_RANGE_LIMITS[range].sourceBytes;
+      const json = JSON.stringify([bar()]);
+      const first = new TextEncoder().encode(
+        json + " ".repeat(cap - json.length),
+      );
+      const pull = vi.fn();
+      const cancel = vi.fn();
+      let chunk = 0;
+      const body = new ReadableStream<Uint8Array>(
+        {
+          pull(controller) {
+            pull();
+            if (chunk++ === 0) controller.enqueue(first);
+            else if (chunk === 2) controller.enqueue(new Uint8Array([32]));
+            else controller.close();
+          },
+          cancel,
+        },
+        { highWaterMark: 0 },
+      );
+      f.fetch.mockResolvedValue(
+        new Response(body, {
+          headers: declared ? { "content-length": String(cap + 1) } : {},
+        }),
+      );
+      await expect(
+        f
+          .make()
+          .load(
+            command("AAPL", range),
+            PRINCIPAL,
+            new AbortController().signal,
+          ),
+      ).rejects.toMatchObject({ code: "unavailable" });
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+      expect(f.reserve).toHaveBeenCalledTimes(1);
+      expect(f.close).toHaveBeenCalledTimes(1);
+      expect(f.fetch.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+      if (declared) expect(pull).not.toHaveBeenCalled();
+      else {
+        expect(pull).toHaveBeenCalledTimes(2);
+        expect(cancel).toHaveBeenCalledTimes(1);
+      }
+    },
+  );
+  it("uses the captured year range even if the caller mutates its request during admission", async () => {
+    const f = fixture();
+    let admit!: () => void;
+    f.reserve.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          admit = () => resolve({ version: 2, reservedAt: ENTRY });
+        }),
+    );
+    const request = { ...command("AAPL", "1y") };
+    const pending = f
+      .make()
+      .load(request, PRINCIPAL, new AbortController().signal);
+    expect(f.reserve).toHaveBeenCalledTimes(1);
+    request.range = "1m";
+    admit();
+    const result = await pending;
+    expect(result.range).toBe("1y");
+    expect(result.window).toEqual({
+      startDate: "2025-10-02",
+      endDate: "2026-10-02",
+    });
+    expect(f.fetch).toHaveBeenCalledTimes(1);
+    expect(f.fetch.mock.calls[0]?.[0]).toBe(
+      "https://api.tiingo.com/tiingo/daily/AAPL/prices?startDate=2025-10-02&endDate=2026-10-02",
+    );
+  });
+  it.each(["3m", "1Y", " 1y", "1y ", null, 1])(
+    "rejects unsupported range %s before admission or source work",
+    async (range) => {
+      const f = fixture();
+      await expect(
+        f
+          .make()
+          .load(
+            { ...command(), range } as ManagedEodHistoryRequestDto,
+            PRINCIPAL,
+            new AbortController().signal,
+          ),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(f.openAdmission).not.toHaveBeenCalled();
+      expect(f.reserve).not.toHaveBeenCalled();
+      expect(f.fetch).not.toHaveBeenCalled();
     },
   );
   it.each([
@@ -280,104 +501,148 @@ describe("managed EOD history service", () => {
       expect(f.fetch).toHaveBeenCalledTimes(1);
     },
   );
-  it("returns the checked local cooldown and never opens the source", async () => {
-    const f = fixture();
-    const next = "2026-10-02T13:00:04.000Z";
-    f.reserve.mockRejectedValue(
-      new ManagedEodAdmissionError("rate_limited", next),
-    );
-    await expect(
-      f.make().load(command(), PRINCIPAL, new AbortController().signal),
-    ).rejects.toMatchObject({ code: "rate_limited", nextAllowedAt: next });
-    expect(f.fetch).not.toHaveBeenCalled();
-    expect(f.close).toHaveBeenCalledTimes(1);
-  });
-  it("does not fetch after an uncertain or late admission", async () => {
-    const f = fixture();
-    f.reserve.mockRejectedValue(new ManagedEodAdmissionError("unavailable"));
-    await expect(
-      f.make().load(command(), PRINCIPAL, new AbortController().signal),
-    ).rejects.toMatchObject({ code: "unavailable" });
-    f.reserve.mockImplementation(() => {
-      f.elapsed(2000);
-      return Promise.resolve({ version: 2, reservedAt: ENTRY });
-    });
-    await expect(
-      f.make().load(command(), PRINCIPAL, new AbortController().signal),
-    ).rejects.toMatchObject({ code: "request_timeout" });
-    expect(f.fetch).not.toHaveBeenCalled();
-  });
-  it("retires an uncooperative late source and aborts the owned provider", async () => {
-    const f = fixture();
-    let finish!: (value: Response) => void;
-    f.fetch.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const controller = new AbortController();
-    const pending = f.make().load(command(), PRINCIPAL, controller.signal);
-    await vi.waitFor(() => expect(f.fetch).toHaveBeenCalledTimes(1));
-    const rejected = expect(pending).rejects.toMatchObject({
-      code: "request_timeout",
-    });
-    controller.abort();
-    await rejected;
-    expect(f.fetch.mock.calls[0]![1]?.signal?.aborted).toBe(true);
-    finish(Response.json([bar()]));
-    await Promise.resolve();
-    expect(f.fetch).toHaveBeenCalledTimes(1);
-  });
-  it("bounds an uncooperative admission close and never dispatches after it completes late", async () => {
-    vi.useFakeTimers();
-    const f = fixture();
-    let finish!: () => void;
-    f.close.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const pending = f
-      .make()
-      .load(command(), PRINCIPAL, new AbortController().signal);
-    const rejected = expect(pending).rejects.toMatchObject({
-      code: "request_timeout",
-    });
-    await vi.advanceTimersByTimeAsync(2000);
-    await rejected;
-    expect(f.fetch).not.toHaveBeenCalled();
-    finish();
-    await Promise.resolve();
-    expect(f.fetch).not.toHaveBeenCalled();
-  });
-  it("enforces the shorter source deadline even when source ignores its signal", async () => {
-    vi.useFakeTimers();
-    const f = fixture();
-    f.fetch.mockImplementation(() => new Promise(() => undefined));
-    const pending = f
-      .make()
-      .load(command(), PRINCIPAL, new AbortController().signal);
-    const rejected = expect(pending).rejects.toMatchObject({
-      code: "request_timeout",
-    });
-    await vi.advanceTimersByTimeAsync(7500);
-    await rejected;
-    expect(f.fetch.mock.calls[0]![1]?.signal?.aborted).toBe(true);
-  });
-  it("rejects late normalization and refuses final serialization after the whole deadline", async () => {
-    const f = fixture();
-    f.fetch.mockImplementation(() => {
-      f.elapsed(7500);
-      return Promise.resolve(Response.json([bar()]));
-    });
-    await expect(
-      f.make().load(command(), PRINCIPAL, new AbortController().signal),
-    ).rejects.toMatchObject({ code: "request_timeout" });
-    f.elapsed(10000);
-    expect(() => f.make().assertActive(new AbortController().signal)).toThrow(
-      "request_timeout",
-    );
-  });
+  it.each(["1m", "1y"] as const)(
+    "returns the checked local cooldown and never opens the source (%s)",
+    async (range) => {
+      const f = fixture();
+      const next = "2026-10-02T13:00:04.000Z";
+      f.reserve.mockRejectedValue(
+        new ManagedEodAdmissionError("rate_limited", next),
+      );
+      await expect(
+        f
+          .make()
+          .load(
+            command("AAPL", range),
+            PRINCIPAL,
+            new AbortController().signal,
+          ),
+      ).rejects.toMatchObject({ code: "rate_limited", nextAllowedAt: next });
+      expect(f.fetch).not.toHaveBeenCalled();
+      expect(f.close).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each(["1m", "1y"] as const)(
+    "does not fetch after an uncertain or late admission (%s)",
+    async (range) => {
+      const f = fixture();
+      f.reserve.mockRejectedValue(new ManagedEodAdmissionError("unavailable"));
+      await expect(
+        f
+          .make()
+          .load(
+            command("AAPL", range),
+            PRINCIPAL,
+            new AbortController().signal,
+          ),
+      ).rejects.toMatchObject({ code: "unavailable" });
+      f.reserve.mockImplementation(() => {
+        f.elapsed(2000);
+        return Promise.resolve({ version: 2, reservedAt: ENTRY });
+      });
+      await expect(
+        f
+          .make()
+          .load(
+            command("AAPL", range),
+            PRINCIPAL,
+            new AbortController().signal,
+          ),
+      ).rejects.toMatchObject({ code: "request_timeout" });
+      expect(f.fetch).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["1m", "1y"] as const)(
+    "retires an uncooperative late source and aborts the owned provider (%s)",
+    async (range) => {
+      const f = fixture();
+      let finish!: (value: Response) => void;
+      f.fetch.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const controller = new AbortController();
+      const pending = f
+        .make()
+        .load(command("AAPL", range), PRINCIPAL, controller.signal);
+      await vi.waitFor(() => expect(f.fetch).toHaveBeenCalledTimes(1));
+      const rejected = expect(pending).rejects.toMatchObject({
+        code: "request_timeout",
+      });
+      controller.abort();
+      await rejected;
+      expect(f.fetch.mock.calls[0]![1]?.signal?.aborted).toBe(true);
+      finish(Response.json([bar()]));
+      await Promise.resolve();
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each(["1m", "1y"] as const)(
+    "bounds an uncooperative admission close and never dispatches after it completes late (%s)",
+    async (range) => {
+      vi.useFakeTimers();
+      const f = fixture();
+      let finish!: () => void;
+      f.close.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const pending = f
+        .make()
+        .load(command("AAPL", range), PRINCIPAL, new AbortController().signal);
+      const rejected = expect(pending).rejects.toMatchObject({
+        code: "request_timeout",
+      });
+      await vi.advanceTimersByTimeAsync(2000);
+      await rejected;
+      expect(f.fetch).not.toHaveBeenCalled();
+      finish();
+      await Promise.resolve();
+      expect(f.fetch).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["1m", "1y"] as const)(
+    "enforces the shorter source deadline even when source ignores its signal (%s)",
+    async (range) => {
+      vi.useFakeTimers();
+      const f = fixture();
+      f.fetch.mockImplementation(() => new Promise(() => undefined));
+      const pending = f
+        .make()
+        .load(command("AAPL", range), PRINCIPAL, new AbortController().signal);
+      const rejected = expect(pending).rejects.toMatchObject({
+        code: "request_timeout",
+      });
+      await vi.advanceTimersByTimeAsync(7500);
+      await rejected;
+      expect(f.fetch.mock.calls[0]![1]?.signal?.aborted).toBe(true);
+    },
+  );
+  it.each(["1m", "1y"] as const)(
+    "rejects late normalization and refuses final serialization after the whole deadline (%s)",
+    async (range) => {
+      const f = fixture();
+      f.fetch.mockImplementation(() => {
+        f.elapsed(7500);
+        return Promise.resolve(Response.json([bar()]));
+      });
+      await expect(
+        f
+          .make()
+          .load(
+            command("AAPL", range),
+            PRINCIPAL,
+            new AbortController().signal,
+          ),
+      ).rejects.toMatchObject({ code: "request_timeout" });
+      f.elapsed(10000);
+      expect(() => f.make().assertActive(new AbortController().signal)).toThrow(
+        "request_timeout",
+      );
+    },
+  );
 });

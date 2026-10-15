@@ -492,3 +492,37 @@ describe("prepared loaded company research report", () => {
     expect(html).not.toContain("101.5");
   });
 });
+
+describe("company report Price range currentness", () => {
+  it("invalidates preparation on a staged range change without a read, and captures the actual year packet", async () => {
+    const f = await fixture();
+    await f.price.load();
+    const month = f.prepare()!;
+    f.price.selectRange("1y");
+    expect(f.readPrice).toHaveBeenCalledOnce();
+    expect(
+      companyReportIsCurrent(month, eodSelection, f.evidence(), f.watchlist),
+    ).toBe(false);
+    const staged = f.prepare()!;
+    expect(staged.evidence.price?.response?.range).toBe("1m");
+    expect(staged.evidence.price?.response?.window.startDate).toBe(
+      "2026-08-20",
+    );
+    f.readPrice.mockResolvedValueOnce(eodResponse("1y"));
+    await f.price.load();
+    expect(
+      companyReportIsCurrent(staged, eodSelection, f.evidence(), f.watchlist),
+    ).toBe(false);
+    const year = f.prepare()!;
+    expect(year.evidence.price?.response).toEqual(eodResponse("1y"));
+    expect(year.note).toBe(note);
+    f.price.selectRange("1m");
+    expect(
+      companyReportIsCurrent(year, eodSelection, f.evidence(), f.watchlist),
+    ).toBe(false);
+    expect(f.readPrice).toHaveBeenCalledTimes(2);
+    expect(f.member.note).toBe(note);
+    expect(f.readAnnual).not.toHaveBeenCalled();
+    expect(f.readFilings).not.toHaveBeenCalled();
+  });
+});

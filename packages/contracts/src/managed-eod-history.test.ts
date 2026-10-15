@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_EOD_HISTORY_RANGE_LIMITS,
   managedEodHistoryWindow,
   parseManagedEodError,
   parseManagedEodHistoryRequest,
   parseManagedEodHistoryResponse,
+  type ManagedEodHistoryRange,
   type ManagedEodHistoryRequestDto,
   type ManagedEodHistoryResponseDto,
 } from "./managed-eod-history";
@@ -13,7 +16,9 @@ const request: ManagedEodHistoryRequestDto = {
   listingId: "listing-one",
   range: "1m",
 };
-function packet(): ManagedEodHistoryResponseDto {
+function packet(
+  range: ManagedEodHistoryRange = "1m",
+): ManagedEodHistoryResponseDto {
   return {
     schemaVersion: "1.0.0",
     catalogSnapshotSha256: request.catalogSnapshotSha256,
@@ -30,11 +35,14 @@ function packet(): ManagedEodHistoryResponseDto {
       shareClassName: "Common Stock",
       symbol: "ONE",
     },
-    range: "1m",
+    range,
     provider: "Tiingo",
     currency: "USD",
     priceBasis: "raw_close",
-    window: { startDate: "2026-09-02", endDate: "2026-10-02" },
+    window: {
+      startDate: range === "1m" ? "2026-09-02" : "2025-10-02",
+      endDate: "2026-10-02",
+    },
     requestStartedAt: "2026-10-02T18:00:00.000Z",
     completedAt: "2026-10-02T18:00:00.123Z",
     rows: [
@@ -43,23 +51,30 @@ function packet(): ManagedEodHistoryResponseDto {
     ],
   };
 }
-const parse = (value: unknown) =>
-  parseManagedEodHistoryResponse(value, request);
+const parse = (value: unknown, range: ManagedEodHistoryRange = "1m") =>
+  parseManagedEodHistoryResponse(value, { ...request, range });
 
 describe("managed EOD request", () => {
-  it("owns only the selected listing, current digest and fixed month", () => {
-    const input = { ...request };
+  it.each(["1m", "1y"] as const)("owns the exact %s request", (range) => {
+    const input = { ...request, range };
     const captured = parseManagedEodHistoryRequest(input);
     expect(captured).toEqual(input);
     input.listingId = "listing-other";
     expect(captured?.listingId).toBe("listing-one");
+    input.range = range === "1m" ? "1y" : "1m";
+    expect(captured?.range).toBe(range);
     expect(Object.isFrozen(captured)).toBe(true);
   });
   it.each([
     null,
     [],
     { ...request, symbol: "ONE" },
-    { ...request, range: "1y" },
+    { ...request, range: "3m" },
+    { ...request, range: "1Y" },
+    { ...request, range: "1y " },
+    { ...request, range: 1 },
+    { ...request, range: null },
+    { catalogSnapshotSha256: request.catalogSnapshotSha256, listingId: "one" },
     { ...request, catalogSnapshotSha256: "sha256:bad" },
     { ...request, listingId: "../other" },
     { ...request, listingId: "x".repeat(129) },
@@ -93,17 +108,28 @@ describe("managed EOD request", () => {
   });
 });
 
-describe("calendar-month window", () => {
+describe("UTC calendar range window", () => {
   it.each([
     ["2024-03-31", "2024-02-29"],
     ["2026-03-31", "2026-02-28"],
     ["2026-01-31", "2025-12-31"],
     ["2026-10-02", "2026-09-02"],
   ])("clamps %s to %s", (endDate, startDate) => {
-    expect(managedEodHistoryWindow(`${endDate}T23:59:59.000Z`)).toEqual({
+    expect(managedEodHistoryWindow(`${endDate}T23:59:59.000Z`, "1m")).toEqual({
       startDate,
       endDate,
     });
+  });
+  it.each([
+    ["2024-02-29", "2023-02-28"],
+    ["2024-03-01", "2023-03-01"],
+    ["2025-02-28", "2024-02-28"],
+    ["2026-01-31", "2025-01-31"],
+    ["2026-10-02", "2025-10-02"],
+  ])("clamps a year ending %s to %s", (endDate, startDate) => {
+    const window = managedEodHistoryWindow(`${endDate}T00:00:00.000Z`, "1y");
+    expect(window).toEqual({ startDate, endDate });
+    expect(Object.isFrozen(window)).toBe(true);
   });
   it.each([
     "2026-02-30T00:00:00.000Z",
@@ -111,31 +137,61 @@ describe("calendar-month window", () => {
     "2026-10-02T00:00:00Z",
     "bad",
   ])("refuses noncanonical start %s", (value) => {
-    expect(managedEodHistoryWindow(value)).toBeNull();
+    expect(managedEodHistoryWindow(value, "1m")).toBeNull();
+    expect(managedEodHistoryWindow(value, "1y")).toBeNull();
+  });
+  it.each([undefined, null, "3m", "1Y", "1y ", 12])(
+    "requires an explicit supported range: %j",
+    (range) => {
+      expect(
+        managedEodHistoryWindow(
+          "2026-10-02T00:00:00.000Z",
+          range as ManagedEodHistoryRange,
+        ),
+      ).toBeNull();
+    },
+  );
+  it.each(["1m", "1y"] as const)("refuses %s year underflow", (range) => {
+    expect(
+      managedEodHistoryWindow("0000-01-01T00:00:00.000Z", range),
+    ).toBeNull();
   });
 });
 
 describe("managed EOD response", () => {
-  it("owns and freezes nested data, preserving normalized decimal strings", () => {
-    const input = packet();
-    const result = parse(input);
-    expect(result).toEqual(input);
-    expect(result).not.toBe(input);
-    expect(result?.security).not.toBe(input.security);
-    expect(result?.rows).not.toBe(input.rows);
-    expect(result?.rows[0]?.close).toBe("10.123456789123456789");
-    for (const value of [
-      result,
-      result?.security,
-      result?.window,
-      result?.rows,
-      result?.rows[0],
-    ]) {
-      expect(Object.isFrozen(value)).toBe(true);
-    }
-    (input.rows[0] as { close: string }).close = "999";
-    expect(result?.rows[0]?.close).toBe("10.123456789123456789");
-  });
+  it.each(["1m", "1y"] as const)(
+    "owns and freezes exact %s packets",
+    (range) => {
+      const input = packet(range);
+      const result = parse(input, range);
+      expect(result).toEqual(input);
+      expect(result).not.toBe(input);
+      expect(result?.security).not.toBe(input.security);
+      expect(result?.rows).not.toBe(input.rows);
+      expect(result?.rows[0]?.close).toBe("10.123456789123456789");
+      for (const value of [
+        result,
+        result?.security,
+        result?.window,
+        result?.rows,
+        result?.rows[0],
+      ]) {
+        expect(Object.isFrozen(value)).toBe(true);
+      }
+      (input.rows[0] as { close: string }).close = "999";
+      expect(result?.rows[0]?.close).toBe("10.123456789123456789");
+    },
+  );
+  it.each(["1m", "1y"] as const)(
+    "binds the %s range and its exact window to the captured request",
+    (range) => {
+      const otherRange = range === "1m" ? "1y" : "1m";
+      expect(parse(packet(range), otherRange)).toBeNull();
+      expect(
+        parse({ ...packet(range), window: packet(otherRange).window }, range),
+      ).toBeNull();
+    },
+  );
   it.each([
     { schemaVersion: "2.0.0" },
     { catalogSnapshotSha256: `sha256:${"b".repeat(64)}` },
@@ -230,40 +286,116 @@ describe("managed EOD response", () => {
       parse({ ...input, rows: [...rows, { date: "2026-09-01", close: "1" }] }),
     ).toBeNull();
   });
-  it("does not read accessor values on row arrays, rows or identity", () => {
-    let calls = 0;
-    const getter = {
-      enumerable: true,
-      get: () => {
-        calls += 1;
-        return "1";
-      },
+  it("accepts 367 inclusive leap-year dates within the unchanged response cap", () => {
+    const close = "9".repeat(64);
+    const rows = Array.from({ length: 367 }, (_, index) => ({
+      date: new Date(Date.UTC(2023, 2, 1 + index)).toISOString().slice(0, 10),
+      close,
+    }));
+    const input = {
+      ...packet("1y"),
+      requestStartedAt: "2024-03-01T00:00:00.000Z",
+      completedAt: "2024-03-01T00:00:09.999Z",
+      window: { startDate: "2023-03-01", endDate: "2024-03-01" },
+      rows,
     };
-    const row = { date: "2026-10-01", close: "1" };
-    Object.defineProperty(row, "close", getter);
-    expect(parse({ ...packet(), rows: [row] })).toBeNull();
-    const rows = [{ date: "2026-10-01", close: "1" }];
-    Object.defineProperty(rows, "0", getter);
-    expect(parse({ ...packet(), rows })).toBeNull();
-    const security = { ...packet().security };
-    Object.defineProperty(security, "symbol", getter);
-    expect(parse({ ...packet(), security })).toBeNull();
-    expect(calls).toBe(0);
+    const result = parse(input, "1y");
+    expect(result).toEqual(input);
+    expect(result?.rows).toHaveLength(367);
+    expect(result?.rows[0]).toEqual({ date: "2023-03-01", close });
+    expect(result?.rows[366]).toEqual({ date: "2024-03-01", close });
+    expect(
+      new TextEncoder().encode(JSON.stringify(result)).byteLength,
+    ).toBeLessThan(MANAGED_EOD_HISTORY_LIMITS.responseBytes);
+    expect(
+      parse({ ...input, rows: [...rows, { date: "2024-03-02", close }] }, "1y"),
+    ).toBeNull();
+    expect(
+      parse({ ...input, completedAt: "2024-03-01T00:00:10.000Z" }, "1y"),
+    ).toBeNull();
   });
-  it("rejects sparse and decorated arrays, symbols and inherited fields", () => {
-    expect(parse({ ...packet(), rows: new Array(1) })).toBeNull();
-    const rows = Object.assign([...packet().rows], { extra: true });
-    expect(parse({ ...packet(), rows })).toBeNull();
-    expect(parse({ ...packet(), [Symbol("hidden")]: true })).toBeNull();
-    expect(parse(Object.create(packet()))).toBeNull();
+  it.each(
+    [
+      [],
+      [{ date: "2025-10-01", close: "1" }],
+      [{ date: "2026-10-03", close: "1" }],
+      [{ date: "2026-02-29", close: "1" }],
+      [
+        { date: "2026-09-03", close: "1" },
+        { date: "2026-09-02", close: "2" },
+      ],
+      [
+        { date: "2026-09-03", close: "1" },
+        { date: "2026-09-03", close: "2" },
+      ],
+      [{ date: "2026-10-01", close: "1", volume: "2" }],
+    ].map((rows) => ({ rows })),
+  )("rejects malformed or out-of-year rows %j", ({ rows }) => {
+    expect(parse({ ...packet("1y"), rows }, "1y")).toBeNull();
   });
+  it.each(["1m", "1y"] as const)(
+    "does not invoke %s data accessors",
+    (range) => {
+      let calls = 0;
+      const getter = {
+        enumerable: true,
+        get: () => {
+          calls += 1;
+          return "1";
+        },
+      };
+      const row = { date: "2026-10-01", close: "1" };
+      Object.defineProperty(row, "close", getter);
+      expect(parse({ ...packet(range), rows: [row] }, range)).toBeNull();
+      const rows = [{ date: "2026-10-01", close: "1" }];
+      Object.defineProperty(rows, "0", getter);
+      expect(parse({ ...packet(range), rows }, range)).toBeNull();
+      const security = { ...packet(range).security };
+      Object.defineProperty(security, "symbol", getter);
+      expect(parse({ ...packet(range), security }, range)).toBeNull();
+      expect(calls).toBe(0);
+    },
+  );
+  it.each(["1m", "1y"] as const)(
+    "rejects nonclosed %s arrays and records",
+    (range) => {
+      expect(parse({ ...packet(range), rows: new Array(1) }, range)).toBeNull();
+      const rows = Object.assign([...packet(range).rows], { extra: true });
+      expect(parse({ ...packet(range), rows }, range)).toBeNull();
+      expect(
+        parse({ ...packet(range), [Symbol("hidden")]: true }, range),
+      ).toBeNull();
+      expect(parse(Object.create(packet(range)), range)).toBeNull();
+    },
+  );
   it("never binds a packet to an invalid captured request", () => {
     expect(
       parseManagedEodHistoryResponse(packet(), {
         ...request,
-        range: "1y",
+        range: "3m",
       } as unknown as ManagedEodHistoryRequestDto),
     ).toBeNull();
+  });
+});
+
+describe("managed EOD range bounds", () => {
+  it("keeps common caps and owns separate immutable range limits", () => {
+    expect(MANAGED_EOD_HISTORY_LIMITS).toEqual({
+      requestBytes: 4_096,
+      responseBytes: 65_536,
+    });
+    expect(MANAGED_EOD_HISTORY_RANGE_LIMITS).toEqual({
+      "1m": { rows: 32, sourceBytes: 32_768 },
+      "1y": { rows: 367, sourceBytes: 262_144 },
+    });
+    for (const value of [
+      MANAGED_EOD_HISTORY_LIMITS,
+      MANAGED_EOD_HISTORY_RANGE_LIMITS,
+      MANAGED_EOD_HISTORY_RANGE_LIMITS["1m"],
+      MANAGED_EOD_HISTORY_RANGE_LIMITS["1y"],
+    ]) {
+      expect(Object.isFrozen(value)).toBe(true);
+    }
   });
 });
 

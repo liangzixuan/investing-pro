@@ -49,6 +49,7 @@ export function pathRow(
     history: {
       selection: { ...eodSelection, listing, origin: "watchlist" },
       available: true,
+      selectedRange: "1m",
       response,
       responseOrigin: "watchlist",
       showingPrevious: false,

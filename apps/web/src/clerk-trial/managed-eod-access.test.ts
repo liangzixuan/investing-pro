@@ -35,7 +35,7 @@ describe("shared managed EOD access", () => {
     const selection = { ...eodSelection, listing: { ...eodSelection.listing } };
     expect(read).not.toHaveBeenCalled();
     const requestSignal = signal();
-    const request = access.request(selection, requestSignal);
+    const request = access.request(selection, "1m", requestSignal);
     selection.listing.shareClassId = "changed-after-request";
     const response = eodResponse();
     held.resolve(response);
@@ -56,7 +56,7 @@ describe("shared managed EOD access", () => {
             },
       );
       await expect(
-        new ManagedEodAccess(read).request(eodSelection, signal()),
+        new ManagedEodAccess(read).request(eodSelection, "1m", signal()),
       ).rejects.toMatchObject({ code: "invalid_response" });
     },
   );
@@ -70,18 +70,22 @@ describe("shared managed EOD access", () => {
       .mockRejectedValueOnce(new ManagedEodCooldownError(nextAllowedAt))
       .mockResolvedValueOnce(eodResponse());
     const access = new ManagedEodAccess(read);
-    await expect(access.request(eodSelection, signal())).rejects.toMatchObject({
+    await expect(
+      access.request(eodSelection, "1m", signal()),
+    ).rejects.toMatchObject({
       nextAllowedAt,
     });
     expect(access.getNextAllowedAt()).toBe(nextAllowedAt);
-    await expect(access.request(eodSelection, signal())).rejects.toMatchObject({
+    await expect(
+      access.request(eodSelection, "1m", signal()),
+    ).rejects.toMatchObject({
       nextAllowedAt,
     });
     expect(read).toHaveBeenCalledTimes(1);
     vi.advanceTimersByTime(60000);
     expect(access.getNextAllowedAt()).toBeNull();
     expect(read).toHaveBeenCalledTimes(1);
-    await access.request(eodSelection, signal());
+    await access.request(eodSelection, "1m", signal());
     expect(read).toHaveBeenCalledTimes(2);
   });
 
@@ -100,7 +104,7 @@ describe("shared managed EOD access", () => {
         [field]: value,
       });
       await expect(
-        new ManagedEodAccess(read).request(eodSelection, signal()),
+        new ManagedEodAccess(read).request(eodSelection, "1m", signal()),
       ).rejects.toMatchObject({ code: "invalid_response" });
     },
   );
@@ -110,7 +114,7 @@ describe("shared managed EOD access", () => {
     const operation = new AbortController();
     operation.abort();
     await expect(
-      new ManagedEodAccess(read).request(eodSelection, operation.signal),
+      new ManagedEodAccess(read).request(eodSelection, "1m", operation.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(read).not.toHaveBeenCalled();
   });
@@ -125,7 +129,7 @@ describe("shared managed EOD access", () => {
         .mockResolvedValueOnce(eodResponse());
       const access = new ManagedEodAccess(read);
       const operation = new AbortController();
-      const request = access.request(eodSelection, operation.signal);
+      const request = access.request(eodSelection, "1m", operation.signal);
       operation.abort();
       if (settlement === "success") held.resolve(eodResponse());
       else
@@ -136,7 +140,7 @@ describe("shared managed EOD access", () => {
         );
       await expect(request).rejects.toMatchObject({ name: "AbortError" });
       expect(access.getNextAllowedAt()).toBeNull();
-      await access.request(eodSelection, signal());
+      await access.request(eodSelection, "1m", signal());
       expect(read).toHaveBeenCalledTimes(2);
     },
   );
@@ -150,12 +154,12 @@ describe("shared managed EOD access", () => {
         .mockResolvedValueOnce(eodResponse());
       const access = new ManagedEodAccess(read);
       await expect(
-        access.request(eodSelection, signal()),
+        access.request(eodSelection, "1m", signal()),
       ).rejects.toMatchObject({
         code: "invalid_response",
       });
       expect(access.getNextAllowedAt()).toBeNull();
-      await access.request(eodSelection, signal());
+      await access.request(eodSelection, "1m", signal());
       expect(read).toHaveBeenCalledTimes(2);
     },
   );
@@ -170,8 +174,8 @@ describe("shared managed EOD access", () => {
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
     const access = new ManagedEodAccess(read);
-    const a = access.request(eodSelection, signal());
-    const b = access.request(eodSelection, signal());
+    const a = access.request(eodSelection, "1m", signal());
+    const b = access.request(eodSelection, "1m", signal());
     second.reject(new ManagedEodCooldownError("2026-10-04T00:02:00.000Z"));
     await expect(b).rejects.toMatchObject({
       nextAllowedAt: "2026-10-04T00:02:00.000Z",
@@ -227,9 +231,46 @@ describe("shared managed EOD access", () => {
   ])("preserves and classifies $error", async ({ error, auth, transient }) => {
     const read = vi.fn<ManagedApi["eodHistory"]>().mockRejectedValue(error);
     const access = new ManagedEodAccess(read);
-    await expect(access.request(eodSelection, signal())).rejects.toBe(error);
+    await expect(access.request(eodSelection, "1m", signal())).rejects.toBe(
+      error,
+    );
     expect(access.getNextAllowedAt()).toBeNull();
     expect(isManagedEodAuthenticationError(error)).toBe(auth);
     expect(isManagedEodTransientError(error)).toBe(transient);
+  });
+});
+
+describe("explicit EOD access ranges", () => {
+  it("binds a year response to its captured request and never falls back to a month", async () => {
+    const read = vi
+      .fn<ManagedApi["eodHistory"]>()
+      .mockResolvedValueOnce(eodResponse("1y"))
+      .mockResolvedValueOnce(eodResponse());
+    const access = new ManagedEodAccess(read);
+    expect((await access.request(eodSelection, "1y", signal())).range).toBe(
+      "1y",
+    );
+    await expect(
+      access.request(eodSelection, "1y", signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    expect(read).toHaveBeenCalledTimes(2);
+    for (const [request] of read.mock.calls) expect(request.range).toBe("1y");
+  });
+  it("shares the same cooldown across year and month requests without an extra read", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-04T00:00:00.000Z"));
+    const read = vi
+      .fn<ManagedApi["eodHistory"]>()
+      .mockRejectedValueOnce(
+        new ManagedEodCooldownError("2026-10-04T00:01:00.000Z"),
+      );
+    const access = new ManagedEodAccess(read);
+    await expect(
+      access.request(eodSelection, "1y", signal()),
+    ).rejects.toBeInstanceOf(ManagedEodCooldownError);
+    await expect(
+      access.request(eodSelection, "1m", signal()),
+    ).rejects.toBeInstanceOf(ManagedEodCooldownError);
+    expect(read).toHaveBeenCalledOnce();
   });
 });

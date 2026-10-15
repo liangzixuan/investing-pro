@@ -217,6 +217,7 @@ export async function createFixture(
     | "annual-note"
     | "annual-cash-history"
     | "company-snapshot"
+    | "company-price-ranges"
     | "thesis-review"
     | "price-comparison-note"
     | "company-filings"
@@ -364,6 +365,35 @@ export async function createFixture(
   const eodInitial = eodPacket("initial");
   const eodLate = eodPacket("late");
   const eodRecovered = eodPacket("recovered");
+  const priceRangeOrder = ["1y", "1m", "1m", "1y", "1m"] as const;
+  const priceRangePacket = (index: number) => {
+    const range = priceRangeOrder[index];
+    if (!range) throw new Error("Unexpected invented price-range packet");
+    const base = index === 2 ? eodRecovered : eodInitial;
+    const packet = parseManagedEodHistoryResponse(
+      {
+        ...base,
+        range,
+        window:
+          range === "1y"
+            ? { startDate: "2025-09-20", endDate: "2026-09-20" }
+            : base.window,
+        rows:
+          range === "1y"
+            ? [
+                { date: "2025-09-22", close: "80.125" },
+                { date: "2026-03-20", close: "90.25" },
+                { date: "2026-09-19", close: index === 0 ? "101.5" : "999.75" },
+              ]
+            : index === 2
+              ? base.rows
+              : eodLate.rows,
+      },
+      { catalogSnapshotSha256: digest, listingId: "listing-zero", range },
+    );
+    if (!packet) throw new Error("Invalid invented price-range packet");
+    return packet;
+  };
   const comparisonListings = payload.memberships.map((member) => {
     const { note, ...listing } = member;
     void note;
@@ -576,6 +606,10 @@ export async function createFixture(
     state.load === 2;
   const api: ManagedApi = {
     recentFilings: (input, signal) => {
+      if (scenario === "company-price-ranges") {
+        count("filings");
+        throw new Error("Unexpected invented price-range Filings read");
+      }
       const request = parseManagedSecFilingsRequest(input);
       if (scenarioName === "company-snapshot") {
         if (
@@ -647,6 +681,19 @@ export async function createFixture(
     },
     status: () => {
       count("status");
+      if (scenario === "company-price-ranges" && state.status !== 1) {
+        if (
+          state.status !== 2 ||
+          state.eod !== 5 ||
+          !pendingEod ||
+          state.eodAborted !== 2 ||
+          state.eodLateResolved !== 2
+        )
+          return Promise.reject(
+            new Error("Hold the fifth price-range read before expiry"),
+          );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (scenarioName === "annual-cash-history" && state.status === 2) {
         if (state.annual !== 1)
           return Promise.reject(
@@ -775,6 +822,7 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
+      if (scenario === "company-price-ranges") return unexpected("save");
       if (scenario === "watchlist-comparison") return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
       if (scenario === "thesis-review") {
@@ -1076,6 +1124,32 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
+      if (scenario === "company-price-ranges") {
+        const index = state.eod;
+        const expectedSettled = index < 2 ? 0 : index < 4 ? 1 : 2;
+        if (
+          signal.aborted ||
+          pendingEod ||
+          index >= priceRangeOrder.length ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.listingId !== "listing-zero" ||
+          request.range !== priceRangeOrder[index] ||
+          state.eodAborted !== expectedSettled ||
+          state.eodLateResolved !== expectedSettled ||
+          state.status !== 1
+        )
+          throw new Error("Unexpected invented price-range request or order");
+        const packet = priceRangePacket(index);
+        count("eod");
+        if (index === 0 || index === 2) return Promise.resolve(packet);
+        signal.addEventListener("abort", () => count("eodAborted"), {
+          once: true,
+        });
+        // Ignore abort deliberately: Cancel, Back and retirement must fence this packet.
+        return new Promise((resolve) => {
+          pendingEod = resolve;
+        });
+      }
       if (scenario === "watchlist-comparison") {
         const expected = comparisonListings[state.eod];
         if (
@@ -1194,6 +1268,10 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (scenario === "company-price-ranges") {
+        count("annual");
+        throw new Error("Unexpected invented price-range Annual read");
+      }
       if (scenario === "annual-comparison") {
         const second = state.annual === 1 || state.annual === 4;
         if (
@@ -1436,6 +1514,21 @@ export async function createFixture(
       release();
     },
     settleCancelledEod: () => {
+      if (scenario === "company-price-ranges") {
+        if (
+          !pendingEod ||
+          ![2, 4, 5].includes(state.eod) ||
+          state.eodAborted !== state.eodLateResolved + 1
+        )
+          throw new Error(
+            "Only an aborted invented price-range read may settle",
+          );
+        const resolve = pendingEod;
+        pendingEod = null;
+        resolve(priceRangePacket(state.eod - 1));
+        void Promise.resolve().then(() => count("eodLateResolved"));
+        return;
+      }
       if (
         !pendingEod ||
         state.eod !== 2 ||

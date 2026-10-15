@@ -52,12 +52,30 @@ export function ManagedEodHistory({
       ) : (
         <>
           <p className="managed-eod-help">
-            One month of raw end-of-day closing prices in USD from Tiingo.
-            Prices are not adjusted for splits or dividends and are not live
-            quotes. Use Load or Refresh to request prices; they stay for this
-            company visit. Cancel stops loading here and keeps previous history.
-            An accepted request may still finish and use the service's request
-            budget.
+            Raw end-of-day closing prices in USD from Tiingo. Prices are not
+            adjusted for splits or dividends and are not live quotes. Use Load
+            or Refresh to request prices; they stay for this company visit.
+            Cancel stops loading here and keeps previous history. An accepted
+            request may still finish and use the service's request budget.
+          </p>
+          <div className="managed-eod-range">
+            <label htmlFor="managed-eod-range">History range</label>
+            <select
+              id="managed-eod-range"
+              value={state.selectedRange}
+              disabled={state.running || state.catalogChanged}
+              onChange={(event) => {
+                const range = event.currentTarget.value;
+                if (range === "1m" || range === "1y") model.selectRange(range);
+              }}
+            >
+              <option value="1m">One month</option>
+              <option value="1y">One year</option>
+            </select>
+          </div>
+          <p className="managed-eod-help">
+            Choose a range, then select Load or Refresh. Changing the range does
+            not request prices or change the history already shown.
           </p>
           <div className="trial-actions">
             <button
@@ -69,9 +87,11 @@ export function ManagedEodHistory({
                 ? response
                   ? "Refreshing close history…"
                   : "Loading close history…"
-                : response
+                : response?.range === state.selectedRange
                   ? "Refresh close history"
-                  : "Load one-month close history"}
+                  : state.selectedRange === "1y"
+                    ? "Load one-year close history"
+                    : "Load one-month close history"}
             </button>
             {state.running && (
               <button
@@ -115,6 +135,13 @@ export function ManagedEodHistory({
                 <dt>Last trading date</dt>
                 <dd>{last.date}</dd>
               </dl>
+              <p className="managed-eod-help">
+                Loaded request range:{" "}
+                {response.range === "1y" ? "One year" : "One month"}.{" "}
+                {response.rows.length} reported closes from{" "}
+                {response.rows[0]!.date} to {last.date}. The source can return
+                fewer trading dates than the requested window.
+              </p>
               <CloseHistoryChart
                 appearance="precision-desk"
                 rows={response.rows}

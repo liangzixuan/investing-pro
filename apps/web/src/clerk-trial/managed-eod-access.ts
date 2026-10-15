@@ -1,8 +1,10 @@
 import {
   membershipMatchesResult,
   parseManagedEodError,
+  parseManagedEodHistoryRequest,
   parseManagedEodHistoryResponse,
   type ManagedEodHistoryRequestDto,
+  type ManagedEodHistoryRange,
   type ManagedEodHistoryResponseDto,
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
@@ -64,6 +66,7 @@ export class ManagedEodAccess {
 
   async request(
     selection: ManagedEodAccessSelection,
+    range: ManagedEodHistoryRange,
     signal: AbortSignal,
   ): Promise<ManagedEodHistoryResponseDto> {
     signal.throwIfAborted();
@@ -73,11 +76,12 @@ export class ManagedEodAccess {
       catalogSnapshotSha256: selection.catalogSnapshotSha256,
       listing: { ...selection.listing },
     };
-    const request = {
+    const request = parseManagedEodHistoryRequest({
       catalogSnapshotSha256: captured.catalogSnapshotSha256,
       listingId: captured.listing.listingId,
-      range: "1m" as const,
-    };
+      range,
+    });
+    if (!request) throw new TrialApiError("invalid_response");
     try {
       const response = await this.read(request, signal);
       signal.throwIfAborted();
