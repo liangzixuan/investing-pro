@@ -81,6 +81,13 @@ length; source facts use the existing cards. The report preparation time must no
 compete with or replace original source dates. Remove stale prepared content as
 soon as its note, source state or company visit changes.
 
+Keep the full report document in a second initially closed native disclosure
+after source cards. Use a labelled read-only text field with wrapping JSON,
+visible UTF-8 byte count, the same focus treatment and a full-width border box.
+Its disclosure retains a 44px target. Explain the exact-draft/source scope and
+file-delivery limit beside the field. Never display the document after its parent
+report is invalidated.
+
 Use these semantic managed tokens:
 
 | Role             | Token                      | Value     |

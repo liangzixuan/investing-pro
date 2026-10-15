@@ -487,6 +487,7 @@ describe("prepared loaded company research report", () => {
     );
     expect(html).toContain("Prepare a new report");
     expect(html).not.toContain("managed-prepared-report-heading");
+    expect(html).not.toContain("Inspect report document");
     expect(html).not.toContain("My café");
     expect(html).not.toContain("101.5");
   });

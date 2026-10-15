@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 14, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns the full
+Updated October 15, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns the full
 InvestingPro feature goal. [Architecture](ARCHITECTURE.md) defines the runtime
 boundaries. Implementation, original CI, source integration, live publication
 and physical-device use are separate acceptance events.
@@ -21,6 +21,26 @@ original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
 ## Consolidated research candidate
+
+The next report increment adds an inspectable JSON document to the current
+prepared preview. It separates the exact authored draft from complete admitted
+source packets, including Annual's original income, cash and liquidity inputs,
+filing coordinates, coverage and validation. Each source retains its original
+clocks and previous-response status. The document starts closed and clears with
+the parent report. It adds no request, calculation, Save, clipboard access or file
+delivery; browser and Android share the read-only inspection. Its new-head
+acceptance remains separate from the preceding preview.
+
+The document's 244 affected/composed cases pass. Final focused checks also pass
+after the complete-document byte-bound checks. Web types, scoped lint, formatting,
+Java syntax and source boundaries pass. Chrome passes actual 1440/390/320 CSS
+widths with exact Unicode and whitespace, no page overflow, a 46.5px disclosure,
+keyboard operation and a read-only wrapped field. Partial sources, source changes,
+retained failed refreshes, oversized-note refusal, intervening edits, company
+close and retirement preserve the stated limits with zero writes. A generic field
+font override found there is corrected in the scoped document style. The final
+native bundle's maximum loader is 2,418,574 bytes under the unchanged 4 MiB cap,
+with exact software notices. Its own hosted execution remains separate.
 
 The next M4 increment adds an explicit [research report preview](MANAGED_COMPANY_REPORT.md).
 It separates the full authored watchlist draft from existing dated Price, Annual
@@ -149,15 +169,18 @@ these artifacts or install an Android upgrade.
 
 ## Next outcome and limits
 
-Finish the original whole-main checks and review the cumulative source before
-source integration. Keep live delivery separate under the [website/API](APPWRITE_DELIVERY.md)
+The merged main revision passes all eight original push Actions checks. Its tree
+equals the accepted integration source; equivalent source artifacts are reused
+within their original scope. Continue the next complete roadmap layer and review
+each new source increment before integration. Keep live delivery separate under the [website/API](APPWRITE_DELIVERY.md)
 and [Android](ANDROID_CLIENT.md) procedures. Continue the roadmap with admitted
 sources, exact identity, explicit reads and saved-draft/session boundaries.
 
 M4's next useful layer is an evidence-linked company report with exact loaded
 values, all bases, source dates and separate authored assessment. Its export needs
 its own document purpose and provenance; the saved-watchlist export contract must
-remain specific to saved watchlists. No report export is implemented here.
+remain specific to saved watchlists. The read-only document inspection is
+implemented; report file delivery remains the next layer.
 
 Price history still covers AAPL, GOOG and GOOGL, three listings for two issuers,
 with dated raw USD closes. Broader fields/cohorts, valuation, portfolio tools,

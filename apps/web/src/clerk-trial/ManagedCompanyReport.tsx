@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ResearchWatchlistState } from "./managed-workspace";
 import { CompanySnapshotEvidenceView } from "./ManagedCompanySnapshot";
+import { CompanyReportDocument } from "./CompanyReportDocument";
 import {
   useCompanySnapshotEvidence,
   type CompanyEvidenceModels,
@@ -134,6 +135,7 @@ export function CompanyReportView({
             evidence={report.evidence}
             onSection={onSection}
           />
+          <CompanyReportDocument report={report} />
         </section>
       )}
     </details>
