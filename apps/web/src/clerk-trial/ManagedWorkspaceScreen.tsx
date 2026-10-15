@@ -1054,6 +1054,33 @@ export function ManagedWorkspaceScreen({
                       ).member,
                     );
                   }}
+                  onRequestSource={async (section) => {
+                    const visit = discovery.research!;
+                    if (
+                      navigation?.invalid ||
+                      workspace.getSnapshot().research?.selection !==
+                        visit.selection
+                    )
+                      return;
+                    const reading = workspace.requestResearchSource(
+                      visit,
+                      section,
+                    );
+                    const current = workspace.getSnapshot().research;
+                    if (
+                      current?.selection === visit.selection &&
+                      current.section === section
+                    )
+                      navigation?.section(section);
+                    await reading;
+                  }}
+                  onCancelSource={(section) => {
+                    if (navigation?.invalid) return;
+                    workspace.cancelResearchSource(
+                      discovery.research!,
+                      section,
+                    );
+                  }}
                   onSection={(section) => {
                     if (
                       workspace.getSnapshot().research?.selection !==

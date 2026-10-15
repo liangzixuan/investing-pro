@@ -109,6 +109,9 @@ export class ManagedEodHistory {
     this.state = { ...this.state, ...next };
     for (const listener of this.listeners) listener();
   }
+  hasPriceCoverage(listing: EodHistorySelection["listing"]): boolean {
+    return hasManagedPriceCoverage(listing, this.priceCoverage);
+  }
   open(selection: EodHistorySelection, seed?: ManagedEodHistorySeed) {
     if (this.retired) return;
     this.close();
@@ -116,7 +119,7 @@ export class ManagedEodHistory {
       ...selection,
       listing: Object.freeze({ ...selection.listing }),
     });
-    if (!hasManagedPriceCoverage(captured.listing, this.priceCoverage)) {
+    if (!this.hasPriceCoverage(captured.listing)) {
       this.update({
         selection: captured,
         message:

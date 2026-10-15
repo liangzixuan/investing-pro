@@ -3,6 +3,7 @@ import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import { ManagedCompanyReport } from "./ManagedCompanyReport";
 import { ManagedCompanySnapshot } from "./ManagedCompanySnapshot";
+import { ManagedCompanyEvidenceActions } from "./ManagedCompanyEvidenceActions";
 import type { ManagedCompanyFilings as FilingsModel } from "./managed-company-filings";
 import type {
   ManagedResearchVisit,
@@ -31,6 +32,8 @@ export function ManagedCompanyResearch({
   filings,
   eod,
   onSection,
+  onRequestSource,
+  onCancelSource,
   onBack,
   watchlist,
   onAdd,
@@ -55,6 +58,8 @@ export function ManagedCompanyResearch({
   filings: FilingsModel;
   eod: EodModel;
   onSection: (section: ManagedResearchVisit["section"]) => void;
+  onRequestSource: (section: ManagedResearchVisit["section"]) => Promise<void>;
+  onCancelSource: (section: ManagedResearchVisit["section"]) => void;
   onBack: () => void;
   watchlist: ResearchWatchlistState;
   onAdd: () => void;
@@ -103,6 +108,15 @@ export function ManagedCompanyResearch({
         state={companyNavigationState}
         canOpen={canOpenCompany}
         onOpen={onOpenCompany}
+      />
+      <ManagedCompanyEvidenceActions
+        selection={research.selection}
+        price={eod}
+        annual={annual}
+        filings={filings}
+        onRequest={(section) => void onRequestSource(section)}
+        onCancel={onCancelSource}
+        onOpen={onSection}
       />
       <ManagedCompanySnapshot
         key={`${research.selection.catalogSnapshotSha256}:${listing.listingId}`}

@@ -1,8 +1,37 @@
-# Loaded company research snapshot
+# Company research sources and loaded snapshot
+
+## Load and inspect sources
+
+The always-visible **Research sources** area shows Price, Annual and Filings for
+the current company visit. **Load** or **Refresh** selects that source's section
+and starts one explicit request through its existing model. **Cancel** stops
+that source's pending local work. **Inspect** opens the section without a
+request. Opening the company or this overview does not load sources.
+
+Each source keeps its own unloaded, loading, loaded, retained or failed state
+and original completion time. A loaded Annual response can still contain refused
+financial values; a loaded Filings response can be empty or unavailable. The
+detail section retains those reasons and coverage limits. Unsupported Price has
+an explanation and no Load action; the other sources remain independent.
+
+Price names the requested month or year separately from the loaded range.
+Change the selection in Price, then load it explicitly. A staged choice does not
+change the retained response or its dates. Annual and Filings share the existing
+SEC admission budget across devices. A returned cooldown requires a later
+explicit retry; there is no Load-all action, countdown or automatic retry.
+
+Actions belong to the current visit and exact selection, including on a settled
+company URL. Leaving or replacing that visit, catalog invalidation and session
+retirement fence stale actions and late responses. Section changes retain
+validated evidence and cancel pending work through normal navigation. The note
+draft, explicit whole-watchlist Save and report preparation keep their existing
+rules.
+
+## Read the loaded snapshot
 
 Company research has a **Loaded research snapshot** disclosure below company
-navigation. It combines evidence already loaded in this company visit. Opening
-it makes no request, calculation or saved change. **Open Price section** and
+navigation and the source actions. It combines evidence already loaded in this
+company visit. Opening it makes no request, calculation or saved change. **Open Price section** and
 **Open Annual section** and **Open Filings section** use normal section navigation;
 loading remains explicit.
 
@@ -45,4 +74,7 @@ verification does not establish production account or physical-phone acceptance.
 
 The separate [research report preview](MANAGED_COMPANY_REPORT.md) captures the
 loaded source summaries alongside a labelled authored draft after explicit
-preparation. Its preparation time does not renew these source dates.
+preparation. Its preparation time does not renew these source dates. Source
+actions stay outside the captured report; the preview and complete document
+remain read-only. Loading another source invalidates the prepared report rather
+than adding evidence to it silently.

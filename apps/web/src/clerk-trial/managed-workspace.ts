@@ -1,4 +1,5 @@
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
 import {
   encodeMainWatchlistPayload,
   isMainWatchlistPayload,
@@ -1115,23 +1116,96 @@ export class ManagedWorkspace {
   switchToEod() {
     this.switchResearch("eod");
   }
-  private switchResearch(section: ManagedResearchVisit["section"]) {
-    const research = this.state.research;
-    if (!research) return;
+  async requestResearchSource(
+    visit: ManagedResearchVisit,
+    section: ManagedResearchVisit["section"],
+  ): Promise<void> {
+    if (this.state.research !== visit) return;
+    const selection = visit.selection;
+    const operation = this.researchOperation;
+    const navigationRevision = this.navigationRevision;
+    const admitted = () =>
+      this.researchSourceRouteReady(selection) &&
+      this.navigationRevision === navigationRevision &&
+      this.researchOperation === operation &&
+      this.state.research?.selection === selection &&
+      this.canUseResearchSource(selection);
+    if (!admitted()) return;
+    const switched = this.switchResearch(section, admitted);
+    if (!switched || this.state.research !== switched || !admitted()) return;
+    const model = this[section];
     if (
-      !this.canSwitchResearch(research.selection) ||
-      this.filings.getSnapshot().catalogChanged ||
-      this.annual.getSnapshot().catalogChanged ||
-      this.eod.getSnapshot().catalogChanged
-    ) {
-      this.closeResearch();
+      !companyEvidenceSelectionMatches(selection, model.getSnapshot().selection)
+    )
       return;
+    await model.load();
+  }
+  cancelResearchSource(
+    visit: ManagedResearchVisit,
+    section: ManagedResearchVisit["section"],
+  ): void {
+    if (
+      this.state.research !== visit ||
+      !this.researchSourceRouteReady(visit.selection) ||
+      !this.canUseResearchSource(visit.selection) ||
+      !companyEvidenceSelectionMatches(
+        visit.selection,
+        this[section].getSnapshot().selection,
+      )
+    )
+      return;
+    this[section].cancel();
+  }
+  private researchSourceRouteReady(selection: ManagedResearchSelection) {
+    const route = this.state.companyRoute;
+    return (
+      !this.navigationBlocked ||
+      (route?.status === "open" &&
+        route.listingId === selection.listing.listingId)
+    );
+  }
+  private canUseResearchSource(selection: ManagedResearchSelection) {
+    return (
+      this.canSwitchResearch(selection) &&
+      !this.filings.getSnapshot().catalogChanged &&
+      !this.annual.getSnapshot().catalogChanged &&
+      !this.eod.getSnapshot().catalogChanged
+    );
+  }
+  private switchResearch(
+    section: ManagedResearchVisit["section"],
+    admit: () => boolean = () => true,
+  ): ManagedResearchVisit | null {
+    const research = this.state.research;
+    if (!research) return null;
+    if (!this.canUseResearchSource(research.selection)) {
+      this.closeResearch();
+      return null;
     }
-    if (research.section === section) return;
+    const operation = this.researchOperation;
+    const current = () =>
+      this.state.research === research &&
+      this.researchOperation === operation &&
+      this.canUseResearchSource(research.selection) &&
+      admit();
+    if (!current()) return null;
+    if (research.section === section) return research;
     this[research.section].cancel();
+    if (!current()) return null;
     if (!this[section].getSnapshot().selection)
       this[section].open(research.selection);
-    this.update({ research: Object.freeze({ ...research, section }) });
+    const targetSelection = this[section].getSnapshot().selection;
+    if (
+      !current() ||
+      !companyEvidenceSelectionMatches(research.selection, targetSelection)
+    )
+      return null;
+    const switched = Object.freeze({ ...research, section });
+    this.update({ research: switched });
+    return this.state.research === switched &&
+      this[section].getSnapshot().selection === targetSelection
+      ? switched
+      : null;
   }
   getResearchWatchlist(
     selection: ManagedResearchSelection,

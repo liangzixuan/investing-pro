@@ -13,7 +13,15 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 candidate adds [reported operating change](MANAGED_SEC_ANNUAL.md#read-reported-operating-change)
+The next M2 candidate connects company research through a
+[source overview](MANAGED_COMPANY_SNAPSHOT.md#load-and-inspect-sources).
+Price, Annual and Filings show their readiness, original dates and explicit
+Load, Refresh, Cancel and Inspect actions beside the loaded summaries. The
+existing note and prepared report finish the workflow. It uses current source
+models and coverage, with no batch read, automatic retry or new metric. Broader
+company fields, screening, valuation and peers remain open.
+
+The preceding M2 candidate adds [reported operating change](MANAGED_SEC_ANNUAL.md#read-reported-operating-change)
 inside each named basis's existing history. It compares the first two admitted
 periods with exact signed operating-income USD change and operating-margin
 percentage-point change from unrounded ratios. Missing pairs retain their actual
