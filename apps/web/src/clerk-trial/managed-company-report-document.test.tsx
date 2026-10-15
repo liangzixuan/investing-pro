@@ -46,7 +46,7 @@ function decode(text: string) {
   };
 }
 
-async function fixture() {
+async function fixture(range: "1m" | "1y" = "1m") {
   const annualPacket = await response([
     row(),
     row("SalesRevenueNet", "900"),
@@ -66,7 +66,7 @@ async function fixture() {
       ]),
     },
   };
-  const priceRead = vi.fn().mockResolvedValue(eodResponse());
+  const priceRead = vi.fn().mockResolvedValue(eodResponse(range));
   const annualRead = vi.fn().mockResolvedValue(packet);
   const filingsRead = vi
     .fn()
@@ -77,6 +77,7 @@ async function fixture() {
   const annual = new ManagedAnnualReport(annualRead, vi.fn());
   const filings = new ManagedCompanyFilings(filingsRead, vi.fn());
   for (const model of [price, annual, filings]) model.open(eodSelection);
+  price.selectRange(range);
   await price.load();
   await annual.load();
   await filings.load();
@@ -333,4 +334,24 @@ describe("company research document inspection", () => {
     expect(open).not.toContain("<unverified-link>");
     expect(open).toContain("&lt;unverified-link&gt;");
   });
+});
+
+it("serializes a loaded year packet with its actual window and exact rows under the unchanged file bound", async () => {
+  const f = await fixture("1y");
+  const document = formatCompanyReportDocument(f.report)!;
+  const parsed = decode(document.text);
+  expect(parsed.sources.price).toMatchObject({
+    status: "loaded",
+    response: eodResponse("1y"),
+  });
+  expect(document.byteLength).toBe(
+    new TextEncoder().encode(document.text).byteLength,
+  );
+  expect(document.byteLength).toBeLessThanOrEqual(
+    COMPANY_REPORT_DOCUMENT_MAX_BYTES,
+  );
+  expect(isCompanyReportDocument(document)).toBe(true);
+  expect(f.priceRead).toHaveBeenCalledOnce();
+  expect(f.annualRead).toHaveBeenCalledOnce();
+  expect(f.filingsRead).toHaveBeenCalledOnce();
 });

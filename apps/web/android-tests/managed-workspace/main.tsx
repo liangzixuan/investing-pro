@@ -27,6 +27,7 @@ if (
   scenario !== "annual-note" &&
   scenario !== "annual-cash-history" &&
   scenario !== "company-snapshot" &&
+  scenario !== "company-price-ranges" &&
   scenario !== "thesis-review" &&
   scenario !== "price-comparison-note" &&
   scenario !== "company-filings" &&
@@ -245,9 +246,12 @@ function Fixture() {
           <button
             id="settle-cancelled-eod"
             disabled={
-              state.eod !== 2 ||
-              state.eodAborted !== 1 ||
-              state.eodLateResolved !== 0
+              scenario === "company-price-ranges"
+                ? ![2, 4, 5].includes(state.eod) ||
+                  state.eodAborted !== state.eodLateResolved + 1
+                : state.eod !== 2 ||
+                  state.eodAborted !== 1 ||
+                  state.eodLateResolved !== 0
             }
             onClick={fixture.settleCancelledEod}
           >

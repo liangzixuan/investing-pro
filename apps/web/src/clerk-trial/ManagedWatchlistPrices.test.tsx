@@ -144,8 +144,7 @@ describe("watchlist price presentation", () => {
         ...one.history,
         showingPrevious: true,
         error: true,
-        message:
-          "The close history refresh failed. Select Refresh to try again.",
+        message: "The close history refresh failed. Try again when ready.",
       },
     };
     const html = markup(state([retained]));

@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 14, 2026. This document defines the durable product goals and
+Updated October 15, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The current M2 candidate adds [reported cash history](MANAGED_SEC_ANNUAL.md#read-reported-cash-history)
+The next M2 candidate adds explicit [company Price ranges](MANAGED_EOD_HISTORY.md#choose-the-company-history-range).
+Company Price can stage a one-month or one-year request. Loaded packets retain
+their actual range, source dates and observed coverage through a staged change,
+Cancel or transient failure. Markets and watchlist comparisons remain one month.
+Existing provider, request budget, raw-price basis and draft/session boundaries
+remain. Live one-year availability needs separate provider acceptance.
+
+The preceding M2 candidate adds [reported cash history](MANAGED_SEC_ANNUAL.md#read-reported-cash-history)
 to the managed Annual view. Up to three adjacent periods reuse already admitted
 same-filing observations, with exact reported inputs, checked subtraction and
 first-refusal explanations. It adds no source request, schema, feed or note action.

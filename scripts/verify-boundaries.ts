@@ -6883,25 +6883,47 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
   const managedEod = await readFile(join(root, managedEodPath), "utf8");
   const managedEodMutations = [
     managedEod.replace(
-      /security,\s*"1m",\s*false,\s*providerSignal/u,
-      'security, "1m", true, providerSignal',
+      /security,\s*request\.range,\s*false,\s*providerSignal/u,
+      "security, request.range, true, providerSignal",
+    ),
+    ...['"1m"', '"1y"', "input.range", "arbitraryRange"].map((range) =>
+      managedEod.replace(
+        /security,\s*request\.range,\s*false,\s*providerSignal/u,
+        `security, ${range}, false, providerSignal`,
+      ),
     ),
     managedEod.replace(
-      /security,\s*"1m",\s*false,\s*providerSignal/u,
-      'security, "1y", false, providerSignal',
+      "const request = parseManagedEodHistoryRequest(input);",
+      "const request = input;",
+    ),
+    managedEod.replace(
+      'if (!request) throw new ManagedEodServiceError("invalid_request");',
+      'if (false) throw new ManagedEodServiceError("invalid_request");',
+    ),
+    managedEod.replace(
+      /managedEodHistoryWindow\(requestStartedAt,\s*request\.range\)/u,
+      'managedEodHistoryWindow(requestStartedAt, "1m")',
     ),
     managedEod.replace(
       /operation\.admission\.reserve\(\s*principal,\s*options\.enteredAt,\s*admissionSignal,?\s*\)/u,
       "Promise.resolve()",
     ),
-    managedEod.replace(
-      /maximumResponseBytes:\s*MANAGED_EOD_HISTORY_LIMITS\.sourceBytes/u,
-      "maximumResponseBytes: 1048576",
+    ...[
+      "1048576",
+      'MANAGED_EOD_HISTORY_RANGE_LIMITS["1m"].sourceBytes',
+      "MANAGED_EOD_HISTORY_RANGE_LIMITS[input.range].sourceBytes",
+      "MANAGED_EOD_HISTORY_RANGE_LIMITS[arbitraryRange].sourceBytes",
+      "arbitrarySourceCap",
+    ].map((cap) =>
+      managedEod.replace(
+        /maximumResponseBytes:\s*MANAGED_EOD_HISTORY_RANGE_LIMITS\[request\.range\]\.sourceBytes/u,
+        `maximumResponseBytes: ${cap}`,
+      ),
     ),
-    `${managedEod.replace(/maximumResponseBytes:\s*MANAGED_EOD_HISTORY_LIMITS\.sourceBytes/u, "unusedLimit: MANAGED_EOD_HISTORY_LIMITS.sourceBytes")}\nconst unused = { maximumResponseBytes: MANAGED_EOD_HISTORY_LIMITS.sourceBytes };`,
+    `${managedEod.replace(/maximumResponseBytes:\s*MANAGED_EOD_HISTORY_RANGE_LIMITS\[request\.range\]\.sourceBytes/u, "unusedLimit: MANAGED_EOD_HISTORY_RANGE_LIMITS[request.range].sourceBytes")}\nconst unused = { maximumResponseBytes: MANAGED_EOD_HISTORY_RANGE_LIMITS[request.range].sourceBytes };`,
     `${managedEod}\nvoid globalThis.fetch(unreviewedUrl);`,
     `${managedEod}\nconst extra = "https://unreviewed.example/source";`,
-    `${managedEod}\nvoid source.loadOverview(security, "1m", false, providerSignal);`,
+    `${managedEod}\nvoid source.loadOverview(security, request.range, false, providerSignal);`,
     `${managedEod}\nvoid source.loadAnnualFinancials(security, providerSignal);`,
   ];
   if (
@@ -9234,6 +9256,11 @@ function managedEodServiceCapabilityViolation(content: string): string | null {
   let admissionPosition = -1;
   let factoryPosition = -1;
   let caps = 0;
+  let capturedRequests = 0;
+  let requestGuards = 0;
+  let windows = 0;
+  let requestPosition = -1;
+  let requestGuardPosition = -1;
   const visit = (node: ts.Node): void => {
     if (
       (ts.isStringLiteralLike(node) &&
@@ -9243,17 +9270,50 @@ function managedEodServiceCapabilityViolation(content: string): string | null {
     )
       invalid = true;
     if (
+      ts.isVariableDeclaration(node) &&
+      node.name.getText(source) === "request"
+    ) {
+      capturedRequests++;
+      requestPosition = node.pos;
+      if (
+        !node.initializer ||
+        compact(node.initializer) !== "parseManagedEodHistoryRequest(input)" ||
+        !ts.isVariableDeclarationList(node.parent) ||
+        !(node.parent.flags & ts.NodeFlags.Const)
+      )
+        invalid = true;
+    }
+    if (
+      ts.isIfStatement(node) &&
+      compact(node.expression) === "!request" &&
+      compact(node.thenStatement) ===
+        'thrownewManagedEodServiceError("invalid_request");' &&
+      node.elseStatement === undefined
+    ) {
+      requestGuards++;
+      requestGuardPosition = node.pos;
+    }
+    if (
       ts.isPropertyAssignment(node) &&
       node.name.getText(source) === "maximumResponseBytes"
     ) {
       caps++;
       if (
-        compact(node.initializer) !== "MANAGED_EOD_HISTORY_LIMITS.sourceBytes"
+        compact(node.initializer) !==
+        "MANAGED_EOD_HISTORY_RANGE_LIMITS[request.range].sourceBytes"
       )
         invalid = true;
     }
     if (ts.isCallExpression(node)) {
       const callee = compact(node.expression);
+      if (callee === "managedEodHistoryWindow") {
+        windows++;
+        if (
+          node.arguments.map(compact).join(",") !==
+          "requestStartedAt,request.range"
+        )
+          invalid = true;
+      }
       if (callee === "createTiingoPersonalMarketDataProvider") {
         factories++;
         factoryPosition = node.pos;
@@ -9269,7 +9329,7 @@ function managedEodServiceCapabilityViolation(content: string): string | null {
           !ts.isPropertyAssignment(lastOption) ||
           lastOption.name.getText(source) !== "maximumResponseBytes" ||
           compact(lastOption.initializer) !==
-            "MANAGED_EOD_HISTORY_LIMITS.sourceBytes"
+            "MANAGED_EOD_HISTORY_RANGE_LIMITS[request.range].sourceBytes"
         )
           invalid = true;
       }
@@ -9283,7 +9343,7 @@ function managedEodServiceCapabilityViolation(content: string): string | null {
         if (
           callee !== "source.loadOverview" ||
           node.arguments.map(compact).join(",") !==
-            'security,"1m",false,providerSignal'
+            "security,request.range,false,providerSignal"
         )
           invalid = true;
       }
@@ -9323,6 +9383,12 @@ function managedEodServiceCapabilityViolation(content: string): string | null {
     histories !== 1 ||
     reservations !== 1 ||
     caps !== 1 ||
+    capturedRequests !== 1 ||
+    requestGuards !== 1 ||
+    windows !== 1 ||
+    requestPosition < 0 ||
+    requestPosition >= requestGuardPosition ||
+    requestGuardPosition >= admissionPosition ||
     admissionPosition < 0 ||
     admissionPosition >= factoryPosition
     ? "managed EOD must reserve before one bounded history-only provider call and contain no network sink or source URL"

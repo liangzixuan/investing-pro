@@ -20,6 +20,33 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Company Price range candidate
+
+The next M2 increment adds a staged **History range** choice in company Price:
+**One month** or **One year**, followed by an explicit Load/Refresh. Changing the
+range makes no request or write. The loaded label, reported-close count, observed
+dates and source window come from the admitted packet. Cancel and recoverable
+failures keep that packet's original range. Markets, watchlist summaries and
+shared comparisons remain one month. Notes, snapshot and report documents keep
+the actual loaded packet; staged changes invalidate a prepared preview.
+
+Focused contract and API/handler/provider checks pass, including exact calendar
+windows, range binding, separate source-body caps, no quote request and unchanged
+admission/deadline/lifetime guards. Web checks cover staged choices, mixed-range
+retention, cancellation, seeds, exact notes and report currentness/serialization.
+The independent review's retry-copy issue is corrected with range-neutral status
+text. The service capability classifier now proves the captured range and fixed
+per-range cap and retains its admission, one-call and network restrictions.
+
+Chrome checks pass at actual 1440/390/320 CSS widths with no page overflow and
+44px controls. They cover keyboard focus, explicit year/month reads, retained
+original labels, late-response fencing after Cancel and Back, draft retention
+and session retirement. A maximum-bound invented year renders all 367 exact rows
+and selected endpoint comparison without overflow. The strict synthetic native
+journey and its source checks pass; fresh Android execution remains separate.
+The common response bound and ten-second service lifetime remain unchanged.
+Live one-year provider availability is unverified. See the [EOD guide](MANAGED_EOD_HISTORY.md).
+
 ## Consolidated research candidate
 
 The next M2 increment adds an initially closed **Reported cash history** disclosure
@@ -56,6 +83,13 @@ typing. All 82 affected presentation, hook and composed cases, web types, scoped
 lint/format and Java syntax pass. New-head native execution must still establish
 that the input method honors the hints. The original failed outcome remains
 recorded. CodeScene's 37 warnings and 14 notices remain reviewed maintenance debt.
+
+The corrected consolidated source then passed all six original Actions jobs and
+all 32 Android cases, including literal lowercase and padded-uppercase searches,
+cash disclosure keyboard behavior and report system-picker delivery. The failed
+original runs remain recorded above. CodeScene still reports the same reviewed
+37 maintenance warnings and 14 notices. Source integration and production
+publication remain separate.
 
 A synthetic provider receipt also tightens the prior
 report cancellation regression: it must prove normal release and descriptor

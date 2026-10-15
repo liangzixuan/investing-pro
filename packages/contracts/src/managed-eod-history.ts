@@ -3,16 +3,19 @@ import type { WatchlistMembership } from "./personal-watchlist";
 
 export const MANAGED_EOD_HISTORY_SCHEMA_VERSION = "1.0.0" as const;
 export const MANAGED_EOD_HISTORY_PATH = "/v1/managed/eod-history" as const;
+export type ManagedEodHistoryRange = "1m" | "1y";
 export const MANAGED_EOD_HISTORY_LIMITS = Object.freeze({
   requestBytes: 4_096,
   responseBytes: 65_536,
-  sourceBytes: 32_768,
-  rows: 32,
+});
+export const MANAGED_EOD_HISTORY_RANGE_LIMITS = Object.freeze({
+  "1m": Object.freeze({ rows: 32, sourceBytes: 32_768 }),
+  "1y": Object.freeze({ rows: 367, sourceBytes: 262_144 }),
 });
 export interface ManagedEodHistoryRequestDto {
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly listingId: string;
-  readonly range: "1m";
+  readonly range: ManagedEodHistoryRange;
 }
 export type ManagedEodIdentity = Omit<WatchlistMembership, "note">;
 export interface ManagedEodCloseDto {
@@ -24,7 +27,7 @@ export interface ManagedEodHistoryResponseDto {
   readonly schemaVersion: typeof MANAGED_EOD_HISTORY_SCHEMA_VERSION;
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly security: ManagedEodIdentity;
-  readonly range: "1m";
+  readonly range: ManagedEodHistoryRange;
   readonly provider: "Tiingo";
   readonly currency: "USD";
   readonly priceBasis: "raw_close";
@@ -128,14 +131,14 @@ export function parseManagedEodHistoryRequest(
       !/^sha256:[0-9a-f]{64}$/u.test(data.catalogSnapshotSha256) ||
       typeof data.listingId !== "string" ||
       !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(data.listingId) ||
-      data.range !== "1m"
+      (data.range !== "1m" && data.range !== "1y")
     )
       return null;
     return bounded(
       {
         catalogSnapshotSha256: data.catalogSnapshotSha256 as `sha256:${string}`,
         listingId: data.listingId,
-        range: "1m" as const,
+        range: data.range,
       },
       MANAGED_EOD_HISTORY_LIMITS.requestBytes,
     );
@@ -144,16 +147,18 @@ export function parseManagedEodHistoryRequest(
   }
 }
 
-/** Inclusive calendar-month window, clamped at the previous month's last day. */
+/** Inclusive UTC calendar window, clamped at the target month's last day. */
 export function managedEodHistoryWindow(
   requestStartedAt: string,
+  range: ManagedEodHistoryRange,
 ): Readonly<{ startDate: string; endDate: string }> | null {
-  if (!instant(requestStartedAt)) return null;
+  if (!instant(requestStartedAt) || (range !== "1m" && range !== "1y"))
+    return null;
   const endDate = requestStartedAt.slice(0, 10);
   const start = new Date(`${endDate}T00:00:00.000Z`);
   const day = start.getUTCDate();
   start.setUTCDate(1);
-  start.setUTCMonth(start.getUTCMonth() - 1);
+  start.setUTCMonth(start.getUTCMonth() - (range === "1m" ? 1 : 12));
   const last = new Date(start);
   last.setUTCMonth(last.getUTCMonth() + 1);
   last.setUTCDate(0);
@@ -165,6 +170,7 @@ export function managedEodHistoryWindow(
 function closeRows(
   value: unknown,
   window: Readonly<{ startDate: string; endDate: string }>,
+  maximumRows: number,
 ): readonly ManagedEodCloseDto[] | null {
   if (!Array.isArray(value)) return null;
   const length: unknown = Object.getOwnPropertyDescriptor(
@@ -175,7 +181,7 @@ function closeRows(
     typeof length !== "number" ||
     !Number.isInteger(length) ||
     length < 1 ||
-    length > MANAGED_EOD_HISTORY_LIMITS.rows ||
+    length > maximumRows ||
     Reflect.ownKeys(value).length !== length + 1
   )
     return null;
@@ -230,7 +236,10 @@ export function parseManagedEodHistoryResponse(
     const elapsed =
       Date.parse(data.completedAt) - Date.parse(data.requestStartedAt);
     if (elapsed < 0 || elapsed >= 10_000) return null;
-    const expectedWindow = managedEodHistoryWindow(data.requestStartedAt);
+    const expectedWindow = managedEodHistoryWindow(
+      data.requestStartedAt,
+      request.range,
+    );
     const window = record(data.window, ["startDate", "endDate"]);
     if (
       !expectedWindow ||
@@ -252,14 +261,18 @@ export function parseManagedEodHistoryResponse(
     );
     const listing = resolved?.results[0]?.listing;
     if (!listing) return null;
-    const rows = closeRows(data.rows, expectedWindow);
+    const rows = closeRows(
+      data.rows,
+      expectedWindow,
+      MANAGED_EOD_HISTORY_RANGE_LIMITS[request.range].rows,
+    );
     if (!rows) return null;
     return bounded(
       {
         schemaVersion: MANAGED_EOD_HISTORY_SCHEMA_VERSION,
         catalogSnapshotSha256: request.catalogSnapshotSha256,
         security: listing,
-        range: "1m" as const,
+        range: request.range,
         provider: "Tiingo" as const,
         currency: "USD" as const,
         priceBasis: "raw_close" as const,

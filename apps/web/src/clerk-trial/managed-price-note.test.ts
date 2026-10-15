@@ -160,3 +160,21 @@ describe("managed price comparison note excerpt", () => {
     ).toBeNull();
   });
 });
+
+it("keeps the original year window and selected observed endpoints in a retained price note", () => {
+  const response = eodResponse("1y");
+  const text = priceComparisonNoteExcerpt(
+    response,
+    response.rows[0]!,
+    response.rows.at(-1)!,
+    true,
+  )!;
+  expect(text).toContain("2025-09-22 USD 90.125 to 2026-09-19 USD 101.5");
+  expect(text).toContain("requested window 2025-09-20 to 2026-09-20");
+  expect(text).toContain(
+    "Retained previous history; newer prices were not confirmed.",
+  );
+  expect(text).toContain("not adjusted for splits or dividends");
+  expect(text).toContain("completed 2026-09-20T00:00:01.000Z");
+  expect(text).not.toContain("annual return");
+});

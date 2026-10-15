@@ -87,3 +87,18 @@ describe("shared loaded-price history projection", () => {
       });
   });
 });
+
+it("refuses company year packets in the one-month Markets/watchlist comparison", () => {
+  const first = row();
+  const year = eodResponse("1y");
+  for (const rows of [
+    [first, { ...first, response: year }],
+    [
+      { ...first, response: year },
+      { ...first, response: year },
+    ],
+  ])
+    expect(deriveLoadedPriceComparisonHistory(rows)).toEqual({
+      status: "unavailable",
+    });
+});

@@ -1,5 +1,5 @@
 import {
-  MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_EOD_HISTORY_RANGE_LIMITS,
   managedEodHistoryWindow,
   parseManagedEodHistoryRequest,
   parseManagedEodHistoryResponse,
@@ -191,7 +191,7 @@ export function createManagedEodService(options: {
         guard();
         const startedDate = now();
         const requestStartedAt = startedDate.toISOString();
-        const window = managedEodHistoryWindow(requestStartedAt);
+        const window = managedEodHistoryWindow(requestStartedAt, request.range);
         if (
           !window ||
           Date.parse(requestStartedAt) < Date.parse(options.enteredAt)
@@ -203,7 +203,8 @@ export function createManagedEodService(options: {
             guard();
             return new Date(startedDate);
           },
-          maximumResponseBytes: MANAGED_EOD_HISTORY_LIMITS.sourceBytes,
+          maximumResponseBytes:
+            MANAGED_EOD_HISTORY_RANGE_LIMITS[request.range].sourceBytes,
         });
         const security: PersonalMarketDataIdentityDto = {
           country: listing.country,
@@ -214,7 +215,7 @@ export function createManagedEodService(options: {
           symbol: listing.symbol,
         };
         const overview = await awaitManagedEod(
-          source.loadOverview(security, "1m", false, providerSignal),
+          source.loadOverview(security, request.range, false, providerSignal),
           providerSignal,
         );
         guard();
@@ -226,7 +227,7 @@ export function createManagedEodService(options: {
           );
         if (
           overview.quote.status !== "not_requested" ||
-          overview.history.value.range !== "1m" ||
+          overview.history.value.range !== request.range ||
           overview.history.value.currency !== mapping.currency ||
           overview.ingestedAt !== requestStartedAt ||
           Object.entries(security).some(
@@ -243,7 +244,7 @@ export function createManagedEodService(options: {
             schemaVersion: "1.0.0",
             catalogSnapshotSha256: request.catalogSnapshotSha256,
             security: mapping.security,
-            range: "1m",
+            range: request.range,
             provider: "Tiingo",
             currency: mapping.currency,
             priceBasis: "raw_close",

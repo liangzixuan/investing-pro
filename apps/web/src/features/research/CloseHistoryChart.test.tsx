@@ -118,8 +118,8 @@ describe("close-only chart", () => {
     const html = renderToStaticMarkup(
       <CloseHistoryChart symbol="ZERO" rows={rows} />,
     );
-    expect(html).toContain("ZERO one-month raw close history in USD");
-    expect(html).toContain("One-month raw closing prices in USD");
+    expect(html).toContain("ZERO raw close history in USD");
+    expect(html).toContain("Raw closing prices in USD");
     expect(html).toContain("100.1234567890123456789");
     expect(html).toContain("2026-09-19");
     expect(html).toContain(

@@ -432,7 +432,7 @@ describe("watchlist source handoff and shared access", () => {
     company.open(eodSelection);
     await company.load();
     await expect(
-      access.request(eodSelection, new AbortController().signal),
+      access.request(eodSelection, "1m", new AbortController().signal),
     ).rejects.toMatchObject({ nextAllowedAt });
     expect(read).toHaveBeenCalledOnce();
     await vi.advanceTimersByTimeAsync(60_000);

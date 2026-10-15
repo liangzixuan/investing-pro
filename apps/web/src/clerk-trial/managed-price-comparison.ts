@@ -126,7 +126,8 @@ export function deriveManagedPriceComparisonHistory(
 export function deriveLoadedPriceComparisonHistory(
   rows: readonly ManagedPriceComparisonLoadedRow[],
 ): Exclude<ManagedPriceComparisonHistory, null> {
-  if (rows.length < 2) return { status: "unavailable" };
+  if (rows.length < 2 || rows.some((row) => row.response.range !== "1m"))
+    return { status: "unavailable" };
   const dates = rows.map(
     (row) => new Set(row.response.rows.map((item) => item.date)),
   );

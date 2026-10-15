@@ -26,6 +26,11 @@ export function CompanySnapshotPrice({
           </dl>
           <p>Tiingo · unadjusted for splits or dividends; not a live quote.</p>
           <p>
+            Loaded request range:{" "}
+            {price.range === "1y" ? "One year" : "One month"}.{" "}
+            {price.rows.length} reported closes.
+          </p>
+          <p>
             Window {price.window.startDate} to {price.window.endDate}. Request
             started {price.requestStartedAt}; completed {price.completedAt}.
           </p>
