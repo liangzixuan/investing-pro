@@ -534,11 +534,15 @@ ESM entry plus its manifests. An earlier artifact completed four live phases
 with invented data, then failed prestage after a commit-time conflict. Offline
 regressions exposed an invalid requirement for an explicit rollback; the generic
 live report does not identify the failed assertion. That result remains retained.
-This source
-uses a new fixed three-principal cohort with 18 locations disjoint from the
-consumed cohort; it does not resume or delete the old records. The corrected
-artifact, live proof and production publication still require their own review
-and authorization.
+The later v2 attempt stopped at overlap response admission after five accepted
+phases. Its exact live failure cause remains unproved, and that cohort and its
+authority are consumed. The current source prepares an explicitly synthetic v3
+cohort with three fixed principals and 18 current/receipt locations disjoint from
+both earlier cohorts. The changed namespace produces a different compiled plan
+identity. Commands, payloads, phases and limits remain unchanged. It does not
+resume or delete old records. A fresh immutable artifact, its response admission
+and any live invocation require separate review and authorization; this source
+preparation performs none of those operations.
 
 ## Cloud evidence and remaining acceptance
 

@@ -70,9 +70,9 @@ export const FOLLOWUPS_PROOF_EXPECTED_CALLS = {
   "domain-guards": 16,
 } as const;
 export const FOLLOWUPS_PROOF_PRINCIPALS = Object.freeze({
-  a: Object.freeze({ userId: "proof-followups-prestage-v2-a" }),
-  b: Object.freeze({ userId: "proof-followups-prestage-v2-b" }),
-  size: Object.freeze({ userId: "proof-followups-prestage-v2-size" }),
+  a: Object.freeze({ userId: "proof-followups-observed-v3-a" }),
+  b: Object.freeze({ userId: "proof-followups-observed-v3-b" }),
+  size: Object.freeze({ userId: "proof-followups-observed-v3-size" }),
 });
 export type ProofOwner = keyof typeof FOLLOWUPS_PROOF_PRINCIPALS;
 const names = [

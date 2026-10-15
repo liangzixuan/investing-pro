@@ -134,6 +134,14 @@ of the correction is claimed. Service limits and complete persistence acceptance
 remain open. See the
 [storage guide](APPWRITE_WATCHLIST.md#fixed-follow-ups-storage-proof).
 
+The later v2 cohort is also consumed: its attempt stopped at overlap response
+admission after five accepted phases, without complete persistence acceptance.
+The live cause remains unproved. A fresh explicitly synthetic v3 cohort now
+prepares three fixed principals and 18 disjoint locations, with a different
+compiled plan identity. Commands, payloads and all phase, request and time limits
+remain unchanged. Fresh artifact construction, response admission and live
+authorization remain separate; the earlier artifact and authority are not reused.
+
 The operating-change and company-overview source increments are merged into main
 at `18b08b8` after the owner's scoped email approval and the final revision, base
 and check recheck. Their five original Actions workflows and six jobs each passed;

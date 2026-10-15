@@ -12,6 +12,11 @@ import {
   FOLLOWUPS_PROOF_COMMAND_PINS,
   FOLLOWUPS_PROOF_ROWS,
   FOLLOWUPS_PROOF_PRINCIPALS,
+  FOLLOWUPS_PROOF_PLAN_SHA256,
+  FOLLOWUPS_PROOF_PHASES,
+  FOLLOWUPS_PROOF_LIMITS,
+  FOLLOWUPS_PROOF_EXPECTED_CALLS,
+  FOLLOWUPS_PROOF_TARGET,
   followupsProofData,
 } from "./research-followups-proof-data";
 const hash = (value: string) =>
@@ -21,9 +26,9 @@ describe("fixed invented proof bytes", () => {
     expect(
       Object.values(FOLLOWUPS_PROOF_PRINCIPALS).map(({ userId }) => userId),
     ).toEqual([
-      "proof-followups-prestage-v2-a",
-      "proof-followups-prestage-v2-b",
-      "proof-followups-prestage-v2-size",
+      "proof-followups-observed-v3-a",
+      "proof-followups-observed-v3-b",
+      "proof-followups-observed-v3-size",
     ]);
     const previous = new Set(
       FOLLOWUPS_PROOF_ROWS.map(({ owner, name }) => {
@@ -49,6 +54,93 @@ describe("fixed invented proof bytes", () => {
     expect(
       FOLLOWUPS_PROOF_ROWS.every(({ rowId }) => !previous.has(rowId)),
     ).toBe(true);
+  });
+  it("binds a disjoint v3 cohort and a different compiled plan from consumed v2", () => {
+    const consumedPrincipals = {
+      a: "proof-followups-prestage-v2-a",
+      b: "proof-followups-prestage-v2-b",
+      size: "proof-followups-prestage-v2-size",
+    } as const;
+    const consumedRows = FOLLOWUPS_PROOF_ROWS.map((row) => {
+      const namespace = [
+        consumedPrincipals[row.owner],
+        "research-followups",
+        "main",
+      ];
+      return {
+        ...row,
+        rowId:
+          (row.name ? "r" : "f") +
+          hash(
+            JSON.stringify(
+              row.name
+                ? [...namespace, `proof-followups-b03a64a-${row.name}-v1`]
+                : namespace,
+            ),
+          ).slice(0, 32),
+      };
+    });
+    expect(new Set(consumedRows.map(({ rowId }) => rowId)).size).toBe(18);
+    const consumedIds = new Set(consumedRows.map(({ rowId }) => rowId));
+    expect(
+      FOLLOWUPS_PROOF_ROWS.every(({ rowId }) => !consumedIds.has(rowId)),
+    ).toBe(true);
+    const consumedUserIds = new Set<string>(Object.values(consumedPrincipals));
+    expect(
+      Object.values(FOLLOWUPS_PROOF_PRINCIPALS).every(
+        ({ userId }) => !consumedUserIds.has(userId),
+      ),
+    ).toBe(true);
+    expect(
+      FOLLOWUPS_PROOF_ROWS.filter(({ tableId }) => tableId === "followups"),
+    ).toHaveLength(3);
+    expect(
+      FOLLOWUPS_PROOF_ROWS.filter(({ tableId }) => tableId === "receipts"),
+    ).toHaveLength(15);
+    expect(FOLLOWUPS_PROOF_ROWS.map(({ owner }) => owner)).toEqual([
+      "a",
+      "b",
+      "size",
+      ...Array<string>(9).fill("a"),
+      "b",
+      ...Array<string>(5).fill("size"),
+    ]);
+    expect(
+      FOLLOWUPS_PROOF_ROWS.every(({ rowId }) =>
+        /^[fr][a-f0-9]{32}$/u.test(rowId),
+      ),
+    ).toBe(true);
+    expect(FOLLOWUPS_PROOF_PHASES).toHaveLength(11);
+    expect(
+      Object.values(FOLLOWUPS_PROOF_LIMITS).reduce(
+        (sum, limit) => sum + limit,
+        0,
+      ),
+    ).toBe(156);
+    expect(
+      Object.values(FOLLOWUPS_PROOF_EXPECTED_CALLS).reduce(
+        (sum, calls) => sum + calls,
+        0,
+      ),
+    ).toBe(128);
+    const plan = {
+      version: 1,
+      target: FOLLOWUPS_PROOF_TARGET,
+      phases: FOLLOWUPS_PROOF_PHASES,
+      limits: FOLLOWUPS_PROOF_LIMITS,
+      calls: FOLLOWUPS_PROOF_EXPECTED_CALLS,
+      rows: FOLLOWUPS_PROOF_ROWS,
+      commands: FOLLOWUPS_PROOF_COMMAND_PINS,
+      catalog: FOLLOWUPS_PROOF_CATALOG_HASH,
+      revised: FOLLOWUPS_PROOF_REVISED_HASH,
+      successfulClock: "actual_function_utc",
+      refusedClock: "2000-01-01T00:00:00.000Z",
+      refusedCompletion: "9999-12-31",
+    };
+    expect(hash(JSON.stringify(plan))).toBe(FOLLOWUPS_PROOF_PLAN_SHA256);
+    expect(hash(JSON.stringify({ ...plan, rows: consumedRows }))).not.toBe(
+      FOLLOWUPS_PROOF_PLAN_SHA256,
+    );
   });
   it("admits both exact canonical snapshots and independently binds all command bytes and request digests", () => {
     const { commands, catalog, revisedCatalog } = followupsProofData();
