@@ -29,6 +29,10 @@ import { TrialApiError } from "./api";
 import { CompanySnapshotPrice } from "./CompanySnapshotPrice";
 import { CompanySnapshotAnnual } from "./CompanySnapshotAnnual";
 import { CompanySnapshotFilings } from "./CompanySnapshotFilings";
+import {
+  operatingResponse,
+  operatingRow,
+} from "../features/research/sec-annual-operating-fixture";
 
 async function fixture(packet?: PersonalSecAnnualEvidenceResponseDto) {
   const readPrice = vi.fn().mockResolvedValue(eodResponse());
@@ -76,6 +80,32 @@ async function fixture(packet?: PersonalSecAnnualEvidenceResponseDto) {
 }
 
 describe("loaded company snapshot", () => {
+  it("keeps operating results current when net income is missing, without labelling independent measures historical", async () => {
+    const f = await fixture(
+      await operatingResponse(
+        [operatingRow("-25.125")],
+        [row("Revenues", "1000")],
+      ),
+    );
+    await f.annual.load();
+    const html = f.html();
+    expect(html).toContain(
+      "Revenue and net income cannot form a current-use pair at this load.",
+    );
+    expect(html).toContain(
+      "Independent measures retain their own eligibility below.",
+    );
+    expect(html).toContain("Snapshot operating results");
+    expect(html).toContain("-25.125");
+    expect(html).toContain("-2.51%");
+    expect(html).toContain("Within current-use limits at this load.");
+    expect(html).not.toContain(
+      "Any valid reported amounts below are historical.",
+    );
+    expect(f.readAnnual).toHaveBeenCalledOnce();
+    expect(f.readPrice).not.toHaveBeenCalled();
+    expect(f.readFilings).not.toHaveBeenCalled();
+  });
   it("starts closed with three independent empty states and makes no read or navigation", async () => {
     const f = await fixture();
     expect(f.html()).toContain("No close history loaded");
@@ -309,7 +339,9 @@ describe("loaded company snapshot", () => {
     const f = await fixture(packet);
     await f.annual.load();
     const html = f.html();
-    expect(html).toContain("Any valid reported amounts below are historical.");
+    expect(html).toContain(
+      "Independent measures retain their own eligibility below.",
+    );
     expect(html).toContain("Historical amount; outside current-use limits");
     expect(html).toContain("Historical value; outside current-use limits");
     expect(html).toContain("1000");

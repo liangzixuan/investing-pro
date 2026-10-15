@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
   type PersonalSecAnnualEvidenceRequestDto,
 } from "@research-cockpit/contracts";
@@ -58,6 +59,7 @@ function packets(cik = "0000320193") {
         "us-gaap": {
           Revenues: { units: { USD: [fact] } },
           NetIncomeLoss: { units: { USD: [{ ...fact, val: -30 }] } },
+          OperatingIncomeLoss: { units: { USD: [{ ...fact, val: 18 }] } },
           NetCashProvidedByUsedInOperatingActivities: {
             units: { USD: [{ ...fact, val: -2 }] },
           },
@@ -124,7 +126,7 @@ afterEach(() => {
 });
 
 describe("managed annual evidence service", () => {
-  it.each(["1.0.0", "2.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0"])(
     "rejects version %s before reserving a budget or acquiring either source",
     async (schemaVersion) => {
       const f = fixture();
@@ -171,6 +173,26 @@ describe("managed annual evidence service", () => {
         cik,
       });
       expect(result.evidence.resolution.currentTargetEligible).toBe(true);
+      expect(
+        result.evidence.operatingResults.resolution.operatingIncome,
+      ).toMatchObject({
+        status: "available",
+        unit: "USD",
+        value: "18",
+      });
+      expect(
+        result.evidence.operatingResults.resolution.margins.find(
+          (basis) => basis.concept === "Revenues",
+        ),
+      ).toMatchObject({
+        concept: "Revenues",
+        revenue: { status: "available", value: "120" },
+        operatingMargin: {
+          status: "available",
+          unit: "percent",
+          value: "15",
+        },
+      });
       expect(result.schemaVersion).toBe(
         PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
       );
@@ -218,6 +240,103 @@ describe("managed annual evidence service", () => {
         });
     },
   );
+  it("serializes all 700 admitted observations under the unchanged response cap without clipping", async () => {
+    const f = fixture();
+    const rows = Array.from({ length: 100 }, (_, index) => ({
+      start: "2024-10-01",
+      end: "2025-09-30",
+      val: 42,
+      accn: "0000320193-25-000042",
+      fy: 2025,
+      fp: "FY",
+      form: "10-K",
+      filed: "2025-11-01",
+      frame: `${"\\".repeat(126)}${String(index).padStart(2, "0")}`,
+    }));
+    const usd = (values: readonly unknown[]) => ({ units: { USD: values } });
+    const instantRows = rows.map((row) => ({ ...row, start: undefined }));
+    const decimal = "9".repeat(64);
+    const body = JSON.stringify({
+      cik: 320193,
+      facts: {
+        "us-gaap": {
+          RevenueFromContractWithCustomerExcludingAssessedTax: usd(
+            rows.slice(0, 34),
+          ),
+          Revenues: usd(rows.slice(34, 67)),
+          SalesRevenueNet: usd(rows.slice(67)),
+          NetIncomeLoss: usd(rows),
+          OperatingIncomeLoss: usd(rows),
+          NetCashProvidedByUsedInOperatingActivities: usd(rows),
+          PaymentsToAcquirePropertyPlantAndEquipment: usd(rows),
+          AssetsCurrent: usd(instantRows),
+          LiabilitiesCurrent: usd(instantRows),
+        },
+      },
+    }).replaceAll('"val":42', `"val":${decimal}`);
+    f.fetch.mockImplementation((input) =>
+      Promise.resolve(
+        input === "https://data.sec.gov/submissions/CIK0000320193.json"
+          ? Response.json(packets()[0])
+          : new Response(body),
+      ),
+    );
+    const result = await f.service.load(
+      command(),
+      PRINCIPAL,
+      new AbortController().signal,
+    );
+    const evidence = result.evidence;
+    const metrics = [
+      evidence.operatingResults.operatingIncome,
+      evidence.cashGeneration.operatingCashFlow,
+      evidence.cashGeneration.ppePurchases,
+      evidence.liquidity.currentAssets,
+      evidence.liquidity.currentLiabilities,
+    ];
+    expect(evidence.observations).toHaveLength(200);
+    expect(evidence.completeness.status).toBe("complete");
+    for (const metric of metrics) {
+      expect(metric.observations).toHaveLength(100);
+      expect(metric.scan).toMatchObject({
+        coverage: { selected: 100, returned: 100, omittedSelected: 0 },
+      });
+    }
+    const observations = [
+      evidence.observations,
+      ...metrics.map((metric) => metric.observations),
+    ];
+    expect(observations.reduce((total, rows) => total + rows.length, 0)).toBe(
+      700,
+    );
+    for (const rows of observations)
+      expect(
+        rows.every((row) => row.value === decimal && row.frame?.length === 128),
+      ).toBe(true);
+    expect(evidence.operatingResults.resolution.operatingIncome).toMatchObject({
+      status: "available",
+      value: decimal,
+    });
+    expect(
+      evidence.operatingResults.resolution.margins.map(
+        (basis) => basis.operatingMargin,
+      ),
+    ).toMatchObject([
+      { status: "available", value: "100" },
+      { status: "available", value: "100" },
+      { status: "available", value: "100" },
+    ]);
+    expect(MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes).toBe(2_097_152);
+    expect(
+      Buffer.byteLength(JSON.stringify(result), "utf8"),
+    ).toBeLessThanOrEqual(MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes);
+    expect(f.fetch.mock.calls.map(([url]) => url)).toEqual([
+      "https://data.sec.gov/submissions/CIK0000320193.json",
+      "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+    ]);
+    expect(f.reserve).toHaveBeenCalledOnce();
+  });
+
   it("refuses a caller-supplied issuer before storage or SEC reads", async () => {
     const f = fixture();
     const request = { ...command(), cik: "0000000001" };

@@ -1,13 +1,16 @@
 import type {
   PersonalSecQuarterlyObservationDto,
   PersonalSecAnnualCashObservationDto,
+  PersonalSecAnnualOperatingObservationDto,
 } from "@research-cockpit/contracts";
 
 export function ObservationDetails({
   row,
 }: {
   readonly row:
-    PersonalSecQuarterlyObservationDto | PersonalSecAnnualCashObservationDto;
+    | PersonalSecQuarterlyObservationDto
+    | PersonalSecAnnualCashObservationDto
+    | PersonalSecAnnualOperatingObservationDto;
 }) {
   return (
     <details className="sec-quarterly-row-details">

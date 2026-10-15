@@ -89,7 +89,7 @@ function input(operating = [row(1)], purchases = [row(2, true)]) {
   return {
     cik: "0000000042",
     generation: {
-      definitionVersion: "3.0.0",
+      definitionVersion: "4.0.0",
       cutoffAt: "2026-09-20T06:00:00.000Z",
       completedAt: "2026-09-20T06:00:03.000Z",
       sha256: `sha256:${"a".repeat(64)}`,

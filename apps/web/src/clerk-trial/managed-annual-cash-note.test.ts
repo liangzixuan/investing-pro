@@ -1,3 +1,4 @@
+import { operatingResults } from "../features/research/sec-annual-operating-fixture";
 import type {
   PersonalSecAnnualCashResolutionDto,
   PersonalSecAnnualEvidenceResponseDto,
@@ -130,6 +131,7 @@ describe("managed Annual cash note excerpt", () => {
       evidence: {
         ...evidence,
         resolution: resolvePersonalSecAnnualEvidence(evidence),
+        operatingResults: await operatingResults(evidence),
       },
     });
     expect(annualCashNoteExcerpt(report, false)).toBe(expected);

@@ -998,6 +998,20 @@ export function ManagedWorkspaceScreen({
                         response,
                       ),
                   }}
+                  annualOperatingNoteActions={{
+                    getAction: (response, basis) =>
+                      workspace.getAnnualOperatingNoteAction(
+                        discovery.research!.selection,
+                        response,
+                        basis,
+                      ),
+                    append: (response, basis) =>
+                      workspace.appendAnnualOperatingToResearchNote(
+                        discovery.research!.selection,
+                        response,
+                        basis,
+                      ),
+                  }}
                   priceNoteActions={{
                     getAction: (response, start, end) =>
                       workspace.getPriceNoteAction(

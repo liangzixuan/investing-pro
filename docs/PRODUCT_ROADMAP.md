@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 candidate adds explicit [company Price ranges](MANAGED_EOD_HISTORY.md#choose-the-company-history-range).
+The next M2 candidate adds [reported operating results](MANAGED_SEC_ANNUAL.md#reported-operating-results).
+Operating income is admitted independently of net income. Each named revenue
+basis has an exact-period operating margin or a stated refusal. Snapshot, report
+and explicit note append reuse the loaded evidence. The required Annual v4 graph
+keeps the existing two-source request path and fixed limits. Operating history,
+growth, peers and complete statements remain open.
+
+The preceding M2 candidate adds explicit [company Price ranges](MANAGED_EOD_HISTORY.md#choose-the-company-history-range).
 Company Price can stage a one-month or one-year request. Loaded packets retain
 their actual range, source dates and observed coverage through a staged change,
 Cancel or transient failure. Markets and watchlist comparisons remain one month.

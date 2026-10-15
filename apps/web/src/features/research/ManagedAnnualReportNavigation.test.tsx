@@ -40,7 +40,13 @@ afterEach(() => {
   hooks.cleanup = undefined;
 });
 
-const sections = ["income", "cash", "liquidity", "sources"] as const;
+const sections = [
+  "income",
+  "operating",
+  "cash",
+  "liquidity",
+  "sources",
+] as const;
 type Section = (typeof sections)[number];
 type Link = React.ReactElement<
   React.ComponentProps<"a"> & { "data-annual-report-jump": Section }
@@ -64,6 +70,7 @@ function target() {
 async function harness() {
   const nodes = {
     income: target(),
+    operating: target(),
     cash: target(),
     liquidity: target(),
     sources: target(),
@@ -130,6 +137,7 @@ describe("managed Annual in-report navigation", () => {
       const controls = h.render();
       expect(controls.map((link) => link.props.children)).toEqual([
         "Revenue and net income",
+        "Operating results",
         "Cash generation",
         "Liquidity",
         "Report source details",
@@ -249,7 +257,7 @@ describe("managed Annual in-report navigation", () => {
 
 describe("managed Annual destination markup", () => {
   it.each(["default", "income-invalid"] as const)(
-    "keeps four linked destinations and original independent evidence for %s income",
+    "keeps five linked destinations and original independent evidence for %s income",
     async (mode) => {
       const response = await annualComparisonResponse("left", { mode });
       const before = JSON.stringify(response);
@@ -275,7 +283,11 @@ describe("managed Annual destination markup", () => {
           ),
         )?.[0];
         expect(tag).toBeTruthy();
-        if (section === "cash" || section === "liquidity")
+        if (
+          section === "cash" ||
+          section === "liquidity" ||
+          section === "operating"
+        )
           expect(tag).toContain('tabindex="-1"');
         if (section === "income") expect(tag).toContain('tabindex="0"');
       }
@@ -316,8 +328,8 @@ describe("managed Annual destination markup", () => {
     const ids = [
       ...html.matchAll(/href="#([^"]+)" data-annual-report-jump=/gu),
     ].map((match) => match[1]);
-    expect(ids).toHaveLength(8);
-    expect(new Set(ids).size).toBe(8);
+    expect(ids).toHaveLength(10);
+    expect(new Set(ids).size).toBe(10);
   });
 
   it("leaves the evidence profile and standalone shared headings outside managed navigation", async () => {

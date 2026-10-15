@@ -41,6 +41,8 @@ import {
 } from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
+import { annualOperatingNoteExcerpt } from "./managed-annual-operating-note";
+import type { PersonalSecAnnualOperatingMarginDto } from "@research-cockpit/contracts";
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { getManagedWatchlistComparisonNoteEvidence } from "./managed-watchlist-comparison-note";
@@ -1413,6 +1415,93 @@ export class ManagedWorkspace {
       appended: true,
       message:
         "Liquidity added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private annualOperatingNoteProposal(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+    basis: PersonalSecAnnualOperatingMarginDto,
+  ): { note: string | null; reason: string | null } {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        note: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before adding operating results.",
+      };
+    const annual = this.annual.getSnapshot();
+    if (
+      this.state.research?.section !== "annual" ||
+      annual.response !== response ||
+      !response.evidence.operatingResults.resolution.margins.includes(basis)
+    )
+      return {
+        note: null,
+        reason:
+          "Choose operating results from the current Annual report before adding it.",
+      };
+    if (annual.running)
+      return {
+        note: null,
+        reason: "Wait for the Annual report request to finish or cancel it.",
+      };
+    const excerpt = annualOperatingNoteExcerpt(
+      response,
+      basis,
+      annual.showingPrevious,
+    );
+    if (excerpt === null)
+      return {
+        note: null,
+        reason:
+          "Operating results need admitted operating income and positive revenue from the same filing and exact annual period.",
+      };
+    const current = watchlist.member.note;
+    if (current.includes(excerpt))
+      return {
+        note: null,
+        reason:
+          "This exact operating results reference is already in the note draft.",
+      };
+    const note = current + (current ? " " : "") + excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, reason: null };
+  }
+  getAnnualOperatingNoteAction(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+    basis: PersonalSecAnnualOperatingMarginDto,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.annualOperatingNoteProposal(
+      selection,
+      response,
+      basis,
+    );
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendAnnualOperatingToResearchNote(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+    basis: PersonalSecAnnualOperatingMarginDto,
+  ): { appended: boolean; message: string } {
+    const proposal = this.annualOperatingNoteProposal(
+      selection,
+      response,
+      basis,
+    );
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason! };
+    this.noteResearch(selection, proposal.note);
+    return {
+      appended: true,
+      message:
+        "Operating results added to the note draft. Review and save all changes in My Watchlist.",
     };
   }
   private priceNoteProposal(

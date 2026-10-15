@@ -1058,6 +1058,7 @@ export * from "./personal-watchlist-filing-monitor";
 export * from "./personal-sec-annual-evidence";
 export * from "./personal-sec-annual-cash-generation";
 export * from "./personal-sec-annual-liquidity";
+export * from "./personal-sec-annual-operating-results";
 
 export * from "./personal-sec-quarter-assessment";
 export * from "./personal-sec-source-json";

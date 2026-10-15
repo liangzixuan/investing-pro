@@ -71,6 +71,13 @@ while loading. Show the loaded packet's actual range and observed-date coverage
 beside the close summary; keep the requested window in source details. Retained
 history must keep its original range when another range is staged or fails.
 
+Annual operating results reuse the existing exact-amount definition lists and
+source disclosure. Keep the reported operating income separate from each named
+revenue basis and its calculated margin. Show each value's exact period and own
+eligibility. Place the explicit note action below its basis. The source disclosure
+starts closed; full concepts, identifiers and dates wrap at narrow widths. The
+in-report Operating results link moves focus to the existing section heading.
+
 ## Color and surfaces
 
 The company snapshot uses an initially closed native disclosure below company

@@ -836,7 +836,7 @@ describe("Android managed fixture startup", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "3.0.0",
+          schemaVersion: "4.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-beta-a",
           symbol: "BETA",
@@ -958,7 +958,7 @@ describe("Android managed fixture startup", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "3.0.0",
+          schemaVersion: "4.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-zero",
           symbol: "ZERO",
@@ -1042,7 +1042,7 @@ describe("Android managed fixture startup", () => {
     const baseline = await createFixture("annual-note");
     const signal = new AbortController().signal;
     const request = {
-      schemaVersion: "3.0.0" as const,
+      schemaVersion: "4.0.0" as const,
       catalogSnapshotSha256: fixtureDigest,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -1144,7 +1144,7 @@ describe("Android managed fixture startup", () => {
     const original = await fixture.api.load(signal);
     expect(original.payload.snapshotSha256).toBe(fixtureDigest);
     const request = {
-      schemaVersion: "3.0.0" as const,
+      schemaVersion: "4.0.0" as const,
       catalogSnapshotSha256: fixtureDigest,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -1305,7 +1305,7 @@ describe("Android managed fixture startup", () => {
       if (invalid !== "unloaded")
         await fixture.api.annualReport(
           {
-            schemaVersion: "3.0.0",
+            schemaVersion: "4.0.0",
             catalogSnapshotSha256: fixtureDigest,
             listingId: "listing-zero",
             symbol: "ZERO",
@@ -1529,7 +1529,7 @@ describe("Android managed fixture startup", () => {
   it("serves one fresh Annual response after the cancelled visit read settles", async () => {
     const fixture = await createFixture();
     const request = {
-      schemaVersion: "3.0.0" as const,
+      schemaVersion: "4.0.0" as const,
       catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -2023,7 +2023,7 @@ describe("bounded invented Annual liquidity refresh", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "3.0.0",
+          schemaVersion: "4.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-zero",
           symbol: "ZERO",
@@ -2039,7 +2039,7 @@ describe("bounded invented Annual liquidity refresh", () => {
     async (scenario) => {
       const fixture = await createFixture(scenario);
       const request = {
-        schemaVersion: "3.0.0" as const,
+        schemaVersion: "4.0.0" as const,
         catalogSnapshotSha256: fixtureDigest,
         listingId: "listing-zero",
         symbol: "ZERO",
@@ -2172,7 +2172,7 @@ describe("bounded invented company filings journey", () => {
     const { fixture, workspace } = await readyForNote();
     const signal = new AbortController().signal;
     const annualRequest = {
-      schemaVersion: "3.0.0" as const,
+      schemaVersion: "4.0.0" as const,
       catalogSnapshotSha256: fixtureDigest,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -2416,7 +2416,7 @@ describe("bounded invented company filings journey", () => {
 });
 describe("bounded invented Annual comparison", () => {
   const request = (second = false) => ({
-    schemaVersion: "3.0.0" as const,
+    schemaVersion: "4.0.0" as const,
     catalogSnapshotSha256: fixtureDigest,
     listingId: second ? "listing-one" : "listing-zero",
     symbol: second ? "ONE" : "ZERO",

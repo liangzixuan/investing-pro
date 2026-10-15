@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
   PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
+  PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
   type PersonalSecAnnualEvidenceDto,
   type PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
@@ -69,7 +70,7 @@ describe("selected-company observed annual SEC evidence route", () => {
     expect((await fixture.request("{ private-canary")).statusCode).toBe(400);
   });
 
-  it.each(["1.0.0", "2.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0"])(
     "rejects version %s before calling the source",
     async (schemaVersion) => {
       const fixture = await setup();
@@ -367,6 +368,7 @@ function evidence(cik: string): PersonalSecAnnualEvidenceDto {
     incomeScanStatus: "available",
     cashGeneration: emptyCashGeneration(),
     liquidity: emptyLiquidity(),
+    operatingResults: emptyOperatingResults(),
     completeness: { status: "refused", reason: "target_unresolved" },
     coverage: {
       full: {
@@ -447,6 +449,27 @@ function emptyLiquidity(): PersonalSecAnnualEvidenceDto["liquidity"] {
       currentLiabilities: { ...value, unit: "USD" },
       workingCapital: { ...value, unit: "USD" },
       currentRatio: { ...value, unit: "multiple" },
+      utilityAge: null,
+    },
+  };
+}
+
+function emptyOperatingResults(): PersonalSecAnnualEvidenceDto["operatingResults"] {
+  const metric = emptyCashGeneration().operatingCashFlow;
+  const value = {
+    status: "unavailable" as const,
+    reason: "target_unresolved" as const,
+    observationIds: [],
+  };
+  return {
+    operatingIncome: { scan: metric.scan, observations: [] },
+    resolution: {
+      operatingIncome: { ...value, unit: "USD" },
+      margins: PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((concept) => ({
+        concept,
+        revenue: { ...value, unit: "USD" },
+        operatingMargin: { ...value, unit: "percent" },
+      })),
       utilityAge: null,
     },
   };

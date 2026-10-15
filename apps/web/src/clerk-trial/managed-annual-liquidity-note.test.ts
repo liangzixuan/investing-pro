@@ -1,3 +1,4 @@
+import { operatingResults } from "../features/research/sec-annual-operating-fixture";
 import { describe, expect, it, vi } from "vitest";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
@@ -160,6 +161,7 @@ describe("Annual liquidity note excerpt", () => {
         evidence: {
           ...evidence,
           resolution: resolvePersonalSecAnnualEvidence(evidence),
+          operatingResults: await operatingResults(evidence),
           liquidity: await liquidity(evidence, rows()),
         },
       });

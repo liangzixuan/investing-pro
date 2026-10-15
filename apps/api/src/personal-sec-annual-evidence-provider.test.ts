@@ -618,7 +618,7 @@ describe("explicit observed annual SEC evidence provider", () => {
       SUBMISSIONS_URL,
       FACTS_URL,
     ]);
-    expect(result.generation.definitionVersion).toBe("3.0.0");
+    expect(result.generation.definitionVersion).toBe("4.0.0");
     expect(result.incomeScanStatus).toBe("available");
     expect(cash.operatingCashFlow.scan).toMatchObject({
       coverage: {

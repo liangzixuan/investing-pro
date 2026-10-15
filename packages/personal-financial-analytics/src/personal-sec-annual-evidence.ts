@@ -16,6 +16,7 @@ import {
   type PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
+import { calculatePersonalMarginPercent } from "./personal-margin";
 
 type Observation = PersonalSecQuarterlyObservationDto;
 const DAY = 86_400_000;
@@ -382,11 +383,7 @@ export function calculatePersonalSecAnnualNetMargin(
   revenue: string,
   income: string,
 ): string {
-  const value = new D(income)
-    .div(revenue)
-    .times(100)
-    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-  return value.isZero() ? "0" : value.toFixed();
+  return calculatePersonalMarginPercent(income, revenue);
 }
 function pairs(
   rows: readonly Observation[],

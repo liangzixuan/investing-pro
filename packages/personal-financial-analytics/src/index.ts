@@ -122,6 +122,8 @@ export {
   type PersonalSecAnnualCashHistoryReason,
 } from "./personal-sec-annual-cash-generation";
 export { resolvePersonalSecAnnualLiquidity } from "./personal-sec-annual-liquidity";
+export { resolvePersonalSecAnnualOperatingResults } from "./personal-sec-annual-operating-results";
+export { calculatePersonalMarginPercent } from "./personal-margin";
 export { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
 export {
   calculatePersonalCurrentAssetsLessCurrentLiabilities,

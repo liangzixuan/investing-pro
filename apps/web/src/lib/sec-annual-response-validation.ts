@@ -5,11 +5,13 @@ import {
   PERSONAL_SEC_ANNUAL_CASH_CONCEPTS,
   PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS,
   PERSONAL_SEC_ANNUAL_LIQUIDITY_CONCEPTS,
+  PERSONAL_SEC_ANNUAL_OPERATING_LIMITS,
   type PersonalSecQuarterlyObservationDto,
   type PersonalSecAnnualCashObservationDto,
   type PersonalSecAnnualCashMetric,
   type PersonalSecAnnualLiquidityObservationDto,
   type PersonalSecAnnualLiquidityMetric,
+  type PersonalSecAnnualOperatingObservationDto,
 } from "@research-cockpit/contracts";
 
 const limits = PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS;
@@ -17,13 +19,15 @@ const concepts = [
   ...PERSONAL_SEC_QUARTERLY_CONCEPTS,
   ...PERSONAL_SEC_ANNUAL_CASH_CONCEPTS,
   ...PERSONAL_SEC_ANNUAL_LIQUIDITY_CONCEPTS,
+  "OperatingIncomeLoss",
 ] as const;
 const accessionPattern = /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u;
 const forbiddenText = /[\p{Cc}\p{Cf}\p{Cs}]/u;
 type Observation =
   | PersonalSecQuarterlyObservationDto
   | PersonalSecAnnualCashObservationDto
-  | PersonalSecAnnualLiquidityObservationDto;
+  | PersonalSecAnnualLiquidityObservationDto
+  | PersonalSecAnnualOperatingObservationDto;
 type ObservationFields = Omit<
   PersonalSecQuarterlyObservationDto,
   "metric" | "concept"
@@ -76,6 +80,21 @@ export function liquidityObservation(
     value.metric === metric &&
     value.concept ===
       (metric === "current_assets" ? "AssetsCurrent" : "LiabilitiesCurrent")
+  );
+}
+
+export function operatingObservation(
+  value: unknown,
+  cik: string,
+): value is PersonalSecAnnualOperatingObservationDto {
+  return (
+    observation(
+      value,
+      cik,
+      PERSONAL_SEC_ANNUAL_OPERATING_LIMITS.candidateRowsPerMetric,
+    ) &&
+    value.metric === "operating_income" &&
+    value.concept === "OperatingIncomeLoss"
   );
 }
 

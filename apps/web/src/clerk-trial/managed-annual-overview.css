@@ -385,13 +385,13 @@
 .managed-frame .sec-annual-cash-values .discovery-warning {
   color: var(--managed-warning, #f3c477);
 }
-.managed-frame .sec-annual-liquidity {
+.managed-frame :is(.sec-annual-liquidity, .sec-annual-operating) {
   min-width: 0;
   border-top: 1px solid var(--managed-line);
   margin-top: 16px;
   padding-top: 16px;
 }
-.managed-frame .sec-annual-liquidity h4 {
+.managed-frame :is(.sec-annual-liquidity, .sec-annual-operating) h4 {
   margin: 0;
   font-size: 15px;
 }
@@ -436,7 +436,7 @@
   color: var(--managed-muted);
   font-size: 12px;
 }
-.managed-frame .sec-annual-liquidity small {
+.managed-frame :is(.sec-annual-liquidity, .sec-annual-operating) small {
   display: block;
   margin-top: 4px;
   color: var(--managed-muted);
@@ -448,24 +448,34 @@
   font-size: 20px;
   text-align: right;
 }
-.managed-frame .sec-annual-liquidity :is(p, summary, li, dd) {
+.managed-frame
+  :is(.sec-annual-liquidity, .sec-annual-operating)
+  :is(p, summary, li, dd) {
   overflow-wrap: anywhere;
 }
 .managed-frame .sec-annual-liquidity-unavailable,
-.managed-frame .sec-annual-liquidity-source {
+.managed-frame :is(.sec-annual-liquidity-source, .sec-annual-operating-source) {
   color: var(--managed-muted);
   font-size: 13px;
 }
-.managed-frame .sec-annual-liquidity-source summary,
-.managed-frame .sec-annual-liquidity-source a {
+.managed-frame
+  :is(.sec-annual-liquidity-source, .sec-annual-operating-source)
+  summary,
+.managed-frame
+  :is(.sec-annual-liquidity-source, .sec-annual-operating-source)
+  a {
   display: block;
   min-height: 44px;
   padding: 12px 0;
 }
-.managed-frame .sec-annual-liquidity-source summary {
+.managed-frame
+  :is(.sec-annual-liquidity-source, .sec-annual-operating-source)
+  summary {
   display: list-item;
 }
-.managed-frame .sec-annual-liquidity .discovery-warning {
+.managed-frame
+  :is(.sec-annual-liquidity, .sec-annual-operating)
+  .discovery-warning {
   color: var(--managed-warning, #f3c477);
 }
 @media (max-width: 640px) {

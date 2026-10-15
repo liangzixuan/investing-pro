@@ -2,12 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  PERSONAL_SEC_ANNUAL_OPERATING_LIMITS,
+  PERSONAL_SEC_QUARTERLY_CONCEPTS,
   parseManagedSecAnnualEvidenceRequest,
 } from "./index";
 
 function request() {
   return {
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "synthetic-listing-a",
     symbol: "ZERO.A",
@@ -15,6 +19,23 @@ function request() {
 }
 
 describe("managed annual SEC request", () => {
+  it("versions the required Annual graph without expanding quarterly concepts or shared byte limits", () => {
+    expect(PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION).toBe("4.0.0");
+    expect(PERSONAL_SEC_ANNUAL_DEFINITION_VERSION).toBe("4.0.0");
+    expect(PERSONAL_SEC_QUARTERLY_CONCEPTS).toEqual([
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "Revenues",
+      "SalesRevenueNet",
+      "NetIncomeLoss",
+    ]);
+    expect(PERSONAL_SEC_ANNUAL_OPERATING_LIMITS).toEqual({
+      candidateRowsPerMetric: 10_000,
+      observationsPerMetric: 100,
+      decimalCharacters: 64,
+      marginCharacters: 132,
+    });
+    expect(Object.isFrozen(PERSONAL_SEC_ANNUAL_OPERATING_LIMITS)).toBe(true);
+  });
   it("owns the four fields and preserves exact requested listing/class spelling", () => {
     const input = request();
     const result = parseManagedSecAnnualEvidenceRequest(input);
@@ -33,6 +54,7 @@ describe("managed annual SEC request", () => {
     "request",
     { ...request(), schemaVersion: "1.0.0" },
     { ...request(), schemaVersion: "2.0.0" },
+    { ...request(), schemaVersion: "3.0.0" },
     { ...request(), catalogSnapshotSha256: `sha256:${"A".repeat(64)}` },
     { ...request(), catalogSnapshotSha256: "a".repeat(64) },
     { ...request(), listingId: "ab" },
