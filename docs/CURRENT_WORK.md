@@ -9,9 +9,11 @@ and physical-device use are separate acceptance events.
 
 Release `5b2715e` remains published on the managed website and API. Signed Android
 1.26.0, code 27, is delivered; physical installation was not performed. Previous
-website, API and Android releases remain preserved for rollback. Reviewed PR143 is now merged into main at `a430cd3`; production publication is a
-separate boundary. The original source checks and reviewed maintenance advisories
-remain recorded below.
+website, API and Android releases remain preserved for rollback. Reviewed PR152
+is merged into main at `9c8b863` after the owner's exact-head approval and a fresh
+base/check recheck. Its six applicable Actions checks passed; the accepted
+CodeScene maintenance advisories remain recorded. Production publication is a
+separate boundary.
 
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
@@ -19,6 +21,29 @@ session scope appears with sign-out review. Private fixture controls are exclude
 from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
+
+## Operating-history candidate
+
+Managed company Annual now has a closed Reported operating history disclosure
+under each named revenue basis. It shows up to three adjacent periods from the
+loaded filing, with exact operating income, revenue, checked margin and complete
+input references. Missing net income does not hide valid operating history.
+Missing or refused earlier evidence stops that basis without borrowing another
+year, concept or filing. Original filing metadata and source clocks remain.
+There is no new request, schema, saved field or history-to-note format.
+
+Focused domain, component and composed fixture checks pass. A two-source provider
+test preserves three comparative periods; strict client and report-document tests
+reproduce them with unchanged metadata. Invented-data Chrome checks pass at
+1440/390/320 CSS widths, including exact independent histories, source references,
+contained keyboard scrolling, full-length amounts, failure/Cancel/late retention,
+replacement, report JSON, navigation and session retirement. The new native
+inventory has 36 cases and 99 expected PNGs, checked statically. Hosted native
+execution, integration and publication remain separate. The preceding candidates'
+native failures are retained. Test synchronization now observes the selected
+native dialog's removal and restored readiness; bounded diagnostics retain the
+unresolved snapshot and navigation evidence. No deadline or financial predicate
+is relaxed, and compositor behavior still needs native acceptance.
 
 ## Operating comparison candidate
 
@@ -38,9 +63,12 @@ main integration and publication remain separate.
 
 The preceding close-range candidate's original Android run failed. Its original
 evidence identified a stale exact screenshot selector. Repair `e1514a3` retains
-the strict quote capture and separately checks the new summary; its fresh original
-run is pending. That failed original remains recorded. The comparison source
-includes the repair. Main and production remain unchanged.
+the strict quote capture and separately checks the new summary. That repair and
+the comparison revision each have failed original Android runs. Their snapshot
+predicate fails without branch diagnostics; a separate native selector transition
+also exposed a blocked touch during system-dialog dismissal. These outcomes stay
+failed. No financial validator, geometry limit or deadline is weakened. Main and
+production remain unchanged.
 
 ## Observed close-range candidate
 

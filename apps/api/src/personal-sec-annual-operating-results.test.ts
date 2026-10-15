@@ -284,6 +284,60 @@ describe("fixed Annual operating-income CompanyFacts scan", () => {
 });
 
 describe("Annual operating evidence from the existing two sources", () => {
+  it("preserves three same-filing operating and revenue periods without net income or another request", async () => {
+    const periods = [2025, 2024, 2023].map((year) => ({
+      start: `${year}-01-01`,
+      end: `${year}-12-31`,
+      frame: `CY${year}`,
+    }));
+    const fixture = providerFixture(
+      JSON.stringify(
+        facts({
+          NetIncomeLoss: undefined,
+          Revenues: usd(
+            periods.map((period, index) =>
+              fact({ ...period, val: [1000, 800, 600][index] }),
+            ),
+          ),
+          [CONCEPT]: usd(
+            periods.map((period, index) =>
+              fact({ ...period, val: [-25.125, 0, 60][index] }),
+            ),
+          ),
+        }),
+      ),
+    );
+    const result = await fixture.load();
+    expect(result.observations).toHaveLength(3);
+    expect(result.operatingResults.operatingIncome.observations).toHaveLength(
+      3,
+    );
+    for (const rows of [
+      result.observations,
+      result.operatingResults.operatingIncome.observations,
+    ]) {
+      expect(rows.map((row) => row.endDate)).toEqual(
+        periods.map((period) => period.end),
+      );
+      expect(rows.every((row) => row.accessionNumber === ACCESSION)).toBe(true);
+      expect(rows.every((row) => row.filing.reportDate === "2025-12-31")).toBe(
+        true,
+      );
+      expect(
+        rows.every(
+          (row) => row.filing.acceptedAt === "2026-02-01T12:00:00.000Z",
+        ),
+      ).toBe(true);
+    }
+    expect(result.resolution.selectedReportPairEligible).toBe(false);
+    expect(result.operatingResults.resolution.margins[1]).toMatchObject({
+      revenue: { status: "available", value: "1000" },
+      operatingMargin: { status: "available", value: "-2.51" },
+    });
+    expect(result.generation.cutoffAt).toBe(NOW);
+    expect(fixture.fetch.mock.calls.map(([url]) => url)).toEqual(URLS);
+  });
+
   it("uses all three raw revenue bases even when no net-income pair is eligible", async () => {
     const fixture = providerFixture(
       JSON.stringify(

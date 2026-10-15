@@ -264,13 +264,19 @@
   border-top: 1px solid var(--managed-line);
 }
 
-.managed-frame .managed-annual-cash-history {
+.managed-frame
+  :is(.managed-annual-cash-history, .managed-annual-operating-history) {
   min-width: 0;
   margin: 12px 0;
   border-block: 1px solid var(--managed-line);
 }
 .managed-frame
-  :is(.managed-annual-cash-history, .managed-cash-history-references)
+  :is(
+    .managed-annual-cash-history,
+    .managed-cash-history-references,
+    .managed-annual-operating-history,
+    .managed-operating-history-references
+  )
   > summary {
   min-height: 44px;
   padding: 12px 0;
@@ -279,29 +285,43 @@
   font-size: 14px;
   overflow-wrap: anywhere;
 }
-.managed-frame .managed-cash-history-table {
+.managed-frame
+  :is(.managed-cash-history-table, .managed-operating-history-table) {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
 }
-.managed-frame .managed-cash-history-table table {
+.managed-frame
+  :is(.managed-cash-history-table, .managed-operating-history-table)
+  table {
   min-width: 640px;
 }
-.managed-frame .managed-cash-history-table :focus-visible,
-.managed-frame .managed-cash-history-table:focus-visible {
+.managed-frame
+  :is(.managed-cash-history-table, .managed-operating-history-table)
+  :focus-visible,
+.managed-frame
+  :is(
+    .managed-cash-history-table,
+    .managed-operating-history-table
+  ):focus-visible {
   outline: 3px solid var(--managed-action);
   outline-offset: -3px;
 }
-.managed-frame .managed-cash-history-references {
+.managed-frame
+  :is(.managed-cash-history-references, .managed-operating-history-references) {
   min-width: 0;
   font-size: 13px;
   color: var(--managed-muted);
 }
-.managed-frame .managed-cash-history-references dl {
+.managed-frame
+  :is(.managed-cash-history-references, .managed-operating-history-references)
+  dl {
   display: grid;
   gap: 12px;
 }
-.managed-frame .managed-cash-history-references dd {
+.managed-frame
+  :is(.managed-cash-history-references, .managed-operating-history-references)
+  dd {
   margin: 4px 0 0;
   overflow-wrap: anywhere;
 }

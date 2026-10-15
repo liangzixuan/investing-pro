@@ -2,6 +2,7 @@ import { ObservationDetails } from "./SecAnnualObservation";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
 import { SecAnnualOperatingResults } from "./SecAnnualOperatingResults";
+import { SecAnnualOperatingHistory } from "./SecAnnualOperatingHistory";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
@@ -188,6 +189,12 @@ function ManagedAnnualFinancialResult({
       <SecAnnualOperatingResults
         response={response}
         headingTarget={targets.operating}
+        renderHistory={(basis) => (
+          <SecAnnualOperatingHistory
+            response={response}
+            concept={basis.concept}
+          />
+        )}
         {...(renderOperatingAction ? { renderOperatingAction } : {})}
       />
       <SecAnnualCashGeneration
