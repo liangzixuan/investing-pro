@@ -12,8 +12,11 @@ Release `5b2715e` remains published on the managed website and API. Signed Andro
 website, API and Android releases remain preserved for rollback. Reviewed PR152
 is merged into main at `9c8b863` after the owner's exact-head approval and a fresh
 base/check recheck. Its six applicable Actions checks passed; the accepted
-CodeScene maintenance advisories remain recorded. Production publication is a
-separate boundary.
+CodeScene maintenance advisories remain recorded. PR153 is also merged into main
+at `866dbcf` after the owner's scoped email approval and a final revision, base
+and check recheck. Its seven original Actions checks pass; exact base-tree
+equivalence supports reuse of that evidence. Reviewed CodeScene debt remains.
+Production publication is a separate boundary.
 
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
@@ -40,10 +43,17 @@ contained keyboard scrolling, full-length amounts, failure/Cancel/late retention
 replacement, report JSON, navigation and session retirement. The new native
 inventory has 36 cases and 99 expected PNGs, checked statically. Hosted native
 execution, integration and publication remain separate. The preceding candidates'
-native failures are retained. Test synchronization now observes the selected
-native dialog's removal and restored readiness; bounded diagnostics retain the
-unresolved snapshot and navigation evidence. No deadline or financial predicate
-is relaxed, and compositor behavior still needs native acceptance.
+native failures are retained. The original operating-history run passes 34 of
+36 cases, including the new history and Fed journeys. It fails the snapshot page
+width and native Back closure checks. Its bounded diagnostics establish that the
+snapshot amounts and dates agree while the full page is too wide. A browser
+reproduction identifies an unwrapped JSON diagnostic in the test-only report
+controls; that diagnostic now wraps without clipping or changing its contents.
+The Back case now checks the existing keyboard and native window-focus
+preconditions before its single Back action. Its underlying cause remains
+unproven. All closure, restored-focus, draft, financial, geometry and deadline
+checks remain. These corrections require a fresh source revision's native
+acceptance; they do not change either failed original outcome.
 
 ## Operating comparison candidate
 

@@ -3359,6 +3359,21 @@ public class ManagedWorkspaceInstrumentedTest {
         assertResearchSwitchDraftAndCounts(2, 1, 1);
         Log.i("ManagedResearchSwitch", "phase=loaded-sections-retained; " + pageDiagnostic());
         assertCompanyHistory("listing-zero", "price", false);
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        scenario.onActivity(activity -> {
+            WebView webView = activity.getBridge().getWebView();
+            android.view.WindowInsets insets = webView.getRootWindowInsets();
+            assertNotNull("Panel-switch Back requires observed native window insets", insets);
+            boolean imeVisible = insets.isVisible(android.view.WindowInsets.Type.ime());
+            Log.i("ManagedBack", "phase=panel-switch-native-ready, activityFocus=" + activity.hasWindowFocus() +
+                ", viewFocus=" + webView.hasFocus() + ", windowFocus=" + webView.hasWindowFocus() +
+                ", imeVisible=" + imeVisible);
+            assertTrue("Panel-switch Activity must have focus before Back", activity.hasWindowFocus());
+            assertTrue("Panel-switch WebView must have focus before Back", webView.hasFocus());
+            assertTrue("Panel-switch window must have focus before Back", webView.hasWindowFocus());
+            assertFalse("Panel-switch Back requires the native keyboard to be hidden", imeVisible);
+        });
         pressBack();
         assertClosedDraft(true);
         awaitPage("native Back leaves both research panels closed",
