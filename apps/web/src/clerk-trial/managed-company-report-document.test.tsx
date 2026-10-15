@@ -2,6 +2,12 @@ import {
   operatingResults,
   operatingRow,
 } from "../features/research/sec-annual-operating-fixture";
+import type {
+  ManagedEodHistoryResponseDto,
+  PersonalSecAnnualEvidenceResponseDto,
+} from "@research-cockpit/contracts";
+import { resolvePersonalSecAnnualOperatingHistory } from "@research-cockpit/personal-financial-analytics";
+import { calculatePersonalRawCloseExtrema } from "@research-cockpit/personal-market-analytics";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -23,7 +29,10 @@ import { ManagedEodHistory } from "./managed-eod-history";
 import { ManagedAnnualReport } from "./managed-annual-report";
 import { ManagedCompanyFilings } from "./managed-company-filings";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
-import { prepareCompanyReport } from "./managed-company-report";
+import {
+  companyReportIsCurrent,
+  prepareCompanyReport,
+} from "./managed-company-report";
 import {
   isCompanyReportDocument,
   formatCompanyReportDocument,
@@ -109,6 +118,98 @@ async function fixture(range: "1m" | "1y" = "1m") {
 }
 
 describe("company research document inspection", () => {
+  it("reproduces three operating periods from the captured document without renewing dates or loading sources", async () => {
+    const periods = [2025, 2024, 2023].map((year) => ({
+      startDate: `${year}-01-01`,
+      endDate: `${year}-12-31`,
+      durationDays: year === 2024 ? 366 : 365,
+      frame: `CY${year}`,
+    }));
+    const base = await response(
+      periods.map((period, index) =>
+        row("Revenues", ["1000", "800", "600"][index], {
+          ...period,
+          sourceLocator: `/facts/us-gaap/Revenues/units/USD/${index}`,
+        }),
+      ),
+    );
+    const packet = {
+      ...base,
+      evidence: {
+        ...base.evidence,
+        operatingResults: await operatingResults(
+          base.evidence,
+          periods.map((period, index) =>
+            operatingRow(["-25.125", "0", "60"][index], {
+              ...period,
+              sourceLocator: `/facts/us-gaap/OperatingIncomeLoss/units/USD/${index}`,
+            }),
+          ),
+        ),
+      },
+    };
+    const read = vi.fn().mockResolvedValue(packet);
+    const annual = new ManagedAnnualReport(read, vi.fn());
+    annual.open(eodSelection);
+    await annual.load();
+    const evidence = () => ({
+      price: null,
+      annual: annual.getSnapshot(),
+      filings: null,
+    });
+    const draft = {
+      member: { ...eodSelection.listing, note },
+      canEdit: true,
+      canAdd: false,
+      reason: null,
+    };
+    const report = prepareCompanyReport(eodSelection, evidence(), draft, now)!;
+    const document = formatCompanyReportDocument(report)!;
+    const captured = (
+      decode(document.text).sources.annual as {
+        response: PersonalSecAnnualEvidenceResponseDto;
+      }
+    ).response.evidence;
+    expect(captured).toEqual(packet.evidence);
+    expect(captured.generation).toEqual(base.evidence.generation);
+    expect(captured.target).toEqual(base.evidence.target);
+    const history = resolvePersonalSecAnnualOperatingHistory(
+      captured,
+      "Revenues",
+    );
+    expect(history).toEqual(
+      resolvePersonalSecAnnualOperatingHistory(packet.evidence, "Revenues"),
+    );
+    expect(history).toMatchObject({
+      status: "available",
+      periods: [
+        {
+          operatingIncome: "-25.125",
+          revenue: "1000",
+          operatingMarginPercent: "-2.51",
+        },
+        { operatingIncome: "0", revenue: "800", operatingMarginPercent: "0" },
+        { operatingIncome: "60", revenue: "600", operatingMarginPercent: "10" },
+      ],
+    });
+    expect(isCompanyReportDocument(document)).toBe(true);
+    expect(decode(document.text).schemaVersion).toBe("1.0.0");
+    expect(
+      companyReportIsCurrent(report, eodSelection, evidence(), draft),
+    ).toBe(true);
+    await annual.load();
+    expect(
+      companyReportIsCurrent(report, eodSelection, evidence(), draft),
+    ).toBe(false);
+    expect(
+      resolvePersonalSecAnnualOperatingHistory(captured, "Revenues"),
+    ).toEqual(history);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(document.byteLength).toBeLessThanOrEqual(
+      COMPANY_REPORT_DOCUMENT_MAX_BYTES,
+    );
+  });
+
   it("refuses accessor wrappers without reading them and keeps report and saved-watchlist purposes separate", async () => {
     const { report } = await fixture();
     const document = formatCompanyReportDocument(report)!;
@@ -355,6 +456,19 @@ it("serializes a loaded year packet with its actual window and exact rows under 
   expect(parsed.sources.price).toMatchObject({
     status: "loaded",
     response: eodResponse("1y"),
+  });
+  const price = parsed.sources.price as {
+    response: ManagedEodHistoryResponseDto;
+  };
+  expect(Object.keys(price.response).sort()).toEqual(
+    Object.keys(eodResponse("1y")).sort(),
+  );
+  expect(
+    calculatePersonalRawCloseExtrema({ rows: price.response.rows }),
+  ).toEqual({
+    status: "available",
+    highest: { date: "2026-09-19", close: "101.5", occurrences: 1 },
+    lowest: { date: "2025-09-22", close: "90.125", occurrences: 1 },
   });
   expect(document.byteLength).toBe(
     new TextEncoder().encode(document.text).byteLength,

@@ -106,6 +106,55 @@ async function fixture() {
 }
 
 describe("prepared loaded company research report", () => {
+  it("keeps the loaded year extrema in a new preview after staging a month without fetching it", async () => {
+    const f = await fixture();
+    f.readPrice.mockResolvedValueOnce(eodResponse("1y"));
+    f.price.selectRange("1y");
+    await f.price.load();
+    const before = f.prepare()!;
+    f.price.selectRange("1m");
+    expect(
+      companyReportIsCurrent(
+        before,
+        eodSelection,
+        f.evidence(),
+        draft(f.member),
+      ),
+    ).toBe(false);
+    const report = f.prepare()!;
+    expect(
+      companyReportIsCurrent(
+        report,
+        eodSelection,
+        f.evidence(),
+        draft(f.member),
+      ),
+    ).toBe(true);
+    const html = renderToStaticMarkup(
+      <CompanyReportView
+        report={report}
+        current
+        block={null}
+        invalidated={false}
+        onPrepare={vi.fn()}
+        onClear={vi.fn()}
+        onSection={vi.fn()}
+      />,
+    );
+    const summary = html
+      .split('aria-label="Observed raw-close range">')[1]
+      ?.split("</dl>")[0];
+    expect(summary).toContain("90.125");
+    expect(summary).toContain("2025-09-22");
+    expect(summary).toContain("101.5");
+    expect(html).toContain("Loaded request range: One year.");
+    expect(html).toContain("2025-09-20 to 2026-09-20");
+    expect(html).toContain("2026-09-20T00:00:01.000Z");
+    expect(report.note).toBe(note);
+    expect(f.readPrice).toHaveBeenCalledOnce();
+    expect(f.readAnnual).not.toHaveBeenCalled();
+    expect(f.readFilings).not.toHaveBeenCalled();
+  });
   it("starts closed and requires explicit loaded evidence without causing a read", async () => {
     const f = await fixture();
     const html = renderToStaticMarkup(

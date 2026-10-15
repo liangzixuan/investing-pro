@@ -121,8 +121,21 @@ export {
   type PersonalSecAnnualCashHistoryPeriod,
   type PersonalSecAnnualCashHistoryReason,
 } from "./personal-sec-annual-cash-generation";
-export { resolvePersonalSecAnnualLiquidity } from "./personal-sec-annual-liquidity";
-export { resolvePersonalSecAnnualOperatingResults } from "./personal-sec-annual-operating-results";
+export {
+  resolvePersonalSecAnnualLiquidity,
+  resolvePersonalSecAnnualLiquidityHistory,
+  type PersonalSecAnnualLiquidityHistory,
+  type PersonalSecAnnualLiquidityHistoryBalance,
+  type PersonalSecAnnualLiquidityHistoryCalculation,
+  type PersonalSecAnnualLiquidityHistoryReason,
+} from "./personal-sec-annual-liquidity";
+export {
+  resolvePersonalSecAnnualOperatingResults,
+  resolvePersonalSecAnnualOperatingHistory,
+  type PersonalSecAnnualOperatingHistory,
+  type PersonalSecAnnualOperatingHistoryPeriod,
+  type PersonalSecAnnualOperatingHistoryReason,
+} from "./personal-sec-annual-operating-results";
 export { calculatePersonalMarginPercent } from "./personal-margin";
 export { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
 export {

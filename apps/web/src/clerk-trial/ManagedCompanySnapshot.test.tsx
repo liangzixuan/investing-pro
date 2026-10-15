@@ -34,8 +34,11 @@ import {
   operatingRow,
 } from "../features/research/sec-annual-operating-fixture";
 
-async function fixture(packet?: PersonalSecAnnualEvidenceResponseDto) {
-  const readPrice = vi.fn().mockResolvedValue(eodResponse());
+async function fixture(
+  packet?: PersonalSecAnnualEvidenceResponseDto,
+  pricePacket = eodResponse(),
+) {
+  const readPrice = vi.fn().mockResolvedValue(pricePacket);
   const readAnnual = vi.fn().mockResolvedValue(packet ?? (await response()));
   const readFilings = vi
     .fn()
@@ -80,6 +83,31 @@ async function fixture(packet?: PersonalSecAnnualEvidenceResponseDto) {
 }
 
 describe("loaded company snapshot", () => {
+  it.each(["1m", "1y"] as const)(
+    "shares exact observed extrema for a loaded %s packet without another source read",
+    async (range) => {
+      const packet = eodResponse(range);
+      const f = await fixture(undefined, packet);
+      f.price.selectRange(range);
+      await f.price.load();
+      const html = f.html();
+      const summary = html
+        .split('aria-label="Observed raw-close range">')[1]
+        ?.split("</dl>")[0];
+      expect(summary).toContain("Highest reported close · USD");
+      expect(summary).toContain("Lowest reported close · USD");
+      expect(summary).toContain("101.5");
+      expect(summary).toContain("2026-09-19");
+      expect(summary).toContain(range === "1y" ? "90.125" : "100.25");
+      expect(summary).toContain(range === "1y" ? "2025-09-22" : "2026-09-18");
+      expect(html).toContain(
+        `Loaded request range: ${range === "1y" ? "One year" : "One month"}.`,
+      );
+      expect(f.readPrice).toHaveBeenCalledOnce();
+      expect(f.readAnnual).not.toHaveBeenCalled();
+      expect(f.readFilings).not.toHaveBeenCalled();
+    },
+  );
   it("keeps operating results current when net income is missing, without labelling independent measures historical", async () => {
     const f = await fixture(
       await operatingResponse(

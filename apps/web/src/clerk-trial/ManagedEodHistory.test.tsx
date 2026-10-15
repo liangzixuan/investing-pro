@@ -99,6 +99,7 @@ describe("managed close history panel", () => {
       "Load",
       "Refresh",
       "Source and request dates",
+      "Observed raw-close range",
       "managed-eod-previous",
       "managed-eod-origin",
     ])
@@ -546,6 +547,16 @@ describe("company Price range presentation", () => {
     await model.load();
     model.selectRange("1y");
     const html = () => renderToStaticMarkup(<Panel model={model} />);
+    const summary = () =>
+      html()
+        .split('aria-label="Observed raw-close range">')[1]
+        ?.split("</dl>")[0];
+    const monthSummary = summary();
+    expect(monthSummary).toContain("Highest reported close · USD");
+    expect(monthSummary).toContain("Lowest reported close · USD");
+    expect(monthSummary).toContain("100.25");
+    expect(monthSummary).toContain("2026-09-18");
+    expect(monthSummary).toContain("101.5");
     expect(html()).toContain('for="managed-eod-range"');
     expect(html()).toContain(
       '<option value="1y" selected="">One year</option>',
@@ -561,16 +572,21 @@ describe("company Price range presentation", () => {
       }),
     );
     const pending = model.load();
+    expect(summary()).toBe(monthSummary);
     expect(html()).toContain('<select id="managed-eod-range" disabled="">');
     expect(html()).toContain("Loaded request range: One month.");
     model.cancel();
     resolve(eodResponse("1y"));
     await pending;
+    expect(summary()).toBe(monthSummary);
     expect(html()).toContain("Loaded request range: One month.");
     expect(html()).toContain("2026-08-20 to 2026-09-20");
     read.mockResolvedValueOnce(eodResponse("1y"));
     await model.load();
     const year = html();
+    expect(summary()).not.toBe(monthSummary);
+    expect(summary()).toContain("90.125");
+    expect(summary()).toContain("2025-09-22");
     expect(year).toContain("Loaded request range: One year.");
     expect(year).toContain("3 reported closes from 2025-09-22 to 2026-09-19");
     expect(year).toContain("2025-09-20 to 2026-09-20");
@@ -578,5 +594,7 @@ describe("company Price range presentation", () => {
     expect(year).not.toContain("One-month raw closing prices");
     expect(year).toContain("Raw closing prices in USD");
     expect(read).toHaveBeenCalledTimes(3);
+    model.retire();
+    expect(summary()).toBeUndefined();
   });
 });

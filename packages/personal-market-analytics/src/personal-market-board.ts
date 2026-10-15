@@ -93,6 +93,20 @@ export type PersonalRawCloseChangeResult =
       readonly direction: "up" | "down" | "unchanged";
     };
 
+export type PersonalRawCloseExtremaInput = PersonalRawCloseChangeInput;
+export interface PersonalRawCloseExtreme {
+  readonly date: string;
+  readonly close: string;
+  readonly occurrences: number;
+}
+export type PersonalRawCloseExtremaResult =
+  | { readonly status: "unavailable"; readonly reason: "no_observations" }
+  | {
+      readonly status: "available";
+      readonly lowest: PersonalRawCloseExtreme;
+      readonly highest: PersonalRawCloseExtreme;
+    };
+
 // Products of two bounded 64-character decimals remain exact at this precision.
 // Division is rounded only for outputs; displayed percentages never determine rank.
 const ExactDecimal = Decimal.clone({
@@ -222,20 +236,7 @@ export function calculatePersonalRawCloseChange(
   input: PersonalRawCloseChangeInput,
 ): PersonalRawCloseChangeResult {
   try {
-    let previousDate: string | undefined;
-    const rows = denseArray(record(input, ["rows"]).rows, MAXIMUM_BARS).map(
-      (candidate) => {
-        const row = record(candidate, ["date", "close"]);
-        if (
-          typeof row.date !== "string" ||
-          !validDate(row.date) ||
-          (previousDate !== undefined && row.date <= previousDate)
-        )
-          throw new TypeError();
-        previousDate = row.date;
-        return { date: row.date, close: positiveDecimal(row.close) };
-      },
-    );
+    const rows = copyRawCloseRows(record(input, ["rows"]).rows);
     const latest = rows.at(-1);
     const previous = rows.at(-2);
     if (latest === undefined || previous === undefined)
@@ -251,6 +252,35 @@ export function calculatePersonalRawCloseChange(
     });
   } catch {
     throw new TypeError("Invalid raw close change input.");
+  }
+}
+
+/** Complete observed raw-close sample; numeric ties retain the earliest source row. */
+export function calculatePersonalRawCloseExtrema(
+  input: PersonalRawCloseExtremaInput,
+): PersonalRawCloseExtremaResult {
+  try {
+    const rows = copyRawCloseRows(record(input, ["rows"]).rows);
+    const first = rows[0];
+    if (first === undefined)
+      return Object.freeze({
+        status: "unavailable",
+        reason: "no_observations",
+      });
+    let lowest = { ...first, occurrences: 1 };
+    let highest = { ...first, occurrences: 1 };
+    for (const row of rows.slice(1)) {
+      const close = new ExactDecimal(row.close);
+      const lowComparison = close.cmp(lowest.close);
+      const highComparison = close.cmp(highest.close);
+      if (lowComparison < 0) lowest = { ...row, occurrences: 1 };
+      else if (lowComparison === 0) lowest.occurrences += 1;
+      if (highComparison > 0) highest = { ...row, occurrences: 1 };
+      else if (highComparison === 0) highest.occurrences += 1;
+    }
+    return freezeDeep({ status: "available" as const, lowest, highest });
+  } catch {
+    throw new TypeError("Invalid raw close extrema input.");
   }
 }
 
@@ -383,6 +413,20 @@ function copyBars(value: unknown): readonly PersonalMarketBoardBar[] {
       },
       splitFactor: positiveDecimal(bar.splitFactor),
     };
+  });
+}
+function copyRawCloseRows(value: unknown): PersonalRawCloseChangeInput["rows"] {
+  let previousDate: string | undefined;
+  return denseArray(value, MAXIMUM_BARS).map((candidate) => {
+    const row = record(candidate, ["date", "close"]);
+    if (
+      typeof row.date !== "string" ||
+      !validDate(row.date) ||
+      (previousDate !== undefined && row.date <= previousDate)
+    )
+      throw new TypeError();
+    previousDate = row.date;
+    return { date: row.date, close: positiveDecimal(row.close) };
   });
 }
 function positiveDecimal(value: unknown): string {

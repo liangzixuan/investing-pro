@@ -121,6 +121,29 @@ report owner. Rendering and changing a basis send no extra request. Choose
 **Liquidity** in the comparison note action to keep both companies' admitted
 balances and calculations with their original provenance.
 
+### Compare operating results between companies
+
+Three rows show **Operating income**, **Operating revenue basis** and
+**Operating margin** from each loaded Annual report. Income and selected revenue
+retain exact, unscaled USD amounts; the margin reuses the admitted calculation.
+Each value shows its own period and current-use status. Negative operating income
+is valid. Missing net income does not hide available operating evidence.
+
+Use each company's existing revenue selector to choose its operating denominator.
+The selected readable concept appears with that revenue amount. A missing or
+unknown basis stays unavailable until another is chosen explicitly. The selector's
+income-pair availability label refers to revenue and net income; operating values
+have their own eligibility. Changing a basis makes no source request and leaves
+the other company's values, cash and liquidity unchanged.
+
+Operating margin requires positive revenue and operating income from the same
+filing and exact annual period. The companies keep their separate fiscal calendars
+and bases; this table adds no cross-company calculation or ranking. The existing
+source disclosure includes complete operating observations, scan counts and
+calculation references. Refresh, Cancel, retention and full-report navigation use
+the existing report owner. Choose **Operating results** in the note action to
+append both companies' complete chosen evidence with original provenance.
+
 ### Open the full report from a comparison
 
 Each loaded column offers **Open full Annual report** beside its load controls.
@@ -144,7 +167,8 @@ cache or automatic fallback request. Current work records acceptance separately.
 
 ### Keep Annual comparison evidence in a note
 
-Below the comparison, choose **Revenue and net income**, **Cash generation** or **Liquidity**,
+Below the comparison, choose **Revenue and net income**, **Cash generation**,
+**Liquidity** or **Operating results**,
 then choose one of the two listings in **Add Annual comparison to**. The
 destination starts empty and identifies the company, share class and exchange.
 **Add Annual comparison to note draft** appends both companies' selected evidence
@@ -161,6 +185,13 @@ working capital remains valid. Its complete source details and separate balance
 dates are retained. Both companies must have the chosen group's evidence; missing
 income or cash does not block valid liquidity. No field is substituted, rounded
 further or loaded by this action.
+
+Operating results copies each company's operating income, selected revenue and
+checked margin, with separate periods, named concepts and original source clocks.
+Both companies need the full chosen operating evidence. A refused margin leaves
+independent table operands visible but prevents this complete note append. The
+shared formula and rounding explanation appears once. The complete note must fit
+the same limit; evidence is never truncated to make it fit.
 
 Changing a company or replacing a report clears the note destination. Changing
 the revenue basis or evidence group keeps the destination but discards earlier
@@ -395,7 +426,52 @@ freshness and 485-day report policies still apply; valid older balances remain
 readable with historical labels. The existing whole-response lifetime carries
 liquidity through refresh, cancellation, navigation and comparison-to-company
 handoff. The [comparison rows](#compare-liquidity-between-companies) reuse these
-checked balances and calculations. Liquidity history remains outside this scope.
+checked balances and calculations. The following history disclosure has its own
+reported-date admission and coverage limits.
+
+### Reported liquidity history
+
+Managed company Annual adds an initially closed **Reported liquidity history**
+disclosure. It shows the selected report-date balances and up to two earlier
+reported dates from the same filing, newest first. The rows retain exact current
+assets, current liabilities, working capital and current ratio, with reported
+amounts and app calculations labelled separately.
+
+These are observed balance dates. They need not be consecutive fiscal year-ends,
+and a date absent from both source concepts has no marker in the packet. The app
+does not subtract calendar years or borrow periods from income or cash flows.
+Accounting changes and restatements are unadjusted. The display does not establish
+a complete timeline, as-originally-filed history or a forecast.
+
+The selected current pair must be available and within the original load's
+current-use limits. Earlier candidates come from the complete union of both
+concepts' reported dates. A missing, invalid or conflicting raw pair stops history
+at that actual date; accepted newer balances remain readable, and older dates do
+not fill the gap. A selected observation after the report date refuses the new
+history. Original filing metadata, including its report date, remain unchanged
+for every comparative observation.
+
+Negative and zero reported balances remain visible. Working capital and current
+ratio keep their existing calculation rules and show their own refusal reasons.
+A refused calculation does not remove a valid raw pair or stop inspection of
+earlier dates. For example, zero current liabilities can retain working capital
+while the ratio is unavailable.
+
+**History calculation references** lists all agreeing input IDs for each date.
+Complete observations stay in **Liquidity sources and calculation inputs**.
+Original source captures, cutoff and completion remain visible. Opening, closing
+or scrolling history makes no request or saved change and grants no renewed
+freshness qualification. The labelled table supports keyboard scrolling inside
+the available width.
+
+Failed refresh and Cancel retain the accepted packet; discarded late responses
+cannot replace it. A successful refresh replaces the whole packet, and leaving
+the company or retiring the session clears it. Prepared report JSON keeps the
+complete admitted rows and reproduces the captured history after the live packet
+changes. Current note actions, snapshot and comparison scope stay unchanged.
+No source request, response field or schema version is added. Implementation,
+browser, native and publication acceptance remain separate in
+[Current work](CURRENT_WORK.md).
 
 ### Add liquidity to a note
 
@@ -452,8 +528,9 @@ shared request, source-body, response, deadline and cancellation limits stay fix
 The loaded company snapshot and prepared research report reuse these admitted
 results. The report's existing `1.0.0` document contains the complete Annual packet,
 including operating observations and resolutions. Preparation does not renew dates.
-Watchlist Annual comparison retains its named income, cash and liquidity groups;
-its full-report handoff carries the complete operating packet without a new read.
+Watchlist Annual comparison includes its own operating rows and chosen-basis note
+group alongside income, cash and liquidity. Its full-report handoff carries the
+complete operating packet without a new read.
 
 **Add operating results to note draft** under a chosen basis appends its exact
 operating income, revenue, margin, period, filing link and original source dates
@@ -463,9 +540,48 @@ basis. Pending loads, stale choices, duplicate excerpts and notes above the comp
 evidence with its previous-report qualification. Review the full note and use the
 existing explicit whole-watchlist Save. No source request or save occurs on append.
 
-This increment covers the selected annual period. Operating history, growth,
-adjusted earnings, peer ranking and full financial-statement coverage remain open.
+Current operating values and note excerpts cover the selected annual period.
+The managed history disclosure below provides bounded same-filing comparatives.
+Growth, adjusted earnings, peer ranking and full financial-statement coverage remain open.
 Synthetic acceptance does not establish current SEC coverage for the real cohort.
+
+### Read reported operating history
+
+In managed company Annual, open **Reported operating history** below a named
+operating revenue basis. Each disclosure starts closed and uses the loaded
+filing. It shows up to three adjacent annual periods, newest first: exact,
+unscaled USD operating income and revenue, followed by operating margin as a
+labelled app calculation. The selected revenue concept stays the same across
+the table. Different bases can have different available periods.
+
+History requires an available current operating margin within the existing
+current-use limits at that load. Net income is not required. Negative or zero
+operating income is valid; each margin requires positive revenue from the same
+accession and exact period. A refused shared income scan cannot supply revenue.
+Independent current values remain readable when history is unavailable.
+
+The next period must end one day before the newer period starts and meet the
+existing 335–395-day annual rules. Missing, invalid or conflicting inputs stop
+the sequence and leave accepted newer periods visible. An older year cannot fill
+a gap. No other concept, currency or accession is substituted. Earlier periods
+retain the selected filing's original report date and metadata; they are
+historical comparatives without a new current-use claim. Restatements and
+accounting changes are unadjusted, so this is not as-originally-filed history or
+a forecast.
+
+**History calculation references** lists all agreeing input identifiers for each
+period. Their complete observations remain in **Operating sources and calculation
+inputs**. The table keeps the original completion time and uses the same checked
+margin formula and rounding as current operating results. Opening disclosures
+makes no request or saved change. The narrow layout keeps the table in a labelled,
+keyboard-focusable horizontal scroll region.
+
+Failed refresh and Cancel retain the previous packet and its dates. A successful
+replacement uses the new packet; closing the company visit or retiring the
+session clears it. The complete prepared-report JSON preserves the comparative
+observations and original clocks so the same history can be reproduced. Snapshot,
+comparison and current note excerpts retain their current-period scope. Annual
+schema/definition stay `4.0.0`, and the report document stays `1.0.0`.
 
 ### Version boundary
 

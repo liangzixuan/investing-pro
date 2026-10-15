@@ -31,6 +31,27 @@ range change invalidates an existing prepared report through its current source
 state guard, even before a read. Preparing again can include the still-loaded
 packet, labelled with its actual range. This makes no source request or saved change.
 
+## Read the observed close range
+
+Company Price, the loaded snapshot and a prepared report show **Highest reported
+close · USD** and **Lowest reported close · USD**. Each value keeps its exact
+reported decimal and date. The calculation uses every row in the loaded packet,
+including rows before the latest 252 observations. It adds no source request.
+
+The summary names the actual loaded request range, the number of reported closes
+and the first and last observed dates. Equal closes use the earliest date and
+state how many dates share that value. With one observation, both values refer
+to that same row. Missing trading dates may change the extremes. These raw
+closes are unadjusted for splits or dividends and are not intraday highs or lows.
+
+Staging another range, a pending refresh, Cancel and recoverable failures keep
+the original summary with its packet. Replacement or removal of the packet
+updates or removes the summary. The report document keeps its existing format
+and complete exact source rows, so the same calculation can reproduce the range.
+It does not store separate derived extrema.
+
+## Retain or clear loaded history
+
 The company visit renders either Annual or Price. Validated price rows stay in
 that visit's memory when switching sections. An explicit refresh keeps the last validated history
 visible while it runs, after Cancel, during a checked cooldown, and after a typed

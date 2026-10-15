@@ -45,13 +45,21 @@ const reasons: Record<PersonalSecAnnualLiquidityUnavailableReason, string> = {
     "Current ratio requires current liabilities greater than zero.",
 };
 
+export function annualLiquidityUnavailableReasonText(
+  reason: PersonalSecAnnualLiquidityUnavailableReason,
+): string {
+  return reasons[reason];
+}
+
 export function SecAnnualLiquidity({
   response,
   liquidityAction,
+  history,
   headingTarget,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly liquidityAction?: ReactNode;
+  readonly history?: ReactNode;
   readonly headingTarget?: {
     readonly id: string;
     readonly ref: Ref<HTMLHeadingElement>;
@@ -119,6 +127,7 @@ export function SecAnnualLiquidity({
         liabilities.
       </p>
       {liquidityAction}
+      {history}
       <details className="sec-quarterly-row-details sec-annual-liquidity-source">
         <summary>Liquidity sources and calculation inputs</summary>
         <SecAnnualLiquiditySourceBody response={response} />

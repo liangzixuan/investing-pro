@@ -9,10 +9,13 @@ import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
 import { ManagedWatchlistAnnualComparison as Model } from "./managed-watchlist-annual-comparison";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
+import { SecAnnualOperatingSourceBody } from "../features/research/SecAnnualOperatingResults";
 import {
   annualComparisonMemberships as members,
   annualComparisonCashRows as cashRows,
   annualComparisonLiquidityRows as liquidityRows,
+  annualComparisonOperatingRows as operatingRows,
+  annualComparisonRows as incomeRows,
   annualComparisonResponse as packet,
 } from "./annual-comparison-fixture";
 
@@ -79,6 +82,7 @@ type ControlProps = {
   "aria-describedby"?: string;
   "data-annual-comparison-cash-source"?: string;
   "data-annual-comparison-liquidity-source"?: string;
+  "data-annual-comparison-operating-source"?: string;
   onChange?: React.ChangeEventHandler<HTMLSelectElement>;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
 };
@@ -495,7 +499,10 @@ describe("watchlist annual comparison controls and presentation", () => {
     ).toEqual([
       [concept, "Customer contract revenue, excluding assessed tax"],
       ["Revenues", "Revenue"],
-      ["SalesRevenueNet", "Net sales revenue · unavailable in this report"],
+      [
+        "SalesRevenueNet",
+        "Net sales revenue · revenue/net-income pair unavailable",
+      ],
     ]);
     f.read.mockResolvedValueOnce(await packet("left"));
     await f.load("left");
@@ -503,7 +510,7 @@ describe("watchlist annual comparison controls and presentation", () => {
     expect(control(f.render(), "select", "-left-basis").props.value).toBe(
       concept,
     );
-    expect(replaced).toContain("unavailable in this report");
+    expect(replaced).toContain("revenue/net-income pair unavailable");
     expect(replaced).toContain("Revenue and net income unavailable");
     expect(replaced).toContain(
       `Selected SEC revenue concept: <code>${concept}</code>`,
@@ -552,7 +559,7 @@ describe("watchlist annual comparison controls and presentation", () => {
     expect(
       textContent(control(tree, "p", "-left-selected-basis").props.children),
     ).toBe(`Selected basis: ${key}`);
-    expect(html).toContain(`${key} · unavailable in this report`);
+    expect(html).toContain(`${key} · revenue/net-income pair unavailable`);
     expect(html).toContain(`Selected SEC revenue concept: <code>${key}</code>`);
     expect(html).toContain("Revenue and net income unavailable");
     expect(
@@ -681,7 +688,7 @@ describe("cash in the existing annual comparison", () => {
     }
     expect(
       html.split("<tbody>")[1]!.split("</tbody>")[0]!.match(/<tr/gu),
-    ).toHaveLength(13);
+    ).toHaveLength(16);
     expect(
       html.match(
         /It does not adjust for leases, acquisitions or other investing cash flows\./gu,
@@ -1316,5 +1323,357 @@ describe("liquidity in the existing annual comparison", () => {
     expect(f.read).toHaveBeenCalledTimes(4);
     expect(f.noteActions.append).not.toHaveBeenCalled();
     expect(f.draft).toEqual(f.originalDraft);
+  });
+});
+
+const operatingMetrics = [
+  "operatingIncome",
+  "revenue",
+  "operatingMargin",
+] as const;
+function operatingRowHtml(
+  html: string,
+  metric: (typeof operatingMetrics)[number],
+) {
+  return html
+    .split(`data-annual-comparison-operating="${metric}"`)[1]!
+    .split("</tr>")[0]!;
+}
+function operatingAmounts(
+  html: string,
+  metric: (typeof operatingMetrics)[number],
+) {
+  return Array.from(
+    operatingRowHtml(html, metric).matchAll(
+      /class="sec-annual-liquidity-amount">([^<]+)</gu,
+    ),
+    (match) => match[1],
+  );
+}
+function chooseOperatingBasis(
+  f: ReturnType<typeof fixture>,
+  side: "left" | "right",
+  value: string,
+) {
+  control(f.render(), "select", `-${side}-basis`).props.onChange!({
+    currentTarget: { value },
+  } as React.ChangeEvent<HTMLSelectElement>);
+}
+
+describe("operating results in the existing annual comparison", () => {
+  it("keeps three explicitly labelled rows unloaded without reads or note actions", () => {
+    const f = fixture();
+    const html = renderToStaticMarkup(f.render());
+    for (const metric of operatingMetrics)
+      expect(
+        operatingRowHtml(html, metric).match(/<td>Not loaded<\/td>/gu),
+      ).toHaveLength(2);
+    expect(html).toContain("Operating income<small>Reported · USD</small>");
+    expect(html).toContain(
+      "Operating revenue basis<small>Reported · USD</small>",
+    );
+    expect(html).toContain(
+      "Operating margin<small>App calculation · %</small>",
+    );
+    expect(f.read).not.toHaveBeenCalled();
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.draft).toEqual(f.originalDraft);
+  });
+
+  it("shows independent exact operating values and per-company periods without either net-income pair", async () => {
+    const f = fixture();
+    const left = await packet("left", {
+      rows: incomeRows("left").filter((row) => row.metric === "revenue"),
+      operatingRows: operatingRows("left"),
+    });
+    const right = await packet("right", {
+      rows: incomeRows("right").filter((row) => row.metric === "revenue"),
+      operatingRows: operatingRows("right"),
+    });
+    f.read.mockResolvedValueOnce(left).mockResolvedValueOnce(right);
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    await f.load("left");
+    chooseOperatingBasis(f, "left", "Revenues");
+    const single = renderToStaticMarkup(f.render());
+    for (const metric of operatingMetrics)
+      expect(
+        operatingRowHtml(single, metric).match(/<td>Not loaded<\/td>/gu),
+      ).toHaveLength(1);
+    await f.load("right");
+    chooseOperatingBasis(f, "right", "SalesRevenueNet");
+    const tree = f.render();
+    const html = renderToStaticMarkup(tree);
+    expect(operatingAmounts(html, "operatingIncome")).toEqual([
+      "-250.125",
+      "125.25",
+    ]);
+    expect(operatingAmounts(html, "revenue")).toEqual(["1000", "750"]);
+    expect(operatingAmounts(html, "operatingMargin")).toEqual([
+      "-25.01%",
+      "16.7%",
+    ]);
+    expect(operatingRowHtml(html, "revenue")).toContain(
+      "<small>Revenue</small>",
+    );
+    expect(operatingRowHtml(html, "revenue")).toContain(
+      "<small>Net sales revenue</small>",
+    );
+    for (const metric of operatingMetrics) {
+      expect(operatingRowHtml(html, metric)).toContain(
+        "2025-01-01 to 2025-12-31",
+      );
+      expect(operatingRowHtml(html, metric)).toContain(
+        "2024-07-01 to 2025-06-30",
+      );
+      expect(
+        operatingRowHtml(html, metric).match(
+          /Within current-use limits at this load\./gu,
+        ),
+      ).toHaveLength(2);
+    }
+    expect(html).toContain("Revenue and net income unavailable.");
+    const leftOptions = textContent(
+      control(tree, "select", "-left-basis").props.children,
+    );
+    expect(leftOptions).toContain(
+      "Revenue · revenue/net-income pair unavailable",
+    );
+    for (const [side, response] of [
+      ["left", left],
+      ["right", right],
+    ] as const) {
+      const source = walk(tree).find(
+        (node) =>
+          node.props["data-annual-comparison-operating-source"] === side,
+      );
+      expect(source).toBeDefined();
+      expect(renderToStaticMarkup(source)).toContain(
+        renderToStaticMarkup(
+          <SecAnnualOperatingSourceBody response={response} />,
+        ),
+      );
+      for (const id of response.evidence.operatingResults.operatingIncome.observations.map(
+        (row) => row.id,
+      ))
+        expect(renderToStaticMarkup(source)).toContain(id);
+    }
+    expect(html).not.toContain("<details open");
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.draft).toEqual(f.originalDraft);
+  });
+
+  it("changes only the selected column's revenue and margin without replacing independent operands", async () => {
+    const f = fixture();
+    f.read
+      .mockResolvedValueOnce(
+        await packet("left", {
+          mode: "multiple-bases",
+          operatingRows: operatingRows(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        await packet("right", { operatingRows: operatingRows("right") }),
+      );
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    await f.load("left");
+    await f.load("right");
+    chooseOperatingBasis(f, "left", "Revenues");
+    const before = renderToStaticMarkup(f.render());
+    chooseOperatingBasis(
+      f,
+      "left",
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+    );
+    const after = renderToStaticMarkup(f.render());
+    expect(operatingAmounts(before, "revenue")).toEqual(["1000", "750"]);
+    expect(operatingAmounts(after, "revenue")).toEqual(["500", "750"]);
+    expect(operatingAmounts(after, "operatingMargin")).toEqual([
+      "-50.03%",
+      "16.7%",
+    ]);
+    expect(operatingRowHtml(after, "revenue")).toContain(
+      "Customer contract revenue, excluding assessed tax",
+    );
+    expect(operatingRowHtml(after, "operatingIncome")).toBe(
+      operatingRowHtml(before, "operatingIncome"),
+    );
+    for (const metric of cashMetrics)
+      expect(cashRowHtml(after, metric)).toBe(cashRowHtml(before, metric));
+    for (const metric of liquidityMetrics)
+      expect(liquidityRowHtml(after, metric)).toBe(
+        liquidityRowHtml(before, metric),
+      );
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+  });
+
+  it.each(["SalesRevenueNet", "UnknownRetainedRevenueConcept"])(
+    "refuses selected %s without fallback while keeping reported operating income",
+    async (basis) => {
+      const f = fixture();
+      f.read.mockResolvedValueOnce(
+        await packet("left", { operatingRows: operatingRows() }),
+      );
+      f.choose("left", members.left.listingId);
+      await f.load("left");
+      chooseOperatingBasis(f, "left", basis);
+      const html = renderToStaticMarkup(f.render());
+      expect(control(f.render(), "select", "-left-basis").props.value).toBe(
+        basis,
+      );
+      expect(operatingAmounts(html, "operatingIncome")).toEqual(["-250.125"]);
+      expect(operatingAmounts(html, "revenue")).toEqual([]);
+      expect(operatingAmounts(html, "operatingMargin")).toEqual([]);
+      expect(operatingRowHtml(html, "operatingMargin")).toContain(
+        "Unavailable.",
+      );
+      expect(f.read).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps a disappeared operating basis selected and refuses replacement values without fallback", async () => {
+    const f = fixture();
+    const concept = "RevenueFromContractWithCustomerExcludingAssessedTax";
+    f.read.mockResolvedValueOnce(
+      await packet("left", {
+        mode: "multiple-bases",
+        operatingRows: operatingRows(),
+      }),
+    );
+    f.choose("left", members.left.listingId);
+    await f.load("left");
+    chooseOperatingBasis(f, "left", concept);
+    const before = renderToStaticMarkup(f.render());
+    expect(operatingAmounts(before, "revenue")).toEqual(["500"]);
+    expect(operatingAmounts(before, "operatingMargin")).toEqual(["-50.03%"]);
+    f.read.mockResolvedValueOnce(
+      await packet("left", { operatingRows: operatingRows() }),
+    );
+    await f.load("left");
+    const after = renderToStaticMarkup(f.render());
+    expect(control(f.render(), "select", "-left-basis").props.value).toBe(
+      concept,
+    );
+    expect(operatingAmounts(after, "operatingIncome")).toEqual(["-250.125"]);
+    expect(operatingAmounts(after, "revenue")).toEqual([]);
+    expect(operatingAmounts(after, "operatingMargin")).toEqual([]);
+    expect(operatingRowHtml(after, "revenue")).toContain(
+      "No observation covers the selected annual filing&#x27;s period.",
+    );
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.draft).toEqual(f.originalDraft);
+  });
+
+  it.each(["0", "-1"])(
+    "preserves reported revenue %s while refusing its margin",
+    async (value) => {
+      const f = fixture();
+      f.read.mockResolvedValueOnce(
+        await packet("left", {
+          rows: incomeRows().map((row) =>
+            row.metric === "revenue" ? { ...row, value } : row,
+          ),
+          operatingRows: operatingRows(),
+        }),
+      );
+      f.choose("left", members.left.listingId);
+      await f.load("left");
+      chooseOperatingBasis(f, "left", "Revenues");
+      const html = renderToStaticMarkup(f.render());
+      expect(operatingAmounts(html, "revenue")).toEqual([value]);
+      expect(operatingAmounts(html, "operatingIncome")).toEqual(["-250.125"]);
+      expect(operatingAmounts(html, "operatingMargin")).toEqual([]);
+      expect(operatingRowHtml(html, "operatingMargin")).toContain(
+        "Operating margin requires revenue greater than zero.",
+      );
+    },
+  );
+
+  it("keeps independent operands and distinct refusals for conflicting income and mismatched periods", async () => {
+    const f = fixture();
+    const leftRows = operatingRows();
+    f.read
+      .mockResolvedValueOnce(
+        await packet("left", {
+          operatingRows: [
+            ...leftRows,
+            {
+              ...leftRows[0]!,
+              value: "-251",
+              sourceLocator: "/facts/us-gaap/OperatingIncomeLoss/units/USD/1",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        await packet("right", {
+          operatingRows: operatingRows("right").map((row) => ({
+            ...row,
+            startDate: "2024-07-02",
+            durationDays: 364,
+          })),
+        }),
+      );
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    await f.load("left");
+    await f.load("right");
+    const html = renderToStaticMarkup(f.render());
+    expect(operatingAmounts(html, "revenue")).toEqual(["1000", "750"]);
+    expect(operatingAmounts(html, "operatingIncome")).toEqual(["125.25"]);
+    expect(operatingRowHtml(html, "operatingIncome")).toContain(
+      "The source contains conflicting reported amounts.",
+    );
+    expect(operatingRowHtml(html, "operatingIncome")).toContain(
+      "2024-07-02 to 2025-06-30",
+    );
+    expect(operatingAmounts(html, "operatingMargin")).toEqual([]);
+    expect(operatingRowHtml(html, "operatingMargin")).toContain(
+      "The reported amounts cover different periods.",
+    );
+  });
+
+  it("keeps historical eligibility on each amount and preserves 64-character reported operands", async () => {
+    const f = fixture();
+    const exact = `-1.${"0".repeat(60)}1`;
+    const revenue = `1000.${"0".repeat(58)}1`;
+    expect(exact).toHaveLength(64);
+    f.read
+      .mockResolvedValueOnce(
+        await packet("left", {
+          mode: "exact-decimal",
+          cutoffAt: "2028-09-20T00:00:00.000Z",
+          operatingRows: operatingRows().map((row) => ({
+            ...row,
+            value: exact,
+          })),
+        }),
+      )
+      .mockResolvedValueOnce(
+        await packet("right", { operatingRows: operatingRows("right") }),
+      );
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    await f.load("left");
+    await f.load("right");
+    const html = renderToStaticMarkup(f.render());
+    expect(operatingAmounts(html, "operatingIncome")).toEqual([
+      exact,
+      "125.25",
+    ]);
+    expect(operatingAmounts(html, "revenue")).toEqual([revenue, "750"]);
+    for (const metric of operatingMetrics) {
+      expect(operatingRowHtml(html, metric)).toContain(
+        "Historical value; outside current-use limits at this load.",
+      );
+      expect(operatingRowHtml(html, metric)).toContain(
+        "Within current-use limits at this load.",
+      );
+    }
+    expect(f.read).toHaveBeenCalledTimes(2);
   });
 });

@@ -7,13 +7,18 @@ import {
   type PersonalSecAnnualOperatingMetricEvidenceDto,
   type PersonalSecAnnualOperatingObservationDto,
   type PersonalSecAnnualOperatingResolutionInput,
+  type PersonalSecAnnualRevenueConcept,
   type PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
 import { describe, expect, it } from "vitest";
 import { calculatePersonalMarginPercent } from "./personal-margin";
 import { resolvePersonalSecAnnualEvidence } from "./personal-sec-annual-evidence";
-import { resolvePersonalSecAnnualOperatingResults as resolve } from "./personal-sec-annual-operating-results";
+import {
+  resolvePersonalSecAnnualOperatingResults as resolve,
+  resolvePersonalSecAnnualOperatingHistory as history,
+  type PersonalSecAnnualOperatingHistoryReason,
+} from "./personal-sec-annual-operating-results";
 
 type Input = {
   -readonly [
@@ -822,4 +827,555 @@ describe("shared exact margin arithmetic", () => {
   it.each(["0", "-0.0", "-1"])("rejects nonpositive revenue %s", (value) => {
     expect(() => calculatePersonalMarginPercent("1", value)).toThrow(TypeError);
   });
+});
+
+function comparativeRows(count = 3) {
+  return Array.from({ length: count }, (_, index) => {
+    const year = 2025 - index;
+    return operating(index + 1, {
+      startDate: `${year}-01-01`,
+      endDate: `${year}-12-31`,
+      durationDays: year === 2024 ? 366 : 365,
+      value: String(15 - index * 5),
+    });
+  });
+}
+function comparativeRevenue(count = 3) {
+  return comparativeRows(count).map((row, index) =>
+    revenue(101 + index, {
+      startDate: row.startDate,
+      endDate: row.endDate,
+      durationDays: row.durationDays,
+      value: String(100 - index * 20),
+    }),
+  );
+}
+function historyInput(count = 3) {
+  return input(comparativeRows(count), comparativeRevenue(count));
+}
+function availableHistory(
+  packet: Input,
+  concept: PersonalSecAnnualRevenueConcept = "Revenues",
+) {
+  const result = history(packet, concept);
+  if (result.status !== "available")
+    throw new Error(`History refused: ${result.reason}`);
+  return result;
+}
+
+describe("Reported annual operating history", () => {
+  it.each([1, 2, 3, 4])(
+    "owns at most three adjacent periods from %i supplied years without changing current resolution or input",
+    (count) => {
+      const packet = historyInput(count);
+      const before = JSON.stringify(packet);
+      const currentBefore = JSON.stringify(resolve(packet));
+      expect(
+        resolvePersonalSecAnnualEvidence(packet).selectedReportPairEligible,
+      ).toBe(false);
+      const result = availableHistory(packet);
+      expect(result).toMatchObject({
+        concept: "Revenues",
+        accessionNumber: accession,
+        stoppedReason: count < 3 ? "no_report_period" : null,
+      });
+      expect(result.periods).toEqual(
+        [
+          {
+            startDate: "2025-01-01",
+            endDate: "2025-12-31",
+            operatingIncome: "15",
+            revenue: "100",
+            operatingMarginPercent: "15",
+            observationIds: [operating(1).id, revenue(101).id],
+          },
+          {
+            startDate: "2024-01-01",
+            endDate: "2024-12-31",
+            operatingIncome: "10",
+            revenue: "80",
+            operatingMarginPercent: "12.5",
+            observationIds: [operating(2).id, revenue(102).id],
+          },
+          {
+            startDate: "2023-01-01",
+            endDate: "2023-12-31",
+            operatingIncome: "5",
+            revenue: "60",
+            operatingMarginPercent: "8.33",
+            observationIds: [operating(3).id, revenue(103).id],
+          },
+        ].slice(0, count),
+      );
+      expect(Object.isFrozen(result)).toBe(true);
+      expect(Object.isFrozen(result.periods)).toBe(true);
+      for (const period of result.periods) {
+        expect(Object.isFrozen(period)).toBe(true);
+        expect(Object.isFrozen(period.observationIds)).toBe(true);
+        expect(Object.hasOwn(period, "currentUseEligible")).toBe(false);
+      }
+      expect(JSON.stringify(packet)).toBe(before);
+      expect(JSON.stringify(resolve(packet))).toBe(currentBefore);
+      expect(Object.isFrozen(packet)).toBe(false);
+      expect(
+        Object.isFrozen(packet.operatingResults.operatingIncome.observations),
+      ).toBe(false);
+    },
+  );
+
+  it("keeps all named bases and their different history lengths independent without net income", () => {
+    const rows = PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.flatMap(
+      (concept, basis) =>
+        comparativeRevenue(3 - basis).map((row, index) => ({
+          ...row,
+          id: revenue(101 + basis * 10 + index).id,
+          concept,
+          value: String(100 * (basis + 1)),
+        })),
+    );
+    const packet = input(comparativeRows(), rows);
+    expect(packet.observations.every((row) => row.metric === "revenue")).toBe(
+      true,
+    );
+    const results = PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((concept) =>
+      availableHistory(packet, concept),
+    );
+    expect(results.map((result) => result.periods.length)).toEqual([3, 2, 1]);
+    expect(
+      results.map((result) => result.periods[0]!.operatingMarginPercent),
+    ).toEqual(["15", "7.5", "5"]);
+    expect(results.map((result) => result.concept)).toEqual(
+      PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
+    );
+    expect(history(historyInput(), "SalesRevenueNet")).toEqual({
+      status: "unavailable",
+      reason: "no_report_period",
+    });
+    expect(() =>
+      history(packet, "UnknownRevenue" as PersonalSecAnnualRevenueConcept),
+    ).toThrow(TypeError);
+  });
+
+  it.each(["operating", "revenue"] as const)(
+    "stops at a missing %s period without borrowing the older year",
+    (side) => {
+      const result = availableHistory(
+        input(
+          comparativeRows().filter(
+            (_, index) => side !== "operating" || index !== 1,
+          ),
+          comparativeRevenue().filter(
+            (_, index) => side !== "revenue" || index !== 1,
+          ),
+        ),
+      );
+      expect(result.periods).toHaveLength(1);
+      expect(result.stoppedReason).toBe("no_report_period");
+    },
+  );
+
+  it("keeps two accepted periods when the third revenue is absent", () => {
+    const result = availableHistory(
+      input(comparativeRows(), comparativeRevenue(2)),
+    );
+    expect(result.periods).toHaveLength(2);
+    expect(result.stoppedReason).toBe("no_report_period");
+  });
+
+  it("accepts adjacent 53-week fiscal periods while preserving the filing's original report date", () => {
+    const periods = [
+      { startDate: "2024-12-29", endDate: "2025-12-27", durationDays: 364 },
+      { startDate: "2023-12-24", endDate: "2024-12-28", durationDays: 371 },
+    ];
+    const op = comparativeRows(2).map((row, index) => ({
+      ...row,
+      ...periods[index]!,
+      filing: { ...row.filing, reportDate: "2025-12-27" },
+    }));
+    const revenues = comparativeRevenue(2).map((row, index) => ({
+      ...row,
+      ...periods[index]!,
+      filing: { ...row.filing, reportDate: "2025-12-27" },
+    }));
+    const packet = input(op, revenues);
+    if (packet.target.status !== "target") throw new Error();
+    packet.target = { ...packet.target, reportDate: "2025-12-27" };
+    const before = structuredClone(packet);
+    expect(
+      availableHistory(packet).periods.map(({ startDate, endDate }) => ({
+        startDate,
+        endDate,
+      })),
+    ).toEqual(
+      periods.map(({ startDate, endDate }) => ({ startDate, endDate })),
+    );
+    expect(packet).toEqual(before);
+  });
+
+  it("uses exact decimal equality and preserves every agreeing prior observation reference", () => {
+    const op = comparativeRows();
+    op[1] = { ...op[1]!, value: "9007199254740993.005" };
+    const revenues = comparativeRevenue();
+    revenues[1] = { ...revenues[1]!, value: "100" };
+    const result = availableHistory(
+      input(
+        [
+          ...op,
+          { ...op[1], id: operating(9).id, value: "9007199254740993.0050" },
+        ],
+        [...revenues, { ...revenues[1], id: revenue(109).id, value: "100.00" }],
+      ),
+    );
+    expect(result.periods[1]).toMatchObject({
+      operatingIncome: "9007199254740993.005",
+      revenue: "100",
+      operatingMarginPercent: "9007199254740993.01",
+      observationIds: [
+        operating(2).id,
+        operating(9).id,
+        revenue(102).id,
+        revenue(109).id,
+      ],
+    });
+  });
+
+  it.each([
+    ["-1", "32", "-3.13"],
+    ["-0.000", "3", "0"],
+    ["-0.00001", "100", "0"],
+    [
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+      `${"9".repeat(64)}${"0".repeat(64)}`,
+    ],
+  ])(
+    "retains prior %s / %s with exact half-up arithmetic and no growth inference",
+    (value, denominator, expected) => {
+      const op = comparativeRows();
+      op[1] = { ...op[1]!, value };
+      const revenues = comparativeRevenue();
+      revenues[1] = { ...revenues[1]!, value: denominator };
+      const result = availableHistory(input(op, revenues));
+      expect(result.periods[1]!.operatingMarginPercent).toBe(expected);
+      expect(result.periods[1]!.operatingIncome).toBe(
+        value === "-0.000" ? "0" : value,
+      );
+      expect(Object.keys(result.periods[1]!)).toEqual([
+        "startDate",
+        "endDate",
+        "operatingIncome",
+        "revenue",
+        "operatingMarginPercent",
+        "observationIds",
+      ]);
+    },
+  );
+
+  it.each(["0", "-1"])(
+    "stops at prior nonpositive revenue %s and retains current resolution",
+    (value) => {
+      const revenues = comparativeRevenue();
+      revenues[1] = { ...revenues[1]!, value };
+      const packet = input(comparativeRows(), revenues);
+      const current = resolve(packet);
+      expect(availableHistory(packet)).toMatchObject({
+        periods: [expect.anything()],
+        stoppedReason: "nonpositive_revenue",
+      });
+      expect(resolve(packet)).toEqual(current);
+    },
+  );
+
+  it.each([
+    [{ form: "10-K/A" }, "unsupported_form"],
+    [{ filingFocusPeriod: "Q4" }, "missing_or_non_FY_focus"],
+    [{ startDate: null, durationDays: null }, "invalid_annual_period"],
+    [{ startDate: "2024-02-02", durationDays: 334 }, "invalid_annual_period"],
+    [{ startDate: "2023-12-02", durationDays: 396 }, "invalid_annual_period"],
+    [{ durationDays: 365 }, "invalid_annual_period"],
+    [
+      { filing: { ...operating().filing, status: "metadata_conflict" } },
+      "filing_unmatched_or_conflicted",
+    ],
+    [
+      { filing: { ...operating().filing, reportDate: "2024-12-31" } },
+      "report_end_mismatch",
+    ],
+    [
+      {
+        filing: {
+          ...operating().filing,
+          sourceUrl: "https://example.test/filing",
+        },
+      },
+      "filing_unmatched_or_conflicted",
+    ],
+    [
+      {
+        filing: {
+          ...operating().filing,
+          acceptedAt: "2026-02-01T17:00:00.000Z",
+        },
+      },
+      "filing_unmatched_or_conflicted",
+    ],
+  ] satisfies readonly (readonly [
+    Partial<Row>,
+    PersonalSecAnnualOperatingHistoryReason,
+  ])[])(
+    "stops at refused prior metadata %# without rewriting the filing",
+    (changes, reason) => {
+      const op = comparativeRows();
+      op[1] = { ...op[1]!, ...changes };
+      const result = availableHistory(input(op, comparativeRevenue()));
+      expect(result.periods).toHaveLength(1);
+      expect(result.stoppedReason).toBe(reason);
+    },
+  );
+
+  it.each(["operating", "revenue"] as const)(
+    "does not discard an invalid same-end %s row to select a valid alternative",
+    (side) => {
+      const op = comparativeRows();
+      const revenues = comparativeRevenue();
+      if (side === "operating")
+        op.push({ ...op[1]!, id: operating(9).id, durationDays: 90 });
+      else
+        revenues.push({
+          ...revenues[1]!,
+          id: revenue(109).id,
+          durationDays: 90,
+        });
+      expect(availableHistory(input(op, revenues))).toMatchObject({
+        periods: [expect.anything()],
+        stoppedReason: "invalid_annual_period",
+      });
+    },
+  );
+
+  it.each(["operating", "revenue"] as const)(
+    "stops on conflicting prior %s values or annual starts",
+    (side) => {
+      for (const change of [
+        { value: "999" },
+        { startDate: "2024-01-02", durationDays: 365 },
+      ]) {
+        const op = comparativeRows();
+        const revenues = comparativeRevenue();
+        if (side === "operating")
+          op.push({ ...op[1]!, id: operating(9).id, ...change });
+        else revenues.push({ ...revenues[1]!, id: revenue(109).id, ...change });
+        expect(availableHistory(input(op, revenues))).toMatchObject({
+          periods: [expect.anything()],
+          stoppedReason:
+            "value" in change ? "ambiguous_value" : "ambiguous_period",
+        });
+      }
+    },
+  );
+
+  it("refuses individually valid prior operands with unequal periods", () => {
+    const revenues = comparativeRevenue();
+    revenues[1] = {
+      ...revenues[1]!,
+      startDate: "2024-01-02",
+      durationDays: 365,
+    };
+    expect(availableHistory(input(comparativeRows(), revenues))).toMatchObject({
+      periods: [expect.anything()],
+      stoppedReason: "period_mismatch",
+    });
+  });
+
+  it.each([
+    "duplicate operating ID",
+    "cross-metric ID",
+    "foreign accession",
+    "invalid coverage",
+  ])(
+    "revalidates the complete packet for %s before returning any history",
+    (kind) => {
+      const op = comparativeRows();
+      if (kind === "duplicate operating ID")
+        op[1] = { ...op[1]!, id: op[0]!.id };
+      if (kind === "cross-metric ID")
+        op[1] = { ...op[1]!, id: revenue(101).id };
+      if (kind === "foreign accession")
+        op[1] = { ...op[1]!, accessionNumber: "0000999999-25-000001" };
+      const packet = input(op, comparativeRevenue());
+      if (kind === "invalid coverage") {
+        const m = packet.operatingResults.operatingIncome;
+        if (m.scan.status !== "available") throw new Error();
+        packet.operatingResults = {
+          operatingIncome: {
+            ...m,
+            scan: { ...m.scan, coverage: { ...m.scan.coverage, returned: 2 } },
+          },
+        };
+      }
+      expect(() => history(packet, "Revenues")).toThrow(TypeError);
+    },
+  );
+
+  it.each(["invalid_response", "candidate_limit"] as const)(
+    "preserves the independent operating scan refusal %s",
+    (status) => {
+      const packet = historyInput();
+      packet.operatingResults = {
+        operatingIncome: {
+          scan: { status, absence: null, coverage: null },
+          observations: [],
+        },
+      };
+      expect(history(packet, "Revenues")).toEqual({
+        status: "unavailable",
+        reason: status,
+      });
+      expect(resultMargin(packet).revenue.status).toBe("available");
+    },
+  );
+
+  it("admits 100 selected operating rows and refuses a complete 101-row overflow", () => {
+    const op = comparativeRows();
+    const atCap = input(
+      [
+        ...op,
+        ...Array.from({ length: 97 }, (_, i) => ({
+          ...op[1]!,
+          id: operating(1001 + i).id,
+        })),
+      ],
+      comparativeRevenue(),
+    );
+    expect(availableHistory(atCap).periods[1]!.observationIds).toHaveLength(99);
+    const packet = historyInput();
+    packet.operatingResults = {
+      operatingIncome: {
+        scan: {
+          status: "available",
+          absence: null,
+          coverage: {
+            full: {
+              candidateRows: 101,
+              inspectedRows: 101,
+              invalidRows: 0,
+              duplicateRows: 0,
+              uniqueObservations: 101,
+            },
+            selected: 101,
+            otherAccessions: 0,
+            returned: 0,
+            omittedSelected: 101,
+          },
+        },
+        observations: [],
+      },
+    };
+    expect(history(packet, "Revenues")).toEqual({
+      status: "unavailable",
+      reason: "selected_report_overflow",
+    });
+  });
+
+  it("does not calculate from the retained valid subset when the operating scan counts an invalid row", () => {
+    const packet = historyInput();
+    const m = packet.operatingResults.operatingIncome;
+    if (m.scan.status !== "available") throw new Error();
+    packet.operatingResults = {
+      operatingIncome: {
+        ...m,
+        scan: {
+          ...m.scan,
+          coverage: {
+            ...m.scan.coverage,
+            full: {
+              ...m.scan.coverage.full,
+              candidateRows: 4,
+              inspectedRows: 4,
+              invalidRows: 1,
+            },
+          },
+        },
+      },
+    };
+    expect(history(packet, "Revenues")).toEqual({
+      status: "unavailable",
+      reason: "invalid_source_rows",
+    });
+  });
+
+  it.each([
+    "source_unavailable",
+    "invalid_source_rows",
+    "selected_report_overflow",
+  ] as const)(
+    "does not bypass a refused combined revenue/income scan for %s",
+    (reason) => {
+      const packet = historyInput();
+      packet.observations = [];
+      packet.completeness = { status: "refused", reason };
+      if (reason === "source_unavailable") {
+        packet.incomeScanStatus = "invalid_response";
+        packet.coverage = null;
+      } else if (reason === "invalid_source_rows") {
+        const c = packet.coverage!;
+        packet.coverage = {
+          ...c,
+          full: { ...c.full, inspectedRows: 4, invalidRows: 1 },
+          returned: { observations: 0, revenue: 0, netIncome: 0 },
+          omittedSelected: c.selected,
+        };
+      } else {
+        const c = coverage(
+          Array.from({ length: 101 }, (_, i) => revenue(101 + i)),
+        );
+        packet.coverage = {
+          ...c,
+          returned: { observations: 0, revenue: 0, netIncome: 0 },
+          omittedSelected: c.selected,
+          history: {
+            returned: { observations: 100, revenue: 100, netIncome: 0 },
+            truncated: true,
+          },
+        };
+      }
+      expect(history(packet, "Revenues")).toEqual({
+        status: "unavailable",
+        reason,
+      });
+      expect(resolve(packet).operatingIncome.status).toBe("available");
+    },
+  );
+
+  it("withholds history for an old selected filing but preserves its independent historical current amounts", () => {
+    const packet = JSON.parse(
+      JSON.stringify(historyInput()).replaceAll("2026-09-20", "2027-09-20"),
+    ) as Input;
+    expect(history(packet, "Revenues")).toEqual({
+      status: "unavailable",
+      reason: "current_use_unavailable",
+    });
+    expect(resultMargin(packet).operatingMargin).toMatchObject({
+      status: "available",
+      currentUseEligible: false,
+    });
+  });
+
+  it.each([
+    ["2026-09-19T06:00:00.000Z", "invalid_clock"],
+    ["2026-09-28T06:00:03.000Z", "source_stale"],
+  ] as const)(
+    "preserves source-clock refusal %s before traversing history",
+    (completedAt, reason) => {
+      const packet = historyInput();
+      packet.generation = { ...packet.generation, completedAt };
+      packet.observations = [];
+      packet.coverage = coverage([]);
+      packet.completeness = { status: "refused", reason };
+      expect(history(packet, "Revenues")).toEqual({
+        status: "unavailable",
+        reason,
+      });
+    },
+  );
 });

@@ -116,6 +116,8 @@ jobs:
                   "companyNoteDraftReviewSaveAndReloadPreservesIdentity",
                   "annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource",
                   "annualCashHistoryKeepsExactPeriodsAndRetiresWithSession",
+                  "annualOperatingHistoryRetainsReplacesAndRetiresExactPeriods",
+                  "annualLiquidityHistoryRetainsDatesAndRefusals",
                   "annualOperatingResultsRetainFactsDraftAndRetireWithSession",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",
@@ -131,6 +133,7 @@ jobs:
                   "beaSessionExpiryClearsAgendaAndFencesLateResponse",
                   "fedAnnouncementsRetainDatesCancelAndRetireWithSession",
                   "watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft",
+                  "operatingComparisonNoteKeepsSeparateSourcesAndExplicitSave",
               },
           }
           executed = set()

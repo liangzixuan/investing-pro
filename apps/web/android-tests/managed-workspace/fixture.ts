@@ -1,4 +1,10 @@
+import { liquidityHistoryPacket } from "./liquidity-history-fixture";
+import { operatingHistoryPacket } from "./operating-history-fixture";
 import { inventedOperatingPacket } from "./operating-fixture";
+import {
+  operatingComparisonPacket,
+  operatingComparisonNoteDraft,
+} from "./operating-comparison-fixture";
 import type {
   MainWatchlistPayload,
   ManagedCatalogSnapshotDto,
@@ -218,6 +224,9 @@ export async function createFixture(
     | "annual-note"
     | "annual-cash-history"
     | "annual-operating-results"
+    | "annual-operating-history"
+    | "annual-liquidity-history"
+    | "annual-operating-comparison"
     | "company-snapshot"
     | "company-price-ranges"
     | "thesis-review"
@@ -243,7 +252,9 @@ export async function createFixture(
     scenarioName === "company-snapshot" ||
     scenarioName === "annual-cash-history"
       ? "annual-note"
-      : scenarioName;
+      : scenarioName === "annual-operating-comparison"
+        ? "annual-comparison"
+        : scenarioName;
   const annualBase = await response(
     scenario === "annual-note"
       ? annualHistoryRows().map((observation) =>
@@ -272,6 +283,20 @@ export async function createFixture(
           },
         }
       : annualBase;
+  const historyScenario =
+    scenarioName === "annual-operating-history" ||
+    scenarioName === "annual-liquidity-history";
+  const historyPacket =
+    scenarioName === "annual-liquidity-history"
+      ? liquidityHistoryPacket
+      : operatingHistoryPacket;
+  const annualHistory = historyScenario ? await historyPacket() : null;
+  const annualHistoryReplacement = historyScenario
+    ? await historyPacket(true)
+    : null;
+  const annualHistoryLate = historyScenario
+    ? await historyPacket(false, true)
+    : null;
   const operatingAnnual =
     scenarioName === "annual-operating-results"
       ? await inventedOperatingPacket()
@@ -306,16 +331,23 @@ export async function createFixture(
   };
   const comparisonReports =
     scenario === "annual-comparison"
-      ? await Promise.all([
-          annualComparisonResponse("left", { mode: "multiple-bases" }),
-          annualComparisonResponse("right"),
-          annualComparisonResponse("left", {
-            cutoffAt: "2026-09-21T00:00:00.000Z",
-          }),
-          annualComparisonResponse("right", {
-            cutoffAt: "2026-09-21T00:00:00.000Z",
-          }),
-        ])
+      ? scenarioName === "annual-operating-comparison"
+        ? await Promise.all([
+            operatingComparisonPacket("left"),
+            operatingComparisonPacket("right"),
+            operatingComparisonPacket("left", true),
+            operatingComparisonPacket("right", true),
+          ])
+        : await Promise.all([
+            annualComparisonResponse("left", { mode: "multiple-bases" }),
+            annualComparisonResponse("right"),
+            annualComparisonResponse("left", {
+              cutoffAt: "2026-09-21T00:00:00.000Z",
+            }),
+            annualComparisonResponse("right", {
+              cutoffAt: "2026-09-21T00:00:00.000Z",
+            }),
+          ])
       : null;
   const eodPacket = (kind: "initial" | "late" | "recovered") => {
     const request = {
@@ -616,7 +648,7 @@ export async function createFixture(
     state.load === 2;
   const api: ManagedApi = {
     recentFilings: (input, signal) => {
-      if (scenarioName === "annual-operating-results") {
+      if (scenarioName === "annual-operating-results" || historyScenario) {
         count("filings");
         throw new Error("Unexpected operating-results Filings read");
       }
@@ -706,6 +738,16 @@ export async function createFixture(
           return Promise.reject(
             new Error("Hold the fifth price-range read before expiry"),
           );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
+      if (historyScenario && state.status === 2) {
+        if (
+          state.annual !== 5 ||
+          !pending ||
+          state.aborted !== 1 ||
+          state.lateResolved !== 1
+        )
+          throw new Error("Hold the fifth annual-history read before expiry");
         return Promise.reject(new TrialApiError("unauthenticated"));
       }
       if (scenarioName === "annual-operating-results" && state.status === 2) {
@@ -843,7 +885,7 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
-      if (scenarioName === "annual-operating-results")
+      if (scenarioName === "annual-operating-results" || historyScenario)
         return unexpected("save");
       if (scenario === "company-price-ranges") return unexpected("save");
       if (scenario === "watchlist-comparison") return unexpected("save");
@@ -888,7 +930,13 @@ export async function createFixture(
           ...payload,
           memberships: [
             payload.memberships[1]!,
-            { ...payload.memberships[0]!, note: annualComparisonNoteDraft },
+            {
+              ...payload.memberships[0]!,
+              note:
+                scenarioName === "annual-operating-comparison"
+                  ? operatingComparisonNoteDraft
+                  : annualComparisonNoteDraft,
+            },
           ],
         };
         if (
@@ -1147,7 +1195,7 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
-      if (scenarioName === "annual-operating-results") {
+      if (scenarioName === "annual-operating-results" || historyScenario) {
         count("eod");
         throw new Error("Unexpected operating-results eod operation");
       }
@@ -1295,6 +1343,38 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (historyScenario) {
+        if (
+          !annualHistory ||
+          !annualHistoryReplacement ||
+          signal.aborted ||
+          pending ||
+          request.schemaVersion !== "4.0.0" ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.listingId !== "listing-zero" ||
+          request.symbol !== "ZERO" ||
+          state.annual >= 5 ||
+          (state.annual === 2 && state.refreshFailed !== 1) ||
+          (state.annual >= 3 &&
+            (state.aborted !== 1 || state.lateResolved !== 1))
+        )
+          throw new Error("Unexpected annual-history Annual request or order");
+        count("annual");
+        if (state.annual === 1)
+          return Promise.resolve(structuredClone(annualHistory));
+        if (state.annual === 2) {
+          count("refreshFailed");
+          return Promise.reject(new TrialApiError("unavailable"));
+        }
+        if (state.annual === 4)
+          return Promise.resolve(structuredClone(annualHistoryReplacement));
+        signal.addEventListener("abort", () => count("aborted"), {
+          once: true,
+        });
+        return new Promise((resolve) => {
+          pending = resolve;
+        });
+      }
       if (scenarioName === "annual-operating-results") {
         if (
           !operatingAnnual ||
@@ -1601,6 +1681,20 @@ export async function createFixture(
       void Promise.resolve().then(() => count("eodLateResolved"));
     },
     settleCancelledRead: () => {
+      if (historyScenario) {
+        if (
+          !annualHistoryLate ||
+          !pending ||
+          state.aborted !== state.lateResolved + 1 ||
+          ![3, 5].includes(state.annual)
+        )
+          throw new Error("Only an aborted annual-history read may settle");
+        const resolve = pending;
+        pending = null;
+        resolve(structuredClone(annualHistoryLate));
+        void Promise.resolve().then(() => count("lateResolved"));
+        return;
+      }
       if (scenarioName === "annual-operating-results") {
         if (
           !operatingLate ||

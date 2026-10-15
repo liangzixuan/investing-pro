@@ -2,7 +2,9 @@ import { ObservationDetails } from "./SecAnnualObservation";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
 import { SecAnnualOperatingResults } from "./SecAnnualOperatingResults";
+import { SecAnnualOperatingHistory } from "./SecAnnualOperatingHistory";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
+import { SecAnnualLiquidityHistory } from "./SecAnnualLiquidityHistory";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualPairDto,
@@ -188,6 +190,12 @@ function ManagedAnnualFinancialResult({
       <SecAnnualOperatingResults
         response={response}
         headingTarget={targets.operating}
+        renderHistory={(basis) => (
+          <SecAnnualOperatingHistory
+            response={response}
+            concept={basis.concept}
+          />
+        )}
         {...(renderOperatingAction ? { renderOperatingAction } : {})}
       />
       <SecAnnualCashGeneration
@@ -200,6 +208,7 @@ function ManagedAnnualFinancialResult({
         response={response}
         liquidityAction={liquidityAction}
         headingTarget={targets.liquidity}
+        history={<SecAnnualLiquidityHistory response={response} />}
       />
       <details className="managed-annual-provenance" ref={sourceDetails}>
         <summary

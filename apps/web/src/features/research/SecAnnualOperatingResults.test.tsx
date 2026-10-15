@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { SecAnnualOperatingResults } from "./SecAnnualOperatingResults";
+import {
+  SecAnnualOperatingResults,
+  SecAnnualOperatingSourceBody,
+} from "./SecAnnualOperatingResults";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import {
   operatingResponse,
@@ -11,6 +14,42 @@ import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-re
 import { annualOperatingNoteExcerpt } from "../../clerk-trial/managed-annual-operating-note";
 
 describe("Annual operating result presentation and note", () => {
+  it("reuses the complete source body inside the closed company disclosure", async () => {
+    const packet = await operatingResponse(
+      [operatingRow("-25.125")],
+      [row("Revenues", "1000")],
+    );
+    const body = renderToStaticMarkup(
+      <SecAnnualOperatingSourceBody response={packet} />,
+    );
+    const company = renderToStaticMarkup(
+      <SecAnnualOperatingResults response={packet} />,
+    );
+    expect(company).toContain(
+      `<summary>Operating sources and calculation inputs</summary>${body}</details>`,
+    );
+    expect(body).not.toContain("sec-annual-operating-source");
+    for (const observation of [
+      ...packet.evidence.operatingResults.operatingIncome.observations,
+      ...packet.evidence.observations.filter(
+        (value) => value.metric === "revenue",
+      ),
+    ]) {
+      expect(body).toContain(observation.id);
+      expect(body).toContain(observation.concept);
+      expect(body).toContain(observation.value);
+    }
+    for (const text of [
+      "Scanned 1 rows: 0 invalid, 0 identical duplicates.",
+      "Returned 1 of 1 selected-filing observations; 0 omitted.",
+      "2026-09-20T00:00:00.000Z",
+      "2026-09-20T00:00:01.000Z",
+      "Revenues margin references:",
+      "Current use requires a report within 485 days",
+    ])
+      expect(body).toContain(text);
+  });
+
   it("shows exact negative results, named basis, inputs and original clocks without net income", async () => {
     const wire = await operatingResponse(
       [operatingRow("-25.125")],

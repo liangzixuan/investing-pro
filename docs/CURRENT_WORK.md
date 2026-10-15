@@ -9,9 +9,17 @@ and physical-device use are separate acceptance events.
 
 Release `5b2715e` remains published on the managed website and API. Signed Android
 1.26.0, code 27, is delivered; physical installation was not performed. Previous
-website, API and Android releases remain preserved for rollback. Reviewed PR143 is now merged into main at `a430cd3`; production publication is a
-separate boundary. The original source checks and reviewed maintenance advisories
-remain recorded below.
+website, API and Android releases remain preserved for rollback. Reviewed PR152
+is merged into main at `9c8b863` after the owner's exact-head approval and a fresh
+base/check recheck. Its six applicable Actions checks passed; the accepted
+CodeScene maintenance advisories remain recorded. PR153 is also merged into main
+at `866dbcf` after the owner's scoped email approval and a final revision, base
+and check recheck. Its seven original Actions checks pass; exact base-tree
+equivalence supports reuse of that evidence. Reviewed CodeScene debt remains.
+PR154 is merged at `09b601c` after the owner's scoped email approval and the
+final head, base and applicable-check recheck. Its six original Actions checks
+pass; the reviewed CodeScene maintenance advisories are retained. Production
+publication is a separate boundary.
 
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
@@ -19,6 +27,114 @@ session scope appears with sign-out review. Private fixture controls are exclude
 from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
+
+## Liquidity-history candidate
+
+Managed company Annual now has a closed Reported liquidity history disclosure
+with the current balances and up to two earlier reported dates from the same
+filing. It preserves exact raw balances and calculation-specific refusals,
+original filing metadata, source clocks and all agreeing references. A refused
+raw pair stops history at that date without filling the gap from older rows.
+Reported dates need not be consecutive fiscal year-ends. Missing income does not
+hide independently admitted liquidity. The existing packet and complete report
+JSON supply the inputs; no request, schema, note format or saved field is added.
+
+Focused domain and component checks, all 127 composed fixture cases and 65
+provider cases pass. The composed journey covers strict admission, captured
+report reproduction, failure, Cancel, late completion, replacement, leaving and
+reopening the company, unchanged Unicode draft and session retirement. The shared
+five-read invented history fixture preserves the existing operating-history
+journey. Combined source review found no actionable issue. Invented-data Chrome checks
+pass at 1440/390/320 CSS widths, including source references, keyboard scrolling,
+complete report JSON, failure/Cancel/late retention, replacement, navigation and
+session retirement. Full-length raw and derived amounts wrap inside the narrow
+scrolling table. The new native inventory has 37 cases and 101 expected PNGs,
+checked statically. This increment still needs hosted native acceptance; source
+integration and production publication remain separate.
+
+## Operating-history candidate
+
+Managed company Annual now has a closed Reported operating history disclosure
+under each named revenue basis. It shows up to three adjacent periods from the
+loaded filing, with exact operating income, revenue, checked margin and complete
+input references. Missing net income does not hide valid operating history.
+Missing or refused earlier evidence stops that basis without borrowing another
+year, concept or filing. Original filing metadata and source clocks remain.
+There is no new request, schema, saved field or history-to-note format.
+
+Focused domain, component and composed fixture checks pass. A two-source provider
+test preserves three comparative periods; strict client and report-document tests
+reproduce them with unchanged metadata. Invented-data Chrome checks pass at
+1440/390/320 CSS widths, including exact independent histories, source references,
+contained keyboard scrolling, full-length amounts, failure/Cancel/late retention,
+replacement, report JSON, navigation and session retirement. The new native
+inventory has 36 cases and 99 expected PNGs, checked statically. Hosted native
+execution, integration and publication remain separate. The preceding candidates'
+native failures are retained. The original operating-history run passes 34 of
+36 cases, including the new history and Fed journeys. It fails the snapshot page
+width and native Back closure checks. Its bounded diagnostics establish that the
+snapshot amounts and dates agree while the full page is too wide. A browser
+reproduction identifies an unwrapped JSON diagnostic in the test-only report
+controls; that diagnostic now wraps without clipping or changing its contents.
+The Back case now checks the existing keyboard and native window-focus
+preconditions before its single Back action. Its underlying cause remains
+unproven. All closure, restored-focus, draft, financial, geometry and deadline
+checks remain. The repaired revision passes all five applicable Actions checks and CodeScene.
+Its original Android run passes all 36 cases with the exact 99 expected PNGs.
+The saved artifact and immutable source agree; six representative frames were
+visually reviewed. These results accept the repaired revision and preserve each
+earlier failed outcome.
+
+## Operating comparison candidate
+
+The current source extends the two-company Annual comparison with reported
+operating income, selected-basis revenue and operating margin. Each company keeps
+its own period, current-use status and refusal, independently of net income.
+Operating results is also an explicit comparison-note choice with both companies'
+complete provenance and the existing full-note limit. No API, schema or request
+change is needed. Focused component, formatter, workspace and fixture checks,
+types, scoped lint/format, source boundaries and bounded source review pass.
+Invented Chrome checks at 1440/390/320 CSS widths confirm independent bases,
+exact values without net income, retained failure/Cancel/late responses, complete
+Unicode note append, Review, explicit Save/reload, full-report handoff and session
+retirement. Long 64-character amounts remain inside the narrow scrolling table.
+The new 35-case native inventory is checked statically; original hosted execution,
+main integration and publication remain separate.
+
+The preceding close-range candidate's original Android run failed. Its original
+evidence identified a stale exact screenshot selector. Repair `e1514a3` retains
+the strict quote capture and separately checks the new summary. That repair and
+the comparison revision each have failed original Android runs. Their snapshot
+predicate fails without branch diagnostics; a separate native selector transition
+also exposed a blocked touch during system-dialog dismissal. These outcomes stay
+failed. No financial validator, geometry limit or deadline is weakened. Main and
+production remain unchanged.
+
+## Observed close-range candidate
+
+Company Price, the loaded snapshot and prepared report now show the highest and
+lowest reported raw USD closes with exact dates. A shared Decimal calculation
+uses the entire loaded packet, preserves the earliest tied value and counts
+ties. The display names the actual loaded range and observed coverage, including
+single-row and sparse histories. It adds no source request, state, persistence
+or contract change. Report JSON retains its format and complete source rows.
+
+Focused arithmetic, component, Price, snapshot, report and composed fixture checks
+pass. Types, scoped lint and formatting, Java syntax, the exact native inventory
+and source boundaries pass. Independent review found no open correctness defect
+within that scope. Invented-data Chrome checks confirm the desktop layout and
+390/320px mobile containment, exact report rows, staged-range retention, Cancel
+and discarded late responses, replacement and removal on Back. A maximum 367-row
+packet preserves an early 64-character extreme outside the latest 252 dates.
+The draft remains unchanged and unsaved. Hosted native execution, integration,
+live provider coverage and publication remain separate.
+
+The original Android run passed 33 of 34 cases. Its snapshot capture selector
+included the new nested range list, so a strict two-element frame could not pass.
+The test now captures the original quote through direct children and checks the
+new summary's exact values, dates and coverage separately. Geometry limits,
+deadlines and the native case/frame inventory stay unchanged. The failed original
+is preserved; a fresh source revision needs its own hosted acceptance.
 
 ## Annual operating-results candidate
 
@@ -45,8 +161,11 @@ an income-only snapshot warning was corrected. Chrome confirms exact negative
 results without net income at 1440/390/320 CSS widths, 44px controls, keyboard focus,
 chosen-basis note append, complete report JSON, retained failed/cancelled reads and
 late-response fencing through session retirement. No Save or other-source read was
-made. These checks use invented data; live SEC coverage, hosted native execution,
-source integration and publication remain separate.
+made. All six original Actions jobs and all 34 emulator cases pass for that
+operating-results source revision, with its original artifact admitted once.
+CodeScene's reviewed maintenance debt remains recorded. These checks use invented
+data; live SEC coverage, source integration, publication and physical-device use
+remain separate.
 
 ## Company Price range candidate
 

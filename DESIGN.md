@@ -71,12 +71,27 @@ while loading. Show the loaded packet's actual range and observed-date coverage
 beside the close summary; keep the requested window in source details. Retained
 history must keep its original range when another range is staged or fails.
 
+The observed-close summary follows the latest close in company Price and appears
+in the loaded snapshot and report. Use a wrapping two-column definition list for
+the highest and lowest reported USD closes, with the exact date below each value.
+Stack the values when space is limited and wrap long decimals without truncation.
+Keep the loaded range, observed coverage and raw-price limits together below
+the values. The smaller summary must not compete with the latest close.
+
 Annual operating results reuse the existing exact-amount definition lists and
 source disclosure. Keep the reported operating income separate from each named
 revenue basis and its calculated margin. Show each value's exact period and own
 eligibility. Place the explicit note action below its basis. The source disclosure
 starts closed; full concepts, identifiers and dates wrap at narrow widths. The
 in-report Operating results link moves focus to the existing section heading.
+
+Annual comparison places operating income, selected-basis revenue and operating
+margin in the existing two-column table. Keep each cell's period and eligibility
+with its value, and show the readable revenue concept beside its amount. The
+existing per-company source disclosure contains operating references. Add
+Operating results to the existing evidence choice and retain the same note
+destination, feedback and Review controls. The table keeps its contained
+horizontal scroll and 44px keyboard-accessible selectors on narrow screens.
 
 ## Color and surfaces
 
@@ -109,6 +124,22 @@ inside a labelled, keyboard-focusable horizontal scroll region; the page itself
 must fit the viewport. Keep source references in a second closed disclosure.
 Missing or refused earlier periods leave a clear explanation beside the accepted
 table. Earlier comparative amounts must not inherit a current-use label.
+
+Reported operating history uses the same closed disclosure and contained table
+below each named operating revenue basis. Keep operating income and revenue
+labelled as reported USD; label the margin as an app calculation. Show exact
+periods, original completion time and a separate calculation-reference disclosure.
+Each basis keeps its own accepted periods and first refusal. Opening history
+does not load sources or change the current-period note action.
+
+Reported liquidity history follows the current liquidity explanation and note
+action in its own closed disclosure. Use the shared Annual table style with
+right-aligned date headings and numeric values, exact units and four
+reported/calculated rows. Keep current two-column table rules scoped to that
+table. Preserve individual calculation refusals beside valid raw balances and
+name the actual date that stops history. State that reported dates need not be
+consecutive fiscal year-ends. Use contained keyboard scrolling, wrapping full
+values and a separate reference disclosure with 44px summaries.
 
 Use these semantic managed tokens:
 

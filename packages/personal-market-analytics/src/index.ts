@@ -5,6 +5,7 @@ export {
   calculatePersonalMarketBoard,
   calculatePersonalEodReference,
   calculatePersonalRawCloseChange,
+  calculatePersonalRawCloseExtrema,
   calculatePersonalRawCloseIndex,
   comparePersonalRawCloseChange,
   type PersonalMarketBoardIdentity,
@@ -18,6 +19,9 @@ export {
   type PersonalEodReferenceResult,
   type PersonalRawCloseChangeInput,
   type PersonalRawCloseChangeResult,
+  type PersonalRawCloseExtremaInput,
+  type PersonalRawCloseExtreme,
+  type PersonalRawCloseExtremaResult,
 } from "./personal-market-board";
 
 export {
