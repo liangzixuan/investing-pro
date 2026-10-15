@@ -258,6 +258,54 @@ it("requires explicit follow-up load and saves only the authored follow-up draft
   noOtherRequests(f);
 });
 
+it("keeps field constraints outside an optional native disclosure without changing drafts or making requests", async () => {
+  const f = await fixture();
+  await f.loadEntries(f.entry());
+  f.workspace.followups.select(f.current().id);
+  view(f).change("managed-followup-check", "  Review 财报  ");
+  view(f).change("managed-followup-result", "My assessment é  ");
+  f.workspace.note(f.member.listingId, "Separate unsaved note 财报  ");
+  const followups = f.workspace.followups.getSnapshot();
+  const draft = f.workspace.followups.coordinator.getSnapshot();
+  const watchlist = f.workspace.coordinator.getSnapshot();
+  const rendered = view(f);
+  const guidance = rendered.element("managed-followup-guidance");
+  expect(guidance.type).toBe("details");
+  expect(guidance.props.open).toBeUndefined();
+  expect(guidance.props.onToggle).toBeUndefined();
+  const guidanceHtml = renderToStaticMarkup(guidance);
+  expect(guidanceHtml).toContain("<summary>How follow-ups work</summary>");
+  expect(guidanceHtml.match(/<li>/g)).toHaveLength(4);
+  expect(guidanceHtml).not.toMatch(/<(?:label|input|textarea|button)\b/);
+  const primary = rendered.html.replace(guidanceHtml, "");
+  for (const field of ["check", "result"]) {
+    const helpId = `managed-followup-${field}-help`;
+    expect(
+      rendered.element(`managed-followup-${field}`).props["aria-describedby"],
+    ).toBe(helpId);
+    expect(primary).toContain(`id="${helpId}"`);
+    expect(guidanceHtml).not.toContain(`id="${helpId}"`);
+  }
+  expect(primary).toContain("Required. 1–500 characters, one line.");
+  expect(primary).toContain("Optional. Up to 2,000 characters, one line.");
+  expect(primary).toContain("Your assessment is not a verified source fact.");
+  expect(primary).toContain('for="managed-followup-result">Your assessment');
+  expect(primary).toContain(
+    "Planning dates do not establish source freshness.",
+  );
+  expect(f.workspace.followups.getSnapshot()).toBe(followups);
+  expect(f.workspace.followups.coordinator.getSnapshot()).toBe(draft);
+  expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.current()).toMatchObject({
+    check: "  Review 财报  ",
+    result: "My assessment é  ",
+  });
+  expect(f.api.loadFollowups).toHaveBeenCalledOnce();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  expect(f.api.resolve).not.toHaveBeenCalled();
+  noOtherRequests(f);
+});
+
 it("retains invalid raw fields and dates, blocks save, and keeps them out of valid due groups", async () => {
   const f = await fixture();
   await f.loadEntries(f.entry());

@@ -27,6 +27,11 @@ Actions results. The actual source trees and ordered parents match the reviewed
 changes. The owner accepted their recorded CodeScene maintenance advisories.
 Final-main checks and live publication remain separate.
 
+PR164 is merged into main at `7ea6757`. Its seven original PR Actions jobs and
+seven main-push jobs pass. The admitted native archive has 40 passing cases and
+the exact 110 expected screenshots; pixel review covers a representative subset.
+This source acceptance does not publish a new release.
+
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
 session scope appears with sign-out review. Private fixture controls are excluded
@@ -52,8 +57,8 @@ in source. The combined 278 focused web tests, full web type check, scoped lint,
 format and boundary checks pass. Java and constructed predicate syntax checks
 pass; only the three additive readiness waits differ from the P11 native source.
 Its six report links and 40-case, 110-screenshot inventory remain intact. The
-integrated source's five original Actions workflows and six jobs passed. The
-latest native archive contents and live delivery remain separate. This does not
+integrated source's five original Actions workflows and six jobs passed.
+Live delivery remains separate. This does not
 establish full financial statements or complete InvestingPro coverage.
 
 ## Company research overview candidate
@@ -82,9 +87,10 @@ It uses invented records and the existing bounded transport and typed repository
 Focused offline checks cover the 18-read preflight, ten storage phases, strict
 request admission, rollback capacity and cleanup failures. The build binds its
 source, fixed data, tools and actual dependency graph. The local artifact build
-and static syntax check pass on source `490bd92`. The proof entry has not been
-invoked. Schema, authority, service limits and live persistence remain unverified;
-see the [storage guide](APPWRITE_WATCHLIST.md#fixed-follow-ups-storage-proof).
+and static syntax check pass on integrated source `be55c8c`. The proof entry has
+not been invoked. Live transactions, service limits and persistence remain
+unverified. See the
+[storage guide](APPWRITE_WATCHLIST.md#fixed-follow-ups-storage-proof).
 
 The operating-change and company-overview source increments are merged into main
 at `18b08b8` after the owner's scoped email approval and the final revision, base
@@ -93,15 +99,26 @@ exact source-tree equivalence preserves the reviewed evidence across the ordered
 merges. The reviewed CodeScene maintenance advisories were accepted for these
 source merges. Fresh final-main checks and production publication remain separate.
 
-The next increment is [saved research follow-ups](MANAGED_RESEARCH_FOLLOWUPS.md).
-It keeps a separate private authored check, UTC due date and result for an exact
-listing, with explicit Save, later-session reopen and current-catalog company
+[Saved research follow-ups](MANAGED_RESEARCH_FOLLOWUPS.md) keeps a separate private
+authored check, UTC due date and result for an exact listing, with explicit Save,
+later-session reopen and current-catalog company
 research. Both resource drafts participate in session and leave review. Contract,
 repository, transport, model, screen and workspace checks pass within their test
 scope. Invented-data Chrome checks verify separate saves, three-session reopening,
 explicit company research, Back focus, completion, conflict and receipt recovery,
-and aggregate retirement. The page fits at 1440, 390 and 320 CSS pixels. Hosted
-native and live-storage acceptance remain separate and incomplete.
+and aggregate retirement. The page fits at 1440, 390 and 320 CSS pixels.
+Live-storage qualification and publication remain incomplete.
+
+The current form-guidance candidate shortens primary help and adds an initially
+closed **How follow-ups work** disclosure. Field limits, assessment provenance,
+validation and recovery messages stay visible. All 11 focused tests, web types,
+scoped lint, formatting and source boundaries pass. Invented-data Chrome checks
+at 1440, 390 and 320 CSS pixels confirm no page overflow, controls of at least
+44px, and keyboard disclosure/focus behavior. Toggling preserves exact Unicode,
+trailing spaces and invalid drafts without requests or saves. Explicit Save,
+research/Back focus, separate watchlist draft retention and conflict recovery
+through Save and reload pass. This slice has no new hosted native run or physical
+mobile keyboard acceptance; production and live storage are unchanged.
 
 The company visit now shows Price, Annual and Filings readiness beside explicit
 Load, Refresh, Cancel and Inspect actions. Each request selects that source's
