@@ -20,7 +20,7 @@ describe("reported cash history", () => {
     const response = await parseSecAnnualEvidenceResponse(
       raw,
       {
-        schemaVersion: "4.0.0",
+        schemaVersion: "5.0.0",
         catalogSnapshotSha256: raw.catalogSnapshotSha256,
         listingId: raw.security.listingId,
         symbol: raw.security.symbol,

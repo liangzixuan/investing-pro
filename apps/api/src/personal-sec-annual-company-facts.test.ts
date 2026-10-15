@@ -287,12 +287,18 @@ describe("independent Annual CompanyFacts scans", () => {
 describe.each([
   ["AssetsCurrent", "currentAssets", "current_assets"],
   ["LiabilitiesCurrent", "currentLiabilities", "current_liabilities"],
+  ["Assets", "totalAssets", "total_assets"],
+  ["Liabilities", "totalLiabilities", "total_liabilities"],
+  ["StockholdersEquity", "shareholdersEquity", "shareholders_equity"],
 ] as const)("Annual instant scan %s", (concept, key, metric) => {
   const instant = (overrides: Record<string, unknown> = {}) =>
     fact({ start: undefined, ...overrides });
   const balances = (entry: unknown = usd([instant()])) => ({
     AssetsCurrent: usd([instant()]),
     LiabilitiesCurrent: usd([instant({ val: 80 })]),
+    Assets: usd([instant({ val: 500 })]),
+    Liabilities: usd([instant({ val: 600 })]),
+    StockholdersEquity: usd([instant({ val: -100 })]),
     [concept]: entry,
   });
   const otherKey =

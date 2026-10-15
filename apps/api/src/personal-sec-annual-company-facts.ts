@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 
 import {
+  PERSONAL_SEC_ANNUAL_BALANCE_SHEET_LIMITS,
   PERSONAL_SEC_ANNUAL_CASH_LIMITS,
   PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS,
   PERSONAL_SEC_ANNUAL_OPERATING_LIMITS,
   type PersonalSecAnnualCashAbsence,
   type PersonalSecAnnualCashObservationDto,
   type PersonalSecAnnualCashScanDto,
+  type PersonalSecAnnualBalanceSheetObservationDto,
   type PersonalSecAnnualLiquidityObservationDto,
   type PersonalSecAnnualOperatingObservationDto,
   type PersonalSecAnnualScanStatus,
@@ -24,7 +26,9 @@ type WithoutFiling<T> = T extends unknown ? Omit<T, "filing"> : never;
 type CashRow = WithoutFiling<PersonalSecAnnualCashObservationDto>;
 type LiquidityRow = WithoutFiling<PersonalSecAnnualLiquidityObservationDto>;
 type OperatingRow = WithoutFiling<PersonalSecAnnualOperatingObservationDto>;
-type AnnualRow = CashRow | LiquidityRow | OperatingRow;
+type BalanceSheetRow =
+  WithoutFiling<PersonalSecAnnualBalanceSheetObservationDto>;
+type AnnualRow = CashRow | LiquidityRow | OperatingRow | BalanceSheetRow;
 interface AnnualSourceMetric<Row> {
   readonly scan: PersonalSecAnnualCashScanDto;
   readonly observations: readonly Row[];
@@ -34,6 +38,8 @@ export type PersonalSecAnnualLiquiditySourceMetric =
   AnnualSourceMetric<LiquidityRow>;
 export type PersonalSecAnnualOperatingSourceMetric =
   AnnualSourceMetric<OperatingRow>;
+export type PersonalSecAnnualBalanceSheetSourceMetric =
+  AnnualSourceMetric<BalanceSheetRow>;
 type MetricIdentity = (typeof IDENTITIES)[keyof typeof IDENTITIES];
 type CashIdentity = Extract<MetricIdentity, { metric: CashRow["metric"] }>;
 type LiquidityIdentity = Extract<
@@ -44,12 +50,31 @@ type OperatingIdentity = Extract<
   MetricIdentity,
   { metric: OperatingRow["metric"] }
 >;
+type BalanceSheetIdentity = Extract<
+  MetricIdentity,
+  { metric: BalanceSheetRow["metric"] }
+>;
 type MetricLimits = Readonly<{
   candidateRowsPerMetric: number;
   observationsPerMetric: number;
 }>;
 
 const IDENTITIES = {
+  totalAssets: {
+    metric: "total_assets",
+    taxonomy: "us-gaap",
+    concept: "Assets",
+  },
+  totalLiabilities: {
+    metric: "total_liabilities",
+    taxonomy: "us-gaap",
+    concept: "Liabilities",
+  },
+  shareholdersEquity: {
+    metric: "shareholders_equity",
+    taxonomy: "us-gaap",
+    concept: "StockholdersEquity",
+  },
   operatingIncome: {
     metric: "operating_income",
     taxonomy: "us-gaap",
@@ -125,6 +150,24 @@ export function normalizePersonalSecAnnualCompanyFacts(
       PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS,
       accession,
     ),
+    totalAssets: scanMetric(
+      taxonomy,
+      IDENTITIES.totalAssets,
+      PERSONAL_SEC_ANNUAL_BALANCE_SHEET_LIMITS,
+      accession,
+    ),
+    totalLiabilities: scanMetric(
+      taxonomy,
+      IDENTITIES.totalLiabilities,
+      PERSONAL_SEC_ANNUAL_BALANCE_SHEET_LIMITS,
+      accession,
+    ),
+    shareholdersEquity: scanMetric(
+      taxonomy,
+      IDENTITIES.shareholdersEquity,
+      PERSONAL_SEC_ANNUAL_BALANCE_SHEET_LIMITS,
+      accession,
+    ),
   });
 }
 
@@ -160,6 +203,12 @@ export function unavailablePersonalSecAnnualOperatingMetric(
   return unavailableMetric(status);
 }
 
+export function unavailablePersonalSecAnnualBalanceSheetMetric(
+  status: Exclude<PersonalSecAnnualScanStatus, "available">,
+): PersonalSecAnnualBalanceSheetSourceMetric {
+  return unavailableMetric(status);
+}
+
 function unavailableMetric<Row>(
   status: Exclude<PersonalSecAnnualScanStatus, "available">,
 ): AnnualSourceMetric<Row> {
@@ -187,6 +236,12 @@ function scanMetric(
   limits: MetricLimits,
   accession: string | null,
 ): PersonalSecAnnualOperatingSourceMetric;
+function scanMetric(
+  taxonomy: Record<string, unknown> | undefined,
+  identity: BalanceSheetIdentity,
+  limits: MetricLimits,
+  accession: string | null,
+): PersonalSecAnnualBalanceSheetSourceMetric;
 function scanMetric(
   taxonomy: Record<string, unknown> | undefined,
   identity: MetricIdentity,

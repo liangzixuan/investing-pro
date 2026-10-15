@@ -1,6 +1,7 @@
 import { operatingResults } from "../features/research/sec-annual-operating-fixture";
 import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
 import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
+import { balanceSheet } from "../features/research/sec-annual-balance-sheet-fixture";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
@@ -762,6 +763,7 @@ describe("managed annual refresh", () => {
         cashGeneration: await cashGeneration(input),
         liquidity: await liquidity(input),
         operatingResults: await operatingResults(input),
+        balanceSheet: await balanceSheet(input),
       },
     };
     const admitted = await parseSecAnnualEvidenceResponse(

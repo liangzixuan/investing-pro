@@ -45,6 +45,7 @@ const sections = [
   "operating",
   "cash",
   "liquidity",
+  "balanceSheet",
   "sources",
 ] as const;
 type Section = (typeof sections)[number];
@@ -73,6 +74,7 @@ async function harness() {
     operating: target(),
     cash: target(),
     liquidity: target(),
+    balanceSheet: target(),
     sources: target(),
   };
   const targets = Object.fromEntries(
@@ -140,6 +142,7 @@ describe("managed Annual in-report navigation", () => {
         "Operating results",
         "Cash generation",
         "Liquidity",
+        "Balance sheet totals",
         "Report source details",
       ]);
       expect(controls.map((link) => link.props.href)).toEqual(
@@ -257,7 +260,7 @@ describe("managed Annual in-report navigation", () => {
 
 describe("managed Annual destination markup", () => {
   it.each(["default", "income-invalid"] as const)(
-    "keeps five linked destinations and original independent evidence for %s income",
+    "keeps six linked destinations and original independent evidence for %s income",
     async (mode) => {
       const response = await annualComparisonResponse("left", { mode });
       const before = JSON.stringify(response);
@@ -286,6 +289,7 @@ describe("managed Annual destination markup", () => {
         if (
           section === "cash" ||
           section === "liquidity" ||
+          section === "balanceSheet" ||
           section === "operating"
         )
           expect(tag).toContain('tabindex="-1"');
@@ -328,8 +332,8 @@ describe("managed Annual destination markup", () => {
     const ids = [
       ...html.matchAll(/href="#([^"]+)" data-annual-report-jump=/gu),
     ].map((match) => match[1]);
-    expect(ids).toHaveLength(10);
-    expect(new Set(ids).size).toBe(10);
+    expect(ids).toHaveLength(12);
+    expect(new Set(ids).size).toBe(12);
   });
 
   it("leaves the evidence profile and standalone shared headings outside managed navigation", async () => {

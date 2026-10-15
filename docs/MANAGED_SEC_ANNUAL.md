@@ -55,6 +55,37 @@ note draft and Back remain available. Existing price mappings keep their exact
 listing identities. Catalog admission neither enables a price feed nor changes
 the three-listing Markets board.
 
+## Reported balance sheet totals
+
+The Annual 5.0.0 candidate adds three independent totals from the selected annual
+filing: total assets (`Assets`), total liabilities (`Liabilities`) and equity
+attributable to the parent (`StockholdersEquity`). The company snapshot and
+captured research report reuse the same admitted values and original dates.
+Current work records verification and delivery status.
+
+Each amount is exact, unscaled USD at the selected filing's report-end date.
+The observation must establish an instant balance, annual filing focus and
+matching filing metadata. Zero and negative reported amounts remain signed.
+Missing income does not hide a valid balance. Missing or refused totals retain
+their own reason; the app does not subtract totals, fill an accounting equation,
+substitute current assets or equity including noncontrolling interests, or use
+another filing, taxonomy or currency. These are reported balances, not market
+values or a complete financial statement.
+
+**Balance sheet totals** in **On this report** moves focus to this section.
+Its source disclosure includes each fixed concept, exact observations, filing
+index, source pointer, reference IDs, scan counts and original capture times.
+Current-use qualifications apply independently at the original load. Preparing
+a report does not refresh them or fetch another source.
+
+The existing Submissions and Company Facts requests, issuer cohort and time and
+byte limits remain unchanged. Each new concept has its own 10,000-row scan and
+100-observation selected-filing limit. Selected overflow withholds that whole
+metric. The complete graph, including all 1,000 possible observations, must fit
+the existing 2 MiB response limit and the captured document limit. Annual schema
+and definition 5.0.0 require coordinated API, website and Android clients; older
+Annual packets are refused. Saved watchlists and follow-ups do not change.
+
 ## Watchlist Annual comparison
 
 **Compare annual results** lets the owner choose two different companies from

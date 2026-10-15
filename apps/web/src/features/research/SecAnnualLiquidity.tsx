@@ -4,6 +4,7 @@ import type {
   PersonalSecAnnualLiquidityObservationDto,
   PersonalSecAnnualLiquidityUnavailableReason,
   PersonalSecAnnualLiquidityValueDto,
+  PersonalSecAnnualBalanceSheetObservationDto,
 } from "@research-cockpit/contracts";
 import type { ReactNode, Ref } from "react";
 
@@ -263,7 +264,7 @@ function LiquidityInputs({
       <ol>
         {evidence.observations.map((row) => (
           <li key={row.id}>
-            <BalanceObservation row={row} />
+            <SecAnnualBalanceObservation row={row} />
           </li>
         ))}
       </ol>
@@ -271,10 +272,12 @@ function LiquidityInputs({
   );
 }
 
-function BalanceObservation({
+export function SecAnnualBalanceObservation({
   row,
 }: {
-  readonly row: PersonalSecAnnualLiquidityObservationDto;
+  readonly row:
+    | PersonalSecAnnualLiquidityObservationDto
+    | PersonalSecAnnualBalanceSheetObservationDto;
 }) {
   return (
     <details className="sec-quarterly-row-details">
