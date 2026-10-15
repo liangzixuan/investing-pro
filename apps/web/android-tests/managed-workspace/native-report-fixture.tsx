@@ -312,7 +312,12 @@ export function createNativeReportFixture() {
             Probe report {kind}
           </button>
         ))}
-        <pre id="fixture-report-protocol">{JSON.stringify(current)}</pre>
+        <pre
+          id="fixture-report-protocol"
+          style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+        >
+          {JSON.stringify(current)}
+        </pre>
       </section>
     );
   }
