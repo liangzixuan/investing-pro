@@ -87,9 +87,17 @@ It uses invented records and the existing bounded transport and typed repository
 Focused offline checks cover the 18-read preflight, ten storage phases, strict
 request admission, rollback capacity and cleanup failures. The build binds its
 source, fixed data, tools and actual dependency graph. The local artifact build
-and static syntax check pass on integrated source `be55c8c`. The proof entry has
-not been invoked. Live transactions, service limits and persistence remain
-unverified. See the
+and static syntax check pass on integrated source `be55c8c`. That earlier private
+artifact completed four live phases with invented records, then failed prestage
+after a commit-time conflict. Offline regressions exposed a proof assumption
+about explicit rollback; the generic live failure does not locate the assertion.
+The repository already
+supports the observed commit-time conflict path. A source-only correction adds
+an independent winner read, retains exact receipt/absence checks and the strict
+dedicated rollback phase, and selects a fresh fixed invented cohort. The failed
+attempt and consumed authority stay retained; no replay or live qualification
+of the correction is claimed. Service limits and complete persistence acceptance
+remain open. See the
 [storage guide](APPWRITE_WATCHLIST.md#fixed-follow-ups-storage-proof).
 
 The operating-change and company-overview source increments are merged into main

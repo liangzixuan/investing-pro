@@ -4,12 +4,14 @@ import { AtomicStore } from "./test-appwrite-atomic-store";
 import {
   runResearchFollowupsStorageProof,
   type ResearchFollowupsProofFactory,
+  type ResearchFollowupsProofReport,
 } from "./research-followups-storage-proof";
 import {
   FOLLOWUPS_PROOF_EXPECTED_CALLS,
   FOLLOWUPS_PROOF_LIMITS,
   FOLLOWUPS_PROOF_PHASES,
   FOLLOWUPS_PROOF_ROWS,
+  FOLLOWUPS_PROOF_PRINCIPALS,
   followupsProofLocation,
 } from "./research-followups-proof-data";
 
@@ -37,12 +39,197 @@ function operation(store: AtomicStore) {
   };
   return { factory, counts: () => ({ opens, closes }) };
 }
+type PrestageMode = "stage400" | "commit400" | "commit409" | "unknown";
+async function prestageFixture(mode: PrestageMode) {
+  const store = new AtomicStore(),
+    op = operation(store);
+  const incrementInputs: { value: number; max: number }[] = [];
+  for (const phase of ["create", "stale"] as const)
+    expect(
+      (await runResearchFollowupsStorageProof(phase, BUILD, op.factory))
+        .outcome,
+    ).toBe("passed");
+  if (mode !== "stage400") {
+    const increment = store.incrementRowColumn.bind(store);
+    let increments = 0;
+    // Model a server that accepts staging but enforces the bound at commit.
+    // Only this in-memory model receives the changed bound; the repository's
+    // actual input and the phase trace remain observable through the spy.
+    vi.spyOn(store, "incrementRowColumn").mockImplementation((input) => {
+      incrementInputs.push({ value: input.value, max: input.max });
+      return increment(
+        ++increments === 2 ? { ...input, max: input.max + 1 } : input,
+      );
+    });
+    const update = store.updateTransaction.bind(store);
+    let commits = 0;
+    vi.spyOn(store, "updateTransaction").mockImplementation((input) => {
+      if (input.commit && ++commits === 2)
+        store.beforeCommit = () =>
+          Promise.reject(
+            mode === "unknown"
+              ? new Error("Private unacknowledged response")
+              : new AppwriteException(
+                  "Private commit response",
+                  mode === "commit400" ? 400 : 409,
+                  mode === "commit400"
+                    ? "attribute_limit_exceeded"
+                    : "transaction_conflict",
+                ),
+          );
+      return update(input);
+    });
+  }
+  return {
+    store,
+    incrementInputs,
+    run: () => runResearchFollowupsStorageProof("prestage", BUILD, op.factory),
+  };
+}
 afterEach(() => vi.useRealTimers());
 describe("fixed Follow-ups storage proof", () => {
-  it("executes the real ten phase bodies after 18 exact absence reads within 127/156 calls", async () => {
+  it.for([
+    ["stage400", 16, true],
+    ["commit400", 18, false],
+    ["commit409", 17, false],
+  ] as const)(
+    "proves the same winner and absent loser after %s without assuming rejection timing",
+    async ([mode, calls, rollback], { task }) => {
+      const f = await prestageFixture(mode);
+      const report = await f.run();
+      Object.assign(task.meta, { proofReport: report });
+      expect(report, JSON.stringify(report)).toMatchObject({
+        outcome: "passed",
+        failure: "none",
+        repositoryError: "conflict",
+        observedVersion: 3,
+        operationCount: calls,
+        httpDispatches: calls,
+        rollbackObserved: rollback,
+        cleanupIncomplete: false,
+        closed: true,
+        checks: [
+          "prestage_CAS_refusal",
+          "winner_current_and_receipt_preserved",
+          "loser_receipt_absent",
+        ],
+      });
+      expect(report.trace).toHaveLength(calls);
+      expect(calls).toBeLessThanOrEqual(FOLLOWUPS_PROOF_LIMITS.prestage);
+      const winnerCommit = report.trace.findIndex(
+        (entry) => entry.actor === "winner" && entry.operation === "commit",
+      );
+      const loserIncrement = report.trace.findIndex(
+        (entry) => entry.actor === "loser" && entry.operation === "increment",
+      );
+      expect(loserIncrement).toBeGreaterThan(winnerCommit);
+      expect(
+        report.trace
+          .slice(-2)
+          .map(({ actor, operation }) => [actor, operation]),
+      ).toEqual([
+        ["read", "read_current"],
+        ["inspection", "read_receipt"],
+      ]);
+      expect(
+        report.trace.filter((entry) => entry.operation === "rollback"),
+      ).toHaveLength(rollback ? 1 : 0);
+      expect(
+        f.store.current(FOLLOWUPS_PROOF_PRINCIPALS.a.userId, "followups"),
+      ).toMatchObject({
+        version: 3,
+      });
+      expect(
+        f.store
+          .receipts()
+          .some(
+            (row) =>
+              row.$id === followupsProofLocation("a", "prestage-loser").rowId,
+          ),
+      ).toBe(false);
+      if (mode !== "stage400") {
+        expect(f.incrementInputs).toEqual([
+          { value: 1, max: 3 },
+          { value: 1, max: 3 },
+        ]);
+        expect(
+          report.trace.find(
+            (entry) => entry.actor === "loser" && entry.operation === "commit",
+          ),
+        ).toMatchObject({
+          outcome: "appwrite_error",
+          status: mode === "commit400" ? 400 : 409,
+          errorType:
+            mode === "commit400"
+              ? "attribute_limit_exceeded"
+              : "transaction_conflict",
+          transactionStatus: null,
+        });
+      }
+      expect(JSON.stringify(report)).not.toContain("Private");
+    },
+  );
+  it.each(["winner-payload", "receipt-digest", "receipt-time"] as const)(
+    "refuses %s corruption after a commit-time conflict",
+    async (corruption) => {
+      const f = await prestageFixture("commit409");
+      const get = f.store.getRow.bind(f.store);
+      vi.spyOn(f.store, "getRow").mockImplementation(async (input) => {
+        const row = await get(input);
+        if (
+          corruption === "winner-payload" &&
+          row.$tableId === "followups" &&
+          row.version === 3
+        )
+          row.payloadJson = "{}";
+        if (
+          input.rowId === followupsProofLocation("a", "prestage-winner").rowId
+        ) {
+          if (corruption === "receipt-digest")
+            row.digestSha256 = "0".repeat(64);
+          if (corruption === "receipt-time")
+            row.committedAt = "2000-01-01T00:00:00.000Z";
+        }
+        return row;
+      });
+      const report = await f.run();
+      expect(report, JSON.stringify(report)).toMatchObject({
+        outcome: "failed",
+        failure:
+          corruption === "winner-payload"
+            ? "operation_failed"
+            : "unexpected_result",
+        repositoryError:
+          corruption === "winner-payload" ? "unavailable" : "conflict",
+        checks: [],
+        closed: true,
+      });
+    },
+  );
+  it("does not turn an unknown loser commit into a proved conflict", async () => {
+    const f = await prestageFixture("unknown");
+    const report = await f.run();
+    expect(report).toMatchObject({
+      outcome: "failed",
+      failure: "unexpected_result",
+      repositoryError: "commit_unknown",
+      rollbackObserved: false,
+      checks: [],
+      closed: true,
+    });
+    expect(report.trace.some((entry) => entry.operation === "rollback")).toBe(
+      false,
+    );
+    expect(JSON.stringify(report)).not.toContain("Private");
+  });
+  it("executes the real ten phase bodies after 18 exact absence reads within 128/156 calls", async ({
+    task,
+  }) => {
     const store = new AtomicStore(),
       op = operation(store);
     const counts: number[] = [];
+    const reports: ResearchFollowupsProofReport[] = [];
+    Object.assign(task.meta, { proofReports: reports });
     for (const phase of FOLLOWUPS_PROOF_PHASES) {
       const before = store.calls.length;
       const report = await runResearchFollowupsStorageProof(
@@ -50,6 +237,7 @@ describe("fixed Follow-ups storage proof", () => {
         BUILD,
         op.factory,
       );
+      reports.push(report);
       expect(report, JSON.stringify(report)).toMatchObject({
         outcome: "passed",
         failure: "none",
@@ -71,19 +259,20 @@ describe("fixed Follow-ups storage proof", () => {
           store.calls.map((row) => (row.input as { rowId: string }).rowId),
         ).toEqual(FOLLOWUPS_PROOF_ROWS.map((row) => row.rowId));
     }
-    expect(counts.reduce((a, b) => a + b, 0)).toBe(127);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(128);
     expect(
       Object.values(FOLLOWUPS_PROOF_LIMITS).reduce((a, b) => a + b, 0),
     ).toBe(156);
     expect(op.counts()).toEqual({ opens: 11, closes: 11 });
     expect(
-      store.current("proof-followups-b03a64a-a", "followups").version,
+      store.current(FOLLOWUPS_PROOF_PRINCIPALS.a.userId, "followups").version,
     ).toBe(5);
     expect(
-      store.current("proof-followups-b03a64a-b", "followups").version,
+      store.current(FOLLOWUPS_PROOF_PRINCIPALS.b.userId, "followups").version,
     ).toBe(1);
     expect(
-      store.current("proof-followups-b03a64a-size", "followups").version,
+      store.current(FOLLOWUPS_PROOF_PRINCIPALS.size.userId, "followups")
+        .version,
     ).toBe(2);
     expect(
       store.calls.some((row) =>
@@ -178,7 +367,7 @@ describe("fixed Follow-ups storage proof", () => {
     );
     expect(report.outcome).toBe("passed");
     expect(
-      store.current("proof-followups-b03a64a-a", "followups"),
+      store.current(FOLLOWUPS_PROOF_PRINCIPALS.a.userId, "followups"),
     ).toMatchObject({
       createdAt: "2027-03-12T04:05:06.789Z",
       updatedAt: "2027-03-12T04:05:06.789Z",

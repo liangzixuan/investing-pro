@@ -11,11 +11,45 @@ import {
   FOLLOWUPS_PROOF_SNAPSHOT,
   FOLLOWUPS_PROOF_COMMAND_PINS,
   FOLLOWUPS_PROOF_ROWS,
+  FOLLOWUPS_PROOF_PRINCIPALS,
   followupsProofData,
 } from "./research-followups-proof-data";
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 describe("fixed invented proof bytes", () => {
+  it("fixes three new principals and all18 locations outside the consumed cohort", () => {
+    expect(
+      Object.values(FOLLOWUPS_PROOF_PRINCIPALS).map(({ userId }) => userId),
+    ).toEqual([
+      "proof-followups-prestage-v2-a",
+      "proof-followups-prestage-v2-b",
+      "proof-followups-prestage-v2-size",
+    ]);
+    const previous = new Set(
+      FOLLOWUPS_PROOF_ROWS.map(({ owner, name }) => {
+        const namespace = [
+          `proof-followups-b03a64a-${owner}`,
+          "research-followups",
+          "main",
+        ];
+        return (
+          (name ? "r" : "f") +
+          hash(
+            JSON.stringify(
+              name
+                ? [...namespace, `proof-followups-b03a64a-${name}-v1`]
+                : namespace,
+            ),
+          ).slice(0, 32)
+        );
+      }),
+    );
+    expect(previous.size).toBe(18);
+    expect(FOLLOWUPS_PROOF_ROWS).toHaveLength(18);
+    expect(
+      FOLLOWUPS_PROOF_ROWS.every(({ rowId }) => !previous.has(rowId)),
+    ).toBe(true);
+  });
   it("admits both exact canonical snapshots and independently binds all command bytes and request digests", () => {
     const { commands, catalog, revisedCatalog } = followupsProofData();
     expect(Buffer.byteLength(FOLLOWUPS_PROOF_SNAPSHOT)).toBe(78842);
