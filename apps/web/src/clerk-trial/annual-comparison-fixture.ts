@@ -1,4 +1,7 @@
-import { operatingResults } from "../features/research/sec-annual-operating-fixture";
+import {
+  operatingResults,
+  operatingRow,
+} from "../features/research/sec-annual-operating-fixture";
 import {
   liquidity,
   liquidityRow,
@@ -11,6 +14,7 @@ import type {
   PersonalSecAnnualCashObservationDto,
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualLiquidityObservationDto,
+  PersonalSecAnnualOperatingObservationDto,
   PersonalSecQuarterlyObservationDto,
   WatchlistMembership,
 } from "@research-cockpit/contracts";
@@ -97,6 +101,8 @@ export async function parseAnnualComparisonFixture(
     ...raw.evidence.liquidity.currentAssets.observations,
     ...raw.evidence.liquidity.currentLiabilities.observations,
   ],
+  operatingRows: readonly PersonalSecAnnualOperatingObservationDto[] = raw
+    .evidence.operatingResults.operatingIncome.observations,
 ): Promise<Response> {
   const bytes = new TextEncoder().encode(
     serializePersonalSecAnnualGeneration(raw.evidence),
@@ -120,10 +126,7 @@ export async function parseAnnualComparisonFixture(
         resolution: resolvePersonalSecAnnualEvidence(evidence),
         cashGeneration: await cashGeneration(evidence, cashRows),
         liquidity: await liquidity(evidence, liquidityRows),
-        operatingResults: await operatingResults(
-          evidence,
-          raw.evidence.operatingResults.operatingIncome.observations,
-        ),
+        operatingResults: await operatingResults(evidence, operatingRows),
       },
     },
     {
@@ -203,6 +206,24 @@ export function annualComparisonLiquidityRows(
   ];
 }
 
+export function annualComparisonOperatingRows(
+  side: Side = "left",
+): PersonalSecAnnualOperatingObservationDto[] {
+  const period = annualComparisonCashRows(side)[0]!;
+  return [
+    operatingRow(side === "left" ? "-250.125" : "125.25", {
+      startDate: period.startDate,
+      endDate: period.endDate,
+      durationDays: period.durationDays,
+      accessionNumber: period.accessionNumber,
+      form: period.form,
+      filedDate: period.filedDate,
+      frame: period.frame,
+      filing: period.filing,
+    }),
+  ];
+}
+
 function modeRows(side: Side, mode: Mode) {
   const rows = annualComparisonRows(side);
   const reportDate = side === "left" ? "2025-12-31" : "2025-06-30";
@@ -268,6 +289,7 @@ export async function annualComparisonResponse(
     readonly rows?: PersonalSecQuarterlyObservationDto[];
     readonly cashRows?: readonly PersonalSecAnnualCashObservationDto[];
     readonly liquidityRows?: readonly PersonalSecAnnualLiquidityObservationDto[];
+    readonly operatingRows?: readonly PersonalSecAnnualOperatingObservationDto[];
     readonly cutoffAt?: string;
   } = {},
 ): Promise<Response> {
@@ -335,6 +357,7 @@ export async function annualComparisonResponse(
         : packet,
     options.cashRows ?? annualComparisonCashRows(side),
     options.liquidityRows ?? annualComparisonLiquidityRows(side),
+    options.operatingRows ?? [],
   );
 }
 

@@ -10,6 +10,8 @@ import type { ManagedApi } from "./managed-api";
 import { getAnnualComparisonNoteEvidence } from "./managed-watchlist-annual-comparison-note";
 import {
   annualComparisonMemberships as members,
+  annualComparisonOperatingRows,
+  annualComparisonRows,
   annualComparisonResponse as packet,
 } from "./annual-comparison-fixture";
 
@@ -207,6 +209,9 @@ describe("Annual comparison note action", () => {
     expect(html.match(/aria-describedby="annual-note-help"/gu)).toHaveLength(3);
     expect(html).toContain("Cash generation");
     expect(html).toContain('<option value="liquidity">Liquidity</option>');
+    expect(html).toContain(
+      '<option value="operating">Operating results</option>',
+    );
     expect(html).not.toMatch(/\sdisabled=/u);
     expect(h.button().props["aria-disabled"]).toBe(true);
     expect(h.actions.append).not.toHaveBeenCalled();
@@ -636,6 +641,8 @@ describe("Annual comparison note action", () => {
     ["cash", "right"],
     ["liquidity", "left"],
     ["liquidity", "right"],
+    ["operating", "left"],
+    ["operating", "right"],
   ] as const)(
     "reviews the exact current %s destination on the %s side without another append or read",
     async (group, side) => {
@@ -984,4 +991,166 @@ describe("Annual comparison note action", () => {
       expect(h.read).toHaveBeenCalledTimes(2);
     },
   );
+});
+
+async function operatingPacket(side: "left" | "right") {
+  return packet(side, {
+    rows: annualComparisonRows(side).filter((row) => row.metric === "revenue"),
+    operatingRows: annualComparisonOperatingRows(side),
+  });
+}
+
+describe("operating comparison note action", () => {
+  it("uses the admitted operating group without net income and preserves the exact selected capture", async () => {
+    const h = await harness(
+      await operatingPacket("left"),
+      await operatingPacket("right"),
+    );
+    vi.mocked(h.actions.getAction).mockImplementation(
+      (capture, destination) => {
+        const evidence = getAnnualComparisonNoteEvidence(capture);
+        return {
+          canAppend: destination !== null && evidence.excerpt !== null,
+          reason: evidence.reason,
+        };
+      },
+    );
+    h.change("destination", members.left.listingId);
+    expect(h.button().props["aria-disabled"]).toBe(true);
+    h.change("group", "operating");
+    expect(h.button().props["aria-disabled"]).toBe(false);
+    h.button().props.onClick!();
+    const [capture, destination] = vi.mocked(h.actions.append).mock.calls[0]!;
+    expect(capture.group).toBe("operating");
+    expect(destination).toBe(h.state.left.selected);
+    expect(capture.left.response).toBe(h.state.left.report.response);
+    expect(capture.right.response).toBe(h.state.right.report.response);
+    expect(capture.left.selectedBasis).toBe("Revenues");
+    expect(capture.right.selectedBasis).toBe("SalesRevenueNet");
+    expect(getAnnualComparisonNoteEvidence(capture).excerpt).toContain(
+      "operating margin -25.01%",
+    );
+    h.review()!.props.onClick!();
+    expect(vi.mocked(h.actions.review).mock.calls[0]![0]).toBe(capture);
+    expect(h.read).toHaveBeenCalledTimes(2);
+    expect(h.draft.memberships).toEqual([members.left, members.right]);
+  });
+
+  it("explains a missing selected operating basis without changing the destination or appending partial evidence", async () => {
+    const h = await harness(
+      await operatingPacket("left"),
+      await operatingPacket("right"),
+    );
+    vi.mocked(h.actions.getAction).mockImplementation(
+      (capture, destination) => {
+        const evidence = getAnnualComparisonNoteEvidence(capture);
+        return {
+          canAppend: destination !== null && evidence.excerpt !== null,
+          reason: evidence.reason,
+        };
+      },
+    );
+    h.change("destination", members.right.listingId);
+    h.change("group", "operating");
+    h.render({ bases: { left: "SalesRevenueNet", right: "SalesRevenueNet" } });
+    expect(h.button().props["aria-disabled"]).toBe(true);
+    h.button().props.onClick!();
+    expect(h.html()).toContain("First company: Operating comparison needs");
+    expect(h.actions.append).not.toHaveBeenCalled();
+    expect(h.review()).toBeUndefined();
+    expect(h.select("destination").props.value).toBe(members.right.listingId);
+    h.render({ bases: { left: "Revenues", right: "SalesRevenueNet" } });
+    expect(h.button().props["aria-disabled"]).toBe(false);
+    expect(h.html()).not.toContain("First company: Operating comparison needs");
+    expect(h.read).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["basis", "group", "response", "unmount"] as const)(
+    "revokes captured operating append and Review after %s changes",
+    async (change) => {
+      const h = await harness(
+        await operatingPacket("left"),
+        await operatingPacket("right"),
+      );
+      h.change("group", "operating");
+      h.change("destination", members.right.listingId);
+      const append = h.button().props.onClick!;
+      append();
+      const review = h.review()!.props.onClick!;
+      review();
+      const isCurrent = vi.mocked(h.actions.review).mock.calls[0]![2];
+      if (change === "basis")
+        h.render({
+          bases: { left: "SalesRevenueNet", right: "SalesRevenueNet" },
+        });
+      else if (change === "group") {
+        h.change("group", "cash");
+        h.render();
+      } else if (change === "response")
+        h.render({
+          state: {
+            ...h.state,
+            left: {
+              ...h.state.left,
+              report: {
+                ...h.state.left.report,
+                response: structuredClone(h.state.left.report.response),
+              },
+            },
+          },
+        });
+      else h.unmount();
+      expect(isCurrent()).toBe(false);
+      append();
+      review();
+      expect(h.actions.append).toHaveBeenCalledOnce();
+      expect(h.actions.review).toHaveBeenCalledOnce();
+      if (change !== "unmount") {
+        h.render({
+          state: h.state,
+          bases: { left: "Revenues", right: "SalesRevenueNet" },
+        });
+        h.change("group", "operating");
+        h.change("destination", members.right.listingId);
+        expect(h.review()).toBeUndefined();
+        expect(isCurrent()).toBe(false);
+        append();
+        review();
+        expect(h.actions.append).toHaveBeenCalledOnce();
+        expect(h.actions.review).toHaveBeenCalledOnce();
+      }
+      expect(h.read).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("keeps operating Review after duplicate refusal and pauses it during the current read", async () => {
+    const h = await harness(
+      await operatingPacket("left"),
+      await operatingPacket("right"),
+    );
+    h.change("group", "operating");
+    h.change("destination", members.left.listingId);
+    h.button().props.onClick!();
+    const review = h.review()!.props.onClick!;
+    vi.mocked(h.actions.getAction).mockReturnValue({
+      canAppend: false,
+      reason: "Already added.",
+    });
+    h.button().props.onClick!();
+    expect(h.html()).toContain("Already added.");
+    expect(h.review()).toBeDefined();
+    h.render({
+      state: { ...h.state, pending: { side: "left", cancel: vi.fn() } },
+    });
+    expect(h.review()!.props["aria-disabled"]).toBe(true);
+    review();
+    expect(h.actions.review).not.toHaveBeenCalled();
+    h.render({ state: h.state });
+    review();
+    expect(vi.mocked(h.actions.review).mock.calls[0]![0].group).toBe(
+      "operating",
+    );
+    expect(h.actions.append).toHaveBeenCalledOnce();
+    expect(h.read).toHaveBeenCalledTimes(2);
+  });
 });

@@ -20,6 +20,10 @@ import {
   SecAnnualLiquiditySourceBody,
   SecAnnualLiquidityValueContent,
 } from "../features/research/SecAnnualLiquidity";
+import {
+  SecAnnualOperatingSourceBody,
+  SecAnnualOperatingValueContent,
+} from "../features/research/SecAnnualOperatingResults";
 import type {
   ManagedWatchlistAnnualComparison as ComparisonModel,
   ManagedWatchlistAnnualComparisonState as ComparisonState,
@@ -235,11 +239,19 @@ export function ManagedWatchlistAnnualComparison({
                 )
               }
             </ComparisonRow>
+            <OperatingComparisonRows state={state} projections={projections} />
             <CashComparisonRows state={state} />
             <LiquidityComparisonRows state={state} />
           </tbody>
         </table>
       </div>
+      <p className="managed-annual-comparison-help">
+        Operating margin divides reported operating income by the selected
+        positive revenue for the same filing and exact period, then multiplies
+        by 100. It is rounded to two decimal places, half up. Revenue bases stay
+        separate; negative operating income is valid. This does not establish
+        adjusted earnings, EBIT or EBITDA.
+      </p>
       <p className="managed-annual-comparison-help">
         The app calculation subtracts purchases of property, plant and equipment
         from operating cash flow for the same filing and period. It does not
@@ -324,6 +336,13 @@ export function ManagedWatchlistAnnualComparison({
                     </p>
                   )}
                   <SecAnnualSourceDetails response={response} />
+                  <div
+                    className="managed-annual-comparison-operating-source"
+                    data-annual-comparison-operating-source={side}
+                  >
+                    <h4>Operating sources and calculation inputs</h4>
+                    <SecAnnualOperatingSourceBody response={response} />
+                  </div>
                   <div
                     className="managed-annual-comparison-cash-source"
                     data-annual-comparison-cash-source={side}
@@ -510,14 +529,14 @@ function AnnualCompanyControls({
                 ) && (
                   <option value={projection.selectedBasis}>
                     {managedAnnualBasisLabel(projection.selectedBasis)} ·
-                    unavailable in this report
+                    revenue/net-income pair unavailable
                   </option>
                 )}
               {projection.basisChoices.map((choice) => (
                 <option key={choice.concept} value={choice.concept}>
                   {managedAnnualBasisLabel(choice.concept)}
                   {choice.status !== "eligible" &&
-                    " · unavailable in this report"}
+                    " · revenue/net-income pair unavailable"}
                 </option>
               ))}
             </select>
@@ -615,6 +634,57 @@ function ComparisonRow({
       ))}
     </tr>
   );
+}
+
+const operatingRows = [
+  ["operatingIncome", "Operating income", "Reported", "USD"],
+  ["revenue", "Operating revenue basis", "Reported", "USD"],
+  ["operatingMargin", "Operating margin", "App calculation", "%"],
+] as const;
+
+function OperatingComparisonRows({
+  state,
+  projections,
+}: {
+  state: ComparisonState;
+  projections: Record<Side, Projection>;
+}) {
+  return operatingRows.map(([metric, label, kind, unit]) => (
+    <tr key={metric} data-annual-comparison-operating={metric}>
+      <th scope="row">
+        {label}
+        <small>
+          {kind} · {unit}
+        </small>
+      </th>
+      {sides.map((side) => {
+        const response = state[side].report.response;
+        const selected = projections[side].selectedBasis;
+        const resolution = response?.evidence.operatingResults.resolution;
+        const basis = resolution?.margins.find(
+          (candidate) => candidate.concept === selected,
+        );
+        const value =
+          metric === "operatingIncome"
+            ? resolution?.operatingIncome
+            : basis?.[metric];
+        return (
+          <td key={side}>
+            {metric === "revenue" && response && selected !== null && (
+              <small>{managedAnnualBasisLabel(selected)}</small>
+            )}
+            {!response ? (
+              "Not loaded"
+            ) : value ? (
+              <SecAnnualOperatingValueContent value={value} />
+            ) : (
+              "Unavailable. The selected revenue basis is missing from this report. Choose another basis explicitly."
+            )}
+          </td>
+        );
+      })}
+    </tr>
+  ));
 }
 
 const cashRows = [

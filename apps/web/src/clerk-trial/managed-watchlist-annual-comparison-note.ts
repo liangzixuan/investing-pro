@@ -4,11 +4,13 @@ import {
 } from "@research-cockpit/contracts";
 import { getPersonalSecAnnualSourceReason } from "@research-cockpit/personal-financial-analytics";
 import { annualCashGeneration } from "../lib/sec-annual-cash-response";
+import { annualOperatingResults } from "../lib/sec-annual-operating-response";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import type { ManagedWatchlistAnnualComparisonMember } from "./managed-watchlist-annual-comparison";
 
-export type AnnualComparisonNoteGroup = "income" | "cash" | "liquidity";
+export type AnnualComparisonNoteGroup =
+  "income" | "cash" | "liquidity" | "operating";
 export interface AnnualComparisonNoteCapture {
   readonly group: AnnualComparisonNoteGroup;
   readonly left: {
@@ -169,10 +171,60 @@ function liquidityEvidence(column: Column): Evidence {
     : { excerpt: `${identity(column)}: ${excerpt}`, reason: null };
 }
 
+function operatingEvidence(column: Column): Evidence {
+  if (column.selectedBasis === null)
+    return { excerpt: null, reason: "Choose a revenue basis explicitly." };
+  const { evidence } = column.response;
+  const { operatingResults, cashGeneration, liquidity } = evidence;
+  const ids = new Set(
+    [
+      ...evidence.observations,
+      ...cashGeneration.operatingCashFlow.observations,
+      ...cashGeneration.ppePurchases.observations,
+      ...liquidity.currentAssets.observations,
+      ...liquidity.currentLiabilities.observations,
+    ].map((row) => row.id),
+  );
+  if (!annualOperatingResults(operatingResults, evidence, ids))
+    return {
+      excerpt: null,
+      reason: "Operating evidence could not be validated.",
+    };
+  const basis = operatingResults.resolution.margins.find(
+    (item) => item.concept === column.selectedBasis,
+  );
+  if (!basis)
+    return {
+      excerpt: null,
+      reason:
+        "The selected operating revenue basis is unavailable. Choose another basis explicitly.",
+    };
+  const { operatingIncome } = operatingResults.resolution;
+  const { revenue, operatingMargin } = basis;
+  if (
+    operatingIncome.status !== "available" ||
+    revenue.status !== "available" ||
+    operatingMargin.status !== "available"
+  )
+    return {
+      excerpt: null,
+      reason:
+        "Operating comparison needs available operating income and positive revenue from the same filing and exact annual period.",
+    };
+  return {
+    excerpt: [
+      `${identity(column)}: ${evidence.target.status === "target" ? evidence.target.form : ""} ${operatingIncome.startDate} to ${operatingIncome.endDate}; reported OperatingIncomeLoss USD ${operatingIncome.value}; ${basis.concept} revenue USD ${revenue.value}; operating margin ${operatingMargin.value}%.`,
+      provenance(column, operatingMargin.currentUseEligible),
+    ].join(" "),
+    reason: null,
+  };
+}
+
 const formatEvidence = {
   income: incomeEvidence,
   cash: cashEvidence,
   liquidity: liquidityEvidence,
+  operating: operatingEvidence,
 };
 
 /** Formats admitted captured reports; callers own freshness, draft and Save guards. */
@@ -189,11 +241,12 @@ export function getAnnualComparisonNoteEvidence(
     if (
       capture.group !== "income" &&
       capture.group !== "cash" &&
-      capture.group !== "liquidity"
+      capture.group !== "liquidity" &&
+      capture.group !== "operating"
     )
       return {
         excerpt: null,
-        reason: "Choose income, cash or liquidity evidence.",
+        reason: "Choose income, cash, liquidity or operating evidence.",
       };
     const pieces: string[] = [];
     for (const [label, column] of [
@@ -216,6 +269,16 @@ export function getAnnualComparisonNoteEvidence(
           "Observed Annual liquidity comparison; exact, unscaled USD; current ratio is a multiple.",
           ...pieces,
           "Company balance dates may differ; no cross-company calculation or ranking.",
+        ].join(" "),
+        reason: null,
+      };
+    if (capture.group === "operating")
+      return {
+        excerpt: [
+          "Observed Annual operating comparison; exact, unscaled USD.",
+          ...pieces,
+          "App calculation: operating margin = operating income / positive revenue * 100, rounded to two decimal places, half up; each company's inputs use the same filing and exact period.",
+          "Company periods may differ; no cross-company calculation or ranking. Evidence dates are unchanged; this action does not refresh sources.",
         ].join(" "),
         reason: null,
       };

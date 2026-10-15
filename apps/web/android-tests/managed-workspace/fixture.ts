@@ -1,4 +1,8 @@
 import { inventedOperatingPacket } from "./operating-fixture";
+import {
+  operatingComparisonPacket,
+  operatingComparisonNoteDraft,
+} from "./operating-comparison-fixture";
 import type {
   MainWatchlistPayload,
   ManagedCatalogSnapshotDto,
@@ -218,6 +222,7 @@ export async function createFixture(
     | "annual-note"
     | "annual-cash-history"
     | "annual-operating-results"
+    | "annual-operating-comparison"
     | "company-snapshot"
     | "company-price-ranges"
     | "thesis-review"
@@ -243,7 +248,9 @@ export async function createFixture(
     scenarioName === "company-snapshot" ||
     scenarioName === "annual-cash-history"
       ? "annual-note"
-      : scenarioName;
+      : scenarioName === "annual-operating-comparison"
+        ? "annual-comparison"
+        : scenarioName;
   const annualBase = await response(
     scenario === "annual-note"
       ? annualHistoryRows().map((observation) =>
@@ -306,16 +313,23 @@ export async function createFixture(
   };
   const comparisonReports =
     scenario === "annual-comparison"
-      ? await Promise.all([
-          annualComparisonResponse("left", { mode: "multiple-bases" }),
-          annualComparisonResponse("right"),
-          annualComparisonResponse("left", {
-            cutoffAt: "2026-09-21T00:00:00.000Z",
-          }),
-          annualComparisonResponse("right", {
-            cutoffAt: "2026-09-21T00:00:00.000Z",
-          }),
-        ])
+      ? scenarioName === "annual-operating-comparison"
+        ? await Promise.all([
+            operatingComparisonPacket("left"),
+            operatingComparisonPacket("right"),
+            operatingComparisonPacket("left", true),
+            operatingComparisonPacket("right", true),
+          ])
+        : await Promise.all([
+            annualComparisonResponse("left", { mode: "multiple-bases" }),
+            annualComparisonResponse("right"),
+            annualComparisonResponse("left", {
+              cutoffAt: "2026-09-21T00:00:00.000Z",
+            }),
+            annualComparisonResponse("right", {
+              cutoffAt: "2026-09-21T00:00:00.000Z",
+            }),
+          ])
       : null;
   const eodPacket = (kind: "initial" | "late" | "recovered") => {
     const request = {
@@ -888,7 +902,13 @@ export async function createFixture(
           ...payload,
           memberships: [
             payload.memberships[1]!,
-            { ...payload.memberships[0]!, note: annualComparisonNoteDraft },
+            {
+              ...payload.memberships[0]!,
+              note:
+                scenarioName === "annual-operating-comparison"
+                  ? operatingComparisonNoteDraft
+                  : annualComparisonNoteDraft,
+            },
           ],
         };
         if (

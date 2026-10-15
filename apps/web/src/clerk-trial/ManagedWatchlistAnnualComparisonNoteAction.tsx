@@ -236,13 +236,19 @@ export function ManagedWatchlistAnnualComparisonNoteAction(props: Props) {
           onChange={(event) => {
             if (!capturedCurrent()) return;
             const value = event.currentTarget.value;
-            if (value === "income" || value === "cash" || value === "liquidity")
+            if (
+              value === "income" ||
+              value === "cash" ||
+              value === "liquidity" ||
+              value === "operating"
+            )
               setGroup(value);
           }}
         >
           <option value="income">Revenue and net income</option>
           <option value="cash">Cash generation</option>
           <option value="liquidity">Liquidity</option>
+          <option value="operating">Operating results</option>
         </select>
       </label>
       <label htmlFor="managed-annual-comparison-note-destination">

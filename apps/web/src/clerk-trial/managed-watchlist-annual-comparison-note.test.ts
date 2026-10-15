@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   annualComparisonCashRows,
   annualComparisonLiquidityRows,
+  annualComparisonOperatingRows,
   annualComparisonMemberships,
   annualComparisonResponse,
   annualComparisonRows,
@@ -869,7 +870,298 @@ describe("Annual liquidity comparison note evidence", () => {
     Reflect.set(input, "group", "other");
     expect(getAnnualComparisonNoteEvidence(input)).toEqual({
       excerpt: null,
-      reason: "Choose income, cash or liquidity evidence.",
+      reason: "Choose income, cash, liquidity or operating evidence.",
     });
+  });
+});
+
+async function operatingCapture(left?: Options, right?: Options) {
+  const options = (side: "left" | "right", changes?: Options): Options => ({
+    rows: annualComparisonRows(side).filter((row) => row.metric === "revenue"),
+    operatingRows: annualComparisonOperatingRows(side),
+    ...changes,
+  });
+  return capture("operating", options("left", left), options("right", right));
+}
+
+const operatingFormula =
+  "App calculation: operating margin = operating income / positive revenue * 100, rounded to two decimal places, half up; each company's inputs use the same filing and exact period.";
+const expectedOperating = [
+  "Observed Annual operating comparison; exact, unscaled USD.",
+  "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OperatingIncomeLoss USD -250.125; Revenues revenue USD 1000; operating margin -25.01%.",
+  leftSource,
+  "ONE (One Company; One Class A; Class A; XNAS, US): 10-K 2024-07-01 to 2025-06-30; reported OperatingIncomeLoss USD 125.25; SalesRevenueNet revenue USD 750; operating margin 16.7%.",
+  rightSource,
+  operatingFormula,
+  ending,
+].join(" ");
+
+describe("Annual operating comparison note evidence", () => {
+  it("copies exact independently admitted amounts, separate periods and original clocks with no net income", async () => {
+    const input = await operatingCapture();
+    const before = JSON.stringify(input);
+    expect(getAnnualComparisonNoteEvidence(input)).toEqual({
+      excerpt: expectedOperating,
+      reason: null,
+    });
+    for (const side of [input.left, input.right]) {
+      expect(
+        side.response.evidence.observations.every(
+          (row) => row.metric === "revenue",
+        ),
+      ).toBe(true);
+      expect(side.response.evidence.resolution.selectedReportPairEligible).toBe(
+        false,
+      );
+    }
+    expect([...`Café 東京📈 ${expectedOperating}`].length).toBeLessThan(2000);
+    expect(expectedOperating.split(operatingFormula)).toHaveLength(2);
+    expect(JSON.stringify(input)).toBe(before);
+  });
+
+  it("uses only the chosen basis and retains the complete left-previous native example within the note budget", async () => {
+    const input = await operatingCapture({
+      rows: annualComparisonRows()
+        .filter((row) => row.metric === "revenue")
+        .flatMap((row) => [
+          row,
+          {
+            ...row,
+            concept: "RevenueFromContractWithCustomerExcludingAssessedTax",
+            value: "500",
+          },
+        ]),
+    });
+    const selected = {
+      ...input,
+      left: {
+        ...input.left,
+        selectedBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+        showingPrevious: true,
+      },
+    };
+    const expected = expectedOperating
+      .replace(
+        "Revenues revenue USD 1000; operating margin -25.01%.",
+        "RevenueFromContractWithCustomerExcludingAssessedTax revenue USD 500; operating margin -50.03%.",
+      )
+      .replace(leftSource, `${leftSource} Retained previous report.`);
+    expect(getAnnualComparisonNoteEvidence(selected)).toEqual({
+      excerpt: expected,
+      reason: null,
+    });
+    expect([...`Café 東京📈 ${expected}`].length).toBeLessThan(2000);
+    expect(getAnnualComparisonNoteEvidence(input).excerpt).toBe(
+      expectedOperating,
+    );
+  });
+
+  it("preserves both retained historical qualifiers, long concepts and all source clocks without using the view clock", async () => {
+    const options = (side: "left" | "right"): Options => ({
+      mode: "current-use-unavailable",
+      rows: annualComparisonRows(side)
+        .filter((row) => row.metric === "revenue")
+        .map((row) => ({
+          ...row,
+          concept: "RevenueFromContractWithCustomerExcludingAssessedTax",
+        })),
+    });
+    const input = await operatingCapture(options("left"), options("right"));
+    const captured = {
+      ...input,
+      left: {
+        ...input.left,
+        selectedBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+        showingPrevious: true,
+      },
+      right: {
+        ...input.right,
+        selectedBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+        showingPrevious: true,
+      },
+    };
+    const expected = expectedOperating
+      .replace(
+        "Revenues revenue",
+        "RevenueFromContractWithCustomerExcludingAssessedTax revenue",
+      )
+      .replace(
+        "SalesRevenueNet revenue",
+        "RevenueFromContractWithCustomerExcludingAssessedTax revenue",
+      )
+      .replaceAll("2026-09-20", "2028-09-20")
+      .replaceAll(
+        "Current use eligible at original load.",
+        "Historical evidence; current use unavailable at original load. Retained previous report.",
+      );
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2035-01-01T00:00:00Z"));
+    try {
+      expect(getAnnualComparisonNoteEvidence(captured)).toEqual({
+        excerpt: expected,
+        reason: null,
+      });
+      expect([...`${"x".repeat(32)} ${expected}`].length).toBeLessThanOrEqual(
+        2000,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([null, "UnknownRevenue", "SalesRevenueNet"])(
+    "refuses the unavailable selected basis %s without borrowing another",
+    async (selectedBasis) => {
+      const input = await operatingCapture();
+      const actual = getAnnualComparisonNoteEvidence({
+        ...input,
+        left: { ...input.left, selectedBasis },
+      });
+      expect(actual.excerpt).toBeNull();
+      expect(actual.reason).toMatch(/^First company:/u);
+      expect(getAnnualComparisonNoteEvidence(input).excerpt).toBe(
+        expectedOperating,
+      );
+    },
+  );
+
+  it.each([
+    "missing-operating",
+    "missing-revenue",
+    "zero-revenue",
+    "negative-revenue",
+    "different-period",
+    "conflicting-operating",
+  ] as const)(
+    "refuses %s on the second company without partial evidence",
+    async (mode) => {
+      const rows = annualComparisonRows("right").filter(
+        (row) => row.metric === "revenue",
+      );
+      const operatingRows = annualComparisonOperatingRows("right");
+      const options: Options = {
+        rows:
+          mode === "missing-revenue"
+            ? []
+            : rows.map((row) => ({
+                ...row,
+                value:
+                  mode === "zero-revenue"
+                    ? "0"
+                    : mode === "negative-revenue"
+                      ? "-750"
+                      : row.value,
+              })),
+        operatingRows:
+          mode === "missing-operating"
+            ? []
+            : mode === "conflicting-operating"
+              ? [
+                  operatingRows[0]!,
+                  {
+                    ...operatingRows[0]!,
+                    value: "126",
+                    sourceLocator:
+                      "/facts/us-gaap/OperatingIncomeLoss/units/USD/1",
+                  },
+                ]
+              : operatingRows.map((row) =>
+                  mode === "different-period"
+                    ? { ...row, startDate: "2024-07-02", durationDays: 364 }
+                    : row,
+                ),
+      };
+      expect(
+        getAnnualComparisonNoteEvidence(
+          await operatingCapture(undefined, options),
+        ),
+      ).toEqual({
+        excerpt: null,
+        reason:
+          "Second company: Operating comparison needs available operating income and positive revenue from the same filing and exact annual period.",
+      });
+    },
+  );
+
+  it.each([
+    "value",
+    "period",
+    "reference",
+    "current-use",
+    "cross-section-id",
+    "coverage",
+  ] as const)("refuses forged operating evidence %s", async (mode) => {
+    const input = await operatingCapture();
+    const response = structuredClone(input.left.response);
+    const graph = response.evidence.operatingResults;
+    const margin = graph.resolution.margins.find(
+      (basis) => basis.concept === "Revenues",
+    )!.operatingMargin;
+    if (mode === "value") Reflect.set(margin, "value", "99");
+    else if (mode === "period") Reflect.set(margin, "startDate", "2025-01-02");
+    else if (mode === "reference") Reflect.set(margin, "observationIds", []);
+    else if (mode === "current-use")
+      Reflect.set(margin, "currentUseEligible", false);
+    else if (mode === "cross-section-id")
+      Reflect.set(
+        graph.operatingIncome.observations[0]!,
+        "id",
+        response.evidence.cashGeneration.operatingCashFlow.observations[0]!.id,
+      );
+    else Reflect.set(graph.operatingIncome.scan.coverage!, "returned", 0);
+    expect(
+      getAnnualComparisonNoteEvidence({
+        ...input,
+        left: { ...input.left, response },
+      }),
+    ).toEqual({
+      excerpt: null,
+      reason: "First company: Operating evidence could not be validated.",
+    });
+  });
+
+  it("preserves unsafe-number exact source amounts and leaves full-note overflow to the workspace", async () => {
+    const exact = "9007199254740993123.0000000001";
+    const input = await operatingCapture({
+      rows: annualComparisonRows()
+        .filter((row) => row.metric === "revenue")
+        .map((row) => ({ ...row, value: "1" })),
+      operatingRows: annualComparisonOperatingRows().map((row) => ({
+        ...row,
+        value: exact,
+      })),
+    });
+    const longIdentity = (column: Column): Column => ({
+      ...column,
+      member: {
+        ...column.member,
+        listing: {
+          ...column.member.listing,
+          issuerName: "名".repeat(128),
+          securityName: "株".repeat(128),
+          shareClassName: "類".repeat(128),
+        },
+      },
+      response: {
+        ...column.response,
+        security: {
+          ...column.response.security,
+          issuerName: "名".repeat(128),
+          securityName: "株".repeat(128),
+        },
+      },
+    });
+    const result = getAnnualComparisonNoteEvidence({
+      ...input,
+      left: longIdentity(input.left),
+      right: longIdentity(input.right),
+    });
+    expect(result.reason).toBeNull();
+    expect(result.excerpt).toContain(
+      `reported OperatingIncomeLoss USD ${exact}; Revenues revenue USD 1; operating margin 900719925474099312300%.`,
+    );
+    expect(result.excerpt).toContain(leftSource);
+    expect(result.excerpt).toContain(rightSource);
+    expect([...result.excerpt!].length).toBeGreaterThan(2000);
   });
 });

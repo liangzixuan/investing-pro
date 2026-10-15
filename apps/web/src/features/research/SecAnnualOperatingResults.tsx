@@ -87,8 +87,7 @@ export function SecAnnualOperatingResults({
     readonly ref: Ref<HTMLHeadingElement>;
   };
 }) {
-  const { operatingResults, generation } = response.evidence;
-  const { resolution, operatingIncome } = operatingResults;
+  const { resolution } = response.evidence.operatingResults;
   return (
     <section
       className="sec-annual-operating"
@@ -148,66 +147,79 @@ export function SecAnnualOperatingResults({
       </p>
       <details className="sec-quarterly-row-details sec-annual-operating-source">
         <summary>Operating sources and calculation inputs</summary>
+        <SecAnnualOperatingSourceBody response={response} />
+      </details>
+    </section>
+  );
+}
+
+export function SecAnnualOperatingSourceBody({
+  response,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+}) {
+  const { operatingResults, generation } = response.evidence;
+  const { resolution, operatingIncome } = operatingResults;
+  return (
+    <>
+      <p>
+        Annual cutoff {generation.cutoffAt}. Company Facts captured{" "}
+        {generation.sources.companyFacts.fetchedAt ?? "Unavailable"}.
+        Submissions captured{" "}
+        {generation.sources.submissions.fetchedAt ?? "Unavailable"}. Completed{" "}
+        {generation.completedAt}.
+      </p>
+      {resolution.utilityAge && (
         <p>
-          Annual cutoff {generation.cutoffAt}. Company Facts captured{" "}
-          {generation.sources.companyFacts.fetchedAt ?? "Unavailable"}.
-          Submissions captured{" "}
-          {generation.sources.submissions.fetchedAt ?? "Unavailable"}. Completed{" "}
-          {generation.completedAt}.
+          Report age at cutoff: {resolution.utilityAge.endAgeDays} days. Current
+          use requires a report within 485 days and source captures within seven
+          days.
         </p>
-        {resolution.utilityAge && (
-          <p>
-            Report age at cutoff: {resolution.utilityAge.endAgeDays} days.
-            Current use requires a report within 485 days and source captures
-            within seven days.
-          </p>
-        )}
+      )}
+      <p>
+        Only reported OperatingIncomeLoss USD observations are used for
+        operating income. Missing values are not filled from other concepts or
+        filings.
+      </p>
+      {operatingIncome.scan.status === "available" ? (
         <p>
-          Only reported OperatingIncomeLoss USD observations are used for
-          operating income. Missing values are not filled from other concepts or
-          filings.
+          Scanned {operatingIncome.scan.coverage.full.inspectedRows} rows:{" "}
+          {operatingIncome.scan.coverage.full.invalidRows} invalid,{" "}
+          {operatingIncome.scan.coverage.full.duplicateRows} identical
+          duplicates. Returned {operatingIncome.scan.coverage.returned} of{" "}
+          {operatingIncome.scan.coverage.selected ?? "unresolved"}{" "}
+          selected-filing observations;{" "}
+          {operatingIncome.scan.coverage.omittedSelected ?? "unknown"} omitted.{" "}
+          {operatingIncome.scan.absence &&
+            reasons[operatingIncome.scan.absence]}
         </p>
-        {operatingIncome.scan.status === "available" ? (
-          <p>
-            Scanned {operatingIncome.scan.coverage.full.inspectedRows} rows:{" "}
-            {operatingIncome.scan.coverage.full.invalidRows} invalid,{" "}
-            {operatingIncome.scan.coverage.full.duplicateRows} identical
-            duplicates. Returned {operatingIncome.scan.coverage.returned} of{" "}
-            {operatingIncome.scan.coverage.selected ?? "unresolved"}{" "}
-            selected-filing observations;{" "}
-            {operatingIncome.scan.coverage.omittedSelected ?? "unknown"}{" "}
-            omitted.{" "}
-            {operatingIncome.scan.absence &&
-              reasons[operatingIncome.scan.absence]}
-          </p>
-        ) : (
-          <p>{reasons[operatingIncome.scan.status]}</p>
-        )}
-        <h5>Operating income source observations</h5>
-        <ol>
-          {operatingIncome.observations.map((row) => (
+      ) : (
+        <p>{reasons[operatingIncome.scan.status]}</p>
+      )}
+      <h5>Operating income source observations</h5>
+      <ol>
+        {operatingIncome.observations.map((row) => (
+          <li key={row.id}>
+            <ObservationDetails row={row} />
+          </li>
+        ))}
+      </ol>
+      <h5>Revenue source observations</h5>
+      <ol>
+        {response.evidence.observations
+          .filter((row) => row.metric === "revenue")
+          .map((row) => (
             <li key={row.id}>
               <ObservationDetails row={row} />
             </li>
           ))}
-        </ol>
-        <h5>Revenue source observations</h5>
-        <ol>
-          {response.evidence.observations
-            .filter((row) => row.metric === "revenue")
-            .map((row) => (
-              <li key={row.id}>
-                <ObservationDetails row={row} />
-              </li>
-            ))}
-        </ol>
-        {resolution.margins.map((basis) => (
-          <p key={basis.concept}>
-            {basis.concept} margin references:{" "}
-            {basis.operatingMargin.observationIds.join(" · ") || "None"}
-          </p>
-        ))}
-      </details>
-    </section>
+      </ol>
+      {resolution.margins.map((basis) => (
+        <p key={basis.concept}>
+          {basis.concept} margin references:{" "}
+          {basis.operatingMargin.observationIds.join(" · ") || "None"}
+        </p>
+      ))}
+    </>
   );
 }

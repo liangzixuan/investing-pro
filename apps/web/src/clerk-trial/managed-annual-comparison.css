@@ -133,12 +133,14 @@
 .managed-frame .managed-annual-comparison-table small.discovery-warning {
   color: var(--managed-warning, #f3c477);
 }
+.managed-frame .managed-annual-comparison-operating-source,
 .managed-frame .managed-annual-comparison-cash-source,
 .managed-frame .managed-annual-comparison-liquidity-source {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid var(--managed-line);
 }
+.managed-frame .managed-annual-comparison-operating-source h4,
 .managed-frame .managed-annual-comparison-cash-source h4,
 .managed-frame .managed-annual-comparison-liquidity-source h4 {
   margin: 0 0 8px;

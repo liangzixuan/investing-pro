@@ -131,6 +131,7 @@ jobs:
                   "beaSessionExpiryClearsAgendaAndFencesLateResponse",
                   "fedAnnouncementsRetainDatesCancelAndRetireWithSession",
                   "watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft",
+                  "operatingComparisonNoteKeepsSeparateSourcesAndExplicitSave",
               },
           }
           executed = set()
