@@ -15,6 +15,7 @@ import type {
   ManagedSecFilingsResponseDto,
   PersonalMonetaryAnnouncementsDto,
 } from "@research-cockpit/contracts";
+import { createResearchFollowupsFixture } from "./followups-fixture";
 import {
   encodeMainWatchlistPayload,
   parseManagedCatalogResolveResponse,
@@ -228,6 +229,7 @@ export async function createFixture(
     | "annual-liquidity-history"
     | "annual-operating-comparison"
     | "company-snapshot"
+    | "research-followups"
     | "company-price-ranges"
     | "thesis-review"
     | "price-comparison-note"
@@ -250,6 +252,7 @@ export async function createFixture(
   // admits one Filings read; cash history adds only same-filing cash rows.
   const scenario =
     scenarioName === "company-snapshot" ||
+    scenarioName === "research-followups" ||
     scenarioName === "annual-cash-history"
       ? "annual-note"
       : scenarioName === "annual-operating-comparison"
@@ -537,6 +540,10 @@ export async function createFixture(
   const signOutScenario =
     scenario === "signout-save-review" ||
     scenario === "signout-uncertain-review";
+  const followups =
+    scenarioName === "research-followups"
+      ? createResearchFollowupsFixture()
+      : null;
   let state = {
     load: 0,
     status: 0,
@@ -647,6 +654,16 @@ export async function createFixture(
     state.save === 1 &&
     state.load === 2;
   const api: ManagedApi = {
+    loadFollowups: (signal) =>
+      followups?.api.loadFollowups(signal) ??
+      Promise.reject(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
+    saveFollowups: (command, signal) =>
+      followups?.api.saveFollowups(command, signal) ??
+      Promise.reject(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
     recentFilings: (input, signal) => {
       if (scenarioName === "annual-operating-results" || historyScenario) {
         count("filings");
@@ -657,12 +674,13 @@ export async function createFixture(
         throw new Error("Unexpected invented price-range Filings read");
       }
       const request = parseManagedSecFilingsRequest(input);
-      if (scenarioName === "company-snapshot") {
+      if (scenarioName === "company-snapshot" || followups) {
         if (
           signal.aborted ||
           state.filings !== 0 ||
-          state.annual !== 1 ||
-          state.eod !== 1 ||
+          (followups
+            ? state.resolve !== 1
+            : state.annual !== 1 || state.eod !== 1) ||
           request?.catalogSnapshotSha256 !== digest ||
           request.listingId !== "listing-zero" ||
           request.symbol !== "ZERO"
@@ -885,6 +903,7 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
+      if (followups) return unexpected("save");
       if (scenarioName === "annual-operating-results" || historyScenario)
         return unexpected("save");
       if (scenario === "company-price-ranges") return unexpected("save");
@@ -1150,7 +1169,7 @@ export async function createFixture(
       if (scenario === "watchlist-comparison" && state.marketsResolve !== 0)
         return unexpected("resolve");
       if (
-        scenario === "company-direct-entry" &&
+        (scenario === "company-direct-entry" || followups) &&
         request.listingIds.length === 1 &&
         request.listingIds[0] === identity.listingId
       ) {
@@ -1195,6 +1214,19 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
+      if (followups) {
+        if (
+          signal.aborted ||
+          state.resolve !== 1 ||
+          state.eod !== 0 ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.listingId !== "listing-zero" ||
+          request.range !== "1m"
+        )
+          throw new Error("Unexpected invented follow-up Price request");
+        count("eod");
+        return Promise.resolve(structuredClone(eodInitial));
+      }
       if (scenarioName === "annual-operating-results" || historyScenario) {
         count("eod");
         throw new Error("Unexpected operating-results eod operation");
@@ -1343,6 +1375,10 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (followups && state.resolve !== 1)
+        throw new Error(
+          "Resolve the invented follow-up identity before Annual",
+        );
       if (historyScenario) {
         if (
           !annualHistory ||
@@ -1498,7 +1534,7 @@ export async function createFixture(
       });
     },
   };
-  const session: TrialSession = {
+  const session: TrialSession = followups?.nextSession() ?? {
     userId: "invented-android-user",
     sessionId: "invented-android-session",
     getToken: () => unexpected("token"),
@@ -1523,6 +1559,7 @@ export async function createFixture(
   return {
     api,
     session,
+    followups,
     marketsCohort,
     priceCoverage:
       scenario === "watchlist-comparison"

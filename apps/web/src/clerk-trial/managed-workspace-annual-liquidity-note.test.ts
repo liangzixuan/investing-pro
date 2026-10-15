@@ -112,6 +112,16 @@ async function fixture(packet?: Report, loadAnnual = true) {
   const unexpected = () =>
     Promise.reject(new Error("Unexpected unrelated fixture request"));
   const api: ManagedApi = {
+    loadFollowups: vi
+      .fn<ManagedApi["loadFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
+    saveFollowups: vi
+      .fn<ManagedApi["saveFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
     annualReport: vi
       .fn<ManagedApi["annualReport"]>()
       .mockResolvedValue(response),

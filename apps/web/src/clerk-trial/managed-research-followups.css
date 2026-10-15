@@ -1,0 +1,156 @@
+.clerk-trial.managed-frame .managed-followups {
+  min-width: 0;
+  color: var(--managed-ink);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-followups-heading,
+.clerk-trial.managed-frame .managed-followups-reading-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.clerk-trial.managed-frame .managed-followups-heading > div {
+  flex: 1 1 280px;
+}
+.clerk-trial.managed-frame .managed-followups h2 {
+  margin-block: 0 8px;
+}
+.clerk-trial.managed-frame .managed-followups :is(p, h3) {
+  margin-block: 8px 12px;
+}
+.clerk-trial.managed-frame .managed-followups :is(input, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px;
+  font-size: 1rem;
+}
+.clerk-trial.managed-frame .managed-followups label {
+  display: block;
+  min-width: 0;
+  margin-block: 12px;
+  font-weight: 600;
+}
+.clerk-trial.managed-frame .managed-followups textarea {
+  resize: vertical;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-followups :is(button, summary) {
+  min-height: 44px;
+}
+.clerk-trial.managed-frame .managed-followups-help,
+.clerk-trial.managed-frame .managed-followups-version,
+.clerk-trial.managed-frame .managed-followups-reading-controls p {
+  color: var(--managed-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.clerk-trial.managed-frame .managed-followups-create,
+.clerk-trial.managed-frame .managed-followups-identities,
+.clerk-trial.managed-frame .managed-followups-saved {
+  margin-block: 24px;
+  padding-block: 16px;
+  border-block: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-followups-create-date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.clerk-trial.managed-frame .managed-followups-create-date label {
+  flex: 1 1 220px;
+  margin-bottom: 0;
+}
+.clerk-trial.managed-frame .managed-followups-workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.3fr);
+  border-block: 1px solid var(--managed-line);
+  margin-block: 20px;
+}
+.clerk-trial.managed-frame .managed-followups :is(ul, .managed-followups-list) {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.clerk-trial.managed-frame .managed-followups-list {
+  border-right: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-followups-list :is(h3, p) {
+  padding-inline: 12px;
+}
+.clerk-trial.managed-frame .managed-followup-choice {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--managed-line);
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--managed-ink);
+  text-align: left;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-followup-choice:hover:not(:disabled) {
+  background: var(--managed-surface-raised);
+}
+.clerk-trial.managed-frame .managed-followup-choice[aria-pressed="true"],
+.clerk-trial.managed-frame .managed-followup-choice[aria-pressed="true"]:hover {
+  background: var(--managed-selected);
+  border-left-color: var(--managed-action);
+}
+.clerk-trial.managed-frame .managed-followup-choice > span:not(:first-child) {
+  color: var(--managed-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+.clerk-trial.managed-frame .managed-followups-editor {
+  min-width: 0;
+  padding: 16px 24px;
+}
+.clerk-trial.managed-frame .managed-followups-full-identity,
+.clerk-trial.managed-frame .managed-followups-authored,
+.clerk-trial.managed-frame .managed-followups-check-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-followups-warning {
+  color: #ffbd80;
+  border-left: 3px solid #ffbd80;
+  padding-left: 12px;
+}
+.clerk-trial.managed-frame .managed-followups-identities li,
+.clerk-trial.managed-frame .managed-followups-saved li {
+  padding-block: 12px;
+  border-bottom: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-followups-saved summary {
+  display: list-item;
+  align-content: center;
+  cursor: pointer;
+}
+@media (max-width: 760px) {
+  .clerk-trial.managed-frame .managed-followups-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .clerk-trial.managed-frame .managed-followups-list {
+    border-right: 0;
+    border-bottom: 1px solid var(--managed-line);
+  }
+  .clerk-trial.managed-frame .managed-followups-editor {
+    padding: 16px 12px;
+  }
+  .clerk-trial.managed-frame .managed-followups-reading-controls > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}

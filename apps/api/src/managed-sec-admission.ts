@@ -1,4 +1,4 @@
-import type { AppwriteWatchlistStore } from "./appwrite-watchlist-repository";
+import type { AppwriteVersionedRowStore } from "./appwrite-versioned-row-store";
 import type { WatchlistPrincipal } from "./watchlist-repository";
 
 export const MANAGED_SEC_ADMISSION_LIMITS = Object.freeze({
@@ -8,7 +8,7 @@ export const MANAGED_SEC_ADMISSION_LIMITS = Object.freeze({
   maxRequests: 6,
 });
 export type ManagedSecAdmissionStore = Pick<
-  AppwriteWatchlistStore,
+  AppwriteVersionedRowStore,
   | "getRow"
   | "createTransaction"
   | "incrementRowColumn"

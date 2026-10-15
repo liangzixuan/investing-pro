@@ -1,4 +1,4 @@
-import type { AppwriteWatchlistStore } from "./appwrite-watchlist-repository";
+import type { AppwriteVersionedRowStore } from "./appwrite-versioned-row-store";
 import type { WatchlistPrincipal } from "./watchlist-repository";
 
 export const MANAGED_EOD_ADMISSION_LIMITS = Object.freeze({
@@ -15,7 +15,7 @@ const WINDOWS = [
   { duration: 31 * 24 * 60 * 60 * 1_000 + 4_000, limit: 256 },
 ] as const;
 export type ManagedEodAdmissionStore = Pick<
-  AppwriteWatchlistStore,
+  AppwriteVersionedRowStore,
   | "getRow"
   | "createTransaction"
   | "incrementRowColumn"

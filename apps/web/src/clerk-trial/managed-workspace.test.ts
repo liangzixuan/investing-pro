@@ -4,10 +4,13 @@ import {
   proposeThesisReview,
 } from "./managed-thesis-review";
 import { filingReferenceNoteExcerpt } from "./managed-filings-note";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
   ManagedCatalogSnapshotDto,
+  ManagedResearchFollowupsDto,
+  ResearchFollowup,
+  ResearchFollowupsPayload,
   PersonalSecurityMasterSearchResultDto,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
@@ -146,6 +149,16 @@ function deferred<T>() {
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    loadFollowups: vi
+      .fn<ManagedApi["loadFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
+    saveFollowups: vi
+      .fn<ManagedApi["saveFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
     monetaryAnnouncements: vi
       .fn<ManagedApi["monetaryAnnouncements"]>()
       .mockRejectedValue(new Error("Unexpected announcements read")),
@@ -7156,4 +7169,638 @@ describe("selected watchlist filings handoff", () => {
       expect(api.save).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("workspace persisted follow-up research", () => {
+  const zero: PersonalSecurityMasterSearchResultDto = {
+    ...eodSelection.listing,
+    cik: eodSelection.cik!,
+    matchKind: "current_symbol_exact",
+    matchedValue: "ZERO",
+  };
+  const entryId = "00000000-0000-4000-8000-000000000001";
+  const active: ManagedWorkspace[] = [];
+  afterEach(() => {
+    for (const workspace of active.splice(0)) workspace.sessionOwner.dispose();
+  });
+  function identity(selected: PersonalSecurityMasterSearchResultDto) {
+    const { note, ...listing } = listingMembership(selected);
+    expect(note).toBe("");
+    return listing;
+  }
+  function entry(): ResearchFollowup {
+    const listing = identity(zero);
+    return {
+      id: entryId,
+      catalogSnapshotSha256: digest,
+      listing,
+      check: "Review the dated capacity disclosure · Café 東京 📈",
+      dueOn: "2026-12-31",
+      status: "open",
+      completedOn: null,
+      result: "",
+    };
+  }
+  function persistence(
+    initial: ResearchFollowupsPayload = {
+      schemaVersion: 1,
+      entries: [entry()],
+    },
+  ) {
+    let stored: ManagedResearchFollowupsDto = {
+      version: initial.entries.length ? 1 : 0,
+      payload: structuredClone(initial),
+    };
+    return {
+      bind(api: ManagedApi) {
+        vi.mocked(api.loadFollowups).mockImplementation(() =>
+          Promise.resolve(structuredClone(stored)),
+        );
+        vi.mocked(api.saveFollowups).mockImplementation((command) => {
+          if (command.expectedVersion !== stored.version)
+            return Promise.reject(new TrialApiError("conflict"));
+          stored = {
+            version: command.expectedVersion + 1,
+            payload: structuredClone(command.payload),
+          };
+          return Promise.resolve({
+            ...structuredClone(stored),
+            replayed: false,
+          });
+        });
+      },
+      saved: () => structuredClone(stored),
+    };
+  }
+  async function followupFixture(store = persistence()) {
+    const f = fixture();
+    active.push(f.workspace);
+    store.bind(f.api);
+    vi.mocked(f.api.search).mockResolvedValue({
+      snapshot,
+      results: [zero, second],
+      totalMatches: 2,
+      limitApplied: 25,
+      normalizedQuery: "INVENTED",
+    });
+    vi.mocked(f.api.resolve).mockImplementation((request) =>
+      Promise.resolve({
+        snapshotSha256: request.snapshotSha256,
+        results: request.listingIds.map((listingId) => {
+          const found = [zero, second].find(
+            (value) => value.listingId === listingId,
+          );
+          return { listingId, listing: found ? identity(found) : null };
+        }),
+      }),
+    );
+    vi.mocked(f.api.eodHistory).mockImplementation((request) =>
+      Promise.resolve(eodResponse(request.range)),
+    );
+    vi.mocked(f.api.annualReport).mockImplementation(() => annualResponse());
+    vi.mocked(f.api.recentFilings).mockResolvedValue(filingsResponse());
+    await ready(f.workspace);
+    f.workspace.setView("followups");
+    expect(f.api.loadFollowups).not.toHaveBeenCalled();
+    await f.workspace.followups.coordinator.load();
+    const current = () =>
+      f.workspace.followups.coordinator.getSnapshot().draft!.entries[0]!;
+    return { ...f, store, current };
+  }
+  function noSources(api: ManagedApi) {
+    for (const call of [
+      api.eodHistory,
+      api.annualReport,
+      api.recentFilings,
+      api.monetaryAnnouncements,
+      api.economicCalendar,
+    ])
+      expect(call).not.toHaveBeenCalled();
+  }
+  async function prepared(f: Awaited<ReturnType<typeof followupFixture>>) {
+    const capture = await f.workspace.prepareFollowupResearch(f.current());
+    expect(capture).not.toBeNull();
+    if (!capture) throw new Error("Expected the current follow-up capture");
+    return capture;
+  }
+
+  it("persists an unsaved actual member independently, researches after fresh load without that member, and completes explicitly", async () => {
+    const store = persistence({ schemaVersion: 1, entries: [] });
+    const first = await followupFixture(store);
+    first.workspace.add(zero);
+    first.workspace.note(
+      zero.listingId,
+      "Unsent watchlist thesis · Café 東京 📈",
+    );
+    const member =
+      first.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    first.workspace.followups.add({ ...member }, "2026-12-31");
+    expect(
+      first.workspace.followups.coordinator.getSnapshot().draft!.entries,
+    ).toEqual([]);
+    first.workspace.followups.add(member, "2026-12-31");
+    first.workspace.followups.edit(
+      first.current(),
+      "check",
+      "Review the dated filing · Café 東京 📈",
+    );
+    const created = first.current();
+    expect(created.listing).not.toHaveProperty("note");
+    expect(created.listing).toMatchObject(eodSelection.listing);
+    expect(first.workspace.coordinator.getSnapshot().dirty).toBe(true);
+    expect(first.api.saveFollowups).not.toHaveBeenCalled();
+    await first.workspace.followups.coordinator.save();
+    expect(first.api.saveFollowups).toHaveBeenCalledOnce();
+    expect(first.api.save).not.toHaveBeenCalled();
+    expect(first.saved().payload.memberships).toEqual([]);
+    expect(store.saved().payload.entries).toEqual([created]);
+    noSources(first.api);
+    expect(first.api.resolve).not.toHaveBeenCalled();
+    first.workspace.sessionOwner.retire();
+
+    const fresh = await followupFixture(store);
+    expect(fresh.session).not.toBe(first.session);
+    expect(fresh.workspace).not.toBe(first.workspace);
+    expect(fresh.current()).toEqual(created);
+    expect(
+      fresh.workspace.coordinator.getSnapshot().draft!.memberships,
+    ).toEqual([]);
+    fresh.workspace.add(second);
+    fresh.workspace.note(
+      second.listingId,
+      "Another unsaved share-class thesis · 東京 📈",
+    );
+    fresh.workspace.followups.edit(
+      fresh.current(),
+      "result",
+      "Unsent authored observation · Café",
+    );
+    fresh.workspace.followups.setFilter("all");
+    fresh.workspace.followups.select(fresh.current().id);
+    const watchlistDraft = fresh.workspace.coordinator.getSnapshot().draft;
+    const followupDraft =
+      fresh.workspace.followups.coordinator.getSnapshot().draft;
+    const capture = await prepared(fresh);
+    expect(fresh.api.resolve).toHaveBeenCalledExactlyOnceWith(
+      { snapshotSha256: digest, listingIds: [zero.listingId] },
+      expect.any(AbortSignal),
+    );
+    noSources(fresh.api);
+    fresh.workspace.openFollowupResearch(capture);
+    expect(fresh.workspace.getSnapshot().research?.selection).toMatchObject({
+      origin: "followups",
+      cik: null,
+      listing: capture.entry.listing,
+    });
+    expect(fresh.workspace.eod.getSnapshot().selection).not.toBe(
+      capture.selection,
+    );
+    expect(fresh.workspace.eod.getSnapshot().selection).toEqual(
+      capture.selection,
+    );
+    noSources(fresh.api);
+    fresh.workspace.setNavigationBlocked(true);
+    await fresh.workspace.setCompanyRoute({
+      kind: "company",
+      listingId: zero.listingId,
+      section: "annual",
+    });
+    expect(fresh.workspace.getSnapshot().companyRoute).toMatchObject({
+      status: "open",
+      section: "annual",
+    });
+    expect(fresh.workspace.getSnapshot().research?.selection.origin).toBe(
+      "followups",
+    );
+    expect(fresh.api.resolve).toHaveBeenCalledOnce();
+    noSources(fresh.api);
+    for (const section of ["annual", "eod", "filings"] as const) {
+      const visit = fresh.workspace.getSnapshot().research!;
+      await fresh.workspace.requestResearchSource(visit, section);
+      expect(fresh.workspace[section].getSnapshot().response).not.toBeNull();
+    }
+    expect(fresh.api.annualReport).toHaveBeenCalledOnce();
+    expect(fresh.api.eodHistory).toHaveBeenCalledOnce();
+    expect(fresh.api.recentFilings).toHaveBeenCalledOnce();
+    expect(fresh.api.resolve).toHaveBeenCalledOnce();
+    expect(fresh.api.save).not.toHaveBeenCalled();
+    expect(fresh.api.saveFollowups).not.toHaveBeenCalled();
+    fresh.workspace.closeResearch();
+    fresh.workspace.setNavigationBlocked(false);
+    expect(fresh.workspace.getSnapshot()).toMatchObject({
+      view: "followups",
+      research: null,
+      companyRoute: null,
+    });
+    expect(fresh.workspace.followups.getSnapshot()).toMatchObject({
+      filter: "all",
+      selectedId: created.id,
+    });
+    expect(fresh.workspace.coordinator.getSnapshot().draft).toBe(
+      watchlistDraft,
+    );
+    expect(fresh.workspace.followups.coordinator.getSnapshot().draft).toBe(
+      followupDraft,
+    );
+    expect(fresh.workspace.sessionOwner.getSnapshot()).toMatchObject({
+      watchlist: { dirty: true },
+      followups: { dirty: true },
+      needsLeaveReview: true,
+    });
+    fresh.workspace.followups.complete(
+      fresh.current(),
+      new Date("2026-10-15T23:59:59.000Z"),
+    );
+    expect(fresh.api.saveFollowups).not.toHaveBeenCalled();
+    await fresh.workspace.followups.coordinator.save();
+    expect(fresh.api.saveFollowups).toHaveBeenCalledOnce();
+    expect(fresh.api.save).not.toHaveBeenCalled();
+    const completed = store.saved();
+    expect(completed).toMatchObject({
+      version: 2,
+      payload: {
+        entries: [
+          {
+            id: created.id,
+            status: "completed",
+            completedOn: "2026-10-15",
+            result: "Unsent authored observation · Café",
+          },
+        ],
+      },
+    });
+    fresh.workspace.sessionOwner.retire();
+    const last = await followupFixture(store);
+    expect(last.current()).toEqual(completed.payload.entries[0]);
+    expect(last.workspace.coordinator.getSnapshot().draft!.memberships).toEqual(
+      [],
+    );
+    noSources(last.api);
+    expect(last.api.resolve).not.toHaveBeenCalled();
+    expect(last.api.save).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "draft",
+    "entry",
+    "removed",
+    "catalog",
+    "navigation",
+    "view",
+    "session",
+  ] as const)(
+    "discards a pending follow-up resolve after %s changes",
+    async (boundary) => {
+      const f = await followupFixture();
+      const held = deferred<Awaited<ReturnType<ManagedApi["resolve"]>>>();
+      vi.mocked(f.api.resolve).mockReturnValueOnce(held.promise);
+      const oldEntry = f.current();
+      const pending = f.workspace.prepareFollowupResearch(oldEntry);
+      expect(f.workspace.getSnapshot().followupOpening).toBe(true);
+      const watchlist = f.workspace.coordinator.getSnapshot().draft;
+      if (boundary === "draft")
+        f.workspace.followups.coordinator.replaceDraft({
+          ...f.workspace.followups.coordinator.getSnapshot().draft!,
+          entries: [{ ...oldEntry }],
+        });
+      if (boundary === "entry")
+        f.workspace.followups.edit(
+          oldEntry,
+          "check",
+          "Intervening authored check",
+        );
+      if (boundary === "removed") f.workspace.followups.remove(oldEntry);
+      if (boundary === "catalog") {
+        vi.mocked(f.api.status).mockResolvedValueOnce({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await f.workspace.refreshCatalog();
+      }
+      if (boundary === "navigation") f.workspace.setNavigationBlocked(true);
+      if (boundary === "view") f.workspace.setView("discover");
+      if (boundary === "session") f.workspace.sessionOwner.retire();
+      if (["navigation", "view", "session"].includes(boundary))
+        expect(vi.mocked(f.api.resolve).mock.calls[0]![1].aborted).toBe(true);
+      held.resolve({
+        snapshotSha256: digest,
+        results: [{ listingId: zero.listingId, listing: oldEntry.listing }],
+      });
+      expect(await pending).toBeNull();
+      expect(f.workspace.getSnapshot()).toMatchObject({
+        research: null,
+        followupOpening: false,
+      });
+      expect(f.api.resolve).toHaveBeenCalledOnce();
+      expect(f.api.save).not.toHaveBeenCalled();
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+      if (boundary === "session") {
+        expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
+        expect(
+          f.workspace.followups.coordinator.getSnapshot().draft,
+        ).toBeNull();
+      } else
+        expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+      noSources(f.api);
+    },
+  );
+
+  it("does not replace a newer direct company route with a late follow-up resolution", async () => {
+    const f = await followupFixture();
+    const held = deferred<Awaited<ReturnType<ManagedApi["resolve"]>>>();
+    vi.mocked(f.api.resolve).mockReturnValueOnce(held.promise);
+    const pending = f.workspace.prepareFollowupResearch(f.current());
+    const signal = vi.mocked(f.api.resolve).mock.calls[0]![1];
+    await f.workspace.setCompanyRoute({
+      kind: "company",
+      listingId: zero.listingId,
+      section: "annual",
+    });
+    const newer = f.workspace.getSnapshot().research;
+    expect(newer?.selection.origin).toBe("route");
+    expect(signal.aborted).toBe(true);
+    held.resolve({
+      snapshotSha256: digest,
+      results: [{ listingId: zero.listingId, listing: f.current().listing }],
+    });
+    expect(await pending).toBeNull();
+    expect(f.workspace.getSnapshot().research).toBe(newer);
+    expect(f.api.resolve).toHaveBeenCalledTimes(2);
+    noSources(f.api);
+  });
+
+  it.each(["view", "remove", "blocked", "retire"] as const)(
+    "refuses an old prepared capture after %s",
+    async (boundary) => {
+      const f = await followupFixture();
+      const capture = await prepared(f);
+      if (boundary === "view") f.workspace.setView("watchlist");
+      if (boundary === "remove") f.workspace.followups.remove(f.current());
+      if (boundary === "blocked") f.workspace.setNavigationBlocked(true);
+      if (boundary === "retire") f.workspace.sessionOwner.retire();
+      f.workspace.openFollowupResearch(capture);
+      expect(f.workspace.getSnapshot().research).toBeNull();
+      for (const model of [
+        f.workspace.eod,
+        f.workspace.annual,
+        f.workspace.filings,
+      ])
+        expect(model.getSnapshot().selection).toBeNull();
+      expect(f.api.resolve).toHaveBeenCalledOnce();
+      noSources(f.api);
+    },
+  );
+
+  it.each(["remove", "rebind"] as const)(
+    "closes an active visit after follow-up %s and fences a late source response",
+    async (boundary) => {
+      const f = await followupFixture();
+      const capture = await prepared(f);
+      f.workspace.openFollowupResearch(capture);
+      const held = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      vi.mocked(f.api.eodHistory).mockReturnValueOnce(held.promise);
+      const visit = f.workspace.getSnapshot().research!;
+      const pending = f.workspace.requestResearchSource(visit, "eod");
+      const watchlist = f.workspace.coordinator.getSnapshot().draft;
+      expect(f.api.eodHistory).toHaveBeenCalledOnce();
+      if (boundary === "remove") f.workspace.followups.remove(f.current());
+      else
+        f.workspace.followups.coordinator.replaceDraft({
+          schemaVersion: 1,
+          entries: [
+            {
+              ...f.current(),
+              listing: {
+                ...f.current().listing,
+                shareClassId: "replacement-class",
+              },
+            },
+          ],
+        });
+      expect(vi.mocked(f.api.eodHistory).mock.calls[0]![1].aborted).toBe(true);
+      expect(f.workspace.getSnapshot().research).toBeNull();
+      held.resolve(eodResponse());
+      await pending;
+      expect(f.workspace.eod.getSnapshot().response).toBeNull();
+      expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+      expect(f.api.save).not.toHaveBeenCalled();
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps an active exact-company visit through authored edits and follow-up Save copies", async () => {
+    const f = await followupFixture();
+    const capture = await prepared(f);
+    f.workspace.openFollowupResearch(capture);
+    const visit = f.workspace.getSnapshot().research;
+    f.workspace.followups.edit(
+      f.current(),
+      "result",
+      "Authored update retains exact identity",
+    );
+    f.workspace.followups.edit(f.current(), "dueOn", "2027-01-01");
+    expect(f.workspace.getSnapshot().research).toBe(visit);
+    await f.workspace.followups.coordinator.save();
+    expect(f.workspace.getSnapshot().research).toBe(visit);
+    await f.workspace.setCompanyRoute({
+      kind: "company",
+      listingId: zero.listingId,
+      section: "filings",
+    });
+    expect(f.workspace.getSnapshot().research?.selection.origin).toBe(
+      "followups",
+    );
+    expect(f.workspace.filings.getSnapshot().selection).toEqual(
+      capture.selection,
+    );
+    expect(f.api.resolve).toHaveBeenCalledOnce();
+    noSources(f.api);
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.saveFollowups).toHaveBeenCalledOnce();
+  });
+
+  it.each(["opening", "capture"] as const)(
+    "refuses reentrant publication during %s",
+    async (phase) => {
+      const f = await followupFixture();
+      let changed = false;
+      const stop = f.workspace.subscribe(() => {
+        const state = f.workspace.getSnapshot();
+        if (
+          changed ||
+          !state.followupOpening ||
+          (phase === "capture" && state.message !== "")
+        )
+          return;
+        changed = true;
+        f.workspace.followups.edit(
+          f.current(),
+          "check",
+          "Changed by a synchronous observer",
+        );
+      });
+      const capture = await f.workspace.prepareFollowupResearch(f.current());
+      stop();
+      expect(changed).toBe(true);
+      expect(capture).toBeNull();
+      expect(f.api.resolve).toHaveBeenCalledTimes(phase === "opening" ? 0 : 1);
+      expect(f.workspace.getSnapshot()).toMatchObject({
+        research: null,
+        followupOpening: false,
+      });
+      noSources(f.api);
+    },
+  );
+
+  it.each(["remove", "navigate", "retire"] as const)(
+    "does not publish a stale visit when model-open notification triggers %s",
+    async (boundary) => {
+      const f = await followupFixture();
+      const capture = await prepared(f);
+      let changed = false;
+      const stop = f.workspace.eod.subscribe(() => {
+        if (changed || !f.workspace.eod.getSnapshot().selection) return;
+        changed = true;
+        if (boundary === "remove") f.workspace.followups.remove(f.current());
+        if (boundary === "navigate") f.workspace.setView("markets");
+        if (boundary === "retire") f.workspace.sessionOwner.retire();
+      });
+      f.workspace.openFollowupResearch(capture);
+      stop();
+      expect(changed).toBe(true);
+      expect(f.workspace.getSnapshot().research).toBeNull();
+      expect(f.workspace.eod.getSnapshot().selection).toBeNull();
+      noSources(f.api);
+    },
+  );
+
+  it.each(["missing", "same-ticker-rebind", "different-digest"] as const)(
+    "refuses %s catalog resolution without substituting company identity",
+    async (boundary) => {
+      const f = await followupFixture();
+      vi.mocked(f.api.resolve).mockResolvedValueOnce({
+        snapshotSha256: boundary === "different-digest" ? nextDigest : digest,
+        results: [
+          {
+            listingId: zero.listingId,
+            listing:
+              boundary === "missing"
+                ? null
+                : {
+                    ...f.current().listing,
+                    ...(boundary === "same-ticker-rebind"
+                      ? { shareClassId: "other-class" }
+                      : {}),
+                  },
+          },
+        ],
+      });
+      expect(await f.workspace.prepareFollowupResearch(f.current())).toBeNull();
+      expect(f.workspace.getSnapshot().research).toBeNull();
+      expect(f.api.resolve).toHaveBeenCalledOnce();
+      noSources(f.api);
+    },
+  );
+
+  it("routes both coordinator sign-outs through one original SDK call and fences pending follow-up research", async () => {
+    const f = await followupFixture();
+    f.workspace.add(second);
+    const held = deferred<Awaited<ReturnType<ManagedApi["resolve"]>>>();
+    vi.mocked(f.api.resolve).mockReturnValueOnce(held.promise);
+    const resolving = f.workspace.prepareFollowupResearch(f.current());
+    const listing = f.current().listing;
+    const signOut = deferred<void>();
+    vi.mocked(f.session.signOut).mockReturnValueOnce(signOut.promise);
+    const watchlistSignOut = f.workspace.coordinator.signOut();
+    const followupSignOut = f.workspace.followups.coordinator.signOut();
+    const aggregateSignOut = f.workspace.sessionOwner.signOut();
+    expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(f.workspace.followups.coordinator.getSnapshot().draft).toBeNull();
+    await Promise.resolve();
+    expect(f.session.signOut).toHaveBeenCalledOnce();
+    held.resolve({
+      snapshotSha256: digest,
+      results: [{ listingId: zero.listingId, listing }],
+    });
+    expect(await resolving).toBeNull();
+    signOut.resolve();
+    await Promise.all([watchlistSignOut, followupSignOut, aggregateSignOut]);
+    expect(f.workspace.sessionOwner.getSnapshot().phase).toBe("retired");
+    expect(f.workspace.getSnapshot().research).toBeNull();
+    expect(f.session.signOut).toHaveBeenCalledOnce();
+    noSources(f.api);
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  });
+
+  it.each(["eod", "annual", "filings"] as const)(
+    "keeps follow-up %s actions and Cancel bound to the exact visit",
+    async (section) => {
+      const f = await followupFixture();
+      f.workspace.openFollowupResearch(await prepared(f));
+      const oldVisit = f.workspace.getSnapshot().research!;
+      f.workspace.closeResearch();
+      f.workspace.openFollowupResearch(await prepared(f));
+      const newVisit = f.workspace.getSnapshot().research!;
+      expect(newVisit).not.toBe(oldVisit);
+      expect(newVisit.selection).toEqual(oldVisit.selection);
+      await f.workspace.requestResearchSource(oldVisit, section);
+      noSources(f.api);
+      const methods = {
+        eod: "eodHistory",
+        annual: "annualReport",
+        filings: "recentFilings",
+      } as const;
+      const read = f.api[methods[section]];
+      const held = deferred<never>();
+      vi.mocked(read).mockReturnValueOnce(held.promise);
+      const pending = f.workspace.requestResearchSource(newVisit, section);
+      const activeVisit = f.workspace.getSnapshot().research!;
+      expect(read).toHaveBeenCalledOnce();
+      const signal = vi.mocked(read).mock.calls[0]![1];
+      f.workspace.cancelResearchSource(oldVisit, section);
+      expect(signal.aborted).toBe(false);
+      f.workspace.cancelResearchSource(activeVisit, section);
+      expect(signal.aborted).toBe(true);
+      held.reject(new TrialApiError("unavailable"));
+      await pending;
+      expect(f.workspace.getSnapshot().research).toBe(activeVisit);
+      expect(f.api.resolve).toHaveBeenCalledTimes(2);
+      expect(f.api.save).not.toHaveBeenCalled();
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    },
+  );
+
+  it("retires both drafts on a follow-up resolve authentication failure and ignores a late pending save", async () => {
+    const f = await followupFixture();
+    f.workspace.add(second);
+    f.workspace.followups.edit(
+      f.current(),
+      "result",
+      "Pending authored result",
+    );
+    const held = deferred<Awaited<ReturnType<ManagedApi["saveFollowups"]>>>();
+    vi.mocked(f.api.saveFollowups).mockReturnValueOnce(held.promise);
+    const saving = f.workspace.followups.coordinator.save();
+    const command = vi.mocked(f.api.saveFollowups).mock.calls[0]![0];
+    vi.mocked(f.api.resolve).mockRejectedValueOnce(
+      new TrialApiError("access_denied"),
+    );
+    expect(await f.workspace.prepareFollowupResearch(f.current())).toBeNull();
+    expect(f.workspace.sessionOwner.getSnapshot().phase).toBe("retired");
+    expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(f.workspace.followups.coordinator.getSnapshot().draft).toBeNull();
+    expect(vi.mocked(f.api.saveFollowups).mock.calls[0]![1].aborted).toBe(true);
+    held.resolve({
+      version: command.expectedVersion + 1,
+      payload: command.payload,
+      replayed: false,
+    });
+    await saving;
+    expect(f.workspace.followups.coordinator.getSnapshot().draft).toBeNull();
+    expect(f.workspace.getSnapshot().research).toBeNull();
+    expect(f.session.signOut).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.saveFollowups).toHaveBeenCalledOnce();
+    noSources(f.api);
+  });
 });

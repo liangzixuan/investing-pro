@@ -2,9 +2,11 @@ import type { ManagedEodHistoryState } from "./managed-eod-history";
 import { ObservedRawCloseRange } from "./ObservedRawCloseRange";
 
 export function CompanySnapshotPrice({
+  navigationPending,
   state,
   onOpen,
 }: {
+  navigationPending: boolean;
   state: ManagedEodHistoryState | null;
   onOpen: () => void;
 }) {
@@ -45,7 +47,11 @@ export function CompanySnapshotPrice({
             : "No close history loaded for this company. Open Price to request it explicitly."}
         </p>
       )}
-      <button className="trial-secondary" onClick={onOpen}>
+      <button
+        className="trial-secondary"
+        disabled={navigationPending}
+        onClick={onOpen}
+      >
         Open Price section
       </button>
     </section>

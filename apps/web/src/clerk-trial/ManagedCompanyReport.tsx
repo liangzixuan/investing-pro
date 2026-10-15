@@ -19,12 +19,14 @@ import {
 import "./managed-company-report.css";
 
 export function ManagedCompanyReport({
+  navigationPending,
   watchlist,
   reportDelivery,
   readReportWatchlist,
   onSection,
   ...models
 }: CompanyEvidenceModels & {
+  navigationPending: boolean;
   watchlist: ResearchWatchlistState;
   reportDelivery?: CompanyReportDeliveryAdapter;
   readReportWatchlist?: (
@@ -47,6 +49,7 @@ export function ManagedCompanyReport({
   }, [report, current]);
   return (
     <CompanyReportView
+      navigationPending={navigationPending}
       report={report}
       block={block}
       current={Boolean(current)}
@@ -85,6 +88,7 @@ export function ManagedCompanyReport({
 }
 
 export function CompanyReportView({
+  navigationPending,
   report,
   block,
   current,
@@ -94,6 +98,7 @@ export function CompanyReportView({
   onClear,
   onSection,
 }: {
+  navigationPending: boolean;
   report: PreparedCompanyReport | null;
   block: string | null;
   current: boolean;
@@ -166,6 +171,7 @@ export function CompanyReportView({
           </section>
           <h4>Loaded source evidence</h4>
           <CompanySnapshotEvidenceView
+            navigationPending={navigationPending}
             evidence={report.evidence}
             onSection={onSection}
           />

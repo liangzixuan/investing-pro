@@ -33,6 +33,7 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
@@ -174,14 +175,14 @@ function SessionWorkspace(props: SessionProps) {
       },
     );
     const unbindBrowserLeave = initial.warnOnBrowserLeave
-      ? bindManagedBrowserUnload(current.coordinator, window)
+      ? bindManagedBrowserUnload(current.sessionOwner, window)
       : undefined;
     setWorkspace(current);
     void current.coordinator.load();
     void current.refreshCatalog();
     return () => {
       unbindBrowserLeave?.();
-      current.coordinator.retire();
+      current.sessionOwner.dispose();
     };
   }, [initial]);
   return workspace ? (
@@ -419,6 +420,7 @@ export function ManagedWorkspaceScreen({
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
   const watchlistNavigation = useRef<HTMLButtonElement | null>(null);
   const marketsNavigation = useRef<HTMLButtonElement | null>(null);
+  const followupsNavigation = useRef<HTMLButtonElement | null>(null);
   const watchlistPanel = useRef<HTMLElement | null>(null);
   const watchlistEditor = useRef<ManagedWatchlistEditorHandle>(null);
   const watchlistHeading = useRef<HTMLHeadingElement | null>(null);
@@ -434,7 +436,9 @@ export function ManagedWorkspaceScreen({
         ? marketsNavigation.current
         : returned.view === "watchlist"
           ? watchlistNavigation.current
-          : discoverHeading.current;
+          : returned.view === "followups"
+            ? followupsNavigation.current
+            : discoverHeading.current;
     panelOrigin.current = null;
     target?.focus();
     const view = target?.ownerDocument?.defaultView;
@@ -478,7 +482,10 @@ export function ManagedWorkspaceScreen({
       return;
     if (navigation?.returnFocus || localReturnFocus) return restoreFocus();
   }, [navigation?.returnFocus, localReturnFocus, restoreFocus]);
-  const setView = (view: "markets" | "discover" | "watchlist") => {
+  const setView = (
+    view: "markets" | "discover" | "watchlist" | "followups",
+  ) => {
+    if (navigation?.isPending()) return false;
     liveNoteReview.current = null;
     setNoteReview(null);
     setNoteReviewNotice(null);
@@ -536,6 +543,11 @@ export function ManagedWorkspaceScreen({
     workspace.getSnapshot,
   );
   const coordinator = workspace.coordinator;
+  const sessionState = useSyncExternalStore(
+    workspace.sessionOwner.subscribe,
+    workspace.sessionOwner.getSnapshot,
+    workspace.sessionOwner.getSnapshot,
+  );
   const saved = useSyncExternalStore(
     coordinator.subscribe,
     coordinator.getSnapshot,
@@ -630,6 +642,7 @@ export function ManagedWorkspaceScreen({
     member: WatchlistMembership | null,
     isCurrentContext?: () => boolean,
   ) => {
+    if (navigation?.isPending()) return;
     if (isCurrentContext && !isCurrentContext()) return;
     const draft = coordinator.getSnapshot().draft;
     if (member && !draft?.memberships.includes(member)) return;
@@ -719,7 +732,8 @@ export function ManagedWorkspaceScreen({
         opener,
       };
   };
-  const retired = saved.phase === "retired" || saved.phase === "signing_out";
+  const retired = sessionState.phase !== "active";
+  const navigationPending = navigation?.pending ?? false;
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();
   const isMarketsCurrent = () => {
@@ -800,30 +814,36 @@ export function ManagedWorkspaceScreen({
         </p>
         {!retired && (
           <nav className="managed-navigation" aria-label="Workspace">
-            {(["markets", "discover", "watchlist"] as const).map((view) => (
-              <button
-                key={view}
-                ref={
-                  view === "watchlist"
-                    ? watchlistNavigation
-                    : view === "markets"
-                      ? marketsNavigation
-                      : undefined
-                }
-                className="trial-secondary"
-                aria-current={discovery.view === view ? "page" : undefined}
-                onClick={() => setView(view)}
-              >
-                <ManagedIcon name={view} />
-                {
+            {(["markets", "discover", "watchlist", "followups"] as const).map(
+              (view) => (
+                <button
+                  key={view}
+                  ref={
+                    view === "watchlist"
+                      ? watchlistNavigation
+                      : view === "markets"
+                        ? marketsNavigation
+                        : view === "followups"
+                          ? followupsNavigation
+                          : undefined
+                  }
+                  className="trial-secondary"
+                  aria-current={discovery.view === view ? "page" : undefined}
+                  disabled={navigationPending}
+                  onClick={() => setView(view)}
+                >
+                  <ManagedIcon name={view} />
                   {
-                    markets: "Markets",
-                    discover: "Discover",
-                    watchlist: "My Watchlist",
-                  }[view]
-                }
-              </button>
-            ))}
+                    {
+                      markets: "Markets",
+                      discover: "Discover",
+                      watchlist: "My Watchlist",
+                      followups: "Follow-ups",
+                    }[view]
+                  }
+                </button>
+              ),
+            )}
           </nav>
         )}
       </aside>
@@ -833,9 +853,11 @@ export function ManagedWorkspaceScreen({
             <div className="managed-search-bar">
               <WorkspaceSearch
                 query={discovery.query}
-                busy={discovery.read !== null}
+                busy={discovery.read !== null || navigationPending}
                 busyLabel={
-                  discovery.read === "status" ? "Search" : "Searching…"
+                  discovery.read === "status" || navigationPending
+                    ? "Search"
+                    : "Searching…"
                 }
                 disabled={retired}
                 onChange={(query) => workspace.setQuery(query)}
@@ -858,10 +880,10 @@ export function ManagedWorkspaceScreen({
             </div>
           )}
           <div className="managed-session-controls">
-            <ManagedSignOut coordinator={coordinator} />
+            <ManagedSignOut owner={workspace.sessionOwner} />
           </div>
           <p className="managed-save-status" role="status" aria-live="polite">
-            {saved.message}
+            {retired ? sessionState.message : saved.message}
           </p>
         </header>
         <main
@@ -891,7 +913,12 @@ export function ManagedWorkspaceScreen({
                     This company link is invalid. Open a company from Markets,
                     Discover or My Watchlist.
                   </p>
-                  <button onClick={backToWorkspace}>Back to Markets</button>
+                  <button
+                    disabled={navigationPending}
+                    onClick={backToWorkspace}
+                  >
+                    Back to Markets
+                  </button>
                 </section>
               )}
               {discovery.companyRoute &&
@@ -901,16 +928,23 @@ export function ManagedWorkspaceScreen({
                     {(discovery.companyRoute.status === "unavailable" ||
                       discovery.companyRoute.status === "error") && (
                       <button
+                        disabled={navigationPending}
                         onClick={() => void workspace.retryCompanyRoute()}
                       >
                         Retry company link
                       </button>
                     )}
-                    <button onClick={backToWorkspace}>Back to workspace</button>
+                    <button
+                      disabled={navigationPending}
+                      onClick={backToWorkspace}
+                    >
+                      Back to workspace
+                    </button>
                   </section>
                 )}
               {discovery.research && (
                 <ManagedCompanyResearch
+                  navigationPending={navigationPending}
                   research={discovery.research}
                   {...(reportDelivery ? { reportDelivery } : {})}
                   readReportWatchlist={(selection) =>
@@ -1057,6 +1091,7 @@ export function ManagedWorkspaceScreen({
                   onRequestSource={async (section) => {
                     const visit = discovery.research!;
                     if (
+                      navigation?.isPending() ||
                       navigation?.invalid ||
                       workspace.getSnapshot().research?.selection !==
                         visit.selection
@@ -1094,6 +1129,31 @@ export function ManagedWorkspaceScreen({
                   }}
                 />
               )}
+              {discovery.view === "followups" && (
+                <div
+                  hidden={Boolean(
+                    discovery.research ||
+                    discovery.companyRoute ||
+                    navigation?.invalid,
+                  )}
+                >
+                  <ManagedResearchFollowups
+                    navigationPending={navigationPending}
+                    workspace={workspace}
+                    onResearch={(entry, opener) => {
+                      if (navigation?.isPending()) return;
+                      void workspace
+                        .prepareFollowupResearch(entry)
+                        .then((capture) => {
+                          if (capture)
+                            openResearch(opener, () =>
+                              workspace.openFollowupResearch(capture),
+                            );
+                        });
+                    }}
+                  />
+                </div>
+              )}
               {discovery.view === "markets" && (
                 <div
                   ref={marketsContent}
@@ -1105,6 +1165,7 @@ export function ManagedWorkspaceScreen({
                   )}
                 >
                   <ManagedMarkets
+                    navigationPending={navigationPending}
                     model={workspace.markets}
                     headingRef={marketsHeading}
                     sectionNavigation={
@@ -1276,6 +1337,7 @@ export function ManagedWorkspaceScreen({
                             <button
                               className="trial-secondary"
                               aria-label={`Annual report for ${result.symbol}`}
+                              disabled={navigationPending}
                               onClick={(event) => {
                                 openResearch(event.currentTarget, () =>
                                   workspace.openDiscoveryAnnual(result),
@@ -1287,6 +1349,7 @@ export function ManagedWorkspaceScreen({
                             <button
                               className="trial-secondary"
                               aria-label={`EOD close history for ${result.symbol}`}
+                              disabled={navigationPending}
                               onClick={(event) => {
                                 openResearch(event.currentTarget, () =>
                                   workspace.openDiscoveryEod(result),
@@ -1491,9 +1554,11 @@ export function ManagedWorkspaceScreen({
                         !navigation?.hasCompanyRoute()
                       }
                       canOpenAnnual={(member) =>
+                        !navigationPending &&
                         workspace.canOpenWatchlistAnnual(member)
                       }
                       canOpenEod={(member) =>
+                        !navigationPending &&
                         workspace.canOpenWatchlistEod(member)
                       }
                       onNote={(listingId, note, expectedNote) =>

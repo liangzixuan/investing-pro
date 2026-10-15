@@ -73,6 +73,26 @@ export function isMainWatchlistPayload(
 function isWatchlistMembership(value: unknown): value is WatchlistMembership {
   if (!hasExactKeys(value, MEMBERSHIP_KEYS)) return false;
   return (
+    hasListingIdentity(value) &&
+    typeof value.note === "string" &&
+    normalizeWatchlistNote(value.note) === value.note
+  );
+}
+
+/** Saved identity bounds; current catalog admission is a separate decision. */
+export function isWatchlistListingIdentity(
+  value: unknown,
+): value is Omit<WatchlistMembership, "note"> {
+  return (
+    hasExactKeys(
+      value,
+      MEMBERSHIP_KEYS.filter((key) => key !== "note"),
+    ) && hasListingIdentity(value)
+  );
+}
+
+function hasListingIdentity(value: Record<string, unknown>): boolean {
+  return (
     value.country === "US" &&
     typeof value.exchangeMic === "string" &&
     MIC_PATTERN.test(value.exchangeMic) &&
@@ -81,8 +101,6 @@ function isWatchlistMembership(value: unknown): value is WatchlistMembership {
     isIdentifier(value.issuerId) &&
     isDisplayText(value.issuerName) &&
     isIdentifier(value.listingId) &&
-    typeof value.note === "string" &&
-    normalizeWatchlistNote(value.note) === value.note &&
     isIdentifier(value.securityId) &&
     isDisplayText(value.securityName) &&
     isIdentifier(value.shareClassId) &&

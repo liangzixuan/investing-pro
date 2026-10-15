@@ -137,6 +137,7 @@ const ownedProductionDomainPaths = new Set([
   "apps/web/client-profile.test.ts",
   "apps/api/src/managed-workspace-handler.ts",
   "apps/api/src/managed-workspace-handler.test.ts",
+  "apps/api/src/managed-followups-handler.test.ts",
   "apps/api/src/managed-workspace-function.test.ts",
   "apps/api/src/clerk-trial-config.ts",
   "apps/api/src/clerk-trial-config.test.ts",
@@ -11037,6 +11038,22 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
         "admitPersonalSecurityMasterSnapshot",
         "lookupPersonalSecurityMasterListing",
         "searchPersonalSecurityMaster",
+      ],
+    ],
+    [
+      "apps/api/src/appwrite-research-followups-repository.ts",
+      [
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/appwrite-research-followups-repository.test.ts",
+      [
+        "admitPersonalSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
+        "type PersonalSecurityMasterCatalog",
       ],
     ],
     [

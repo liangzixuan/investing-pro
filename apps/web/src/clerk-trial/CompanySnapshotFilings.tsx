@@ -6,9 +6,11 @@ import {
 } from "./ManagedFilingsPacket";
 
 export function CompanySnapshotFilings({
+  navigationPending,
   state,
   onOpen,
 }: {
+  navigationPending: boolean;
   state: ManagedCompanyFilingsState | null;
   onOpen: () => void;
 }) {
@@ -41,7 +43,11 @@ export function CompanySnapshotFilings({
           explicitly.
         </p>
       )}
-      <button className="trial-secondary" onClick={onOpen}>
+      <button
+        className="trial-secondary"
+        disabled={navigationPending}
+        onClick={onOpen}
+      >
         Open Filings section
       </button>
     </section>

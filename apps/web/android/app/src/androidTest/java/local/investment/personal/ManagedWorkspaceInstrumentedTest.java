@@ -209,6 +209,10 @@ public class ManagedWorkspaceInstrumentedTest {
         "JSON.parse(document.getElementById('fixture-workspace-draft').textContent)";
     private static final String DIAGNOSTICS =
         "JSON.parse(document.querySelector('#fixture-diagnostics').textContent)";
+    private static final String FOLLOWUPS =
+        "JSON.parse(document.querySelector('#fixture-followups-diagnostics').textContent)";
+    private static final String FOLLOWUP_DRAFT =
+        "JSON.parse(document.querySelector('#fixture-followups-draft').textContent)";
     private static final long PAGE_TIMEOUT_MS = 10_000;
     private static final long MAX_ASSET_BYTES = 4 * 1024 * 1024;
 
@@ -286,6 +290,9 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("fed-announcements");
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("watchlist-export");
+        if (testName.getMethodName().equals("researchFollowupsSaveResearchAndCompleteAcrossSessions") ||
+            testName.getMethodName().equals("researchFollowupsReplayAndSessionRetirementFenceLateReplies"))
+            selectFixtureScenario("research-followups");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -312,6 +319,244 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) assertCompanyHistory("listing-zero", "annual", true);
         else assertRootHistory();
         Log.i("ManagedFixture", "source=" + expectedSourceSha + ", files=" + copiedFiles + ", bytes=" + copiedBytes);
+    }
+
+    @Test
+    public void researchFollowupsSaveResearchAndCompleteAcrossSessions() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Independent watchlist draft");
+        openFollowupsView();
+        awaitPage("opening Follow-ups makes no resource or financial read",
+            FOLLOWUPS + ".load === 0 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUP_DRAFT + ".entries === null" +
+            " && document.querySelector('#managed-followups-load')?.disabled === false");
+        click("#managed-followups-load");
+        awaitPage("explicit load admits only the empty version-zero resource",
+            FOLLOWUPS + ".load === 1 && " + FOLLOWUP_DRAFT + ".baseVersion === 0 && " + FOLLOWUP_DRAFT + ".entries?.length === 0");
+        String check = "Inspect the next reported raw close";
+        String id = authorFollowup(check, "2026-10-30");
+        assertFollowupEntry(id, check, "2026-10-30", "", "open", null, 0, true);
+        click("#managed-followups-save");
+        awaitPage("only the follow-up store commits while the watchlist draft remains unsaved",
+            FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".version === 1" +
+            " && " + DRAFT + ".dirty === true && " + DRAFT + ".baseVersion === 1" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Independent watchlist draft' && " + DIAGNOSTICS + ".save === 0");
+        assertFollowupEntry(id, check, "2026-10-30", "", "open", null, 1, false);
+        freshFollowupSession(2, 1);
+        openFollowupsView();
+        awaitPage("fresh session does not automatically read follow-ups",
+            FOLLOWUPS + ".load === 1 && " + FOLLOWUP_DRAFT + ".entries === null && " + DRAFT + ".memberships?.[0]?.note === ''");
+        click("#managed-followups-load");
+        awaitPage("fresh explicit read recovers the separate saved resource", FOLLOWUPS + ".load === 2 && " + FOLLOWUP_DRAFT + ".baseVersion === 1");
+        selectFollowup(id);
+        assertFollowupEntry(id, check, "2026-10-30", "", "open", null, 1, false);
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Watchlist draft during follow-up research");
+        openFollowupsView();
+        chooseNativeSelectOption("#managed-followups-filter", "all", "All");
+        typeIntoInput("managed-followup-result", "Review in progress");
+        String entriesBefore = readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)");
+        String watchlistBefore = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String opener = "#managed-followup-research-" + id;
+        click(opener);
+        awaitPage("Research resolves the exact listing once without loading a source",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('.managed-company-identity')?.textContent.includes('Zero Class A · Class A · XNAS')" +
+            " && " + DIAGNOSTICS + ".resolve === 1 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && document.querySelector('#managed-research-note')?.value === 'Watchlist draft during follow-up research'");
+        assertCompanyHistory("listing-zero", "price", false);
+        assertCompanySourceOverview(false, false, false);
+        click(".managed-company-evidence-actions [aria-label='Price source'] .trial-actions button:first-child");
+        awaitPage("one explicit Price load retains its exact admitted raw closes and source clock",
+            DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && [...document.querySelectorAll('.managed-eod-history .managed-metadata dd')].map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'");
+        awaitPage("follow-up Price read preserves observed coverage", observedCloseRangeExact("One month", 2,
+            "2026-09-18", "2026-09-19", "101.5", "2026-09-19", "100.25", "2026-09-18"));
+        assertCompanySourceOverview(true, false, false);
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("native Back restores the exact row opener, filter and both unsaved drafts",
+            "document.querySelector('.managed-company-visit') === null && document.activeElement === document.querySelector(" + JSONObject.quote(opener) + ")" +
+            " && " + FOLLOWUP_DRAFT + ".selectedId === " + JSONObject.quote(id) + " && " + FOLLOWUP_DRAFT + ".filter === 'all'" +
+            " && document.querySelector('#managed-followups-filter')?.value === 'all'" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries) === " + JSONObject.quote(entriesBefore) +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlistBefore));
+        assertReturnedRootHistory("listing-zero", "price");
+        retainAnnualNoteFrame("followupsResearchReturn", "label[for=managed-followup-check]", "label[for=managed-followup-check]", 1);
+        String result = "Observed raw close USD 101.5 on 2026-09-19; source completed 2026-09-20T00:00:01.000Z";
+        touchInput("managed-followup-result");
+        replaceFocusedInput("managed-followup-result", "Review in progress", result);
+        String completedOn = readFixtureString("document.querySelector('#managed-followups-assessed-day').getAttribute('datetime')");
+        assertTrue("Completion uses the displayed captured UTC day", completedOn.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}"));
+        click("#managed-followup-complete");
+        assertFollowupEntry(id, check, "2026-10-30", result, "completed", completedOn, 1, true);
+        click("#managed-followups-save");
+        awaitPage("completion commits only the follow-up resource",
+            FOLLOWUPS + ".save === 2 && " + FOLLOWUPS + ".commits === 2 && " + FOLLOWUPS + ".version === 2" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlistBefore));
+        assertFollowupEntry(id, check, "2026-10-30", result, "completed", completedOn, 2, false);
+        freshFollowupSession(3, 2);
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("third explicit read keeps the persisted completion and clears only local selection",
+            FOLLOWUPS + ".load === 3 && " + FOLLOWUP_DRAFT + ".baseVersion === 2 && " + FOLLOWUP_DRAFT + ".selectedId === null");
+        chooseNativeSelectOption("#managed-followups-filter", "completed", "Completed");
+        selectFollowup(id);
+        assertFollowupEntry(id, check, "2026-10-30", result, "completed", completedOn, 2, false);
+        awaitPage("the saved check never saved the separate watchlist draft",
+            DRAFT + ".dirty === false && " + DRAFT + ".memberships?.[0]?.note === '' && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
+        assertFollowupBoundaries(3, 1, 1);
+        assertEquals("Fresh invented sessions keep the same native document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        Log.i("ManagedFollowups", "phase=three-sessions-explicit-save-research-back-completion; " + pageDiagnostic());
+    }
+
+    @Test
+    public void researchFollowupsReplayAndSessionRetirementFenceLateReplies() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Independent replay watchlist draft");
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("explicit empty follow-up read precedes recovery authoring", FOLLOWUPS + ".load === 1 && " + FOLLOWUP_DRAFT + ".entries?.length === 0");
+        String check = "Review the next filed source";
+        String id = authorFollowup(check, "2026-11-01");
+        chooseNativeSelectOption("#fixture-followups-next-save", "lost-ack", "Commit and lose acknowledgement");
+        click("#managed-followups-save");
+        awaitPage("lost acknowledgement preserves exact draft and blocks further authoring",
+            FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".version === 1 && " + FOLLOWUPS + ".replays === 0" +
+            " && " + FOLLOWUP_DRAFT + ".uncertain === true && document.querySelector('#managed-followup-check')?.readOnly === true" +
+            " && document.querySelector('#managed-followups-save')?.disabled === true && document.querySelector('#managed-followups-reconcile')?.disabled === false");
+        String uncertainEntries = readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)");
+        click("#managed-followups-reconcile");
+        awaitPage("exact original command replay confirms one commit and still requires latest-version review",
+            FOLLOWUPS + ".save === 2 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".replays === 1 && " + FOLLOWUPS + ".keyConflicts === 0" +
+            " && " + FOLLOWUP_DRAFT + ".uncertain === false && " + FOLLOWUP_DRAFT + ".replayPending === true && " + FOLLOWUP_DRAFT + ".conflict === true" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries) === " + JSONObject.quote(uncertainEntries) +
+            " && document.querySelector('#managed-followups-use-saved')?.disabled === true && document.querySelector('#managed-followups-keep-draft')?.disabled === true");
+        click("#managed-followups-load");
+        awaitPage("fresh latest read enables both explicit choices without a new write",
+            FOLLOWUPS + ".load === 2 && " + FOLLOWUPS + ".save === 2 && " + FOLLOWUP_DRAFT + ".saved?.version === 1" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".saved.payload.entries) === " + JSONObject.quote(uncertainEntries) +
+            " && document.querySelector('#managed-followups-use-saved')?.disabled === false && document.querySelector('#managed-followups-keep-draft')?.disabled === false");
+        retainAnnualNoteFrame("followupsReplayReview", ".managed-followups > .managed-followups-warning", ".managed-followups > .managed-followups-warning", 1);
+        click("#managed-followups-use-saved");
+        assertFollowupEntry(id, check, "2026-11-01", "", "open", null, 1, false);
+        awaitPage("the latest choice clears replay only and keeps the separate watchlist draft",
+            FOLLOWUP_DRAFT + ".conflict === false && " + FOLLOWUP_DRAFT + ".replayPending === false" +
+            " && " + DRAFT + ".dirty === true && " + DRAFT + ".memberships?.[0]?.note === 'Independent replay watchlist draft'");
+        typeIntoInput("managed-followup-result", "Committed before the delayed acknowledgement");
+        chooseNativeSelectOption("#fixture-followups-next-save", "hold", "Commit and hold acknowledgement");
+        click("#managed-followups-save");
+        awaitPage("held Save has committed exactly once and awaits only its acknowledgement",
+            FOLLOWUPS + ".save === 3 && " + FOLLOWUPS + ".commits === 2 && " + FOLLOWUPS + ".version === 2 && " + FOLLOWUPS + ".held === 1" +
+            " && " + FOLLOWUPS + ".settled === 0 && " + FOLLOWUP_DRAFT + ".phase === 'saving' && " + FOLLOWUP_DRAFT + ".baseVersion === 1");
+        freshFollowupSession(2, 2);
+        awaitPage("fresh-session disposal aborts the old wait without erasing its committed store",
+            FOLLOWUPS + ".aborted === 1 && " + FOLLOWUPS + ".held === 1 && " + FOLLOWUPS + ".version === 2");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "New session watchlist draft");
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("new session explicitly reads the already committed version", FOLLOWUPS + ".load === 3 && " + FOLLOWUP_DRAFT + ".baseVersion === 2");
+        selectFollowup(id);
+        assertFollowupEntry(id, check, "2026-11-01", "Committed before the delayed acknowledgement", "open", null, 2, false);
+        touchInput("managed-followup-check");
+        replaceFocusedInput("managed-followup-check", check, "Unsaved check before session expiry");
+        chooseNativeSelectOption("#fixture-followups-next-read", "retire", "Expire session");
+        click("#managed-followups-load");
+        awaitPage("a normal follow-up read authentication failure retires both resources and clears the product fields",
+            FOLLOWUPS + ".load === 4 && " + FOLLOWUPS + ".retirements === 1 && " + FOLLOWUP_DRAFT + ".owner === 'retired'" +
+            " && " + FOLLOWUP_DRAFT + ".phase === 'retired' && " + FOLLOWUP_DRAFT + ".entries === null && " + FOLLOWUP_DRAFT + ".saved === null && " + FOLLOWUP_DRAFT + ".selectedId === null" +
+            " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
+            " && document.querySelector('#managed-followup-check') === null && document.querySelector('#managed-note-0') === null" +
+            " && document.querySelector('.managed-company-visit') === null && document.querySelector('.managed-navigation') === null");
+        retainAnnualNoteFrame("followupsRetired", ".managed-save-status", ".managed-save-status", 1);
+        String retiredDraft = readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ")");
+        String retiredWatchlist = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        click("#fixture-followups-settle");
+        awaitPage("the old session acknowledgement cannot restore either retired draft",
+            FOLLOWUPS + ".settled === 1 && " + FOLLOWUPS + ".held === 0 && " + FOLLOWUPS + ".commits === 2 && " + FOLLOWUPS + ".save === 3" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ") === " + JSONObject.quote(retiredDraft) +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(retiredWatchlist) +
+            " && document.querySelector('#managed-followup-check') === null && document.querySelector('#managed-note-0') === null");
+        freshFollowupSession(3, 4);
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("another explicit session read confirms only the committed packet survived", FOLLOWUPS + ".load === 5 && " + FOLLOWUP_DRAFT + ".baseVersion === 2");
+        selectFollowup(id);
+        assertFollowupEntry(id, check, "2026-11-01", "Committed before the delayed acknowledgement", "open", null, 2, false);
+        awaitPage("recovery does not repeat a commit or retain a discarded local note",
+            FOLLOWUPS + ".save === 3 && " + FOLLOWUPS + ".commits === 2 && " + FOLLOWUPS + ".replays === 1 && " + FOLLOWUPS + ".conflicts === 0" +
+            " && " + DRAFT + ".memberships?.[0]?.note === '' && " + DRAFT + ".dirty === false");
+        assertFollowupBoundaries(3, 0, 0);
+        assertEquals("Recovery preserves the native document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        Log.i("ManagedFollowups", "phase=exact-replay-latest-choice-expiry-and-old-session-late-fence; " + pageDiagnostic());
+    }
+
+    private void openFollowupsView() throws Exception {
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//nav[@aria-label='Workspace']/button[normalize-space(.)='Follow-ups']")).perform(webClick());
+        awaitPage("Follow-ups is the actual visible product view",
+            "[...document.querySelectorAll('.managed-navigation button')].some(b => b.textContent === 'Follow-ups' && b.getAttribute('aria-current') === 'page')" +
+            " && document.querySelector('#managed-followups-heading')?.checkVisibility() === true" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth");
+    }
+
+    private String authorFollowup(String check, String dueOn) throws Exception {
+        chooseNativeSelectOption("#managed-followups-member", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        typeIntoInput("managed-followups-new-due", dueOn);
+        click("#managed-followups-add");
+        awaitPage("one actual watchlist member becomes a blank selected authored check",
+            FOLLOWUP_DRAFT + ".entries?.length === 1 && " + FOLLOWUP_DRAFT + ".entries[0].listing.listingId === 'listing-zero'" +
+            " && " + FOLLOWUP_DRAFT + ".entries[0].check === '' && " + FOLLOWUP_DRAFT + ".selectedId === " + FOLLOWUP_DRAFT + ".entries[0].id" +
+            " && document.querySelector('#managed-followups-save')?.disabled === true && " + DIAGNOSTICS + ".save === 0");
+        String id = readFixtureString(FOLLOWUP_DRAFT + ".selectedId");
+        assertTrue("Entry is an actual generated v4 UUID", id.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"));
+        typeIntoInput("managed-followup-check", check);
+        return id;
+    }
+
+    private void selectFollowup(String id) throws Exception {
+        assertTrue(id.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"));
+        click("#managed-followup-select-" + id);
+        awaitPage("explicit row selection opens the same saved entry", FOLLOWUP_DRAFT + ".selectedId === " + JSONObject.quote(id) +
+            " && document.querySelector('#managed-followup-select-" + id + "')?.getAttribute('aria-pressed') === 'true'");
+    }
+
+    private void freshFollowupSession(int sessionNumber, int expectedFollowupReads) throws Exception {
+        click("#fixture-followups-fresh-session");
+        awaitPage("fresh invented session owns empty local follow-ups and the separately loaded watchlist",
+            FOLLOWUPS + ".session === " + sessionNumber + " && " + FOLLOWUPS + ".load === " + expectedFollowupReads +
+            " && " + FOLLOWUP_DRAFT + ".session === " + sessionNumber + " && " + FOLLOWUP_DRAFT + ".owner === 'active'" +
+            " && " + FOLLOWUP_DRAFT + ".entries === null && " + FOLLOWUP_DRAFT + ".baseVersion === null && " + FOLLOWUP_DRAFT + ".filter === 'open'" +
+            " && " + DIAGNOSTICS + ".load === " + sessionNumber + " && " + DIAGNOSTICS + ".status === " + sessionNumber +
+            " && " + DRAFT + ".phase === 'idle' && " + DRAFT + ".dirty === false && " + DRAFT + ".memberships?.length === 2");
+    }
+
+    private void assertFollowupEntry(String id, String check, String dueOn, String result,
+            String status, String completedOn, int version, boolean dirty) throws Exception {
+        awaitPage("complete follow-up identity, authored fields and version are exact",
+            "(() => { const d = " + FOLLOWUP_DRAFT + ", e = d.entries?.[0], l = e?.listing;" +
+            " const expected = {country:'US',exchangeMic:'XNAS',instrumentType:'common_stock',issuerId:'issuer-zero',issuerName:'Zero Company',listingId:'listing-zero',securityId:'security-zero',securityName:'Zero Class A',shareClassId:'class-zero',shareClassName:'Class A',symbol:'ZERO'};" +
+            " return d.owner === 'active' && d.phase === 'idle' && d.entries.length === 1 && d.baseVersion === " + version + " && d.dirty === " + dirty +
+            " && e.id === " + JSONObject.quote(id) + " && d.selectedId === e.id && Object.keys(e).length === 8" +
+            " && e.catalogSnapshotSha256 === 'sha256:' + 'a'.repeat(64) && Object.keys(l).length === 11 && Object.keys(expected).every(key => l[key] === expected[key])" +
+            " && e.check === " + JSONObject.quote(check) + " && e.dueOn === " + JSONObject.quote(dueOn) + " && e.result === " + JSONObject.quote(result) +
+            " && e.status === " + JSONObject.quote(status) + " && e.completedOn === " + (completedOn == null ? "null" : JSONObject.quote(completedOn)) +
+            " && document.querySelector('#managed-followup-check')?.value === e.check && document.querySelector('#managed-followup-due')?.value === e.dueOn" +
+            " && document.querySelector('#managed-followup-result')?.value === e.result && document.querySelector('#managed-followup-check')?.readOnly === false" +
+            " && [...document.querySelectorAll('.managed-followups button,.managed-followups input,.managed-followups select,.managed-followups textarea')].filter(el => el.checkVisibility()).every(el => el.getBoundingClientRect().height >= 44)" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
+    }
+
+    private void assertFollowupBoundaries(int sessions, int resolves, int priceReads) throws Exception {
+        assertFixtureBoundary(resolves, 0);
+        awaitPage("follow-up journeys stay within their exact synthetic request budget",
+            DIAGNOSTICS + ".load === " + sessions + " && " + DIAGNOSTICS + ".status === " + sessions +
+            " && " + DIAGNOSTICS + ".eod === " + priceReads + " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && " + DIAGNOSTICS + ".search === 0 && " + DIAGNOSTICS + ".marketsResolve === " + sessions + " && " + DIAGNOSTICS + ".marketsEod === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0" +
+            " && " + FOLLOWUPS + ".session === " + sessions + " && " + FOLLOWUPS + ".token === 0 && " + FOLLOWUPS + ".signOut === 0");
     }
 
     @Test
@@ -1780,7 +2025,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertSignOutCleared() throws Exception {
         awaitPage("signed-out workspace stays cleared without a sign-out review",
-            "document.body.textContent.includes('Signed out. Local watchlist data has been cleared.')" +
+            "document.body.textContent.includes('Signed out. Both local drafts have been cleared.')" +
             " && document.querySelector('.managed-navigation') === null && document.querySelector('.managed-search-bar') === null" +
             " && document.querySelector('#managed-note-0') === null && document.querySelector('#managed-note-1') === null" +
             " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
@@ -3341,7 +3586,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-eod-history caption')?.textContent === 'Raw closing prices in USD'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
-            " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')";
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Annual section for ZERO']\")?.disabled === false";
         awaitPage("explicit EOD load returns the same listing's exact closes and provenance", loadedEod);
         assertResearchSwitchDraftAndCounts(1, 1, 1);
         Log.i("ManagedResearchSwitch", "phase=eod-loaded; " + pageDiagnostic());
@@ -3376,7 +3622,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && !report.textContent.includes(generations.initial.sha256)" +
             " && Array.from(report.querySelectorAll('.managed-annual-values tbody tr td:first-of-type')).map(e => e.textContent).join(',') === '2000,300,15%'" +
             " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
-            " && document.querySelector('.managed-eod-history') === null; })()";
+            " && document.querySelector('.managed-eod-history') === null" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Price section for ZERO']\")?.disabled === false; })()";
         awaitPage("explicit fresh Annual replaces only the discarded request", loadedAnnual);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
 
@@ -6150,6 +6397,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
             scenarioName.equals("thesis-review") ||
             scenarioName.equals("company-snapshot") ||
+            scenarioName.equals("research-followups") ||
             scenarioName.equals("company-price-ranges") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
             scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
@@ -6414,7 +6662,8 @@ public class ManagedWorkspaceInstrumentedTest {
         typeIntoInput("managed-note-1", NOTE);
         awaitPage("draft note edited", "" + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
         click(ANNUAL);
-        awaitPage("Annual panel opened", "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'");
+        awaitPage("Annual panel opened", "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Price section for ZERO']\")?.disabled === false");
         assertCompanyHistory("listing-zero", "annual", false);
     }
 

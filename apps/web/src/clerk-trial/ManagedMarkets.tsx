@@ -17,6 +17,7 @@ import type {
 } from "./managed-markets";
 
 interface ManagedMarketsProps {
+  navigationPending: boolean;
   model: Model;
   headingRef?: Ref<HTMLHeadingElement> | undefined;
   sectionNavigation?: ReactNode;
@@ -127,6 +128,7 @@ function MarketListingRow({
 }
 
 function SelectedHistory({
+  navigationPending,
   selected,
   loading,
   loadRef,
@@ -134,6 +136,7 @@ function SelectedHistory({
   onResearch,
   onWatchlist,
 }: {
+  navigationPending: boolean;
   selected: ManagedMarketsRow;
   loading: boolean;
   loadRef: Ref<HTMLButtonElement>;
@@ -149,6 +152,7 @@ function SelectedHistory({
       <button
         className="trial-secondary"
         aria-label={`Board price history for ${selected.listing.symbol}`}
+        disabled={navigationPending}
         onClick={(event) => onResearch("eod", event.currentTarget)}
       >
         Price history
@@ -156,11 +160,16 @@ function SelectedHistory({
       <button
         className="trial-secondary"
         aria-label={`Board Annual report for ${selected.listing.symbol}`}
+        disabled={navigationPending}
         onClick={(event) => onResearch("annual", event.currentTarget)}
       >
         Annual report
       </button>
-      <button className="trial-secondary" onClick={onWatchlist}>
+      <button
+        className="trial-secondary"
+        disabled={navigationPending}
+        onClick={onWatchlist}
+      >
         Open My Watchlist
       </button>
     </div>
@@ -252,6 +261,7 @@ function SelectedHistory({
 }
 
 export function ManagedMarkets({
+  navigationPending,
   model,
   headingRef,
   sectionNavigation,
@@ -349,6 +359,7 @@ export function ManagedMarkets({
         </div>
         {selected && (
           <SelectedHistory
+            navigationPending={navigationPending}
             selected={selected}
             loading={state.running || state.resolving || state.catalogChanged}
             loadRef={loadSelected}

@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 
 import {
+  MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
+  MANAGED_RESEARCH_FOLLOWUPS_PATH,
+  parseManagedResearchFollowups,
+  parseManagedResearchFollowupsCommand,
+  parseManagedResearchFollowupsReceipt,
+  encodeResearchFollowupsPayload,
+  type ManagedResearchFollowupsCommand,
   MANAGED_CATALOG_LIMITS,
   MANAGED_CATALOG_RESOLVE_LIMITS,
   MANAGED_CATALOG_RESOLVE_PATH,
@@ -38,6 +45,12 @@ import {
 } from "@research-cockpit/contracts";
 
 import type { ClerkTrialAuth } from "./clerk-trial-auth";
+import {
+  ResearchFollowupsRepositoryError,
+  type ResearchFollowupsRepository,
+  type ResearchFollowupsRecord,
+  type ResearchFollowupsReceipt,
+} from "./research-followups-repository";
 import type { ManagedCatalogService } from "./managed-workspace-catalog";
 import {
   ManagedSecAnnualServiceError,
@@ -70,6 +83,10 @@ export interface ManagedWorkspaceRepositoryOperation {
   readonly repository: MainWatchlistRepository;
   close(): Promise<void>;
 }
+export interface ManagedFollowupsRepositoryOperation {
+  readonly repository: ResearchFollowupsRepository;
+  close(): Promise<void>;
+}
 export interface ManagedWorkspaceHandlerOptions {
   readonly auth: ClerkTrialAuth;
   readonly catalog: ManagedCatalogService;
@@ -81,6 +98,9 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly openRepository: (
     signal: AbortSignal,
   ) => Promise<ManagedWorkspaceRepositoryOperation>;
+  readonly openFollowupsRepository: (
+    signal: AbortSignal,
+  ) => Promise<ManagedFollowupsRepositoryOperation>;
 }
 
 export const MANAGED_WORKSPACE_ORIGIN = "https://app.investingpro.app";
@@ -94,6 +114,7 @@ export function getManagedWorkspaceOrigin(origin: string | null | undefined) {
 }
 
 const PATHS: readonly string[] = [
+  MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_CATALOG_SEARCH_PATH,
   MANAGED_CATALOG_RESOLVE_PATH,
@@ -151,7 +172,11 @@ function decodeSearchQuery(search: string): string {
 }
 
 function methods(path: string): readonly string[] {
-  if (path === MANAGED_WATCHLIST_PATH) return ["GET", "POST"];
+  if (
+    path === MANAGED_WATCHLIST_PATH ||
+    path === MANAGED_RESEARCH_FOLLOWUPS_PATH
+  )
+    return ["GET", "POST"];
   return path === MANAGED_CATALOG_RESOLVE_PATH ||
     path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH ||
     path === MANAGED_SEC_FILINGS_PATH ||
@@ -168,6 +193,7 @@ function admitRoute(request: Request) {
     request.method !== "POST" ||
     !(
       [
+        MANAGED_RESEARCH_FOLLOWUPS_PATH,
         MANAGED_WATCHLIST_PATH,
         MANAGED_CATALOG_RESOLVE_PATH,
         MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
@@ -328,6 +354,35 @@ function writeResult(
   );
 }
 
+function readFollowupsResult(record: ResearchFollowupsRecord | null) {
+  if (record !== null && (record.id !== "main" || record.version < 1))
+    throw new Error("Invalid follow-up record");
+  return parseManagedResearchFollowups(
+    record === null
+      ? { version: 0, payload: { schemaVersion: 1, entries: [] } }
+      : { version: record.version, payload: record.payload },
+  );
+}
+
+function writeFollowupsResult(
+  receipt: ResearchFollowupsReceipt,
+  command: ManagedResearchFollowupsCommand,
+) {
+  const digest = createHash("sha256")
+    .update(encodeResearchFollowupsPayload(command.payload))
+    .digest("hex");
+  if (receipt.id !== "main" || receipt.digestSha256 !== digest)
+    throw new Error("Invalid follow-up receipt");
+  return parseManagedResearchFollowupsReceipt(
+    {
+      version: receipt.version,
+      payload: command.payload,
+      replayed: receipt.replayed,
+    },
+    command,
+  );
+}
+
 function errorResponse(
   error: unknown,
   writeStarted: boolean,
@@ -394,7 +449,8 @@ function errorResponse(
       );
   } else if (
     repositoryOpened &&
-    error instanceof WatchlistRepositoryError &&
+    (error instanceof WatchlistRepositoryError ||
+      error instanceof ResearchFollowupsRepositoryError) &&
     error.code !== "invalid_response"
   ) {
     code =
@@ -431,6 +487,7 @@ export function createManagedWorkspaceHandler(
       errorResponse(new RequestFailure(status, code), false, false, headers);
     if (origin === null) return fail(403, "origin_denied");
     let operation: ManagedWorkspaceRepositoryOperation | undefined;
+    let followupsOperation: ManagedFollowupsRepositoryOperation | undefined;
     let writeStarted = false;
     let response: Response;
     try {
@@ -572,45 +629,90 @@ export function createManagedWorkspaceHandler(
         requireActiveRequest(request);
         return response;
       }
-      const command =
-        request.method === "POST"
-          ? parseManagedWatchlistCommand(
-              await readJson(request, MANAGED_WATCHLIST_LIMITS.envelopeBytes),
-            )
-          : undefined;
-      if (command === null) throw new RequestFailure(400, "invalid_request");
-      requireActiveRequest(request);
-      operation = await openRepository(request.signal);
-      requireActiveRequest(request);
-      if (command) {
-        writeStarted = true;
-        const receipt = await operation.repository.put(auth.principal, command);
-        if (request.signal.aborted) throw new Error("Write response retired");
-        response = jsonResponse(
-          writeResult(receipt, command),
-          MANAGED_WATCHLIST_LIMITS.envelopeBytes,
-          headers,
-        );
-      } else {
-        const record = await operation.repository.get(auth.principal);
+      if (route.path === MANAGED_RESEARCH_FOLLOWUPS_PATH) {
+        const command =
+          request.method === "POST"
+            ? parseManagedResearchFollowupsCommand(
+                await readJson(
+                  request,
+                  MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes,
+                ),
+              )
+            : undefined;
+        if (command === null) throw new RequestFailure(400, "invalid_request");
         requireActiveRequest(request);
-        response = jsonResponse(
-          readResult(record, catalog),
-          MANAGED_WATCHLIST_LIMITS.envelopeBytes,
-          headers,
+        followupsOperation = await options.openFollowupsRepository(
+          request.signal,
         );
+        requireActiveRequest(request);
+        if (command) {
+          writeStarted = true;
+          const receipt = await followupsOperation.repository.put(
+            auth.principal,
+            command,
+          );
+          if (request.signal.aborted) throw new Error("Write response retired");
+          response = jsonResponse(
+            writeFollowupsResult(receipt, command),
+            MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes,
+            headers,
+          );
+        } else {
+          const record = await followupsOperation.repository.get(
+            auth.principal,
+          );
+          requireActiveRequest(request);
+          response = jsonResponse(
+            readFollowupsResult(record),
+            MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes,
+            headers,
+          );
+        }
+      } else {
+        const command =
+          request.method === "POST"
+            ? parseManagedWatchlistCommand(
+                await readJson(request, MANAGED_WATCHLIST_LIMITS.envelopeBytes),
+              )
+            : undefined;
+        if (command === null) throw new RequestFailure(400, "invalid_request");
+        requireActiveRequest(request);
+        operation = await openRepository(request.signal);
+        requireActiveRequest(request);
+        if (command) {
+          writeStarted = true;
+          const receipt = await operation.repository.put(
+            auth.principal,
+            command,
+          );
+          if (request.signal.aborted) throw new Error("Write response retired");
+          response = jsonResponse(
+            writeResult(receipt, command),
+            MANAGED_WATCHLIST_LIMITS.envelopeBytes,
+            headers,
+          );
+        } else {
+          const record = await operation.repository.get(auth.principal);
+          requireActiveRequest(request);
+          response = jsonResponse(
+            readResult(record, catalog),
+            MANAGED_WATCHLIST_LIMITS.envelopeBytes,
+            headers,
+          );
+        }
       }
     } catch (error) {
       response = errorResponse(
         error,
         writeStarted,
-        operation !== undefined,
+        operation !== undefined || followupsOperation !== undefined,
         headers,
       );
     } finally {
-      if (operation) {
+      const opened = operation ?? followupsOperation;
+      if (opened) {
         try {
-          await operation.close();
+          await opened.close();
         } catch {
           response = errorResponse(undefined, writeStarted, true, headers);
         }
@@ -622,7 +724,7 @@ export function createManagedWorkspaceHandler(
           ? new Error("Write response retired")
           : new RequestFailure(408, "request_timeout"),
         writeStarted,
-        operation !== undefined,
+        operation !== undefined || followupsOperation !== undefined,
         headers,
       );
     return response;

@@ -5,59 +5,84 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { SaveCoordinator } from "./save-coordinator";
+import type {
+  ManagedResourceSaveSummary,
+  ManagedSessionOwner,
+} from "./managed-session-owner";
 
-/** Review an intentional sign-out without changing the coordinator's retirement rules. */
-export function ManagedSignOut<P>({
-  coordinator,
-}: {
-  coordinator: SaveCoordinator<P>;
-}) {
+function resourceStatus(resource: ManagedResourceSaveSummary): string {
+  const details: string[] = [];
+  if (resource.dirty) details.push("Unsaved local changes.");
+  if (resource.phase === "loading") details.push("Loading the saved version.");
+  if (resource.phase === "saving") details.push("Save in progress.");
+  if (resource.phase === "reconciling")
+    details.push("Reconciling the original save.");
+  if (resource.uncertain) details.push("Save result uncertain.");
+  if (resource.conflict) details.push("Saved version needs review.");
+  if (resource.replayPending)
+    details.push("Original save replayed. Load and review the latest version.");
+  return details.join(" ") || "No unconfirmed local changes.";
+}
+
+/** Review both save resources before the session owner performs one sign-out. */
+export function ManagedSignOut({ owner }: { owner: ManagedSessionOwner }) {
   const state = useSyncExternalStore(
-    coordinator.subscribe,
-    coordinator.getSnapshot,
-    coordinator.getSnapshot,
+    owner.subscribe,
+    owner.getSnapshot,
+    owner.getSnapshot,
   );
   const [reviewOpen, setReviewOpen] = useState(false);
   const signOutButton = useRef<HTMLButtonElement>(null);
   const stayButton = useRef<HTMLButtonElement>(null);
+  const review = useRef({ revision: 0, open: false });
+  const renderedReviewRevision = review.current.revision;
   const headingId = useId();
   const retired = state.phase === "retired" || state.phase === "signing_out";
   const visible = reviewOpen && !retired;
-  const pending =
-    state.uncertain ||
-    state.phase === "saving" ||
-    state.phase === "reconciling";
+  const resources = [state.watchlist, state.followups];
+  const uncertain = resources.some((resource) => resource.uncertain);
+  const pending = resources.some(
+    (resource) =>
+      resource.uncertain ||
+      resource.phase === "saving" ||
+      resource.phase === "reconciling",
+  );
+  const dirty = resources.some((resource) => resource.dirty);
 
   useLayoutEffect(() => {
     if (visible) stayButton.current?.focus();
   }, [visible]);
 
   const requestSignOut = () => {
-    const current = coordinator.getSnapshot();
+    const current = owner.getSnapshot();
     if (current.phase === "signing_out") return;
-    if (
-      current.phase !== "retired" &&
-      (current.dirty ||
-        current.uncertain ||
-        current.phase === "saving" ||
-        current.phase === "reconciling")
-    ) {
+    if (current.phase === "active" && current.needsLeaveReview) {
+      if (review.current.open) return;
+      review.current = { revision: review.current.revision + 1, open: true };
       setReviewOpen(true);
       return;
     }
-    void coordinator.signOut();
+    review.current = { revision: review.current.revision + 1, open: false };
+    setReviewOpen(false);
+    void owner.signOut();
   };
   const confirmSignOut = () => {
-    const current = coordinator.getSnapshot();
-    if (current.phase === "retired" || current.phase === "signing_out") return;
+    const current = owner.getSnapshot();
+    if (
+      current.phase !== "active" ||
+      !reviewOpen ||
+      !review.current.open ||
+      renderedReviewRevision !== review.current.revision
+    )
+      return;
+    review.current = { revision: review.current.revision + 1, open: false };
     setReviewOpen(false);
-    void coordinator.signOut();
+    void owner.signOut();
   };
   const stay = () => {
+    review.current = { revision: review.current.revision + 1, open: false };
     setReviewOpen(false);
-    if (coordinator.getSnapshot().phase !== "signing_out")
-      signOutButton.current?.focus();
+    if (owner.getSnapshot().phase === "active") signOutButton.current?.focus();
   };
 
   return (
@@ -86,25 +111,41 @@ export function ManagedSignOut<P>({
           <h2 id={headingId}>
             {pending
               ? "Check this save before signing out"
-              : state.dirty
+              : dirty
                 ? "Sign out with unsaved changes?"
-                : "Sign out this session?"}
+                : state.needsLeaveReview
+                  ? "Review saved versions before signing out"
+                  : "Sign out this session?"}
           </h2>
           <p>
             {pending
-              ? `${state.uncertain ? "The save result is uncertain." : "The save is still in progress."} The server may already have saved it. Signing out clears this screen and its pending save details. Sign in again and load the saved version to check the outcome.`
-              : state.dirty
-                ? "Your changes have not been confirmed as saved. Signing out discards this local draft. It does not change the saved watchlist."
-                : "There are no unconfirmed local changes. Signing out clears this screen and leaves the saved watchlist intact."}
+              ? `${uncertain ? "The save result is uncertain." : "The save is still in progress."} The server may already have saved it. Signing out clears both local drafts and their pending save details. Sign in again and load the saved version of each resource to check the outcome.`
+              : dirty
+                ? "Your changes have not been confirmed as saved. Signing out discards both local drafts. It does not change the saved watchlist or follow-ups."
+                : state.needsLeaveReview
+                  ? "A saved version still needs review. Signing out clears both local drafts and their recovery details. Sign in again and load each saved version to check it."
+                  : "There are no unconfirmed local changes. Signing out clears this screen and leaves the saved watchlist and follow-ups intact."}
           </p>
+          <dl aria-label="Local save states">
+            <div>
+              <dt>Watchlist</dt>
+              <dd>{resourceStatus(state.watchlist)}</dd>
+            </div>
+            <div>
+              <dt>Follow-ups</dt>
+              <dd>{resourceStatus(state.followups)}</dd>
+            </div>
+          </dl>
           <p>Other signed-in devices keep their own sessions.</p>
           <div className="trial-actions">
             <button id="managed-signout-stay" ref={stayButton} onClick={stay}>
               {pending
                 ? "Stay and check save"
-                : state.dirty
+                : dirty
                   ? "Keep editing"
-                  : "Stay signed in"}
+                  : state.needsLeaveReview
+                    ? "Stay and review saved versions"
+                    : "Stay signed in"}
             </button>
             <button
               id="managed-signout-confirm"
@@ -113,7 +154,7 @@ export function ManagedSignOut<P>({
             >
               {pending
                 ? "Sign out and clear this screen"
-                : state.dirty
+                : dirty
                   ? "Sign out and discard local changes"
                   : "Sign out this session"}
             </button>

@@ -134,6 +134,8 @@ jobs:
                   "fedAnnouncementsRetainDatesCancelAndRetireWithSession",
                   "watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft",
                   "operatingComparisonNoteKeepsSeparateSourcesAndExplicitSave",
+                  "researchFollowupsSaveResearchAndCompleteAcrossSessions",
+                  "researchFollowupsReplayAndSessionRetirementFenceLateReplies",
               },
           }
           executed = set()

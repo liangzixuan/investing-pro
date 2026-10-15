@@ -1,7 +1,7 @@
 import { AppwriteException } from "node-appwrite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AppwriteWatchlistStore } from "./appwrite-watchlist-repository";
+import type { AppwriteVersionedRowStore } from "./appwrite-versioned-row-store";
 import type { ClerkTrialFunctionContext } from "./clerk-trial-function";
 import {
   CLERK_TRIAL_PROOF_PHASES,
@@ -16,15 +16,15 @@ import {
 const TIME = "2026-09-29T21:00:00.000Z";
 const BUILD = "a".repeat(64);
 type Row = Record<string, unknown>;
-type Operation = keyof AppwriteWatchlistStore;
-type Input<K extends Operation> = Parameters<AppwriteWatchlistStore[K]>[0];
+type Operation = keyof AppwriteVersionedRowStore;
+type Input<K extends Operation> = Parameters<AppwriteVersionedRowStore[K]>[0];
 interface Transaction {
   base: Map<string, string | undefined>;
   rows: Map<string, Row>;
 }
 
 /** Atomic model: first staged write captures row state; commit verifies all bases. */
-class AtomicStore implements AppwriteWatchlistStore {
+class AtomicStore implements AppwriteVersionedRowStore {
   readonly rows = new Map<string, Row>();
   readonly transactions = new Map<string, Transaction>();
   readonly calls: { operation: Operation; input: unknown }[] = [];

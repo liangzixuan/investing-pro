@@ -15,11 +15,13 @@ type SourceState = {
 };
 
 export function ManagedCompanyEvidenceActions({
+  navigationPending,
   onRequest,
   onCancel,
   onOpen,
   ...models
 }: CompanyEvidenceModels & {
+  navigationPending: boolean;
   onRequest: (section: Section) => void;
   onCancel: (section: Section) => void;
   onOpen: (section: Section) => void;
@@ -44,6 +46,7 @@ export function ManagedCompanyEvidenceActions({
       </p>
       <div className="managed-evidence-action-grid">
         <SourceCard
+          navigationPending={navigationPending}
           title="Price"
           section="eod"
           state={price}
@@ -76,6 +79,7 @@ export function ManagedCompanyEvidenceActions({
           )}
         </SourceCard>
         <SourceCard
+          navigationPending={navigationPending}
           title="Annual"
           section="annual"
           state={annual}
@@ -92,6 +96,7 @@ export function ManagedCompanyEvidenceActions({
           </p>
         </SourceCard>
         <SourceCard
+          navigationPending={navigationPending}
           title="Filings"
           section="filings"
           state={filings}
@@ -120,6 +125,7 @@ export function ManagedCompanyEvidenceActions({
 }
 
 function SourceCard({
+  navigationPending,
   title,
   section,
   state,
@@ -132,6 +138,7 @@ function SourceCard({
   onOpen,
   children,
 }: {
+  navigationPending: boolean;
   title: string;
   section: Section;
   state: SourceState | null;
@@ -177,7 +184,10 @@ function SourceCard({
       )}
       <div className="trial-actions">
         {supported && (
-          <button disabled={running} onClick={() => onRequest(section)}>
+          <button
+            disabled={running || navigationPending}
+            onClick={() => onRequest(section)}
+          >
             {running ? `Loading ${title}…` : requestLabel}
           </button>
         )}
@@ -186,7 +196,11 @@ function SourceCard({
             Cancel {title}
           </button>
         )}
-        <button className="trial-secondary" onClick={() => onOpen(section)}>
+        <button
+          className="trial-secondary"
+          disabled={navigationPending}
+          onClick={() => onOpen(section)}
+        >
           Inspect {title}
         </button>
       </div>

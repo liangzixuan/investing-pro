@@ -42,6 +42,7 @@ import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedResearchNote } from "./ManagedResearchNote";
+import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
@@ -302,6 +303,16 @@ function fixture(
   priceCoverage = [eodSelection.listing, ...payload.memberships],
 ) {
   const api: ManagedApi = {
+    loadFollowups: vi
+      .fn<ManagedApi["loadFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
+    saveFollowups: vi
+      .fn<ManagedApi["saveFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
     monetaryAnnouncements: vi
       .fn<ManagedApi["monetaryAnnouncements"]>()
       .mockRejectedValue(new Error("Unexpected announcements read")),
@@ -692,6 +703,8 @@ async function returnedFocusFixture() {
   };
   document.defaultView = view;
   const nav: ManagedCompanyNavigation = {
+    pending: false,
+    isPending: () => false,
     invalid: false,
     returnFocus: 1,
     hasCompanyRoute: () => false,
@@ -1135,6 +1148,8 @@ describe("managed workspace screen", () => {
     const draft = workspace.coordinator.getSnapshot().draft!;
     let route = false;
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       invalid: false,
       returnFocus: 0,
       hasCompanyRoute: () => route,
@@ -1377,6 +1392,8 @@ describe("managed workspace screen", () => {
     const draft = workspace.coordinator.getSnapshot().draft!;
     let route = false;
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       invalid: false,
       returnFocus: 0,
       hasCompanyRoute: () => route,
@@ -1627,6 +1644,8 @@ describe("managed workspace screen", () => {
     );
     let route = true;
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       invalid: false,
       returnFocus: 0,
       hasCompanyRoute: () => route,
@@ -1719,6 +1738,8 @@ describe("managed workspace screen", () => {
     );
     let route = true;
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       invalid: false,
       returnFocus: 0,
       hasCompanyRoute: () => route,
@@ -1764,6 +1785,8 @@ describe("managed workspace screen", () => {
       workspace.setView("markets");
       const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
       const navigation: ManagedCompanyNavigation = {
+        pending: false,
+        isPending: () => false,
         invalid: false,
         returnFocus: 0,
         hasCompanyRoute: () => false,
@@ -1808,6 +1831,8 @@ describe("managed workspace screen", () => {
     workspace.setView("markets");
     const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       invalid: false,
       returnFocus: 0,
       hasCompanyRoute: () => false,
@@ -1958,6 +1983,8 @@ describe("managed workspace screen", () => {
     workspace.setView("markets");
     let pendingRoute = false;
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       invalid: false,
       returnFocus: 1,
       hasCompanyRoute: () => pendingRoute,
@@ -2791,6 +2818,150 @@ describe("managed workspace screen", () => {
     expect(api.save).not.toHaveBeenCalled();
   });
 
+  it("refuses retained callbacks before source reads, identity resolve or local review changes while navigation is pending", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    vi.mocked(api.loadFollowups).mockResolvedValueOnce({
+      version: 0,
+      payload: { schemaVersion: 1, entries: [] },
+    });
+    await workspace.followups.coordinator.load();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.followups.add(member, "2026-10-15");
+    const entry =
+      workspace.followups.coordinator.getSnapshot().draft!.entries[0]!;
+    workspace.setView("followups");
+    workspace.openWatchlistEod(member);
+    let pending = false;
+    const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => pending,
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => true,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn(() => false),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    const nodes = elements(ManagedWorkspaceScreen({ workspace, navigation }));
+    const company = nodes.find(
+      (node) => node.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    const followups = nodes.find(
+      (node) => node.type === ManagedResearchFollowups,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedResearchFollowups>
+    >;
+    const search = nodes.find(
+      (node) => node.type === WorkspaceSearch,
+    ) as React.ReactElement<React.ComponentProps<typeof WorkspaceSearch>>;
+    const before = [
+      workspace.getSnapshot(),
+      workspace.coordinator.getSnapshot(),
+      workspace.followups.coordinator.getSnapshot(),
+    ];
+    const local = [...mounted.screenState];
+    const refs = mounted.refs.map((ref) => ref.current);
+    const request = vi.spyOn(workspace, "requestResearchSource");
+    const prepare = vi.spyOn(workspace, "prepareFollowupResearch");
+    pending = true; // The ref changes before the disabled render is committed.
+    await company.props.onRequestSource("annual");
+    company.props.onReview();
+    followups.props.onResearch(entry, {} as HTMLButtonElement);
+    search.props.onSearch({} as HTMLFormElement);
+    expect(request).not.toHaveBeenCalled();
+    expect(prepare).not.toHaveBeenCalled();
+    expect(navigation.view).not.toHaveBeenCalled();
+    expect(navigation.section).not.toHaveBeenCalled();
+    expect(mounted.screenState).toEqual(local);
+    expect(mounted.refs.map((ref) => ref.current)).toEqual(refs);
+    expect([
+      workspace.getSnapshot(),
+      workspace.coordinator.getSnapshot(),
+      workspace.followups.coordinator.getSnapshot(),
+    ]).toEqual(before);
+    for (const method of [
+      "resolve",
+      "search",
+      "annualReport",
+      "eodHistory",
+      "recentFilings",
+      "save",
+      "saveFollowups",
+    ] as const)
+      expect(api[method]).not.toHaveBeenCalled();
+    mounted.direct = false;
+  });
+
+  it("renders pending company controls without disabling draft editing or the selected source's direct Load", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    const navigation: ManagedCompanyNavigation = {
+      pending: true,
+      isPending: () => true,
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => true,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn(() => false),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    const nodes = elements(ManagedWorkspaceScreen({ workspace, navigation }));
+    const company = nodes.find(
+      (node) => node.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    expect(company.props.navigationPending).toBe(true);
+    const tree = elements(ManagedCompanyResearch(company.props));
+    const nav = tree.find((node) => node.type === "nav")!;
+    const sections = elements(nav).filter((node) => node.type === "button");
+    expect(sections).toHaveLength(3);
+    expect(
+      sections.every(
+        (node) => (node.props as React.ComponentProps<"button">).disabled,
+      ),
+    ).toBe(true);
+    const note = tree.find(
+      (node) => node.type === ManagedResearchNote,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedResearchNote>>;
+    const noteTree = elements(ManagedResearchNote(note.props));
+    expect(
+      (
+        noteTree.find((node) => node.type === ManagedNoteEditor)!
+          .props as React.ComponentProps<typeof ManagedNoteEditor>
+      ).disabled,
+    ).toBe(false);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    mounted.direct = false;
+    const html = renderToStaticMarkup(
+      <ManagedCompanyResearch {...company.props} />,
+    );
+    expect(html).toMatch(
+      /<button[^>]*disabled=""[^>]*>Back to workspace<\/button>/u,
+    );
+    expect(html).toMatch(
+      /<button[^>]*disabled=""[^>]*>Review in My Watchlist<\/button>/u,
+    );
+    expect(html).toMatch(
+      /<button(?![^>]*disabled)[^>]*>Load one-month close history<\/button>/u,
+    );
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   it("wires one explicit overview source request before route blocking without changing the draft", async () => {
     const { workspace, api } = fixture({
       ...payload,
@@ -2802,6 +2973,8 @@ describe("managed workspace screen", () => {
     workspace.openWatchlistEod(draft.memberships[0]!);
     vi.mocked(api.annualReport).mockResolvedValueOnce(await annualResponse());
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       hasCompanyRoute: () => true,
       invalid: false,
       returnFocus: 0,
@@ -2902,6 +3075,8 @@ describe("managed workspace screen", () => {
       workspace.coordinator.getSnapshot().draft!.memberships[0]!,
     );
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       hasCompanyRoute: () => true,
       invalid: false,
       returnFocus: 0,
@@ -2943,6 +3118,8 @@ describe("managed workspace screen", () => {
     const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
     workspace.openWatchlistEod(member);
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       hasCompanyRoute: () => true,
       invalid: false,
       returnFocus: 0,
@@ -2979,6 +3156,8 @@ describe("managed workspace screen", () => {
       workspace.coordinator.getSnapshot().draft!.memberships[0]!,
     );
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       hasCompanyRoute: () => true,
       invalid: false,
       returnFocus: 0,
@@ -3019,6 +3198,8 @@ describe("managed workspace screen", () => {
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       hasCompanyRoute: () => true,
       invalid: false,
       returnFocus: 0,
@@ -3050,6 +3231,8 @@ describe("managed workspace screen", () => {
   it("restores the connected opener after a URL Back transition", () => {
     const { workspace } = fixture();
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       hasCompanyRoute: () => true,
       invalid: false,
       returnFocus: 1,
@@ -3181,6 +3364,8 @@ describe("managed workspace screen", () => {
       section: "annual",
     });
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       hasCompanyRoute: () => true,
       invalid: false,
       returnFocus: 0,
@@ -3482,6 +3667,8 @@ describe("managed workspace screen", () => {
           row,
         );
       const navigation: ManagedCompanyNavigation = {
+        pending: false,
+        isPending: () => false,
         hasCompanyRoute: () => pending,
         invalid,
         returnFocus: 0,
@@ -3590,6 +3777,8 @@ describe("managed workspace screen", () => {
         right: side("right"),
       };
       const navigation: ManagedCompanyNavigation = {
+        pending: false,
+        isPending: () => false,
         hasCompanyRoute: () => pending,
         invalid: route === "invalid",
         returnFocus: 0,
@@ -3674,6 +3863,8 @@ describe("managed workspace screen", () => {
       const response = model.getSnapshot().left.report.response!;
       const draftBeforeVisit = workspace.coordinator.getSnapshot().draft;
       const navigation: ManagedCompanyNavigation = {
+        pending: false,
+        isPending: () => false,
         hasCompanyRoute: () => pending,
         invalid: route === "invalid",
         returnFocus: 0,
@@ -3775,6 +3966,8 @@ describe("managed workspace screen", () => {
       const draft = workspace.coordinator.getSnapshot().draft;
       let pending = route === "pending";
       const navigation: ManagedCompanyNavigation = {
+        pending: false,
+        isPending: () => false,
         hasCompanyRoute: () => pending,
         invalid: route === "invalid",
         returnFocus: 0,
@@ -3940,6 +4133,8 @@ describe("managed workspace screen", () => {
     workspace.openWatchlistAnnual(members[0]!);
     const visit = workspace.getSnapshot().research!;
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       invalid: false,
       returnFocus: 0,
       hasCompanyRoute: () => true,
@@ -5126,6 +5321,8 @@ describe("managed workspace screen", () => {
     async (change) => {
       const hasCompanyRoute = vi.fn(() => false);
       const navigation: ManagedCompanyNavigation = {
+        pending: false,
+        isPending: () => false,
         hasCompanyRoute,
         invalid: false,
         returnFocus: 0,
@@ -5479,6 +5676,8 @@ describe("managed workspace screen", () => {
     await workspace.refreshCatalog();
     workspace.note("listing-one", "Keep this unsaved draft");
     const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => false,
       hasCompanyRoute: () => false,
       invalid: false,
       returnFocus: 0,

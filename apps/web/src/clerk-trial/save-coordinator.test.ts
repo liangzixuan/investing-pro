@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { TrialApiError } from "./api";
 import { SaveCoordinator } from "./save-coordinator";
+import {
+  MANAGED_WATCHLIST_SAVE_COPY,
+  TRIAL_WATCHLIST_SAVE_COPY,
+} from "./save-coordinator-copy";
 import type {
   SavePort,
   SavedPayload,
@@ -54,10 +58,12 @@ function fixture(mode: "demo" | "managed" = "managed") {
   };
   const onRetire = vi.fn();
   let key = 0;
-  const controller = new SaveCoordinator(port, session, {
-    newKey: () => `invented-command-${++key}`,
-    onRetire,
-  });
+  const controller = new SaveCoordinator(
+    port,
+    session,
+    mode === "demo" ? TRIAL_WATCHLIST_SAVE_COPY : MANAGED_WATCHLIST_SAVE_COPY,
+    { newKey: () => `invented-command-${++key}`, onRetire },
+  );
   return { controller, load, save, session, onRetire };
 }
 

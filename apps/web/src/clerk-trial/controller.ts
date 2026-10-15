@@ -1,6 +1,7 @@
 import { normalizeDraft, validDraft } from "./api";
 import type { TrialApi, TrialDraft, TrialEntry, TrialWatchlist } from "./api";
 import { SaveCoordinator } from "./save-coordinator";
+import { TRIAL_WATCHLIST_SAVE_COPY } from "./save-coordinator-copy";
 import type { SaveState } from "./save-coordinator";
 import type { TrialSession } from "./session";
 
@@ -78,6 +79,7 @@ export class TrialController {
         },
       },
       session,
+      TRIAL_WATCHLIST_SAVE_COPY,
       { newKey },
     );
     this.state = trialState(this.coordinator.getSnapshot());

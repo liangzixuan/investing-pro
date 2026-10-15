@@ -51,6 +51,7 @@ async function fixture(open = false) {
     filings.open(eodSelection);
   }
   const props = {
+    navigationPending: false,
     selection: eodSelection,
     price,
     annual,
@@ -85,6 +86,43 @@ async function fixture(open = false) {
 }
 
 describe("company research source actions", () => {
+  it("disables section-changing requests and inspection while preserving loaded evidence and Cancel", async () => {
+    const f = await fixture(true);
+    await f.price.load();
+    const loaded = f.price.getSnapshot().response;
+    let finish!: (value: ReturnType<typeof eodResponse>) => void;
+    f.readPrice.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const reading = f.price.load();
+    f.props.navigationPending = true;
+    for (const label of [
+      "Loading Price…",
+      "Load Annual",
+      "Load Filings",
+      "Inspect Price",
+      "Inspect Annual",
+      "Inspect Filings",
+    ])
+      expect(f.button(label).props.disabled).toBe(true);
+    expect(f.price.getSnapshot().response).toBe(loaded);
+    expect(f.button("Cancel Price").props.disabled).not.toBe(true);
+    f.button("Cancel Price").props.onClick!();
+    expect(f.onCancel).toHaveBeenCalledExactlyOnceWith("eod");
+    expect(f.onRequest).not.toHaveBeenCalled();
+    expect(f.onOpen).not.toHaveBeenCalled();
+    f.price.cancel();
+    finish(eodResponse());
+    await reading;
+    f.props.navigationPending = false;
+    expect(f.button("Inspect Annual").props.disabled).toBe(false);
+    expect(f.button("Load Annual").props.disabled).toBe(false);
+    expect(f.readAnnual).not.toHaveBeenCalled();
+    expect(f.readFilings).not.toHaveBeenCalled();
+  });
   it.each([
     ["eod", "Price · One month"],
     ["annual", "Annual"],
