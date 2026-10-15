@@ -25,6 +25,7 @@ if (
   scenario !== "catalog-startup-recovery" &&
   scenario !== "company-direct-entry" &&
   scenario !== "annual-note" &&
+  scenario !== "annual-cash-history" &&
   scenario !== "company-snapshot" &&
   scenario !== "thesis-review" &&
   scenario !== "price-comparison-note" &&

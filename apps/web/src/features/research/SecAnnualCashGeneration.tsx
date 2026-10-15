@@ -47,10 +47,12 @@ const reasons: Record<PersonalSecAnnualCashUnavailableReason, string> = {
 export function SecAnnualCashGeneration({
   response,
   cashAction,
+  history,
   headingTarget,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly cashAction?: ReactNode;
+  readonly history?: ReactNode;
   readonly headingTarget?: {
     readonly id: string;
     readonly ref: Ref<HTMLHeadingElement>;
@@ -92,6 +94,7 @@ export function SecAnnualCashGeneration({
         adjust for leases, acquisitions or other investing cash flows.
       </p>
       {cashAction}
+      {history}
       <details className="sec-quarterly-row-details sec-annual-cash-source">
         <summary>Cash sources and calculation inputs</summary>
         <SecAnnualCashSourceBody response={response} />
@@ -143,9 +146,15 @@ export function SecAnnualCashValueContent({
     </>
   ) : (
     <span className="sec-annual-cash-unavailable">
-      Unavailable. {reasons[value.reason]}
+      Unavailable. {annualCashUnavailableReasonText(value.reason)}
     </span>
   );
+}
+
+export function annualCashUnavailableReasonText(
+  reason: PersonalSecAnnualCashUnavailableReason,
+): string {
+  return reasons[reason];
 }
 
 export function SecAnnualCashSourceBody({

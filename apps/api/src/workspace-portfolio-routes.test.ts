@@ -51,15 +51,24 @@ afterEach(async () => {
 });
 
 describe("personal portfolio storage routes", () => {
-  it("durably upgrades a ledger for splits and derives later sales from the saved activity order", async () => {
+  it("durably upgrades a manual snapshot through schema 2 to split schema 3", async () => {
     const f = await readyApp();
-    await writePortfolio(f, f.payload, 0, "portfolio-split-manual-key");
-    await writePortfolio(
+    const manual = await writePortfolio(
+      f,
+      f.payload,
+      0,
+      "portfolio-split-manual-key",
+    );
+    expect(manual.statusCode).toBe(201);
+    expect(manual.headers.etag).toBe('"v1"');
+    const ledger = await writePortfolio(
       f,
       ledgerPayload(f.payload),
       1,
       "portfolio-split-v2-key",
     );
+    expect(ledger.statusCode).toBe(200);
+    expect(ledger.headers.etag).toBe('"v2"');
     const split = splitLedgerPayload(f.payload);
     const upgraded = await writePortfolio(
       f,
@@ -79,19 +88,51 @@ describe("personal portfolio storage routes", () => {
     });
     await f.app.close();
     const reopened = await readyApp(f.root);
-    expect((await readPortfolio(reopened)).json()).toMatchObject({
-      version: 3,
-      payload: split,
+    const loaded = (await readPortfolio(reopened)).json<{
+      version: number;
+      payload: PersonalPortfolioLedgerPayloadV3;
+    }>();
+    expect(loaded.version).toBe(3);
+    expect(loaded.payload).toEqual(split);
+    expect(projectPersonalPortfolioLedger(loaded.payload)).toMatchObject({
+      status: "valid",
+      portfolio: {
+        cashUsd: null,
+        holdings: [{ shares: "2.500002", totalCostBasisUsd: "123.45" }],
+      },
+      realized: { sales: 0, totalGainUsd: "0.00" },
     });
+    expect(reopened.vault.inventory().records).toHaveLength(1);
+  });
+
+  it("derives later sales from a durably stored schema-3 split ledger", async () => {
+    const f = await readyApp();
+    const split = splitLedgerPayload(f.payload);
+    const created = await writePortfolio(
+      f,
+      split,
+      0,
+      "portfolio-split-created-key",
+    );
+    expect(created.statusCode).toBe(201);
+    expect(created.headers.etag).toBe('"v1"');
+    await f.app.close();
+    const reopened = await readyApp(f.root);
+    const loaded = (await readPortfolio(reopened)).json<{
+      version: number;
+      payload: PersonalPortfolioLedgerPayloadV3;
+    }>();
+    expect(loaded.version).toBe(1);
+    expect(loaded.payload).toEqual(split);
     const sold: PersonalPortfolioLedgerPayloadV3 = {
-      ...split,
+      ...loaded.payload,
       transactions: [
-        ...split.transactions,
+        ...loaded.payload.transactions,
         {
-          ...split.transactions[0]!,
+          ...loaded.payload.transactions[0]!,
           id: "portfolio-reverse-split",
           type: "split",
-          listingId: split.identities[0]!.listingId,
+          listingId: loaded.payload.identities[0]!.listingId,
           date: "2020-01-03",
           ratioNumerator: "1",
           ratioDenominator: "2",
@@ -100,19 +141,27 @@ describe("personal portfolio storage routes", () => {
           id: "portfolio-post-split-sale",
           date: "2020-01-03",
           type: "sell",
-          listingId: split.identities[0]!.listingId,
+          listingId: loaded.payload.identities[0]!.listingId,
           shares: "1.250001",
           grossUsd: "125",
           feeUsd: "0",
         },
       ],
     };
-    expect(
-      (await writePortfolio(reopened, sold, 3, "portfolio-split-sale-key"))
-        .statusCode,
-    ).toBe(200);
-    const saved = (await readPortfolio(reopened)).json<{ payload: unknown }>();
-    expect(saved).toMatchObject({ version: 4, payload: sold });
+    const updated = await writePortfolio(
+      reopened,
+      sold,
+      1,
+      "portfolio-split-sale-key",
+    );
+    expect(updated.statusCode).toBe(200);
+    expect(updated.headers.etag).toBe('"v2"');
+    const saved = (await readPortfolio(reopened)).json<{
+      version: number;
+      payload: unknown;
+    }>();
+    expect(saved.version).toBe(2);
+    expect(saved.payload).toEqual(sold);
     expect(projectPersonalPortfolioLedger(saved.payload)).toMatchObject({
       status: "valid",
       portfolio: { cashUsd: null, holdings: [] },

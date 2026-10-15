@@ -1,5 +1,6 @@
 import { ObservationDetails } from "./SecAnnualObservation";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
+import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
@@ -175,6 +176,7 @@ function ManagedAnnualFinancialResult({
         response={response}
         cashAction={cashAction}
         headingTarget={targets.cash}
+        history={<SecAnnualCashHistory response={response} />}
       />
       <SecAnnualLiquidity
         response={response}
