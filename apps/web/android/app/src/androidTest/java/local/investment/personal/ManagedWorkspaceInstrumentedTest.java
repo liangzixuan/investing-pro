@@ -920,6 +920,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("second explicitly loaded report exposes its own basis", "document.querySelector('.managed-annual-comparison select[id$=\"-right-basis\"]')?.value === 'SalesRevenueNet'");
         chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "Revenues", "Revenue");
         assertAnnualComparisonValues("1000", "10%", "25%", "Revenues", "Revenue");
+        retainAnnualNoteFrame("annualComparisonBalanceSheet", "[data-annual-comparison-balance-sheet=totalAssets] td:first-of-type",
+            "[data-annual-comparison-balance-sheet=totalAssets] td:first-of-type", 1);
         assertAnnualComparisonSources();
         click(".managed-annual-comparison-source:first-child details > summary");
         click(".managed-annual-comparison-source:last-child details > summary");
@@ -1050,7 +1052,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {
         awaitPage("exact Annual values retain distinct fiscal periods and bases",
             "(() => { const rows = document.querySelectorAll('.managed-annual-comparison-table tbody tr');" +
-            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 16" +
+            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 19" +
             " && [...cells(0)[0].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2025-01-01|2025-12-31'" +
             " && [...cells(0)[1].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2024-07-01|2025-06-30'" +
             " && cells(1)[0].textContent === " + JSONObject.quote(basisLabel) +
@@ -1070,6 +1072,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && cells(5)[1].textContent.includes('2023-07-01 to 2024-06-30'); })()");
         assertAnnualComparisonCash();
         assertAnnualComparisonLiquidity();
+        assertAnnualComparisonBalanceSheet();
     }
 
     private void assertAnnualComparisonCash() throws Exception {
@@ -1122,6 +1125,46 @@ public class ManagedWorkspaceInstrumentedTest {
             " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'; })" +
             " && cash.lastElementChild.textContent === 'Calculation references: ' + ids.join(' · '); }); })()");
         assertAnnualComparisonLiquiditySources();
+        assertAnnualComparisonBalanceSheetSources();
+    }
+
+    private void assertAnnualComparisonBalanceSheet() throws Exception {
+        awaitPage("reported balance totals retain independent exact dates and refusals through every comparison lifetime",
+            "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-balance-sheet]')];" +
+            " const keys = ['totalAssets', 'totalLiabilities', 'shareholdersEquity'];" +
+            " const labels = ['Total assets', 'Total liabilities', 'Shareholders’ equity · parent'];" +
+            " const values = [['1000.125', '1000.' + '0'.repeat(58) + '1'], ['0', '1200.25'], ['-200.125', null]];" +
+            " const dates = ['2025-12-31', '2025-06-30']; return rows.length === 3 && rows.every((row, i) => {" +
+            " const cells = [...row.querySelectorAll('td')], header = row.querySelector('th');" +
+            " return row.dataset.annualComparisonBalanceSheet === keys[i] && header?.scope === 'row'" +
+            " && header.firstChild.textContent === labels[i] && header.querySelector('small')?.textContent === 'Reported · USD'" +
+            " && cells.length === 2 && cells.every((cell, side) => values[i][side] === null" +
+            " ? cell.textContent === 'Unavailable. This reported balance concept is absent from the source.' && !cell.querySelector('.sec-annual-liquidity-amount')" +
+            " : cell.querySelector('.sec-annual-liquidity-amount')?.textContent === values[i][side]" +
+            " && cell.querySelectorAll('small')[0]?.textContent === 'At ' + dates[side]" +
+            " && cell.querySelectorAll('small')[1]?.textContent === 'Within current-use limits at this load.'); })" +
+            " && document.querySelector('.managed-annual-comparison').textContent.includes('Parent equity excludes noncontrolling interests.')" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
+    }
+
+    private void assertAnnualComparisonBalanceSheetSources() throws Exception {
+        awaitPage("balance totals keep complete original observation references inside each existing source disclosure",
+            "(() => { const sources = [...document.querySelectorAll('[data-annual-comparison-balance-sheet-source]')];" +
+            " return sources.length === 2 && sources.every((source, side) => {" +
+            " const inputs = [...source.querySelectorAll(':scope > section')], concepts = ['Assets', 'Liabilities', 'StockholdersEquity'];" +
+            " const expected = side === 0 ? ['1000.125', '0', '-200.125'] : ['1000.' + '0'.repeat(58) + '1', '1200.25', null];" +
+            " const date = side === 0 ? '2025-12-31' : '2025-06-30', accession = side === 0 ? '0000000001-26-000001' : '0000000002-25-000001';" +
+            " return source.dataset.annualComparisonBalanceSheetSource === (side === 0 ? 'left' : 'right')" +
+            " && source.closest('details') === source.closest('.managed-annual-comparison-source').querySelector(':scope > details')" +
+            " && source.querySelector(':scope > p')?.textContent === 'Annual cutoff 2026-09-20T00:00:00.000Z. Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && inputs.length === 3 && inputs.every((input, i) => { const rows = [...input.querySelectorAll('ol > li')];" +
+            " if (expected[i] === null) return rows.length === 0 && input.textContent.includes('Value references: None');" +
+            " const fields = [...input.querySelectorAll('dl > div')], field = label => fields.find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " const id = field('Observation identifier'); return rows.length === 1 && /^sec-fact:[a-f0-9]{64}$/.test(id)" +
+            " && input.textContent.includes('Value references: ' + id) && field('Exact USD observation') === expected[i]" +
+            " && field('Source end date') === date && field('Accession') === accession" +
+            " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'" +
+            " && input.querySelector('a')?.href === 'https://www.sec.gov/Archives/edgar/data/' + (side + 1) + '/' + accession + '-index.htm'; }); }); })()");
     }
 
     private void assertAnnualComparisonLiquidity() throws Exception {

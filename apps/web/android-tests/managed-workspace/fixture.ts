@@ -50,7 +50,10 @@ import {
 } from "../../src/features/research/sec-annual-liquidity-fixture";
 import { TrialApiError } from "../../src/clerk-trial/api";
 import { inventedFilingsPacket } from "./filings-fixture";
-import { annualComparisonResponse } from "../../src/clerk-trial/annual-comparison-fixture";
+import {
+  annualComparisonResponse,
+  annualComparisonBalanceRows,
+} from "../../src/clerk-trial/annual-comparison-fixture";
 import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
@@ -349,13 +352,20 @@ export async function createFixture(
             operatingComparisonPacket("right", true),
           ])
         : await Promise.all([
-            annualComparisonResponse("left", { mode: "multiple-bases" }),
-            annualComparisonResponse("right"),
+            annualComparisonResponse("left", {
+              mode: "multiple-bases",
+              balanceRows: annualComparisonBalanceRows("left"),
+            }),
+            annualComparisonResponse("right", {
+              balanceRows: annualComparisonBalanceRows("right"),
+            }),
             annualComparisonResponse("left", {
               cutoffAt: "2026-09-21T00:00:00.000Z",
+              balanceRows: annualComparisonBalanceRows("left"),
             }),
             annualComparisonResponse("right", {
               cutoffAt: "2026-09-21T00:00:00.000Z",
+              balanceRows: annualComparisonBalanceRows("right"),
             }),
           ])
       : null;

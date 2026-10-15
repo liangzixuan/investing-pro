@@ -1,4 +1,7 @@
-import { balanceSheet } from "../features/research/sec-annual-balance-sheet-fixture";
+import {
+  balanceSheet,
+  balanceSheetRow,
+} from "../features/research/sec-annual-balance-sheet-fixture";
 import {
   operatingResults,
   operatingRow,
@@ -13,6 +16,7 @@ import {
 } from "../features/research/sec-annual-cash-fixture";
 import type {
   PersonalSecAnnualCashObservationDto,
+  PersonalSecAnnualBalanceSheetObservationDto,
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualLiquidityObservationDto,
   PersonalSecAnnualOperatingObservationDto,
@@ -104,6 +108,11 @@ export async function parseAnnualComparisonFixture(
   ],
   operatingRows: readonly PersonalSecAnnualOperatingObservationDto[] = raw
     .evidence.operatingResults.operatingIncome.observations,
+  balanceRows: readonly PersonalSecAnnualBalanceSheetObservationDto[] = [
+    ...raw.evidence.balanceSheet.totalAssets.observations,
+    ...raw.evidence.balanceSheet.totalLiabilities.observations,
+    ...raw.evidence.balanceSheet.shareholdersEquity.observations,
+  ],
 ): Promise<Response> {
   const bytes = new TextEncoder().encode(
     serializePersonalSecAnnualGeneration(raw.evidence),
@@ -128,7 +137,7 @@ export async function parseAnnualComparisonFixture(
         cashGeneration: await cashGeneration(evidence, cashRows),
         liquidity: await liquidity(evidence, liquidityRows),
         operatingResults: await operatingResults(evidence, operatingRows),
-        balanceSheet: await balanceSheet(evidence),
+        balanceSheet: await balanceSheet(evidence, balanceRows),
       },
     },
     {
@@ -226,6 +235,36 @@ export function annualComparisonOperatingRows(
   ];
 }
 
+/** Explicit opt-in; other comparison fixtures keep their original packets. */
+export function annualComparisonBalanceRows(
+  side: Side = "left",
+): PersonalSecAnnualBalanceSheetObservationDto[] {
+  const { accessionNumber, filedDate, reportDate } = filingCoordinates[side];
+  const period = annualComparisonCashRows(side)[0]!;
+  const coordinates = {
+    accessionNumber,
+    filedDate,
+    endDate: reportDate,
+    frame: null,
+    filing: period.filing,
+  };
+  return [
+    balanceSheetRow(
+      "total_assets",
+      side === "left" ? "1000.125" : `1000.${"0".repeat(58)}1`,
+      coordinates,
+    ),
+    balanceSheetRow(
+      "total_liabilities",
+      side === "left" ? "0" : "1200.25",
+      coordinates,
+    ),
+    ...(side === "left"
+      ? [balanceSheetRow("shareholders_equity", "-200.125", coordinates)]
+      : []),
+  ];
+}
+
 function modeRows(side: Side, mode: Mode) {
   const rows = annualComparisonRows(side);
   const reportDate = side === "left" ? "2025-12-31" : "2025-06-30";
@@ -292,6 +331,7 @@ export async function annualComparisonResponse(
     readonly cashRows?: readonly PersonalSecAnnualCashObservationDto[];
     readonly liquidityRows?: readonly PersonalSecAnnualLiquidityObservationDto[];
     readonly operatingRows?: readonly PersonalSecAnnualOperatingObservationDto[];
+    readonly balanceRows?: readonly PersonalSecAnnualBalanceSheetObservationDto[];
     readonly cutoffAt?: string;
   } = {},
 ): Promise<Response> {
@@ -360,6 +400,7 @@ export async function annualComparisonResponse(
     options.cashRows ?? annualComparisonCashRows(side),
     options.liquidityRows ?? annualComparisonLiquidityRows(side),
     options.operatingRows ?? [],
+    options.balanceRows ?? [],
   );
 }
 

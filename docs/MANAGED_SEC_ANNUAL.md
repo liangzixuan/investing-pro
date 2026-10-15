@@ -206,6 +206,28 @@ calculation references. Refresh, Cancel, retention and full-report navigation us
 the existing report owner. Choose **Operating results** in the note action to
 append both companies' complete chosen evidence with original provenance.
 
+### Compare reported balance sheet totals
+
+Three rows after liquidity show **Total assets**, **Total liabilities** and
+**Shareholders’ equity · parent** from each loaded Annual report. Each cell keeps
+its exact signed, unscaled USD amount, actual balance date and current-use or
+historical qualification. The two companies can have different balance dates.
+Zero and negative reported amounts remain visible. A missing or refused total
+keeps its own reason; valid siblings remain available even when revenue or net
+income is unavailable or another revenue basis is selected.
+
+Parent equity excludes noncontrolling interests. Different fiscal calendars and
+accounting policies can limit comparison. The app does not infer a balance
+equation, cross-company difference, rank or valuation. Each company's existing
+initially closed source disclosure includes the complete reported observations,
+agreeing references, original filing links and source clocks.
+
+These rows use the existing Annual v5 packets and report owners. Failed refresh
+and Cancel retain their original values and dates; a successful refresh replaces
+only that company's report. Selection and session retirement fence late replies.
+Reading these rows or opening source details makes no request and does not edit
+or save a note. The existing note actions retain their current evidence groups.
+
 ### Open the full report from a comparison
 
 Each loaded column offers **Open full Annual report** beside its load controls.

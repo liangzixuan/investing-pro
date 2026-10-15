@@ -2623,6 +2623,37 @@ describe("bounded invented Annual comparison", () => {
     await model.load("right", right);
     const initialLeft = model.getSnapshot().left.report.response!;
     const initialRight = model.getSnapshot().right.report.response!;
+    expect(initialLeft.evidence.balanceSheet.resolution).toMatchObject({
+      totalAssets: {
+        status: "available",
+        value: "1000.125",
+        asOfDate: "2025-12-31",
+      },
+      totalLiabilities: { status: "available", value: "0" },
+      shareholdersEquity: { status: "available", value: "-200.125" },
+    });
+    expect(initialRight.evidence.balanceSheet.resolution).toMatchObject({
+      totalAssets: {
+        status: "available",
+        value: `1000.${"0".repeat(58)}1`,
+        asOfDate: "2025-06-30",
+      },
+      totalLiabilities: { status: "available", value: "1200.25" },
+      shareholdersEquity: { status: "unavailable", reason: "concept_missing" },
+    });
+    for (const wire of [initialLeft, initialRight]) {
+      const parsed = await parseSecAnnualEvidenceResponse(
+        wire,
+        {
+          schemaVersion: "5.0.0",
+          catalogSnapshotSha256: wire.catalogSnapshotSha256,
+          listingId: wire.security.listingId,
+          symbol: wire.security.symbol,
+        },
+        new AbortController().signal,
+      );
+      expect(parsed).toEqual(wire);
+    }
     expect(initialLeft.evidence.target).toMatchObject({
       reportDate: "2025-12-31",
       accessionNumber: "0000000001-26-000001",

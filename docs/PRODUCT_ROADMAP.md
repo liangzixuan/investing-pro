@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 candidate adds [reported balance-sheet history](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-history)
+The next M2 candidate adds [reported balance sheet comparison](MANAGED_SEC_ANNUAL.md#compare-reported-balance-sheet-totals)
+to the existing two-company Annual table. Each company's total assets, total
+liabilities and parent equity keep independent exact USD amounts, balance dates,
+refusals and original source references. It uses the loaded Annual v5 packets
+without another request, calculation, note action or saved field. Full statements,
+valuation and peer ranking remain open.
+
+The preceding M2 candidate adds [reported balance-sheet history](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-history)
 to the existing Annual balance sheet. Up to three reported dates retain independent
 assets, liabilities and parent-equity amounts, missing cells and exact references
 from the selected filing. It uses existing admitted observations without another

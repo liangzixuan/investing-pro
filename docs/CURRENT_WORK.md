@@ -39,6 +39,23 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Reported balance sheet comparison candidate
+
+The next read-only M2 slice adds total assets, total liabilities and parent equity
+to the existing [Annual comparison](MANAGED_SEC_ANNUAL.md#compare-reported-balance-sheet-totals).
+Each company retains its own exact signed USD values, balance dates, eligibility
+and refusals, independently of income and the selected revenue basis. Complete
+inputs remain in the existing source disclosures. It adds no source request,
+schema, calculation, saved field or note action. Focused comparison, fixture and
+real-model lifetime checks pass, as do web types and scoped lint. Invented-data
+Chrome checks pass at 1440, 390 and 320 CSS pixels, including exact long values,
+independent missing cells, source details, failed refresh, Cancel, one-company
+replacement and session retirement with a late reply. The unsaved draft remains
+unchanged until retirement. Fresh hosted checks and native execution remain
+pending. Static native inventory
+retains all 40 cases and 111 previous frames, with one comparison frame for 112
+expected screenshots. Production is unchanged.
+
 ## Reported balance-sheet history candidate
 
 The next M2 slice adds an initially closed [reported balance-sheet history](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-history)

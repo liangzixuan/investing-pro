@@ -11,6 +11,8 @@ import {
 } from "react";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
+import { ManagedAnnualBalanceSheetComparisonRows } from "./ManagedAnnualBalanceSheetComparisonRows";
+import { SecAnnualBalanceSheetSourceBody } from "../features/research/SecAnnualBalanceSheet";
 import { SecAnnualSourceDetails } from "../features/research/SecAnnualEvidenceResult";
 import {
   SecAnnualCashSourceBody,
@@ -242,6 +244,12 @@ export function ManagedWatchlistAnnualComparison({
             <OperatingComparisonRows state={state} projections={projections} />
             <CashComparisonRows state={state} />
             <LiquidityComparisonRows state={state} />
+            <ManagedAnnualBalanceSheetComparisonRows
+              responses={{
+                left: state.left.report.response,
+                right: state.right.report.response,
+              }}
+            />
           </tbody>
         </table>
       </div>
@@ -263,6 +271,12 @@ export function ManagedWatchlistAnnualComparison({
         to two decimal places, half up. Both calculations require nonnegative
         balances from the same filing and date; the ratio requires positive
         liabilities. Current assets are not all cash.
+      </p>
+      <p className="managed-annual-comparison-help">
+        Balance sheet totals are independent reported amounts at each company’s
+        own balance date. Parent equity excludes noncontrolling interests.
+        Different fiscal dates and accounting policies can limit comparison. No
+        balance equation or cross-company difference is inferred.
       </p>
       <ManagedWatchlistAnnualComparisonNoteAction
         state={state}
@@ -356,6 +370,13 @@ export function ManagedWatchlistAnnualComparison({
                   >
                     <h4>Liquidity sources and calculation inputs</h4>
                     <SecAnnualLiquiditySourceBody response={response} />
+                  </div>
+                  <div
+                    className="managed-annual-comparison-balance-sheet-source"
+                    data-annual-comparison-balance-sheet-source={side}
+                  >
+                    <h4>Balance sheet sources and reported inputs</h4>
+                    <SecAnnualBalanceSheetSourceBody response={response} />
                   </div>
                 </details>
               )}

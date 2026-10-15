@@ -93,6 +93,14 @@ Operating results to the existing evidence choice and retain the same note
 destination, feedback and Review controls. The table keeps its contained
 horizontal scroll and 44px keyboard-accessible selectors on narrow screens.
 
+Reported total assets, liabilities and parent equity follow liquidity in that
+same comparison table. Keep each cell's own date and qualification beside its
+exact amount, including zero, negative and unavailable values. Revenue selection
+does not change these independent rows. Reuse the existing per-company source
+disclosure for complete balance inputs and its spacing and typography. Keep
+parent equity's scope and differing company dates explicit; do not add a ranking
+or imply an accounting adjustment.
+
 ## Color and surfaces
 
 Follow-ups uses the same managed fields, focus outline and 44px actions. Place

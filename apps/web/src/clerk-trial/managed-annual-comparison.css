@@ -135,6 +135,7 @@
 }
 .managed-frame .managed-annual-comparison-operating-source,
 .managed-frame .managed-annual-comparison-cash-source,
+.managed-frame .managed-annual-comparison-balance-sheet-source,
 .managed-frame .managed-annual-comparison-liquidity-source {
   margin-top: 16px;
   padding-top: 12px;
@@ -142,6 +143,7 @@
 }
 .managed-frame .managed-annual-comparison-operating-source h4,
 .managed-frame .managed-annual-comparison-cash-source h4,
+.managed-frame .managed-annual-comparison-balance-sheet-source h4,
 .managed-frame .managed-annual-comparison-liquidity-source h4 {
   margin: 0 0 8px;
   font-size: 13px;
