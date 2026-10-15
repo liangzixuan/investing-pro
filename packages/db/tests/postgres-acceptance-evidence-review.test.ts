@@ -1032,35 +1032,36 @@ function evidenceAdapterTests(): void {
     },
   );
 
+  it.each([
+    "packages/db/privacy-retention-plans/v1/policy.json",
+    "packages/db/privacy-retention-plans/v1/platform-bootstrap.sql",
+    "packages/db/privacy-retention-plans/v1/application/0001_keyed_resource_identifier_lifecycle.sql",
+    "packages/db/src/privacy-retention-plan.ts",
+    "packages/db/acceptance/privacy-retention-fixture.sql",
+  ])(
+    "rejects changed v13 privacy-retention source %s at the anchored commit",
+    { timeout: V13_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS },
+    async (path) => {
+      const changed = await createFixture();
+      await writeFile(
+        join(changed.repositoryPath, path),
+        "changed v13 privacy-retention source\n",
+      );
+      git(changed.repositoryPath, ["add", "--all"]);
+      git(changed.repositoryPath, ["commit", "-m", "changed v13 source"]);
+      const changedCommit = git(changed.repositoryPath, ["rev-parse", "HEAD"]);
+      await expect(
+        reviewPostgresAcceptanceEvidence(
+          await inputAtCommit(changed, changedCommit),
+        ),
+      ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+    },
+  );
+
   it(
-    "rejects changed, missing, or extra v13 privacy-retention plan and source blobs at the anchored commit",
+    "rejects missing v13 privacy-retention manifest at the anchored commit",
     { timeout: V13_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS },
     async () => {
-      for (const path of [
-        "packages/db/privacy-retention-plans/v1/policy.json",
-        "packages/db/privacy-retention-plans/v1/platform-bootstrap.sql",
-        "packages/db/privacy-retention-plans/v1/application/0001_keyed_resource_identifier_lifecycle.sql",
-        "packages/db/src/privacy-retention-plan.ts",
-        "packages/db/acceptance/privacy-retention-fixture.sql",
-      ]) {
-        const changed = await createFixture();
-        await writeFile(
-          join(changed.repositoryPath, path),
-          "changed v13 privacy-retention source\n",
-        );
-        git(changed.repositoryPath, ["add", "--all"]);
-        git(changed.repositoryPath, ["commit", "-m", "changed v13 source"]);
-        const changedCommit = git(changed.repositoryPath, [
-          "rev-parse",
-          "HEAD",
-        ]);
-        await expect(
-          reviewPostgresAcceptanceEvidence(
-            await inputAtCommit(changed, changedCommit),
-          ),
-        ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
-      }
-
       const missing = await createFixture();
       await rm(
         join(
@@ -1076,7 +1077,13 @@ function evidenceAdapterTests(): void {
           await inputAtCommit(missing, missingCommit),
         ),
       ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+    },
+  );
 
+  it(
+    "rejects extra v13 privacy-retention application body at the anchored commit",
+    { timeout: V13_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS },
+    async () => {
       const extra = await createFixture();
       await writeFile(
         join(
@@ -1096,7 +1103,7 @@ function evidenceAdapterTests(): void {
     },
   );
 
-  it("rejects changed, extra, or non-regular v14 populated-cutover source blobs at the anchored commit", async () => {
+  it("rejects changed v14 populated-cutover source at the anchored commit", async () => {
     const changed = await createFixture();
     await writeFile(
       join(changed.repositoryPath, "packages/db/src/populated-cutover-plan.ts"),
@@ -1110,7 +1117,9 @@ function evidenceAdapterTests(): void {
         await inputAtCommit(changed, changedCommit),
       ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
 
+  it("rejects extra v14 populated-cutover application body at the anchored commit", async () => {
     const extra = await createFixture();
     await writeFile(
       join(
@@ -1125,7 +1134,9 @@ function evidenceAdapterTests(): void {
     await expect(
       reviewPostgresAcceptanceEvidence(await inputAtCommit(extra, extraCommit)),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
 
+  it("rejects non-regular v14 populated-cutover source at the anchored commit", async () => {
     const nonRegular = await createFixture();
     const platformPath = join(
       nonRegular.repositoryPath,
@@ -1386,7 +1397,7 @@ function evidenceAdapterTests(): void {
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
-  it("rejects unexpected, missing, and non-regular v1 backup/restore source blobs", async () => {
+  it("rejects unexpected v1 backup/restore source at the anchored commit", async () => {
     const unexpected = await createFixture();
     await writeFile(
       join(
@@ -1410,7 +1421,9 @@ function evidenceAdapterTests(): void {
         await inputAtCommit(unexpected, unexpectedCommit),
       ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
 
+  it("rejects missing v1 backup/restore source at the anchored commit", async () => {
     const missing = await createFixture();
     await rm(
       join(
@@ -1430,7 +1443,9 @@ function evidenceAdapterTests(): void {
         await inputAtCommit(missing, missingCommit),
       ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
 
+  it("rejects non-regular v1 backup/restore source at the anchored commit", async () => {
     const nonRegular = await createFixture();
     const platformPath = join(
       nonRegular.repositoryPath,
@@ -1460,7 +1475,9 @@ function evidenceAdapterTests(): void {
         await inputAtCommit(nonRegular, nonRegularCommit),
       ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
 
+  it("rejects missing v1 backup/restore renderer at the anchored commit", async () => {
     const missingRenderer = await createFixture();
     await rm(
       join(
@@ -1483,7 +1500,9 @@ function evidenceAdapterTests(): void {
         await inputAtCommit(missingRenderer, missingRendererCommit),
       ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
 
+  it("rejects non-regular v1 backup/restore renderer at the anchored commit", async () => {
     const nonRegularRenderer = await createFixture();
     const rendererPath = join(
       nonRegularRenderer.repositoryPath,
