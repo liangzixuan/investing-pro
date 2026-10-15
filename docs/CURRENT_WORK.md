@@ -39,11 +39,37 @@ checks pass within their stated scope; the full 1,000-observation packet and
 captured report fit the existing limits. Invented-data Chrome checks pass at
 1440, 390 and 320 CSS pixels, including exact report capture, failed-refresh
 retention and expiry with a late reply. The shared local appearance fits at
-1440 and 320 pixels. Native source has 40 cases; execution, original CI and live
-delivery remain incomplete. This does not establish full financial statements
-or complete InvestingPro coverage.
+1440 and 320 pixels. Native source has 40 cases. Candidate `c000468` passed its
+original hosted Actions checks within their recorded scope, including 40 native
+cases and 110 screenshots. Navigation readiness from `493bd65` is now integrated
+in source. The combined 278 focused web tests, full web type check, scoped lint,
+format and boundary checks pass. Java and constructed predicate syntax checks
+pass; only the three additive readiness waits differ from the P11 native source.
+Its six report links and 40-case, 110-screenshot inventory remain intact. Fresh
+integrated hosted acceptance and live delivery remain separate. This does not
+establish full financial statements or complete InvestingPro coverage.
 
 ## Company research overview candidate
+
+Company navigation now exposes its existing pending fence to the controls.
+Section changes, Back, company opening and workspace navigation stay disabled
+until the route commits. Evidence, draft editing, Save, report preparation,
+Cancel and the selected source's direct Load retain their existing rules. No
+action is queued or retried. The synchronous fence still rejects stale or
+overlapping callbacks before source or identity work starts.
+
+On source `493bd65`, the affected 398 web tests and web type check pass.
+Independent source review found no actionable issue. Three native waits add
+actual next-control readiness
+to their original data and focus predicates; all prior assertions, actions and
+deadlines remain. Java and constructed predicate syntax checks pass. The original
+Android failure cause remains unproven. A current-source Chrome check holds the
+Annual route commit, verifies disabled navigation and editable notes, releases
+the commit, then returns to exact Price evidence with one enabled click. The
+original focus, draft and request-count predicates pass throughout their relevant
+states. The private preview and tab are closed. Fresh hosted native acceptance
+remains separate. Those Chrome observations cover the P10 source; they do not
+establish acceptance of this integrated balance-sheet candidate.
 
 The operating-change and company-overview source increments are merged into main
 at `18b08b8` after the owner's scoped email approval and the final revision, base

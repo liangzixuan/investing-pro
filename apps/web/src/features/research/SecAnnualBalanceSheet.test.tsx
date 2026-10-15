@@ -87,7 +87,11 @@ describe("Annual reported balance-sheet presentation", () => {
     const admitted = model.getSnapshot().response;
     expect(admitted).not.toBeNull();
     const snapshot = renderToStaticMarkup(
-      <CompanySnapshotAnnual state={model.getSnapshot()} onOpen={vi.fn()} />,
+      <CompanySnapshotAnnual
+        navigationPending={false}
+        state={model.getSnapshot()}
+        onOpen={vi.fn()}
+      />,
     );
     for (const appearance of ["evidence", "financial"] as const) {
       const annual = renderToStaticMarkup(

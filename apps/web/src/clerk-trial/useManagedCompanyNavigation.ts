@@ -28,6 +28,8 @@ interface ReturnLocation {
 }
 export interface ManagedCompanyNavigation {
   invalid: boolean;
+  pending: boolean;
+  isPending: () => boolean;
   returnFocus: number;
   open: (action: () => void) => void;
   section: (section: "annual" | "eod" | "filings") => void;
@@ -66,6 +68,12 @@ export function useManagedCompanyNavigation(
   const [scope] = useState(() => crypto.randomUUID());
   const [returnFocus, setReturnFocus] = useState(0);
   const pendingNavigation = useRef(false);
+  const [pending, setPending] = useState(false);
+  const setNavigationPending = useCallback((value: boolean) => {
+    pendingNavigation.current = value;
+    setPending(value);
+  }, []);
+  const isPending = useCallback(() => pendingNavigation.current, []);
   const appliedKey = useRef<string | null>(null);
   const previous = useRef<{ company: boolean; origin: ReturnLocation | null }>({
     company: false,
@@ -92,7 +100,7 @@ export function useManagedCompanyNavigation(
       origin: returnLocation(location.state, scope),
     };
     appliedKey.current = location.key;
-    pendingNavigation.current = false;
+    setNavigationPending(false);
     workspace.setNavigationBlocked(parsed.kind !== "none");
     void workspace.setCompanyRoute(parsed.kind === "company" ? parsed : null);
     if (prior.company && parsed.kind === "none") {
@@ -107,6 +115,7 @@ export function useManagedCompanyNavigation(
     location.search,
     location.state,
     scope,
+    setNavigationPending,
     workspace,
   ]);
 
@@ -121,10 +130,17 @@ export function useManagedCompanyNavigation(
       !current.companyRoute
     ) {
       workspace.setNavigationBlocked(true);
-      pendingNavigation.current = true;
+      setNavigationPending(true);
       void navigate("/", { replace: true, state: null });
     }
-  }, [discovery, location.key, navigate, route.kind, workspace]);
+  }, [
+    discovery,
+    location.key,
+    navigate,
+    route.kind,
+    setNavigationPending,
+    workspace,
+  ]);
 
   const open = useCallback(
     (openResearch: () => void) => {
@@ -142,7 +158,7 @@ export function useManagedCompanyNavigation(
         ? returnLocation(location.state, scope)
         : { scope, view: current.view };
       workspace.setNavigationBlocked(true);
-      pendingNavigation.current = true;
+      setNavigationPending(true);
       void navigate(href, {
         replace: replacing,
         state: origin ? { companyReturn: origin } : null,
@@ -155,6 +171,7 @@ export function useManagedCompanyNavigation(
       navigate,
       route.kind,
       scope,
+      setNavigationPending,
       workspace,
     ],
   );
@@ -174,34 +191,41 @@ export function useManagedCompanyNavigation(
       );
       if (location.pathname + location.search === href) return;
       workspace.setNavigationBlocked(true);
-      pendingNavigation.current = true;
+      setNavigationPending(true);
       const state: unknown = location.state;
       void navigate(href, { replace: true, state });
     },
-    [location.pathname, location.search, location.state, navigate, workspace],
+    [
+      location.pathname,
+      location.search,
+      location.state,
+      navigate,
+      setNavigationPending,
+      workspace,
+    ],
   );
 
   const view = useCallback(
     (next: WorkspaceView) => {
       if (pendingNavigation.current) return false;
       workspace.setNavigationBlocked(true);
-      pendingNavigation.current = true;
+      setNavigationPending(true);
       workspace.setView(next);
       if (route.kind !== "none")
         void navigate("/", { replace: true, state: null });
       else {
-        pendingNavigation.current = false;
+        setNavigationPending(false);
         workspace.setNavigationBlocked(false);
       }
       return true;
     },
-    [navigate, route.kind, workspace],
+    [navigate, route.kind, setNavigationPending, workspace],
   );
 
   const back = useCallback(() => {
     if (pendingNavigation.current) return;
     workspace.setNavigationBlocked(true);
-    pendingNavigation.current = true;
+    setNavigationPending(true);
     workspace.closeResearch();
     if (route.kind === "company" && returnLocation(location.state, scope)) {
       void navigate(-1);
@@ -209,7 +233,14 @@ export function useManagedCompanyNavigation(
       workspace.setView("markets");
       void navigate("/", { replace: true, state: null });
     }
-  }, [location.state, navigate, route.kind, scope, workspace]);
+  }, [
+    location.state,
+    navigate,
+    route.kind,
+    scope,
+    setNavigationPending,
+    workspace,
+  ]);
 
   const hasCompanyRoute = useCallback(
     () => route.kind !== "none" || pendingNavigation.current,
@@ -218,6 +249,8 @@ export function useManagedCompanyNavigation(
 
   return {
     invalid: route.kind === "invalid",
+    pending,
+    isPending,
     returnFocus,
     open,
     section,

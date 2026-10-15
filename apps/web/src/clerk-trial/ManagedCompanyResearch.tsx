@@ -26,6 +26,7 @@ import { ManagedResearchCompanyNavigation } from "./ManagedResearchCompanyNaviga
 
 export function ManagedCompanyResearch({
   research,
+  navigationPending,
   reportDelivery,
   readReportWatchlist,
   annual,
@@ -50,6 +51,7 @@ export function ManagedCompanyResearch({
   onOpenCompany,
 }: {
   research: ManagedResearchVisit;
+  navigationPending: boolean;
   reportDelivery?: CompanyReportDeliveryAdapter;
   readReportWatchlist?: (
     selection: ManagedResearchSelection,
@@ -92,7 +94,11 @@ export function ManagedCompanyResearch({
         <h2 id="managed-company-heading">
           Company research · {listing.symbol}
         </h2>
-        <button className="trial-secondary" onClick={onBack}>
+        <button
+          className="trial-secondary"
+          disabled={navigationPending}
+          onClick={onBack}
+        >
           Back to workspace
         </button>
       </div>
@@ -104,12 +110,14 @@ export function ManagedCompanyResearch({
         </span>
       </p>
       <ManagedResearchCompanyNavigation
+        navigationPending={navigationPending}
         research={research}
         state={companyNavigationState}
         canOpen={canOpenCompany}
         onOpen={onOpenCompany}
       />
       <ManagedCompanyEvidenceActions
+        navigationPending={navigationPending}
         selection={research.selection}
         price={eod}
         annual={annual}
@@ -119,6 +127,7 @@ export function ManagedCompanyResearch({
         onOpen={onSection}
       />
       <ManagedCompanySnapshot
+        navigationPending={navigationPending}
         key={`${research.selection.catalogSnapshotSha256}:${listing.listingId}`}
         selection={research.selection}
         price={eod}
@@ -127,6 +136,7 @@ export function ManagedCompanyResearch({
         onSection={onSection}
       />
       <ManagedCompanyReport
+        navigationPending={navigationPending}
         key={`report:${research.selection.catalogSnapshotSha256}:${listing.listingId}`}
         selection={research.selection}
         price={eod}
@@ -150,6 +160,7 @@ export function ManagedCompanyResearch({
                 aria-label={`${labels[section]} section for ${listing.symbol}`}
                 aria-pressed={research.section === section}
                 aria-controls="managed-company-content"
+                disabled={navigationPending}
                 onClick={() => onSection(section)}
               >
                 {labels[section]}
@@ -178,6 +189,7 @@ export function ManagedCompanyResearch({
         </div>
         <aside className="managed-research-aside" aria-label="Research note">
           <ManagedResearchNote
+            navigationPending={navigationPending}
             state={watchlist}
             symbol={listing.symbol}
             onAdd={onAdd}

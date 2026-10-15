@@ -132,6 +132,7 @@ describe("prepared loaded company research report", () => {
     ).toBe(true);
     const html = renderToStaticMarkup(
       <CompanyReportView
+        navigationPending={false}
         report={report}
         current
         block={null}
@@ -155,10 +156,45 @@ describe("prepared loaded company research report", () => {
     expect(f.readAnnual).not.toHaveBeenCalled();
     expect(f.readFilings).not.toHaveBeenCalled();
   });
+  it("keeps report preparation and reading available while section navigation waits for commit", async () => {
+    const f = await fixture();
+    await f.price.load();
+    const report = f.prepare()!;
+    const onSection = vi.fn();
+    const props = {
+      report,
+      current: true,
+      block: null,
+      invalidated: false,
+      onPrepare: vi.fn(),
+      onClear: vi.fn(),
+      onSection,
+    };
+    const ready = renderToStaticMarkup(
+      <CompanyReportView {...props} navigationPending={false} />,
+    );
+    const held = renderToStaticMarkup(
+      <CompanyReportView {...props} navigationPending />,
+    );
+    expect(held.match(/ disabled=""/gu)).toHaveLength(3);
+    expect(held.replaceAll(' disabled=""', "")).toBe(ready);
+    expect(held).toMatch(
+      /<button(?![^>]*disabled)[^>]*>Prepare research report<\/button>/u,
+    );
+    expect(held).toMatch(
+      /<button(?![^>]*disabled)[^>]*>Clear report preview<\/button>/u,
+    );
+    expect(onSection).not.toHaveBeenCalled();
+    expect(f.readPrice).toHaveBeenCalledOnce();
+    expect(f.readAnnual).not.toHaveBeenCalled();
+    expect(f.readFilings).not.toHaveBeenCalled();
+  });
+
   it("starts closed and requires explicit loaded evidence without causing a read", async () => {
     const f = await fixture();
     const html = renderToStaticMarkup(
       <ManagedCompanyReport
+        navigationPending={false}
         selection={eodSelection}
         {...f}
         onSection={vi.fn()}
@@ -207,6 +243,7 @@ describe("prepared loaded company research report", () => {
     const prepared = f.prepare()!;
     const html = renderToStaticMarkup(
       <CompanyReportView
+        navigationPending={false}
         report={prepared}
         current
         block={null}
@@ -269,6 +306,7 @@ describe("prepared loaded company research report", () => {
       expect(prepared.note).toBe(value);
       const html = renderToStaticMarkup(
         <CompanyReportView
+          navigationPending={false}
           report={prepared}
           current
           block={null}
@@ -525,6 +563,7 @@ describe("prepared loaded company research report", () => {
     const prepared = f.prepare()!;
     const html = renderToStaticMarkup(
       <CompanyReportView
+        navigationPending={false}
         report={prepared}
         current={false}
         block={null}

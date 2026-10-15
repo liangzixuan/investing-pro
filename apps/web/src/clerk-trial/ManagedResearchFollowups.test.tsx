@@ -162,9 +162,13 @@ async function fixture() {
     session,
   };
 }
-function view(f: Awaited<ReturnType<typeof fixture>>) {
+function view(
+  f: Awaited<ReturnType<typeof fixture>>,
+  navigationPending = false,
+) {
   hooks.index = 0;
   const node = ManagedResearchFollowups({
+    navigationPending,
     workspace: f.workspace,
     onResearch: f.onResearch,
   });
@@ -509,6 +513,30 @@ it("keeps old-catalog records readable and authored-editable while research rema
   rendered.change("managed-followup-result", "Keep this old research check");
   expect(f.current().result).toBe("Keep this old research check");
   expect(f.api.resolve).not.toHaveBeenCalled();
+  expect(f.onResearch).not.toHaveBeenCalled();
+  noOtherRequests(f);
+});
+
+it("disables company navigation while keeping authored follow-up edits and Save available", async () => {
+  const f = await fixture();
+  await f.loadEntries(f.entry());
+  f.workspace.followups.select(f.current().id);
+  const held = view(f, true);
+  expect(
+    held.element(`managed-followup-research-${f.current().id}`).props.disabled,
+  ).toBe(true);
+  expect(held.element("managed-followup-check").props.readOnly).toBe(false);
+  held.change("managed-followup-result", "Retain the authored result");
+  expect(f.current().result).toBe("Retain the authored result");
+  expect(view(f, true).element("managed-followups-save").props.disabled).toBe(
+    false,
+  );
+  expect(
+    view(f).element(`managed-followup-research-${f.current().id}`).props
+      .disabled,
+  ).toBe(false);
+  expect(f.api.resolve).not.toHaveBeenCalled();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
   expect(f.onResearch).not.toHaveBeenCalled();
   noOtherRequests(f);
 });

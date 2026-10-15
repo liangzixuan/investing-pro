@@ -7,9 +7,11 @@ import { SecAnnualLiquidityValueContent } from "../features/research/SecAnnualLi
 import { SecAnnualBalanceSheetValueContent } from "../features/research/SecAnnualBalanceSheet";
 
 export function CompanySnapshotAnnual({
+  navigationPending,
   state,
   onOpen,
 }: {
+  navigationPending: boolean;
   state: ManagedAnnualReportState | null;
   onOpen: () => void;
 }) {
@@ -33,7 +35,11 @@ export function CompanySnapshotAnnual({
           explicitly.
         </p>
       )}
-      <button className="trial-secondary" onClick={onOpen}>
+      <button
+        className="trial-secondary"
+        disabled={navigationPending}
+        onClick={onOpen}
+      >
         Open Annual section
       </button>
     </section>

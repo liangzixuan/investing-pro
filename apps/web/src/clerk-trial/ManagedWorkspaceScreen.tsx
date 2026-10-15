@@ -485,6 +485,7 @@ export function ManagedWorkspaceScreen({
   const setView = (
     view: "markets" | "discover" | "watchlist" | "followups",
   ) => {
+    if (navigation?.isPending()) return false;
     liveNoteReview.current = null;
     setNoteReview(null);
     setNoteReviewNotice(null);
@@ -641,6 +642,7 @@ export function ManagedWorkspaceScreen({
     member: WatchlistMembership | null,
     isCurrentContext?: () => boolean,
   ) => {
+    if (navigation?.isPending()) return;
     if (isCurrentContext && !isCurrentContext()) return;
     const draft = coordinator.getSnapshot().draft;
     if (member && !draft?.memberships.includes(member)) return;
@@ -731,6 +733,7 @@ export function ManagedWorkspaceScreen({
       };
   };
   const retired = sessionState.phase !== "active";
+  const navigationPending = navigation?.pending ?? false;
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();
   const isMarketsCurrent = () => {
@@ -826,6 +829,7 @@ export function ManagedWorkspaceScreen({
                   }
                   className="trial-secondary"
                   aria-current={discovery.view === view ? "page" : undefined}
+                  disabled={navigationPending}
                   onClick={() => setView(view)}
                 >
                   <ManagedIcon name={view} />
@@ -849,9 +853,11 @@ export function ManagedWorkspaceScreen({
             <div className="managed-search-bar">
               <WorkspaceSearch
                 query={discovery.query}
-                busy={discovery.read !== null}
+                busy={discovery.read !== null || navigationPending}
                 busyLabel={
-                  discovery.read === "status" ? "Search" : "Searching…"
+                  discovery.read === "status" || navigationPending
+                    ? "Search"
+                    : "Searching…"
                 }
                 disabled={retired}
                 onChange={(query) => workspace.setQuery(query)}
@@ -907,7 +913,12 @@ export function ManagedWorkspaceScreen({
                     This company link is invalid. Open a company from Markets,
                     Discover or My Watchlist.
                   </p>
-                  <button onClick={backToWorkspace}>Back to Markets</button>
+                  <button
+                    disabled={navigationPending}
+                    onClick={backToWorkspace}
+                  >
+                    Back to Markets
+                  </button>
                 </section>
               )}
               {discovery.companyRoute &&
@@ -917,16 +928,23 @@ export function ManagedWorkspaceScreen({
                     {(discovery.companyRoute.status === "unavailable" ||
                       discovery.companyRoute.status === "error") && (
                       <button
+                        disabled={navigationPending}
                         onClick={() => void workspace.retryCompanyRoute()}
                       >
                         Retry company link
                       </button>
                     )}
-                    <button onClick={backToWorkspace}>Back to workspace</button>
+                    <button
+                      disabled={navigationPending}
+                      onClick={backToWorkspace}
+                    >
+                      Back to workspace
+                    </button>
                   </section>
                 )}
               {discovery.research && (
                 <ManagedCompanyResearch
+                  navigationPending={navigationPending}
                   research={discovery.research}
                   {...(reportDelivery ? { reportDelivery } : {})}
                   readReportWatchlist={(selection) =>
@@ -1073,6 +1091,7 @@ export function ManagedWorkspaceScreen({
                   onRequestSource={async (section) => {
                     const visit = discovery.research!;
                     if (
+                      navigation?.isPending() ||
                       navigation?.invalid ||
                       workspace.getSnapshot().research?.selection !==
                         visit.selection
@@ -1119,8 +1138,10 @@ export function ManagedWorkspaceScreen({
                   )}
                 >
                   <ManagedResearchFollowups
+                    navigationPending={navigationPending}
                     workspace={workspace}
                     onResearch={(entry, opener) => {
+                      if (navigation?.isPending()) return;
                       void workspace
                         .prepareFollowupResearch(entry)
                         .then((capture) => {
@@ -1144,6 +1165,7 @@ export function ManagedWorkspaceScreen({
                   )}
                 >
                   <ManagedMarkets
+                    navigationPending={navigationPending}
                     model={workspace.markets}
                     headingRef={marketsHeading}
                     sectionNavigation={
@@ -1315,6 +1337,7 @@ export function ManagedWorkspaceScreen({
                             <button
                               className="trial-secondary"
                               aria-label={`Annual report for ${result.symbol}`}
+                              disabled={navigationPending}
                               onClick={(event) => {
                                 openResearch(event.currentTarget, () =>
                                   workspace.openDiscoveryAnnual(result),
@@ -1326,6 +1349,7 @@ export function ManagedWorkspaceScreen({
                             <button
                               className="trial-secondary"
                               aria-label={`EOD close history for ${result.symbol}`}
+                              disabled={navigationPending}
                               onClick={(event) => {
                                 openResearch(event.currentTarget, () =>
                                   workspace.openDiscoveryEod(result),
@@ -1530,9 +1554,11 @@ export function ManagedWorkspaceScreen({
                         !navigation?.hasCompanyRoute()
                       }
                       canOpenAnnual={(member) =>
+                        !navigationPending &&
                         workspace.canOpenWatchlistAnnual(member)
                       }
                       canOpenEod={(member) =>
+                        !navigationPending &&
                         workspace.canOpenWatchlistEod(member)
                       }
                       onNote={(listingId, note, expectedNote) =>

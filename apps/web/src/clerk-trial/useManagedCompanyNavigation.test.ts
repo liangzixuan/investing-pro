@@ -60,7 +60,14 @@ vi.mock("react", () => {
         },
       ];
     },
-    useCallback: (callback: unknown) => callback,
+    useCallback: (callback: unknown, deps: unknown[]) => {
+      const index = mount.index++;
+      const previous = mount.slots[index] as
+        { callback: unknown; deps: unknown[] } | undefined;
+      if (!previous || deps.some((value, i) => value !== previous.deps[i]))
+        mount.slots[index] = { callback, deps };
+      return (mount.slots[index] as { callback: unknown }).callback;
+    },
     useLayoutEffect: (callback: () => unknown, deps: unknown[]) =>
       effect(mount.layouts, callback, deps),
     useEffect: (callback: () => unknown, deps: unknown[]) =>
@@ -651,18 +658,131 @@ describe("managed company URL navigation", () => {
     const apply = mount.navigate.getMockImplementation()!;
     mount.navigate.mockClear().mockImplementation(() => undefined);
     nav.section("annual");
+    expect(nav.isPending()).toBe(true);
+    nav = f.render();
+    expect(nav.pending).toBe(true);
     nav.section("eod");
-    nav.view("watchlist");
+    expect(nav.view("watchlist")).toBe(false);
+    nav.back();
+    const open = vi.fn();
+    nav.open(open);
+    expect(open).not.toHaveBeenCalled();
     expect(f.workspace.getSnapshot().research?.section).toBe("annual");
     expect(f.workspace.getSnapshot().view).toBe("discover");
     expect(mount.navigate).toHaveBeenCalledTimes(1);
     apply(...mount.navigate.mock.calls[0]!);
     nav = f.render();
+    expect(nav.isPending()).toBe(false);
+    nav = f.render();
+    expect(nav.pending).toBe(false);
     expect(f.workspace.getSnapshot().research?.section).toBe("annual");
     mount.navigate.mockImplementation(apply);
     nav.section("eod");
     f.render();
     expect(f.workspace.getSnapshot().research?.section).toBe("eod");
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("keeps same-route view and section actions ready without creating navigation", async () => {
+    const f = fixture();
+    await f.ready();
+    let nav = f.render();
+    expect(nav.view("watchlist")).toBe(true);
+    expect(nav.isPending()).toBe(false);
+    nav = f.render();
+    expect(nav.pending).toBe(false);
+    expect(mount.navigate).not.toHaveBeenCalled();
+    nav.open(() =>
+      f.workspace.openWatchlistEod(
+        f.workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      ),
+    );
+    f.render();
+    nav = f.render();
+    mount.navigate.mockClear();
+    nav.section("eod");
+    expect(nav.isPending()).toBe(false);
+    expect(f.render().pending).toBe(false);
+    expect(mount.navigate).not.toHaveBeenCalled();
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+  });
+
+  it("cancels the departed read immediately while the replacement is held and fences its late response", async () => {
+    const f = fixture();
+    await f.ready();
+    let nav = f.render();
+    nav.open(() =>
+      f.workspace.openWatchlistEod(
+        f.workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      ),
+    );
+    nav = f.render();
+    f.workspace.noteResearch(
+      f.workspace.getSnapshot().research!.selection,
+      "Keep this draft",
+    );
+    const draft = f.workspace.coordinator.getSnapshot().draft;
+    let complete!: (value: ReturnType<typeof eodResponse>) => void;
+    vi.mocked(f.api.eodHistory).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const loading = f.workspace.eod.load();
+    const signal = vi.mocked(f.api.eodHistory).mock.calls[0]![1];
+    mount.navigate.mockClear().mockImplementation(() => undefined);
+    nav.section("annual");
+    expect(signal.aborted).toBe(true);
+    expect(nav.isPending()).toBe(true);
+    expect(f.render().pending).toBe(true);
+    complete(eodResponse());
+    await loading;
+    expect(f.workspace.eod.getSnapshot().response).toBeNull();
+    expect(f.workspace.getSnapshot().research?.section).toBe("annual");
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(f.api.eodHistory).toHaveBeenCalledOnce();
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+  });
+
+  it("keeps a held retirement redirect pending until its location commits without reopening research", async () => {
+    const f = fixture();
+    await f.ready();
+    let nav = f.render();
+    nav.open(() =>
+      f.workspace.openWatchlistEod(
+        f.workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      ),
+    );
+    f.render();
+    f.render();
+    const apply = mount.navigate.getMockImplementation()!;
+    mount.navigate.mockClear().mockImplementation(() => undefined);
+    f.workspace.sessionOwner.retire();
+    f.render();
+    nav = f.render();
+    expect(nav.pending).toBe(true);
+    expect(nav.isPending()).toBe(true);
+    const open = vi.fn();
+    nav.open(open);
+    nav.section("annual");
+    expect(nav.view("watchlist")).toBe(false);
+    expect(open).not.toHaveBeenCalled();
+    expect(mount.navigate).toHaveBeenCalledExactlyOnceWith("/", {
+      replace: true,
+      state: null,
+    });
+    apply(...mount.navigate.mock.calls[0]!);
+    f.render();
+    nav = f.render();
+    expect(nav.pending).toBe(false);
+    expect(nav.isPending()).toBe(false);
+    expect(f.workspace.getSnapshot().research).toBeNull();
+    expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(f.api.resolve).not.toHaveBeenCalled();
     expect(f.api.annualReport).not.toHaveBeenCalled();
     expect(f.api.eodHistory).not.toHaveBeenCalled();
   });

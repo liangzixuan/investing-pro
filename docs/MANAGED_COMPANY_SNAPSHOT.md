@@ -27,6 +27,12 @@ validated evidence and cancel pending work through normal navigation. The note
 draft, explicit whole-watchlist Save and report preparation keep their existing
 rules.
 
+During a screen change, section links, company opening, workspace navigation
+and source actions that change the section are disabled until navigation
+commits. Actions are not queued or retried. Evidence disclosures, note edits,
+Save, report preparation, Cancel and the selected section's direct Load keep
+their existing rules.
+
 ## Read the loaded snapshot
 
 Company research has a **Loaded research snapshot** disclosure below company
