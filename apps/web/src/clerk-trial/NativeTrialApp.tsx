@@ -1,3 +1,7 @@
+import {
+  createNativeCompanyReportAdapter,
+  type InvestmentCompanyReportPlugin,
+} from "./native-company-report";
 import { registerPlugin } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -73,6 +77,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const reportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeCompanyReportAdapter(
+            registerPlugin<InvestmentCompanyReportPlugin>(
+              "InvestmentCompanyReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const signInMessage =
     state.message ||
     (state.auth.status === "loading"
@@ -110,6 +125,7 @@ function NativeSession({
               session={session}
               androidBack={App}
               {...(exportDelivery ? { exportDelivery } : {})}
+              {...(reportDelivery ? { reportDelivery } : {})}
             />
           ) : (
             <TrialSessionScreen

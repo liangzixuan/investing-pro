@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createFixture, thesisReviewNoteDraft } from "./fixture";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
+import {
+  emptyThesisReview,
+  proposeThesisReview,
+} from "../../src/clerk-trial/managed-thesis-review";
 
 async function setup() {
   const fixture = await createFixture("thesis-review");
@@ -25,8 +29,23 @@ async function setup() {
 describe("bounded native thesis-review Save fixture", () => {
   it("admits exactly the complete declared draft and reloads the same note", async () => {
     const { fixture, workspace, initial } = await setup();
-    workspace.note("listing-zero", thesisReviewNoteDraft);
+    const note = proposeThesisReview("Original thesis", {
+      ...emptyThesisReview,
+      purpose: "holding_review",
+      horizon: "The next two filed reports",
+      thesis: "Margins can recover",
+      support: "Invented report 2026-10-01",
+      counter: "Demand remains uncertain",
+      confirm: "Two stronger reported periods",
+      invalidate: "Cash keeps falling",
+      next: "Read the next filed report",
+    }).note;
+    expect(note).toBe(
+      "Original thesis Thesis review (my assessment). Research purpose: Review a holding | Time horizon: The next two filed reports | My thesis: Margins can recover | Supporting evidence: Invented report 2026-10-01 | Opposing evidence: Demand remains uncertain | Confirmation condition: Two stronger reported periods | Invalidation condition: Cash keeps falling | Next check: Read the next filed report",
+    );
+    workspace.note("listing-zero", note!);
     await workspace.coordinator.save();
+    expect(fixture.getSnapshot().save).toBe(1);
     expect(workspace.coordinator.getSnapshot().saved).toEqual({
       version: 2,
       payload: {

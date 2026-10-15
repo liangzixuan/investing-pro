@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 14, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns the full
+Updated October 15, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns the full
 InvestingPro feature goal. [Architecture](ARCHITECTURE.md) defines the runtime
 boundaries. Implementation, original CI, source integration, live publication
 and physical-device use are separate acceptance events.
@@ -9,8 +9,9 @@ and physical-device use are separate acceptance events.
 
 Release `5b2715e` remains published on the managed website and API. Signed Android
 1.26.0, code 27, is delivered; physical installation was not performed. Previous
-website, API and Android releases remain preserved for rollback. The last checked
-main source is `9cc3423`, after the approved PR100 and PR101 merges.
+website, API and Android releases remain preserved for rollback. Reviewed PR143 is now merged into main at `a430cd3`; production publication is a
+separate boundary. The original source checks and reviewed maintenance advisories
+remain recorded below.
 
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
@@ -20,6 +21,165 @@ original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
 ## Consolidated research candidate
+
+The next M2 increment adds an initially closed **Reported cash history** disclosure
+to managed Annual cash generation. It reuses complete admitted observations for
+up to three adjacent periods from the same filing, preserves exact values and
+references, and stops at the first refusal. Current cash and note actions remain
+independent. It adds no API field, schema, feed, automatic request or saved state.
+All 366 affected analytics, UI/composed, fixture and API regression cases, web/API types, scoped
+lint/format, Java syntax and source boundaries pass. Chrome at 1440/390/320
+confirms exact values and references, contained keyboard scrolling, retained
+failed/cancelled reads, late-response fencing, draft retention and retirement.
+The browser check made only its four explicit Annual reads, with zero Save,
+other-source reads or console warnings. Native bundle maximum loader is
+2,433,477 bytes under the unchanged 4 MiB cap, with exact notices. New-head
+native execution and live publication remain separate.
+
+The first cash-history Android run passed 31 of 32 cases. Its closure assertion
+required zero table height, although Chromium can retain layout bounds for hidden
+disclosure content. Chrome reproduced the collapsed table, absent accessibility
+content and keyboard exclusion. The corrected rendering-visibility and native
+Tab assertions now pass in the original consolidated run, along with exact cash
+values, references, draft retention and session retirement. Report system-picker
+checks also pass, including exact bytes, bounds, malformed inputs, cancellation
+and recreation.
+
+That consolidated run passed 31 of 32 Android cases and all five other Actions
+jobs. Its remaining failure was announcement title search: a native lowercase
+query appeared with an initial capital letter, while the editor reported sentence
+capitalization. The field now requests no automatic capitalization, correction
+or spell checking. It still forwards the exact typed text; matching remains case
+insensitive. The regression retains its exact lowercase input assertion, source
+counts, draft checks and deadlines, and checks the field's keyboard hints before
+typing. All 82 affected presentation, hook and composed cases, web types, scoped
+lint/format and Java syntax pass. New-head native execution must still establish
+that the input method honors the hints. The original failed outcome remains
+recorded. CodeScene's 37 warnings and 14 notices remain reviewed maintenance debt.
+
+A synthetic provider receipt also tightens the prior
+report cancellation regression: it must prove normal release and descriptor
+return, rather than accepting a provider timeout as that path. The observed
+native input-clipping failure is addressed by centering the test field while
+retaining strict geometry checks. The combined portfolio route test is split
+into independent upgrade and post-split-sale cases, each with its own vault and
+real close/reopen. All prior assertions and the five-second deadline remain.
+
+The preceding report increment adds explicit Android JSON saving through the system
+file picker. Its fixed report purpose, identity/time filename and complete UTF-8
+bound stay separate from the existing saved-watchlist writer. Both share only
+transient destination and lifecycle handling. Actual draft/source/visit checks
+fence stale choices; report retirement aborts pending work. A post-open cancellation
+check also prevents a provider that returned late from receiving report bytes.
+All 354 affected/composed cases, final focused flow checks, web types, scoped
+lint/format, Java syntax and source boundaries pass. Scoped Kotlin compilation
+uses actual Android SDK types with Capacitor signature stubs; 46 metadata/UTF-8
+host assertions pass. These checks do not establish a full Android build or
+system picker execution. Chrome confirms the shared screen at 1440/390/320,
+44 px controls, stale-preview removal and an actual browser download whose
+14,029 UTF-8 bytes equal the inspection. Native presentation uses a mock result
+and establishes no Android file write. The native bundle's maximum loader is
+2,427,866 bytes under the unchanged 4 MiB cap with exact notices.
+
+The original native run passed 30 of 31 cases. Its new report journey failed
+at the first native note touch because the input was outside the visual viewport,
+before picker or file-write checks. The original Windows job also failed a
+five-second timeout in an existing combined portfolio route test; Ubuntu,
+parser isolation and dependency review passed. These failed outcomes remain
+recorded; Android report saving is not yet accepted. The next source addresses
+the observed checks and adds stronger held-provider proof. CodeScene reports
+16 warnings and 13 notices; focused review found no concrete production defect,
+and maintenance debt remains recorded. Live publication is separate.
+
+The preceding report increment adds explicit JSON download in the managed browser.
+It checks the actual draft and source models before the file handoff and fences
+late results after report closure. It includes unsaved authored text, retains
+source clocks and uses its own purpose and filename. Only temporary browser
+transport is shared with saved-watchlist export. Android delivery is added by the separate native increment above. All 303 affected/composed cases, web types, scoped lint/format, Java syntax and
+source boundaries pass. Chrome verifies exact received UTF-8 files against the
+inspection, Unicode/whitespace, partial/full packets, keyboard delivery, retained
+failures, document bounds, edit/clear/retirement guards and actual 1440/390/320
+layouts with zero writes or console warnings. The native bundle's maximum loader
+is 2,421,662 bytes under the unchanged 4 MiB cap with exact software notices.
+Its original PR149 hosted execution now passes all five Actions checks and all
+30 Android cases. The original 87-frame artifact was acquired and admitted once.
+CodeScene reports five warnings and one notice; the focused source review found
+no concrete correctness blocker, and maintenance debt remains recorded. Source
+integration and live publication remain separate.
+
+The original JSON-inspection Android run exposed a test clock mismatch: its
+Price fixture completes at 00:00:01 while Annual and Filings complete at 00:00:02.
+The assertion now checks each clock separately. A second original failure did not
+open the native scope picker after Clear focused search. The test now closes the
+soft keyboard before the same native picker checks; the exact input race is not
+proven; the corrected PR149 original emulator run passes those checks. No deadline, gate or validator is
+relaxed. Original failed outcomes remain recorded.
+
+The preceding report increment adds an inspectable JSON document to the current
+prepared preview. It separates the exact authored draft from complete admitted
+source packets, including Annual's original income, cash and liquidity inputs,
+filing coordinates, coverage and validation. Each source retains its original
+clocks and previous-response status. The document starts closed and clears with
+the parent report. Inspection adds no request, calculation, Save, clipboard access or automatic file
+delivery; browser and Android share the read-only inspection. Its new-head
+acceptance remains separate from the preceding preview.
+
+The document's 244 affected/composed cases pass. Final focused checks also pass
+after the complete-document byte-bound checks. Web types, scoped lint, formatting,
+Java syntax and source boundaries pass. Chrome passes actual 1440/390/320 CSS
+widths with exact Unicode and whitespace, no page overflow, a 46.5px disclosure,
+keyboard operation and a read-only wrapped field. Partial sources, source changes,
+retained failed refreshes, oversized-note refusal, intervening edits, company
+close and retirement preserve the stated limits with zero writes. A generic field
+font override found there is corrected in the scoped document style. The final
+native bundle's maximum loader is 2,418,574 bytes under the unchanged 4 MiB cap,
+with exact software notices. Its own hosted execution remains separate.
+
+The next M4 increment adds an explicit [research report preview](MANAGED_COMPANY_REPORT.md).
+It separates the full authored watchlist draft from existing dated Price, Annual
+and Filings summaries. At least one loaded source is required; pending reads block
+preparation. Source, note or visit changes remove the preview immediately. That preview layer adds no durable storage, inferred holding or new source request.
+Affected report, snapshot, composed-screen and real-workspace fixture checks pass
+(235 cases), including unavailable-draft refusal. Chrome passes actual 1440/390/320 CSS widths with exact Unicode notes, no overflow,
+44px action targets, partial and independent source loads, intervening-edit
+invalidation, retained failed reads, invalid replacement, company changes and
+retirement. Web types, scoped lint, Java syntax and source boundaries pass. The
+native bundle's maximum loader is 2,414,911 bytes under the unchanged 4 MiB cap,
+with exact software notices. New-head execution remains separate. The report state and UI stay outside the large workspace
+runtime.
+
+The next snapshot increment adds Filings as an independent third source. It
+reuses the existing filing summary and source details, with its original window,
+clocks, availability and coverage limits. Navigation makes no source request.
+Snapshot, filing-renderer, native-fixture and full composed-screen checks pass
+(298 cases). Chrome verifies independent loads, original clocks, refresh recovery, invalid
+replacement and new-visit late-response guards at 1440/390/320 CSS widths. A small
+existing Annual link target found there now uses the same 44px snapshot link
+sizing. Final Chrome checks pass all snapshot action targets and no page overflow
+at each width. The exact native bundle has a maximum loader of 2,410,655 bytes
+under the unchanged 4 MiB cap and exact software notices. New-head native
+execution remains separate.
+
+A regression check also reproduced a synthetic fixture mismatch in the preceding
+thesis-context candidate: its strict Save still expected the old note without
+purpose and horizon. The fixture now requires the exact new text, verified
+through the real formatter. No Save validator, identity, timeout or assertion was
+relaxed. This is a QA-fixture correction; the original PR144 outcome is preserved.
+
+The independent thesis-context candidate adds optional **Research purpose** and
+**Time horizon** to the authored review. Choose **Explore an idea** or **Review a
+holding**, preview the context, then use the existing explicit Add and Save.
+The choice does not infer holdings or start monitoring. Field and complete-note
+limits, intervening-edit protection and listing/editor reset still apply.
+Affected formatter, form and composed-save checks passed (22 cases), as did web
+types, scoped lint, formatting, Java syntax and source boundaries. Chrome passed
+at actual 1440/390/320 CSS widths, including one explicit RAM Save/reload,
+paused editing, complete note preservation and editor reset, without provider
+reads. The new synthetic native bundle has a maximum loader of 2,408,904 bytes
+under the unchanged 4 MiB cap, with exact software notices. The original feature-head Android run passes 29 of 30 cases; its one failure is
+at the strict thesis Save fixture, corrected by this increment. Other original checks retain
+their own outcomes. The bundle is not emulator acceptance.
+This candidate extends the frozen integration source; it is not a live release.
 
 The candidate brings the accumulated company-research and daily-review work
 together for source integration. It includes:
@@ -44,7 +204,7 @@ together for source integration. It includes:
   to the existing note draft. The existing whole-draft Save and note limit apply.
   Authored links and dates are not automatically verified citations.
 - [Loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md): one initially closed
-  view of admitted Price and Annual evidence. Each source keeps its own dates,
+  view of admitted Price, Annual and Filings evidence. Each source keeps its own dates,
   revenue bases and historical qualifications. Opening it makes no request,
   calculation or saved change; its section actions use normal navigation.
 
@@ -54,6 +214,17 @@ and license limits remain explicit. These increments do not complete InvestingPr
 parity, broaden price coverage or add an AI investment verdict.
 
 ## Verification and remaining source acceptance
+
+The original report-preview Windows check timed out in one custody-security test
+that grouped five staging faults and three key-cleanup scenarios under a single
+five-second test deadline. The next correction gives each scenario its own test
+with the same default deadline. A TypeScript syntax-tree comparison confirms
+identical executable callbacks, assertions, phase values and outside-group code.
+The full custody package passes 239 cases with its two existing platform skips;
+types, scoped lint, canonical fixture verification and source boundaries pass.
+Only that security test's manifest hash changes. Runtime, payload/case bytes,
+validators, workflows and deadlines remain unchanged. The original failed outcome
+is retained; the corrected source needs its own hosted acceptance.
 
 The preceding exact source, [PR142](https://github.com/liangzixuan/investing-pro/pull/142)
 at `3e1f0f4`, passed all six original Actions jobs and its own CodeScene review.
@@ -70,8 +241,8 @@ cases with the same executable body, assertions and default deadline. Only that
 test's source hash changes in the existing manifest; payload and fixture-case
 bytes, validators, runtime, workflows and timeout settings remain unchanged.
 
-Exact application builds and Chrome evidence remain applicable because the latest
-corrections change tests, source-hash metadata and status only. The largest native
+The frozen integration's application builds and Chrome evidence remain applicable
+because its corrections change tests, source-hash metadata and status only. Its largest native
 fixture loader is 2,407,934 bytes under the unchanged 4 MiB cap, with exact software
 notices. Chrome covers actual 1440/390/320 widths, keyboard disclosure, explicit
 independent loads, retained failed reads, unchanged notes, company reset and late
@@ -80,11 +251,15 @@ geometry and the current desktop image have separate proof.
 
 The whole diff against main requires seven original workflows and eight Actions
 jobs: Android, Ubuntu/Windows CI, dependency review, parser isolation, parser
-normalization, payload custody and PostgreSQL. Those integration checks and the
-actual integration CodeScene review remain required. Parent-based passes alone
-do not establish acceptance against main. Prior failed and cancelled runs remain
-recorded. PR141's four reviewed maintainability advisories remain part of that
-history; PR142's narrower review does not erase them.
+normalization, payload custody and PostgreSQL. All eight original jobs passed on
+[PR143](https://github.com/liangzixuan/investing-pro/pull/143) at `bcf7a1a`.
+Its original Android report passes all 30 cases and 27 producer markers; the
+custody, normalization and PostgreSQL artifacts pass their source-bound reviews.
+CodeScene's main-based review failed with 141 maintenance warnings and 23 notices.
+Focused review retained the real screen/workspace complexity risk and identified
+no correctness blocker. This advisory failure was not suppressed or reported as
+passed. The owner approved source integration and PR143 is merged; production is unchanged.
+Prior failed and cancelled outcomes retain their original scope.
 
 ## Coordinated version boundary
 
@@ -97,15 +272,18 @@ these artifacts or install an Android upgrade.
 
 ## Next outcome and limits
 
-Finish the original whole-main checks and review the cumulative source before
-source integration. Keep live delivery separate under the [website/API](APPWRITE_DELIVERY.md)
+The merged main revision passes all eight original push Actions checks. Its tree
+equals the accepted integration source; equivalent source artifacts are reused
+within their original scope. Continue the next complete roadmap layer and review
+each new source increment before integration. Keep live delivery separate under the [website/API](APPWRITE_DELIVERY.md)
 and [Android](ANDROID_CLIENT.md) procedures. Continue the roadmap with admitted
 sources, exact identity, explicit reads and saved-draft/session boundaries.
 
 M4's next useful layer is an evidence-linked company report with exact loaded
 values, all bases, source dates and separate authored assessment. Its export needs
 its own document purpose and provenance; the saved-watchlist export contract must
-remain specific to saved watchlists. No report export is implemented here.
+remain specific to saved watchlists. The read-only document inspection is
+implemented; report file delivery remains the next layer.
 
 Price history still covers AAPL, GOOG and GOOGL, three listings for two issuers,
 with dated raw USD closes. Broader fields/cohorts, valuation, portfolio tools,

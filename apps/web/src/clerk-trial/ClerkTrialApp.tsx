@@ -1,3 +1,4 @@
+import { browserCompanyReportAdapter } from "./browser-company-report";
 import { ClerkProvider, SignIn, useAuth, useSession } from "@clerk/react";
 import { useState } from "react";
 import { validateTrialConfig } from "./config";
@@ -103,6 +104,7 @@ function ClerkSession({
           ? {
               warnOnBrowserLeave: true,
               exportDelivery: browserWatchlistExportAdapter,
+              reportDelivery: browserCompanyReportAdapter,
             }
           : {})}
         session={{

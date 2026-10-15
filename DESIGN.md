@@ -58,13 +58,43 @@ tokens. The field grid wraps to one column at narrow widths; the complete previe
 wraps long links. Keep the owner's assessment distinct from verified source facts.
 Reading stays available while note editing is paused.
 
+The optional research purpose uses a labelled native selector with an empty
+initial choice. Time horizon uses the same text field as other authored context.
+Keep both in the existing wrapping grid, with the same 44px targets and focus
+style. The preview places purpose and horizon before the thesis; neither choice
+establishes a position or starts monitoring.
+
 ## Color and surfaces
 
 The company snapshot uses an initially closed native disclosure below company
-navigation. Its two source cards sit side by side on wide screens and stack
-below 760px. Exact amounts and original timestamps wrap without truncation.
-Keep Price and Annual headings, missing states and historical warnings separate.
+navigation. Price and Annual sit side by side on wide screens; Filings spans
+the next row. All cards stack below 760px. Exact amounts, accession numbers and
+original timestamps wrap without truncation. Keep each source heading, missing
+state and historical or coverage warning separate. Snapshot links and source
+disclosures retain at least 44px touch targets.
 The existing section actions remain the explicit way to inspect full evidence.
+
+The research report follows the snapshot as a separate initially closed disclosure.
+Preparation and clear actions use existing secondary buttons. Keep the authored
+watchlist draft in a distinct block with preserved whitespace and a readable line
+length; source facts use the existing cards. The report preparation time must not
+compete with or replace original source dates. Remove stale prepared content as
+soon as its note, source state or company visit changes.
+
+Keep the full report document in a second initially closed native disclosure
+after source cards. Use a labelled read-only text field with wrapping JSON,
+visible UTF-8 byte count, the same focus treatment and a full-width border box.
+Its disclosure retains a 44px target. Explain the exact-draft/source scope and
+file-delivery limit beside the field. Never display the document after its parent
+report is invalidated.
+
+Keep reported cash history in an initially closed disclosure below current cash
+values and their note action. Use the existing Annual table style, with exact
+amounts, dates and reported/calculated labels. At narrow widths, keep the table
+inside a labelled, keyboard-focusable horizontal scroll region; the page itself
+must fit the viewport. Keep source references in a second closed disclosure.
+Missing or refused earlier periods leave a clear explanation beside the accepted
+table. Earlier comparative amounts must not inherit a current-use label.
 
 Use these semantic managed tokens:
 

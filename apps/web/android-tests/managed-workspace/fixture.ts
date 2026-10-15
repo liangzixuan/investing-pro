@@ -31,6 +31,7 @@ import {
   row,
 } from "../../src/features/research/sec-annual-evidence-fixture";
 import {
+  annualCashHistoryRows,
   cashGeneration,
   cashRow,
 } from "../../src/features/research/sec-annual-cash-fixture";
@@ -45,7 +46,7 @@ import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 export const thesisReviewNoteDraft =
-  "Original thesis Thesis review (my assessment). My thesis: Margins can recover | Supporting evidence: Invented report 2026-10-01 | Opposing evidence: Demand remains uncertain | Confirmation condition: Two stronger reported periods | Invalidation condition: Cash keeps falling | Next check: Read the next filed report";
+  "Original thesis Thesis review (my assessment). Research purpose: Review a holding | Time horizon: The next two filed reports | My thesis: Margins can recover | Supporting evidence: Invented report 2026-10-01 | Opposing evidence: Demand remains uncertain | Confirmation condition: Two stronger reported periods | Invalidation condition: Cash keeps falling | Next check: Read the next filed report";
 export const annualComparisonNoteDraft = [
   "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment.",
   "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750.",
@@ -209,11 +210,13 @@ const snapshot: ManagedCatalogSnapshotDto = {
 
 /** Test-APK-only data port. There is no fetch, credential, storage, or native-auth fallback. */
 export async function createFixture(
-  scenario:
+  scenarioName:
     | "default"
     | "catalog-startup-recovery"
     | "company-direct-entry"
     | "annual-note"
+    | "annual-cash-history"
+    | "company-snapshot"
     | "thesis-review"
     | "price-comparison-note"
     | "company-filings"
@@ -231,6 +234,13 @@ export async function createFixture(
     | "watchlist-comparison"
     | "watchlist-export" = "default",
 ) {
+  // These journeys reuse the one-read Annual source behavior. The snapshot
+  // admits one Filings read; cash history adds only same-filing cash rows.
+  const scenario =
+    scenarioName === "company-snapshot" ||
+    scenarioName === "annual-cash-history"
+      ? "annual-note"
+      : scenarioName;
   const annualBase = await response(
     scenario === "annual-note"
       ? annualHistoryRows().map((observation) =>
@@ -247,10 +257,15 @@ export async function createFixture(
           ...annualBase,
           evidence: {
             ...annualBase.evidence,
-            cashGeneration: await cashGeneration(annualBase.evidence, [
-              cashRow("operating_cash_flow", "120.125"),
-              cashRow("ppe_purchases", "20.025"),
-            ]),
+            cashGeneration: await cashGeneration(
+              annualBase.evidence,
+              scenarioName === "annual-cash-history"
+                ? annualCashHistoryRows()
+                : [
+                    cashRow("operating_cash_flow", "120.125"),
+                    cashRow("ppe_purchases", "20.025"),
+                  ],
+            ),
           },
         }
       : annualBase;
@@ -562,6 +577,20 @@ export async function createFixture(
   const api: ManagedApi = {
     recentFilings: (input, signal) => {
       const request = parseManagedSecFilingsRequest(input);
+      if (scenarioName === "company-snapshot") {
+        if (
+          signal.aborted ||
+          state.filings !== 0 ||
+          state.annual !== 1 ||
+          state.eod !== 1 ||
+          request?.catalogSnapshotSha256 !== digest ||
+          request.listingId !== "listing-zero" ||
+          request.symbol !== "ZERO"
+        )
+          throw new Error("Unexpected invented snapshot filings request");
+        count("filings");
+        return Promise.resolve(inventedFilingsPacket(identity));
+      }
       if (
         scenario !== "company-filings" ||
         signal.aborted ||
@@ -618,6 +647,13 @@ export async function createFixture(
     },
     status: () => {
       count("status");
+      if (scenarioName === "annual-cash-history" && state.status === 2) {
+        if (state.annual !== 1)
+          return Promise.reject(
+            new Error("Load the one cash-history report before expiry"),
+          );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (scenario === "annual-comparison" && state.status === 2) {
         if (state.annual !== 5 || !pendingAnnualComparison)
           return Promise.reject(

@@ -26,6 +26,16 @@ public final class SavedWatchlistTestObservationProvider extends ContentProvider
                 SavedWatchlistTestDocumentsProvider.clear(getContext());
                 return Bundle.EMPTY;
             }
+            if ("arm-report-open".equals(method)) {
+                SavedWatchlistTestDocumentsProvider.armReportOpen();
+                return Bundle.EMPTY;
+            }
+            if ("report-open-state".equals(method))
+                return SavedWatchlistTestDocumentsProvider.reportOpenState();
+            if ("release-report-open".equals(method)) {
+                SavedWatchlistTestDocumentsProvider.releaseReportOpen();
+                return Bundle.EMPTY;
+            }
             if (!"inspect-invented-exports".equals(method)) throw new UnsupportedOperationException();
             ArrayList<Bundle> documents = new ArrayList<>();
             for (File file : SavedWatchlistTestDocumentsProvider.outputs(getContext())) {

@@ -256,6 +256,10 @@ The match count describes the loaded list; the
 source's available count, original retrieval time and full-feed refresh comparison
 remain visible. Search does not fetch article text or other feed entries.
 
+The title field asks mobile keyboards to keep the query as typed, without
+automatic capitalization, correction or spell checking. Matching still follows
+the case and whitespace rules above; keyboard hints are not input validation.
+
 ### Inspect newly observed links
 
 **Announcement view** offers **All loaded announcements** and **Newly observed

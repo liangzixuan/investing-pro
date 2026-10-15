@@ -66,6 +66,56 @@ describe("thesis review form", () => {
     });
     expect(result.onChange).not.toHaveBeenCalled();
   });
+  it.each(["idea", "holding_review", ""])(
+    "stages the explicit purpose %j without changing the note",
+    (value) => {
+      const result = form();
+      const select = elements(result.node).find(
+        (n) => n.props.id === "qa-note-review-purpose",
+      )!;
+      expect(select.props.disabled).toBe(false);
+      (
+        select.props.onChange as (e: {
+          currentTarget: { value: string };
+        }) => void
+      )({
+        currentTarget: { value },
+      });
+      expect(result.onReview).toHaveBeenCalledExactlyOnceWith({
+        ...review,
+        purpose: value,
+      });
+      expect(result.onChange).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects a purpose outside the visible choices and labels the optional context", () => {
+    const result = form();
+    const select = elements(result.node).find(
+      (n) => n.props.id === "qa-note-review-purpose",
+    )!;
+    (
+      select.props.onChange as (e: { currentTarget: { value: string } }) => void
+    )({
+      currentTarget: { value: "buy_now" },
+    });
+    expect(result.onReview).not.toHaveBeenCalled();
+    expect(result.html).toContain('for="qa-note-review-purpose"');
+    expect(result.html).toContain('for="qa-note-review-horizon"');
+    expect(result.html).toContain(
+      "a holding review does not confirm a position",
+    );
+    const horizon = elements(result.node).find(
+      (n) => n.props.id === "qa-note-review-horizon",
+    )!;
+    (horizon.props.onChange as (e: { target: { value: string } }) => void)({
+      target: { value: "Until the next report" },
+    });
+    expect(result.onReview).toHaveBeenCalledExactlyOnceWith({
+      ...review,
+      horizon: "Until the next report",
+    });
+    expect(result.onChange).not.toHaveBeenCalled();
+  });
   it.each([true, false])(
     "blocks paused or oversized appends while keeping the preview readable: %s",
     (paused) => {
@@ -74,6 +124,11 @@ describe("thesis review form", () => {
       (result.button.props.onClick as () => void)();
       expect(result.onChange).not.toHaveBeenCalled();
       expect(result.html).toContain("Review preview");
+      expect(
+        elements(result.node).find(
+          (n) => n.props.id === "qa-note-review-purpose",
+        )!.props.disabled,
+      ).toBe(paused);
     },
   );
 });

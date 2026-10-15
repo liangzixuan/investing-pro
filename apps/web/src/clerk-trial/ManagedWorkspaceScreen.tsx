@@ -45,6 +45,7 @@ import { ManagedUnsavedWatchlistReview } from "./ManagedUnsavedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
 import { ThirdPartyNotices } from "./ThirdPartyNotices";
 import { ManagedWatchlistExport } from "./ManagedWatchlistExport";
+import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
 import { ManagedIcon } from "./ManagedIcon";
 import { bindManagedBrowserUnload } from "./managed-browser-unload";
@@ -62,6 +63,7 @@ interface SessionProps {
   priceCoverage?: readonly ManagedEodIdentity[];
   warnOnBrowserLeave?: boolean;
   exportDelivery?: WatchlistExportDeliveryAdapter;
+  reportDelivery?: CompanyReportDeliveryAdapter;
 }
 
 interface NoteReviewRequest {
@@ -186,6 +188,9 @@ function SessionWorkspace(props: SessionProps) {
     <ManagedWorkspaceRouter
       workspace={workspace}
       {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
+      {...(initial.reportDelivery
+        ? { reportDelivery: initial.reportDelivery }
+        : {})}
       {...(initial.exportDelivery
         ? { exportDelivery: initial.exportDelivery }
         : {})}
@@ -204,6 +209,7 @@ export function ManagedWorkspaceRouter(props: {
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
+  reportDelivery?: CompanyReportDeliveryAdapter;
 }) {
   return (
     <BrowserRouter>
@@ -216,6 +222,7 @@ function RoutedWorkspace(props: {
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
+  reportDelivery?: CompanyReportDeliveryAdapter;
 }) {
   const navigation = useManagedCompanyNavigation(props.workspace);
   return <ManagedWorkspaceScreen {...props} navigation={navigation} />;
@@ -400,11 +407,13 @@ export function ManagedWorkspaceScreen({
   androidBack,
   navigation,
   exportDelivery,
+  reportDelivery,
 }: {
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
   navigation?: ManagedCompanyNavigation;
   exportDelivery?: WatchlistExportDeliveryAdapter;
+  reportDelivery?: CompanyReportDeliveryAdapter;
 }) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
@@ -903,6 +912,10 @@ export function ManagedWorkspaceScreen({
               {discovery.research && (
                 <ManagedCompanyResearch
                   research={discovery.research}
+                  {...(reportDelivery ? { reportDelivery } : {})}
+                  readReportWatchlist={(selection) =>
+                    workspace.getResearchWatchlist(selection)
+                  }
                   annual={workspace.annual}
                   filings={workspace.filings}
                   eod={workspace.eod}

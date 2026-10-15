@@ -13,10 +13,35 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The current M2 research candidate adds a [loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md).
-Price and Annual keep separate source dates, revenue bases, availability and
-historical qualifications. It uses admitted evidence and explicit section
+The current M2 candidate adds [reported cash history](MANAGED_SEC_ANNUAL.md#read-reported-cash-history)
+to the managed Annual view. Up to three adjacent periods reuse already admitted
+same-filing observations, with exact reported inputs, checked subtraction and
+first-refusal explanations. It adds no source request, schema, feed or note action.
+Current cash remains independent of income and optional paired history. Actual
+issuer coverage and complete financial statements remain separate.
+
+The preceding M2 research candidate adds a [loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md).
+Price, Annual and Filings keep separate source dates, revenue bases, availability
+and coverage qualifications. The Filings card reuses the existing admitted list
+and retains its original window, truncation and incomplete-coverage limits. It uses admitted evidence and explicit section
 navigation, with no automatic request, saved change or model verdict.
+
+The next M4 layer adds a [prepared research report preview](MANAGED_COMPANY_REPORT.md).
+It separates the exact authored watchlist draft from dated loaded source summaries.
+Preparation is explicit and adds no source read or saved change. Intervening source,
+note or visit changes remove the preview. Export and durable reports remain open.
+
+The next report layer exposes an initially closed, read-only JSON document with
+the exact authored draft and complete admitted Price, Annual and Filings packets.
+All financial inputs, revenue bases, source dates and unavailable values stay in
+their original packets. It adds no request or write. Purpose-specific file
+delivery remains separate from inspection and saved-watchlist export.
+
+The preceding M4 thesis candidate adds optional **Research purpose** and **Time horizon**
+to the authored review. The owner can distinguish exploring an idea from reviewing
+a holding, preview the complete text, then append and save it through the existing
+watchlist draft. The choice does not establish holdings or start monitoring. See
+[thesis reviews](APPWRITE_WATCHLIST.md#write-a-thesis-review).
 
 The preceding M3 increment narrows the loaded BEA agenda to scheduled entries absent
 from its preceding accepted agenda. Release view intersects with series search

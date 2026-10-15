@@ -1,3 +1,4 @@
+import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import {
   Children,
   isValidElement,
@@ -22,7 +23,8 @@ const hooks = vi.hoisted(() => ({
   effects: [] as Array<() => (() => void) | void>,
   register: vi.fn(),
   androidBack: { addListener: vi.fn(), exitApp: vi.fn() },
-  memo: null as { value: unknown } | null,
+  memo: [] as Array<{ value: unknown }>,
+  memoIndex: 0,
 }));
 vi.mock("react", async (original) => ({
   ...(await original()),
@@ -38,8 +40,9 @@ vi.mock("react", async (original) => ({
   useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) =>
     getSnapshot(),
   useMemo: (create: () => unknown) => {
-    if (!hooks.memo) hooks.memo = { value: create() };
-    return hooks.memo.value;
+    const index = hooks.memoIndex++;
+    hooks.memo[index] ??= { value: create() };
+    return hooks.memo[index].value;
   },
 }));
 vi.mock("@capacitor/core", () => ({ registerPlugin: hooks.register }));
@@ -78,7 +81,8 @@ let cleanup: (() => void) | void;
 beforeEach(() => {
   hooks.state = null;
   hooks.effects = [];
-  hooks.memo = null;
+  hooks.memo = [];
+  hooks.memoIndex = 0;
   hooks.register.mockReset();
 });
 afterEach(() => {
@@ -115,8 +119,13 @@ async function mount(
     ...overrides,
   };
   const exportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
+  const reportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   hooks.register.mockImplementation((name: string) =>
-    name === "InvestmentAuth" ? plugin : exportPlugin,
+    name === "InvestmentAuth"
+      ? plugin
+      : name === "InvestmentWatchlistExport"
+        ? exportPlugin
+        : reportPlugin,
   );
   const loading = NativeTrialApp({ config });
   const loadingHtml = renderToStaticMarkup(loading);
@@ -137,6 +146,7 @@ async function mount(
     const component = element.type as (
       props: unknown,
     ) => ReactElement<{ children: ReactNode }>;
+    hooks.memoIndex = 0;
     return component(element.props);
   }
   return {
@@ -144,6 +154,7 @@ async function mount(
     plugin,
     remove,
     exportPlugin,
+    reportPlugin,
     emit: (value: NativeAuthState) => emit(value),
   };
 }
@@ -155,6 +166,7 @@ function findScreen(node: ReactNode):
       androidBack?: AndroidBackAdapter;
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
+      reportDelivery?: CompanyReportDeliveryAdapter;
     }>
   | undefined {
   const children: ReactNode[] = [];
@@ -173,6 +185,7 @@ function findScreen(node: ReactNode):
         androidBack?: AndroidBackAdapter;
         warnOnBrowserLeave?: boolean;
         exportDelivery?: WatchlistExportDeliveryAdapter;
+        reportDelivery?: CompanyReportDeliveryAdapter;
       }>;
     }
     const found = findScreen(child.props.children);
@@ -215,7 +228,8 @@ describe("native shared workspace composition", () => {
   ] as const)(
     "selects the existing screen and owns one listener %#",
     async (config, screenType) => {
-      const { frame, plugin, remove, exportPlugin } = await mount(config);
+      const { frame, plugin, remove, exportPlugin, reportPlugin } =
+        await mount(config);
       const screen = findScreen(frame());
       expect(screen?.type).toBe(screenType);
       expect(screen?.key).toBe("1");
@@ -227,9 +241,21 @@ describe("native shared workspace composition", () => {
       );
       expect(hooks.register.mock.calls).toEqual(
         config.environment === "production"
-          ? [["InvestmentAuth"], ["InvestmentWatchlistExport"]]
+          ? [
+              ["InvestmentAuth"],
+              ["InvestmentWatchlistExport"],
+              ["InvestmentCompanyReport"],
+            ]
           : [["InvestmentAuth"]],
       );
+      expect(screen?.props.reportDelivery?.destination).toBe(
+        config.environment === "production" ? "system_document" : undefined,
+      );
+      expect(findScreen(frame())?.props.reportDelivery).toBe(
+        screen?.props.reportDelivery,
+      );
+      for (const method of Object.values(reportPlugin))
+        expect(method).not.toHaveBeenCalled();
       expect(typeof screen?.props.exportDelivery?.deliver).toBe(
         config.environment === "production" ? "function" : "undefined",
       );

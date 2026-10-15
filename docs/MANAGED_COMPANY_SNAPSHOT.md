@@ -3,7 +3,8 @@
 Company research has a **Loaded research snapshot** disclosure below company
 navigation. It combines evidence already loaded in this company visit. Opening
 it makes no request, calculation or saved change. **Open Price section** and
-**Open Annual section** use normal section navigation; loading remains explicit.
+**Open Annual section** and **Open Filings section** use normal section navigation;
+loading remains explicit.
 
 Price shows the last admitted raw close, trading date, original requested window
 and request times. Tiingo raw closes are unadjusted for splits and dividends and
@@ -25,6 +26,13 @@ balances and annual flows are not combined into a new financial measure.
 The full Annual section retains source inputs, filing references and validation
 details. The snapshot adds no health score, valuation, investment verdict or AI.
 
+Filings shows the newest observed entry and the loaded count, with the original
+90-date request window and independent request and source times. An unavailable
+source remains distinct from an available empty list. A pending or failed refresh
+keeps its previous-response warning; an invalid replacement clears it. Source
+details retain truncation, older-continuation and incomplete-window qualifications.
+Only the current recent-filings object is checked; filing bodies are not loaded.
+
 Evidence must belong to the exact visit's catalog, listing, share class, issuer,
 origin and CIK selection. It stays available across section changes. Closing or
 changing company clears the old models; a new visit starts with the disclosure
@@ -34,3 +42,7 @@ The watchlist note and whole-draft Save remain independent of this view.
 The browser and Android share this component. Local checks and current producing
 CI acceptance are recorded in [Current work](CURRENT_WORK.md). Synthetic
 verification does not establish production account or physical-phone acceptance.
+
+The separate [research report preview](MANAGED_COMPANY_REPORT.md) captures the
+loaded source summaries alongside a labelled authored draft after explicit
+preparation. Its preparation time does not renew these source dates.

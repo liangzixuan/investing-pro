@@ -3,6 +3,7 @@ import {
   emptyThesisReview,
   proposeThesisReview,
   thesisReviewFields,
+  thesisReviewPurposes,
   type ThesisReview,
 } from "./managed-thesis-review";
 
@@ -32,9 +33,37 @@ export function ThesisReviewForm({
       <p id={`${id}-review-help`}>
         Write your assessment. Include source links and dates with evidence.
         Required: thesis, invalidation condition and next check. Unadded fields
-        reset when you change listing or leave this editor.
+        reset when you change listing or leave this editor. Purpose and time
+        horizon are optional; a holding review does not confirm a position.
       </p>
       <div className="managed-thesis-review-fields">
+        <div>
+          <label htmlFor={`${id}-review-purpose`}>
+            Research purpose (optional)
+          </label>
+          <select
+            id={`${id}-review-purpose`}
+            value={review.purpose}
+            disabled={disabled}
+            aria-describedby={`${id}-review-help ${id}-review-status`}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (
+                value === "" ||
+                value === "idea" ||
+                value === "holding_review"
+              )
+                onReview({ ...review, purpose: value });
+            }}
+          >
+            <option value="">Choose a purpose</option>
+            {Object.entries(thesisReviewPurposes).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
         {thesisReviewFields.map((field) => (
           <div key={field.key}>
             <label htmlFor={`${id}-review-${field.key}`}>

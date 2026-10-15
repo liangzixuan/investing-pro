@@ -320,6 +320,41 @@ unavailable and historical cash, and report/session lifetime. The action fits at
 The native fixture builds; hosted execution and delivery are recorded separately
 in current work.
 
+### Read reported cash history
+
+In the managed Annual view, open **Reported cash history** below cash generation.
+The disclosure starts closed. It shows up to three adjacent annual periods from
+the already loaded filing, newest first: exact, unscaled USD operating cash flow,
+PP&E purchases and their same-period subtraction. The first two rows are reported
+amounts; the third is an app calculation. Negative operating cash flow and a
+negative subtraction remain valid. Purchases must be nonnegative for subtraction.
+
+Paired history requires the current cash inputs and subtraction to be available
+and within current-use limits at that load. The independent current values remain
+readable when paired history is unavailable. Income eligibility does not govern
+cash history. Earlier comparative periods keep the selected filing's original
+metadata; they are historical amounts, without a new current-use claim.
+
+The next period must end exactly one day before the newer period starts, and each
+annual period must meet the existing 335–395-day rules. Missing, conflicted or
+refused inputs stop the table at that point and leave the newer accepted periods
+readable. An older year cannot fill a gap. No alternative concept, currency,
+filing or amount is substituted. All agreeing observation references are retained.
+
+**History calculation references** lists the original IDs for each period.
+Complete source observations remain in **Cash sources and calculation inputs**.
+Opening either disclosure adds no request or saved change and keeps the original
+completion time. These are comparative amounts reported in one filing; period
+length, accounting changes and restatements are unadjusted. They do not establish
+as-originally-filed history, a full cash-flow statement or a forecast.
+
+The table stays inside a labelled, keyboard-focusable scroll region on narrow
+screens. Failed refresh and Cancel retain the original packet and dates. A new
+accepted packet replaces history; company and session retirement remove it.
+Current cash note actions and prepared-report documents keep their existing
+scope. Source, browser, native and publication acceptance remain separate in
+[Current work](CURRENT_WORK.md).
+
 ## Liquidity at fiscal year-end
 
 Company Annual shows independently reported **Current assets** and **Current
