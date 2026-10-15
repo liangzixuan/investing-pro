@@ -268,7 +268,8 @@
   :is(
     .managed-annual-cash-history,
     .managed-annual-operating-history,
-    .managed-annual-liquidity-history
+    .managed-annual-liquidity-history,
+    .managed-annual-balance-sheet-history
   ) {
   min-width: 0;
   margin: 12px 0;
@@ -281,7 +282,9 @@
     .managed-annual-operating-history,
     .managed-operating-history-references,
     .managed-annual-liquidity-history,
-    .managed-liquidity-history-references
+    .managed-annual-balance-sheet-history,
+    .managed-liquidity-history-references,
+    .managed-balance-sheet-history-references
   )
   > summary {
   min-height: 44px;
@@ -295,7 +298,8 @@
   :is(
     .managed-cash-history-table,
     .managed-operating-history-table,
-    .managed-liquidity-history-table
+    .managed-liquidity-history-table,
+    .managed-balance-sheet-history-table
   ) {
   width: 100%;
   max-width: 100%;
@@ -305,7 +309,8 @@
   :is(
     .managed-cash-history-table,
     .managed-operating-history-table,
-    .managed-liquidity-history-table
+    .managed-liquidity-history-table,
+    .managed-balance-sheet-history-table
   )
   table {
   min-width: 640px;
@@ -314,14 +319,16 @@
   :is(
     .managed-cash-history-table,
     .managed-operating-history-table,
-    .managed-liquidity-history-table
+    .managed-liquidity-history-table,
+    .managed-balance-sheet-history-table
   )
   :focus-visible,
 .managed-frame
   :is(
     .managed-cash-history-table,
     .managed-operating-history-table,
-    .managed-liquidity-history-table
+    .managed-liquidity-history-table,
+    .managed-balance-sheet-history-table
   ):focus-visible {
   outline: 3px solid var(--managed-action);
   outline-offset: -3px;
@@ -330,7 +337,8 @@
   :is(
     .managed-cash-history-references,
     .managed-operating-history-references,
-    .managed-liquidity-history-references
+    .managed-liquidity-history-references,
+    .managed-balance-sheet-history-references
   ) {
   min-width: 0;
   font-size: 13px;
@@ -340,7 +348,8 @@
   :is(
     .managed-cash-history-references,
     .managed-operating-history-references,
-    .managed-liquidity-history-references
+    .managed-liquidity-history-references,
+    .managed-balance-sheet-history-references
   )
   dl {
   display: grid;
@@ -350,7 +359,8 @@
   :is(
     .managed-cash-history-references,
     .managed-operating-history-references,
-    .managed-liquidity-history-references
+    .managed-liquidity-history-references,
+    .managed-balance-sheet-history-references
   )
   dd {
   margin: 4px 0 0;

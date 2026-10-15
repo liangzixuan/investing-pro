@@ -9,6 +9,8 @@ import {
   SecAnnualBalanceObservation,
 } from "./SecAnnualLiquidity";
 
+import { SecAnnualBalanceSheetHistory } from "./SecAnnualBalanceSheetHistory";
+
 const metrics = [
   ["totalAssets", "Total assets"],
   ["totalLiabilities", "Total liabilities"],
@@ -79,6 +81,7 @@ export function SecAnnualBalanceSheet({
           </tbody>
         </table>
       </div>
+      <SecAnnualBalanceSheetHistory response={response} />
       <details className="sec-quarterly-row-details sec-annual-balance-sheet-source">
         <summary>Balance sheet sources and reported inputs</summary>
         <SecAnnualBalanceSheetSourceBody response={response} />

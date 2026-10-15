@@ -395,7 +395,11 @@ function scanReason(metric: Metric): Reason | null {
   return metric.scan.absence;
 }
 
-function rowReason(row: Row, input: Input): Reason | null {
+function rowReason(
+  row: Row,
+  input: Input,
+  candidateDate?: string,
+): Reason | null {
   requireValid(input.target.status === "target");
   const target = input.target;
   if (row.form !== "10-K" && row.form !== "20-F") return "unsupported_form";
@@ -416,7 +420,7 @@ function rowReason(row: Row, input: Input): Reason | null {
     return "filing_unmatched_or_conflicted";
   if (
     filing.reportDate !== target.reportDate ||
-    row.endDate !== target.reportDate
+    row.endDate !== (candidateDate ?? target.reportDate)
   )
     return "report_end_mismatch";
   if (row.endDate > row.filedDate) return "future_or_inconsistent_dates";
@@ -437,16 +441,17 @@ function resolveMetric(
   input: Input,
   globalReason: Reason | null,
   currentUseEligible: boolean,
+  candidateDate?: string,
 ): Amount {
   const refused = globalReason ?? scanReason(metric);
   if (refused !== null) return unavailable(refused, metric.observations);
   requireValid(input.target.status === "target");
-  const reportDate = input.target.reportDate;
+  const reportDate = candidateDate ?? input.target.reportDate;
   const values = metric.observations.filter(
     (row) => row.endDate === reportDate,
   );
   if (values.length === 0) return unavailable("no_report_date");
-  const reasons = values.map((row) => rowReason(row, input));
+  const reasons = values.map((row) => rowReason(row, input, candidateDate));
   const reason = rowReasons.find((candidate) => reasons.includes(candidate));
   if (reason) return unavailable(reason, values);
   const first = values[0]!;
@@ -502,5 +507,91 @@ export function resolvePersonalSecAnnualBalanceSheet(
       current,
     ),
     utilityAge,
+  });
+}
+
+export type PersonalSecAnnualBalanceSheetHistoryReason =
+  Reason | "current_use_unavailable";
+
+export interface PersonalSecAnnualBalanceSheetHistoryBalance {
+  readonly asOfDate: string;
+  readonly totalAssets: Amount;
+  readonly totalLiabilities: Amount;
+  readonly shareholdersEquity: Amount;
+}
+
+export type PersonalSecAnnualBalanceSheetHistory =
+  | {
+      readonly status: "unavailable";
+      readonly reason: PersonalSecAnnualBalanceSheetHistoryReason;
+    }
+  | {
+      readonly status: "available";
+      readonly accessionNumber: string;
+      readonly balances: readonly PersonalSecAnnualBalanceSheetHistoryBalance[];
+    };
+
+/** Up to three reported dates from the selected filing, with independent cells. */
+export function resolvePersonalSecAnnualBalanceSheetHistory(
+  input: Input,
+): PersonalSecAnnualBalanceSheetHistory {
+  // Keep the same closed packet admission and current-total resolution.
+  const current = resolvePersonalSecAnnualBalanceSheet(input);
+  const refused = contextReason(input);
+  if (refused !== null)
+    return freeze({ status: "unavailable", reason: refused });
+  if (current.utilityAge?.withinWindow !== true)
+    return freeze({ status: "unavailable", reason: "current_use_unavailable" });
+  requireValid(input.target.status === "target");
+  const reportDate = input.target.reportDate;
+  requireValid(typeof reportDate === "string" && date(reportDate));
+  const keys = [
+    "totalAssets",
+    "totalLiabilities",
+    "shareholdersEquity",
+  ] as const;
+  const metricReason = (metric: Metric): Reason | null =>
+    scanReason(metric) ??
+    (metric.observations.some((row) => row.endDate > reportDate)
+      ? "report_end_mismatch"
+      : null);
+  // A refused metric cannot supply dates or suppress the valid sibling metrics.
+  const priorDates = [
+    ...new Set(
+      keys.flatMap((key) => {
+        const metric = input.balanceSheet[key];
+        return metricReason(metric) === null
+          ? metric.observations
+              .filter((row) => row.endDate < reportDate)
+              .map((row) => row.endDate)
+          : [];
+      }),
+    ),
+  ]
+    .sort()
+    .reverse()
+    .slice(0, 2);
+  const balances = [reportDate, ...priorDates].map((asOfDate) => {
+    const amount = (key: (typeof keys)[number]): Amount => {
+      const metric = input.balanceSheet[key];
+      return resolveMetric(
+        metric,
+        input,
+        metricReason(metric),
+        asOfDate === reportDate,
+        asOfDate,
+      );
+    };
+    return {
+      asOfDate,
+      totalAssets: amount("totalAssets"),
+      totalLiabilities: amount("totalLiabilities"),
+      shareholdersEquity: amount("shareholdersEquity"),
+    };
+  });
+  return freeze({
+    status: "available",
+    accessionNumber: input.target.accessionNumber,
+    balances,
   });
 }

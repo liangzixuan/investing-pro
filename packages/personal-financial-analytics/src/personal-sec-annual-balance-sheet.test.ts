@@ -6,7 +6,10 @@ import {
   type PersonalSecAnnualBalanceSheetResolutionInput,
 } from "@research-cockpit/contracts";
 import { describe, expect, it } from "vitest";
-import { resolvePersonalSecAnnualBalanceSheet as resolve } from "./personal-sec-annual-balance-sheet";
+import {
+  resolvePersonalSecAnnualBalanceSheet as resolve,
+  resolvePersonalSecAnnualBalanceSheetHistory as history,
+} from "./personal-sec-annual-balance-sheet";
 
 type Row = PersonalSecAnnualBalanceSheetObservationDto;
 type Input = PersonalSecAnnualBalanceSheetResolutionInput;
@@ -744,4 +747,366 @@ describe("Annual reported balance-sheet totals", () => {
     Object.setPrototypeOf(inherited.balanceSheet, { fallback: true });
     expect(() => resolve(inherited)).toThrow(TypeError);
   });
+});
+
+function historyInput(): Input {
+  const packet = input();
+  for (const [keyIndex, key] of keys.entries()) {
+    Object.assign(packet.balanceSheet, {
+      [key]: metric(
+        [reportDate, "2024-09-30", "2022-06-30", "2021-06-30"].map(
+          (endDate, index) => ({
+            ...row(key, keyIndex * 10 + index + 1, index),
+            endDate,
+          }),
+        ),
+      ),
+    });
+  }
+  return packet;
+}
+function availableHistory(packet = historyInput()) {
+  const result = history(packet);
+  if (result.status !== "available")
+    throw new Error("Expected reported history");
+  return result;
+}
+
+describe("Annual reported balance-sheet history", () => {
+  it("retains three actual dates, original filing coordinates and unchanged current totals", () => {
+    const packet = historyInput(),
+      before = structuredClone(packet),
+      current = resolve(packet);
+    const result = availableHistory(packet);
+    expect(result.accessionNumber).toBe(accession);
+    expect(result.balances.map((balance) => balance.asOfDate)).toEqual([
+      reportDate,
+      "2024-09-30",
+      "2022-06-30",
+    ]);
+    for (const key of keys) {
+      expect(result.balances[0]![key]).toEqual(current[key]);
+      expect(result.balances[1]![key]).toEqual({
+        status: "available",
+        unit: "USD",
+        value: row(key).value,
+        asOfDate: "2024-09-30",
+        accessionNumber: accession,
+        observationIds: [packet.balanceSheet[key].observations[1]!.id],
+        currentUseEligible: false,
+      });
+    }
+    expect(packet).toEqual(before);
+    expect(resolve(packet)).toEqual(current);
+  });
+
+  it("keeps independent missing cells, including current, without skipping a displayed date", () => {
+    let packet = historyInput();
+    packet = withMetric(
+      packet,
+      "totalAssets",
+      metric(
+        packet.balanceSheet.totalAssets.observations
+          .filter((_, index) => index !== 0 && index !== 1)
+          .map((row, index) => ({
+            ...row,
+            sourceLocator: `/facts/us-gaap/Assets/units/USD/${index}`,
+          })),
+      ),
+    );
+    const result = availableHistory(packet);
+    for (const balance of result.balances.slice(0, 2)) {
+      expect(balance.totalAssets).toEqual({
+        status: "unavailable",
+        unit: "USD",
+        reason: "no_report_date",
+        observationIds: [],
+      });
+      expect(balance.totalLiabilities.status).toBe("available");
+      expect(balance.shareholdersEquity.status).toBe("available");
+    }
+    expect(result.balances[2]!.totalAssets.status).toBe("available");
+    expect(result.balances.map((balance) => balance.asOfDate)).toEqual([
+      reportDate,
+      "2024-09-30",
+      "2022-06-30",
+    ]);
+  });
+
+  it.each([
+    "0",
+    "-1",
+    "9".repeat(64),
+    `-${"9".repeat(63)}`,
+    `0.${"0".repeat(61)}1`,
+  ])("preserves signed comparative USD %s without calculations", (value) => {
+    const packet = historyInput();
+    Object.assign(packet.balanceSheet.shareholdersEquity.observations[1]!, {
+      value,
+    });
+    expect(
+      availableHistory(packet).balances[1]!.shareholdersEquity,
+    ).toMatchObject({ status: "available", value, currentUseEligible: false });
+  });
+
+  it.each([false, true])(
+    "keeps all agreeing references or refuses a conflicting comparative cell: %s",
+    (conflict) => {
+      const packet = historyInput(),
+        original = packet.balanceSheet.totalAssets.observations;
+      const duplicate = {
+        ...original[1]!,
+        ...{
+          id: row("totalAssets", 50, 4).id,
+          sourceLocator: "/facts/us-gaap/Assets/units/USD/4",
+        },
+        value: conflict ? "1" : original[1]!.value,
+      };
+      const result = availableHistory(
+        withMetric(packet, "totalAssets", metric([...original, duplicate])),
+      );
+      expect(result.balances[1]!.totalAssets).toMatchObject({
+        status: conflict ? "unavailable" : "available",
+        observationIds: [original[1]!.id, duplicate.id],
+        ...(conflict ? { reason: "ambiguous_value" } : { value: "120.125" }),
+      });
+      expect(result.balances[1]!.totalLiabilities.status).toBe("available");
+      expect(result.balances[2]!.totalAssets.status).toBe("available");
+    },
+  );
+
+  it.each([
+    [{ filingFocusPeriod: "Q3" }, "missing_or_non_FY_focus"],
+    [{ startDate: "2024-01-01", durationDays: 274 }, "invalid_instant_period"],
+    [{ form: "10-K/A" }, "unsupported_form"],
+    [
+      { filing: { ...row().filing, reportDate: "2024-09-30" } },
+      "report_end_mismatch",
+    ],
+    [
+      { filing: { ...row().filing, status: "metadata_conflict" } },
+      "filing_unmatched_or_conflicted",
+    ],
+  ] satisfies [Partial<Row>, string][])(
+    "refuses only the affected comparative cell %#, retaining its original coordinates",
+    (change, reason) => {
+      const packet = historyInput();
+      Object.assign(packet.balanceSheet.totalAssets.observations[1]!, change);
+      const result = availableHistory(packet);
+      expect(result.balances[1]!.totalAssets).toMatchObject({
+        status: "unavailable",
+        reason,
+        observationIds: [packet.balanceSheet.totalAssets.observations[1]!.id],
+      });
+      expect(result.balances[1]!.totalLiabilities.status).toBe("available");
+      expect(result.balances[2]!.totalAssets.status).toBe("available");
+      expect(result.balances).toHaveLength(3);
+    },
+  );
+
+  it("refuses a metric with a future date without changing its current total or sibling dates", () => {
+    const packet = historyInput();
+    Object.assign(packet.balanceSheet.totalAssets.observations[1]!, {
+      endDate: "2025-10-01",
+    });
+    expect(resolve(packet).totalAssets.status).toBe("available");
+    const result = availableHistory(packet);
+    expect(result.balances.map((balance) => balance.asOfDate)).toEqual([
+      reportDate,
+      "2024-09-30",
+      "2022-06-30",
+    ]);
+    for (const balance of result.balances) {
+      expect(balance.totalAssets).toMatchObject({
+        status: "unavailable",
+        reason: "report_end_mismatch",
+        observationIds: packet.balanceSheet.totalAssets.observations.map(
+          (row) => row.id,
+        ),
+      });
+      expect(balance.totalLiabilities.status).toBe("available");
+    }
+  });
+
+  it.each([
+    "invalid_response",
+    "candidate_limit",
+    "invalid_source_rows",
+    "selected_report_overflow",
+  ])("isolates %s and excludes its dates", (reason) => {
+    const packet = historyInput();
+    let invalid: PersonalSecAnnualBalanceSheetMetricEvidenceDto;
+    if (reason === "invalid_response" || reason === "candidate_limit")
+      invalid = {
+        scan: { status: reason, absence: null, coverage: null },
+        observations: [],
+      };
+    else {
+      invalid = metric(
+        reason === "invalid_source_rows"
+          ? [{ ...row(), endDate: "2025-08-31" }]
+          : [],
+      );
+      if (invalid.scan.status !== "available") throw new Error("Expected scan");
+      if (reason === "invalid_source_rows")
+        Object.assign(invalid.scan.coverage.full, {
+          candidateRows: 2,
+          inspectedRows: 2,
+          invalidRows: 1,
+        });
+      else {
+        Object.assign(invalid.scan.coverage.full, {
+          candidateRows: 101,
+          inspectedRows: 101,
+          uniqueObservations: 101,
+        });
+        Object.assign(invalid.scan.coverage, {
+          selected: 101,
+          returned: 0,
+          omittedSelected: 101,
+        });
+      }
+    }
+    const result = availableHistory(withMetric(packet, "totalAssets", invalid));
+    expect(result.balances.map((balance) => balance.asOfDate)).toEqual([
+      reportDate,
+      "2024-09-30",
+      "2022-06-30",
+    ]);
+    for (const balance of result.balances) {
+      expect(balance.totalAssets).toMatchObject({
+        status: "unavailable",
+        reason,
+      });
+      expect(balance.shareholdersEquity.status).toBe("available");
+    }
+  });
+
+  it("does not require income, all current totals or a full three-date timeline", () => {
+    let packet = input();
+    packet = withMetric(packet, "totalAssets", metric([], "concept_missing"));
+    packet = withMetric(packet, "totalLiabilities", metric([], "usd_missing"));
+    const result = availableHistory(packet);
+    expect(result.balances).toHaveLength(1);
+    expect(result.balances[0]!.totalAssets).toMatchObject({
+      reason: "concept_missing",
+    });
+    expect(result.balances[0]!.shareholdersEquity).toMatchObject({
+      value: "-20.025",
+    });
+  });
+
+  it.each(["2025-02-29", "2024-2-29", "0000-12-31"])(
+    "rejects malformed comparative date %s before ordering",
+    (endDate) => {
+      const packet = historyInput();
+      Object.assign(packet.balanceSheet.totalAssets.observations[1]!, {
+        endDate,
+      });
+      expect(() => history(packet)).toThrow(TypeError);
+    },
+  );
+
+  it("retains an actual leap date without rewriting the filing report date", () => {
+    const packet = historyInput();
+    for (const key of keys)
+      Object.assign(packet.balanceSheet[key].observations[1]!, {
+        endDate: "2024-02-29",
+      });
+    expect(availableHistory(packet).balances[1]!.asOfDate).toBe("2024-02-29");
+    expect(
+      packet.balanceSheet.totalAssets.observations[1]!.filing.reportDate,
+    ).toBe(reportDate);
+  });
+
+  it.each([485, 486])(
+    "keeps original current-use boundary %d without discarding current raw totals",
+    (days) => {
+      const packet = historyInput(),
+        time = new Date(
+          Date.parse(`${reportDate}T06:00:00.000Z`) + days * 86400000,
+        ).toISOString();
+      Object.assign(packet.generation, { cutoffAt: time, completedAt: time });
+      for (const source of Object.values(packet.generation.sources))
+        Object.assign(source, { fetchedAt: time });
+      expect(history(packet).status).toBe(
+        days === 485 ? "available" : "unavailable",
+      );
+      if (days === 486)
+        expect(history(packet)).toEqual({
+          status: "unavailable",
+          reason: "current_use_unavailable",
+        });
+      expect(resolve(packet).totalAssets.status).toBe("available");
+    },
+  );
+
+  it.each([
+    [{ completedAt: "2026-09-27T06:00:02.001Z" }, "source_stale"],
+    [{ cutoffAt: "2026-02-30T06:00:00.000Z" }, "invalid_clock"],
+  ])("preserves shared source-clock refusal %#", (change, reason) => {
+    const packet = historyInput();
+    Object.assign(packet.generation, change);
+    expect(history(packet)).toEqual({ status: "unavailable", reason });
+  });
+
+  it("returns owned deeply frozen balances and reference arrays", () => {
+    const packet = historyInput(),
+      result = availableHistory(packet);
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.balances)).toBe(true);
+    for (const balance of result.balances)
+      for (const key of keys) {
+        expect(Object.isFrozen(balance)).toBe(true);
+        expect(Object.isFrozen(balance[key])).toBe(true);
+        expect(Object.isFrozen(balance[key].observationIds)).toBe(true);
+      }
+    Object.assign(packet.balanceSheet.totalAssets.observations[1]!, {
+      value: "999",
+    });
+    expect(result.balances[1]!.totalAssets).toMatchObject({ value: "120.125" });
+  });
+});
+
+describe("balance-sheet history admission and non-skipping", () => {
+  it("retains a refused date even when every metric fails there and older dates are valid", () => {
+    const packet = historyInput();
+    for (const key of keys)
+      Object.assign(packet.balanceSheet[key].observations[1]!, {
+        filingFocusPeriod: "Q3",
+      });
+    const result = availableHistory(packet);
+    expect(result.balances.map((balance) => balance.asOfDate)).toEqual([
+      reportDate,
+      "2024-09-30",
+      "2022-06-30",
+    ]);
+    for (const key of keys) {
+      expect(result.balances[1]![key]).toMatchObject({
+        status: "unavailable",
+        reason: "missing_or_non_FY_focus",
+      });
+      expect(result.balances[2]![key].status).toBe("available");
+    }
+  });
+  it.each(["duplicate-id", "accession", "accessor", "hole"])(
+    "rejects malformed %s rather than returning a semantic refusal",
+    (change) => {
+      const packet = historyInput(),
+        rows = packet.balanceSheet.totalAssets.observations;
+      if (change === "duplicate-id")
+        Object.assign(rows[1]!, { id: rows[0]!.id });
+      if (change === "accession")
+        Object.assign(rows[1]!, { accessionNumber: "0000999999-26-000002" });
+      if (change === "accessor")
+        Object.defineProperty(rows[1], "value", {
+          enumerable: true,
+          get: () => {
+            throw new Error("Accessor must not run");
+          },
+        });
+      if (change === "hole") Reflect.deleteProperty(rows, "1");
+      expect(() => history(packet)).toThrow(TypeError);
+    },
+  );
 });

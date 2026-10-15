@@ -39,6 +39,23 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Reported balance-sheet history candidate
+
+The next M2 slice adds an initially closed [reported balance-sheet history](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-history)
+inside Annual. It shows up to three dates from the loaded filing, with independent
+assets, liabilities and parent-equity cells. Missing or refused cells remain
+explicit. Exact signed amounts, original filing references and source clocks are
+retained; no balance equation or ratio is inferred. Annual v5, current totals,
+snapshot summaries, complete captured reports and the existing reads are unchanged.
+Focused domain, component, decoder, capacity and composed lifetime checks pass.
+Invented-data Chrome checks pass at 1440, 390 and 320 CSS pixels, including exact
+long values, independent missing cells, original references, failed-refresh
+retention, Cancel and session retirement with a late reply. Opening history adds
+no request and preserves the unsaved note. Independent source review is clear.
+Fresh hosted native acceptance remains pending. Its existing balance-sheet
+journey retains all 40 cases and previous 110 frames, with one added history
+frame for 111 expected screenshots.
+
 ## Balance sheet totals in main
 
 The source adds [reported balance sheet totals](MANAGED_SEC_ANNUAL.md#reported-balance-sheet-totals)
@@ -618,11 +635,13 @@ each new source increment before integration. Keep live delivery separate under 
 and [Android](ANDROID_CLIENT.md) procedures. Continue the roadmap with admitted
 sources, exact identity, explicit reads and saved-draft/session boundaries.
 
-M4's next useful layer is an evidence-linked company report with exact loaded
-values, all bases, source dates and separate authored assessment. Its export needs
-its own document purpose and provenance; the saved-watchlist export contract must
-remain specific to saved watchlists. The read-only document inspection is
-implemented; report file delivery remains the next layer.
+The evidence-linked [company report](MANAGED_COMPANY_REPORT.md) already provides
+read-only JSON inspection, browser Download report and Android Save report. It
+keeps exact loaded packets, original source dates and the separate authored draft.
+Browser handoff does not prove that a file reached disk; native Save retains its
+existing provider and lifecycle checks. Durable report storage, broader research
+inputs and delivery acceptance remain separate work. Saved-watchlist export
+keeps its own contract.
 
 Price history still covers AAPL, GOOG and GOOGL, three listings for two issuers,
 with dated raw USD closes. Broader fields/cohorts, valuation, portfolio tools,

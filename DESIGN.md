@@ -313,6 +313,15 @@ inputs closed until opened. Wrap long values and identifiers within the region;
 preserve 44-pixel disclosure targets and visible keyboard focus. Add Balance sheet
 totals to the existing report navigation without starting a request.
 
+Place reported balance-sheet history in a separate, initially closed disclosure
+below current totals. Use a focusable, horizontally contained table with metric
+rows and up to three actual date columns. Keep signed figures exact and wrap long
+values; align date headings and numbers with the existing financial tables.
+Missing and refused cells stay readable beside valid siblings. Put full per-cell
+source references in a second closed disclosure. Preserve 44px summary targets,
+visible keyboard focus and the current totals’ separate selectors. Opening
+history must not request data or imply a complete timeline.
+
 Place Annual liquidity after cash in a two-column Measure/Value table. Show the
 two reported balances and two labelled app calculations with their exact balance
 dates, USD or multiple units and current-use qualifications. Keep thin row rules,
