@@ -24,6 +24,12 @@ It separates the exact authored watchlist draft from dated loaded source summari
 Preparation is explicit and adds no source read or saved change. Intervening source,
 note or visit changes remove the preview. Export and durable reports remain open.
 
+The next report layer exposes an initially closed, read-only JSON document with
+the exact authored draft and complete admitted Price, Annual and Filings packets.
+All financial inputs, revenue bases, source dates and unavailable values stay in
+their original packets. It adds no request or write. Purpose-specific file
+delivery remains separate from inspection and saved-watchlist export.
+
 The preceding M4 thesis candidate adds optional **Research purpose** and **Time horizon**
 to the authored review. The owner can distinguish exploring an idea from reviewing
 a holding, preview the complete text, then append and save it through the existing

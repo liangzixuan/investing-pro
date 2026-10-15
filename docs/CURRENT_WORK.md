@@ -22,6 +22,15 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Consolidated research candidate
 
+The next report increment adds an inspectable JSON document to the current
+prepared preview. It separates the exact authored draft from complete admitted
+source packets, including Annual's original income, cash and liquidity inputs,
+filing coordinates, coverage and validation. Each source retains its original
+clocks and previous-response status. The document starts closed and clears with
+the parent report. It adds no request, calculation, Save, clipboard access or file
+delivery; browser and Android share the read-only inspection. Its new-head
+acceptance remains separate from the preceding preview.
+
 The next M4 increment adds an explicit [research report preview](MANAGED_COMPANY_REPORT.md).
 It separates the full authored watchlist draft from existing dated Price, Annual
 and Filings summaries. At least one loaded source is required; pending reads block

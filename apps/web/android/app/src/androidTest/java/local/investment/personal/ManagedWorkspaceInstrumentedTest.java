@@ -1807,11 +1807,13 @@ public class ManagedWorkspaceInstrumentedTest {
             DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) + " && " + DIAGNOSTICS + ".save === 0");
         retainAnnualNoteFrame("companyResearchReport", "#managed-prepared-report-heading",
             "#managed-prepared-report-heading, #managed-report-note-heading, .managed-company-report-note", 3);
+        assertPreparedReportDocument();
         touchInput("managed-research-note");
         replaceFocusedInput("managed-research-note", NOTE, NOTE + " changed");
         awaitPage("intervening draft edit immediately removes the prepared report",
             "document.querySelector('#managed-prepared-report-heading') === null && " +
             "document.querySelector('.managed-company-report-note') === null && " +
+            "document.querySelector('#managed-report-document') === null && " +
             report + ".textContent.includes('Prepare a new report')");
         touchInput("managed-research-note");
         replaceFocusedInput("managed-research-note", NOTE + " changed", NOTE);
@@ -1819,6 +1821,28 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-prepared-report-heading') === null && " +
             DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) + " && " +
             DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
+    }
+
+    private void assertPreparedReportDocument() throws Exception {
+        awaitPage("report document starts closed with no serialized textarea",
+            "document.querySelector('.managed-report-document')?.open === false && " +
+            "document.querySelector('#managed-report-document') === null");
+        click(".managed-report-document > summary");
+        awaitPage("report JSON retains the exact draft, complete admitted packets and source clocks",
+            "(() => { const field = document.querySelector('#managed-report-document'); " +
+            "if (!field?.readOnly || !field.value) return false; const value = JSON.parse(field.value); " +
+            "return value.purpose === 'investment.company-research' && value.schemaVersion === '1.0.0' && " +
+            "value.authoredResearch.status === 'watchlist_draft' && value.authoredResearch.note === " + JSONObject.quote(NOTE) + " && " +
+            "value.listing.listingId === 'listing-zero' && value.listing.symbol === 'ZERO' && " +
+            "value.sources.price.response.completedAt === '2026-09-20T00:00:02.000Z' && " +
+            "value.sources.annual.response.evidence.cashGeneration.resolution !== undefined && " +
+            "value.sources.annual.response.evidence.liquidity.resolution !== undefined && " +
+            "Array.isArray(value.sources.annual.response.evidence.observations) && " +
+            "Array.isArray(value.sources.filings.response.issuer.filings) && " +
+            "value.sources.filings.response.window.fromDate === '2026-06-23' && " +
+            DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0; })()");
+        retainAnnualNoteFrame("companyResearchDocument", ".managed-report-document > summary",
+            ".managed-report-document > summary, #managed-report-document-scope, label[for='managed-report-document'], #managed-report-document", 4);
     }
 
     @Test

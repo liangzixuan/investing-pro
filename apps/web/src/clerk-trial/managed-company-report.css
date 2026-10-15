@@ -24,3 +24,24 @@
   border-left: 3px solid var(--managed-line);
   color: var(--managed-ink);
 }
+.managed-frame .managed-report-document {
+  margin-block: 24px;
+  border-top: 1px solid var(--managed-line);
+}
+.managed-frame .managed-report-document > summary {
+  min-height: 44px;
+  padding-block: 12px;
+  color: var(--managed-action);
+  cursor: pointer;
+}
+.managed-frame .managed-report-document textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 160px;
+  margin-block: 8px 16px;
+  resize: vertical;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
