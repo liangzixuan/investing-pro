@@ -1015,15 +1015,15 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
     });
   });
 
-  it("rolls back every staging fault and retries key cleanup after side-effecting adapter failure", async () => {
-    const stages = [
-      "key_created",
-      "ciphertext_written",
-      "audit_written",
-      "before_publish",
-      "published",
-    ] as const satisfies readonly FilingPayloadCustodyFaultPhase[];
-    for (const phase of stages) {
+  it.each([
+    "key_created",
+    "ciphertext_written",
+    "audit_written",
+    "before_publish",
+    "published",
+  ] as const satisfies readonly FilingPayloadCustodyFaultPhase[])(
+    "rolls back staging fault %s without leaving keys or records",
+    async (phase) => {
       await withEmptyParent(async (parent) => {
         let injected = false;
         const harness = await createBoundaryHarness(parent, {
@@ -1053,8 +1053,10 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
         await harness.boundary.close();
         expect(await readdir(parent)).toEqual([]);
       });
-    }
+    },
+  );
 
+  it("cleans a key when put reports failure after its side effect", async () => {
     await withEmptyParent(async (parent) => {
       const keyStore = keyStoreHarness();
       keyStore.putSideEffectThenThrow();
@@ -1069,7 +1071,9 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
       expect(keyStore.keyIds()).toEqual([]);
       await harness.boundary.close();
     });
+  });
 
+  it("does not forget a foreign key after an identifier collision", async () => {
     await withEmptyParent(async (parent) => {
       let forgetCalls = 0;
       const foreignCollisionKeyStore: FilingPayloadKeyStore = {
@@ -1094,7 +1098,9 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
       await boundary.close();
       expect(forgetCalls).toBe(0);
     });
+  });
 
+  it("retries owned-key cleanup on close after a staging cleanup failure", async () => {
     await withEmptyParent(async (parent) => {
       const keyStore = keyStoreHarness();
       keyStore.failForget();

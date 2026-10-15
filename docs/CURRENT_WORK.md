@@ -123,6 +123,17 @@ parity, broaden price coverage or add an AI investment verdict.
 
 ## Verification and remaining source acceptance
 
+The original report-preview Windows check timed out in one custody-security test
+that grouped five staging faults and three key-cleanup scenarios under a single
+five-second test deadline. The next correction gives each scenario its own test
+with the same default deadline. A TypeScript syntax-tree comparison confirms
+identical executable callbacks, assertions, phase values and outside-group code.
+The full custody package passes 239 cases with its two existing platform skips;
+types, scoped lint, canonical fixture verification and source boundaries pass.
+Only that security test's manifest hash changes. Runtime, payload/case bytes,
+validators, workflows and deadlines remain unchanged. The original failed outcome
+is retained; the corrected source needs its own hosted acceptance.
+
 The preceding exact source, [PR142](https://github.com/liangzixuan/investing-pro/pull/142)
 at `3e1f0f4`, passed all six original Actions jobs and its own CodeScene review.
 Ubuntu and Windows run the full source checks. Its original Android execution
