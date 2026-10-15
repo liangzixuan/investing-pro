@@ -1,3 +1,4 @@
+import { createNativeReportFixture } from "./native-report-fixture";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { useLayoutEffect, useState, useSyncExternalStore } from "react";
@@ -47,6 +48,8 @@ if (
 if (scenario === "company-direct-entry")
   history.replaceState(null, "", "/?company=listing-zero&section=annual");
 const fixture = await createFixture(scenario ?? "default");
+const nativeReport =
+  scenario === "company-snapshot" ? createNativeReportFixture() : null;
 const nativeExport =
   scenario === "watchlist-export" ? createNativeExportFixture() : null;
 
@@ -75,6 +78,7 @@ function FixtureSession() {
           <ManagedWorkspaceRouter
             workspace={workspace}
             androidBack={App}
+            {...(nativeReport ? { reportDelivery: nativeReport.delivery } : {})}
             {...(nativeExport ? { exportDelivery: nativeExport.delivery } : {})}
           />
         ) : (
@@ -82,6 +86,9 @@ function FixtureSession() {
         )}
       </TrialFrame>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
+      {workspace && nativeReport && (
+        <nativeReport.Controls workspace={workspace} />
+      )}
       {workspace && nativeExport && (
         <nativeExport.Controls workspace={workspace} />
       )}

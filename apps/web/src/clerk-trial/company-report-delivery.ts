@@ -1,12 +1,12 @@
 import type { CompanyReportDocument } from "./managed-company-report-document";
 import type {
-  BrowserTextDownloadContext,
-  BrowserTextDownloadResult,
-} from "./browser-text-download";
-
+  TextDocumentDeliveryContext,
+  TextDocumentDeliveryResult,
+} from "./document-delivery";
 export interface CompanyReportDeliveryAdapter {
+  readonly destination: "browser_download" | "system_document";
   deliver(
     document: CompanyReportDocument,
-    context: BrowserTextDownloadContext,
-  ): Promise<BrowserTextDownloadResult>;
+    context: TextDocumentDeliveryContext,
+  ): Promise<TextDocumentDeliveryResult>;
 }

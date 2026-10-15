@@ -4,8 +4,8 @@ import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 
 const idle = { busy: false, message: "" };
 
-/** Owns one mounted report's explicit file handoff; retirement cannot undo a download. */
-export class CompanyReportDownload {
+/** Owns one mounted report's explicit file handoff; retirement cannot undo a received file. */
+export class PreparedReportDelivery {
   private state = idle;
   private listeners = new Set<() => void>();
   private pending: AbortController | null = null;
@@ -34,7 +34,7 @@ export class CompanyReportDownload {
     if (!document) {
       this.publish(
         false,
-        "Report download unavailable: the complete document cannot be prepared within its limits.",
+        "Report file unavailable: the complete document cannot be prepared within its limits.",
       );
       return;
     }
@@ -52,18 +52,30 @@ export class CompanyReportDownload {
         signal: operation.signal,
         isCurrent: current,
       });
-      if (current())
-        this.publish(
-          false,
-          outcome === "download_requested"
+      if (!current()) return;
+      const native = this.delivery.destination === "system_document";
+      if (
+        (outcome === "written" && !native) ||
+        (outcome === "download_requested" && native)
+      )
+        throw new Error();
+      this.publish(
+        false,
+        outcome === "written"
+          ? `Saved report ${document.filename} to the chosen document.`
+          : outcome === "download_requested"
             ? `Download requested for ${document.filename}.`
-            : "Report download cancelled.",
-        );
+            : native
+              ? "Report save cancelled."
+              : "Report download cancelled.",
+      );
     } catch {
       if (current())
         this.publish(
           false,
-          "Report download could not be requested. Check your downloads before trying again.",
+          this.delivery.destination === "system_document"
+            ? "Report could not be saved. Check the chosen destination before trying again."
+            : "Report download could not be requested. Check your downloads before trying again.",
         );
     } finally {
       if (this.pending === operation) {

@@ -1,13 +1,13 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PreparedCompanyReport } from "./managed-company-report";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
-import { CompanyReportDownload } from "./company-report-download";
+import { PreparedReportDelivery } from "./prepared-report-delivery";
 
 const idle = { busy: false, message: "" };
 const noSubscription = () => () => {};
 const idleSnapshot = () => idle;
 
-export function ManagedCompanyReportDownload({
+export function ManagedCompanyReportDelivery({
   report,
   delivery,
   isCurrent,
@@ -18,9 +18,9 @@ export function ManagedCompanyReportDownload({
 }) {
   const latestCurrent = useRef(isCurrent);
   latestCurrent.current = isCurrent;
-  const [model, setModel] = useState<CompanyReportDownload | null>(null);
+  const [model, setModel] = useState<PreparedReportDelivery | null>(null);
   useLayoutEffect(() => {
-    const mounted = new CompanyReportDownload(report, delivery, () =>
+    const mounted = new PreparedReportDelivery(report, delivery, () =>
       latestCurrent.current(),
     );
     setModel(mounted);
@@ -32,12 +32,13 @@ export function ManagedCompanyReportDownload({
     model?.getSnapshot ?? idleSnapshot,
     idleSnapshot,
   );
+  const native = delivery.destination === "system_document";
   return (
-    <div className="managed-report-download">
+    <div className="managed-report-delivery">
       <p>
-        Download the prepared sources and this company’s exact watchlist note,
-        including unsaved edits. The file stays at the download destination and
-        does not update with later edits.
+        {native
+          ? "Choose a destination for the prepared sources and this company’s exact watchlist note, including unsaved edits. The saved file does not update with later edits."
+          : "Download the prepared sources and this company’s exact watchlist note, including unsaved edits. The file stays at the download destination and does not update with later edits."}
       </p>
       <button
         type="button"
@@ -47,7 +48,13 @@ export function ManagedCompanyReportDownload({
           if (owned) void model.start();
         }}
       >
-        {state.busy ? "Requesting report download…" : "Download report (JSON)"}
+        {state.busy
+          ? native
+            ? "Saving report…"
+            : "Requesting report download…"
+          : native
+            ? "Save report (JSON)"
+            : "Download report (JSON)"}
       </button>
       {state.message && <p role="status">{state.message}</p>}
     </div>

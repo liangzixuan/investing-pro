@@ -78,8 +78,31 @@ and byte admission. Browser report and saved-watchlist delivery share only the
 temporary Blob/anchor transport and cleanup; their document contracts stay
 separate.
 
-Android and disconnected clients do not receive the browser adapter. Their
-read-only inspection remains available where the report is supported. The Android
-saved-watchlist writer has a smaller byte bound and must not receive a report
-under its contract. Native report delivery, durable report storage, verified
-claim citations, outside opinions and AI analysis remain separate M4 work.
+## Save from Android
+
+In the managed Android app, select **Save report (JSON)**. The system file picker
+lets you choose the destination. This uses Android's [Storage Access Framework](https://developer.android.com/training/data-storage/shared/documents-files)
+and needs no broad storage permission. The app writes only to the content handle
+chosen for that one operation. It does not retain a destination permission or
+restore an unfinished save after Activity recreation.
+
+The report has a fixed native purpose, JSON schema, safe filename and complete
+UTF-8 byte limit. Before opening output, the writer checks the embedded listing,
+exchange and preparation time against the original filename suggestion. It does
+not replace financial-source admission or import the file as account data. The
+saved-watchlist writer keeps its separate version, filename and smaller byte cap;
+only destination and lifecycle handling are shared.
+
+Cancelling the picker writes no report. Editing the draft, changing sources,
+clearing the report or retiring the session refuses a stale choice or pending
+write. The writer rechecks cancellation after a provider finishes opening the
+chosen stream. A file already created or written can remain, and an interrupted
+provider write can leave a partial file. Check the chosen destination before
+retrying; the app never retries automatically. Success confirms that the provider
+write, flush and close completed. It does not establish later availability or
+that another application opened the file.
+
+Browser and Android file actions keep the same prepared-source and authored-note
+scope. Disconnected clients do not receive either delivery capability. Durable
+report storage, verified claim citations, outside opinions and AI analysis remain
+separate M4 work.

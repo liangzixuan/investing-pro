@@ -249,7 +249,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
-        if (testName.getMethodName().equals("loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads"))
+        if (testName.getMethodName().equals("loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads") ||
+            testName.getMethodName().equals("preparedCompanyReportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("company-snapshot");
         if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("price-comparison-note");
@@ -1720,6 +1721,279 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void preparedCompanyReportUsesSystemPickerAndPreservesDraft() throws Exception {
+        android.content.Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        WatchlistTestDocuments.clear(appContext);
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        String note = "Unsaved Café 東京 📈 with exact whitespace  ";
+        WatchlistSystemPicker picker = new WatchlistSystemPicker();
+        try {
+            prepareDraftAndOpenAnnual();
+            click(".managed-annual-report .trial-actions button:first-child");
+            awaitPage("one explicit Annual source is ready for native report saving",
+                DIAGNOSTICS + ".annual === 1 && document.querySelector('.managed-annual-report .sec-quarterly-comparison') !== null");
+            replaceReportNoteWithNativeIme(NOTE, note);
+            click(".managed-company-report > summary");
+            prepareNativeCompanyReport(note);
+            awaitPage("native report inspection starts closed and never creates a browser download action",
+                "document.querySelector('.managed-report-document')?.open === false && " +
+                "document.querySelector('#managed-report-document') === null && " +
+                "!document.querySelector('.managed-report-delivery')?.textContent.includes('Download report (JSON)')");
+            click(".managed-report-document > summary");
+            awaitPage("the complete prepared JSON contains the exact unsaved Unicode draft and loaded source",
+                "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly || !field.value) return false;" +
+                " const report = JSON.parse(field.value); return report.authoredResearch.note === " + JSONObject.quote(note) +
+                " && report.purpose === 'investment.company-research' && report.schemaVersion === '1.0.0'" +
+                " && report.listing.listingId === 'listing-zero' && report.listing.symbol === 'ZERO' && report.listing.exchangeMic === 'XNAS'" +
+                " && report.sources.annual.response.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
+                " && report.sources.price.status === 'not_loaded' && report.sources.filings.status === 'not_loaded'; })()");
+            String expectedText = readFixtureString("document.querySelector('#managed-report-document').value");
+            JSONObject report = new JSONObject(expectedText);
+            String filename = "Investment-research-ZERO-XNAS-" + report.getString("preparedAt").replaceAll("[-:.]", "") + ".json";
+            click(".managed-report-document > summary");
+            awaitPage("closing inspection does not remove the current native Save action",
+                "document.querySelector('#managed-report-document') === null && " +
+                "document.querySelector('.managed-report-delivery button')?.disabled === false");
+            click(".managed-report-delivery button");
+            picker.cancel();
+            awaitPage("cancelled report picker returns to the same prepared draft",
+                "document.querySelector('.managed-report-delivery [role=status]')?.textContent === 'Report save cancelled.'");
+            assertEquals(0, WatchlistTestDocuments.outputs(appContext).length);
+            assertNativeReportDraftAndReads(documentTimeOrigin, note);
+            click(".managed-report-delivery button");
+            picker.saveToInventedRoot();
+            awaitPage("native report writer confirms the explicitly chosen document",
+                "document.querySelector('.managed-report-delivery [role=status]')?.textContent === " +
+                JSONObject.quote("Saved report " + filename + " to the chosen document."));
+            WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(appContext);
+            assertEquals(1, outputs.length);
+            assertEquals(filename, outputs[0].name);
+            assertArrayEquals(expectedText.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.readReport(appContext, outputs[0]));
+            click("#fixture-report-replay");
+            awaitPage("wrong operations, wrong handles, duplicate picker and consumed report handle all refuse",
+                "(() => { const state = JSON.parse(document.querySelector('#fixture-report-protocol').textContent);" +
+                " return state.mismatchRefused === 2 && state.duplicateRefused === 1 && state.replayRefused === 1 && !state.protocolError; })()");
+            assertArrayEquals(expectedText.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.readReport(appContext, outputs[0]));
+            assertNativeReportDraftAndReads(documentTimeOrigin, note);
+            retainAnnualNoteFrame("companyReportSaved", ".managed-report-delivery",
+                ".managed-report-delivery > p, .managed-report-delivery > button", 3);
+            for (String kind : new String[] { "maximum", "oversize", "unicode", "purpose", "filename" }) {
+                WatchlistTestDocuments.clear(appContext);
+                JSONObject started = startNativeReportProbe(kind, picker);
+                picker.saveToInventedRoot();
+                assertNativeReportProbe(appContext, kind, started);
+                assertNativeReportDraftAndReads(documentTimeOrigin, note);
+            }
+            WatchlistTestDocuments.clear(appContext);
+            int priorCancels = new JSONObject(readFixtureString(
+                "document.querySelector('#fixture-report-protocol').textContent")).getInt("cancelsSettled");
+            WatchlistTestDocuments.armReportOpen(appContext);
+            click(".managed-report-delivery button");
+            picker.saveToInventedRoot();
+            awaitNativeReportOpenEntered(appContext);
+            String openingNote = "Changed while opening report destination";
+            replaceReportNoteWithNativeIme(note, openingNote);
+            awaitPage("the edited report retires and native cancellation acknowledges before the provider is released",
+                "document.querySelector('.managed-report-delivery') === null && " +
+                "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).cancelsSettled > " + priorCancels);
+            WatchlistTestDocuments.releaseReportOpen(appContext);
+            awaitPage("cancelled held-open report write settles without restoring a delivery action",
+                "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).writesSettled === 2 && " +
+                "document.querySelector('.managed-report-delivery') === null");
+            assertEmptyNativeReportDestination(appContext);
+            assertNativeReportDraftAndReads(documentTimeOrigin, openingNote);
+            prepareNativeCompanyReport(openingNote);
+            WatchlistTestDocuments.clear(appContext);
+            click("#fixture-report-edit");
+            click(".managed-report-delivery button");
+            picker.saveToInventedRoot();
+            awaitPage("an intervening actual draft edit fences the late chosen report destination",
+                DRAFT + ".memberships?.[1]?.note === 'Changed after report choice' && " +
+                "document.querySelector('.managed-report-delivery') === null && document.querySelector('#managed-report-document') === null");
+            assertEmptyNativeReportDestination(appContext);
+            assertNativeReportDraftAndReads(documentTimeOrigin, "Changed after report choice");
+            prepareNativeCompanyReport("Changed after report choice");
+            WatchlistTestDocuments.clear(appContext);
+            click("#fixture-report-retire");
+            click(".managed-report-delivery button");
+            picker.saveToInventedRoot();
+            awaitPage("retired session fences the chosen report and clears the authored draft",
+                DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && " +
+                "document.querySelector('.managed-report-delivery') === null && document.querySelector('#managed-report-document') === null");
+            assertEmptyNativeReportDestination(appContext);
+            assertNativeReportReadCounts();
+            assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+            assertFixtureBoundary();
+            WatchlistTestDocuments.clear(appContext);
+            click("#fixture-report-choose-only");
+            picker.saveToInventedRoot();
+            awaitPage("one unwritten report handle awaits recreation",
+                "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).choice?.handle?.length === 36");
+            JSONObject choice = new JSONObject(readFixtureString(
+                "JSON.stringify(JSON.parse(document.querySelector('#fixture-report-protocol').textContent).choice)"));
+            assertRecreatedReportHandleRefused(choice);
+            assertEmptyNativeReportDestination(appContext);
+        } finally {
+            WatchlistTestDocuments.clear(appContext);
+        }
+    }
+
+    private void prepareNativeCompanyReport(String note) throws Exception {
+        click(".managed-company-report .trial-actions button:first-child");
+        awaitPage("explicit preparation enables a full-size native Save control for the exact current note",
+            "document.querySelector('#managed-prepared-report-heading')?.textContent === 'Research report · ZERO' && " +
+            "document.querySelector('.managed-company-report-note')?.textContent === " + JSONObject.quote(note) + " && " +
+            "document.querySelector('.managed-report-delivery button')?.textContent === 'Save report (JSON)' && " +
+            "document.querySelector('.managed-report-delivery button')?.disabled === false && " +
+            "document.querySelector('.managed-report-delivery button')?.getBoundingClientRect().height >= 44");
+    }
+
+    /** Commit invented Unicode through the real focused native IME connection, not DOM assignment. */
+    private void replaceReportNoteWithNativeIme(String expectedBefore, String note) throws Exception {
+        touchInput("managed-research-note");
+        awaitNativeEditor("managed-research-note");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(new EspressoKey.Builder()
+            .withKeyCode(KeyEvent.KEYCODE_A).withCtrlPressed(true).build()));
+        awaitPage("native select-all covers the original exact report note",
+            "document.activeElement === document.querySelector('#managed-research-note') && " +
+            "document.activeElement.value === " + JSONObject.quote(expectedBefore) + " && " +
+            "document.activeElement.selectionStart === 0 && document.activeElement.selectionEnd === " + expectedBefore.length());
+        awaitNativeEditor("managed-research-note");
+        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
+            @Override public Matcher<View> getConstraints() { return isDisplayed(); }
+            @Override public String getDescription() { return "commit the exact invented report note through native IME"; }
+            @Override public void perform(UiController controller, View view) {
+                assertTrue(view.hasFocus() && view.hasWindowFocus());
+                android.view.inputmethod.InputConnection input = ((WebView) view).onCreateInputConnection(
+                    new android.view.inputmethod.EditorInfo());
+                assertNotNull("The actual WebView editor must supply a native connection", input);
+                assertTrue("Native IME commit must dispatch", input.commitText(note, 1));
+                controller.loopMainThreadUntilIdle();
+            }
+        });
+        awaitPage("native Unicode input preserves the raw authored note and trailing whitespace",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(note) + " && " +
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(note));
+        closeSoftKeyboard();
+    }
+
+    private void assertNativeReportDraftAndReads(double documentTimeOrigin, String note) throws Exception {
+        awaitPage("report delivery preserves the exact unsaved draft and makes no source or Save request",
+            DRAFT + ".dirty === true && " + DRAFT + ".baseVersion === 1 && " +
+            DRAFT + ".memberships?.length === 2 && " +
+            DRAFT + ".memberships?.[0]?.listingId === 'listing-one' && " +
+            DRAFT + ".memberships?.[0]?.note === 'Invented second note' && " +
+            DRAFT + ".memberships?.[1]?.listingId === 'listing-zero' && " +
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(note));
+        assertNativeReportReadCounts();
+        assertEquals("Same Activity report picker return preserves the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private void assertNativeReportReadCounts() throws Exception {
+        awaitPage("report writing makes no automatic source, account or watchlist Save request",
+            DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".search === 1 && " +
+            DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 0 && " +
+            DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".marketsEod === 0 && " + DIAGNOSTICS + ".token === 0");
+    }
+
+    private void awaitNativeReportOpenEntered(android.content.Context context) throws Exception {
+        long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (WatchlistTestDocuments.reportOpenEntered(context)) return;
+            long remaining = deadline - SystemClock.uptimeMillis();
+            if (remaining > 0) Thread.sleep(Math.min(50, remaining));
+        }
+        fail("The real report provider did not enter its held open before the existing page deadline");
+    }
+
+    private JSONObject startNativeReportProbe(String kind, WatchlistSystemPicker picker) throws Exception {
+        AtomicReference<WebView> page = new AtomicReference<>();
+        scenario.onActivity(activity -> page.set(activity.getBridge().getWebView()));
+        click("#fixture-report-" + kind);
+        picker.awaitOpen();
+        // The digest is asynchronous. Observe the retained page only after the actual picker opens.
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> result = new AtomicReference<>();
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> page.get().evaluateJavascript(
+            "JSON.stringify(JSON.parse(document.querySelector('#fixture-report-protocol').textContent).probe)",
+            value -> { result.set(value); returned.countDown(); }));
+        assertTrue("Report probe metadata must return while DocumentsUI owns the foreground", returned.await(2, TimeUnit.SECONDS));
+        Object decoded = new org.json.JSONTokener(result.get()).nextValue();
+        assertTrue(decoded instanceof String);
+        JSONObject started = new JSONObject((String) decoded);
+        assertEquals(kind, started.getString("kind"));
+        assertEquals("choosing", started.getString("phase"));
+        assertTrue(started.isNull("error"));
+        assertTrue(started.getString("sha256").matches("[0-9a-f]{64}"));
+        assertTrue(started.getInt("byteLength") > 0);
+        return started;
+    }
+
+    private void assertNativeReportProbe(android.content.Context context, String kind, JSONObject started) throws Exception {
+        String expectedOutcome = kind.equals("maximum") ? "written" : "refused";
+        awaitPage("the current complete report boundary probe settles with its expected outcome",
+            "(() => { const probe = JSON.parse(document.querySelector('#fixture-report-protocol').textContent).probe;" +
+            " return probe.kind === " + JSONObject.quote(kind) + " && probe.phase === 'settled' && probe.error === null" +
+            " && probe.outcome === " + JSONObject.quote(expectedOutcome) +
+            " && probe.sha256 === " + JSONObject.quote(started.getString("sha256")) + "; })()");
+        WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
+        assertEquals(1, outputs.length);
+        if (kind.equals("maximum")) {
+            byte[] bytes = WatchlistTestDocuments.readReport(context, outputs[0]);
+            assertEquals(InvestmentCompanyReportPlugin.MAX_REPORT_BYTES, started.getInt("byteLength"));
+            assertEquals(InvestmentCompanyReportPlugin.MAX_REPORT_BYTES, bytes.length);
+            assertEquals(started.getString("sha256"), java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256").digest(bytes)));
+            JSONObject document = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
+            assertEquals("investment.company-research", document.getString("purpose"));
+            assertEquals("Café 東京 📈", document.getJSONObject("authoredResearch").getString("note"));
+        } else {
+            assertEquals("Invalid report input must not write any chosen-file bytes", 0, outputs[0].size);
+        }
+    }
+
+    private void assertEmptyNativeReportDestination(android.content.Context context) {
+        WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
+        assertEquals(1, outputs.length);
+        assertEquals("The picker may create a destination, but the retired report must not write", 0, outputs[0].size);
+    }
+
+    private void assertRecreatedReportHandleRefused(JSONObject choice) throws Exception {
+        AtomicReference<com.getcapacitor.Plugin> previous = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            previous.set(activity.getBridge().getPlugin("InvestmentCompanyReport").getInstance());
+            assertNull(((InvestmentCompanyReportPlugin) previous.get()).saveInstanceState());
+        });
+        scenario.recreate();
+        CompletableFuture<String> result = new CompletableFuture<>();
+        com.getcapacitor.JSObject options = new com.getcapacitor.JSObject()
+            .put("operationId", choice.getString("operationId"))
+            .put("handle", choice.getString("handle")).put("text", "Must not be written");
+        com.getcapacitor.PluginCall probe = new com.getcapacitor.PluginCall(
+            null, "InvestmentCompanyReport", "invented-report-recreation-probe", "write", options) {
+            @Override public void reject(String message, String code) { result.complete(code); }
+            @Override public void resolve(com.getcapacitor.JSObject value) { result.complete("unexpected_write"); }
+        };
+        scenario.onActivity(activity -> {
+            InvestmentCompanyReportPlugin current = (InvestmentCompanyReportPlugin)
+                activity.getBridge().getPlugin("InvestmentCompanyReport").getInstance();
+            assertNotSame(previous.get(), current);
+            assertNull(current.saveInstanceState());
+            assertNull(activity.getBridge().getPlugin("InvestmentAuth"));
+            current.write(probe);
+            activity.getBridge().setServerBasePath(fixtureDirectory.getAbsolutePath());
+        });
+        assertEquals("invalid_handle", result.get(2, TimeUnit.SECONDS));
+        awaitPage("recreated fixture restores no chosen report or prepared report state",
+            "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).choice === null && " +
+            "document.querySelector('.managed-report-delivery') === null && " +
+            DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0 && " +
+            DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0");
+        assertFixtureBoundary();
+    }
+
+    @Test
     public void loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         prepareDraftAndOpenAnnual();
@@ -1837,7 +2111,8 @@ public class ManagedWorkspaceInstrumentedTest {
             "value.sources.price.response.completedAt === '2026-09-20T00:00:01.000Z' && " +
             "value.sources.annual.response.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z' && " +
             "value.sources.filings.response.completedAt === '2026-09-20T00:00:02.000Z' && " +
-            "document.querySelector('.managed-report-download') === null && " +
+            "document.querySelector('.managed-report-delivery button')?.textContent === 'Save report (JSON)' && " +
+            "document.querySelector('.managed-report-delivery button')?.disabled === false && " +
             "value.sources.annual.response.evidence.cashGeneration.resolution !== undefined && " +
             "value.sources.annual.response.evidence.liquidity.resolution !== undefined && " +
             "Array.isArray(value.sources.annual.response.evidence.observations) && " +

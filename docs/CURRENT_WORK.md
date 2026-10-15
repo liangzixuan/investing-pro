@@ -22,6 +22,16 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Consolidated research candidate
 
+The next report increment adds explicit Android JSON saving through the system
+file picker. Its fixed report purpose, identity/time filename and complete UTF-8
+bound stay separate from the existing saved-watchlist writer. Both share only
+transient destination and lifecycle handling. Actual draft/source/visit checks
+fence stale choices; report retirement aborts pending work. A post-open cancellation
+check also prevents a provider that returned late from receiving report bytes.
+Local verification is in progress. The new native journey exercises the complete
+report bound, malformed input, cancelled/retired handles and a held provider open;
+its own hosted execution and live publication remain separate.
+
 The next report increment adds explicit JSON download in the managed browser.
 It checks the actual draft and source models before the file handoff and fences
 late results after report closure. It includes unsaved authored text, retains
