@@ -5,12 +5,14 @@ import { ManagedThesisReview } from "./ManagedThesisReview";
 /** Edits the watchlist draft; the existing watchlist screen owns explicit saves. */
 export function ManagedResearchNote({
   state,
+  navigationPending,
   symbol,
   onAdd,
   onNote,
   onReview,
 }: {
   state: ResearchWatchlistState;
+  navigationPending: boolean;
   symbol: string;
   onAdd: () => void;
   onNote: (note: string, expectedNote?: string) => void;
@@ -27,7 +29,11 @@ export function ManagedResearchNote({
         >
           {state.member ? "In watchlist draft" : "Add to watchlist draft"}
         </button>
-        <button className="trial-secondary" onClick={onReview}>
+        <button
+          className="trial-secondary"
+          disabled={navigationPending}
+          onClick={onReview}
+        >
           Review in My Watchlist
         </button>
       </div>

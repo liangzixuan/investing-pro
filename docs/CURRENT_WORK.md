@@ -30,6 +30,26 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Company research overview candidate
 
+Company navigation now exposes its existing pending fence to the controls.
+Section changes, Back, company opening and workspace navigation stay disabled
+until the route commits. Evidence, draft editing, Save, report preparation,
+Cancel and the selected source's direct Load retain their existing rules. No
+action is queued or retried. The synchronous fence still rejects stale or
+overlapping callbacks before source or identity work starts.
+
+The affected 398 web tests and web type check pass. Independent source review
+found no actionable issue. Three native waits add actual next-control readiness
+to their original data and focus predicates; all prior assertions, actions and
+deadlines remain. Java and constructed predicate syntax checks pass. The original
+Android failure cause remains unproven. A current-source Chrome check holds the
+Annual route commit, verifies disabled navigation and editable notes, releases
+the commit, then returns to exact Price evidence with one enabled click. The
+original focus, draft and request-count predicates pass throughout their relevant
+states. The private preview and tab are closed. Fresh hosted native acceptance
+remains separate; see
+`tmp/project-manager-20261015/research-followups/navigation-readiness/WORK.md`
+in the parent workspace.
+
 The operating-change and company-overview source increments are merged into main
 at `18b08b8` after the owner's scoped email approval and the final revision, base
 and check recheck. Their five original Actions workflows and six jobs each passed;

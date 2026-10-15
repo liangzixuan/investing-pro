@@ -31,6 +31,7 @@ describe("bounded native company-snapshot journey", () => {
     const html = () =>
       renderToStaticMarkup(
         <CompanySnapshotView
+          navigationPending={false}
           evidence={companySnapshotEvidence(
             workspace.getSnapshot().research!.selection,
             workspace.eod.getSnapshot(),

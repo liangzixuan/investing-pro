@@ -6,9 +6,11 @@ import { SecAnnualOperatingValueContent } from "../features/research/SecAnnualOp
 import { SecAnnualLiquidityValueContent } from "../features/research/SecAnnualLiquidity";
 
 export function CompanySnapshotAnnual({
+  navigationPending,
   state,
   onOpen,
 }: {
+  navigationPending: boolean;
   state: ManagedAnnualReportState | null;
   onOpen: () => void;
 }) {
@@ -32,7 +34,11 @@ export function CompanySnapshotAnnual({
           explicitly.
         </p>
       )}
-      <button className="trial-secondary" onClick={onOpen}>
+      <button
+        className="trial-secondary"
+        disabled={navigationPending}
+        onClick={onOpen}
+      >
         Open Annual section
       </button>
     </section>

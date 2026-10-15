@@ -62,6 +62,7 @@ async function fixture(
   const html = () =>
     renderToStaticMarkup(
       <ManagedCompanySnapshot
+        navigationPending={false}
         selection={eodSelection}
         price={price}
         annual={annual}
@@ -464,6 +465,7 @@ describe("loaded company snapshot", () => {
   it("section actions only delegate explicit navigation", async () => {
     const f = await fixture();
     const node = CompanySnapshotView({
+      navigationPending: false,
       evidence: f.evidence(),
       onSection: f.onSection,
     });
@@ -504,6 +506,20 @@ describe("loaded company snapshot", () => {
     }
     const buttons = elements(node).filter((n) => n.type === "button");
     expect(buttons).toHaveLength(3);
+    const held = CompanySnapshotView({
+      navigationPending: true,
+      evidence: f.evidence(),
+      onSection: f.onSection,
+    });
+    expect(
+      elements(held)
+        .filter((n) => n.type === "button")
+        .map((n) => n.props.disabled),
+    ).toEqual([true, true, true]);
+    expect(renderToStaticMarkup(held).replaceAll(' disabled=""', "")).toBe(
+      renderToStaticMarkup(node),
+    );
+    expect(f.onSection).not.toHaveBeenCalled();
     for (const button of buttons) (button.props.onClick as () => void)();
     expect(f.onSection.mock.calls).toEqual([["eod"], ["annual"], ["filings"]]);
     expect(f.readAnnual).not.toHaveBeenCalled();
@@ -524,6 +540,7 @@ describe("loaded company snapshot", () => {
     f.price.open(selection);
     const html = renderToStaticMarkup(
       <ManagedCompanySnapshot
+        navigationPending={false}
         selection={selection}
         price={f.price}
         annual={f.annual}

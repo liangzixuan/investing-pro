@@ -9,6 +9,7 @@ import type {
 } from "./managed-workspace";
 
 interface Props {
+  navigationPending: boolean;
   research: ManagedResearchVisit;
   state: ResearchCompanyNavigationState;
   canOpen: (
@@ -100,6 +101,7 @@ export function ManagedResearchCompanyNavigation(props: Props) {
         </select>
         <button
           type="button"
+          disabled={props.navigationPending}
           className="trial-secondary"
           aria-disabled={!canOpen}
           aria-describedby={helpId}

@@ -12,6 +12,7 @@ import type { ManagedWorkspace } from "./managed-workspace";
 import "./managed-research-followups.css";
 
 export interface ManagedResearchFollowupsProps {
+  navigationPending: boolean;
   workspace: ManagedWorkspace;
   onResearch: (entry: ResearchFollowup, opener: HTMLButtonElement) => void;
 }
@@ -33,6 +34,7 @@ const reviewLabels = {
 } as const;
 
 export function ManagedResearchFollowups({
+  navigationPending,
   workspace,
   onResearch,
 }: ManagedResearchFollowupsProps) {
@@ -105,6 +107,7 @@ export function ManagedResearchFollowups({
   const canResearch = (entry: ResearchFollowup) => {
     const current = workspace.getSnapshot();
     return (
+      !navigationPending &&
       workspace.sessionOwner.getSnapshot().phase === "active" &&
       current.view === "followups" &&
       !current.followupOpening &&

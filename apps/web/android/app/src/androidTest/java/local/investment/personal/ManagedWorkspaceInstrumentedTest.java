@@ -3586,7 +3586,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-eod-history caption')?.textContent === 'Raw closing prices in USD'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
-            " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')";
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Annual section for ZERO']\")?.disabled === false";
         awaitPage("explicit EOD load returns the same listing's exact closes and provenance", loadedEod);
         assertResearchSwitchDraftAndCounts(1, 1, 1);
         Log.i("ManagedResearchSwitch", "phase=eod-loaded; " + pageDiagnostic());
@@ -3621,7 +3622,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && !report.textContent.includes(generations.initial.sha256)" +
             " && Array.from(report.querySelectorAll('.managed-annual-values tbody tr td:first-of-type')).map(e => e.textContent).join(',') === '2000,300,15%'" +
             " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
-            " && document.querySelector('.managed-eod-history') === null; })()";
+            " && document.querySelector('.managed-eod-history') === null" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Price section for ZERO']\")?.disabled === false; })()";
         awaitPage("explicit fresh Annual replaces only the discarded request", loadedAnnual);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
 
@@ -6660,7 +6662,8 @@ public class ManagedWorkspaceInstrumentedTest {
         typeIntoInput("managed-note-1", NOTE);
         awaitPage("draft note edited", "" + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
         click(ANNUAL);
-        awaitPage("Annual panel opened", "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'");
+        awaitPage("Annual panel opened", "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Price section for ZERO']\")?.disabled === false");
         assertCompanyHistory("listing-zero", "annual", false);
     }
 

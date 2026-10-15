@@ -65,6 +65,7 @@ function harness(initial: Partial<Props> = {}) {
   );
   const onOpen = vi.fn<Props["onOpen"]>();
   let props: Props = {
+    navigationPending: false,
     research: { selection: eodSelection, section: "annual" },
     state: { members: [members.left, members.right], reason: "" },
     canOpen,
@@ -112,6 +113,22 @@ function harness(initial: Partial<Props> = {}) {
 }
 
 describe("Company selection within research", () => {
+  it("disables Open during route commit while retaining the selected full identity", () => {
+    const h = harness();
+    h.change(members.right.listingId);
+    const held = h.render({ navigationPending: true });
+    expect(h.button(held).props.disabled).toBe(true);
+    expect(h.select(held).props.value).toBe(members.right.listingId);
+    expect(h.onOpen).not.toHaveBeenCalled();
+    const ready = h.render({ navigationPending: false });
+    expect(h.button(ready).props.disabled).toBe(false);
+    expect(h.select(ready).props.value).toBe(members.right.listingId);
+    h.button(ready).props.onClick!();
+    expect(h.onOpen).toHaveBeenCalledExactlyOnceWith(
+      h.props.research,
+      members.right,
+    );
+  });
   it("labels the native selector and full choice, keeps draft order and does not open the current company", () => {
     const h = harness({
       state: { members: [members.right, members.left], reason: "" },

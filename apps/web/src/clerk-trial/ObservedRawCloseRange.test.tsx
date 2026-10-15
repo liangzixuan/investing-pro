@@ -178,7 +178,11 @@ describe("observed raw-close range", () => {
       expect(renderToStaticMarkup(<Panel model={model} />)).toContain(summary);
       expect(
         renderToStaticMarkup(
-          <CompanySnapshotPrice state={model.getSnapshot()} onOpen={onOpen} />,
+          <CompanySnapshotPrice
+            navigationPending={false}
+            state={model.getSnapshot()}
+            onOpen={onOpen}
+          />,
         ),
       ).toContain(summary);
       expect(model.getSnapshot().response).toBe(loaded);

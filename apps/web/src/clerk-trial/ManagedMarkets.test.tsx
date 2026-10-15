@@ -17,6 +17,7 @@ describe("managed Markets section navigation seam", () => {
       vi.fn(),
     );
     const props = {
+      navigationPending: false,
       model,
       onResearch: vi.fn(),
       onWatchlist: vi.fn(),
