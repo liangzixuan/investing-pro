@@ -4758,7 +4758,7 @@ public class ManagedWorkspaceInstrumentedTest {
         typeIntoInput("managed-note-0", "Operating history draft");
         String draft = readFixtureString("JSON.stringify(" + DRAFT + ")");
         click(ANNUAL);
-        awaitPage("operating history waits for explicit Annual load", "document.querySelector('.managed-annual-operating-history') === null && document.querySelector('#managed-research-note')?.value === 'Operating history draft'");
+        awaitPage("operating history waits for explicit Annual load", "document.querySelector('.managed-annual-operating-history') === null && document.querySelector('.managed-annual-operating-change') === null && document.querySelector('#managed-research-note')?.value === 'Operating history draft'");
         assertAnnualNoteCounts(0, 0, 1);
         click(".managed-annual-report .trial-actions button:first-child");
         String history = "[aria-label='Reported operating history Revenues']";
@@ -4779,6 +4779,8 @@ public class ManagedWorkspaceInstrumentedTest {
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_DPAD_RIGHT));
         awaitPage("native Right scrolls only the operating table", exact + " && document.querySelector(\"" + table + "\").scrollLeft > 0");
         retainAnnualNoteFrame("operatingHistoryLoaded", table + " thead th:nth-child(2)", table + " thead th:nth-child(2), " + table + " tbody td:nth-of-type(1)", 4);
+        String change = history + " .managed-annual-operating-change";
+        retainAnnualNoteFrame("operatingHistoryChange", change + " > h6", change + " > h6, " + change + " > dl", 2);
         focusCashHistoryControl(history + " .managed-operating-history-references > summary");
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
         awaitPage("each history period retains the complete original operating and revenue references",
@@ -4808,9 +4810,9 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-annual-report .trial-actions button:first-child");
         awaitPage("fifth operating-history read is held before expiry", DIAGNOSTICS + ".annual === 5");
         click(CATALOG_REFRESH);
-        awaitPage("expiry removes all histories and retires the unsaved draft", DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && document.querySelector('.managed-annual-operating-history') === null && document.querySelector('.managed-company-research') === null && " + DIAGNOSTICS + ".aborted === 2");
+        awaitPage("expiry removes all histories and retires the unsaved draft", DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && document.querySelector('.managed-annual-operating-history') === null && document.querySelector('.managed-annual-operating-change') === null && document.querySelector('.managed-company-research') === null && " + DIAGNOSTICS + ".aborted === 2");
         click("#settle-cancelled-read");
-        awaitPage("retired late history cannot restore evidence or authored prose", DIAGNOSTICS + ".lateResolved === 2 && document.querySelector('.managed-annual-operating-history') === null && !document.querySelector('.managed-frame').textContent.includes('Operating history draft')");
+        awaitPage("retired late history cannot restore evidence or authored prose", DIAGNOSTICS + ".lateResolved === 2 && document.querySelector('.managed-annual-operating-history') === null && document.querySelector('.managed-annual-operating-change') === null && !document.querySelector('.managed-frame').textContent.includes('Operating history draft')");
         awaitPage("history made only explicit reads and no persistence calls",
             DIAGNOSTICS + ".annual === 5 && " + DIAGNOSTICS + ".aborted === 2 && " + DIAGNOSTICS + ".lateResolved === 2 && " + DIAGNOSTICS + ".refreshFailed === 1" +
             " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 2 && " + DIAGNOSTICS + ".marketsResolve === 1" +
@@ -4831,7 +4833,28 @@ public class ManagedWorkspaceInstrumentedTest {
             " && [...table.querySelectorAll('tbody tr')].map(row => [...row.cells].map(c => c.textContent).join('|')).join(';') === " + JSONObject.quote(values) +
             " && history.textContent.includes('filing 0000000001-26-000001') && history.textContent.includes('Original load completed " + (replacement ? "2026-09-21" : "2026-09-20") + "T00:00:02.000Z')" +
             " && !history.textContent.includes('999.875') && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(draft) +
-            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()" + " && " + operatingChangeExact(replacement);
+    }
+
+    private String operatingChangeExact(boolean replacement) {
+        String income = replacement ? "125.25" : "-250.125";
+        String revenuePoints = replacement ? "16.7 percentage points" : "-25.01 percentage points";
+        String salesPoints = replacement ? "15.66 percentage points" : "-31.27 percentage points";
+        String day = replacement ? "2026-09-21" : "2026-09-20";
+        return "(() => { const changes = [...document.querySelectorAll('.managed-annual-operating-change')];" +
+            " const expected = [['Revenues'," + JSONObject.quote(revenuePoints) + "],['SalesRevenueNet'," + JSONObject.quote(salesPoints) + "]];" +
+            " return changes.length === 3 && expected.every(([concept,points]) => { const history = document.querySelector('[aria-label=\"Reported operating history ' + concept + '\"]');" +
+            " const change = history?.querySelector(':scope > .managed-annual-operating-change'); const groups = [...(change?.querySelectorAll(':scope > dl > div') ?? [])];" +
+            " return change?.getAttribute('aria-label') === 'Reported operating change ' + concept && change.querySelector(':scope > h6')?.textContent === 'Reported operating change'" +
+            " && groups.length === 2 && groups.map(g => g.querySelector('dt')?.textContent).join('|') === 'Operating income change · USDApp calculation|Operating margin change · percentage pointsApp calculation'" +
+            " && groups.map(g => g.querySelector('dd')?.textContent).join('|') === " + JSONObject.quote(income + "|") + " + points" +
+            " && [...change.querySelectorAll('time')].map(t => t.dateTime + ':' + t.textContent).join('|') === '2024-01-01:2024-01-01|2024-12-31:2024-12-31|2025-01-01:2025-01-01|2025-12-31:2025-12-31'" +
+            " && change.textContent.includes('Same filing 0000000001-26-000001') && change.textContent.includes('Original load completed " + day + "T00:00:02.000Z')" +
+            " && change.textContent.includes('unrounded operating-income-to-revenue ratios') && change.textContent.includes('History calculation references below')" +
+            " && change.querySelectorAll('button,input,select,textarea,details,summary').length === 0; })" +
+            " && (() => { const refused = document.querySelector('[aria-label=\"Reported operating change RevenueFromContractWithCustomerExcludingAssessedTax\"]');" +
+            " return refused?.querySelector('dl') === null && refused?.querySelector('.managed-annual-unavailable')?.textContent === 'Operating change unavailable. The immediately preceding operating-income and selected-revenue pair is unavailable. One or both operating inputs are missing for the required annual period. Older periods are not substituted.'; })()" +
+            " && changes.every(c => !c.textContent.includes('999.875')); })()";
     }
 
     @Test

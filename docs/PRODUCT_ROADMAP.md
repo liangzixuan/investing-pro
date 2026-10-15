@@ -13,7 +13,19 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 candidate adds [reported operating history](MANAGED_SEC_ANNUAL.md#read-reported-operating-history)
+The next M2 candidate adds [reported operating change](MANAGED_SEC_ANNUAL.md#read-reported-operating-change)
+inside each named basis's existing history. It compares the first two admitted
+periods with exact signed operating-income USD change and operating-margin
+percentage-point change from unrounded ratios. Missing pairs retain their actual
+refusal. Original inputs, periods and source dates remain inspectable. It adds
+no source request, schema or note action; full statements and peers remain open.
+
+The preceding M2 candidate adds reported liquidity history from the loaded
+filing, with exact balances, working capital, current ratio and complete
+references. A missing or refused raw pair stops that history at its actual date.
+The reported dates need not be consecutive fiscal year-ends.
+
+The preceding M2 candidate adds [reported operating history](MANAGED_SEC_ANNUAL.md#read-reported-operating-history)
 for each named revenue basis. Up to three adjacent annual periods reuse the
 loaded filing, with exact reported inputs, operating margins and first-refusal
 explanations. Missing net income does not hide valid operating history. It adds

@@ -132,11 +132,17 @@ export {
 export {
   resolvePersonalSecAnnualOperatingResults,
   resolvePersonalSecAnnualOperatingHistory,
+  comparePersonalSecAnnualOperatingEvidence,
+  type PersonalSecAnnualOperatingComparison,
   type PersonalSecAnnualOperatingHistory,
   type PersonalSecAnnualOperatingHistoryPeriod,
   type PersonalSecAnnualOperatingHistoryReason,
 } from "./personal-sec-annual-operating-results";
-export { calculatePersonalMarginPercent } from "./personal-margin";
+export {
+  calculatePersonalMarginPercent,
+  comparePersonalMargins,
+  type PersonalMarginComparison,
+} from "./personal-margin";
 export { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
 export {
   calculatePersonalCurrentAssetsLessCurrentLiabilities,

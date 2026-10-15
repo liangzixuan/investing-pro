@@ -583,6 +583,30 @@ observations and original clocks so the same history can be reproduced. Snapshot
 comparison and current note excerpts retain their current-period scope. Annual
 schema/definition stay `4.0.0`, and the report document stays `1.0.0`.
 
+### Read reported operating change
+
+Inside each **Reported operating history** disclosure, **Reported operating
+change** compares its first two admitted periods. Operating income change is
+the exact current-minus-prior amount in USD. Operating margin change subtracts
+the two unrounded operating-income-to-revenue ratios, multiplies by 100 and
+rounds once to two decimal places, half up. Subtracting the displayed rounded
+margins can give a different result. A nonzero change that rounds to zero keeps
+its direction as **Less than 0.01 percentage points higher** or **lower**.
+
+Both periods must meet the existing history rules for the same filing and named
+positive revenue basis. A missing or refused current or immediately preceding
+pair has its own explanation. An unavailable third period does not withhold a
+valid first-two comparison, and an older period cannot fill a gap. Independent
+current operating income remains readable. Operating-income growth percentages
+are not calculated.
+
+Both period ranges, the original filing and completion time accompany the
+changes. Complete inputs remain in **History calculation references** and the
+existing source disclosure. The captured report JSON retains those inputs and
+original clocks for reproduction after later source changes. The comparison
+shares the report's refresh, Cancel, navigation and session lifetime. It adds
+no source request, schema, saved field or note action.
+
 ### Version boundary
 
 The Annual request/response schema and generation definition are `4.0.0`. The

@@ -17,6 +17,7 @@ import { resolvePersonalSecAnnualEvidence } from "./personal-sec-annual-evidence
 import {
   resolvePersonalSecAnnualOperatingResults as resolve,
   resolvePersonalSecAnnualOperatingHistory as history,
+  comparePersonalSecAnnualOperatingEvidence as compare,
   type PersonalSecAnnualOperatingHistoryReason,
 } from "./personal-sec-annual-operating-results";
 
@@ -863,6 +864,291 @@ function availableHistory(
   return result;
 }
 
+function availableComparison(
+  packet: Input,
+  concept: PersonalSecAnnualRevenueConcept = "Revenues",
+) {
+  const result = compare(packet, concept);
+  if (result.status !== "available")
+    throw new Error(`Comparison refused: ${result.stage}/${result.reason}`);
+  return result;
+}
+
+describe("Reported operating change", () => {
+  it.each([2, 3, 4])(
+    "uses only the first two admitted periods from %i supplied, independent of net income",
+    (count) => {
+      const packet = historyInput(count);
+      const before = JSON.stringify(packet);
+      const currentBefore = JSON.stringify(resolve(packet));
+      const historyBefore = JSON.stringify(history(packet, "Revenues"));
+      expect(
+        resolvePersonalSecAnnualEvidence(packet).selectedReportPairEligible,
+      ).toBe(false);
+      const result = availableComparison(packet);
+      expect(result).toEqual({
+        status: "available",
+        concept: "Revenues",
+        accessionNumber: accession,
+        current: availableHistory(packet).periods[0],
+        prior: availableHistory(packet).periods[1],
+        operatingIncomeDifference: "5",
+        operatingMarginChange: {
+          status: "available",
+          prior: "12.5",
+          current: "15",
+          difference: "2.5",
+          direction: "higher",
+        },
+        observationIds: [
+          operating(1).id,
+          revenue(101).id,
+          operating(2).id,
+          revenue(102).id,
+        ],
+      });
+      expect(JSON.stringify(packet)).toBe(before);
+      expect(JSON.stringify(resolve(packet))).toBe(currentBefore);
+      expect(JSON.stringify(history(packet, "Revenues"))).toBe(historyBefore);
+      expect(Object.hasOwn(result, "percentGrowth")).toBe(false);
+      expect(Object.hasOwn(result.current, "currentUseEligible")).toBe(false);
+    },
+  );
+
+  it("owns deep-frozen periods and every agreeing ID, leaving input and original filing/clocks unchanged", () => {
+    const op = comparativeRows(),
+      rev = comparativeRevenue();
+    const packet = input(
+      [
+        ...op,
+        { ...op[0]!, id: operating(9).id, value: "15.000" },
+        { ...op[1]!, id: operating(10).id, value: "10.0" },
+      ],
+      [...rev, { ...rev[1]!, id: revenue(109).id, value: "80.000" }],
+    );
+    const before = structuredClone(packet);
+    const result = availableComparison(packet);
+    expect(result.observationIds).toEqual([
+      operating(1).id,
+      operating(9).id,
+      revenue(101).id,
+      operating(2).id,
+      operating(10).id,
+      revenue(102).id,
+      revenue(109).id,
+    ]);
+    for (const value of [
+      result,
+      result.current,
+      result.prior,
+      result.current.observationIds,
+      result.prior.observationIds,
+      result.observationIds,
+      result.operatingMarginChange,
+    ])
+      expect(Object.isFrozen(value)).toBe(true);
+    expect(result.observationIds).not.toBe(result.current.observationIds);
+    expect(packet).toEqual(before);
+    expect(Object.isFrozen(packet)).toBe(false);
+    expect(
+      Object.isFrozen(packet.operatingResults.operatingIncome.observations),
+    ).toBe(false);
+    expect(packet.target).toEqual(before.target);
+    expect(packet.generation).toEqual(before.generation);
+    expect(op.every((row) => row.filing.reportDate === "2025-12-31")).toBe(
+      true,
+    );
+    function freezeInput(value: unknown): void {
+      if (value !== null && typeof value === "object") {
+        Object.values(value).forEach(freezeInput);
+        Object.freeze(value);
+      }
+    }
+    freezeInput(packet);
+    expect(compare(packet, "Revenues")).toEqual(result);
+  });
+
+  it("never borrows another named basis or skips a missing middle period", () => {
+    const revenues = PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.flatMap(
+      (concept, basis) =>
+        comparativeRevenue()
+          .filter((_, i) => basis !== 2 || i !== 1)
+          .map((row, i) => ({
+            ...row,
+            id: revenue(101 + basis * 10 + i).id,
+            concept,
+            value: String(100 * (basis + 1)),
+          })),
+    );
+    const packet = input(comparativeRows(), revenues);
+    expect(
+      availableComparison(packet, PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS[0])
+        .operatingMarginChange,
+    ).toMatchObject({ current: "15", prior: "10", difference: "5" });
+    expect(
+      availableComparison(packet, "Revenues").operatingMarginChange,
+    ).toMatchObject({ current: "7.5", prior: "5", difference: "2.5" });
+    expect(compare(packet, "SalesRevenueNet")).toEqual({
+      status: "unavailable",
+      stage: "prior_pair",
+      reason: "no_report_period",
+    });
+    expect(compare(historyInput(), "SalesRevenueNet")).toEqual({
+      status: "unavailable",
+      stage: "current_pair",
+      reason: "no_report_period",
+    });
+    expect(() =>
+      compare(packet, "Unknown" as PersonalSecAnnualRevenueConcept),
+    ).toThrow(TypeError);
+  });
+
+  it("returns the actual stopped reason for one period and ignores a refused third pair", () => {
+    expect(compare(historyInput(1), "Revenues")).toEqual({
+      status: "unavailable",
+      stage: "prior_pair",
+      reason: "no_report_period",
+    });
+    const revenues = comparativeRevenue();
+    revenues[2] = { ...revenues[2]!, value: "0" };
+    const packet = input(comparativeRows(), revenues);
+    expect(availableHistory(packet).stoppedReason).toBe("nonpositive_revenue");
+    expect(availableComparison(packet).operatingIncomeDifference).toBe("5");
+  });
+
+  it.each([
+    ["-15", "10", "-25", "-27.5", "lower"],
+    ["15", "-10", "25", "27.5", "higher"],
+    ["-15", "-10", "-5", "-2.5", "lower"],
+    ["0", "10", "-10", "-12.5", "lower"],
+    ["-0.000", "0.00", "0", "0", "unchanged"],
+  ])(
+    "keeps signed USD change for current %s and prior %s without income growth",
+    (c, p, usd, pp, direction) => {
+      const op = comparativeRows(2);
+      op[0] = { ...op[0]!, value: c };
+      op[1] = { ...op[1]!, value: p };
+      expect(
+        availableComparison(input(op, comparativeRevenue(2))),
+      ).toMatchObject({
+        operatingIncomeDifference: usd,
+        operatingMarginChange: { difference: pp, direction },
+      });
+    },
+  );
+
+  it("computes margin direction from full operands rather than the rounded history values", () => {
+    const op = comparativeRows(2);
+    op[0] = { ...op[0]!, value: "1.005" };
+    op[1] = { ...op[1]!, value: "1.004" };
+    const result = availableComparison(
+      input(
+        op,
+        comparativeRevenue(2).map((row) => ({ ...row, value: "100" })),
+      ),
+    );
+    expect(result).toMatchObject({
+      current: { operatingMarginPercent: "1.01" },
+      prior: { operatingMarginPercent: "1" },
+      operatingIncomeDifference: "0.001",
+      operatingMarginChange: {
+        current: "1.01",
+        prior: "1",
+        difference: "0",
+        direction: "higher",
+      },
+    });
+  });
+
+  it("admits exact 128-character USD differences at both signed extremes", () => {
+    const large = "9".repeat(64),
+      tiny = `0.${"0".repeat(61)}1`;
+    const op = comparativeRows(2);
+    op[0] = { ...op[0]!, value: tiny };
+    op[1] = { ...op[1]!, value: large };
+    const result = availableComparison(input(op, comparativeRevenue(2)));
+    expect(result.operatingIncomeDifference).toBe(
+      `-${"9".repeat(63)}8.${"9".repeat(62)}`,
+    );
+    expect(result.operatingIncomeDifference).toHaveLength(128);
+    const reversed = op.map((row, i) => ({
+      ...row,
+      value: i === 0 ? large : tiny,
+    }));
+    expect(
+      availableComparison(input(reversed, comparativeRevenue(2)))
+        .operatingIncomeDifference,
+    ).toBe(`${"9".repeat(63)}8.${"9".repeat(62)}`);
+    // A carry to 65 integral digits has fewer available fractional characters.
+    op[0] = { ...op[0], value: `-1.${"1".repeat(61)}` };
+    op[1] = { ...op[1], value: large };
+    const carry = availableComparison(
+      input(op, comparativeRevenue(2)),
+    ).operatingIncomeDifference;
+    expect(carry).toBe(`-1${"0".repeat(64)}.${"1".repeat(61)}`);
+    expect(carry).toHaveLength(128);
+  });
+
+  it.each([0, 1])(
+    "retains the precise stage for refused revenue in period %i",
+    (index) => {
+      for (const value of ["0", "-1"]) {
+        const revenues = comparativeRevenue();
+        revenues[index] = { ...revenues[index]!, value };
+        const packet = input(comparativeRows(), revenues);
+        expect(compare(packet, "Revenues")).toEqual({
+          status: "unavailable",
+          stage: index === 0 ? "current_pair" : "prior_pair",
+          reason: "nonpositive_revenue",
+        });
+        expect(resolve(packet).operatingIncome.status).toBe("available");
+      }
+    },
+  );
+
+  it.each([
+    [{ value: "999" }, "ambiguous_value"],
+    [{ startDate: "2024-01-02", durationDays: 365 }, "ambiguous_period"],
+    [{ durationDays: 90 }, "invalid_annual_period"],
+    [
+      { filing: { ...operating().filing, reportDate: "2024-12-31" } },
+      "report_end_mismatch",
+    ],
+  ] satisfies readonly (readonly [
+    Partial<Row>,
+    PersonalSecAnnualOperatingHistoryReason,
+  ])[])(
+    "does not skip refused prior evidence %# to an older valid pair",
+    (changes, reason) => {
+      const op = comparativeRows();
+      const packet = input(
+        [...op, { ...op[1]!, id: operating(9).id, ...changes }],
+        comparativeRevenue(),
+      );
+      expect(compare(packet, "Revenues")).toEqual({
+        status: "unavailable",
+        stage: "prior_pair",
+        reason,
+      });
+      expect(availableHistory(packet).stoppedReason).toBe(reason);
+    },
+  );
+
+  it("retains a mismatched prior pair's actual period refusal", () => {
+    const revenues = comparativeRevenue();
+    revenues[1] = {
+      ...revenues[1]!,
+      startDate: "2024-01-02",
+      durationDays: 365,
+    };
+    expect(compare(input(comparativeRows(), revenues), "Revenues")).toEqual({
+      status: "unavailable",
+      stage: "prior_pair",
+      reason: "period_mismatch",
+    });
+  });
+});
+
 describe("Reported annual operating history", () => {
   it.each([1, 2, 3, 4])(
     "owns at most three adjacent periods from %i supplied years without changing current resolution or input",
@@ -1010,6 +1296,12 @@ describe("Reported annual operating history", () => {
       periods.map(({ startDate, endDate }) => ({ startDate, endDate })),
     );
     expect(packet).toEqual(before);
+    const change = availableComparison(packet);
+    expect([change.current.endDate, change.prior.endDate]).toEqual([
+      "2025-12-27",
+      "2024-12-28",
+    ]);
+    expect(change.operatingIncomeDifference).toBe("5");
   });
 
   it("uses exact decimal equality and preserves every agreeing prior observation reference", () => {
@@ -1214,6 +1506,7 @@ describe("Reported annual operating history", () => {
         };
       }
       expect(() => history(packet, "Revenues")).toThrow(TypeError);
+      expect(() => compare(packet, "Revenues")).toThrow(TypeError);
     },
   );
 
@@ -1229,6 +1522,11 @@ describe("Reported annual operating history", () => {
       };
       expect(history(packet, "Revenues")).toEqual({
         status: "unavailable",
+        reason: status,
+      });
+      expect(compare(packet, "Revenues")).toEqual({
+        status: "unavailable",
+        stage: "current_pair",
         reason: status,
       });
       expect(resultMargin(packet).revenue.status).toBe("available");
@@ -1275,6 +1573,11 @@ describe("Reported annual operating history", () => {
       status: "unavailable",
       reason: "selected_report_overflow",
     });
+    expect(compare(packet, "Revenues")).toEqual({
+      status: "unavailable",
+      stage: "current_pair",
+      reason: "selected_report_overflow",
+    });
   });
 
   it("does not calculate from the retained valid subset when the operating scan counts an invalid row", () => {
@@ -1300,6 +1603,11 @@ describe("Reported annual operating history", () => {
     };
     expect(history(packet, "Revenues")).toEqual({
       status: "unavailable",
+      reason: "invalid_source_rows",
+    });
+    expect(compare(packet, "Revenues")).toEqual({
+      status: "unavailable",
+      stage: "current_pair",
       reason: "invalid_source_rows",
     });
   });
@@ -1343,6 +1651,11 @@ describe("Reported annual operating history", () => {
         status: "unavailable",
         reason,
       });
+      expect(compare(packet, "Revenues")).toEqual({
+        status: "unavailable",
+        stage: "current_pair",
+        reason,
+      });
       expect(resolve(packet).operatingIncome.status).toBe("available");
     },
   );
@@ -1353,6 +1666,11 @@ describe("Reported annual operating history", () => {
     ) as Input;
     expect(history(packet, "Revenues")).toEqual({
       status: "unavailable",
+      reason: "current_use_unavailable",
+    });
+    expect(compare(packet, "Revenues")).toEqual({
+      status: "unavailable",
+      stage: "current_pair",
       reason: "current_use_unavailable",
     });
     expect(resultMargin(packet).operatingMargin).toMatchObject({
@@ -1374,6 +1692,11 @@ describe("Reported annual operating history", () => {
       packet.completeness = { status: "refused", reason };
       expect(history(packet, "Revenues")).toEqual({
         status: "unavailable",
+        reason,
+      });
+      expect(compare(packet, "Revenues")).toEqual({
+        status: "unavailable",
+        stage: "current_pair",
         reason,
       });
     },

@@ -1,3 +1,4 @@
+import { comparePersonalSecAnnualOperatingEvidence } from "@research-cockpit/personal-financial-analytics";
 import {
   operatingResults,
   operatingRow,
@@ -192,6 +193,23 @@ describe("company research document inspection", () => {
         { operatingIncome: "60", revenue: "600", operatingMarginPercent: "10" },
       ],
     });
+    const operatingChange = comparePersonalSecAnnualOperatingEvidence(
+      captured,
+      "Revenues",
+    );
+    expect(operatingChange).toMatchObject({
+      status: "available",
+      operatingIncomeDifference: "-25.125",
+      operatingMarginChange: {
+        prior: "0",
+        current: "-2.51",
+        difference: "-2.51",
+        direction: "lower",
+      },
+    });
+    expect(operatingChange).toEqual(
+      comparePersonalSecAnnualOperatingEvidence(packet.evidence, "Revenues"),
+    );
     expect(isCompanyReportDocument(document)).toBe(true);
     expect(decode(document.text).schemaVersion).toBe("1.0.0");
     expect(

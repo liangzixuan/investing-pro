@@ -4,6 +4,7 @@ import type {
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
+import { comparePersonalMargins } from "./personal-margin";
 import {
   calculatePersonalSecAnnualNetMargin,
   getPersonalSecAnnualRowReason,
@@ -90,23 +91,14 @@ function marginComparison(
     });
   // Cross multiplication preserves a small difference between large ratios.
   // Round once after subtracting the ratios, never the displayed percentages.
-  const numerator = new D(currentIncome)
-    .times(priorDenominator)
-    .minus(new D(priorIncome).times(currentRevenue));
-  const difference = numerator
-    .div(priorDenominator.times(currentRevenue))
-    .times(100)
-    .toDecimalPlaces(2);
   return Object.freeze({
     status: "available",
-    prior: calculatePersonalSecAnnualNetMargin(priorRevenue, priorIncome),
-    current,
-    difference: difference.isZero() ? "0" : difference.toFixed(),
-    direction: numerator.isZero()
-      ? "unchanged"
-      : numerator.isNegative()
-        ? "lower"
-        : "higher",
+    ...comparePersonalMargins(
+      priorIncome,
+      priorRevenue,
+      currentIncome,
+      currentRevenue,
+    ),
   });
 }
 
