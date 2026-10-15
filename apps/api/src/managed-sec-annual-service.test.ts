@@ -72,6 +72,15 @@ function packets(cik = "0000320193") {
           LiabilitiesCurrent: {
             units: { USD: [{ ...fact, start: undefined, val: 80 }] },
           },
+          Assets: {
+            units: { USD: [{ ...fact, start: undefined, val: 500 }] },
+          },
+          Liabilities: {
+            units: { USD: [{ ...fact, start: undefined, val: 600 }] },
+          },
+          StockholdersEquity: {
+            units: { USD: [{ ...fact, start: undefined, val: -100 }] },
+          },
         },
       },
     },
@@ -126,7 +135,7 @@ afterEach(() => {
 });
 
 describe("managed annual evidence service", () => {
-  it.each(["1.0.0", "2.0.0", "3.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0"])(
     "rejects version %s before reserving a budget or acquiring either source",
     async (schemaVersion) => {
       const f = fixture();
@@ -218,6 +227,26 @@ describe("managed annual evidence service", () => {
         value: "1.50",
         asOfDate: "2025-09-30",
       });
+      expect(result.evidence.balanceSheet.resolution).toMatchObject({
+        totalAssets: {
+          status: "available",
+          value: "500",
+          unit: "USD",
+          asOfDate: "2025-09-30",
+        },
+        totalLiabilities: {
+          status: "available",
+          value: "600",
+          unit: "USD",
+          asOfDate: "2025-09-30",
+        },
+        shareholdersEquity: {
+          status: "available",
+          value: "-100",
+          unit: "USD",
+          asOfDate: "2025-09-30",
+        },
+      });
       expect(f.fetch.mock.calls.map(([url]) => url)).toEqual([
         `https://data.sec.gov/submissions/CIK${cik}.json`,
         `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
@@ -240,7 +269,7 @@ describe("managed annual evidence service", () => {
         });
     },
   );
-  it("serializes all 700 admitted observations under the unchanged response cap without clipping", async () => {
+  it("serializes all 1000 admitted observations under the unchanged response cap without clipping", async () => {
     const f = fixture();
     const rows = Array.from({ length: 100 }, (_, index) => ({
       start: "2024-10-01",
@@ -271,6 +300,9 @@ describe("managed annual evidence service", () => {
           PaymentsToAcquirePropertyPlantAndEquipment: usd(rows),
           AssetsCurrent: usd(instantRows),
           LiabilitiesCurrent: usd(instantRows),
+          Assets: usd(instantRows),
+          Liabilities: usd(instantRows),
+          StockholdersEquity: usd(instantRows),
         },
       },
     }).replaceAll('"val":42', `"val":${decimal}`);
@@ -293,6 +325,9 @@ describe("managed annual evidence service", () => {
       evidence.cashGeneration.ppePurchases,
       evidence.liquidity.currentAssets,
       evidence.liquidity.currentLiabilities,
+      evidence.balanceSheet.totalAssets,
+      evidence.balanceSheet.totalLiabilities,
+      evidence.balanceSheet.shareholdersEquity,
     ];
     expect(evidence.observations).toHaveLength(200);
     expect(evidence.completeness.status).toBe("complete");
@@ -307,7 +342,7 @@ describe("managed annual evidence service", () => {
       ...metrics.map((metric) => metric.observations),
     ];
     expect(observations.reduce((total, rows) => total + rows.length, 0)).toBe(
-      700,
+      1000,
     );
     for (const rows of observations)
       expect(
@@ -327,6 +362,14 @@ describe("managed annual evidence service", () => {
       { status: "available", value: "100" },
     ]);
     expect(MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes).toBe(2_097_152);
+    for (const value of [
+      evidence.balanceSheet.resolution.totalAssets,
+      evidence.balanceSheet.resolution.totalLiabilities,
+      evidence.balanceSheet.resolution.shareholdersEquity,
+    ]) {
+      expect(value).toMatchObject({ status: "available", value: decimal });
+      expect(value.observationIds).toHaveLength(100);
+    }
     expect(
       Buffer.byteLength(JSON.stringify(result), "utf8"),
     ).toBeLessThanOrEqual(MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes);

@@ -70,7 +70,7 @@ describe("selected-company observed annual SEC evidence route", () => {
     expect((await fixture.request("{ private-canary")).statusCode).toBe(400);
   });
 
-  it.each(["1.0.0", "2.0.0", "3.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0"])(
     "rejects version %s before calling the source",
     async (schemaVersion) => {
       const fixture = await setup();
@@ -369,6 +369,7 @@ function evidence(cik: string): PersonalSecAnnualEvidenceDto {
     cashGeneration: emptyCashGeneration(),
     liquidity: emptyLiquidity(),
     operatingResults: emptyOperatingResults(),
+    balanceSheet: emptyBalanceSheet(),
     completeness: { status: "refused", reason: "target_unresolved" },
     coverage: {
       full: {
@@ -470,6 +471,27 @@ function emptyOperatingResults(): PersonalSecAnnualEvidenceDto["operatingResults
         revenue: { ...value, unit: "USD" },
         operatingMargin: { ...value, unit: "percent" },
       })),
+      utilityAge: null,
+    },
+  };
+}
+
+function emptyBalanceSheet(): PersonalSecAnnualEvidenceDto["balanceSheet"] {
+  const metric = emptyCashGeneration().operatingCashFlow;
+  const value = {
+    status: "unavailable" as const,
+    unit: "USD" as const,
+    reason: "target_unresolved" as const,
+    observationIds: [],
+  };
+  return {
+    totalAssets: { scan: metric.scan, observations: [] },
+    totalLiabilities: { scan: metric.scan, observations: [] },
+    shareholdersEquity: { scan: metric.scan, observations: [] },
+    resolution: {
+      totalAssets: value,
+      totalLiabilities: value,
+      shareholdersEquity: value,
       utilityAge: null,
     },
   };

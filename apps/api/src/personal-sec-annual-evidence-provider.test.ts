@@ -4,6 +4,7 @@ import {
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS as LIMITS,
   type PersonalSecAnnualCashConcept,
   type PersonalSecAnnualLiquidityConcept,
+  type PersonalSecAnnualBalanceSheetConcept,
   type PersonalSecQuarterlyConcept,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -53,7 +54,8 @@ function companyFacts(
     Record<
       | PersonalSecQuarterlyConcept
       | PersonalSecAnnualCashConcept
-      | PersonalSecAnnualLiquidityConcept,
+      | PersonalSecAnnualLiquidityConcept
+      | PersonalSecAnnualBalanceSheetConcept,
       unknown
     >
   > = {},
@@ -121,10 +123,246 @@ function setup(
   return { provider, fetch, starts };
 }
 
+function balanceSheetFacts(extras: Parameters<typeof companyFacts>[2] = {}) {
+  const instant = (val: number) => ({
+    units: { USD: [fact({ start: undefined, val, fy: 2026 })] },
+  });
+  return companyFacts(undefined, undefined, {
+    Assets: instant(500),
+    Liabilities: instant(0),
+    StockholdersEquity: instant(-100),
+    ...extras,
+  });
+}
+
 async function finish<T>(promise: Promise<T>): Promise<T> {
   await vi.runAllTimersAsync();
   return promise;
 }
+
+describe("independent reported Annual balance-sheet totals", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  const instant = (patch: Record<string, unknown> = {}) =>
+    fact({ start: undefined, ...patch });
+  const usd = (rows: readonly unknown[]) => ({ units: { USD: rows } });
+  const identities = [
+    ["Assets", "totalAssets", "total_assets"],
+    ["Liabilities", "totalLiabilities", "total_liabilities"],
+    ["StockholdersEquity", "shareholdersEquity", "shareholders_equity"],
+  ] as const;
+
+  it("joins three exact independent totals without income, changing neither request nor fiscal-focus policy", async () => {
+    const { provider, fetch } = setup(() =>
+      Response.json(balanceSheetFacts({ Revenues: null, NetIncomeLoss: null })),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(result.incomeScanStatus).toBe("invalid_response");
+    expect(result.resolution.currentTargetEligible).toBe(false);
+    expect(result.generation.definitionVersion).toBe("5.0.0");
+    for (const [index, [concept, key, metric]] of identities.entries()) {
+      const row = result.balanceSheet[key].observations[0]!;
+      expect(row).toMatchObject({
+        concept,
+        metric,
+        taxonomy: "us-gaap",
+        unit: "USD",
+        startDate: null,
+        durationDays: null,
+        filingFocusPeriod: "FY",
+        filingFocusYear: 2026,
+        endDate: "2025-12-31",
+        sourceLocator: `/facts/us-gaap/${concept}/units/USD/0`,
+        filing: {
+          status: "matched",
+          form: "10-K",
+          reportDate: "2025-12-31",
+          filedDate: "2026-02-01",
+          acceptedAt: "2026-02-01T12:00:00.000Z",
+          sourceUrl: `https://www.sec.gov/Archives/edgar/data/42/${ACCESSION}-index.htm`,
+        },
+      });
+      expect(result.balanceSheet.resolution[key]).toEqual({
+        status: "available",
+        unit: "USD",
+        value: ["500", "0", "-100"][index],
+        asOfDate: "2025-12-31",
+        accessionNumber: ACCESSION,
+        observationIds: [row.id],
+        currentUseEligible: true,
+      });
+      expect(Object.isFrozen(result.balanceSheet[key])).toBe(true);
+      expect(Object.isFrozen(result.balanceSheet[key].observations)).toBe(true);
+      expect(Object.isFrozen(row.filing)).toBe(true);
+    }
+    expect(Object.keys(result.balanceSheet.resolution).sort()).toEqual([
+      "shareholdersEquity",
+      "totalAssets",
+      "totalLiabilities",
+      "utilityAge",
+    ]);
+    expect(Object.isFrozen(result.balanceSheet.resolution)).toBe(true);
+    expect(fetch.mock.calls.map(([input]) => url(input))).toEqual([
+      SUBMISSIONS_URL,
+      FACTS_URL,
+    ]);
+  });
+
+  describe.each(identities)("%s source admission", (concept, key) => {
+    it.each([
+      ["absent", undefined, "concept_missing"],
+      ["other unit", { units: { EUR: [instant()] } }, "usd_missing"],
+      ["empty", usd([]), "empty_usd"],
+      ["malformed", null, "invalid_response"],
+      [
+        "invalid decimal",
+        usd([instant({ val: "120" })]),
+        "invalid_source_rows",
+      ],
+      [
+        "selected overflow",
+        usd(Array.from({ length: 101 }, (_, val) => instant({ val }))),
+        "selected_report_overflow",
+      ],
+      [
+        "candidate overflow",
+        usd(Array.from({ length: 10_001 }, () => instant())),
+        "candidate_limit",
+      ],
+      ["duration", usd([fact()]), "invalid_instant_period"],
+      ["non-FY", usd([instant({ fp: "Q4" })]), "missing_or_non_FY_focus"],
+      ["amended form", usd([instant({ form: "10-K/A" })]), "unsupported_form"],
+      [
+        "filing conflict",
+        usd([instant({ filed: "2026-02-02" })]),
+        "filing_unmatched_or_conflicted",
+      ],
+      [
+        "another report date",
+        usd([instant({ end: "2024-12-31" })]),
+        "no_report_date",
+      ],
+      [
+        "conflicting values",
+        usd([instant(), instant({ val: 121 })]),
+        "ambiguous_value",
+      ],
+    ] as const)(
+      "refuses %s only for that metric",
+      async (_name, entry, reason) => {
+        const { provider, fetch } = setup(() =>
+          Response.json(balanceSheetFacts({ [concept]: entry })),
+        );
+        const result = await finish(provider.loadEvidence(CIK));
+        expect(result.balanceSheet.resolution[key]).toMatchObject({
+          status: "unavailable",
+          unit: "USD",
+          reason,
+        });
+        for (const [, sibling] of identities)
+          if (sibling !== key)
+            expect(result.balanceSheet.resolution[sibling].status).toBe(
+              "available",
+            );
+        expect(result.generation.sources.companyFacts.status).toBe("available");
+        expect(result.resolution.currentTargetEligible).toBe(true);
+        expect(fetch).toHaveBeenCalledTimes(2);
+      },
+    );
+
+    it("retains every agreeing current reference and comparative row, with exact 64-character amount", async () => {
+      const decimal = "9".repeat(64);
+      const text = JSON.stringify(
+        balanceSheetFacts({
+          [concept]: usd([
+            instant({ val: 42, frame: "CY2025Q4I" }),
+            instant({ val: 42, frame: "CY2025Q4I" }),
+            instant({ val: 42, frame: "CY2025" }),
+            instant({ val: 9, end: "2024-12-31" }),
+            instant({ val: 9, accn: OLDER }),
+          ]),
+        }),
+      ).replaceAll('"val":42', `"val":${decimal}`);
+      const { provider } = setup(() => new Response(text));
+      const result = await finish(provider.loadEvidence(CIK));
+      const metric = result.balanceSheet[key];
+      expect(metric.scan).toMatchObject({
+        coverage: {
+          full: {
+            candidateRows: 5,
+            inspectedRows: 5,
+            duplicateRows: 1,
+            uniqueObservations: 4,
+          },
+          selected: 3,
+          otherAccessions: 1,
+          returned: 3,
+          omittedSelected: 0,
+        },
+      });
+      expect(metric.observations).toHaveLength(3);
+      expect(result.balanceSheet.resolution[key]).toMatchObject({
+        status: "available",
+        value: decimal,
+        observationIds: metric.observations
+          .filter((row) => row.endDate === "2025-12-31")
+          .map((row) => row.id),
+      });
+    });
+  });
+
+  it("does not substitute current totals, liabilities-and-equity, noncontrolling equity, IFRS or derived values", async () => {
+    const packet = {
+      cik: 42,
+      facts: {
+        "us-gaap": {
+          AssetsCurrent: usd([instant()]),
+          LiabilitiesCurrent: usd([instant()]),
+          LiabilitiesAndStockholdersEquity: usd([instant()]),
+          StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest:
+            usd([instant()]),
+        },
+        "ifrs-full": {
+          Assets: usd([instant()]),
+          Liabilities: usd([instant()]),
+          Equity: usd([instant()]),
+        },
+      },
+    };
+    const { provider, fetch } = setup(() => Response.json(packet));
+    const result = await finish(provider.loadEvidence(CIK));
+    for (const [, key] of identities)
+      expect(result.balanceSheet.resolution[key]).toMatchObject({
+        status: "unavailable",
+        reason: "concept_missing",
+        observationIds: [],
+      });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves the required closed graph when facts are unavailable", async () => {
+    const { provider, fetch } = setup(
+      () => new Response("unavailable", { status: 503 }),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    for (const [, key] of identities) {
+      expect(result.balanceSheet[key]).toEqual({
+        scan: { status: "source_unavailable", absence: null, coverage: null },
+        observations: [],
+      });
+      expect(result.balanceSheet.resolution[key]).toMatchObject({
+        status: "unavailable",
+        reason: "source_unavailable",
+      });
+    }
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe("explicit observed annual SEC evidence provider", () => {
   beforeEach(() => {
@@ -621,7 +859,7 @@ describe("explicit observed annual SEC evidence provider", () => {
       SUBMISSIONS_URL,
       FACTS_URL,
     ]);
-    expect(result.generation.definitionVersion).toBe("4.0.0");
+    expect(result.generation.definitionVersion).toBe("5.0.0");
     expect(result.incomeScanStatus).toBe("available");
     expect(cash.operatingCashFlow.scan).toMatchObject({
       coverage: {

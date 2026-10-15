@@ -28,6 +28,21 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Balance sheet totals in development
+
+The next candidate adds [reported balance sheet totals](MANAGED_SEC_ANNUAL.md#reported-balance-sheet-totals)
+to Annual, the company snapshot and captured reports. Total assets, total
+liabilities and parent equity keep independent exact USD values, filing
+references and unavailable reasons. It uses the existing SEC requests and
+limits, with a required Annual 5.0.0 graph. Contract, domain, API and focused web
+checks pass within their stated scope; the full 1,000-observation packet and
+captured report fit the existing limits. Invented-data Chrome checks pass at
+1440, 390 and 320 CSS pixels, including exact report capture, failed-refresh
+retention and expiry with a late reply. The shared local appearance fits at
+1440 and 320 pixels. Native source has 40 cases; execution, original CI and live
+delivery remain incomplete. This does not establish full financial statements
+or complete InvestingPro coverage.
+
 ## Company research overview candidate
 
 The operating-change and company-overview source increments are merged into main

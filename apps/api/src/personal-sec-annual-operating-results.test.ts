@@ -353,7 +353,7 @@ describe("Annual operating evidence from the existing two sources", () => {
     expect(fixture.fetch).not.toHaveBeenCalled();
     const result = await fixture.load();
     expect(fixture.fetch.mock.calls.map(([url]) => url)).toEqual(URLS);
-    expect(result.generation.definitionVersion).toBe("4.0.0");
+    expect(result.generation.definitionVersion).toBe("5.0.0");
     expect(result.resolution.selectedReportPairEligible).toBe(false);
     expect(
       result.resolution.pairs.every((pair) => pair.status !== "eligible"),

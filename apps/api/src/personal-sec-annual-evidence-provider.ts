@@ -6,6 +6,7 @@ import {
   type PersonalSecAnnualCashMetricEvidenceDto,
   type PersonalSecAnnualLiquidityMetricEvidenceDto,
   type PersonalSecAnnualOperatingMetricEvidenceDto,
+  type PersonalSecAnnualBalanceSheetMetricEvidenceDto,
   type PersonalSecAnnualEvidenceDto,
   type PersonalSecAnnualMetricCountsDto,
   type PersonalSecAnnualResolutionInput,
@@ -18,6 +19,7 @@ import {
   resolvePersonalSecAnnualCashGeneration,
   resolvePersonalSecAnnualLiquidity,
   resolvePersonalSecAnnualOperatingResults,
+  resolvePersonalSecAnnualBalanceSheet,
   selectPersonalSecAnnualTarget,
   serializePersonalSecAnnualGeneration,
 } from "@research-cockpit/personal-financial-analytics";
@@ -27,9 +29,11 @@ import {
   unavailablePersonalSecAnnualCashMetric,
   unavailablePersonalSecAnnualLiquidityMetric,
   unavailablePersonalSecAnnualOperatingMetric,
+  unavailablePersonalSecAnnualBalanceSheetMetric,
   type PersonalSecAnnualCashSourceMetric,
   type PersonalSecAnnualLiquiditySourceMetric,
   type PersonalSecAnnualOperatingSourceMetric,
+  type PersonalSecAnnualBalanceSheetSourceMetric,
 } from "./personal-sec-annual-company-facts";
 import {
   decodePersonalSecSourceUtf8,
@@ -331,6 +335,20 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
           submissions.value,
         ),
       });
+      const balanceSheet = Object.freeze({
+        totalAssets: joinBalanceSheetMetric(
+          facts.value?.totalAssets,
+          submissions.value,
+        ),
+        totalLiabilities: joinBalanceSheetMetric(
+          facts.value?.totalLiabilities,
+          submissions.value,
+        ),
+        shareholdersEquity: joinBalanceSheetMetric(
+          facts.value?.shareholdersEquity,
+          submissions.value,
+        ),
+      });
       return Object.freeze({
         ...input,
         resolution: resolvePersonalSecAnnualEvidence(input),
@@ -357,6 +375,15 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
           resolution: resolvePersonalSecAnnualOperatingResults({
             ...input,
             operatingResults,
+          }),
+        }),
+        balanceSheet: Object.freeze({
+          ...balanceSheet,
+          resolution: resolvePersonalSecAnnualBalanceSheet({
+            cik,
+            generation: boundGeneration,
+            target,
+            balanceSheet,
           }),
         }),
       });
@@ -522,4 +549,24 @@ function joinOperatingMetric(
 
 function fail(code: PersonalSecAnnualEvidenceProviderErrorCode): never {
   throw new PersonalSecAnnualEvidenceProviderError(code);
+}
+
+function joinBalanceSheetMetric(
+  source: PersonalSecAnnualBalanceSheetSourceMetric | undefined,
+  submissions: Submissions | undefined,
+): PersonalSecAnnualBalanceSheetMetricEvidenceDto {
+  const metric =
+    source ??
+    unavailablePersonalSecAnnualBalanceSheetMetric("source_unavailable");
+  return Object.freeze({
+    scan: metric.scan,
+    observations: Object.freeze(
+      metric.observations.map((row) =>
+        Object.freeze({
+          ...row,
+          filing: joinFiling(row, submissions),
+        }),
+      ),
+    ),
+  });
 }

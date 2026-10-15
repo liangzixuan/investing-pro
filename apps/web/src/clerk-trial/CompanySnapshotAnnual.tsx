@@ -4,6 +4,7 @@ import { managedAnnualBasisLabel } from "../features/research/managed-annual-bas
 import { SecAnnualCashValueContent } from "../features/research/SecAnnualCashGeneration";
 import { SecAnnualOperatingValueContent } from "../features/research/SecAnnualOperatingResults";
 import { SecAnnualLiquidityValueContent } from "../features/research/SecAnnualLiquidity";
+import { SecAnnualBalanceSheetValueContent } from "../features/research/SecAnnualBalanceSheet";
 
 export function CompanySnapshotAnnual({
   state,
@@ -46,6 +47,7 @@ function AnnualSnapshot({ response }: Props) {
       <SnapshotIncome response={response} />
       <SnapshotOperating response={response} />
       <SnapshotCashLiquidity response={response} />
+      <SnapshotBalanceSheet response={response} />
     </>
   );
 }
@@ -198,6 +200,35 @@ function SnapshotCashLiquidity({ response }: Props) {
         and validation details.
       </p>
     </>
+  );
+}
+
+function SnapshotBalanceSheet({ response }: Props) {
+  const { resolution } = response.evidence.balanceSheet;
+  return (
+    <section aria-label="Snapshot balance sheet totals">
+      <h4>Balance sheet totals</h4>
+      <dl className="managed-snapshot-independent">
+        {(
+          [
+            ["totalAssets", "Total assets"],
+            ["totalLiabilities", "Total liabilities"],
+            ["shareholdersEquity", "Shareholders’ equity · parent"],
+          ] as const
+        ).map(([key, label]) => (
+          <div key={key}>
+            <dt>{label} · USD</dt>
+            <dd>
+              <SecAnnualBalanceSheetValueContent value={resolution[key]} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p>
+        Parent equity excludes noncontrolling interests. Open Annual for exact
+        reported concepts, filing references and validation details.
+      </p>
+    </section>
   );
 }
 

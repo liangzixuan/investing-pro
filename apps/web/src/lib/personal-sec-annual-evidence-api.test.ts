@@ -1,4 +1,5 @@
 import { operatingResults } from "../features/research/sec-annual-operating-fixture";
+import { balanceSheet } from "../features/research/sec-annual-balance-sheet-fixture";
 import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
 import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
 import { MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS } from "@research-cockpit/contracts";
@@ -116,6 +117,7 @@ describe("annual SEC evidence browser client", () => {
 
   it.each([
     { ...request(), schemaVersion: "1.0.0" },
+    { ...request(), schemaVersion: "4.0.0" },
     { ...request(), catalogSnapshotSha256: "bad" },
     { ...request(), listingId: "https://evil.invalid" },
     { ...request(), symbol: "zero" },
@@ -420,6 +422,7 @@ describe("annual SEC evidence browser client", () => {
         cashGeneration: await cashGeneration(input),
         liquidity: await liquidity(input),
         operatingResults: await operatingResults(input),
+        balanceSheet: await balanceSheet(input),
       },
     };
     fetchMock.mockResolvedValue(json(wire));
@@ -467,6 +470,7 @@ describe("annual SEC evidence browser client", () => {
           cashGeneration: await cashGeneration(input),
           liquidity: await liquidity(input),
           operatingResults: await operatingResults(input),
+          balanceSheet: await balanceSheet(input),
         },
       }),
     );
@@ -692,7 +696,7 @@ describe("shared annual SEC response decoder", () => {
 type Wire = PersonalSecAnnualEvidenceResponseDto;
 function request(): PersonalSecAnnualEvidenceRequestDto {
   return {
-    schemaVersion: "4.0.0",
+    schemaVersion: "5.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "listing-zero",
     symbol: "ZERO",
@@ -782,7 +786,7 @@ async function response(
   const input: PersonalSecAnnualResolutionInput = {
     cik: "0000000001",
     generation: {
-      definitionVersion: "4.0.0",
+      definitionVersion: "5.0.0",
       cutoffAt: "2026-09-20T00:00:00.000Z",
       completedAt: "2026-09-20T00:00:02.000Z",
       sha256: `sha256:${"0".repeat(64)}`,
@@ -842,7 +846,7 @@ async function response(
   };
   const evidence = { ...input, generation };
   return {
-    schemaVersion: "4.0.0",
+    schemaVersion: "5.0.0",
     catalogSnapshotSha256: request().catalogSnapshotSha256,
     security: {
       country: "US",
@@ -860,6 +864,7 @@ async function response(
       cashGeneration: await cashGeneration(evidence),
       liquidity: await liquidity(evidence),
       operatingResults: await operatingResults(evidence),
+      balanceSheet: await balanceSheet(evidence),
     },
   };
 }

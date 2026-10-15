@@ -55,6 +55,14 @@ balances and annual flows are not combined into a new financial measure.
 The full Annual section retains source inputs, filing references and validation
 details. The snapshot adds no health score, valuation, investment verdict or AI.
 
+The Annual 5.0.0 candidate also shows reported total assets, total liabilities
+and parent equity in a separate balance-sheet section. Each amount keeps its
+own balance date, availability and original current-use qualification. Parent
+equity excludes noncontrolling interests. Annual retains the exact concepts,
+observations and source references; missing totals are not derived from other
+balances. The prepared report captures these same admitted values and dates.
+Current work records the candidate's verification and delivery status.
+
 Filings shows the newest observed entry and the loaded count, with the original
 90-date request window and independent request and source times. An unavailable
 source remains distinct from an available empty list. A pending or failed refresh

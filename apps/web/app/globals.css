@@ -6742,6 +6742,53 @@ thead th {
   font-size: 0.8rem;
 }
 
+.sec-annual-balance-sheet {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sec-annual-balance-sheet-results table {
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+
+.sec-annual-balance-sheet-results :is(th, td) {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.sec-annual-balance-sheet-results caption {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0 0 12px;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  text-align: left;
+}
+
+.sec-annual-balance-sheet small {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.sec-annual-balance-sheet .sec-annual-liquidity-amount {
+  display: block;
+  text-align: right;
+}
+
+.sec-annual-balance-sheet-source :is(summary, a) {
+  min-height: 44px;
+}
+
+.sec-annual-balance-sheet-results:focus-visible {
+  outline: 3px solid var(--mint-deep);
+  outline-offset: 3px;
+}
+
 .sec-quarterly-selected-row {
   background: var(--mint-soft);
 }

@@ -11,7 +11,7 @@ import {
 
 function request() {
   return {
-    schemaVersion: "4.0.0",
+    schemaVersion: "5.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "synthetic-listing-a",
     symbol: "ZERO.A",
@@ -20,8 +20,8 @@ function request() {
 
 describe("managed annual SEC request", () => {
   it("versions the required Annual graph without expanding quarterly concepts or shared byte limits", () => {
-    expect(PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION).toBe("4.0.0");
-    expect(PERSONAL_SEC_ANNUAL_DEFINITION_VERSION).toBe("4.0.0");
+    expect(PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION).toBe("5.0.0");
+    expect(PERSONAL_SEC_ANNUAL_DEFINITION_VERSION).toBe("5.0.0");
     expect(PERSONAL_SEC_QUARTERLY_CONCEPTS).toEqual([
       "RevenueFromContractWithCustomerExcludingAssessedTax",
       "Revenues",
@@ -55,6 +55,7 @@ describe("managed annual SEC request", () => {
     { ...request(), schemaVersion: "1.0.0" },
     { ...request(), schemaVersion: "2.0.0" },
     { ...request(), schemaVersion: "3.0.0" },
+    { ...request(), schemaVersion: "4.0.0" },
     { ...request(), catalogSnapshotSha256: `sha256:${"A".repeat(64)}` },
     { ...request(), catalogSnapshotSha256: "a".repeat(64) },
     { ...request(), listingId: "ab" },

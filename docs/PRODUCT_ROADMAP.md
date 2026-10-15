@@ -13,7 +13,13 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 increment adds [saved research follow-ups](MANAGED_RESEARCH_FOLLOWUPS.md):
+The next M2 candidate adds [reported balance sheet totals](MANAGED_SEC_ANNUAL.md#reported-balance-sheet-totals)
+to Annual, the company snapshot and captured reports. Total assets, total
+liabilities and parent equity retain independent admission, exact USD amounts,
+filing references and unavailable reasons. The existing two SEC requests and
+fixed response limits remain. Complete statements, valuation and peers remain open.
+
+The preceding M2 candidate adds [saved research follow-ups](MANAGED_RESEARCH_FOLLOWUPS.md):
 an explicitly authored check, due date and result for an exact listing, saved
 separately from the watchlist. Reopening a check, resolving its current identity,
 returning from company research and saving explicit completion form one workflow.

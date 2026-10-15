@@ -10,7 +10,7 @@ import {
 import { formatCompanyReportDocument } from "../../src/clerk-trial/managed-company-report-document";
 
 const request = {
-  schemaVersion: "4.0.0" as const,
+  schemaVersion: "5.0.0" as const,
   catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
   listingId: "listing-zero",
   symbol: "ZERO",

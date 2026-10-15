@@ -118,6 +118,7 @@ jobs:
                   "annualCashHistoryKeepsExactPeriodsAndRetiresWithSession",
                   "annualOperatingHistoryRetainsReplacesAndRetiresExactPeriods",
                   "annualLiquidityHistoryRetainsDatesAndRefusals",
+                  "annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh",
                   "annualOperatingResultsRetainFactsDraftAndRetireWithSession",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",

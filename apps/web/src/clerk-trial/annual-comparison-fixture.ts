@@ -1,3 +1,4 @@
+import { balanceSheet } from "../features/research/sec-annual-balance-sheet-fixture";
 import {
   operatingResults,
   operatingRow,
@@ -127,10 +128,11 @@ export async function parseAnnualComparisonFixture(
         cashGeneration: await cashGeneration(evidence, cashRows),
         liquidity: await liquidity(evidence, liquidityRows),
         operatingResults: await operatingResults(evidence, operatingRows),
+        balanceSheet: await balanceSheet(evidence),
       },
     },
     {
-      schemaVersion: "4.0.0",
+      schemaVersion: "5.0.0",
       catalogSnapshotSha256: raw.catalogSnapshotSha256,
       listingId: raw.security.listingId,
       symbol: raw.security.symbol,
