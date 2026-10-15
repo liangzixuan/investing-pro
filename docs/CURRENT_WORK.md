@@ -28,29 +28,42 @@ bound stay separate from the existing saved-watchlist writer. Both share only
 transient destination and lifecycle handling. Actual draft/source/visit checks
 fence stale choices; report retirement aborts pending work. A post-open cancellation
 check also prevents a provider that returned late from receiving report bytes.
-Local verification is in progress. The new native journey exercises the complete
-report bound, malformed input, cancelled/retired handles and a held provider open;
-its own hosted execution and live publication remain separate.
+All 354 affected/composed cases, final focused flow checks, web types, scoped
+lint/format, Java syntax and source boundaries pass. Scoped Kotlin compilation
+uses actual Android SDK types with Capacitor signature stubs; 46 metadata/UTF-8
+host assertions pass. These checks do not establish a full Android build or
+system picker execution. Chrome confirms the shared screen at 1440/390/320,
+44 px controls, stale-preview removal and an actual browser download whose
+14,029 UTF-8 bytes equal the inspection. Native presentation uses a mock result
+and establishes no Android file write. The native bundle's maximum loader is
+2,427,866 bytes under the unchanged 4 MiB cap with exact notices.
 
-The next report increment adds explicit JSON download in the managed browser.
+The new native journey exercises the complete report bound, malformed input,
+cancelled/retired handles and a held provider open; its new 31-case hosted
+execution and live publication remain separate.
+
+The preceding report increment adds explicit JSON download in the managed browser.
 It checks the actual draft and source models before the file handoff and fences
 late results after report closure. It includes unsaved authored text, retains
 source clocks and uses its own purpose and filename. Only temporary browser
-transport is shared with saved-watchlist export. Android keeps inspection without
-a browser download action. All 303 affected/composed cases, web types, scoped lint/format, Java syntax and
+transport is shared with saved-watchlist export. Android delivery is added by the separate native increment above. All 303 affected/composed cases, web types, scoped lint/format, Java syntax and
 source boundaries pass. Chrome verifies exact received UTF-8 files against the
 inspection, Unicode/whitespace, partial/full packets, keyboard delivery, retained
 failures, document bounds, edit/clear/retirement guards and actual 1440/390/320
 layouts with zero writes or console warnings. The native bundle's maximum loader
 is 2,421,662 bytes under the unchanged 4 MiB cap with exact software notices.
-New-head hosted execution and publication remain separate.
+Its original PR149 hosted execution now passes all five Actions checks and all
+30 Android cases. The original 87-frame artifact was acquired and admitted once.
+CodeScene reports five warnings and one notice; the focused source review found
+no concrete correctness blocker, and maintenance debt remains recorded. Source
+integration and live publication remain separate.
 
 The original JSON-inspection Android run exposed a test clock mismatch: its
 Price fixture completes at 00:00:01 while Annual and Filings complete at 00:00:02.
 The assertion now checks each clock separately. A second original failure did not
 open the native scope picker after Clear focused search. The test now closes the
 soft keyboard before the same native picker checks; the exact input race is not
-proven, and new emulator evidence is required. No deadline, gate or validator is
+proven; the corrected PR149 original emulator run passes those checks. No deadline, gate or validator is
 relaxed. Original failed outcomes remain recorded.
 
 The preceding report increment adds an inspectable JSON document to the current
