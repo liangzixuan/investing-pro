@@ -42,3 +42,7 @@ The watchlist note and whole-draft Save remain independent of this view.
 The browser and Android share this component. Local checks and current producing
 CI acceptance are recorded in [Current work](CURRENT_WORK.md). Synthetic
 verification does not establish production account or physical-phone acceptance.
+
+The separate [research report preview](MANAGED_COMPANY_REPORT.md) captures the
+loaded source summaries alongside a labelled authored draft after explicit
+preparation. Its preparation time does not renew these source dates.

@@ -1,0 +1,18 @@
+.managed-frame .managed-company-report {
+  margin: 16px 0 24px;
+  border-block: 1px solid var(--managed-line);
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-company-report > summary {
+  min-height: 44px;
+  padding: 12px 0;
+  color: var(--managed-action);
+  cursor: pointer;
+}
+.managed-frame .managed-company-report-note {
+  max-width: 74ch;
+  white-space: pre-wrap;
+  padding: 16px;
+  border-left: 3px solid var(--managed-line);
+  color: var(--managed-ink);
+}

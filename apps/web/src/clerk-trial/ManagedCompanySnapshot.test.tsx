@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ManagedCompanySnapshot,
   CompanySnapshotView,
+  CompanySnapshotEvidenceView,
 } from "./ManagedCompanySnapshot";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import { ManagedEodHistory } from "./managed-eod-history";
@@ -410,6 +411,12 @@ describe("loaded company snapshot", () => {
       n: React.ReactNode,
     ): React.ReactElement<Record<string, unknown>>[] {
       if (!React.isValidElement<Record<string, unknown>>(n)) return [];
+      if (n.type === CompanySnapshotEvidenceView)
+        return elements(
+          CompanySnapshotEvidenceView(
+            n.props as React.ComponentProps<typeof CompanySnapshotEvidenceView>,
+          ),
+        );
       if (n.type === CompanySnapshotPrice)
         return elements(
           CompanySnapshotPrice(
