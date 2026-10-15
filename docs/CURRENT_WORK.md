@@ -28,8 +28,12 @@ and Filings summaries. At least one loaded source is required; pending reads blo
 preparation. Source, note or visit changes remove the preview immediately. There
 is no report export, durable storage, inferred holding or new source request.
 Affected report, snapshot, composed-screen and real-workspace fixture checks pass
-(235 cases), including unavailable-draft refusal. Browser, bundle and new-head execution
-remain to be verified. The report state and UI stay outside the large workspace
+(235 cases), including unavailable-draft refusal. Chrome passes actual 1440/390/320 CSS widths with exact Unicode notes, no overflow,
+44px action targets, partial and independent source loads, intervening-edit
+invalidation, retained failed reads, invalid replacement, company changes and
+retirement. Web types, scoped lint, Java syntax and source boundaries pass. The
+native bundle's maximum loader is 2,414,911 bytes under the unchanged 4 MiB cap,
+with exact software notices. New-head execution remains separate. The report state and UI stay outside the large workspace
 runtime.
 
 The next snapshot increment adds Filings as an independent third source. It
