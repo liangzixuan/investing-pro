@@ -1,5 +1,6 @@
 import {
   isMainWatchlistPayload,
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
   type PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
 import { getPersonalSecAnnualSourceReason } from "@research-cockpit/personal-financial-analytics";
@@ -57,7 +58,7 @@ function validPair({ left, right }: AnnualComparisonNoteCapture): boolean {
 function validIdentity({ member, response }: Column): boolean {
   return (
     typeof member.handle === "symbol" &&
-    response.schemaVersion === "4.0.0" &&
+    response.schemaVersion === PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION &&
     response.security.cik === response.evidence.cik &&
     identityFields.every(
       (key) => member.listing[key] === response.security[key],

@@ -304,6 +304,15 @@ Place observation IDs, scan counts and source pointers in the initially closed
 cash-source disclosure with a 44px summary target. Keep cash availability
 independent of the income overview warning.
 
+Place reported balance sheet totals after liquidity, using the same two-column
+Measure/Value geometry. Keep its section, results region and source disclosure
+distinct from liquidity. Show total assets, total liabilities and parent equity
+as independent reported USD amounts. Use exact signed figures, source dates and
+current-use qualifiers in Annual, snapshot and captured reports. Keep source
+inputs closed until opened. Wrap long values and identifiers within the region;
+preserve 44-pixel disclosure targets and visible keyboard focus. Add Balance sheet
+totals to the existing report navigation without starting a request.
+
 Place Annual liquidity after cash in a two-column Measure/Value table. Show the
 two reported balances and two labelled app calculations with their exact balance
 dates, USD or multiple units and current-use qualifications. Keep thin row rules,

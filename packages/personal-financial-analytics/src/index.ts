@@ -129,6 +129,7 @@ export {
   type PersonalSecAnnualLiquidityHistoryCalculation,
   type PersonalSecAnnualLiquidityHistoryReason,
 } from "./personal-sec-annual-liquidity";
+export { resolvePersonalSecAnnualBalanceSheet } from "./personal-sec-annual-balance-sheet";
 export {
   resolvePersonalSecAnnualOperatingResults,
   resolvePersonalSecAnnualOperatingHistory,

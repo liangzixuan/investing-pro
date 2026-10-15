@@ -5,12 +5,16 @@ import {
   PERSONAL_SEC_ANNUAL_CASH_CONCEPTS,
   PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS,
   PERSONAL_SEC_ANNUAL_LIQUIDITY_CONCEPTS,
+  PERSONAL_SEC_ANNUAL_BALANCE_SHEET_CONCEPTS,
+  PERSONAL_SEC_ANNUAL_BALANCE_SHEET_LIMITS,
   PERSONAL_SEC_ANNUAL_OPERATING_LIMITS,
   type PersonalSecQuarterlyObservationDto,
   type PersonalSecAnnualCashObservationDto,
   type PersonalSecAnnualCashMetric,
   type PersonalSecAnnualLiquidityObservationDto,
   type PersonalSecAnnualLiquidityMetric,
+  type PersonalSecAnnualBalanceSheetObservationDto,
+  type PersonalSecAnnualBalanceSheetMetric,
   type PersonalSecAnnualOperatingObservationDto,
 } from "@research-cockpit/contracts";
 
@@ -19,6 +23,7 @@ const concepts = [
   ...PERSONAL_SEC_QUARTERLY_CONCEPTS,
   ...PERSONAL_SEC_ANNUAL_CASH_CONCEPTS,
   ...PERSONAL_SEC_ANNUAL_LIQUIDITY_CONCEPTS,
+  ...PERSONAL_SEC_ANNUAL_BALANCE_SHEET_CONCEPTS,
   "OperatingIncomeLoss",
 ] as const;
 const accessionPattern = /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u;
@@ -27,6 +32,7 @@ type Observation =
   | PersonalSecQuarterlyObservationDto
   | PersonalSecAnnualCashObservationDto
   | PersonalSecAnnualLiquidityObservationDto
+  | PersonalSecAnnualBalanceSheetObservationDto
   | PersonalSecAnnualOperatingObservationDto;
 type ObservationFields = Omit<
   PersonalSecQuarterlyObservationDto,
@@ -80,6 +86,31 @@ export function liquidityObservation(
     value.metric === metric &&
     value.concept ===
       (metric === "current_assets" ? "AssetsCurrent" : "LiabilitiesCurrent")
+  );
+}
+
+export function balanceSheetObservation(
+  value: unknown,
+  cik: string,
+  metric: PersonalSecAnnualBalanceSheetMetric,
+): value is PersonalSecAnnualBalanceSheetObservationDto {
+  const concept =
+    metric === "total_assets"
+      ? "Assets"
+      : metric === "total_liabilities"
+        ? "Liabilities"
+        : metric === "shareholders_equity"
+          ? "StockholdersEquity"
+          : null;
+  return (
+    concept !== null &&
+    observation(
+      value,
+      cik,
+      PERSONAL_SEC_ANNUAL_BALANCE_SHEET_LIMITS.candidateRowsPerMetric,
+    ) &&
+    value.metric === metric &&
+    value.concept === concept
   );
 }
 

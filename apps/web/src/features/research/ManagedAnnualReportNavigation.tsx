@@ -6,6 +6,7 @@ const sections = {
   operating: "Operating results",
   cash: "Cash generation",
   liquidity: "Liquidity",
+  balanceSheet: "Balance sheet totals",
   sources: "Report source details",
 } as const;
 

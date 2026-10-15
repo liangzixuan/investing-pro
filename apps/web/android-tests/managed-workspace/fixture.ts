@@ -1,3 +1,4 @@
+import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { liquidityHistoryPacket } from "./liquidity-history-fixture";
 import { operatingHistoryPacket } from "./operating-history-fixture";
 import { inventedOperatingPacket } from "./operating-fixture";
@@ -227,6 +228,7 @@ export async function createFixture(
     | "annual-operating-results"
     | "annual-operating-history"
     | "annual-liquidity-history"
+    | "annual-balance-sheet"
     | "annual-operating-comparison"
     | "company-snapshot"
     | "research-followups"
@@ -299,6 +301,11 @@ export async function createFixture(
     : null;
   const annualHistoryLate = historyScenario
     ? await historyPacket(false, true)
+    : null;
+  const balanceScenario = scenarioName === "annual-balance-sheet";
+  const annualBalance = balanceScenario ? await balanceSheetPacket() : null;
+  const annualBalanceLate = balanceScenario
+    ? await balanceSheetPacket(true)
     : null;
   const operatingAnnual =
     scenarioName === "annual-operating-results"
@@ -665,6 +672,10 @@ export async function createFixture(
         new Error("Follow-ups require an explicit fixture action"),
       ),
     recentFilings: (input, signal) => {
+      if (balanceScenario) {
+        count("filings");
+        throw new Error("Unexpected balance-sheet Filings read");
+      }
       if (scenarioName === "annual-operating-results" || historyScenario) {
         count("filings");
         throw new Error("Unexpected operating-results Filings read");
@@ -716,6 +727,8 @@ export async function createFixture(
     },
     load: (signal) => {
       count("load");
+      if (balanceScenario && (signal.aborted || state.load !== 1))
+        throw new Error("Unexpected balance-sheet watchlist read");
       if (scenario === "watchlist-recovery") {
         if (signal.aborted)
           return Promise.reject(new Error("Cancelled recovery fixture read"));
@@ -745,6 +758,16 @@ export async function createFixture(
     },
     status: () => {
       count("status");
+      if (balanceScenario && state.status !== 1) {
+        if (
+          state.status !== 2 ||
+          state.annual !== 3 ||
+          !pending ||
+          state.refreshFailed !== 1
+        )
+          throw new Error("Hold the third balance-sheet read before expiry");
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (scenario === "company-price-ranges" && state.status !== 1) {
         if (
           state.status !== 2 ||
@@ -892,6 +915,7 @@ export async function createFixture(
     },
     search: (query) => {
       count("search");
+      if (balanceScenario) throw new Error("Unexpected balance-sheet search");
       if (query !== "ZERO")
         return Promise.reject(new Error("Unexpected fixture query"));
       return Promise.resolve({
@@ -903,6 +927,7 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
+      if (balanceScenario) return unexpected("save");
       if (followups) return unexpected("save");
       if (scenarioName === "annual-operating-results" || historyScenario)
         return unexpected("save");
@@ -1166,6 +1191,8 @@ export async function createFixture(
       });
     },
     resolve: (request, signal) => {
+      if (balanceScenario && state.marketsResolve !== 0)
+        return unexpected("resolve");
       if (scenario === "watchlist-comparison" && state.marketsResolve !== 0)
         return unexpected("resolve");
       if (
@@ -1214,6 +1241,10 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
+      if (balanceScenario) {
+        count("eod");
+        throw new Error("Unexpected balance-sheet Price read");
+      }
       if (followups) {
         if (
           signal.aborted ||
@@ -1375,6 +1406,35 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (balanceScenario) {
+        if (
+          !annualBalance ||
+          signal.aborted ||
+          pending ||
+          request.schemaVersion !== "5.0.0" ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.listingId !== "listing-zero" ||
+          request.symbol !== "ZERO" ||
+          state.status !== 1 ||
+          state.annual >= 3 ||
+          (state.annual === 2 && state.refreshFailed !== 1)
+        )
+          throw new Error("Unexpected balance-sheet Annual request or order");
+        count("annual");
+        if (state.annual === 1)
+          return Promise.resolve(structuredClone(annualBalance));
+        if (state.annual === 2) {
+          count("refreshFailed");
+          return Promise.reject(new TrialApiError("unavailable"));
+        }
+        signal.addEventListener("abort", () => count("aborted"), {
+          once: true,
+        });
+        // Deliberately ignores abort; the real model must discard the late totals.
+        return new Promise((resolve) => {
+          pending = resolve;
+        });
+      }
       if (followups && state.resolve !== 1)
         throw new Error(
           "Resolve the invented follow-up identity before Annual",
@@ -1385,7 +1445,7 @@ export async function createFixture(
           !annualHistoryReplacement ||
           signal.aborted ||
           pending ||
-          request.schemaVersion !== "4.0.0" ||
+          request.schemaVersion !== "5.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== "listing-zero" ||
           request.symbol !== "ZERO" ||
@@ -1416,7 +1476,7 @@ export async function createFixture(
           !operatingAnnual ||
           signal.aborted ||
           pending ||
-          request.schemaVersion !== "4.0.0" ||
+          request.schemaVersion !== "5.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== "listing-zero" ||
           request.symbol !== "ZERO" ||
@@ -1453,7 +1513,7 @@ export async function createFixture(
           !comparisonReports ||
           signal.aborted ||
           pendingAnnualComparison ||
-          request.schemaVersion !== "4.0.0" ||
+          request.schemaVersion !== "5.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== (second ? "listing-one" : "listing-zero") ||
           request.symbol !== (second ? "ONE" : "ZERO") ||
@@ -1488,7 +1548,7 @@ export async function createFixture(
       if (
         signal.aborted ||
         pending ||
-        request.schemaVersion !== "4.0.0" ||
+        request.schemaVersion !== "5.0.0" ||
         request.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO"
@@ -1718,6 +1778,22 @@ export async function createFixture(
       void Promise.resolve().then(() => count("eodLateResolved"));
     },
     settleCancelledRead: () => {
+      if (balanceScenario) {
+        if (
+          !annualBalanceLate ||
+          !pending ||
+          state.annual !== 3 ||
+          state.status !== 2 ||
+          state.aborted !== 1 ||
+          state.lateResolved !== 0
+        )
+          throw new Error("Only the retired balance-sheet read may settle");
+        const resolve = pending;
+        pending = null;
+        resolve(structuredClone(annualBalanceLate));
+        void Promise.resolve().then(() => count("lateResolved"));
+        return;
+      }
       if (historyScenario) {
         if (
           !annualHistoryLate ||

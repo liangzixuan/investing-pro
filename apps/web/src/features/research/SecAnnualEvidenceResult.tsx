@@ -4,6 +4,7 @@ import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
 import { SecAnnualOperatingResults } from "./SecAnnualOperatingResults";
 import { SecAnnualOperatingHistory } from "./SecAnnualOperatingHistory";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
+import { SecAnnualBalanceSheet } from "./SecAnnualBalanceSheet";
 import { SecAnnualLiquidityHistory } from "./SecAnnualLiquidityHistory";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
@@ -121,6 +122,7 @@ export function SecAnnualEvidenceResult({
       <AnnualBases response={response} renderPairAction={renderPairAction} />
       <SecAnnualOperatingResults response={response} />
       <SecAnnualCashGeneration response={response} />
+      <SecAnnualBalanceSheet response={response} />
       <AnnualEvidenceSources response={response} />
     </div>
   );
@@ -146,6 +148,7 @@ function ManagedAnnualFinancialResult({
   const operating = useRef<HTMLHeadingElement>(null);
   const cash = useRef<HTMLHeadingElement>(null);
   const liquidity = useRef<HTMLHeadingElement>(null);
+  const balanceSheet = useRef<HTMLHeadingElement>(null);
   const sources = useRef<HTMLElement>(null);
   const sourceDetails = useRef<HTMLDetailsElement>(null);
   const targets = {
@@ -153,6 +156,7 @@ function ManagedAnnualFinancialResult({
     operating: { id: `${id}-operating`, ref: operating },
     cash: { id: `${id}-cash`, ref: cash },
     liquidity: { id: `${id}-liquidity`, ref: liquidity },
+    balanceSheet: { id: `${id}-balance-sheet`, ref: balanceSheet },
     sources: { id: `${id}-sources`, ref: sources },
   };
   return (
@@ -210,6 +214,10 @@ function ManagedAnnualFinancialResult({
         headingTarget={targets.liquidity}
         history={<SecAnnualLiquidityHistory response={response} />}
       />
+      <SecAnnualBalanceSheet
+        response={response}
+        headingTarget={targets.balanceSheet}
+      />
       <details className="managed-annual-provenance" ref={sourceDetails}>
         <summary
           id={targets.sources.id}
@@ -220,9 +228,9 @@ function ManagedAnnualFinancialResult({
         </summary>
         <p className="sec-quarterly-message">
           Observed SEC annual revenue, net income, net margin, operating results
-          and cash generation, plus liquidity balances and calculations. Revenue
-          concepts stay separate. This view covers the observed report in
-          current submissions; it does not provide complete filing history or
+          and cash generation, plus liquidity and reported balance sheet totals.
+          Revenue concepts stay separate. This view covers the observed report
+          in current submissions; it does not provide complete filing history or
           prices.
         </p>
         <AnnualBasisSources bases={response.evidence.resolution.bases} />

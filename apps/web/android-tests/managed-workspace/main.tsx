@@ -34,6 +34,7 @@ if (
   scenario !== "annual-operating-results" &&
   scenario !== "annual-operating-history" &&
   scenario !== "annual-liquidity-history" &&
+  scenario !== "annual-balance-sheet" &&
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
   scenario !== "research-followups" &&

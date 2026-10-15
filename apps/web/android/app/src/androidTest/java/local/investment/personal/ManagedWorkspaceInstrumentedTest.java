@@ -253,6 +253,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
+        if (testName.getMethodName().equals("annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh"))
+            selectFixtureScenario("annual-balance-sheet");
         if (testName.getMethodName().equals("annualLiquidityHistoryRetainsDatesAndRefusals"))
             selectFixtureScenario("annual-liquidity-history");
         if (testName.getMethodName().equals("annualOperatingHistoryRetainsReplacesAndRetiresExactPeriods"))
@@ -795,7 +797,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("full-report handoff retains the complete operating packet without loading net income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value);" +
-            " const report = doc.sources.annual.response; return report.security.symbol === 'ONE' && report.schemaVersion === '4.0.0'" +
+            " const report = doc.sources.annual.response; return report.security.symbol === 'ONE' && report.schemaVersion === '5.0.0'" +
             " && report.evidence.observations.every(row => row.metric === 'revenue')" +
             " && report.evidence.operatingResults.resolution.operatingIncome.value === '125.25'" +
             " && report.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
@@ -4831,7 +4833,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("complete report retains the operating graph, raw revenue and missing net income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
             " const doc = JSON.parse(field.value), annual = doc.sources.annual.response;" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '1.0.0' && annual.schemaVersion === '4.0.0'" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '1.0.0' && annual.schemaVersion === '5.0.0'" +
             " && annual.evidence.operatingResults.operatingIncome.observations[0].value === '-250.125'" +
             " && annual.evidence.operatingResults.resolution.margins.length === 3" +
             " && annual.evidence.observations.length === 3 && annual.evidence.observations.every(row => row.metric === 'revenue')" +
@@ -4913,6 +4915,124 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".marketsEod === 0" +
             " && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0 && " + DIAGNOSTICS + ".search === 0" +
             " && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    @Test
+    public void annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String note = "Balance sheet draft · Café 東京 📈";
+        awaitPage("balance-sheet startup performs no financial read", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("balance-sheet draft keeps exact reordered listings", DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'");
+        typeIntoInput("managed-note-1", NOTE);
+        click(ANNUAL);
+        awaitPage("opening Annual preserves the draft without loading totals", "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(NOTE) + " && document.querySelector('.sec-annual-balance-sheet') === null");
+        replaceReportNoteWithNativeIme(NOTE, note);
+        String draft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        assertOperatingCounts(0, 0, 0, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        String exact = balanceSheetExact(draft);
+        String root = ".managed-annual-report .sec-annual-balance-sheet";
+        String source = root + " > .sec-annual-balance-sheet-source";
+        String table = root + " > .sec-annual-balance-sheet-results";
+        awaitPage("one Annual read supplies three signed instant totals independently of income", exact + " && document.querySelector(" + JSONObject.quote(source) + ")?.open === false");
+        click("[data-annual-report-jump='balanceSheet']");
+        awaitPage("Balance sheet navigation focuses the exact heading without another read", exact + " && document.activeElement === document.querySelector('[data-annual-report-target=balanceSheet]')");
+        focusCashHistoryControl(table);
+        awaitPage("the totals region exposes visible keyboard focus and contains its layout",
+            "(() => { const table = document.querySelector(" + JSONObject.quote(table) + "); return table?.getAttribute('role') === 'region' && table.tabIndex === 0" +
+            " && table.getAttribute('aria-label') === 'Annual balance sheet results' && document.activeElement === table" +
+            " && getComputedStyle(table).outlineStyle !== 'none' && parseFloat(getComputedStyle(table).outlineWidth) >= 2" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
+        retainAnnualNoteFrame("balanceSheetLoaded", table + " table", table + " tbody tr", 3);
+        focusCashHistoryControl(source + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native keyboard opens all three exact source records and original clocks",
+            exact + " && document.querySelector(" + JSONObject.quote(source) + ")?.open === true && document.activeElement === document.querySelector(" + JSONObject.quote(source + " > summary") + ")" +
+            " && " + balanceSheetSourceExact());
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        click(".managed-company-snapshot > summary");
+        awaitPage("snapshot reuses all three reported totals without loading Price or Filings",
+            "document.querySelector('.managed-company-snapshot')?.open === true && " + balanceSheetSnapshotExact(".managed-company-snapshot") + " && " + exact);
+        click(".managed-company-snapshot > summary");
+        click(".managed-company-report > summary");
+        click(".managed-company-report .trial-actions button:first-child");
+        click(".managed-report-document > summary");
+        awaitPage("the captured read-only report retains complete exact totals, sources and missing income",
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
+            " const doc = JSON.parse(field.value), annual = doc.sources.annual.response, e = annual.evidence, b = e.balanceSheet;" +
+            " const keys = ['totalAssets','totalLiabilities','shareholdersEquity'], concepts = ['Assets','Liabilities','StockholdersEquity'], amounts = ['1000.125','1200.25','-200.125'];" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '1.0.0' && annual.schemaVersion === '5.0.0'" +
+            " && annual.security.symbol === 'ZERO' && annual.security.listingId === 'listing-zero' && e.observations.length === 0 && e.resolution.pairs.length === 0" +
+            " && keys.every((key,i) => { const metric = b[key], value = b.resolution[key], row = metric.observations[0];" +
+            " return metric.observations.length === 1 && row.value === amounts[i] && row.concept === concepts[i] && row.unit === 'USD' && row.startDate === null && row.durationDays === null" +
+            " && row.endDate === '2025-12-31' && row.accessionNumber === '0000000001-26-000001' && row.filing.reportDate === '2025-12-31'" +
+            " && row.sourceLocator === '/facts/us-gaap/' + concepts[i] + '/units/USD/0' && /^sec-fact:[a-f0-9]{64}$/.test(row.id)" +
+            " && value.status === 'available' && value.value === amounts[i] && value.unit === 'USD' && value.asOfDate === '2025-12-31' && value.currentUseEligible === true" +
+            " && value.observationIds.length === 1 && value.observationIds[0] === row.id; })" +
+            " && e.generation.cutoffAt === '2026-09-20T00:00:00.000Z' && e.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
+            " && e.generation.sources.companyFacts.fetchedAt === '2026-09-20T00:00:01.000Z' && e.generation.sources.submissions.fetchedAt === '2026-09-20T00:00:02.000Z'" +
+            " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded' && doc.authoredResearch.note === " + JSONObject.quote(note) + "; })()" +
+            " && " + balanceSheetSnapshotExact("section[aria-labelledby=managed-prepared-report-heading]") + " && " + exact);
+        String captured = readFixtureString("JSON.stringify(JSON.parse(document.querySelector('#managed-report-document').value).sources.annual.response)");
+        assertOperatingCounts(1, 0, 0, 1);
+        click(".managed-company-report > summary");
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("failed refresh retains all totals, dates, sources and draft while invalidating old capture",
+            exact + " && " + balanceSheetSourceExact() + " && " + DIAGNOSTICS + ".refreshFailed === 1" +
+            " && document.querySelector('.managed-annual-report [role=alert]') !== null && document.querySelector('#managed-prepared-report-heading') === null");
+        assertOperatingCounts(2, 0, 0, 1);
+        JSONObject capturedEvidence = new JSONObject(captured).getJSONObject("evidence");
+        assertEquals("Captured Annual clock remains the original load", "2026-09-20T00:00:02.000Z", capturedEvidence.getJSONObject("generation").getString("completedAt"));
+        assertEquals("Captured parent equity remains its exact signed source value", "-200.125", capturedEvidence.getJSONObject("balanceSheet").getJSONObject("resolution").getJSONObject("shareholdersEquity").getString("value"));
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("third explicit refresh holds without replacing any total", exact + " && " + DIAGNOSTICS + ".annual === 3 && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'");
+        click(CATALOG_REFRESH);
+        String retired = DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
+            " && document.querySelector('.managed-company-research') === null && document.querySelector('.sec-annual-balance-sheet') === null" +
+            " && document.querySelector('.managed-company-snapshot') === null && document.querySelector('#managed-prepared-report-heading') === null && document.querySelector('#managed-report-document') === null";
+        awaitPage("aggregate expiry clears the report, all three totals and the watchlist draft", retired + " && " + DIAGNOSTICS + ".aborted === 1");
+        click("#settle-cancelled-read");
+        awaitPage("changed late totals cannot restore the retired company or authored text", retired + " && " + DIAGNOSTICS + ".lateResolved === 1" +
+            " && !document.querySelector('.managed-frame').textContent.includes(" + JSONObject.quote(note) + ") && !document.querySelector('.managed-frame').textContent.includes('999.875')");
+        assertOperatingCounts(3, 1, 1, 2);
+        assertEquals("Balance-sheet journey preserves the original native document", origin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private String balanceSheetExact(String draft) {
+        return "(() => { const root = document.querySelector('.managed-annual-report .sec-annual-balance-sheet'), table = root?.querySelector(':scope > .sec-annual-balance-sheet-results');" +
+            " const rows = [...(table?.querySelectorAll('tbody tr') || [])], labels = ['Total assets','Total liabilities','Shareholders’ equity · parent'], amounts = ['1000.125','1200.25','-200.125'];" +
+            " return document.querySelectorAll('.managed-annual-report .sec-annual-balance-sheet').length === 1 && root.getAttribute('aria-label') === 'Annual balance sheet totals'" +
+            " && root.querySelector('h4')?.textContent === 'Balance sheet totals' && table.querySelector('caption')?.textContent === 'Balances at 2025-12-31'" +
+            " && rows.length === 3 && rows.every((row,i) => row.cells.length === 2 && row.querySelector('th')?.getAttribute('scope') === 'row'" +
+            " && row.querySelector('th')?.textContent === labels[i] + 'Reported · USD' && row.querySelector('td > span')?.textContent === amounts[i]" +
+            " && [...row.querySelectorAll('td > small')].map(e => e.textContent).join('|') === 'At 2025-12-31|Within current-use limits at this load.')" +
+            " && root.textContent.includes('Parent equity excludes noncontrolling interests.') && !root.textContent.includes('999.875')" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(draft) + " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
+    }
+
+    private String balanceSheetSourceExact() {
+        return "(() => { const source = document.querySelector('.managed-annual-report .sec-annual-balance-sheet-source'), groups = [...(source?.querySelectorAll(':scope > section') || [])];" +
+            " const concepts = ['Assets','Liabilities','StockholdersEquity'], amounts = ['1000.125','1200.25','-200.125'], ids = [];" +
+            " return groups.length === 3 && groups.every((group,i) => { const rows = [...group.querySelectorAll('ol > li > details')], row = rows[0];" +
+            " const field = label => [...(row?.querySelectorAll('dl > div') || [])].find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent; const id = field('Observation identifier'); ids.push(id);" +
+            " return rows.length === 1 && row.querySelector('summary')?.textContent === concepts[i] + ' · Source end 2025-12-31 · ' + amounts[i] + ' USD'" +
+            " && field('Exact USD observation') === amounts[i] && field('Source end date') === '2025-12-31' && field('Source start date') === 'Not supplied'" +
+            " && field('Source duration') === 'Not supplied; an instant balance requires no duration.' && field('Accession') === '0000000001-26-000001'" +
+            " && field('Joined report / accepted time') === '2025-12-31 · 2026-02-01T00:00:00.000Z' && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'" +
+            " && /^sec-fact:[a-f0-9]{64}$/.test(id) && [...group.querySelectorAll(':scope > p')].some(p => p.textContent === 'Value references: ' + id)" +
+            " && row.querySelector('a')?.getAttribute('href') === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'; }) && new Set(ids).size === 3" +
+            " && source.textContent.includes('Annual cutoff 2026-09-20T00:00:00.000Z') && source.textContent.includes('Company Facts captured 2026-09-20T00:00:01.000Z')" +
+            " && source.textContent.includes('Submissions captured 2026-09-20T00:00:02.000Z') && source.textContent.includes('Completed 2026-09-20T00:00:02.000Z'); })()";
+    }
+
+    private String balanceSheetSnapshotExact(String container) {
+        return "(() => { const root = document.querySelector(" + JSONObject.quote(container) + ")?.querySelector('[aria-label=\"Snapshot balance sheet totals\"]');" +
+            " const rows = [...(root?.querySelectorAll('dl > div') || [])], labels = ['Total assets · USD','Total liabilities · USD','Shareholders’ equity · parent · USD'], amounts = ['1000.125','1200.25','-200.125'];" +
+            " return rows.length === 3 && rows.every((row,i) => row.querySelector('dt')?.textContent === labels[i] && row.querySelector('dd > span')?.textContent === amounts[i]" +
+            " && [...row.querySelectorAll('dd > small')].map(e => e.textContent).join('|') === 'At 2025-12-31|Within current-use limits at this load.') && root.textContent.includes('Parent equity excludes noncontrolling interests.'); })()";
     }
 
     @Test
@@ -5654,13 +5774,13 @@ public class ManagedWorkspaceInstrumentedTest {
         String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
         String originalLocation = readFixtureString("location.href");
         String originalHistoryLength = readFixtureString("String(history.length)");
-        awaitPage("loaded report has five explicit destinations and initially closed source details",
+        awaitPage("loaded report has six explicit destinations and initially closed source details",
             "(() => { const nav = document.querySelector('nav[aria-label=\"On this report\"]');" +
             " const links = [...(nav?.querySelectorAll('a') || [])];" +
-            " return links.length === 5 && links.map(a => a.textContent).join('|') === 'Revenue and net income|Operating results|Cash generation|Liquidity|Report source details'" +
+            " return links.length === 6 && links.map(a => a.textContent).join('|') === 'Revenue and net income|Operating results|Cash generation|Liquidity|Balance sheet totals|Report source details'" +
             " && links.every(a => a.getBoundingClientRect().height >= 44 && document.getElementById(a.getAttribute('href').slice(1))?.getAttribute('data-annual-report-target') === a.getAttribute('data-annual-report-jump'))" +
             " && document.querySelector('.managed-annual-provenance')?.open === false; })()");
-        for (String section : new String[] {"income", "operating", "cash", "liquidity", "sources"}) {
+        for (String section : new String[] {"income", "operating", "cash", "liquidity", "balanceSheet", "sources"}) {
             click("a[data-annual-report-jump='" + section + "']");
             awaitPage("report jump focuses its visible destination without changing history or draft: " + section,
                 "(() => { const target = document.querySelector('[data-annual-report-target=\"" + section + "\"]');" +
@@ -6391,7 +6511,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
-            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-operating-comparison") ||
+            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-operating-comparison") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||

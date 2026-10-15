@@ -1,4 +1,5 @@
 import type { PersonalMarketDataIdentityDto } from "./index";
+import type { PersonalSecAnnualBalanceSheetDto } from "./personal-sec-annual-balance-sheet";
 import type {
   PersonalSecAnnualCashGenerationDto,
   PersonalSecAnnualScanStatus,
@@ -11,8 +12,8 @@ import type {
   PersonalSecQuarterlySourceStatus,
 } from "./personal-sec-quarterly-evidence";
 
-export const PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION = "4.0.0" as const;
-export const PERSONAL_SEC_ANNUAL_DEFINITION_VERSION = "4.0.0" as const;
+export const PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION = "5.0.0" as const;
+export const PERSONAL_SEC_ANNUAL_DEFINITION_VERSION = "5.0.0" as const;
 export const MANAGED_SEC_ANNUAL_EVIDENCE_PATH =
   "/v1/managed/sec-annual-evidence" as const;
 export const MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS = Object.freeze({
@@ -193,10 +194,15 @@ export interface PersonalSecAnnualEvidenceDto {
   readonly cashGeneration: PersonalSecAnnualCashGenerationDto;
   readonly liquidity: PersonalSecAnnualLiquidityDto;
   readonly operatingResults: PersonalSecAnnualOperatingResultsDto;
+  readonly balanceSheet: PersonalSecAnnualBalanceSheetDto;
 }
 export type PersonalSecAnnualResolutionInput = Omit<
   PersonalSecAnnualEvidenceDto,
-  "resolution" | "cashGeneration" | "liquidity" | "operatingResults"
+  | "resolution"
+  | "cashGeneration"
+  | "liquidity"
+  | "operatingResults"
+  | "balanceSheet"
 >;
 export interface PersonalSecAnnualEvidenceRequestDto {
   readonly schemaVersion: typeof PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION;

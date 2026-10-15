@@ -470,7 +470,7 @@ describe("personal workspace composition root", () => {
       url: PERSONAL_SEC_ANNUAL_EVIDENCE_PATH,
       payload: {
         ...evidenceRequest.payload,
-        schemaVersion: "4.0.0",
+        schemaVersion: "5.0.0",
       },
     };
     const annual = await configured.inject({
