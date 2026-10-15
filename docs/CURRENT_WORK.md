@@ -28,6 +28,31 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Operating-change candidate
+
+Managed company Annual now compares the first two admitted operating-history
+periods within each named revenue basis. It shows exact signed operating-income
+USD change and operating-margin percentage-point change from the unrounded
+ratios, rounded once. Changes below the rounding threshold keep their direction.
+Missing current or prior pairs retain their actual refusal; a refused third
+period does not hide a valid comparison. Original inputs, filing and source dates
+remain inspectable. No request, schema, saved field or note action is added.
+
+Focused domain and component checks, existing net-margin regression checks and
+all 139 composed fixture/report cases pass. Invented-data Chrome checks accept
+the layout at 1440, 390 and 320 CSS pixels, complete long values, sub-threshold
+direction, source references, captured report inputs, failed refresh, Cancel,
+late completion, replacement, navigation and session retirement. The existing
+Android operating-history journey includes exact change and lifetime assertions
+and one added retained frame. Syntax and inventory checks pass; hosted native
+execution and production publication remain separate.
+
+PR159's combined price and Annual research scope is merged into main at
+`4968713` after the owner's verified email approval and the final unchanged
+head/base/check recheck. The actual merge preserves the reviewed source tree and
+ordered parents. That one-use approval is consumed. Fresh main-push checks and
+source proof remain separate; production stays at the accepted release above.
+
 ## Liquidity-history candidate
 
 Managed company Annual now has a closed Reported liquidity history disclosure
@@ -49,8 +74,9 @@ pass at 1440/390/320 CSS widths, including source references, keyboard scrolling
 complete report JSON, failure/Cancel/late retention, replacement, navigation and
 session retirement. Full-length raw and derived amounts wrap inside the narrow
 scrolling table. The new native inventory has 37 cases and 101 expected PNGs,
-checked statically. This increment still needs hosted native acceptance; source
-integration and production publication remain separate.
+checked statically. Its original hosted native run passed all 37 cases and the
+exact 101 expected screenshots, with representative frames directly reviewed.
+PR159 includes this increment; production publication remains separate.
 
 ## Operating-history candidate
 

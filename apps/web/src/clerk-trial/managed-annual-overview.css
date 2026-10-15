@@ -362,7 +362,44 @@
   cursor: pointer;
   min-height: 44px;
 }
+.managed-frame .managed-annual-operating-change {
+  min-width: 0;
+  margin: 16px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--managed-line);
+}
+.managed-frame .managed-annual-operating-change h6 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--managed-ink);
+}
+.managed-frame .managed-annual-operating-change dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 12px 0;
+}
+.managed-frame .managed-annual-operating-change dl > div {
+  min-width: 0;
+}
+.managed-frame .managed-annual-operating-change dt {
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.managed-frame .managed-annual-operating-change dt small {
+  display: block;
+  margin-top: 4px;
+}
+.managed-frame .managed-annual-operating-change dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+  color: var(--managed-ink);
+}
 @media (max-width: 480px) {
+  .managed-frame .managed-annual-operating-change dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .managed-frame .managed-annual-financials :is(th, td) {
     padding: 10px 4px;
     font-size: 12px;

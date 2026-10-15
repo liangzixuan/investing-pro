@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { createFixture } from "./fixture";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { SecAnnualEvidenceResult } from "../../src/features/research/SecAnnualEvidenceResult";
-import { resolvePersonalSecAnnualOperatingHistory } from "@research-cockpit/personal-financial-analytics";
+import {
+  comparePersonalSecAnnualOperatingEvidence,
+  resolvePersonalSecAnnualOperatingHistory,
+} from "@research-cockpit/personal-financial-analytics";
 import { companySnapshotEvidence } from "../../src/clerk-trial/managed-company-snapshot";
 import {
   prepareCompanyReport,
@@ -41,6 +44,11 @@ describe("invented operating history lifetime", () => {
         workspace.annual.getSnapshot().response!.evidence,
         "Revenues",
       );
+    const comparison = () =>
+      comparePersonalSecAnnualOperatingEvidence(
+        workspace.annual.getSnapshot().response!.evidence,
+        "Revenues",
+      );
     const html = () =>
       renderToStaticMarkup(
         <SecAnnualEvidenceResult
@@ -67,6 +75,17 @@ describe("invented operating history lifetime", () => {
         },
       ],
     });
+    const initialComparison = comparison();
+    expect(initialComparison).toMatchObject({
+      status: "available",
+      operatingIncomeDifference: "-250.125",
+      operatingMarginChange: {
+        prior: "0",
+        current: "-25.01",
+        difference: "-25.01",
+        direction: "lower",
+      },
+    });
     expect(html()).toContain("Revenue · 3 periods");
     const prepared = prepareCompanyReport(
       selection,
@@ -83,7 +102,11 @@ describe("invented operating history lifetime", () => {
     expect(
       resolvePersonalSecAnnualOperatingHistory(captured.evidence, "Revenues"),
     ).toEqual(history());
+    expect(
+      comparePersonalSecAnnualOperatingEvidence(captured.evidence, "Revenues"),
+    ).toEqual(initialComparison);
     await workspace.annual.load();
+    expect(comparison()).toEqual(initialComparison);
     expect(workspace.annual.getSnapshot()).toMatchObject({
       response: initial,
       showingPrevious: true,
@@ -93,6 +116,7 @@ describe("invented operating history lifetime", () => {
     fixture.settleCancelledRead();
     await cancelled;
     expect(workspace.annual.getSnapshot().response).toBe(initial);
+    expect(comparison()).toEqual(initialComparison);
     expect(html()).toContain("Revenue · 3 periods");
     expect(
       companyReportIsCurrent(
@@ -123,6 +147,19 @@ describe("invented operating history lifetime", () => {
       ],
       stoppedReason: "no_report_period",
     });
+    expect(comparison()).toMatchObject({
+      status: "available",
+      operatingIncomeDifference: "125.25",
+      operatingMarginChange: {
+        prior: "0",
+        current: "16.7",
+        difference: "16.7",
+        direction: "higher",
+      },
+    });
+    expect(
+      comparePersonalSecAnnualOperatingEvidence(captured.evidence, "Revenues"),
+    ).toEqual(initialComparison);
     expect(html()).toContain("Revenue · 2 periods");
     expect(
       companyReportIsCurrent(

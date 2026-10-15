@@ -132,6 +132,13 @@ periods, original completion time and a separate calculation-reference disclosur
 Each basis keeps its own accepted periods and first refusal. Opening history
 does not load sources or change the current-period note action.
 
+Place reported operating change after that history table in a compact definition
+list. Label exact operating-income change as USD and margin change as percentage
+points, both as app calculations. Keep the prior and current periods and original
+filing/load context visible. Preserve direction below the rounding threshold.
+Stack the two values on narrow screens and wrap complete amounts. Use the
+existing history disclosure and references; add no comparison control or note action.
+
 Reported liquidity history follows the current liquidity explanation and note
 action in its own closed disclosure. Use the shared Annual table style with
 right-aligned date headings and numeric values, exact units and four

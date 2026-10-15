@@ -13,7 +13,11 @@ import {
   type PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
-import { calculatePersonalMarginPercent } from "./personal-margin";
+import {
+  calculatePersonalMarginPercent,
+  comparePersonalMargins,
+} from "./personal-margin";
+import type { PersonalSecAnnualMarginComparison } from "./personal-sec-annual-comparison";
 import {
   getPersonalSecAnnualFilingReason,
   getPersonalSecAnnualRefusalReason,
@@ -433,5 +437,74 @@ export function resolvePersonalSecAnnualOperatingHistory(
     accessionNumber: calculated.accessionNumber,
     periods,
     stoppedReason,
+  });
+}
+
+export type PersonalSecAnnualOperatingComparison =
+  | Readonly<{
+      status: "unavailable";
+      stage: "current_pair" | "prior_pair";
+      reason: PersonalSecAnnualOperatingHistoryReason;
+    }>
+  | Readonly<{
+      status: "available";
+      concept: PersonalSecAnnualRevenueConcept;
+      accessionNumber: string;
+      current: PersonalSecAnnualOperatingHistoryPeriod;
+      prior: PersonalSecAnnualOperatingHistoryPeriod;
+      operatingIncomeDifference: string;
+      operatingMarginChange: Extract<
+        PersonalSecAnnualMarginComparison,
+        { status: "available" }
+      >;
+      observationIds: readonly `sec-fact:${string}`[];
+    }>;
+
+/** Change between the first two admitted same-basis periods; no growth percentage. */
+export function comparePersonalSecAnnualOperatingEvidence(
+  input: Input,
+  concept: PersonalSecAnnualRevenueConcept,
+): PersonalSecAnnualOperatingComparison {
+  const history = resolvePersonalSecAnnualOperatingHistory(input, concept);
+  if (history.status === "unavailable")
+    return freeze({
+      status: "unavailable",
+      stage: "current_pair",
+      reason: history.reason,
+    });
+  const [current, prior] = history.periods;
+  requireValid(current !== undefined);
+  if (prior === undefined) {
+    requireValid(history.stoppedReason !== null);
+    return freeze({
+      status: "unavailable",
+      stage: "prior_pair",
+      reason: history.stoppedReason,
+    });
+  }
+  const difference = new D(current.operatingIncome).minus(
+    prior.operatingIncome,
+  );
+  const operatingIncomeDifference = difference.isZero()
+    ? "0"
+    : difference.toFixed();
+  requireValid(operatingIncomeDifference.length <= 128);
+  return freeze({
+    status: "available",
+    concept: history.concept,
+    accessionNumber: history.accessionNumber,
+    current,
+    prior,
+    operatingIncomeDifference,
+    operatingMarginChange: {
+      status: "available",
+      ...comparePersonalMargins(
+        prior.operatingIncome,
+        prior.revenue,
+        current.operatingIncome,
+        current.revenue,
+      ),
+    },
+    observationIds: [...current.observationIds, ...prior.observationIds],
   });
 }

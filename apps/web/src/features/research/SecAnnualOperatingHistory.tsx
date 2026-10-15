@@ -2,11 +2,11 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualRevenueConcept,
 } from "@research-cockpit/contracts";
+import { resolvePersonalSecAnnualOperatingHistory } from "@research-cockpit/personal-financial-analytics";
 import {
-  resolvePersonalSecAnnualOperatingHistory,
-  type PersonalSecAnnualOperatingHistoryReason,
-} from "@research-cockpit/personal-financial-analytics";
-import { annualOperatingUnavailableReasonText } from "./SecAnnualOperatingResults";
+  SecAnnualOperatingChange,
+  annualOperatingHistoryReasonText,
+} from "./SecAnnualOperatingChange";
 import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
 
 export function SecAnnualOperatingHistory({
@@ -28,68 +28,70 @@ export function SecAnnualOperatingHistory({
       <summary>Reported operating history</summary>
       {history.status === "unavailable" ? (
         <p className="managed-annual-unavailable">
-          Operating history unavailable. {historyReason(history.reason)}
+          Operating history unavailable.{" "}
+          {annualOperatingHistoryReasonText(history.reason)}
         </p>
       ) : (
-        <>
-          <div
-            className="managed-annual-financials managed-operating-history-table"
-            role="region"
-            aria-label={`Reported operating history amounts ${concept}`}
-            tabIndex={0}
-          >
-            <table>
-              <caption>
-                {managedAnnualBasisLabel(concept)} · {history.periods.length}{" "}
-                {history.periods.length === 1 ? "period" : "periods"} · newest
-                first
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Metric</th>
+        <div
+          className="managed-annual-financials managed-operating-history-table"
+          role="region"
+          aria-label={`Reported operating history amounts ${concept}`}
+          tabIndex={0}
+        >
+          <table>
+            <caption>
+              {managedAnnualBasisLabel(concept)} · {history.periods.length}{" "}
+              {history.periods.length === 1 ? "period" : "periods"} · newest
+              first
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Metric</th>
+                {history.periods.map((period) => (
+                  <th scope="col" key={period.endDate}>
+                    <time dateTime={period.startDate}>{period.startDate}</time>
+                    <span>to</span>
+                    <time dateTime={period.endDate}>{period.endDate}</time>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(
+                [
+                  ["operatingIncome", "Operating income · USD", "Reported"],
+                  ["revenue", "Revenue · USD", "Reported"],
+                  [
+                    "operatingMarginPercent",
+                    "Operating margin · %",
+                    "App calculation",
+                  ],
+                ] as const
+              ).map(([key, label, basis]) => (
+                <tr key={key}>
+                  <th scope="row">
+                    {label}
+                    <small>{basis}</small>
+                  </th>
                   {history.periods.map((period) => (
-                    <th scope="col" key={period.endDate}>
-                      <time dateTime={period.startDate}>
-                        {period.startDate}
-                      </time>
-                      <span>to</span>
-                      <time dateTime={period.endDate}>{period.endDate}</time>
-                    </th>
+                    <td key={period.endDate}>
+                      {period[key]}
+                      {key === "operatingMarginPercent" ? "%" : ""}
+                    </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {(
-                  [
-                    ["operatingIncome", "Operating income · USD", "Reported"],
-                    ["revenue", "Revenue · USD", "Reported"],
-                    [
-                      "operatingMarginPercent",
-                      "Operating margin · %",
-                      "App calculation",
-                    ],
-                  ] as const
-                ).map(([key, label, basis]) => (
-                  <tr key={key}>
-                    <th scope="row">
-                      {label}
-                      <small>{basis}</small>
-                    </th>
-                    {history.periods.map((period) => (
-                      <td key={period.endDate}>
-                        {period[key]}
-                        {key === "operatingMarginPercent" ? "%" : ""}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <SecAnnualOperatingChange response={response} concept={concept} />
+      {history.status === "available" && (
+        <>
           {history.stoppedReason !== null && (
             <p className="managed-annual-unavailable">
               The next earlier period is unavailable.{" "}
-              {historyReason(history.stoppedReason)}
+              {annualOperatingHistoryReasonText(history.stoppedReason)}
             </p>
           )}
           <p className="managed-annual-basis-help">
@@ -127,22 +129,4 @@ export function SecAnnualOperatingHistory({
       )}
     </details>
   );
-}
-
-function historyReason(
-  reason: PersonalSecAnnualOperatingHistoryReason,
-): string {
-  if (reason === "current_use_unavailable")
-    return "The selected operating report is outside the current-use limits at this load. Reported amounts remain above.";
-  if (reason === "no_report_period")
-    return "One or both operating inputs are missing for the required annual period. Older periods are not substituted.";
-  if (reason === "report_end_mismatch")
-    return "The observation’s filing report date does not match the selected filing.";
-  if (reason === "nonpositive_revenue")
-    return "Operating margin requires revenue greater than zero.";
-  if (reason === "ambiguous_value")
-    return "The source contains conflicting reported amounts.";
-  if (reason === "ambiguous_period")
-    return "The source contains conflicting annual periods.";
-  return annualOperatingUnavailableReasonText(reason);
 }
