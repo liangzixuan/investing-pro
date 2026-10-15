@@ -34,8 +34,22 @@ failed/cancelled reads, late-response fencing, draft retention and retirement.
 The browser check made only its four explicit Annual reads, with zero Save,
 other-source reads or console warnings. Native bundle maximum loader is
 2,433,477 bytes under the unchanged 4 MiB cap, with exact notices. New-head
-native execution and live publication remain separate. A synthetic provider
-receipt also tightens the prior
+native execution and live publication remain separate.
+
+The original cash-history Android run passed 31 of 32 cases, including the report
+system-picker journey with exact bytes, bounds, malformed inputs, cancellation
+and recreation checks. The new cash-history case failed after closing the
+disclosure: it required zero table height, although Chromium can retain the last
+layout bounds of hidden disclosure content. Chrome reproduced a collapsed table
+with unchanged bounds, absent accessibility content and keyboard exclusion. The
+test correction checks rendering visibility and native Tab exclusion, with a
+positive visibility check after reopening. Exact amounts, draft retention,
+request counts, retirement and deadlines remain unchanged. Corrected native
+execution is still required. Ubuntu, parser, dependency and custody checks passed;
+the original Windows job is pending. CodeScene's five warnings and one notice
+remain recorded as reviewed maintenance debt.
+
+A synthetic provider receipt also tightens the prior
 report cancellation regression: it must prove normal release and descriptor
 return, rather than accepting a provider timeout as that path. The observed
 native input-clipping failure is addressed by centering the test field while

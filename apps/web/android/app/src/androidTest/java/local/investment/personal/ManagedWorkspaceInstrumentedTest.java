@@ -4265,12 +4265,21 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualNoteCounts(1, 0, 1);
         focusCashHistoryControl(history + " > summary");
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        // A closed details subtree can retain its last layout bounds. Check rendering
+        // and native keyboard exclusion instead of treating cached height as visibility.
         awaitPage("closing history hides its table while preserving the same evidence and note", exact +
             " && document.querySelector('.managed-annual-cash-history')?.open === false" +
-            " && document.querySelector('.managed-cash-history-table').getBoundingClientRect().height === 0");
+            " && document.querySelector('.managed-cash-history-table').checkVisibility() === false" +
+            " && document.activeElement === document.querySelector('.managed-annual-cash-history > summary')");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_TAB));
+        awaitPage("native Tab skips the closed history table and its nested references", exact +
+            " && document.querySelector('.managed-annual-cash-history')?.open === false" +
+            " && document.activeElement === document.querySelector('.sec-annual-cash-source > summary')");
+        focusCashHistoryControl(history + " > summary");
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
         awaitPage("reopening history uses the same single Annual result", exact +
-            " && document.querySelector('.managed-annual-cash-history')?.open === true");
+            " && document.querySelector('.managed-annual-cash-history')?.open === true" +
+            " && document.querySelector('.managed-cash-history-table').checkVisibility() === true");
         assertAnnualNoteCounts(1, 0, 1);
         awaitPage("history adds no other source reads or persistence",
             DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0");
