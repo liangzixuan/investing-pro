@@ -1188,7 +1188,7 @@
     scroll-margin-block: 16px;
   }
   .clerk-trial.managed-frame-active {
-    padding: 0 0 calc(76px + env(safe-area-inset-bottom));
+    padding: 0 0 calc(92px + env(safe-area-inset-bottom));
   }
   .managed-frame .managed-workspace {
     display: block;
@@ -1222,7 +1222,8 @@
     flex-direction: column;
     justify-content: center;
     gap: 4px;
-    width: 33.333%;
+    width: 25%;
+    min-width: 0;
     min-height: 52px;
     padding: 6px 4px;
     text-align: center;

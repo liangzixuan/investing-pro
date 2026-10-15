@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 candidate connects company research through a
+The next M2 increment adds [saved research follow-ups](MANAGED_RESEARCH_FOLLOWUPS.md):
+an explicitly authored check, due date and result for an exact listing, saved
+separately from the watchlist. Reopening a check, resolving its current identity,
+returning from company research and saving explicit completion form one workflow.
+It adds no provider, scheduled monitoring or automatic verdict. Live persistence,
+broader screening, valuation and portfolio capabilities remain separate milestones.
+
+The preceding M2 increment connects company research through a
 [source overview](MANAGED_COMPANY_SNAPSHOT.md#load-and-inspect-sources).
 Price, Annual and Filings show their readiness, original dates and explicit
 Load, Refresh, Cancel and Inspect actions beside the loaded summaries. The

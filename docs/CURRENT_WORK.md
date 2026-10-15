@@ -30,6 +30,23 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Company research overview candidate
 
+The operating-change and company-overview source increments are merged into main
+at `18b08b8` after the owner's scoped email approval and the final revision, base
+and check recheck. Their five original Actions workflows and six jobs each passed;
+exact source-tree equivalence preserves the reviewed evidence across the ordered
+merges. The reviewed CodeScene maintenance advisories were accepted for these
+source merges. Fresh final-main checks and production publication remain separate.
+
+The next increment is [saved research follow-ups](MANAGED_RESEARCH_FOLLOWUPS.md).
+It keeps a separate private authored check, UTC due date and result for an exact
+listing, with explicit Save, later-session reopen and current-catalog company
+research. Both resource drafts participate in session and leave review. Contract,
+repository, transport, model, screen and workspace checks pass within their test
+scope. Invented-data Chrome checks verify separate saves, three-session reopening,
+explicit company research, Back focus, completion, conflict and receipt recovery,
+and aggregate retirement. The page fits at 1440, 390 and 320 CSS pixels. Hosted
+native and live-storage acceptance remain separate and incomplete.
+
 The company visit now shows Price, Annual and Filings readiness beside explicit
 Load, Refresh, Cancel and Inspect actions. Each request selects that source's
 existing section and uses its current model. Inspect makes no request. Original

@@ -2,12 +2,16 @@ import { createHash, generateKeyPairSync, sign } from "node:crypto";
 
 import {
   encodeMainWatchlistPayload,
+  encodeResearchFollowupsPayload,
+  MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
+  MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
   PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
   parseManagedMonetaryAnnouncements,
   parseManagedEconomicCalendar,
   type ManagedWatchlistCommand,
+  type ManagedResearchFollowupsCommand,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +19,8 @@ import * as authModule from "./clerk-trial-auth";
 import * as configModule from "./clerk-trial-config";
 import * as transportModule from "./appwrite-transport";
 import * as repositoryModule from "./appwrite-watchlist-repository";
+import * as followupsRepositoryModule from "./appwrite-research-followups-repository";
+import * as versionedStoreModule from "./appwrite-versioned-row-store";
 import * as catalogModule from "./managed-workspace-catalog";
 import * as secAdmissionModule from "./managed-sec-admission";
 import * as eodAdmissionModule from "./managed-eod-admission";
@@ -31,6 +37,7 @@ import main, {
   type ManagedWorkspaceFunctionContext,
 } from "./managed-workspace-function";
 import type { MainWatchlistRepository } from "./watchlist-repository";
+import type { ResearchFollowupsRepository } from "./research-followups-repository";
 
 const ORIGIN = "https://app.investingpro.app";
 const NATIVE_ORIGIN = "https://localhost";
@@ -2123,4 +2130,510 @@ describe("managed company filings composed function", () => {
     expect(f.transport).not.toHaveBeenCalled();
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
+});
+
+describe("managed follow-up composed function", () => {
+  function followupCommand(): ManagedResearchFollowupsCommand {
+    return {
+      expectedVersion: 0,
+      idempotencyKey: "invented-followup-function-save",
+      payload: {
+        schemaVersion: 1,
+        entries: [
+          {
+            id: "00000000-0000-4000-8000-000000000001",
+            catalogSnapshotSha256: `sha256:${"b".repeat(64)}`,
+            listing: {
+              country: "US",
+              exchangeMic: "XNAS",
+              instrumentType: "common_stock",
+              issuerId: "issuer-invented",
+              issuerName: "Invented Company",
+              listingId: "listing-invented",
+              securityId: "security-invented",
+              securityName: "Invented Common Stock",
+              shareClassId: "class-invented",
+              shareClassName: "Common",
+              symbol: "ZERO",
+            },
+            check: "Check the dated capacity disclosure · Café 東京 📈",
+            dueOn: "2026-12-31",
+            status: "open",
+            completedOn: null,
+            result: "Authored invented result",
+          },
+        ],
+      },
+    };
+  }
+
+  function followupFixture() {
+    const watchlist = memoryRepository();
+    const get = vi
+      .fn<ResearchFollowupsRepository["get"]>()
+      .mockResolvedValue(null);
+    const put = vi
+      .fn<ResearchFollowupsRepository["put"]>()
+      .mockImplementation((_principal, value) =>
+        Promise.resolve({
+          id: "main",
+          version: value.expectedVersion + 1,
+          replayed: false,
+          committedAt: "2026-10-15T12:00:00.000Z",
+          digestSha256: createHash("sha256")
+            .update(encodeResearchFollowupsPayload(value.payload))
+            .digest("hex"),
+        }),
+      );
+    const repository = vi
+      .spyOn(
+        followupsRepositoryModule,
+        "createAppwriteResearchFollowupsRepository",
+      )
+      .mockReturnValue({ get, put });
+    return { watchlist, get, put, repository };
+  }
+
+  function assertIsolatedAndClosed(f: ReturnType<typeof followupFixture>) {
+    expect(f.watchlist.repository).not.toHaveBeenCalled();
+    expect(f.watchlist.get).not.toHaveBeenCalled();
+    expect(f.watchlist.put).not.toHaveBeenCalled();
+    for (const result of f.watchlist.transport.mock.results) {
+      const transport = result.value as ReturnType<
+        typeof transportModule.createAppwriteTransport
+      >;
+      expect(transport.snapshot()).toEqual({
+        requests: 0,
+        lastStatus: null,
+        closed: true,
+      });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  }
+
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "uses signed %s identity and a separate fixed follow-up store for GET and POST",
+    async (origin) => {
+      const f = followupFixture();
+      const store = vi.spyOn(versionedStoreModule, "appwriteVersionedRowStore");
+      const run = createManagedWorkspaceFunction(configuration(), null, null);
+      const headers = {
+        origin,
+        authorization: `Bearer ${token({ azp: origin === NATIVE_ORIGIN ? undefined : ORIGIN })}`,
+        "x-appwrite-key": "invented-followup-authority",
+      };
+      const read = context({ path: MANAGED_RESEARCH_FOLLOWUPS_PATH, headers });
+      expect(await run(read)).toMatchObject({
+        status: 200,
+        body: { version: 0, payload: { schemaVersion: 1, entries: [] } },
+        headers: {
+          "access-control-allow-origin": origin,
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+        },
+      });
+      const write = writeContext(
+        MANAGED_RESEARCH_FOLLOWUPS_PATH,
+        followupCommand(),
+      );
+      expect(
+        await run({
+          ...write,
+          req: {
+            ...write.req,
+            headers: { ...headers, "content-type": "application/json" },
+          },
+        }),
+      ).toMatchObject({
+        status: 200,
+        body: {
+          version: 1,
+          payload: followupCommand().payload,
+          replayed: false,
+        },
+      });
+      const principal = {
+        userId: `clerk-${createHash("sha256")
+          .update(JSON.stringify([ISSUER, SUBJECT]))
+          .digest("hex")
+          .slice(0, 30)}`,
+      };
+      expect(f.get).toHaveBeenCalledExactlyOnceWith(principal);
+      expect(f.put).toHaveBeenCalledExactlyOnceWith(
+        principal,
+        followupCommand(),
+      );
+      expect(f.repository).toHaveBeenCalledTimes(2);
+      expect(store).toHaveBeenCalledTimes(2);
+      for (const [options] of f.repository.mock.calls) {
+        expect(options).toMatchObject({
+          databaseId: "investment_managed_followups_v1",
+          followupsTableId: "followups",
+          receiptsTableId: "receipts",
+          catalog: catalogModule.getManagedWorkspaceCatalog(),
+        });
+        expect(Object.keys(options.store).sort()).toEqual([
+          "createRow",
+          "createTransaction",
+          "getRow",
+          "incrementRowColumn",
+          "updateRow",
+          "updateTransaction",
+        ]);
+        for (const method of Object.values(options.store))
+          expect(typeof method).toBe("function");
+      }
+      expect(f.repository.mock.calls[0]![0].store).not.toBe(
+        f.repository.mock.calls[1]![0].store,
+      );
+      expect(f.watchlist.transport).toHaveBeenCalledTimes(2);
+      const [first, second] = f.watchlist.transport.mock.results.map(
+        (result) =>
+          result.value as ReturnType<
+            typeof transportModule.createAppwriteTransport
+          >,
+      );
+      expect(first).not.toBe(second);
+      for (const [options] of f.watchlist.transport.mock.calls) {
+        expect(options.endpoint).toBe("https://nyc.cloud.appwrite.io/v1");
+        expect(options.signal).toBeInstanceOf(AbortSignal);
+      }
+      assertIsolatedAndClosed(f);
+    },
+  );
+
+  it("captures execution authority and exact binary input before real authentication awaits", async () => {
+    const actualAuth = authModule.createClerkTrialAuth;
+    let entered!: () => void;
+    let release!: () => void;
+    const authEntered = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const authReleased = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(authModule, "createClerkTrialAuth").mockImplementation(
+      (options) => {
+        const authenticate = actualAuth(options);
+        return async (request) => {
+          const result = await authenticate(request);
+          entered();
+          await authReleased;
+          return result;
+        };
+      },
+    );
+    const f = followupFixture();
+    const run = createManagedWorkspaceFunction(configuration(), null, null);
+    const c = writeContext(MANAGED_RESEARCH_FOLLOWUPS_PATH, followupCommand());
+    const pending = run(c);
+    await authEntered;
+    expect(f.repository).not.toHaveBeenCalled();
+    Object.assign(c.req.headers, {
+      "x-appwrite-key": "changed-after-auth-await",
+    });
+    c.req.bodyBinary.fill(0xff);
+    release();
+    expect(await pending).toMatchObject({
+      status: 200,
+      body: { payload: followupCommand().payload },
+    });
+    const transport = f.watchlist.transport.mock.results[0]
+      ?.value as ReturnType<typeof transportModule.createAppwriteTransport>;
+    expect(transport.client.config.key).toBe("invented-execution-authority");
+    expect(f.put.mock.calls[0]?.[1]).toEqual(followupCommand());
+    assertIsolatedAndClosed(f);
+  });
+
+  it.each(["GET", "POST"])(
+    "fails closed without execution authority before %s storage",
+    async (method) => {
+      const f = followupFixture();
+      const run = createManagedWorkspaceFunction(configuration(), null, null);
+      const c =
+        method === "POST"
+          ? writeContext(MANAGED_RESEARCH_FOLLOWUPS_PATH, followupCommand())
+          : context({ path: MANAGED_RESEARCH_FOLLOWUPS_PATH });
+      expect(
+        await run({
+          ...c,
+          req: {
+            ...c.req,
+            headers: { ...c.req.headers, "x-appwrite-key": undefined },
+          },
+        }),
+      ).toMatchObject({ status: 503, body: { error: "unavailable" } });
+      expect(f.repository).not.toHaveBeenCalled();
+      expect(f.watchlist.transport).not.toHaveBeenCalled();
+      expect(f.get).not.toHaveBeenCalled();
+      expect(f.put).not.toHaveBeenCalled();
+      assertIsolatedAndClosed(f);
+    },
+  );
+
+  it("rejects another signed account before opening either resource", async () => {
+    const f = followupFixture();
+    const c = writeContext(MANAGED_RESEARCH_FOLLOWUPS_PATH, followupCommand());
+    expect(
+      await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )({
+        ...c,
+        req: {
+          ...c.req,
+          headers: {
+            ...c.req.headers,
+            authorization: `Bearer ${token({ sub: "user_other" })}`,
+          },
+        },
+      }),
+    ).toMatchObject({ status: 403, body: { error: "access_denied" } });
+    expect(f.repository).not.toHaveBeenCalled();
+    expect(f.watchlist.transport).not.toHaveBeenCalled();
+    assertIsolatedAndClosed(f);
+  });
+
+  it("closes the newly constructed transport when only follow-up composition fails", async () => {
+    const f = followupFixture();
+    f.repository.mockImplementation(() => {
+      throw new Error("Invented private composition failure");
+    });
+    expect(
+      await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path: MANAGED_RESEARCH_FOLLOWUPS_PATH })),
+    ).toMatchObject({ status: 503, body: { error: "unavailable" } });
+    expect(f.repository).toHaveBeenCalledTimes(1);
+    expect(f.get).not.toHaveBeenCalled();
+    expect(f.put).not.toHaveBeenCalled();
+    expect(f.watchlist.transport).toHaveBeenCalledTimes(1);
+    assertIsolatedAndClosed(f);
+  });
+
+  it.each(["GET", "POST"])(
+    "refuses supplied follow-up query on %s before storage",
+    async (method) => {
+      const f = followupFixture();
+      const c =
+        method === "POST"
+          ? writeContext(MANAGED_RESEARCH_FOLLOWUPS_PATH, followupCommand())
+          : context({ path: MANAGED_RESEARCH_FOLLOWUPS_PATH });
+      expect(
+        await createManagedWorkspaceFunction(
+          configuration(),
+          null,
+          null,
+        )({ ...c, req: { ...c.req, queryString: "q=ZERO" } }),
+      ).toMatchObject({ status: 400, body: { error: "invalid_request" } });
+      expect(f.watchlist.transport).not.toHaveBeenCalled();
+      expect(f.repository).not.toHaveBeenCalled();
+      assertIsolatedAndClosed(f);
+    },
+  );
+
+  it.each(["PUT", "DELETE"])(
+    "rejects unsupported follow-up method %s without storage",
+    async (method) => {
+      const f = followupFixture();
+      expect(
+        await createManagedWorkspaceFunction(
+          configuration(),
+          null,
+          null,
+        )(context({ method, path: MANAGED_RESEARCH_FOLLOWUPS_PATH })),
+      ).toMatchObject({ status: 405, body: { error: "method_not_allowed" } });
+      expect(f.watchlist.transport).not.toHaveBeenCalled();
+      expect(f.repository).not.toHaveBeenCalled();
+      assertIsolatedAndClosed(f);
+    },
+  );
+
+  it.each([
+    Buffer.from([0xc3]),
+    Buffer.from([0xed, 0xa0, 0x80]),
+    Buffer.from("{"),
+  ])(
+    "rejects malformed follow-up UTF-8/JSON bytes %# before repository dispatch",
+    async (bodyBinary) => {
+      const f = followupFixture();
+      const c = writeContext(
+        MANAGED_RESEARCH_FOLLOWUPS_PATH,
+        followupCommand(),
+      );
+      expect(
+        await createManagedWorkspaceFunction(
+          configuration(),
+          null,
+          null,
+        )({ ...c, req: { ...c.req, bodyBinary } }),
+      ).toMatchObject({ status: 400, body: { error: "invalid_request" } });
+      expect(f.watchlist.transport).not.toHaveBeenCalled();
+      expect(f.repository).not.toHaveBeenCalled();
+      assertIsolatedAndClosed(f);
+    },
+  );
+
+  it.each([
+    "media-type",
+    "encoding",
+    "empty",
+    "unknown-field",
+    "non-buffer",
+    "GET-body",
+  ])(
+    "rejects follow-up %s without declaring commit uncertainty",
+    async (kind) => {
+      const f = followupFixture();
+      const c = writeContext(
+        MANAGED_RESEARCH_FOLLOWUPS_PATH,
+        followupCommand(),
+      );
+      let req: ManagedWorkspaceFunctionContext["req"] = c.req;
+      if (kind === "media-type")
+        req = {
+          ...req,
+          headers: { ...req.headers, "content-type": "text/plain" },
+        };
+      if (kind === "encoding")
+        req = {
+          ...req,
+          headers: { ...req.headers, "content-encoding": "gzip" },
+        };
+      if (kind === "empty") req = { ...req, bodyBinary: Buffer.alloc(0) };
+      if (kind === "unknown-field")
+        req = {
+          ...req,
+          bodyBinary: Buffer.from(
+            JSON.stringify({ ...followupCommand(), ownerId: "forged" }),
+          ),
+        };
+      if (kind === "non-buffer")
+        req = { ...req, bodyBinary: new Uint8Array() as Buffer };
+      if (kind === "GET-body") req = { ...req, method: "GET" };
+      const media = kind === "media-type" || kind === "encoding";
+      expect(
+        await createManagedWorkspaceFunction(
+          configuration(),
+          null,
+          null,
+        )({ ...c, req }),
+      ).toMatchObject({
+        status: media ? 415 : 400,
+        body: { error: media ? "unsupported_media_type" : "invalid_request" },
+      });
+      expect(f.repository).not.toHaveBeenCalled();
+      expect(f.watchlist.transport).not.toHaveBeenCalled();
+      assertIsolatedAndClosed(f);
+    },
+  );
+
+  it("admits the exact raw envelope bound with Unicode but refuses one extra byte before auth", async () => {
+    const f = followupFixture();
+    const run = createManagedWorkspaceFunction(configuration(), null, null);
+    const c = writeContext(MANAGED_RESEARCH_FOLLOWUPS_PATH, followupCommand());
+    const max = MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes;
+    const bodyBinary = Buffer.concat([
+      c.req.bodyBinary,
+      Buffer.alloc(max - c.req.bodyBinary.byteLength, 0x20),
+    ]);
+    expect(bodyBinary.byteLength).toBe(266_240);
+    expect(await run({ ...c, req: { ...c.req, bodyBinary } })).toMatchObject({
+      status: 200,
+      body: { payload: followupCommand().payload },
+    });
+    expect(f.put).toHaveBeenCalledTimes(1);
+    expect(f.put.mock.calls[0]?.[0].userId).toMatch(/^clerk-[a-f0-9]{30}$/u);
+    expect(f.put.mock.calls[0]?.[1]).toEqual(followupCommand());
+    const factoryCount = f.repository.mock.calls.length;
+    const authenticate = vi.fn<authModule.ClerkTrialAuth>();
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(authenticate);
+    const reject = createManagedWorkspaceFunction(configuration(), null, null);
+    expect(
+      await reject({
+        ...c,
+        req: {
+          ...c.req,
+          bodyBinary: Buffer.concat([bodyBinary, Buffer.from(" ")]),
+        },
+      }),
+    ).toMatchObject({ status: 413, body: { error: "payload_too_large" } });
+    expect(authenticate).not.toHaveBeenCalled();
+    expect(f.repository).toHaveBeenCalledTimes(factoryCount);
+    assertIsolatedAndClosed(f);
+  });
+
+  it("keeps the new route's native preflight independent of both repositories", async () => {
+    const f = followupFixture();
+    const run = createManagedWorkspaceFunction(configuration(), null, null);
+    expect(
+      await run(
+        context({
+          method: "OPTIONS",
+          path: MANAGED_RESEARCH_FOLLOWUPS_PATH,
+          headers: {
+            origin: NATIVE_ORIGIN,
+            "access-control-request-method": "POST",
+            "access-control-request-headers": "authorization, content-type",
+          },
+        }),
+      ),
+    ).toMatchObject({
+      status: 204,
+      body: "",
+      headers: {
+        "access-control-allow-origin": NATIVE_ORIGIN,
+        "access-control-allow-methods": "GET, POST",
+      },
+    });
+    expect(f.repository).not.toHaveBeenCalled();
+    expect(f.watchlist.transport).not.toHaveBeenCalled();
+    assertIsolatedAndClosed(f);
+  });
+
+  it("keeps a dispatched follow-up write uncertain after response delivery fails, with no retry", async () => {
+    const f = followupFixture();
+    const c = writeContext(MANAGED_RESEARCH_FOLLOWUPS_PATH, followupCommand());
+    const responseFailure = vi.fn(() => {
+      throw new Error("Invented failure after committed receipt");
+    });
+    expect(
+      await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )({ ...c, res: { ...c.res, text: responseFailure } }),
+    ).toMatchObject({ status: 503, body: { error: "commit_unknown" } });
+    expect(responseFailure).toHaveBeenCalledTimes(1);
+    expect(f.put).toHaveBeenCalledTimes(1);
+    expect(f.repository).toHaveBeenCalledTimes(1);
+    expect(f.get).not.toHaveBeenCalled();
+    assertIsolatedAndClosed(f);
+  });
+
+  it.each(["GET", "POST"])(
+    "closes a failed %s operation and preserves read versus write uncertainty",
+    async (method) => {
+      const f = followupFixture();
+      if (method === "POST")
+        f.put.mockRejectedValueOnce(new Error("Invented uncertain commit"));
+      else f.get.mockRejectedValueOnce(new Error("Invented unavailable read"));
+      const c =
+        method === "POST"
+          ? writeContext(MANAGED_RESEARCH_FOLLOWUPS_PATH, followupCommand())
+          : context({ path: MANAGED_RESEARCH_FOLLOWUPS_PATH });
+      expect(
+        await createManagedWorkspaceFunction(configuration(), null, null)(c),
+      ).toMatchObject({
+        status: 503,
+        body: { error: method === "POST" ? "commit_unknown" : "unavailable" },
+      });
+      expect(f.repository).toHaveBeenCalledTimes(1);
+      expect(method === "POST" ? f.put : f.get).toHaveBeenCalledTimes(1);
+      assertIsolatedAndClosed(f);
+    },
+  );
 });

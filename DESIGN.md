@@ -95,6 +95,19 @@ horizontal scroll and 44px keyboard-accessible selectors on narrow screens.
 
 ## Color and surfaces
 
+Follow-ups uses the same managed fields, focus outline and 44px actions. Place
+explicit Load and Save actions beside its own version and save state. Keep the
+watchlist's save state separate. Use a two-column list and editor on wide screens
+and stack them below 760px. Full company identities, authored checks, results and
+dates wrap without truncation. Invalid raw dates remain visible in a separate
+group and do not acquire an overdue label.
+
+Keep the selected check and filter when company research opens. Back restores
+the check's Research button when it remains available. At narrow widths, the
+four workspace destinations share the existing bottom navigation; content keeps
+enough clearance for that navigation. Identity review and saved-version details
+follow the editor. Private test controls remain outside the product build.
+
 Place the always-visible Research sources area below company navigation and
 before the loaded snapshot. Keep Price, Annual and Filings in three equal cards,
 stacked below 900px. Each card separates source status, original completion time

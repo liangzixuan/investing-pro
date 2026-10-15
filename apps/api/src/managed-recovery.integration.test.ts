@@ -1,3 +1,4 @@
+import type { AppwriteVersionedRowStore } from "./appwrite-versioned-row-store";
 import {
   MANAGED_WATCHLIST_PATH,
   parseManagedCatalogStatus,
@@ -17,10 +18,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createManagedApi } from "../../web/src/clerk-trial/managed-api";
 import { ManagedWorkspace } from "../../web/src/clerk-trial/managed-workspace";
 import type { TrialSession } from "../../web/src/clerk-trial/session";
-import {
-  createAppwriteWatchlistRepository,
-  type AppwriteWatchlistStore,
-} from "./appwrite-watchlist-repository";
+import { createAppwriteWatchlistRepository } from "./appwrite-watchlist-repository";
 import {
   createManagedWorkspaceHandler,
   MANAGED_WORKSPACE_ORIGIN,
@@ -35,8 +33,8 @@ const TIME = "2026-10-11T12:00:00.000Z";
 const FIRST = "lst-00000";
 const SECOND = "lst-00001";
 type Row = Record<string, unknown>;
-type Input<K extends keyof AppwriteWatchlistStore> = Parameters<
-  AppwriteWatchlistStore[K]
+type Input<K extends keyof AppwriteVersionedRowStore> = Parameters<
+  AppwriteVersionedRowStore[K]
 >[0];
 interface Transaction {
   readonly bases: Map<string, string | undefined>;
@@ -44,7 +42,7 @@ interface Transaction {
 }
 
 /** TablesDB storage only. Production code owns payloads, versions and receipts. */
-class AtomicRows implements AppwriteWatchlistStore {
+class AtomicRows implements AppwriteVersionedRowStore {
   readonly rows = new Map<string, Row>();
   readonly transactions = new Map<string, Transaction>();
   failNextRead = false;
@@ -250,6 +248,8 @@ async function fixture() {
       },
     },
     openRepository,
+    openFollowupsRepository: () =>
+      Promise.reject(new Error("Unexpected follow-up resource")),
   });
   const requests: {
     session: string;

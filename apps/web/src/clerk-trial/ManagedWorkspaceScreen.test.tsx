@@ -302,6 +302,16 @@ function fixture(
   priceCoverage = [eodSelection.listing, ...payload.memberships],
 ) {
   const api: ManagedApi = {
+    loadFollowups: vi
+      .fn<ManagedApi["loadFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
+    saveFollowups: vi
+      .fn<ManagedApi["saveFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
     monetaryAnnouncements: vi
       .fn<ManagedApi["monetaryAnnouncements"]>()
       .mockRejectedValue(new Error("Unexpected announcements read")),

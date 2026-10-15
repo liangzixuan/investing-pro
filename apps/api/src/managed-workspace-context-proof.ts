@@ -127,6 +127,9 @@ function harness() {
         throw new Error("Invented read-only resolution failure");
       },
     },
+    openFollowupsRepository() {
+      return Promise.reject(new Error("Unexpected follow-up resource"));
+    },
     openRepository() {
       repositoryOpens++;
       return Promise.reject(

@@ -1,3 +1,4 @@
+import type { AppwriteVersionedRowStore } from "./appwrite-versioned-row-store";
 import { createHash } from "node:crypto";
 
 import { AppwriteException, TablesDB } from "node-appwrite";
@@ -6,7 +7,6 @@ import { createAppwriteTransport } from "./appwrite-transport";
 import {
   appwriteWatchlistStore,
   createAppwriteWatchlistRepository,
-  type AppwriteWatchlistStore,
 } from "./appwrite-watchlist-repository";
 import {
   CLERK_TRIAL_CATALOG,
@@ -113,7 +113,7 @@ export function validateClerkTrialProofProfile(
 }
 
 export interface ClerkTrialProofOperation {
-  newStore(): AppwriteWatchlistStore;
+  newStore(): AppwriteVersionedRowStore;
   snapshot(): { readonly requests: number; readonly lastStatus: number | null };
   close(): Promise<void>;
 }
@@ -289,7 +289,7 @@ export async function runClerkTrialStorageProof(
     return { wait: () => bounded(promise), release };
   }
   async function call<T>(
-    method: keyof AppwriteWatchlistStore,
+    method: keyof AppwriteVersionedRowStore,
     action: () => Promise<T>,
   ) {
     assertRunning();
@@ -365,7 +365,7 @@ export async function runClerkTrialStorageProof(
   function store(
     hooks: Hooks = {},
     actor: ProofActor = "writer",
-  ): AppwriteWatchlistStore {
+  ): AppwriteVersionedRowStore {
     const base = operation!.newStore();
     let commitLimitRejected = false;
     return {

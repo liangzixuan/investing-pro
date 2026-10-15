@@ -81,6 +81,16 @@ async function fixture(
     memberships: [listingMembership(zero), listingMembership(other)],
   };
   const api: ManagedApi = {
+    loadFollowups: vi
+      .fn<ManagedApi["loadFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
+    saveFollowups: vi
+      .fn<ManagedApi["saveFollowups"]>()
+      .mockRejectedValue(
+        new Error("Follow-ups require an explicit fixture action"),
+      ),
     annualReport: vi
       .fn<ManagedApi["annualReport"]>()
       .mockImplementation(() => annualResponse()),

@@ -50,6 +50,7 @@ function returnLocation(state: unknown, scope: string): ReturnLocation | null {
   return value.scope === scope &&
     (value.view === "markets" ||
       value.view === "discover" ||
+      value.view === "followups" ||
       value.view === "watchlist")
     ? { scope, view: value.view }
     : null;

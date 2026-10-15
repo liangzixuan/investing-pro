@@ -1,4 +1,6 @@
 import {
+  MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
+  MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_CATALOG_LIMITS,
   MANAGED_CATALOG_RESOLVE_LIMITS,
   MANAGED_CATALOG_RESOLVE_PATH,
@@ -18,6 +20,8 @@ import {
 import { TablesDB } from "node-appwrite";
 
 import { createAppwriteTransport } from "./appwrite-transport";
+import { appwriteVersionedRowStore } from "./appwrite-versioned-row-store";
+import { createAppwriteResearchFollowupsRepository } from "./appwrite-research-followups-repository";
 import {
   appwriteWatchlistStore,
   createAppwriteWatchlistRepository,
@@ -101,6 +105,7 @@ declare const __MANAGED_WORKSPACE_SERVER_CONFIG__: unknown;
 declare const __MANAGED_SEC_CONFIG__: unknown;
 declare const __MANAGED_EOD_CONFIG__: unknown;
 const PATHS: readonly string[] = [
+  MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_CATALOG_SEARCH_PATH,
   MANAGED_CATALOG_RESOLVE_PATH,
@@ -151,15 +156,17 @@ export function bridgeManagedWorkspaceRequest(
   if (!Buffer.isBuffer(req.bodyBinary))
     throw new BridgeFailure(400, "invalid_request");
   const maximum =
-    req.path === MANAGED_WATCHLIST_PATH
-      ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
-      : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
-        ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
-        : req.path === MANAGED_SEC_FILINGS_PATH
-          ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
-          : req.path === MANAGED_EOD_HISTORY_PATH
-            ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
-            : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
+    req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH
+      ? MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes
+      : req.path === MANAGED_WATCHLIST_PATH
+        ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
+        : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
+          ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
+          : req.path === MANAGED_SEC_FILINGS_PATH
+            ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
+            : req.path === MANAGED_EOD_HISTORY_PATH
+              ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
+              : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
   if (req.bodyBinary.byteLength > maximum)
     throw new BridgeFailure(413, "payload_too_large");
   if (req.method !== "POST" && req.bodyBinary.byteLength !== 0)
@@ -353,6 +360,33 @@ export function createManagedWorkspaceFunction(
                 },
               }),
             }),
+        async openFollowupsRepository(signal) {
+          if (!executionKey) throw new Error("Execution authority unavailable");
+          const transport = createAppwriteTransport({
+            endpoint: "https://nyc.cloud.appwrite.io/v1",
+            signal,
+          });
+          try {
+            transport.client
+              .setProject("6abac57a0007b7c1a671")
+              .setKey(executionKey);
+            return {
+              repository: createAppwriteResearchFollowupsRepository({
+                store: appwriteVersionedRowStore(
+                  new TablesDB(transport.client),
+                ),
+                databaseId: "investment_managed_followups_v1",
+                followupsTableId: "followups",
+                receiptsTableId: "receipts",
+                catalog: getManagedWorkspaceCatalog(),
+              }),
+              close: () => transport.close(),
+            };
+          } catch {
+            await transport.close();
+            throw new Error("Managed follow-up storage unavailable");
+          }
+        },
         async openRepository(signal) {
           if (!executionKey) throw new Error("Execution authority unavailable");
           const transport = createAppwriteTransport({
@@ -380,7 +414,9 @@ export function createManagedWorkspaceFunction(
         },
       });
       dispatchedWrite =
-        req.method === "POST" && req.path === MANAGED_WATCHLIST_PATH;
+        req.method === "POST" &&
+        (req.path === MANAGED_WATCHLIST_PATH ||
+          req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH);
       const response = await (sourceController
         ? announcements
           ? awaitManagedMonetaryAnnouncements(

@@ -14,6 +14,7 @@ import {
 } from "./operating-comparison-fixture";
 import { createNativeExportFixture } from "./native-export-fixture";
 import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
+import type { TrialSession } from "../../src/clerk-trial/session";
 
 if (
   Capacitor.getPlatform() !== "android" ||
@@ -35,6 +36,7 @@ if (
   scenario !== "annual-liquidity-history" &&
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
+  scenario !== "research-followups" &&
   scenario !== "company-price-ranges" &&
   scenario !== "thesis-review" &&
   scenario !== "price-comparison-note" &&
@@ -64,23 +66,24 @@ const nativeExport =
   scenario === "watchlist-export" ? createNativeExportFixture() : null;
 
 /** Own the real session model so diagnostics can observe invented drafts without a production bridge. */
-function FixtureSession() {
+function FixtureSession({
+  session,
+  onFreshSession,
+}: {
+  session: TrialSession;
+  onFreshSession: (session: TrialSession) => void;
+}) {
   const [workspace, setWorkspace] = useState<ManagedWorkspace | null>(null);
   useLayoutEffect(() => {
-    const current = new ManagedWorkspace(
-      fixture.api,
-      fixture.session,
-      undefined,
-      {
-        marketsCohort: fixture.marketsCohort,
-        priceCoverage: fixture.priceCoverage,
-      },
-    );
+    const current = new ManagedWorkspace(fixture.api, session, undefined, {
+      marketsCohort: fixture.marketsCohort,
+      priceCoverage: fixture.priceCoverage,
+    });
     setWorkspace(current);
     void current.coordinator.load();
     void current.refreshCatalog();
-    return () => current.coordinator.retire();
-  }, []);
+    return () => current.sessionOwner.dispose();
+  }, [session]);
   return (
     <>
       <TrialFrame managed compact>
@@ -102,7 +105,129 @@ function FixtureSession() {
       {workspace && nativeExport && (
         <nativeExport.Controls workspace={workspace} />
       )}
+      {workspace && fixture.followups && (
+        <FollowupsFixtureControls
+          workspace={workspace}
+          onFreshSession={onFreshSession}
+        />
+      )}
     </>
+  );
+}
+
+function FollowupsFixtureControls({
+  workspace,
+  onFreshSession,
+}: {
+  workspace: ManagedWorkspace;
+  onFreshSession: (session: TrialSession) => void;
+}) {
+  const controls = fixture.followups!;
+  const state = useSyncExternalStore(controls.subscribe, controls.getSnapshot);
+  const draft = useSyncExternalStore(
+    workspace.followups.coordinator.subscribe,
+    workspace.followups.coordinator.getSnapshot,
+  );
+  const local = useSyncExternalStore(
+    workspace.followups.subscribe,
+    workspace.followups.getSnapshot,
+  );
+  const owner = useSyncExternalStore(
+    workspace.sessionOwner.subscribe,
+    workspace.sessionOwner.getSnapshot,
+  );
+  return (
+    <aside aria-label="Invented follow-up controls">
+      <h2>Invented follow-up controls</h2>
+      <p>
+        RAM only. A held Save commits immediately and delays only its
+        acknowledgement. Starting a fresh session discards both local drafts;
+        the independent saved stores remain.
+      </p>
+      <pre
+        id="fixture-followups-diagnostics"
+        style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+      >
+        {JSON.stringify(state)}
+      </pre>
+      <pre
+        id="fixture-followups-draft"
+        style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+      >
+        {JSON.stringify({
+          session: state.session,
+          owner: owner.phase,
+          phase: draft.phase,
+          baseVersion: draft.baseVersion,
+          dirty: draft.dirty,
+          conflict: draft.conflict,
+          uncertain: draft.uncertain,
+          replayPending: draft.replayPending,
+          selectedId: local.selectedId,
+          filter: local.filter,
+          entries: draft.draft?.entries ?? null,
+          saved: draft.saved ?? null,
+        })}
+      </pre>
+      <label htmlFor="fixture-followups-next-read">
+        Next invented follow-up read
+      </label>
+      <select
+        id="fixture-followups-next-read"
+        value={state.nextRead}
+        onChange={(event) =>
+          controls.setNextRead(
+            event.currentTarget.value as Parameters<
+              typeof controls.setNextRead
+            >[0],
+          )
+        }
+      >
+        <option value="complete">Complete</option>
+        <option value="hold">Hold captured reply</option>
+        <option value="fail">Fail before reply</option>
+        <option value="retire">Expire session</option>
+      </select>
+      <label htmlFor="fixture-followups-next-save">
+        Next invented follow-up Save
+      </label>
+      <select
+        id="fixture-followups-next-save"
+        value={state.nextSave}
+        onChange={(event) =>
+          controls.setNextSave(
+            event.currentTarget.value as Parameters<
+              typeof controls.setNextSave
+            >[0],
+          )
+        }
+      >
+        <option value="complete">Complete</option>
+        <option value="hold">Commit and hold acknowledgement</option>
+        <option value="fail">Fail before commit</option>
+        <option value="lost-ack">Commit and lose acknowledgement</option>
+        <option value="conflict">Another client advances version</option>
+        <option value="retire">Expire before commit</option>
+      </select>
+      <button
+        id="fixture-followups-settle"
+        disabled={state.held === 0}
+        onClick={() => controls.settleHeld()}
+      >
+        Settle oldest invented follow-up reply
+      </button>
+      <button
+        id="fixture-followups-fresh-session"
+        disabled={state.session >= 8}
+        onClick={() => {
+          workspace.sessionOwner.dispose();
+          history.replaceState(null, "", "/");
+          onFreshSession(controls.nextSession());
+        }}
+      >
+        Start fresh invented session
+      </button>
+    </aside>
   );
 }
 
@@ -146,6 +271,7 @@ function FixtureDraftDiagnostics({
 
 function Fixture() {
   const state = useSyncExternalStore(fixture.subscribe, fixture.getSnapshot);
+  const [session, setSession] = useState(fixture.session);
   return (
     <>
       <aside aria-label="Invented fixture identification">
@@ -154,7 +280,11 @@ function Fixture() {
         </p>
         <p>No signed-in account, network, provider, or saved owner data.</p>
       </aside>
-      <FixtureSession />
+      <FixtureSession
+        key={session.sessionId}
+        session={session}
+        onFreshSession={setSession}
+      />
       <aside aria-label="Invented fixture diagnostics">
         <h2>Fixture diagnostics</h2>
         <pre

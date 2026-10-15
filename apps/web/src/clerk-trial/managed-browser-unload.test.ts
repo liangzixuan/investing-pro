@@ -3,6 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TrialApiError } from "./api";
 import { bindManagedBrowserUnload } from "./managed-browser-unload";
 import {
+  MANAGED_FOLLOWUPS_SAVE_COPY,
+  MANAGED_WATCHLIST_SAVE_COPY,
+} from "./save-coordinator-copy";
+import { ManagedSessionOwner } from "./managed-session-owner";
+import {
   SaveCoordinator,
   type SavePort,
   type SavedPayload,
@@ -23,37 +28,54 @@ function deferred<T>() {
 }
 
 function fixture() {
-  const load = vi.fn<SavePort<string>["load"]>().mockResolvedValue({
-    version: 1,
-    payload: "Invented saved note",
-  });
-  const save = vi.fn<SavePort<string>["save"]>().mockResolvedValue({
-    version: 2,
-    payload: "Invented confirmed note",
-    replayed: false,
-  });
   const signOut = vi.fn<() => Promise<void>>().mockResolvedValue();
-  const coordinator = new SaveCoordinator<string>(
-    {
-      mode: "managed",
-      empty: () => null,
-      copy: (payload) => payload,
-      capture: normalizeWatchlistNote,
-      load,
-      save,
-    },
-    {
-      userId: "invented-browser-user",
-      sessionId: "invented-browser-session",
-      getToken: vi.fn(),
-      signOut,
-    },
-    { newKey: () => "invented-original-command" },
+  const resourceSignOut = vi
+    .fn<() => Promise<void>>()
+    .mockRejectedValue(new Error("Only the aggregate owner may sign out"));
+  const resource = (name: string, copy: typeof MANAGED_WATCHLIST_SAVE_COPY) => {
+    const load = vi.fn<SavePort<string>["load"]>().mockResolvedValue({
+      version: 1,
+      payload: "Invented saved note",
+    });
+    const save = vi.fn<SavePort<string>["save"]>().mockResolvedValue({
+      version: 2,
+      payload: "Invented confirmed note",
+      replayed: false,
+    });
+    const coordinator = new SaveCoordinator<string>(
+      {
+        mode: "managed",
+        empty: () => null,
+        copy: (payload) => payload,
+        capture: normalizeWatchlistNote,
+        load,
+        save,
+      },
+      {
+        userId: "invented-browser-user",
+        sessionId: "invented-browser-session",
+        getToken: vi.fn(),
+        signOut: resourceSignOut,
+      },
+      copy,
+      { newKey: () => `invented-${name}-command` },
+    );
+    return { coordinator, load, save };
+  };
+  const { coordinator, load, save } = resource(
+    "watchlist",
+    MANAGED_WATCHLIST_SAVE_COPY,
+  );
+  const followups = resource("followups", MANAGED_FOLLOWUPS_SAVE_COPY);
+  const owner = new ManagedSessionOwner(
+    { watchlist: coordinator, followups: followups.coordinator },
+    { signOut },
+    vi.fn(),
   );
   const target = new EventTarget();
   const add = vi.spyOn(target, "addEventListener");
   const remove = vi.spyOn(target, "removeEventListener");
-  const dispose = bindManagedBrowserUnload(coordinator, target);
+  const dispose = bindManagedBrowserUnload(owner, target);
   cleanups.push(dispose);
   const leave = () => {
     const event = new Event("beforeunload", { cancelable: true });
@@ -61,6 +83,9 @@ function fixture() {
     return event;
   };
   return {
+    owner,
+    followups,
+    resourceSignOut,
     coordinator,
     load,
     save,
@@ -152,7 +177,7 @@ describe("managed browser leave warning", () => {
     expect(f.save.mock.calls[1]![0]).toEqual(command);
     pending.resolve({ version: 2, payload: command.payload, replayed: true });
     await reconciling;
-    expect(f.leave().defaultPrevented).toBe(false);
+    expect(f.leave().defaultPrevented).toBe(true);
     expect(f.coordinator.getSnapshot().replayPending).toBe(true);
     expect(f.coordinator.canEdit()).toBe(false);
     expect(f.save).toHaveBeenCalledTimes(2);
@@ -190,7 +215,7 @@ describe("managed browser leave warning", () => {
         f.coordinator.readError(new TrialApiError("unauthenticated"));
       } else if (reason === "failed-signout") {
         f.signOut.mockRejectedValueOnce(new Error("Invented sign-out failure"));
-        const signingOut = f.coordinator.signOut();
+        const signingOut = f.owner.signOut();
         expect(f.remove).toHaveBeenCalledTimes(1);
         expect(f.leave().defaultPrevented).toBe(false);
         await signingOut;
@@ -236,5 +261,118 @@ describe("managed browser leave warning", () => {
     expect(next.leave().defaultPrevented).toBe(true);
     expect(f.save).not.toHaveBeenCalled();
     expect(next.save).not.toHaveBeenCalled();
+  });
+
+  it("keeps one warning for both drafts until each resource is confirmed clean", async () => {
+    const f = fixture();
+    await Promise.all([f.coordinator.load(), f.followups.coordinator.load()]);
+    f.coordinator.replaceDraft("Watchlist draft");
+    const retained = f.add.mock.calls[0]![1] as EventListener;
+    f.followups.coordinator.replaceDraft("Follow-up draft");
+    expect(f.add).toHaveBeenCalledOnce();
+    expect(f.leave().defaultPrevented).toBe(true);
+    f.save.mockResolvedValueOnce({
+      version: 2,
+      payload: "Watchlist draft",
+      replayed: false,
+    });
+    await f.coordinator.save();
+    expect(f.remove).not.toHaveBeenCalled();
+    expect(f.leave().defaultPrevented).toBe(true);
+    expect(f.followups.coordinator.getSnapshot().draft).toBe("Follow-up draft");
+    expect(f.followups.save).not.toHaveBeenCalled();
+    f.followups.save.mockResolvedValueOnce({
+      version: 2,
+      payload: "Follow-up draft",
+      replayed: false,
+    });
+    await f.followups.coordinator.save();
+    expect(f.remove).toHaveBeenCalledExactlyOnceWith("beforeunload", retained);
+    expect(f.leave().defaultPrevented).toBe(false);
+    f.followups.coordinator.replaceDraft("Another follow-up edit");
+    const staleEvent = new Event("beforeunload", { cancelable: true });
+    retained(staleEvent);
+    expect(staleEvent.defaultPrevented).toBe(true);
+    expect(f.save).toHaveBeenCalledOnce();
+    expect(f.followups.save).toHaveBeenCalledOnce();
+    expect(f.signOut).not.toHaveBeenCalled();
+    expect(f.resourceSignOut).not.toHaveBeenCalled();
+  });
+
+  it("warns for follow-up uncertainty, reconciliation and replay until latest-version review is complete", async () => {
+    const f = fixture();
+    await Promise.all([f.coordinator.load(), f.followups.coordinator.load()]);
+    const unchangedWatchlist = f.coordinator.getSnapshot();
+    f.followups.coordinator.replaceDraft("Uncertain follow-up");
+    f.followups.save.mockRejectedValueOnce(new TrialApiError("commit_unknown"));
+    await f.followups.coordinator.save();
+    const original = f.followups.save.mock.calls[0]![0];
+    expect(f.leave().defaultPrevented).toBe(true);
+    const held = deferred<SavedPayload<string>>();
+    f.followups.save.mockReturnValueOnce(held.promise);
+    const reconciling = f.followups.coordinator.reconcile();
+    expect(f.leave().defaultPrevented).toBe(true);
+    expect(f.followups.save.mock.calls[1]![0]).toEqual(original);
+    held.resolve({ version: 2, payload: original.payload, replayed: true });
+    await reconciling;
+    expect(f.followups.coordinator.getSnapshot()).toMatchObject({
+      dirty: false,
+      replayPending: true,
+      conflict: true,
+    });
+    expect(f.leave().defaultPrevented).toBe(true);
+    f.followups.coordinator.useSaved();
+    expect(f.leave().defaultPrevented).toBe(true);
+    f.followups.load.mockResolvedValueOnce({
+      version: 3,
+      payload: "Latest follow-up",
+    });
+    await f.followups.coordinator.load();
+    expect(f.leave().defaultPrevented).toBe(true);
+    f.followups.coordinator.useSaved();
+    expect(f.leave().defaultPrevented).toBe(false);
+    expect(f.followups.coordinator.getSnapshot().draft).toBe(
+      "Latest follow-up",
+    );
+    expect(f.coordinator.getSnapshot()).toBe(unchangedWatchlist);
+    expect(f.save).not.toHaveBeenCalled();
+    expect(f.followups.save).toHaveBeenCalledTimes(2);
+    expect(f.signOut).not.toHaveBeenCalled();
+  });
+
+  it("removes the warning and fences both pending saves on aggregate sign-out", async () => {
+    const f = fixture();
+    await Promise.all([f.coordinator.load(), f.followups.coordinator.load()]);
+    f.coordinator.replaceDraft("Watchlist saving");
+    f.followups.coordinator.replaceDraft("Follow-ups saving");
+    const one = deferred<SavedPayload<string>>(),
+      two = deferred<SavedPayload<string>>();
+    f.save.mockReturnValueOnce(one.promise);
+    f.followups.save.mockReturnValueOnce(two.promise);
+    const saving = f.coordinator.save(),
+      followupsSaving = f.followups.coordinator.save();
+    expect(f.owner.getSnapshot()).toMatchObject({
+      watchlist: { phase: "saving" },
+      followups: { phase: "saving" },
+    });
+    expect(f.leave().defaultPrevented).toBe(true);
+    const before = f.owner.getSnapshot();
+    expect(f.leave().defaultPrevented).toBe(true);
+    expect(f.owner.getSnapshot()).toBe(before);
+    const signingOut = f.owner.signOut();
+    expect(f.leave().defaultPrevented).toBe(false);
+    expect(f.save.mock.calls[0]![1].aborted).toBe(true);
+    expect(f.followups.save.mock.calls[0]![1].aborted).toBe(true);
+    await signingOut;
+    const retired = f.owner.getSnapshot();
+    one.resolve({ version: 2, payload: "Watchlist late", replayed: false });
+    two.resolve({ version: 2, payload: "Follow-ups late", replayed: false });
+    await Promise.all([saving, followupsSaving]);
+    expect(f.owner.getSnapshot()).toBe(retired);
+    expect(f.coordinator.getSnapshot().draft).toBeNull();
+    expect(f.followups.coordinator.getSnapshot().draft).toBeNull();
+    expect(f.remove).toHaveBeenCalledOnce();
+    expect(f.signOut).toHaveBeenCalledOnce();
+    expect(f.resourceSignOut).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,7 @@ import {
   type ManagedEodIdentity,
 } from "@research-cockpit/contracts";
 import type { TrialApiError } from "./api";
+import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
   ManagedCatalogChangedError,
   ManagedEodCooldownError,
@@ -26,7 +27,7 @@ import {
 
 export interface EodHistorySelection extends ManagedEodAccessSelection {
   readonly cik: string | null;
-  readonly origin: "discover" | "watchlist" | "markets" | "route";
+  readonly origin: ManagedResearchSelection["origin"];
 }
 export interface ManagedEodHistorySeed {
   readonly response: ManagedEodHistoryResponseDto;

@@ -1,4 +1,12 @@
 import {
+  MANAGED_RESEARCH_FOLLOWUPS_PATH,
+  MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
+  parseManagedResearchFollowups,
+  parseManagedResearchFollowupsCommand,
+  parseManagedResearchFollowupsReceipt,
+  type ManagedResearchFollowupsCommand,
+  type ManagedResearchFollowupsDto,
+  type ManagedResearchFollowupsReceiptDto,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_SEC_FILINGS_LIMITS,
   parseManagedSecFilingsRequest,
@@ -55,6 +63,11 @@ import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
 export interface ManagedApi {
+  loadFollowups: (signal: AbortSignal) => Promise<ManagedResearchFollowupsDto>;
+  saveFollowups: (
+    command: ManagedResearchFollowupsCommand,
+    signal: AbortSignal,
+  ) => Promise<ManagedResearchFollowupsReceiptDto>;
   recentFilings: (
     request: ManagedSecFilingsRequestDto,
     signal: AbortSignal,
@@ -127,6 +140,7 @@ export class ManagedEodCooldownError extends Error {
 
 type RequestKind =
   | "watchlist"
+  | "followups"
   | "resolve"
   | "annual"
   | "eod"
@@ -253,7 +267,8 @@ function responseError(
     throw new TrialApiError("invalid_response");
   }
   const error = value.error;
-  if (kind !== "watchlist" && status === 409 && error === "catalog_changed")
+  const mutation = kind === "watchlist" || kind === "followups";
+  if (!mutation && status === 409 && error === "catalog_changed")
     throw new ManagedCatalogChangedError();
   if (kind === "annual") {
     if (status === 503 && error === "not_configured")
@@ -263,13 +278,10 @@ function responseError(
   }
   const allowed: Record<number, readonly string[]> = {
     400: ["invalid_request"],
-    409: kind === "watchlist" ? ["conflict", "idempotency_conflict"] : [],
+    409: mutation ? ["conflict", "idempotency_conflict"] : [],
     413: ["payload_too_large"],
     415: ["unsupported_media_type"],
-    503:
-      kind === "watchlist"
-        ? ["unavailable", "commit_unknown"]
-        : ["unavailable"],
+    503: mutation ? ["unavailable", "commit_unknown"] : ["unavailable"],
   };
   if (typeof error !== "string" || !allowed[status]?.includes(error))
     throw new TrialApiError("invalid_response");
@@ -374,6 +386,27 @@ export function createManagedApi(
     }
   }
   return {
+    loadFollowups: (signal) =>
+      request(
+        MANAGED_RESEARCH_FOLLOWUPS_PATH,
+        signal,
+        MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes,
+        parseManagedResearchFollowups,
+        undefined,
+        "followups",
+      ),
+    saveFollowups: async (input, signal) => {
+      const captured = parseManagedResearchFollowupsCommand(input);
+      if (!captured) throw new TrialApiError("invalid_request");
+      return request(
+        MANAGED_RESEARCH_FOLLOWUPS_PATH,
+        signal,
+        MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes,
+        (value) => parseManagedResearchFollowupsReceipt(value, captured),
+        requestBody(captured, MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes),
+        "followups",
+      );
+    },
     recentFilings: async (input, signal) => {
       const captured = parseManagedSecFilingsRequest(input);
       if (!captured) throw new TrialApiError("invalid_request");

@@ -1,22 +1,15 @@
-import type { SaveCoordinator } from "./save-coordinator";
+import type { ManagedSessionOwner } from "./managed-session-owner";
 
 /** Bind the browser warning to this mounted session without saving or copying its draft. */
-export function bindManagedBrowserUnload<P>(
-  coordinator: Pick<SaveCoordinator<P>, "getSnapshot" | "subscribe">,
+export function bindManagedBrowserUnload(
+  owner: Pick<ManagedSessionOwner, "getSnapshot" | "subscribe">,
   target: Pick<EventTarget, "addEventListener" | "removeEventListener">,
 ) {
   let disposed = false;
   let attached = false;
   const needsWarning = () => {
-    const current = coordinator.getSnapshot();
-    return (
-      current.phase !== "retired" &&
-      current.phase !== "signing_out" &&
-      (current.dirty ||
-        current.uncertain ||
-        current.phase === "saving" ||
-        current.phase === "reconciling")
-    );
+    const current = owner.getSnapshot();
+    return current.phase === "active" && current.needsLeaveReview;
   };
   const beforeUnload = (event: Event) => {
     if (!disposed && needsWarning()) event.preventDefault();
@@ -29,7 +22,7 @@ export function bindManagedBrowserUnload<P>(
     if (needed) target.addEventListener("beforeunload", beforeUnload);
     else target.removeEventListener("beforeunload", beforeUnload);
   };
-  const unsubscribe = coordinator.subscribe(sync);
+  const unsubscribe = owner.subscribe(sync);
   sync();
   return () => {
     if (disposed) return;

@@ -37,6 +37,17 @@ export interface SaveState<P> {
   readonly signOutFailed: boolean;
 }
 
+export interface SaveCopyProfile {
+  readonly loadPrompt: string;
+  readonly retired: string;
+  readonly signedOut: string;
+  readonly signOutFailed: string;
+  readonly invalidDraft: string;
+  readonly saveRejected: string;
+  readonly accessDenied: string;
+  readonly loadFailed: string;
+}
+
 export class SaveCoordinator<P> {
   private state: SaveState<P>;
   private readonly listeners = new Set<() => void>();
@@ -50,6 +61,7 @@ export class SaveCoordinator<P> {
   constructor(
     private readonly port: SavePort<P>,
     private readonly session: TrialSession,
+    private readonly copyProfile: Readonly<SaveCopyProfile>,
     options: { newKey?: () => string; onRetire?: () => void } = {},
   ) {
     this.newKey = options.newKey ?? (() => crypto.randomUUID());
@@ -68,10 +80,7 @@ export class SaveCoordinator<P> {
       latestLoaded: false,
       uncertain: false,
       replayPending: false,
-      message:
-        this.port.mode === "demo"
-          ? "Load the shared trial watchlist to begin."
-          : "Load your shared watchlist to begin.",
+      message: this.copyProfile.loadPrompt,
       signOutFailed: false,
     };
   }
@@ -108,11 +117,7 @@ export class SaveCoordinator<P> {
     this.state = {
       ...this.empty(),
       phase: "retired",
-      message:
-        message ??
-        (this.port.mode === "demo"
-          ? "This session has ended. Its local trial data has been cleared."
-          : "This session has ended. Its local watchlist data has been cleared."),
+      message: message ?? this.copyProfile.retired,
     };
     try {
       this.onRetire?.();
@@ -130,20 +135,14 @@ export class SaveCoordinator<P> {
       if (generation !== this.generation) return;
       this.update({
         phase: "retired",
-        message:
-          this.port.mode === "demo"
-            ? "Signed out. Local trial data has been cleared."
-            : "Signed out. Local watchlist data has been cleared.",
+        message: this.copyProfile.signedOut,
       });
     } catch {
       if (generation !== this.generation) return;
       this.update({
         phase: "retired",
         signOutFailed: true,
-        message:
-          this.port.mode === "demo"
-            ? "Local trial data has been cleared, but sign-out could not be confirmed. Try signing out again."
-            : "Local watchlist data has been cleared, but sign-out could not be confirmed. Try signing out again.",
+        message: this.copyProfile.signOutFailed,
       });
     }
   }
@@ -230,10 +229,7 @@ export class SaveCoordinator<P> {
     const draft = this.port.capture(this.state.draft);
     if (draft === null) {
       this.update({
-        message:
-          this.port.mode === "demo"
-            ? "Use at most 1,000 characters without control characters in the note."
-            : "Review the watchlist entries and notes, and keep the watchlist within its size limit.",
+        message: this.copyProfile.invalidDraft,
       });
       return;
     }
@@ -312,10 +308,7 @@ export class SaveCoordinator<P> {
       this.pending = null;
       this.update({
         uncertain: false,
-        message:
-          this.port.mode === "demo"
-            ? "The save was rejected. Review the trial entries and note before saving again."
-            : "The save was rejected. Review the watchlist entries and notes before saving again.",
+        message: this.copyProfile.saveRejected,
       });
     } else {
       this.update({
@@ -338,15 +331,10 @@ export class SaveCoordinator<P> {
         "Your session is no longer accepted. Sign out and sign in again.",
       );
     } else if (code === "access_denied" || code === "origin_denied") {
-      this.retire(
-        this.port.mode === "demo"
-          ? "This session cannot access the isolated trial. No trial data is available."
-          : "This session cannot access the shared watchlist. Its local data has been cleared.",
-      );
+      this.retire(this.copyProfile.accessDenied);
     } else {
       this.update({
-        message:
-          "The saved watchlist could not be loaded. Your draft is unchanged; try loading again.",
+        message: this.copyProfile.loadFailed,
       });
     }
   }

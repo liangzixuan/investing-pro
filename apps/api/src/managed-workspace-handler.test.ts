@@ -45,6 +45,8 @@ const NATIVE_ORIGIN = "https://localhost";
 const OWNER = { userId: "clerk-invented-owner" };
 const STATUS = "/v1/managed/catalog";
 const SEARCH = `${STATUS}/search`;
+const openFollowupsRepository = () =>
+  Promise.reject(new Error("Unexpected follow-up resource"));
 
 function inventedCalendar(): contracts.PersonalEconomicCalendarDto {
   return {
@@ -158,6 +160,7 @@ function fixture() {
     auth,
     catalog: { status, search, resolve },
     openRepository,
+    openFollowupsRepository,
   });
   return {
     handler,
@@ -563,6 +566,7 @@ describe("managed catalog request boundary", () => {
       auth,
       catalog,
       openRepository: () => Promise.reject(new Error("Unexpected storage")),
+      openFollowupsRepository,
     });
     const status = await handler(request());
     const found = await handler(request(`${SEARCH}?q=AAPL`));
@@ -630,6 +634,7 @@ function storageFixture() {
     auth: f.auth,
     catalog: { status: f.status, search: f.search, resolve: f.resolve },
     openRepository,
+    openFollowupsRepository,
   });
   return { ...f, handler, get, put, close, openRepository };
 }
@@ -1128,6 +1133,7 @@ describe("managed annual read-only POST boundary", () => {
       auth: f.auth,
       catalog: { status: f.status, search: f.search, resolve: f.resolve },
       openRepository: f.openRepository,
+      openFollowupsRepository,
       annual: { load, assertActive },
     });
     const post = (
@@ -1279,6 +1285,7 @@ describe("managed EOD read-only boundary", () => {
       auth: f.auth,
       catalog: { status: f.status, search: f.search, resolve: f.resolve },
       openRepository: f.openRepository,
+      openFollowupsRepository,
       eod: { load, assertActive },
     });
     const post = (body: unknown = value) =>
@@ -1419,6 +1426,7 @@ describe("managed economic calendar request boundary", () => {
       auth: f.auth,
       catalog: { status: f.status, search: f.search, resolve: f.resolve },
       openRepository: f.openRepository,
+      openFollowupsRepository,
       calendar: { load, assertActive },
     });
     return { ...f, handler, load, assertActive };
@@ -1580,6 +1588,7 @@ describe("managed economic announcements request boundary", () => {
       auth: f.auth,
       catalog: { status: f.status, search: f.search, resolve: f.resolve },
       openRepository: f.openRepository,
+      openFollowupsRepository,
       announcements: { load, assertActive },
     });
     return { ...f, handler, load, assertActive };
@@ -1784,6 +1793,7 @@ describe("managed company filings POST boundary", () => {
       auth: f.auth,
       catalog: { status: f.status, search: f.search, resolve: f.resolve },
       openRepository: f.openRepository,
+      openFollowupsRepository,
       filings: { load, assertActive },
     });
     const post = (
