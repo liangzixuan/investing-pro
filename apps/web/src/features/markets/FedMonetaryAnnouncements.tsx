@@ -197,6 +197,9 @@ export function FedMonetaryAnnouncements({
                   <input
                     id="managed-fed-title-search"
                     type="search"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={filters.view.query}
                     aria-describedby="managed-fed-title-search-help managed-fed-title-count"
                     onChange={(event) =>

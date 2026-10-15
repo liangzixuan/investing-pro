@@ -36,18 +36,26 @@ other-source reads or console warnings. Native bundle maximum loader is
 2,433,477 bytes under the unchanged 4 MiB cap, with exact notices. New-head
 native execution and live publication remain separate.
 
-The original cash-history Android run passed 31 of 32 cases, including the report
-system-picker journey with exact bytes, bounds, malformed inputs, cancellation
-and recreation checks. The new cash-history case failed after closing the
-disclosure: it required zero table height, although Chromium can retain the last
-layout bounds of hidden disclosure content. Chrome reproduced a collapsed table
-with unchanged bounds, absent accessibility content and keyboard exclusion. The
-test correction checks rendering visibility and native Tab exclusion, with a
-positive visibility check after reopening. Exact amounts, draft retention,
-request counts, retirement and deadlines remain unchanged. Corrected native
-execution is still required. Ubuntu, parser, dependency and custody checks passed;
-the original Windows job is pending. CodeScene's five warnings and one notice
-remain recorded as reviewed maintenance debt.
+The first cash-history Android run passed 31 of 32 cases. Its closure assertion
+required zero table height, although Chromium can retain layout bounds for hidden
+disclosure content. Chrome reproduced the collapsed table, absent accessibility
+content and keyboard exclusion. The corrected rendering-visibility and native
+Tab assertions now pass in the original consolidated run, along with exact cash
+values, references, draft retention and session retirement. Report system-picker
+checks also pass, including exact bytes, bounds, malformed inputs, cancellation
+and recreation.
+
+That consolidated run passed 31 of 32 Android cases and all five other Actions
+jobs. Its remaining failure was announcement title search: a native lowercase
+query appeared with an initial capital letter, while the editor reported sentence
+capitalization. The field now requests no automatic capitalization, correction
+or spell checking. It still forwards the exact typed text; matching remains case
+insensitive. The regression retains its exact lowercase input assertion, source
+counts, draft checks and deadlines, and checks the field's keyboard hints before
+typing. All 82 affected presentation, hook and composed cases, web types, scoped
+lint/format and Java syntax pass. New-head native execution must still establish
+that the input method honors the hints. The original failed outcome remains
+recorded. CodeScene's 37 warnings and 14 notices remain reviewed maintenance debt.
 
 A synthetic provider receipt also tightens the prior
 report cancellation regression: it must prove normal release and descriptor

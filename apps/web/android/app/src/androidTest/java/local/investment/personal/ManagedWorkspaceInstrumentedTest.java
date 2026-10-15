@@ -875,6 +875,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-fed-note-disclosure #managed-fed-note-announcement') !== null" +
             " && document.querySelector('.fed-announcements-source')?.closest('details') === null" +
             " && document.querySelector('.fed-announcements-list')?.closest('details') === null");
+        awaitPage("announcement title search requests literal keyboard input",
+            "(() => { const input = document.querySelector('#managed-fed-title-search');" +
+            " return input?.autocapitalize === 'none' && input.getAttribute('autocorrect') === 'off'" +
+            " && input.spellcheck === false; })()");
         typeIntoInput("managed-fed-title-search", "no matching invented title");
         awaitPage("title search shares an empty view with the note picker without a read",
             "document.querySelector('#managed-fed-title-count')?.textContent.includes('0 of 2 loaded announcements.')" +

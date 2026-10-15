@@ -277,16 +277,22 @@ describe("Federal Reserve announcements presentation", () => {
     )!;
     expect(input.props.disabled).toBeUndefined();
     expect(input.props.value).toBe("undated");
+    expect(input.props.autoCapitalize).toBe("none");
+    expect(input.props.autoCorrect).toBe("off");
+    expect(input.props.spellCheck).toBe(false);
     (
       input.props.onChange as (event: {
         currentTarget: { value: string };
       }) => void
-    )({ currentTarget: { value: "October" } });
+    )({ currentTarget: { value: "  no matching Invented title  " } });
     const clear = elements.find(
       (node) => node.type === "button" && text(node) === "Clear title search",
     )!;
     (clear.props.onClick as () => void)();
-    expect(onQueryChange.mock.calls).toEqual([["October"], [""]]);
+    expect(onQueryChange.mock.calls).toEqual([
+      ["  no matching Invented title  "],
+      [""],
+    ]);
     const html = renderToStaticMarkup(view);
     expect(html).toContain('for="managed-fed-title-search"');
     expect(html).toContain(
