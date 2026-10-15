@@ -22,6 +22,22 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Consolidated research candidate
 
+The next report increment adds explicit JSON download in the managed browser.
+It checks the actual draft and source models before the file handoff and fences
+late results after report closure. It includes unsaved authored text, retains
+source clocks and uses its own purpose and filename. Only temporary browser
+transport is shared with saved-watchlist export. Android keeps inspection without
+a browser download action. Local verification is in progress; new-head hosted
+execution and publication remain separate.
+
+The original JSON-inspection Android run exposed a test clock mismatch: its
+Price fixture completes at 00:00:01 while Annual and Filings complete at 00:00:02.
+The assertion now checks each clock separately. A second original failure did not
+open the native scope picker after Clear focused search. The test now closes the
+soft keyboard before the same native picker checks; the exact input race is not
+proven, and new emulator evidence is required. No deadline, gate or validator is
+relaxed. Original failed outcomes remain recorded.
+
 The next report increment adds an inspectable JSON document to the current
 prepared preview. It separates the exact authored draft from complete admitted
 source packets, including Annual's original income, cash and liquidity inputs,

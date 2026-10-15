@@ -21,6 +21,7 @@ import { ManagedCompanyFilings } from "./managed-company-filings";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import { prepareCompanyReport } from "./managed-company-report";
 import {
+  isCompanyReportDocument,
   formatCompanyReportDocument,
   COMPANY_REPORT_DOCUMENT_MAX_BYTES,
 } from "./managed-company-report-document";
@@ -100,10 +101,45 @@ async function fixture() {
 }
 
 describe("company research document inspection", () => {
+  it("refuses accessor wrappers without reading them and keeps report and saved-watchlist purposes separate", async () => {
+    const { report } = await fixture();
+    const document = formatCompanyReportDocument(report)!;
+    const getter = vi.fn(() => document.text);
+    const accessor = { ...document };
+    Object.defineProperty(accessor, "text", { enumerable: true, get: getter });
+    expect(isCompanyReportDocument(accessor)).toBe(false);
+    expect(getter).not.toHaveBeenCalled();
+    expect(
+      isCompanyReportDocument({
+        version: 1,
+        filename: "Investment-watchlist-v1.txt",
+        text: document.text,
+        byteLength: document.byteLength,
+        membershipCount: 1,
+      }),
+    ).toBe(false);
+    expect(
+      formatCompanyReportDocument({ ...report, preparedAt: "invalid" }),
+    ).toBeNull();
+    expect(
+      formatCompanyReportDocument({
+        ...report,
+        selection: {
+          ...report.selection,
+          listing: { ...report.selection.listing, symbol: "../bad" },
+        },
+      }),
+    ).toBeNull();
+  });
   it("roundtrips the exact draft and every full admitted source packet without another read", async () => {
     const f = await fixture();
     const before = structuredClone(f.report);
     const document = formatCompanyReportDocument(f.report)!;
+    expect(document.purpose).toBe("investment.company-research");
+    expect(document.filename).toBe(
+      "Investment-research-ZERO-XNAS-20261015T000000000Z.json",
+    );
+    expect(isCompanyReportDocument(document)).toBe(true);
     const parsed = decode(document.text);
     expect(parsed.purpose).toBe("investment.company-research");
     expect(parsed.schemaVersion).toBe("1.0.0");
@@ -262,6 +298,9 @@ describe("company research document inspection", () => {
     };
     expect(formatCompanyReportDocument(changed)?.byteLength).toBe(
       COMPANY_REPORT_DOCUMENT_MAX_BYTES,
+    );
+    expect(isCompanyReportDocument(formatCompanyReportDocument(changed))).toBe(
+      true,
     );
     const oversized = {
       ...changed,
