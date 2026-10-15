@@ -28,6 +28,33 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Company research overview candidate
+
+The company visit now shows Price, Annual and Filings readiness beside explicit
+Load, Refresh, Cancel and Inspect actions. Each request selects that source's
+existing section and uses its current model. Inspect makes no request. Original
+completion times, retained responses, unsupported Price coverage and staged
+versus loaded Price ranges stay distinct. Shared SEC cooldowns require a later
+explicit retry. The existing draft, prepared report and whole-watchlist Save
+remain separate.
+
+The guarded model suites pass 655 cases; the navigation-hook, screen, composed
+fixture and captured-report suites pass 342. The final presentation suite passes
+18 cases. An initial guard incorrectly blocked actions on settled company URLs;
+the original browser failure and failing regressions are retained with the
+correction. Invented-data Chrome checks confirm one Price, Annual and Filings
+read each, unchanged Unicode draft, zero saves, and no page overflow at 390 and
+320 CSS pixels. The captured two-source report keeps exact inputs and original
+dates with Filings not loaded, contains no source actions, and is invalidated by
+the later Filings load. A focused Price action fixture also passes the five-read
+Cancel, reopen and retirement sequence. One earlier Chrome reopen attempt failed
+before its fifth read; the failure is retained and was not reproduced in the
+later traced Chrome journey. It is not counted as passing evidence. Native
+syntax and inventory checks pass for the extended existing snapshot journey,
+with 37 cases and 103 expected PNGs. Hosted native verification and production
+publication remain separate acceptances. See the
+[company overview guide](MANAGED_COMPANY_SNAPSHOT.md).
+
 ## Operating-change candidate
 
 Managed company Annual now compares the first two admitted operating-history

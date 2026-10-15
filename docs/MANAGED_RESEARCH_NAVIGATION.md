@@ -20,6 +20,15 @@ peers. Bookmarkable visits are delivered through PR 38 on the website and in
 signed Android 1.7. [Current work](CURRENT_WORK.md) records the accepted source
 and artifacts, with physical-device acceptance kept separate.
 
+The [Research sources area](MANAGED_COMPANY_SNAPSHOT.md#load-and-inspect-sources)
+connects the three sections. Each explicit Load or Refresh selects its section
+and requests only that source; Inspect changes section without loading. Cancel
+targets that source without changing section. These actions also work on an
+already-open company URL. The workspace checks the captured visit and selection
+again after section changes before starting a request, so an old action cannot
+load a replacement company. Source dates, cooldowns and Price range choices keep
+their existing model rules. The captured report has no source-action controls.
+
 ## Bookmarkable visits
 
 The URL shape is `/?company=<listing-id>&section=price` or
@@ -76,11 +85,11 @@ existing whole-draft **Save watchlist** action when ready.
 
 ## Source and screen contract
 
-| Section | Source and identity                                                                     | Content and limits                                                                                                           | Loading                  |
-| ------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| Price   | Existing Tiingo EOD operation for the captured full listing identity and catalog digest | One calendar month of raw USD closes with actual trading dates and request completion; exact AAPL, GOOG and GOOGL listings   | Explicit Load or Refresh |
-| Annual  | Existing bounded SEC evidence for the same identity; retain the known discovery CIK     | Observed annual revenue, net income and net margin, with source and observation dates; unavailable inputs remain unavailable | Explicit Load or Refresh |
-| Filings | Existing SEC Submissions metadata for the full listing and resolved issuer              | Forms, filed/report dates and original index links within 90 UTC dates; current object only, with coverage limits            | Explicit Load or Refresh |
+| Section | Source and identity                                                                     | Content and limits                                                                                                                              | Loading                  |
+| ------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Price   | Existing Tiingo EOD operation for the captured full listing identity and catalog digest | One calendar month or one calendar year of raw USD closes with actual trading dates and request completion; exact AAPL, GOOG and GOOGL listings | Explicit Load or Refresh |
+| Annual  | Existing bounded SEC evidence for the same identity; retain the known discovery CIK     | Observed annual revenue, net income and net margin, with source and observation dates; unavailable inputs remain unavailable                    | Explicit Load or Refresh |
+| Filings | Existing SEC Submissions metadata for the full listing and resolved issuer              | Forms, filed/report dates and original index links within 90 UTC dates; current object only, with coverage limits                               | Explicit Load or Refresh |
 
 [Recent company filings](MANAGED_SEC_FILINGS.md) defines its source, paging and
 retained-result contract. It adds no note action or automatic request.

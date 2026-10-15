@@ -100,3 +100,53 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.managed-frame .managed-company-evidence-actions {
+  margin: 16px 0;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-company-evidence-actions > h3 {
+  margin-bottom: 8px;
+}
+.managed-frame .managed-evidence-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.managed-frame .managed-evidence-action-grid > section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+  background: var(--managed-surface);
+}
+.managed-frame .managed-evidence-action-grid h4 {
+  margin: 0 0 8px;
+  color: var(--managed-ink);
+}
+.managed-frame .managed-company-evidence-actions p {
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.managed-frame .managed-evidence-action-grid .managed-evidence-source-state {
+  color: var(--managed-ink);
+}
+.managed-frame .managed-evidence-action-grid time {
+  font-variant-numeric: tabular-nums;
+}
+.managed-frame .managed-evidence-action-grid .trial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.managed-frame .managed-evidence-action-grid button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  .managed-frame .managed-evidence-action-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

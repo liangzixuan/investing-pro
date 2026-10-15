@@ -6,6 +6,7 @@ import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { useManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { TrialApiError } from "./api";
+import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
 
 // Exercise the hook's actual transitions against a real workspace. The router
 // harness supplies PUSH/REPLACE/POP and preserves the same hook slots per mount.
@@ -231,6 +232,74 @@ function direct(search = "?company=listing-zero&section=price") {
 }
 
 describe("managed company URL navigation", () => {
+  it("loads explicit company sources while the applied URL keeps outer workspace navigation blocked", async () => {
+    const f = fixture();
+    await f.ready();
+    f.workspace.setView("watchlist");
+    let navigation = f.render();
+    const draft = f.workspace.coordinator.getSnapshot().draft!;
+    navigation.open(() =>
+      f.workspace.openWatchlistAnnual(draft.memberships[0]!),
+    );
+    navigation = f.render();
+    expect(f.workspace.getSnapshot().companyRoute?.status).toBe("open");
+    expect(f.workspace.annualComparison.getSnapshot().active).toBe(false);
+    vi.mocked(f.api.annualReport).mockResolvedValueOnce(await annualResponse());
+    await f.workspace.requestResearchSource(
+      f.workspace.getSnapshot().research!,
+      "annual",
+    );
+    expect(f.api.annualReport).toHaveBeenCalledOnce();
+    expect(f.workspace.annual.getSnapshot().response).not.toBeNull();
+    const price = f.workspace.requestResearchSource(
+      f.workspace.getSnapshot().research!,
+      "eod",
+    );
+    navigation.section("eod");
+    await price;
+    f.render();
+    expect(f.workspace.getSnapshot().companyRoute?.section).toBe("eod");
+    expect(f.workspace.eod.getSnapshot().response).not.toBeNull();
+    expect(f.api.eodHistory).toHaveBeenCalledOnce();
+    expect(f.api.recentFilings).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(f.workspace.annualComparison.getSnapshot().active).toBe(false);
+  });
+
+  it("cancels an explicit source on an applied company URL and refuses its late completion", async () => {
+    const f = fixture();
+    await f.ready();
+    const navigation = f.render();
+    const draft = f.workspace.coordinator.getSnapshot().draft!;
+    navigation.open(() =>
+      f.workspace.openWatchlistAnnual(draft.memberships[0]!),
+    );
+    f.render();
+    const visit = f.workspace.getSnapshot().research!;
+    let complete!: (
+      value: Awaited<ReturnType<ManagedApi["annualReport"]>>,
+    ) => void;
+    vi.mocked(f.api.annualReport).mockReturnValueOnce(
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+    );
+    const reading = f.workspace.requestResearchSource(visit, "annual");
+    const signal = vi.mocked(f.api.annualReport).mock.calls[0]![1];
+    expect(signal.aborted).toBe(false);
+    f.workspace.cancelResearchSource(visit, "annual");
+    expect(signal.aborted).toBe(true);
+    complete(await annualResponse());
+    await reading;
+    expect(f.workspace.annual.getSnapshot().response).toBeNull();
+    expect(f.api.annualReport).toHaveBeenCalledOnce();
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+    expect(f.api.recentFilings).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(draft);
+  });
+
   it.each([
     "?company=listing-zero&section=price",
     "?company=listing-zero&section=invalid",

@@ -36,6 +36,7 @@ import {
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
+import { ManagedCompanyEvidenceActions } from "./ManagedCompanyEvidenceActions";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
@@ -2790,6 +2791,109 @@ describe("managed workspace screen", () => {
     expect(api.save).not.toHaveBeenCalled();
   });
 
+  it("wires one explicit overview source request before route blocking without changing the draft", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [{ ...eodSelection.listing, note: "Thesis · Café 東京 📈" }],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    workspace.openWatchlistEod(draft.memberships[0]!);
+    vi.mocked(api.annualReport).mockResolvedValueOnce(await annualResponse());
+    const navigation: ManagedCompanyNavigation = {
+      hasCompanyRoute: () => true,
+      invalid: false,
+      returnFocus: 0,
+      open: vi.fn<ManagedCompanyNavigation["open"]>((action) => action()),
+      back: vi.fn(),
+      section: vi.fn((section) => {
+        expect(workspace.getSnapshot().research?.section).toBe(section);
+        expect(workspace.annual.getSnapshot().running).toBe(true);
+        workspace.setNavigationBlocked(true);
+      }),
+      view: vi.fn(() => false),
+    };
+    mounted.direct = true;
+    const company = elements(
+      ManagedWorkspaceScreen({ workspace, navigation }),
+    ).find(
+      (entry) => entry.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    const overview = elements(ManagedCompanyResearch(company.props)).find(
+      (entry) => entry.type === ManagedCompanyEvidenceActions,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyEvidenceActions>
+    >;
+    expect(overview.props.price).toBe(workspace.eod);
+    expect(overview.props.annual).toBe(workspace.annual);
+    expect(overview.props.filings).toBe(workspace.filings);
+    expect(overview.props.onCancel).toBe(company.props.onCancelSource);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    const request = vi.spyOn(workspace, "requestResearchSource");
+    overview.props.onRequest("annual");
+    expect(request).toHaveBeenCalledExactlyOnceWith(
+      company.props.research,
+      "annual",
+    );
+    await request.mock.results[0]!.value;
+    expect(navigation.section).toHaveBeenCalledExactlyOnceWith("annual");
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(workspace.annual.getSnapshot().response).not.toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("fences retained overview request and Cancel callbacks after reopening the same company", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [{ ...eodSelection.listing, note: "Keep exact thesis" }],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    const member = draft.memberships[0]!;
+    workspace.openWatchlistEod(member);
+    const completions: Array<
+      (value: Awaited<ReturnType<ManagedApi["annualReport"]>>) => void
+    > = [];
+    vi.mocked(api.annualReport).mockImplementation(
+      () => new Promise((resolve) => completions.push(resolve)),
+    );
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (entry) => entry.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    const first = company.props.onRequestSource("annual");
+    workspace.closeResearch();
+    workspace.openWatchlistAnnual(member);
+    const second = workspace.annual.load();
+    expect(api.annualReport).toHaveBeenCalledTimes(2);
+    const oldSignal = vi.mocked(api.annualReport).mock.calls[0]![1];
+    const newSignal = vi.mocked(api.annualReport).mock.calls[1]![1];
+    await company.props.onRequestSource("filings");
+    company.props.onCancelSource("annual");
+    expect(oldSignal.aborted).toBe(true);
+    expect(newSignal.aborted).toBe(false);
+    expect(workspace.getSnapshot().research?.section).toBe("annual");
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    const response = await annualResponse();
+    completions[0]!(response);
+    completions[1]!(response);
+    await Promise.all([first, second]);
+    expect(workspace.annual.getSnapshot().response).not.toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   it("coordinates company section, Back and watchlist review through URL navigation", async () => {
     const { workspace, api } = fixture();
     await workspace.coordinator.load();
@@ -4372,19 +4476,30 @@ describe("managed workspace screen", () => {
     expect(annualHtml.match(/id="managed-company-heading"/gu)).toHaveLength(1);
     section("Annual").onClick();
     expect(workspace.annual.getSnapshot()).toBe(annualState);
-    // The new cross-section snapshot gains Annual data; existing company markup stays exact.
+    // Cross-section sources and snapshot gain Annual data; detail panels stay exact.
+    const sourceActionsMarkup = (markup: string) =>
+      markup.match(
+        /<section class="managed-company-evidence-actions"[\s\S]*?<\/section>(?=<details class="managed-company-snapshot">)/u,
+      )?.[0];
     const existingCompanyMarkup = (markup: string) =>
-      markup.replace(
-        /<details class="managed-company-snapshot">[\s\S]*?<\/details>/u,
-        "",
-      );
+      markup
+        .replace(sourceActionsMarkup(markup) ?? "", "")
+        .replace(
+          /<details class="managed-company-snapshot">[\s\S]*?<\/details>/u,
+          "",
+        );
     expect(priceHtml).toContain("No annual evidence loaded");
     expect(annualHtml).toContain('aria-label="Snapshot price"');
     expect(annualHtml).toContain(prices.completedAt);
     expect(annualHtml).toContain('aria-label="Snapshot annual"');
     expect(annualHtml).not.toContain("No annual evidence loaded");
+    const actionsAfterAnnual = sourceActionsMarkup(annualHtml);
+    expect(actionsAfterAnnual).toContain(
+      report.evidence.generation.completedAt,
+    );
     for (let visit = 0; visit < 2; visit++) {
       section("Price").onClick();
+      expect(sourceActionsMarkup(html())).toBe(actionsAfterAnnual);
       expect(existingCompanyMarkup(html())).toBe(
         existingCompanyMarkup(priceHtml),
       );

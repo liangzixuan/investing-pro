@@ -35,6 +35,25 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe("declared company price coverage", () => {
+  it("reads captured coverage before open without state changes, notifications or requests", () => {
+    const listing = { ...eodSelection.listing };
+    const read = vi.fn<ManagedApi["eodHistory"]>();
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, [listing]);
+    const state = model.getSnapshot();
+    const changed = vi.fn();
+    model.subscribe(changed);
+    listing.shareClassId = "changed-after-construction";
+    expect(model.hasPriceCoverage(eodSelection.listing)).toBe(true);
+    expect(model.hasPriceCoverage(listing)).toBe(false);
+    expect(model.hasPriceCoverage(MANAGED_PRICE_COVERAGE[0]!)).toBe(false);
+    expect(model.getSnapshot()).toBe(state);
+    expect(changed).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+    const production = new ManagedEodHistory(read, vi.fn());
+    expect(production.hasPriceCoverage(eodSelection.listing)).toBe(false);
+    expect(production.hasPriceCoverage(MANAGED_PRICE_COVERAGE[0]!)).toBe(true);
+  });
+
   it("defaults to the exact production identities, without admitting an invented listing", async () => {
     const read = vi.fn<ManagedApi["eodHistory"]>();
     const model = new ManagedEodHistory(read, vi.fn());

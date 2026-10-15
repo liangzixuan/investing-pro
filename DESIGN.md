@@ -95,6 +95,13 @@ horizontal scroll and 44px keyboard-accessible selectors on narrow screens.
 
 ## Color and surfaces
 
+Place the always-visible Research sources area below company navigation and
+before the loaded snapshot. Keep Price, Annual and Filings in three equal cards,
+stacked below 900px. Each card separates source status, original completion time
+and explicit actions. Requested and loaded Price ranges remain distinct. Wrap
+long text and actions without clipping; retain 44px controls and the existing
+focus outline. Keep request controls outside captured reports.
+
 The company snapshot uses an initially closed native disclosure below company
 navigation. Price and Annual sit side by side on wide screens; Filings spans
 the next row. All cards stack below 760px. Exact amounts, accession numbers and

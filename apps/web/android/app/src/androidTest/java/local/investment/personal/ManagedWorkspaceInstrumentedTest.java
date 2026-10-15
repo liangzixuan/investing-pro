@@ -2168,6 +2168,7 @@ public class ManagedWorkspaceInstrumentedTest {
     public void loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         prepareDraftAndOpenAnnual();
+        assertCompanySourceOverview(false, false, false);
         String snapshot = "document.querySelector('.managed-company-snapshot')";
         awaitPage("snapshot starts closed without fetching either source",
             snapshot + "?.open === false && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0");
@@ -2179,7 +2180,10 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-snapshot-grid > section[aria-label='Snapshot price'] > button");
         awaitPage("snapshot Price action navigates without fetching",
             "document.querySelector('#managed-eod-heading') !== null && " + DIAGNOSTICS + ".eod === 0");
-        clickEodAction("Load one-month close history");
+        click(".managed-company-evidence-actions [aria-label='Annual source'] .trial-actions button:last-child");
+        awaitPage("overview Inspect Annual navigates without a source read",
+            "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0");
+        click(".managed-company-evidence-actions [aria-label='Price source'] .trial-actions button:first-child");
         awaitPage("snapshot keeps exact loaded raw-close dates and basis",
             snapshot + ".open && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".annual === 0 && " +
             "document.querySelector('[aria-label=\"Snapshot price\"] dl')?.textContent === 'Last raw close · USD101.5Trading date2026-09-19' && " +
@@ -2190,12 +2194,16 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("snapshot range retains both exact closes, dates and actual loaded coverage",
             observedCloseRangeAt(".managed-company-snapshot [aria-label='Snapshot price'] .managed-observed-close-range",
                 "One month", 2, "2026-09-18", "2026-09-19", "101.5", "2026-09-19", "100.25", "2026-09-18"));
+        assertCompanySourceOverview(true, false, false);
         retainAnnualNoteFrame("companySnapshotPrice", "[aria-label='Snapshot price'] h3",
             "[aria-label='Snapshot price'] > h3, [aria-label='Snapshot price'] > dl", 2);
         click(".managed-snapshot-grid > section[aria-label='Snapshot annual'] > button");
         awaitPage("snapshot Annual action navigates without fetching",
             "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 0");
-        click(".managed-annual-report .trial-actions button:first-child");
+        click(".managed-company-evidence-actions [aria-label='Price source'] .trial-actions button:last-child");
+        awaitPage("overview Inspect Price keeps the loaded packet and performs no new read",
+            "document.querySelector('#managed-eod-heading') !== null && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".filings === 0");
+        click(".managed-company-evidence-actions [aria-label='Annual source'] .trial-actions button:first-child");
         String basis = "[aria-label='Snapshot revenue basis Revenues']";
         awaitPage("snapshot combines separately loaded evidence without changing original dates",
             snapshot + ".open && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " +
@@ -2206,12 +2214,16 @@ public class ManagedWorkspaceInstrumentedTest {
             snapshot + ".textContent.includes('Operating cash flow') && " +
             snapshot + ".textContent.includes('Current ratio') && " +
             DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
+        assertCompanySourceOverview(true, true, false);
         retainAnnualNoteFrame("companySnapshotAnnualBasis", basis + " > h4",
             basis + " > h4, " + basis + " > div > p, " + basis + " > div > dl", 3);
         click(".managed-snapshot-grid > section[aria-label='Snapshot filings'] > button");
         awaitPage("snapshot Filings action navigates without fetching",
             "document.querySelector('#managed-filings-heading') !== null && " + DIAGNOSTICS + ".filings === 0");
-        click(".managed-company-filings .trial-actions button:first-child");
+        click(".managed-company-evidence-actions [aria-label='Annual source'] .trial-actions button:last-child");
+        awaitPage("overview Inspect Annual keeps both loaded packets and performs no Filings read",
+            "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".filings === 0");
+        click(".managed-company-evidence-actions [aria-label='Filings source'] .trial-actions button:first-child");
         String filingCard = "[aria-label='Snapshot filings']";
         awaitPage("snapshot shows only observed metadata and retains separate evidence and the draft",
             snapshot + ".open && " + DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " +
@@ -2222,10 +2234,13 @@ public class ManagedWorkspaceInstrumentedTest {
             snapshot + ".textContent.includes('101.5') && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
         retainAnnualNoteFrame("companySnapshotFilings", filingCard + " > h3",
             filingCard + " > h3, " + filingCard + " > p, " + filingCard + " .managed-watchlist-filings-summary", 3);
+        assertCompanySourceOverview(true, true, true);
+        retainAnnualNoteFrame("companyResearchSources", ".managed-company-evidence-actions [aria-label='Price source']",
+            ".managed-company-evidence-actions [aria-label='Price source']", 1);
         assertPreparedCompanyReport();
         pressBack();
         assertClosedDraft(true);
-        awaitPage("leaving company removes its snapshot", snapshot + " === null");
+        awaitPage("leaving company removes its snapshot", snapshot + " === null && document.querySelector('.managed-company-evidence-actions') === null");
         click(ANNUAL);
         awaitPage("a new company visit does not restore prior snapshot evidence",
             snapshot + "?.open === false && " + snapshot + ".textContent.includes('No close history loaded') && " +
@@ -2234,8 +2249,24 @@ public class ManagedWorkspaceInstrumentedTest {
             DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".save === 0");
         awaitPage("new company visit starts without a prepared report",
             "document.querySelector('.managed-company-report')?.open === false && document.querySelector('#managed-prepared-report-heading') === null");
+        assertCompanySourceOverview(false, false, false);
         assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary();
+    }
+
+    private void assertCompanySourceOverview(boolean priceLoaded, boolean annualLoaded, boolean filingsLoaded) throws Exception {
+        awaitPage("overview keeps exact independent source states, original dates and explicit actions",
+            "(() => { const overview = document.querySelector('.managed-company-evidence-actions');" +
+            " const expected = [['Price'," + priceLoaded + ",'2026-09-20T00:00:01.000Z'],['Annual'," + annualLoaded + ",'2026-09-20T00:00:02.000Z'],['Filings'," + filingsLoaded + ",'2026-09-20T00:00:02.000Z']];" +
+            " return overview?.getAttribute('aria-label') === 'Company research sources' && overview.querySelectorAll('.managed-evidence-action-grid > section').length === 3" +
+            " && expected.every(([title,loaded,clock]) => { const card = overview.querySelector('[aria-label=\"' + title + ' source\"]'); const buttons = [...(card?.querySelectorAll('.trial-actions > button') ?? [])]; const times = [...(card?.querySelectorAll('time') ?? [])];" +
+            " return card?.getAttribute('aria-busy') === 'false' && card.querySelector('.managed-evidence-source-state')?.textContent === (loaded ? 'Source response loaded.' : 'Not loaded.')" +
+            " && times.length === (loaded ? 1 : 0) && (!loaded || (times[0].dateTime === clock && times[0].textContent === clock))" +
+            " && buttons.length === 2 && buttons[0].textContent === (loaded ? 'Refresh ' : 'Load ') + title + (title === 'Price' ? ' · One month' : '') && buttons[1].textContent === 'Inspect ' + title" +
+            " && buttons.every(button => !button.disabled && button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44); })" +
+            " && overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Requested range: One month.')" +
+            " && " + (priceLoaded ? "overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range: One month.')" : "!overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range:')") +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
     }
 
     private void assertPreparedCompanyReport() throws Exception {
@@ -2253,6 +2284,10 @@ public class ManagedWorkspaceInstrumentedTest {
             report + ".textContent.includes('2026-06-23 to 2026-09-20') && " +
             report + ".textContent.includes('Preparation does not renew the source dates') && " +
             DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) + " && " + DIAGNOSTICS + ".save === 0");
+        awaitPage("captured report has no overview source request or Cancel actions",
+            "document.querySelector('.managed-company-report .managed-company-evidence-actions') === null && " +
+            "[...document.querySelectorAll('.managed-company-report button')].every(button => !/^(Load|Refresh|Cancel|Inspect) (Price|Annual|Filings)(?: ·|$)/.test(button.textContent.trim())) && " +
+            DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
         retainAnnualNoteFrame("companyResearchReport", "#managed-prepared-report-heading",
             "#managed-prepared-report-heading, #managed-report-note-heading, .managed-company-report-note", 3);
         assertPreparedReportDocument();
