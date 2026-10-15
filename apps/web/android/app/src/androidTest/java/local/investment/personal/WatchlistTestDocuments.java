@@ -21,11 +21,21 @@ final class WatchlistTestDocuments {
         assertNotNull(context.getContentResolver().call(SavedWatchlistTestObservationProvider.AUTHORITY, "arm-report-open", null, null));
     }
 
-    static boolean reportOpenEntered(Context context) {
+    static Bundle reportOpenState(Context context) {
         Bundle result = context.getContentResolver().call(SavedWatchlistTestObservationProvider.AUTHORITY, "report-open-state", null, null);
         assertNotNull(result);
-        assertTrue(result.containsKey("entered"));
-        return result.getBoolean("entered");
+        for (String field : new String[] { "armed", "entered", "releasedNormally", "descriptorReturned", "timedOut", "reset", "generation" })
+            assertTrue("Held-report metadata field is absent: " + field, result.containsKey(field));
+        String generation = result.getString("generation");
+        if (result.getBoolean("armed")) {
+            assertNotNull(generation);
+            assertTrue(generation.matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"));
+        } else assertNull(generation);
+        return result;
+    }
+
+    static boolean reportOpenEntered(Context context) {
+        return reportOpenState(context).getBoolean("entered");
     }
 
     static void releaseReportOpen(Context context) {

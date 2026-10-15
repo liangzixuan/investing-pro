@@ -88,6 +88,14 @@ Its disclosure retains a 44px target. Explain the exact-draft/source scope and
 file-delivery limit beside the field. Never display the document after its parent
 report is invalidated.
 
+Keep reported cash history in an initially closed disclosure below current cash
+values and their note action. Use the existing Annual table style, with exact
+amounts, dates and reported/calculated labels. At narrow widths, keep the table
+inside a labelled, keyboard-focusable horizontal scroll region; the page itself
+must fit the viewport. Keep source references in a second closed disclosure.
+Missing or refused earlier periods leave a clear explanation beside the accepted
+table. Earlier comparative amounts must not inherit a current-use label.
+
 Use these semantic managed tokens:
 
 | Role             | Token                      | Value     |

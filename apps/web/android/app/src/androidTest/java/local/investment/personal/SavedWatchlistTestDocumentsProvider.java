@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.os.CancellationSignal;
+import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract.Document;
 import android.provider.DocumentsContract.Root;
@@ -40,9 +41,28 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
         }
     }
 
+    static Bundle reportOpenState() {
+        synchronized (REPORT_OPEN_LOCK) {
+            HeldReportOpen held = heldReportOpen;
+            Bundle result = new Bundle();
+            result.putBoolean("armed", held != null);
+            result.putBoolean("entered", held != null && held.entered.getCount() == 0);
+            result.putBoolean("releasedNormally", held != null && held.releasedNormally);
+            result.putBoolean("descriptorReturned", held != null && held.descriptorReturned);
+            result.putBoolean("timedOut", held != null && held.timedOut);
+            result.putBoolean("reset", held != null && held.reset);
+            result.putString("generation", held == null ? null : held.generation);
+            return result;
+        }
+    }
+
     static void releaseReportOpen() {
         synchronized (REPORT_OPEN_LOCK) {
-            if (heldReportOpen != null) heldReportOpen.release.countDown();
+            HeldReportOpen held = heldReportOpen;
+            if (held == null) return;
+            if (held.entered.getCount() == 0 && !held.timedOut && !held.reset)
+                held.releasedNormally = true;
+            held.release.countDown();
         }
     }
 
@@ -56,10 +76,14 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
     }
 
     private static final class HeldReportOpen {
+        final String generation = UUID.randomUUID().toString();
         final CountDownLatch entered = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
         boolean claimed;
         boolean reset;
+        boolean releasedNormally;
+        boolean descriptorReturned;
+        boolean timedOut;
     }
     private static final String[] ROOT_COLUMNS = {
         Root.COLUMN_ROOT_ID, Root.COLUMN_DOCUMENT_ID, Root.COLUMN_TITLE,
@@ -153,8 +177,12 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
         if (signal != null) signal.throwIfCanceled();
         if (held != null) {
             synchronized (REPORT_OPEN_LOCK) {
-                if (held.reset) throw new FileNotFoundException("Invented report open reset");
-                return ParcelFileDescriptor.open(destination, ParcelFileDescriptor.parseMode(mode));
+                if (held.reset || heldReportOpen != held || !held.releasedNormally || held.timedOut)
+                    throw new FileNotFoundException("Invented report open was not normally released");
+                ParcelFileDescriptor descriptor = ParcelFileDescriptor.open(destination, ParcelFileDescriptor.parseMode(mode));
+                // Record success only for this armed generation, after a real descriptor exists.
+                held.descriptorReturned = true;
+                return descriptor;
             }
         }
         return ParcelFileDescriptor.open(destination, ParcelFileDescriptor.parseMode(mode));
@@ -175,8 +203,10 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
             held.entered.countDown();
         }
         try {
-            if (!held.release.await(20, TimeUnit.SECONDS))
+            if (!held.release.await(20, TimeUnit.SECONDS)) {
+                synchronized (REPORT_OPEN_LOCK) { held.timedOut = true; }
                 throw new FileNotFoundException("Invented report open was not released");
+            }
         } catch (InterruptedException failure) {
             Thread.currentThread().interrupt();
             throw new FileNotFoundException("Invented report open interrupted");

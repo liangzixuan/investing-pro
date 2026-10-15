@@ -8,7 +8,11 @@ import type {
 import Decimal from "decimal.js";
 import { describe, expect, it } from "vitest";
 import { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
-import { resolvePersonalSecAnnualCashGeneration } from "./personal-sec-annual-cash-generation";
+import {
+  resolvePersonalSecAnnualCashGeneration,
+  resolvePersonalSecAnnualCashHistory,
+  type PersonalSecAnnualCashHistoryReason,
+} from "./personal-sec-annual-cash-generation";
 
 type Row = PersonalSecAnnualCashObservationDto;
 type Input = PersonalSecAnnualCashResolutionInput;
@@ -617,4 +621,388 @@ describe("shared exact cash subtraction", () => {
       ).toThrow(TypeError);
     },
   );
+});
+
+function comparativeRows(purchases = false, count = 3): Row[] {
+  return Array.from({ length: count }, (_, index) => {
+    const year = 2025 - index;
+    return {
+      ...row(index + (purchases ? 21 : 11), purchases),
+      startDate: `${year}-01-01`,
+      endDate: `${year}-12-31`,
+      durationDays: year === 2024 ? 366 : 365,
+      value: String((purchases ? 30 : 100) - index * 10),
+      sourceLocator: `/facts/us-gaap/${purchases ? "PaymentsToAcquirePropertyPlantAndEquipment" : "NetCashProvidedByUsedInOperatingActivities"}/units/USD/${index}`,
+    };
+  });
+}
+
+function historyInput(count = 3) {
+  return input(comparativeRows(false, count), comparativeRows(true, count));
+}
+
+function availableHistory(packet: Input) {
+  const result = resolvePersonalSecAnnualCashHistory(packet);
+  if (result.status !== "available")
+    throw new Error(`History refused: ${result.reason}`);
+  return result;
+}
+
+describe("Reported annual cash history", () => {
+  it.each([1, 2, 3, 4])(
+    "keeps at most three adjacent periods from %s supplied years",
+    (count) => {
+      const packet = historyInput(count);
+      const before = structuredClone(packet);
+      const currentBefore = resolvePersonalSecAnnualCashGeneration(packet);
+      const history = availableHistory(packet);
+      expect(history.periods).toHaveLength(Math.min(count, 3));
+      expect(history.accessionNumber).toBe(accession);
+      expect(history.periods[0]).toEqual({
+        startDate: "2025-01-01",
+        endDate: "2025-12-31",
+        operatingCashFlow: "100",
+        ppePurchases: "30",
+        operatingCashFlowLessPpePurchases: "70",
+        observationIds: [
+          comparativeRows()[0]!.id,
+          comparativeRows(true)[0]!.id,
+        ],
+      });
+      if (count >= 3)
+        expect(history.periods[2]).toMatchObject({
+          startDate: "2023-01-01",
+          endDate: "2023-12-31",
+          operatingCashFlow: "80",
+          ppePurchases: "10",
+          operatingCashFlowLessPpePurchases: "70",
+        });
+      expect(history.stoppedReason).toBe(count < 3 ? "no_report_period" : null);
+      expect(
+        history.periods.every(
+          (period) => !Object.hasOwn(period, "currentUseEligible"),
+        ),
+      ).toBe(true);
+      expect(Object.isFrozen(history)).toBe(true);
+      expect(Object.isFrozen(history.periods)).toBe(true);
+      expect(Object.isFrozen(history.periods[0])).toBe(true);
+      expect(Object.isFrozen(history.periods[0]!.observationIds)).toBe(true);
+      expect(packet).toEqual(before);
+      expect(Object.isFrozen(packet)).toBe(false);
+      expect(
+        Object.isFrozen(packet.cashGeneration.operatingCashFlow.observations),
+      ).toBe(false);
+      expect(resolvePersonalSecAnnualCashGeneration(packet)).toEqual(
+        currentBefore,
+      );
+    },
+  );
+
+  it("does not skip a missing immediately prior year to use an older one", () => {
+    const history = availableHistory(
+      input(
+        comparativeRows().filter((_, index) => index !== 1),
+        comparativeRows(true),
+      ),
+    );
+    expect(history.periods).toHaveLength(1);
+    expect(history.stoppedReason).toBe("no_report_period");
+  });
+
+  it("preserves two admitted periods when the third purchases amount is absent", () => {
+    const history = availableHistory(
+      input(comparativeRows(), comparativeRows(true, 2)),
+    );
+    expect(history.periods).toHaveLength(2);
+    expect(history.stoppedReason).toBe("no_report_period");
+  });
+
+  it("accepts adjacent 53-week fiscal years without replacing the filing report date", () => {
+    const rows = (purchases: boolean) =>
+      comparativeRows(purchases, 2).map((source, index) => ({
+        ...source,
+        startDate: index === 0 ? "2024-12-29" : "2023-12-24",
+        endDate: index === 0 ? "2025-12-27" : "2024-12-28",
+        durationDays: index === 0 ? 364 : 371,
+        filing: { ...source.filing, reportDate: "2025-12-27" },
+      }));
+    const packet = input(rows(false), rows(true));
+    packet.target.reportDate = "2025-12-27";
+    const original = structuredClone(packet);
+    expect(
+      availableHistory(packet).periods.map((period) => period.startDate),
+    ).toEqual(["2024-12-29", "2023-12-24"]);
+    expect(packet).toEqual(original);
+  });
+
+  it("uses exact decimal equality and retains all agreeing comparative references", () => {
+    const operating = comparativeRows();
+    operating[1] = {
+      ...operating[1]!,
+      value: "123456789012345678901234567890123456789012345678901234567890",
+    };
+    // Equivalent representation stays within the 64-character source bound.
+    const equivalent = {
+      ...operating[1],
+      id: row(50).id,
+      value: `${operating[1].value}.00`,
+    };
+    const purchases = comparativeRows(true);
+    purchases[1] = { ...purchases[1]!, value: "0.000000000000000001" };
+    const history = availableHistory(
+      input([...operating, equivalent], purchases),
+    );
+    expect(history.periods[1]).toMatchObject({
+      operatingCashFlow: operating[1].value,
+      operatingCashFlowLessPpePurchases:
+        "123456789012345678901234567890123456789012345678901234567889.999999999999999999",
+      observationIds: [operating[1].id, equivalent.id, purchases[1].id],
+    });
+  });
+
+  it("keeps negative operating flow, zero purchases and negative calculated cash", () => {
+    const operating = comparativeRows();
+    operating[1] = { ...operating[1]!, value: "-7.25" };
+    const purchases = comparativeRows(true);
+    purchases[1] = { ...purchases[1]!, value: "0" };
+    expect(
+      availableHistory(input(operating, purchases)).periods[1],
+    ).toMatchObject({
+      operatingCashFlow: "-7.25",
+      ppePurchases: "0",
+      operatingCashFlowLessPpePurchases: "-7.25",
+    });
+  });
+
+  it.each([
+    [{ durationDays: 334 }, "invalid_annual_period"],
+    [{ durationDays: 396 }, "invalid_annual_period"],
+    [{ durationDays: 365 }, "invalid_annual_period"],
+    [{ startDate: null }, "invalid_annual_period"],
+    [{ filingFocusPeriod: "Q4" }, "missing_or_non_FY_focus"],
+    [{ form: "10-K/A" }, "unsupported_form"],
+    [{ filedDate: "2026-02-02" }, "filing_unmatched_or_conflicted"],
+    [
+      { filing: { ...row(1).filing, status: "metadata_conflict" } },
+      "filing_unmatched_or_conflicted",
+    ],
+    [
+      { filing: { ...row(1).filing, acceptedAt: "2026-02-01T17:00:00.000Z" } },
+      "filing_unmatched_or_conflicted",
+    ],
+    [
+      { filing: { ...row(1).filing, sourceUrl: "https://www.sec.gov/other" } },
+      "filing_unmatched_or_conflicted",
+    ],
+    [
+      { filing: { ...row(1).filing, reportDate: "2024-12-31" } },
+      "report_end_mismatch",
+    ],
+  ] satisfies readonly (readonly [
+    Partial<Row>,
+    PersonalSecAnnualCashHistoryReason,
+  ])[])(
+    "stops at invalid prior metadata %j without changing current cash",
+    (change, reason) => {
+      const operating = comparativeRows();
+      operating[1] = { ...operating[1]!, ...change };
+      const packet = input(operating, comparativeRows(true));
+      const current = resolvePersonalSecAnnualCashGeneration(packet);
+      const history = availableHistory(packet);
+      expect(history.periods).toHaveLength(1);
+      expect(history.stoppedReason).toBe(reason);
+      expect(resolvePersonalSecAnnualCashGeneration(packet)).toEqual(current);
+    },
+  );
+
+  it("does not filter away an invalid prior row to choose an annual alternative", () => {
+    const operating = comparativeRows();
+    const extra = { ...operating[1]!, id: row(60).id, durationDays: 90 };
+    const history = availableHistory(
+      input([...operating, extra], comparativeRows(true)),
+    );
+    expect(history.periods).toHaveLength(1);
+    expect(history.stoppedReason).toBe("invalid_annual_period");
+  });
+
+  it.each(["value", "start"] as const)(
+    "refuses conflicting prior %s",
+    (kind) => {
+      const operating = comparativeRows();
+      const extra = {
+        ...operating[1]!,
+        id: row(60).id,
+        ...(kind === "value"
+          ? { value: "91" }
+          : { startDate: "2024-01-02", durationDays: 365 }),
+      };
+      const history = availableHistory(
+        input([...operating, extra], comparativeRows(true)),
+      );
+      expect(history.periods).toHaveLength(1);
+      expect(history.stoppedReason).toBe(
+        kind === "value" ? "ambiguous_value" : "ambiguous_period",
+      );
+    },
+  );
+
+  it("refuses differing prior cash periods even when each operand is annual", () => {
+    const purchases = comparativeRows(true);
+    purchases[1] = {
+      ...purchases[1]!,
+      startDate: "2024-01-02",
+      durationDays: 365,
+    };
+    const history = availableHistory(input(comparativeRows(), purchases));
+    expect(history.periods).toHaveLength(1);
+    expect(history.stoppedReason).toBe("period_mismatch");
+  });
+
+  it("does not choose negative purchases as a positive subtraction input", () => {
+    const purchases = comparativeRows(true);
+    purchases[1] = { ...purchases[1]!, value: "-1" };
+    const history = availableHistory(input(comparativeRows(), purchases));
+    expect(history.periods).toHaveLength(1);
+    expect(history.stoppedReason).toBe("unsupported_sign");
+  });
+
+  it("rejects another accession rather than treating it as a fallback", () => {
+    const operating = comparativeRows();
+    operating[1] = {
+      ...operating[1]!,
+      accessionNumber: "0000999999-25-000001",
+    };
+    expect(() =>
+      resolvePersonalSecAnnualCashHistory(
+        input(operating, comparativeRows(true)),
+      ),
+    ).toThrow(TypeError);
+  });
+
+  it("withholds history for an old selected report while retaining its current historical amounts", () => {
+    const packet = historyInput();
+    const shifted = JSON.parse(
+      JSON.stringify(packet).replaceAll("2026-09-20", "2027-09-20"),
+    ) as Input;
+    expect(resolvePersonalSecAnnualCashHistory(shifted)).toEqual({
+      status: "unavailable",
+      reason: "current_use_unavailable",
+    });
+    expect(
+      resolvePersonalSecAnnualCashGeneration(shifted).operatingCashFlow,
+    ).toMatchObject({
+      status: "available",
+      value: "100",
+      currentUseEligible: false,
+    });
+  });
+
+  it("requires the current cash pair independently of any income basis", () => {
+    const packet = historyInput();
+    packet.cashGeneration.ppePurchases = metric([], "concept_missing");
+    expect(resolvePersonalSecAnnualCashHistory(packet)).toEqual({
+      status: "unavailable",
+      reason: "concept_missing",
+    });
+    expect(
+      resolvePersonalSecAnnualCashGeneration(packet).operatingCashFlow.status,
+    ).toBe("available");
+    expect(availableHistory(historyInput()).periods).toHaveLength(3);
+  });
+
+  it("preserves independent scan refusals and rejects malformed coverage", () => {
+    const packet = historyInput();
+    packet.cashGeneration.ppePurchases = {
+      scan: { status: "candidate_limit", absence: null, coverage: null },
+      observations: [],
+    };
+    expect(resolvePersonalSecAnnualCashHistory(packet)).toEqual({
+      status: "unavailable",
+      reason: "candidate_limit",
+    });
+    const invalid = historyInput();
+    const scan = invalid.cashGeneration.operatingCashFlow.scan;
+    if (scan.status !== "available") throw new Error("Fixture scan");
+    invalid.cashGeneration.operatingCashFlow = {
+      ...invalid.cashGeneration.operatingCashFlow,
+      scan: {
+        ...scan,
+        coverage: {
+          ...scan.coverage,
+          full: { ...scan.coverage.full, candidateRows: 4 },
+        },
+      },
+    };
+    expect(() => resolvePersonalSecAnnualCashHistory(invalid)).toThrow(
+      TypeError,
+    );
+  });
+});
+
+describe("Reported cash history context boundaries", () => {
+  it("retains source-clock refusal before any comparative calculation", () => {
+    const packet = historyInput();
+    packet.generation.completedAt = "invalid";
+    expect(resolvePersonalSecAnnualCashHistory(packet)).toEqual({
+      status: "unavailable",
+      reason: "invalid_clock",
+    });
+  });
+
+  it("withholds a complete selected metric over its independent 100-row bound", () => {
+    const packet = historyInput();
+    packet.cashGeneration.operatingCashFlow = {
+      scan: {
+        status: "available",
+        absence: null,
+        coverage: {
+          full: {
+            candidateRows: 101,
+            inspectedRows: 101,
+            invalidRows: 0,
+            duplicateRows: 0,
+            uniqueObservations: 101,
+          },
+          selected: 101,
+          otherAccessions: 0,
+          returned: 0,
+          omittedSelected: 101,
+        },
+      },
+      observations: [],
+    };
+    expect(resolvePersonalSecAnnualCashHistory(packet)).toEqual({
+      status: "unavailable",
+      reason: "selected_report_overflow",
+    });
+    expect(
+      resolvePersonalSecAnnualCashGeneration(packet).ppePurchases.status,
+    ).toBe("available");
+  });
+
+  it("refuses counted invalid rows rather than presenting the retained valid subset as complete", () => {
+    const packet = historyInput();
+    const original = packet.cashGeneration.operatingCashFlow;
+    const scan = original.scan;
+    if (scan.status !== "available") throw new Error("Fixture scan");
+    packet.cashGeneration.operatingCashFlow = {
+      ...original,
+      scan: {
+        ...scan,
+        coverage: {
+          ...scan.coverage,
+          full: {
+            ...scan.coverage.full,
+            candidateRows: 4,
+            inspectedRows: 4,
+            invalidRows: 1,
+          },
+        },
+      },
+    };
+    expect(resolvePersonalSecAnnualCashHistory(packet)).toEqual({
+      status: "unavailable",
+      reason: "invalid_source_rows",
+    });
+  });
 });

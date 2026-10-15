@@ -22,7 +22,18 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Consolidated research candidate
 
-The next report increment adds explicit Android JSON saving through the system
+The next M2 increment adds an initially closed **Reported cash history** disclosure
+to managed Annual cash generation. It reuses complete admitted observations for
+up to three adjacent periods from the same filing, preserves exact values and
+references, and stops at the first refusal. Current cash and note actions remain
+independent. It adds no API field, schema, feed, automatic request or saved state.
+All 351 affected analytics, UI/composed and fixture cases, web types, scoped
+lint/format, Java syntax and source boundaries pass. Actual Chrome review,
+new-head native execution and live publication remain separate. A synthetic provider receipt also tightens the prior
+report cancellation regression: it must prove normal release and descriptor
+return, rather than accepting a provider timeout as that path.
+
+The preceding report increment adds explicit Android JSON saving through the system
 file picker. Its fixed report purpose, identity/time filename and complete UTF-8
 bound stay separate from the existing saved-watchlist writer. Both share only
 transient destination and lifecycle handling. Actual draft/source/visit checks

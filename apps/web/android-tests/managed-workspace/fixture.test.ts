@@ -22,6 +22,7 @@ import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
 import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import type { AnnualComparisonNoteCapture } from "../../src/clerk-trial/managed-watchlist-annual-comparison-note";
+import { resolvePersonalSecAnnualCashHistory } from "@research-cockpit/personal-financial-analytics";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 
@@ -1035,6 +1036,107 @@ describe("Android managed fixture startup", () => {
       );
     },
   );
+
+  it("decodes three same-filing cash periods without changing current cash or income and admits one read before expiry", async () => {
+    const fixture = await createFixture("annual-cash-history");
+    const baseline = await createFixture("annual-note");
+    const signal = new AbortController().signal;
+    const request = {
+      schemaVersion: "3.0.0" as const,
+      catalogSnapshotSha256: fixtureDigest,
+      listingId: "listing-zero",
+      symbol: "ZERO",
+    };
+    await fixture.api.status(signal);
+    const packet = await fixture.api.annualReport(request, signal);
+    const decoded = await parseSecAnnualEvidenceResponse(
+      packet,
+      request,
+      signal,
+    );
+    const original = await baseline.api.annualReport(request, signal);
+    expect(decoded).toEqual(packet);
+    if (!decoded) throw new Error("Expected admitted cash-history packet");
+    expect(decoded.evidence.generation).toEqual(original.evidence.generation);
+    expect(decoded.evidence.generation.cutoffAt).toBe(
+      "2026-09-20T00:00:00.000Z",
+    );
+    expect(decoded.evidence.generation.completedAt).toBe(
+      "2026-09-20T00:00:02.000Z",
+    );
+    expect(decoded.evidence.cashGeneration.resolution).toEqual(
+      original.evidence.cashGeneration.resolution,
+    );
+    expect(decoded.evidence.resolution).toEqual(original.evidence.resolution);
+    const history = resolvePersonalSecAnnualCashHistory(decoded.evidence);
+    expect(history.status).toBe("available");
+    if (history.status !== "available")
+      throw new Error("Expected cash history");
+    expect(history.stoppedReason).toBeNull();
+    expect(history.accessionNumber).toBe("0000000001-26-000001");
+    expect(
+      history.periods.map((period) => ({
+        startDate: period.startDate,
+        endDate: period.endDate,
+        operatingCashFlow: period.operatingCashFlow,
+        ppePurchases: period.ppePurchases,
+        operatingCashFlowLessPpePurchases:
+          period.operatingCashFlowLessPpePurchases,
+      })),
+    ).toEqual([
+      {
+        startDate: "2025-01-01",
+        endDate: "2025-12-31",
+        operatingCashFlow: "120.125",
+        ppePurchases: "20.025",
+        operatingCashFlowLessPpePurchases: "100.1",
+      },
+      {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        operatingCashFlow: "-50",
+        ppePurchases: "0",
+        operatingCashFlowLessPpePurchases: "-50",
+      },
+      {
+        startDate: "2023-01-01",
+        endDate: "2023-12-31",
+        operatingCashFlow: "500",
+        ppePurchases: "750",
+        operatingCashFlowLessPpePurchases: "-250",
+      },
+    ]);
+    const cash = decoded.evidence.cashGeneration;
+    for (const period of history.periods) {
+      expect(period.observationIds).toEqual([
+        cash.operatingCashFlow.observations.find(
+          (row) => row.endDate === period.endDate,
+        )!.id,
+        cash.ppePurchases.observations.find(
+          (row) => row.endDate === period.endDate,
+        )!.id,
+      ]);
+    }
+    expect(
+      new Set(history.periods.flatMap((period) => period.observationIds)).size,
+    ).toBe(6);
+    expect(() => fixture.api.annualReport(request, signal)).toThrow(
+      "Unexpected extra fixture annual note read",
+    );
+    await expect(fixture.api.status(signal)).rejects.toMatchObject({
+      code: "unauthenticated",
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 1,
+      status: 2,
+      save: 0,
+      load: 0,
+      eod: 0,
+      filings: 0,
+      token: 0,
+      signOut: 0,
+    });
+  });
 
   it("admits one exact ZERO Annual note save and reloads the unchanged other member", async () => {
     const fixture = await createFixture("annual-note");

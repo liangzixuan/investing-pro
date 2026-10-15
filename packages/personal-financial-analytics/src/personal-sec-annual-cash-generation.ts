@@ -211,11 +211,12 @@ function resolveMetric(
   input: Input,
   globalReason: Reason | null,
   currentUseEligible: boolean,
+  periodEnd?: string,
 ): Value {
   const refused = globalReason ?? scanReason(metric);
   if (refused !== null) return unavailable(refused, metric.observations);
   requireValid(input.target.status === "target");
-  const reportDate = input.target.reportDate;
+  const reportDate = periodEnd ?? input.target.reportDate;
   const rows = metric.observations.filter((row) => row.endDate === reportDate);
   if (rows.length === 0) return unavailable("no_report_period");
   const rowReason = annualRowsReason(rows, input);
@@ -301,5 +302,107 @@ export function resolvePersonalSecAnnualCashGeneration(
     ppePurchases: purchases,
     operatingCashFlowLessPpePurchases: difference(operating, purchases),
     utilityAge,
+  });
+}
+
+export type PersonalSecAnnualCashHistoryReason =
+  PersonalSecAnnualCashUnavailableReason | "current_use_unavailable";
+
+/** Historical comparatives from the selected filing, not individually current-use amounts. */
+export type PersonalSecAnnualCashHistoryPeriod = Readonly<{
+  startDate: string;
+  endDate: string;
+  operatingCashFlow: string;
+  ppePurchases: string;
+  operatingCashFlowLessPpePurchases: string;
+  observationIds: readonly `sec-fact:${string}`[];
+}>;
+
+export type PersonalSecAnnualCashHistory =
+  | Readonly<{
+      status: "unavailable";
+      reason: PersonalSecAnnualCashHistoryReason;
+    }>
+  | Readonly<{
+      status: "available";
+      accessionNumber: string;
+      /** Newest first; at most three adjacent annual periods. */
+      periods: readonly PersonalSecAnnualCashHistoryPeriod[];
+      stoppedReason: PersonalSecAnnualCashHistoryReason | null;
+    }>;
+
+type AvailableCash = Extract<Value, { status: "available" }>;
+
+function historyPeriod(
+  operating: AvailableCash,
+  purchases: AvailableCash,
+  calculated: AvailableCash,
+): PersonalSecAnnualCashHistoryPeriod {
+  return {
+    startDate: operating.startDate,
+    endDate: operating.endDate,
+    operatingCashFlow: operating.value,
+    ppePurchases: purchases.value,
+    operatingCashFlowLessPpePurchases: calculated.value,
+    observationIds: [...calculated.observationIds],
+  };
+}
+
+/** Bounded same-filing cash comparatives; no request, fallback filing or metadata rewrite. */
+export function resolvePersonalSecAnnualCashHistory(
+  input: Input,
+): PersonalSecAnnualCashHistory {
+  // This preserves current resolution admission, including full scan and ID checks.
+  const current = resolvePersonalSecAnnualCashGeneration(input);
+  const operating = current.operatingCashFlow;
+  const purchases = current.ppePurchases;
+  const calculated = current.operatingCashFlowLessPpePurchases;
+  if (calculated.status === "unavailable")
+    return freeze({ status: "unavailable", reason: calculated.reason });
+  requireValid(
+    operating.status === "available" && purchases.status === "available",
+  );
+  if (!calculated.currentUseEligible)
+    return freeze({ status: "unavailable", reason: "current_use_unavailable" });
+  const periods = [historyPeriod(operating, purchases, calculated)];
+  let stoppedReason: PersonalSecAnnualCashHistoryReason | null = null;
+  while (periods.length < 3) {
+    const next = periods.at(-1)!;
+    const end = new Date(Date.parse(`${next.startDate}T00:00:00Z`) - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    // Only the candidate flow end changes. Filing joins retain target.reportDate.
+    const priorOperating = resolveMetric(
+      input.cashGeneration.operatingCashFlow,
+      input,
+      null,
+      false,
+      end,
+    );
+    const priorPurchases = resolveMetric(
+      input.cashGeneration.ppePurchases,
+      input,
+      null,
+      false,
+      end,
+    );
+    const priorCalculated = difference(priorOperating, priorPurchases);
+    if (priorCalculated.status === "unavailable") {
+      stoppedReason = priorCalculated.reason;
+      break;
+    }
+    requireValid(
+      priorOperating.status === "available" &&
+        priorPurchases.status === "available",
+    );
+    periods.push(
+      historyPeriod(priorOperating, priorPurchases, priorCalculated),
+    );
+  }
+  return freeze({
+    status: "available",
+    accessionNumber: calculated.accessionNumber,
+    periods,
+    stoppedReason,
   });
 }

@@ -112,6 +112,42 @@ export async function cashGeneration(
   };
 }
 
+/** Same-filing invented comparatives; current cash and note references stay unchanged. */
+export function annualCashHistoryRows(): PersonalSecAnnualCashObservationDto[] {
+  return [
+    cashRow("operating_cash_flow", "120.125"),
+    cashRow("ppe_purchases", "20.025"),
+    ...(
+      [
+        ["2024-01-01", "2024-12-31", 366, "-50", "0"],
+        ["2023-01-01", "2023-12-31", 365, "500", "750"],
+      ] as const
+    ).flatMap(
+      ([startDate, endDate, durationDays, operating, purchases], index) =>
+        (
+          [
+            ["operating_cash_flow", operating],
+            ["ppe_purchases", purchases],
+          ] as const
+        ).map(([metric, value]) => {
+          const observation = cashRow(metric, value, {
+            startDate,
+            endDate,
+            durationDays,
+            frame: `CY${endDate.slice(0, 4)}`,
+          });
+          return {
+            ...observation,
+            sourceLocator: observation.sourceLocator.replace(
+              /\/0$/u,
+              `/${index + 1}`,
+            ),
+          };
+        }),
+    ),
+  ];
+}
+
 export async function cashResponse(
   rows: readonly PersonalSecAnnualCashObservationDto[],
   cutoffAt?: string,

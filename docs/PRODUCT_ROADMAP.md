@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The current M2 research candidate adds a [loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md).
+The current M2 candidate adds [reported cash history](MANAGED_SEC_ANNUAL.md#read-reported-cash-history)
+to the managed Annual view. Up to three adjacent periods reuse already admitted
+same-filing observations, with exact reported inputs, checked subtraction and
+first-refusal explanations. It adds no source request, schema, feed or note action.
+Current cash remains independent of income and optional paired history. Actual
+issuer coverage and complete financial statements remain separate.
+
+The preceding M2 research candidate adds a [loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md).
 Price, Annual and Filings keep separate source dates, revenue bases, availability
 and coverage qualifications. The Filings card reuses the existing admitted list
 and retains its original window, truncation and incomplete-coverage limits. It uses admitted evidence and explicit section

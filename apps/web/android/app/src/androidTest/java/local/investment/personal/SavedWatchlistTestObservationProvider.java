@@ -30,11 +30,8 @@ public final class SavedWatchlistTestObservationProvider extends ContentProvider
                 SavedWatchlistTestDocumentsProvider.armReportOpen();
                 return Bundle.EMPTY;
             }
-            if ("report-open-state".equals(method)) {
-                Bundle result = new Bundle();
-                result.putBoolean("entered", SavedWatchlistTestDocumentsProvider.reportOpenEntered());
-                return result;
-            }
+            if ("report-open-state".equals(method))
+                return SavedWatchlistTestDocumentsProvider.reportOpenState();
             if ("release-report-open".equals(method)) {
                 SavedWatchlistTestDocumentsProvider.releaseReportOpen();
                 return Bundle.EMPTY;

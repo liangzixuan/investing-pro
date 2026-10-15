@@ -31,6 +31,7 @@ import {
   row,
 } from "../../src/features/research/sec-annual-evidence-fixture";
 import {
+  annualCashHistoryRows,
   cashGeneration,
   cashRow,
 } from "../../src/features/research/sec-annual-cash-fixture";
@@ -214,6 +215,7 @@ export async function createFixture(
     | "catalog-startup-recovery"
     | "company-direct-entry"
     | "annual-note"
+    | "annual-cash-history"
     | "company-snapshot"
     | "thesis-review"
     | "price-comparison-note"
@@ -232,10 +234,13 @@ export async function createFixture(
     | "watchlist-comparison"
     | "watchlist-export" = "default",
 ) {
-  // The snapshot journey reuses the same Annual packet, with one explicit
-  // Filings read admitted separately below. Other scenarios keep their guards.
+  // These journeys reuse the one-read Annual source behavior. The snapshot
+  // admits one Filings read; cash history adds only same-filing cash rows.
   const scenario =
-    scenarioName === "company-snapshot" ? "annual-note" : scenarioName;
+    scenarioName === "company-snapshot" ||
+    scenarioName === "annual-cash-history"
+      ? "annual-note"
+      : scenarioName;
   const annualBase = await response(
     scenario === "annual-note"
       ? annualHistoryRows().map((observation) =>
@@ -252,10 +257,15 @@ export async function createFixture(
           ...annualBase,
           evidence: {
             ...annualBase.evidence,
-            cashGeneration: await cashGeneration(annualBase.evidence, [
-              cashRow("operating_cash_flow", "120.125"),
-              cashRow("ppe_purchases", "20.025"),
-            ]),
+            cashGeneration: await cashGeneration(
+              annualBase.evidence,
+              scenarioName === "annual-cash-history"
+                ? annualCashHistoryRows()
+                : [
+                    cashRow("operating_cash_flow", "120.125"),
+                    cashRow("ppe_purchases", "20.025"),
+                  ],
+            ),
           },
         }
       : annualBase;
@@ -637,6 +647,13 @@ export async function createFixture(
     },
     status: () => {
       count("status");
+      if (scenarioName === "annual-cash-history" && state.status === 2) {
+        if (state.annual !== 1)
+          return Promise.reject(
+            new Error("Load the one cash-history report before expiry"),
+          );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (scenario === "annual-comparison" && state.status === 2) {
         if (state.annual !== 5 || !pendingAnnualComparison)
           return Promise.reject(

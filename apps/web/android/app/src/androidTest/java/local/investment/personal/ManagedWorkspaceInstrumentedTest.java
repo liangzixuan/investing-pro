@@ -249,6 +249,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
+        if (testName.getMethodName().equals("annualCashHistoryKeepsExactPeriodsAndRetiresWithSession"))
+            selectFixtureScenario("annual-cash-history");
         if (testName.getMethodName().equals("loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads") ||
             testName.getMethodName().equals("preparedCompanyReportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("company-snapshot");
@@ -1791,15 +1793,27 @@ public class ManagedWorkspaceInstrumentedTest {
             click(".managed-report-delivery button");
             picker.saveToInventedRoot();
             awaitNativeReportOpenEntered(appContext);
+            android.os.Bundle enteredOpen = WatchlistTestDocuments.reportOpenState(appContext);
+            assertTrue(enteredOpen.getBoolean("armed") && enteredOpen.getBoolean("entered"));
+            String heldGeneration = enteredOpen.getString("generation");
+            assertNotNull(heldGeneration);
             String openingNote = "Changed while opening report destination";
             replaceReportNoteWithNativeIme(note, openingNote);
             awaitPage("the edited report retires and native cancellation acknowledges before the provider is released",
                 "document.querySelector('.managed-report-delivery') === null && " +
                 "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).cancelsSettled > " + priorCancels);
+            awaitPage("the held write has not settled before its explicit release",
+                "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).writesSettled === 1");
             WatchlistTestDocuments.releaseReportOpen(appContext);
             awaitPage("cancelled held-open report write settles without restoring a delivery action",
                 "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).writesSettled === 2 && " +
                 "document.querySelector('.managed-report-delivery') === null");
+            android.os.Bundle releasedOpen = WatchlistTestDocuments.reportOpenState(appContext);
+            assertEquals(heldGeneration, releasedOpen.getString("generation"));
+            assertTrue("The same held provider must return its descriptor after normal release: " + releasedOpen,
+                releasedOpen.getBoolean("armed") && releasedOpen.getBoolean("entered") &&
+                releasedOpen.getBoolean("releasedNormally") && releasedOpen.getBoolean("descriptorReturned") &&
+                !releasedOpen.getBoolean("timedOut") && !releasedOpen.getBoolean("reset"));
             assertEmptyNativeReportDestination(appContext);
             assertNativeReportDraftAndReads(documentTimeOrigin, openingNote);
             prepareNativeCompanyReport(openingNote);
@@ -4174,6 +4188,126 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void annualCashHistoryKeepsExactPeriodsAndRetiresWithSession() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        awaitPage("cash-history startup admits no source read", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Annual research draft");
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        click(ANNUAL);
+        awaitPage("cash history waits for the explicit Annual load",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('.managed-annual-cash-history') === null" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        assertAnnualNoteCounts(0, 0, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        String history = ".managed-annual-cash-history";
+        String region = ".managed-cash-history-table";
+        String references = ".managed-cash-history-references";
+        String exact =
+            "(() => { const history = document.querySelector('.managed-annual-cash-history');" +
+            " const region = history?.querySelector('.managed-cash-history-table');" +
+            " const rows = [...(region?.querySelectorAll('tbody tr') || [])];" +
+            " const expected = ['Operating cash flowReported|120.125|-50|500', 'PP&E purchasesReported|20.025|0|750', 'Operating cash flow less PP&E purchasesApp calculation|100.1|-50|-250'];" +
+            " return history?.querySelector(':scope > summary')?.textContent === 'Reported cash history'" +
+            " && region?.getAttribute('role') === 'region' && region.tabIndex === 0" +
+            " && region.getAttribute('aria-label') === 'Reported cash history amounts'" +
+            " && region.querySelector('caption')?.textContent === 'Annual cash amounts · 3 periods · newest first'" +
+            " && [...region.querySelectorAll('thead th[scope=col]')].slice(1).map(th => [...th.querySelectorAll('time')].map(t => t.dateTime).join(' to ')).join('|') === '2025-01-01 to 2025-12-31|2024-01-01 to 2024-12-31|2023-01-01 to 2023-12-31'" +
+            " && rows.length === 3 && rows.every((row, i) => [...row.cells].map(cell => cell.textContent).join('|') === expected[i])" +
+            " && [...document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')].map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && [...document.querySelectorAll('section[aria-label=\"Annual revenue basis Revenues\"] .managed-annual-values tbody td')].map(e => e.textContent).join(',') === '1000,800,640,100,-80,32,10%,-10%,5%'" +
+            " && history.textContent.includes('Original load completed 2026-09-20T00:00:02.000Z.')" +
+            " && history.textContent.includes('Earlier periods are historical comparatives in this filing.')" +
+            " && history.textContent.includes('Period lengths, accounting changes and restatements are unadjusted.')" +
+            " && document.querySelector('.sec-annual-cash-source > p:first-of-type')?.textContent === 'Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && JSON.parse(document.querySelector('#fixture-report-generations').textContent).initial.cutoffAt === '2026-09-20T00:00:00.000Z'" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft) + "; })()";
+        awaitPage("cash history starts closed with exact independent same-filing amounts", exact +
+            " && document.querySelector('.managed-annual-cash-history')?.open === false" +
+            " && document.querySelector('.managed-cash-history-references')?.open === false");
+        focusCashHistoryControl(history + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native Space opens the focused history disclosure", exact +
+            " && document.querySelector('.managed-annual-cash-history')?.open === true" +
+            " && document.activeElement === document.querySelector('.managed-annual-cash-history > summary')");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_TAB));
+        awaitPage("native Tab reaches the contained cash table with a visible focus outline",
+            "(() => { const table = document.querySelector('.managed-cash-history-table'); const r = table?.getBoundingClientRect(), v = visualViewport;" +
+            " return table && document.activeElement === table && getComputedStyle(table).outlineStyle !== 'none'" +
+            " && parseFloat(getComputedStyle(table).outlineWidth) >= 2 && table.scrollWidth > table.clientWidth" +
+            " && getComputedStyle(table).overflowX === 'auto' && v && v.width <= 600 && r.width > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1; })()");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_DPAD_RIGHT));
+        awaitPage("native Right scrolls only the focused cash table", exact +
+            " && document.querySelector('.managed-cash-history-table').scrollLeft > 0" +
+            " && document.activeElement === document.querySelector('.managed-cash-history-table')" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1");
+        retainAnnualNoteFrame("cashHistoryLoaded", region + " thead th:nth-child(2)",
+            region + " thead th:nth-child(2), " + region + " tbody td:nth-of-type(1)", 4);
+        awaitPage("capture retains the exact data, draft and table focus", exact +
+            " && document.activeElement === document.querySelector('.managed-cash-history-table')");
+        focusCashHistoryControl(references + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("history references match both original cash observations for every exact period",
+            "(() => { const refs = document.querySelector('.managed-cash-history-references');" +
+            " const source = document.querySelector('.sec-annual-cash-source');" +
+            " const periods = ['2025-01-01 to 2025-12-31', '2024-01-01 to 2024-12-31', '2023-01-01 to 2023-12-31'];" +
+            " const entries = [...refs.querySelectorAll('dl > div')]; const ids = [];" +
+            " return refs.open && document.activeElement === refs.querySelector('summary') && entries.length === 3" +
+            " && entries.every((entry, i) => { const expected = [...source.querySelectorAll(':scope > section')].map(section => {" +
+            " const observation = [...section.querySelectorAll('ol > li > details')].find(d => d.querySelector('summary').textContent.includes(periods[i]));" +
+            " return observation?.querySelectorAll('dd')[9]?.textContent; }); ids.push(...expected);" +
+            " return entry.querySelector('dt')?.textContent === periods[i] && expected.every(id => /^sec-fact:[a-f0-9]{64}$/.test(id))" +
+            " && entry.querySelector('dd')?.textContent === expected.join(' · '); }) && new Set(ids).size === 6" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1; })()");
+        assertAnnualNoteCounts(1, 0, 1);
+        focusCashHistoryControl(history + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("closing history hides its table while preserving the same evidence and note", exact +
+            " && document.querySelector('.managed-annual-cash-history')?.open === false" +
+            " && document.querySelector('.managed-cash-history-table').getBoundingClientRect().height === 0");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("reopening history uses the same single Annual result", exact +
+            " && document.querySelector('.managed-annual-cash-history')?.open === true");
+        assertAnnualNoteCounts(1, 0, 1);
+        awaitPage("history adds no other source reads or persistence",
+            DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0");
+        click(CATALOG_REFRESH);
+        awaitPage("normal status expiry removes the loaded history and retires the whole draft",
+            DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
+            " && document.querySelector('.managed-annual-cash-history') === null" +
+            " && document.querySelector('.managed-cash-history-references') === null" +
+            " && document.querySelector('.managed-company-research') === null" +
+            " && document.querySelector('.managed-navigation') === null" +
+            " && " + DIAGNOSTICS + ".status === 2 && " + DIAGNOSTICS + ".annual === 1" +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0");
+        assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private void focusCashHistoryControl(String selector) throws Exception {
+        CountDownLatch focused = new CountDownLatch(1);
+        scenario.onActivity(activity -> {
+            WebView webView = activity.getBridge().getWebView();
+            assertTrue("Cash-history WebView must accept focus", webView.requestFocus());
+            webView.evaluateJavascript("(() => { const target = document.querySelector(" + JSONObject.quote(selector) + ");" +
+                " target.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}); target.focus({preventScroll:true}); })()",
+                ignored -> focused.countDown());
+        });
+        assertTrue("Cash-history focus was not returned", focused.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        awaitPage("exact cash-history disclosure receives visible focus",
+            "(() => { const target = document.querySelector(" + JSONObject.quote(selector) + ");" +
+            " const r = target?.getBoundingClientRect(), v = visualViewport;" +
+            " return target && document.activeElement === target && v && r.height >= 44" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; })()");
+    }
+
+    @Test
     public void annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         awaitPage("invented board admission completed without source reads", DIAGNOSTICS + ".marketsResolve === 1");
@@ -5296,6 +5430,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
+            scenarioName.equals("annual-cash-history") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||

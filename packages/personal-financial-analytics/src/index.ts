@@ -114,7 +114,13 @@ export {
   serializePersonalSecAnnualGeneration,
 } from "./personal-sec-annual-evidence";
 
-export { resolvePersonalSecAnnualCashGeneration } from "./personal-sec-annual-cash-generation";
+export {
+  resolvePersonalSecAnnualCashGeneration,
+  resolvePersonalSecAnnualCashHistory,
+  type PersonalSecAnnualCashHistory,
+  type PersonalSecAnnualCashHistoryPeriod,
+  type PersonalSecAnnualCashHistoryReason,
+} from "./personal-sec-annual-cash-generation";
 export { resolvePersonalSecAnnualLiquidity } from "./personal-sec-annual-liquidity";
 export { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
 export {
