@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 const sections = {
   board: "Company board",
   review: "Research checks due",
+  day: "Markets day view",
   calendar: "Economic calendar",
   announcements: "Fed announcements",
 } as const;
@@ -15,7 +16,7 @@ export type ManagedMarketsNavigationTargets = Readonly<
   >
 >;
 
-interface Props {
+export interface ManagedMarketsNavigationProps {
   readonly targets: ManagedMarketsNavigationTargets;
   readonly containerRef: RefObject<HTMLElement | null>;
   readonly isCurrent: () => boolean;
@@ -31,8 +32,8 @@ function rendered(element: HTMLElement): boolean {
   );
 }
 
-export function ManagedMarketsNavigation(props: Props) {
-  const committed = useRef<Props | null>(null);
+export function useManagedMarketsJump(props: ManagedMarketsNavigationProps) {
+  const committed = useRef<ManagedMarketsNavigationProps | null>(null);
   useLayoutEffect(() => {
     committed.current = props;
     return () => {
@@ -40,7 +41,7 @@ export function ManagedMarketsNavigation(props: Props) {
     };
   }, [props]);
 
-  function jump(section: Section) {
+  return function jump(section: Section) {
     const entry = props.targets[section];
     const target = entry.ref.current;
     const container = props.containerRef.current;
@@ -59,8 +60,11 @@ export function ManagedMarketsNavigation(props: Props) {
     target.focus({ preventScroll: true });
     if (current() && target.ownerDocument.activeElement === target)
       target.scrollIntoView({ block: "start", behavior: "instant" });
-  }
+  };
+}
 
+export function ManagedMarketsNavigation(props: ManagedMarketsNavigationProps) {
+  const jump = useManagedMarketsJump(props);
   return (
     <nav className="managed-markets-navigation" aria-label="On Markets">
       <p>On Markets</p>

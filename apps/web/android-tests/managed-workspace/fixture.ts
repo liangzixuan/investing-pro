@@ -104,6 +104,20 @@ export const fedAnnouncements = parseManagedMonetaryAnnouncements(
   fedAnnouncementsFixture(),
 );
 if (!fedAnnouncements) throw new Error("Invalid invented Fed announcements");
+export const marketsDayAnnouncements = parseManagedMonetaryAnnouncements({
+  ...fedAnnouncements,
+  fetchedAt: "2026-10-30T18:00:00.000Z",
+  items: [
+    {
+      title: "Invented evening monetary announcement",
+      url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261030a.htm",
+      publishedAt: "2026-10-30T00:30:00.000Z",
+    },
+    fedAnnouncements.items[1],
+  ],
+});
+if (!marketsDayAnnouncements)
+  throw new Error("Invalid invented Markets day announcements");
 function fedPacket(
   fetchedAt: string,
   empty = false,
@@ -235,6 +249,7 @@ export async function createFixture(
     | "annual-operating-comparison"
     | "company-snapshot"
     | "research-followups"
+    | "markets-day-view"
     | "company-price-ranges"
     | "thesis-review"
     | "price-comparison-note"
@@ -558,7 +573,7 @@ export async function createFixture(
     scenario === "signout-save-review" ||
     scenario === "signout-uncertain-review";
   const followups =
-    scenarioName === "research-followups"
+    scenarioName === "research-followups" || scenarioName === "markets-day-view"
       ? createResearchFollowupsFixture()
       : null;
   let state = {
@@ -829,6 +844,20 @@ export async function createFixture(
           );
         return Promise.reject(new TrialApiError("unauthenticated"));
       }
+      if (scenario === "markets-day-view" && state.status === 2) {
+        if (
+          state.calendar !== 4 ||
+          state.fed !== 4 ||
+          !pendingCalendar ||
+          !pendingFed ||
+          state.calendarAborted !== 1 ||
+          state.calendarLateResolved !== 1 ||
+          state.fedAborted !== 1 ||
+          state.fedLateResolved !== 1
+        )
+          throw new Error("Hold both fourth day-view reads before expiry");
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (scenario === "bea-session-retirement" && state.status === 2) {
         if (state.calendar !== 2 || !pendingCalendar)
           return Promise.reject(
@@ -853,21 +882,26 @@ export async function createFixture(
       return Promise.resolve({ snapshot: structuredClone(snapshot) });
     },
     monetaryAnnouncements: (signal) => {
+      const dayView = scenario === "markets-day-view";
       if (
         signal.aborted ||
-        scenario !== "fed-announcements" ||
+        (scenario !== "fed-announcements" && !dayView) ||
         pendingFed ||
-        state.fed >= 7
+        state.fed >= (dayView ? 4 : 7)
       )
         throw new Error("Unexpected invented announcements read");
       count("fed");
       if (state.fed === 1)
-        return Promise.resolve(structuredClone(fedAnnouncements!));
+        return Promise.resolve(
+          structuredClone(
+            dayView ? marketsDayAnnouncements! : fedAnnouncements!,
+          ),
+        );
       if (state.fed === 6)
         return Promise.resolve(fedPacket("2026-10-23T18:00:00.000Z"));
       if (state.fed === 2)
         return Promise.reject(new TrialApiError("unavailable"));
-      if (state.fed === 4)
+      if (!dayView && state.fed === 4)
         return Promise.resolve(fedPacket("2026-10-21T18:00:00.000Z", true));
       return new Promise<PersonalMonetaryAnnouncementsDto>((resolve) => {
         pendingFed = resolve;
@@ -879,13 +913,16 @@ export async function createFixture(
     },
     economicCalendar: (signal) => {
       const comparison = scenario === "bea-agenda-comparison";
+      const dayView = scenario === "markets-day-view";
       if (
         signal.aborted ||
         (scenario !== "bea-agenda" &&
           scenario !== "bea-session-retirement" &&
-          !comparison) ||
+          !comparison &&
+          !dayView) ||
         pendingCalendar ||
-        state.calendar >= (comparison ? 4 : scenario === "bea-agenda" ? 4 : 2)
+        state.calendar >=
+          (comparison || dayView || scenario === "bea-agenda" ? 4 : 2)
       )
         throw new Error("Unexpected invented calendar read");
       count("calendar");
@@ -913,7 +950,7 @@ export async function createFixture(
         return Promise.resolve(structuredClone(beaAgenda!));
       if (state.calendar === 1)
         return Promise.resolve(structuredClone(beaAgenda!));
-      if (scenario === "bea-agenda" && state.calendar === 2)
+      if ((scenario === "bea-agenda" || dayView) && state.calendar === 2)
         return Promise.reject(new TrialApiError("unavailable"));
       return new Promise<PersonalEconomicCalendarDto>((resolve) => {
         pendingCalendar = resolve;

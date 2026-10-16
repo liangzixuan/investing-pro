@@ -10,7 +10,7 @@ in [Current work](CURRENT_WORK.md).
 
 ## Move between Markets sections
 
-**On Markets** offers **Company board**, **Research checks due**, **Economic calendar** and **Fed
+**On Markets** offers **Company board**, **Research checks due**, **Markets day view**, **Economic calendar** and **Fed
 announcements** below the Markets toolbar. Each link moves focus to that
 section's heading and scrolls it into view. All sections stay on the same page.
 The links wrap on narrow screens and have a minimum target height of 44 pixels.
@@ -57,6 +57,43 @@ Markets and Follow-ups share one captured UTC assessment day for the workspace.
 Planning dates do not establish financial-source freshness or imply a relevant
 filing, earnings event or news alert. Existing calendar and announcement loads
 stay separate. Session retirement clears the queue and fences late reads.
+
+## Read the Markets day view
+
+**Markets day view** brings the loaded BEA schedule and Federal Reserve monetary-policy
+announcements into one dated list. **Inspect Economic calendar** and **Inspect Fed
+announcements** move focus to the existing source panels. Those panels still own
+explicit Load, Refresh and Cancel. Opening the day view or changing a filter makes
+no request and changes neither draft.
+
+**Eastern date** and **Source** narrow the loaded rows. Each dated group uses
+America/New_York, including daylight-saving changes; rows remain ordered by their
+exact UTC instants. Simultaneous BEA series stay separate, and each Fed link keeps
+its own identity. Scheduled releases and published announcements have distinct
+labels. Exact UTC values remain beside the Eastern display. A missing Fed
+publication time stays in **Unknown publication time**, even with a date selected;
+the retrieval time never supplies a publication date.
+
+Each source keeps its own retrieval time, coverage and previous-result warning.
+BEA retains its original 30-day window and up to 512 events. Fed retains up to ten
+items and its full validated available count. Unloaded sources, verified empty
+packets and no matching dated rows have separate explanations. A partial view
+does not imply the other source was checked. The view adds no company relevance,
+publication confirmation for a scheduled release, released value, alert or complete
+news-history claim.
+
+Failure, invalid replacement and Cancel retain the accepted packet, original
+clocks and local filters. Accepted replacement of either packet resets both
+filters, including an equal-content response. Date options retain counts from
+all loaded dated rows; unknown-time rows remain outside those counts. Existing
+source-detail filters and note choices are independent. Leaving Markets cancels
+pending reads; returning does not load again. Session retirement clears both
+sources and fences late results. Inspect and filter callbacks recheck their
+current view and captured state.
+
+This source candidate reuses the existing contracts, models, permissions and
+source budgets. Source checks, browser layout/focus, hosted native and delivery
+remain separate in [Current work](CURRENT_WORK.md).
 
 ## Inputs and scope
 
@@ -231,8 +268,10 @@ The announcements section follows the BEA agenda. **Load announcements** makes
 one explicit read of the official Federal Reserve monetary-policy RSS feed.
 It shows up to ten titles with original links, publication times in Eastern time,
 the number listed in the feed and the time the response was loaded. A missing
-publication time stays unknown. Article bodies, forecasts and a combined news
-feed are outside this section. Deployment status remains in [Current work](CURRENT_WORK.md).
+publication time stays unknown. [Markets day view](#read-the-markets-day-view)
+combines these loaded metadata rows with the BEA schedule. Article bodies,
+forecasts and broader news sources remain outside this scope. Deployment status
+remains in [Current work](CURRENT_WORK.md).
 
 The authenticated, body-free and query-free
 `GET /v1/managed/monetary-policy-announcements` reuses the existing fixed-source

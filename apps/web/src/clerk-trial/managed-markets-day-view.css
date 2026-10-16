@@ -1,0 +1,59 @@
+.clerk-trial.managed-frame .managed-markets-day-view {
+  min-width: 0;
+  margin-block: 24px;
+  padding-block: 20px;
+  border-block: 1px solid var(--managed-line);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-markets-day-view :is(h2, h3, p) {
+  margin: 0 0 10px;
+}
+.clerk-trial.managed-frame .managed-day-sources,
+.clerk-trial.managed-frame .managed-day-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+  margin-block: 16px;
+}
+.clerk-trial.managed-frame .managed-day-sources > section {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+}
+.clerk-trial.managed-frame .managed-markets-day-view ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+}
+.clerk-trial.managed-frame .managed-markets-day-view li {
+  min-width: 0;
+  padding-block: 14px;
+  border-top: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-markets-day-view a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
+}
+.clerk-trial.managed-frame .managed-day-filters label {
+  display: grid;
+  gap: 8px;
+}
+.clerk-trial.managed-frame .managed-day-filters select {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+}
+.clerk-trial.managed-frame :is(.managed-day-kind, .managed-day-utc) {
+  color: var(--managed-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.clerk-trial.managed-frame .managed-day-utc {
+  display: block;
+}
+.clerk-trial.managed-frame .managed-day-warning {
+  color: #ffbd80;
+}

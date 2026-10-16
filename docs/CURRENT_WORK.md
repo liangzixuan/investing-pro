@@ -32,12 +32,36 @@ seven main-push jobs pass. The admitted native archive has 40 passing cases and
 the exact 110 expected screenshots; pixel review covers a representative subset.
 This source acceptance does not publish a new release.
 
+PR169 and PR170 are merged at `01debdb` and `ce2656c`. Their original required
+Actions checks and actual main-push checks pass. Admitted invented-data native
+archives contain 40 cases and 112 or 113 expected images, respectively; pixel
+review covers representative images. The owner accepted the reviewed CodeScene
+maintenance warnings for each exact source revision. Publication and physical
+device use remain separate.
+
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
 session scope appears with sign-out review. Private fixture controls are excluded
 from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
+
+## Markets day view candidate
+
+The [Markets day view](MANAGED_MARKETS_HOME.md#read-the-markets-day-view) combines
+the existing loaded BEA schedule and Fed announcement metadata by Eastern date.
+Scheduled and published items retain distinct labels, exact UTC instants and
+independent source clocks, coverage and retained-result warnings. Unknown
+publication times stay separate. Local filters and guarded Inspect links reuse
+the existing source panels without automatic requests or draft changes.
+
+The 309 affected source tests and 84 fixture cases pass, as do web types, scoped
+lint/format and module boundaries. Invented-data Chrome checks at 1440, 390 and
+320 CSS pixels cover mixed dates and source labels, unknown times, local filters,
+verified empty results, failures, Cancel, replacement, late responses, both dirty
+drafts and session retirement. Hosted native, integration and publication
+acceptance remain pending. No provider operation, schema, persistence or financial
+calculation was added.
 
 ## Daily research review candidate
 
@@ -62,8 +86,8 @@ retain their scope. The 280 focused domain and 64 UI, decoder and capacity cases
 pass, as do domain and web types, scoped lint and source boundaries. Chrome checks
 at 1440, 390 and 320 CSS pixels confirm the layout, exact long values, draft
 retention, failed refresh, cancellation, late responses and session retirement
-with invented data. Hosted native, integration and publication acceptance remain
-pending.
+with invented data. The original 40-case, 113-image native archive and actual
+main checks pass within the reviewed source scope. Publication remains separate.
 
 ## Annual comparison reading flow candidate
 
@@ -72,7 +96,8 @@ in a closed **Calculation methods and comparison limits** disclosure after the
 table and before the note action. Full text remains mounted. Cell dates,
 qualifications and refusals stay visible, with a short reminder about differing
 dates and parent equity. Source requests, note actions and saved data are unchanged.
-The 61 affected tests, web types, scoped lint, format and boundaries pass. Invented-data Chrome checks pass at 1440, 390 and 320 CSS pixels, including keyboard and pointer use, exact draft and source retention, failed refresh, Cancel, late completion and session retirement. Hosted-native acceptance for this reading-flow change remains separate.
+The 61 affected tests, web types, scoped lint, format and boundaries pass. Invented-data Chrome checks pass at 1440, 390 and 320 CSS pixels, including keyboard and pointer use, exact draft and source retention, failed refresh, Cancel, late completion and session retirement. Original hosted-native and main checks pass within the reviewed source scope.
+Publication remains separate.
 
 ## Reported balance sheet comparison candidate
 
