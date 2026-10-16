@@ -78,7 +78,14 @@ deadline in an existing parser corpus test. The ZIP fixture builder now uses
 Node's CRC32 implementation. All 103 archive hashes and expected outcomes remain
 unchanged; the manifest records the reviewed builder's new source hash. Local
 parser checks pass, including mutation isolation. The original failure remains
-recorded. Fresh CI, source integration and publication are pending.
+recorded. The next original Windows attempt passed that parser case, but two
+unchanged web interaction tests exceeded their existing five-second deadlines.
+Android, Ubuntu and the other source workflows passed. The web tests now keep
+unchanged source fixtures stable during controlled edits and inspect each real
+before/after comparison tree once. All 119 cases in both files pass locally.
+No deadline, assertion or test configuration has changed. Local timing does not
+establish hosted stability; fresh CI, source integration and publication are
+pending.
 
 ## Remaining milestones and acceptance limits
 

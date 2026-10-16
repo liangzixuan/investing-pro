@@ -540,16 +540,18 @@ describe("PersonalFcffDcfValuation", () => {
     );
     const onSave = vi.fn();
     const onClear = vi.fn();
-    const props = () =>
-      defaultProps({
-        assumptionControl: { value: draft, onChange },
-        savedAssumptionsControls: (
-          <div>
-            <button onClick={onSave}>Save test assumptions</button>
-            <button onClick={onClear}>Clear test assumptions</button>
-          </div>
-        ),
-      });
+    const initialProps = defaultProps({
+      savedAssumptionsControls: (
+        <div>
+          <button onClick={onSave}>Save test assumptions</button>
+          <button onClick={onClear}>Clear test assumptions</button>
+        </div>
+      ),
+    });
+    const props = () => ({
+      ...initialProps,
+      assumptionControl: { value: draft, onChange },
+    });
     changeControl(props(), "fcff-dcf-wacc", "-");
     expect(draft.waccPercent).toBe("-");
     expect(render(props())).toContain("Finish entering valid assumptions");
