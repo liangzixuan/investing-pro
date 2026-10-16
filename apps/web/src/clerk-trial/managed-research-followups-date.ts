@@ -6,6 +6,15 @@ export interface ResearchFollowupDueGroups {
   readonly today: readonly ResearchFollowup[];
   readonly later: readonly ResearchFollowup[];
   readonly completed: readonly ResearchFollowup[];
+  readonly invalidDates: readonly ResearchFollowup[];
+}
+
+export function isResearchFollowupDueDate(value: string): boolean {
+  if (!/^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$/u.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return (
+    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+  );
 }
 
 /** The caller captures the assessment clock; grouping never reads a new clock. */
@@ -22,9 +31,12 @@ export function groupResearchFollowupsByDueDate(
     today: ResearchFollowup[];
     later: ResearchFollowup[];
     completed: ResearchFollowup[];
-  } = { overdue: [], today: [], later: [], completed: [] };
+    invalidDates: ResearchFollowup[];
+  } = { overdue: [], today: [], later: [], completed: [], invalidDates: [] };
   for (const entry of entries) {
-    if (entry.status === "completed") groups.completed.push(entry);
+    if (!isResearchFollowupDueDate(entry.dueOn))
+      groups.invalidDates.push(entry);
+    else if (entry.status === "completed") groups.completed.push(entry);
     else if (entry.dueOn < assessedOn) groups.overdue.push(entry);
     else if (entry.dueOn === assessedOn) groups.today.push(entry);
     else groups.later.push(entry);
@@ -35,5 +47,6 @@ export function groupResearchFollowupsByDueDate(
     today: Object.freeze(groups.today),
     later: Object.freeze(groups.later),
     completed: Object.freeze(groups.completed),
+    invalidDates: Object.freeze(groups.invalidDates),
   });
 }

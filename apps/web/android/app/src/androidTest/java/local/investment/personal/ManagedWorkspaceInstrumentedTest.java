@@ -293,6 +293,7 @@ public class ManagedWorkspaceInstrumentedTest {
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("watchlist-export");
         if (testName.getMethodName().equals("researchFollowupsSaveResearchAndCompleteAcrossSessions") ||
+            testName.getMethodName().equals("dailyResearchReviewKeepsDraftAndCompletesThroughResearch") ||
             testName.getMethodName().equals("researchFollowupsReplayAndSessionRetirementFenceLateReplies"))
             selectFixtureScenario("research-followups");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
@@ -321,6 +322,113 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) assertCompanyHistory("listing-zero", "annual", true);
         else assertRootHistory();
         Log.i("ManagedFixture", "source=" + expectedSourceSha + ", files=" + copiedFiles + ", bytes=" + copiedBytes);
+    }
+
+    @Test
+    public void dailyResearchReviewKeepsDraftAndCompletesThroughResearch() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Independent daily review draft");
+        openFollowupsView();
+        awaitPage("daily review starts without an automatic follow-up read",
+            FOLLOWUPS + ".load === 0 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUP_DRAFT + ".entries === null");
+        click("#managed-followups-load");
+        awaitPage("explicit daily-review load admits the empty independent resource",
+            FOLLOWUPS + ".load === 1 && " + FOLLOWUP_DRAFT + ".baseVersion === 0 && " + FOLLOWUP_DRAFT + ".entries?.length === 0");
+        String assessedDay = readFixtureString("document.querySelector('#managed-followups-assessed-day').getAttribute('datetime')");
+        assertTrue("Daily review uses the displayed captured UTC day", assessedDay.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}"));
+        String check = "Inspect the reported raw close for this authored check";
+        String id = authorFollowup(check, assessedDay);
+        assertFollowupEntry(id, check, assessedDay, "", "open", null, 0, true);
+        chooseNativeSelectOption("#managed-followups-filter", "all", "All");
+        String entriesBefore = readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)");
+        String watchlistBefore = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String dailyReview = "#managed-daily-review-" + id;
+        selectWorkspaceView("Markets");
+        String queue = "(() => { const q = document.querySelector('.managed-daily-research-review');" +
+            " const button = document.querySelector(" + JSONObject.quote(dailyReview) + "); const row = button?.closest('li');" +
+            " return q && row && row.closest('section')?.getAttribute('aria-label') === 'Due today'" +
+            " && q.querySelector('time')?.getAttribute('datetime') === " + JSONObject.quote(assessedDay) +
+            " && q.querySelectorAll('[id^=managed-daily-review-]').length === 1" +
+            " && row.querySelector('.managed-daily-research-check')?.textContent === " + JSONObject.quote(check) +
+            " && row.querySelector('.managed-daily-research-identity strong')?.textContent === 'ZERO'" +
+            " && row.querySelector('.managed-daily-research-identity')?.textContent.includes('Zero Company')" +
+            " && row.querySelector('.managed-listing-detail')?.textContent === 'Class A · XNAS · Common stock'" +
+            " && row.querySelector('.managed-daily-research-check + p')?.textContent === " + JSONObject.quote("Due " + assessedDay) +
+            " && button.textContent === 'Review check' && button.disabled === false && button.getBoundingClientRect().height >= 44" +
+            " && q.querySelector('.managed-daily-research-status[role=status]')?.textContent.trim() === 'Unsaved follow-up changes. Loaded version 0.'" +
+            " && " + FOLLOWUP_DRAFT + ".baseVersion === 0 && " + FOLLOWUP_DRAFT + ".saved?.version === 0 && " + FOLLOWUP_DRAFT + ".saved?.payload.entries.length === 0 && " + FOLLOWUP_DRAFT + ".dirty === true" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries) === " + JSONObject.quote(entriesBefore) +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlistBefore) +
+            " && " + FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUPS + ".commits === 0" +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".marketsResolve === 2" +
+            " && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && " + DIAGNOSTICS + ".marketsEod === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0 && " + DIAGNOSTICS + ".save === 0" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
+        awaitPage("Markets shows the exact due draft without financial reads or saves", queue);
+        retainAnnualNoteFrame("followupsDailyReviewQueue", ".managed-daily-research-review [aria-label='Due today'] li", ".managed-daily-research-review [aria-label='Due today'] li", 1);
+        awaitPage("retaining the daily queue does not alter either draft or source budget", queue);
+        click(dailyReview);
+        awaitPage("Review opens the same entry and focuses its editor heading",
+            "document.activeElement === document.querySelector('#managed-followup-editor-heading')" +
+            " && document.querySelector('#managed-followups-filter')?.value === 'open' && " + FOLLOWUP_DRAFT + ".filter === 'open'" +
+            " && document.querySelector('#managed-followups-assessed-day')?.getAttribute('datetime') === " + JSONObject.quote(assessedDay) +
+            " && " + FOLLOWUP_DRAFT + ".selectedId === " + JSONObject.quote(id) +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries) === " + JSONObject.quote(entriesBefore) +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlistBefore) +
+            " && " + FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".eod === 0");
+        assertFollowupEntry(id, check, assessedDay, "", "open", null, 0, true);
+        String opener = "#managed-followup-research-" + id;
+        click(opener);
+        awaitPage("daily check research resolves its current listing without reading a source",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('.managed-company-identity')?.textContent.includes('Zero Class A · Class A · XNAS')" +
+            " && " + DIAGNOSTICS + ".resolve === 1 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && document.querySelector('#managed-research-note')?.value === 'Independent daily review draft'");
+        assertCompanyHistory("listing-zero", "price", false);
+        assertCompanySourceOverview(false, false, false);
+        click(".managed-company-evidence-actions [aria-label='Price source'] .trial-actions button:first-child");
+        awaitPage("one explicit daily-check Price load retains its source clocks and raw values",
+            DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && [...document.querySelectorAll('.managed-eod-history .managed-metadata dd')].map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'");
+        awaitPage("daily-check Price evidence keeps its observed coverage", observedCloseRangeExact("One month", 2,
+            "2026-09-18", "2026-09-19", "101.5", "2026-09-19", "100.25", "2026-09-18"));
+        assertCompanySourceOverview(true, false, false);
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("Back restores the authored daily check, opener focus and both unsaved drafts",
+            "document.querySelector('.managed-company-visit') === null && document.activeElement === document.querySelector(" + JSONObject.quote(opener) + ")" +
+            " && " + FOLLOWUP_DRAFT + ".selectedId === " + JSONObject.quote(id) + " && " + FOLLOWUP_DRAFT + ".filter === 'open'" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries) === " + JSONObject.quote(entriesBefore) +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlistBefore));
+        assertReturnedRootHistory("listing-zero", "price");
+        String result = "Observed raw close USD 101.5 on 2026-09-19; source completed 2026-09-20T00:00:01.000Z";
+        typeIntoInput("managed-followup-result", result);
+        assertEquals("Research does not refresh the captured daily-review day", assessedDay,
+            readFixtureString("document.querySelector('#managed-followups-assessed-day').getAttribute('datetime')"));
+        click("#managed-followup-complete");
+        assertFollowupEntry(id, check, assessedDay, result, "completed", assessedDay, 0, true);
+        click("#managed-followups-save");
+        awaitPage("explicit completion save writes only the follow-up resource",
+            FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".version === 1" +
+            " && " + DIAGNOSTICS + ".save === 0 && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlistBefore));
+        assertFollowupEntry(id, check, assessedDay, result, "completed", assessedDay, 1, false);
+        freshFollowupSession(2, 1);
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("fresh explicit read recovers the completed daily check", FOLLOWUPS + ".load === 2 && " + FOLLOWUP_DRAFT + ".baseVersion === 1");
+        chooseNativeSelectOption("#managed-followups-filter", "completed", "Completed");
+        selectFollowup(id);
+        assertFollowupEntry(id, check, assessedDay, result, "completed", assessedDay, 1, false);
+        assertFixtureBoundary(1, 0);
+        awaitPage("daily review accounts for the existing Markets catalog resolve and no implicit source read",
+            DIAGNOSTICS + ".load === 2 && " + DIAGNOSTICS + ".status === 2 && " + DIAGNOSTICS + ".marketsResolve === 3" +
+            " && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".search === 0" +
+            " && " + DIAGNOSTICS + ".marketsEod === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0 && " + DIAGNOSTICS + ".save === 0" +
+            " && " + FOLLOWUPS + ".session === 2 && " + FOLLOWUPS + ".load === 2 && " + FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".token === 0 && " + FOLLOWUPS + ".signOut === 0" +
+            " && " + DRAFT + ".dirty === false && " + DRAFT + ".memberships?.[0]?.note === '' && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
+        assertEquals("Daily review keeps the same native document across fresh invented sessions", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
     }
 
     @Test
@@ -1794,13 +1902,14 @@ public class ManagedWorkspaceInstrumentedTest {
             " source:document.querySelector('.bea-agenda-source a')?.href," +
             " busy:document.querySelector('.bea-release-agenda [aria-busy]')?.getAttribute('aria-busy')})";
         String originalPacket = readFixtureString(packet);
-        awaitPage("Markets offers three labelled native-sized section links",
+        awaitPage("Markets offers four labelled native-sized section links",
             "(() => { const links = [...document.querySelectorAll('nav[aria-label=\"On Markets\"] > a')];" +
-            " return links.length === 3 && links.map(a => a.textContent).join('|') === 'Company board|Economic calendar|Fed announcements'" +
+            " return links.length === 4 && links.map(a => a.textContent).join('|') === 'Company board|Research checks due|Economic calendar|Fed announcements'" +
             " && links.every(a => { const r = a.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }); })()");
-        for (String section : new String[] {"board", "calendar", "announcements"}) {
+        for (String section : new String[] {"board", "review", "calendar", "announcements"}) {
             String selector = "nav[aria-label='On Markets'] > a[data-markets-jump='" + section + "']";
             String targetId = section.equals("board") ? "managed-markets-heading" :
+                section.equals("review") ? "managed-daily-research-heading" :
                 section.equals("calendar") ? "bea-agenda-title" : "fed-announcements-title";
             String geometry = readFixtureString(
                 "(() => { const link = document.querySelector(" + JSONObject.quote(selector) + ");" +

@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
   normalizeResearchFollowupCheck,
@@ -6,24 +6,19 @@ import {
   type ResearchFollowup,
 } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
-import { groupResearchFollowupsByDueDate } from "./managed-research-followups-date";
+import {
+  groupResearchFollowupsByDueDate,
+  isResearchFollowupDueDate as validDueDate,
+} from "./managed-research-followups-date";
 import type { FollowupsFilter } from "./managed-research-followups";
-import type { ManagedWorkspace } from "./managed-workspace";
+import type { ManagedWorkspace, FollowupReview } from "./managed-workspace";
 import "./managed-research-followups.css";
 
 export interface ManagedResearchFollowupsProps {
   navigationPending: boolean;
+  review?: FollowupReview | null;
   workspace: ManagedWorkspace;
   onResearch: (entry: ResearchFollowup, opener: HTMLButtonElement) => void;
-}
-
-// Raw draft dates can be invalid; only canonical dates enter the due groups.
-function validDueDate(value: string) {
-  if (!/^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$/u.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return (
-    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
-  );
 }
 
 const reviewLabels = {
@@ -35,6 +30,7 @@ const reviewLabels = {
 
 export function ManagedResearchFollowups({
   navigationPending,
+  review,
   workspace,
   onResearch,
 }: ManagedResearchFollowupsProps) {
@@ -64,12 +60,26 @@ export function ManagedResearchFollowups({
     workspace.sessionOwner.getSnapshot,
     workspace.sessionOwner.getSnapshot,
   );
-  const [assessmentClock, setAssessmentClock] = useState(() => new Date());
+  const assessmentClock = new Date(state.assessmentTime ?? NaN);
+  const editorHeading = useRef<HTMLHeadingElement | null>(null);
+  useLayoutEffect(() => {
+    const target = editorHeading.current;
+    if (!review || navigationPending || !target) return;
+    const current = () =>
+      review.isCurrent() &&
+      editorHeading.current === target &&
+      target.isConnected &&
+      !target.closest("[hidden], [inert]") &&
+      target.getClientRects().length > 0;
+    if (!current()) return;
+    target.focus({ preventScroll: true });
+    if (current() && target.ownerDocument.activeElement === target)
+      target.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [review, navigationPending]);
   const [newListingId, setNewListingId] = useState("");
   const [newDueOn, setNewDueOn] = useState("");
   const entries = saved.draft?.entries ?? [];
-  const validEntries = entries.filter((entry) => validDueDate(entry.dueOn));
-  const groups = groupResearchFollowupsByDueDate(validEntries, assessmentClock);
+  const groups = groupResearchFollowupsByDueDate(entries, assessmentClock);
   const invalidDates = entries.filter((entry) => !validDueDate(entry.dueOn));
   const selected =
     entries.find((entry) => entry.id === state.selectedId) ?? null;
@@ -311,7 +321,7 @@ export function ManagedResearchFollowups({
                 id="managed-followups-reassess"
                 className="trial-secondary"
                 disabled={!active}
-                onClick={() => setAssessmentClock(new Date())}
+                onClick={() => model.reassessDueDate(new Date())}
               >
                 Reassess due date
               </button>
@@ -376,7 +386,11 @@ export function ManagedResearchFollowups({
                       unchanged.
                     </p>
                   )}
-                  <h3 id="managed-followup-editor-heading">
+                  <h3
+                    ref={editorHeading}
+                    tabIndex={-1}
+                    id="managed-followup-editor-heading"
+                  >
                     <ListingIdentity member={selected.listing} />
                   </h3>
                   <p>

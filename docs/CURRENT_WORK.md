@@ -39,6 +39,17 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Daily research review candidate
+
+Markets now includes [Research checks due](MANAGED_MARKETS_HOME.md#review-research-checks-due),
+using the existing Follow-ups draft and an explicit Load. Overdue and due-today
+rows open the exact editor; invalid dates retain a correction path. The existing
+Research, Back, result, completion and independent Save journey remains intact.
+Both views share one captured UTC assessment day, with explicit reassessment.
+It adds no financial read, saved field, alert or automatic relevance claim.
+Focused source tests, web types, scoped lint/format and module boundaries pass.
+Invented-data Chrome checks pass at 1440, 390 and 320 CSS pixels, including exact editor focus, independent dirty drafts, Research and Back, explicit completion and Save, failed and held loads, conflict, uncertain-save reconciliation and retirement. The final status copy and differing-version warnings also pass. Hosted native, integration and publication acceptance remain pending.
+
 ## Reported balance sheet change candidate
 
 The source candidate adds [reported balance sheet change](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-change)

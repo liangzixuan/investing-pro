@@ -34,6 +34,7 @@ export interface FollowupsCatalogReview {
 }
 export interface ManagedResearchFollowupsState {
   readonly selectedId: string | null;
+  readonly assessmentTime: number | null;
   readonly filter: FollowupsFilter;
   readonly catalogSnapshotSha256: `sha256:${string}` | null;
   readonly reviewing: boolean;
@@ -116,6 +117,7 @@ export class ManagedResearchFollowups {
     this.newEntryId = options.newEntryId ?? (() => crypto.randomUUID());
     this.state = Object.freeze({
       selectedId: null,
+      assessmentTime: Date.now(),
       filter: "open",
       catalogSnapshotSha256: catalogDigest(
         options.getCreationContext().catalogSnapshotSha256,
@@ -209,6 +211,7 @@ export class ManagedResearchFollowups {
     this.state = Object.freeze({
       ...this.state,
       selectedId: null,
+      assessmentTime: null,
       filter: "open",
       catalogSnapshotSha256: null,
       message: "",
@@ -245,6 +248,13 @@ export class ManagedResearchFollowups {
   select(id: string | null) {
     if (!this.retired && (id === null || this.currentEntry(id)))
       this.update({ selectedId: id });
+  }
+  reassessDueDate(clock: Date) {
+    if (this.retired) return;
+    const time = clock.getTime();
+    this.update({
+      assessmentTime: groupResearchFollowupsByDueDate([], clock) ? time : null,
+    });
   }
   setFilter(filter: FollowupsFilter) {
     if (!this.retired && ["open", "completed", "all"].includes(filter))

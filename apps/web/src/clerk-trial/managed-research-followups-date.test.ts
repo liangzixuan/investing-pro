@@ -49,6 +49,7 @@ it("groups admitted planning dates without changing saved order or authored entr
     today: [today],
     later: [later],
     completed: [completed],
+    invalidDates: [],
   });
   expect(groups?.completed[0]).toBe(completed);
   expect(groups?.completed[0]?.result).toBe("Café 東京 📈 authored result");
@@ -97,4 +98,22 @@ it.each([
   const result = groupResearchFollowupsByDueDate([], new Date(clock));
   if (expected === null) expect(result).toBeNull();
   else expect(result?.assessedOn).toBe(expected);
+});
+
+it("keeps invalid raw dates outside every due group without changing authored text", () => {
+  const invalid = [
+    entry(1, "2026-02-29"),
+    entry(2, "0000-01-01"),
+    entry(3, "bad \ud800"),
+    entry(4, "2026-2-01"),
+  ];
+  const valid = entry(5, "2000-02-29");
+  const groups = groupResearchFollowupsByDueDate(
+    [...invalid, valid],
+    new Date("2026-10-15T00:00:00Z"),
+  );
+  expect(groups?.invalidDates).toEqual(invalid);
+  expect(groups?.overdue).toEqual([valid]);
+  expect(groups?.invalidDates[2]).toBe(invalid[2]);
+  expect(Object.isFrozen(groups?.invalidDates)).toBe(true);
 });

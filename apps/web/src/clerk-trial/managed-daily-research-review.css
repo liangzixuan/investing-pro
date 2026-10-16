@@ -1,0 +1,58 @@
+.clerk-trial.managed-frame .managed-daily-research-review {
+  min-width: 0;
+  margin-block: 24px;
+  padding-block: 20px;
+  border-block: 1px solid var(--managed-line);
+  color: var(--managed-ink);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame
+  .managed-daily-research-review
+  :is(header, .managed-daily-research-day, li) {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.clerk-trial.managed-frame
+  .managed-daily-research-review
+  :is(header, li)
+  > div:first-child {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-daily-research-review :is(h2, h3, p) {
+  margin: 0 0 10px;
+}
+.clerk-trial.managed-frame .managed-daily-research-review ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.clerk-trial.managed-frame .managed-daily-research-review li {
+  padding-block: 16px;
+  border-top: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-daily-research-review button {
+  min-height: 44px;
+}
+.clerk-trial.managed-frame
+  .managed-daily-research-review
+  .managed-listing-detail {
+  display: block;
+}
+.clerk-trial.managed-frame .managed-daily-research-check {
+  white-space: pre-wrap;
+}
+.clerk-trial.managed-frame .managed-daily-research-status,
+.clerk-trial.managed-frame .managed-daily-research-day {
+  color: var(--managed-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.clerk-trial.managed-frame .managed-daily-research-warning {
+  border-left: 3px solid #ffbd80;
+  padding-left: 12px;
+  color: #ffbd80;
+}

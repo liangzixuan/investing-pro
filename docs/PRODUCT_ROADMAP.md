@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 candidate adds [reported balance sheet change](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-change)
+The next M3/M4 candidate adds [Research checks due](MANAGED_MARKETS_HOME.md#review-research-checks-due)
+to Markets. Explicitly loaded Follow-ups provide authored overdue and due-today
+checks, exact entry review, and continuation through company research to result,
+completion and independent Save. One captured UTC day and existing draft,
+identity and session rules span both views. It adds no provider, schema,
+notification, automatic relevance decision or background request.
+
+The preceding M2 candidate adds [reported balance sheet change](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-change)
 inside the existing company history. Exact signed USD differences use the first
 two displayed dates independently for assets, liabilities and parent equity.
 Missing or refused inputs stay explicit; older dates cannot fill a gap. It reuses
