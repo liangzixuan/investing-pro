@@ -1902,13 +1902,14 @@ public class ManagedWorkspaceInstrumentedTest {
             " source:document.querySelector('.bea-agenda-source a')?.href," +
             " busy:document.querySelector('.bea-release-agenda [aria-busy]')?.getAttribute('aria-busy')})";
         String originalPacket = readFixtureString(packet);
-        awaitPage("Markets offers three labelled native-sized section links",
+        awaitPage("Markets offers four labelled native-sized section links",
             "(() => { const links = [...document.querySelectorAll('nav[aria-label=\"On Markets\"] > a')];" +
-            " return links.length === 3 && links.map(a => a.textContent).join('|') === 'Company board|Economic calendar|Fed announcements'" +
+            " return links.length === 4 && links.map(a => a.textContent).join('|') === 'Company board|Research checks due|Economic calendar|Fed announcements'" +
             " && links.every(a => { const r = a.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }); })()");
-        for (String section : new String[] {"board", "calendar", "announcements"}) {
+        for (String section : new String[] {"board", "review", "calendar", "announcements"}) {
             String selector = "nav[aria-label='On Markets'] > a[data-markets-jump='" + section + "']";
             String targetId = section.equals("board") ? "managed-markets-heading" :
+                section.equals("review") ? "managed-daily-research-heading" :
                 section.equals("calendar") ? "bea-agenda-title" : "fed-announcements-title";
             String geometry = readFixtureString(
                 "(() => { const link = document.querySelector(" + JSONObject.quote(selector) + ");" +
