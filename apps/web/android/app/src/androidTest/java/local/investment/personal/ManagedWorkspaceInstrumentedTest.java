@@ -1346,7 +1346,8 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void assertAnnualComparisonCashMargins() throws Exception {
-        awaitPage("three fixed cash margin bases retain each side's revenue, percentage, period and refusal independently of income selection",
+        String[][] expectations = {
+            {"three fixed cash margin bases retain each side's revenue, percentage, period and refusal independently of income selection",
             "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-cash-margin]')];" +
             " const concepts = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'];" +
             " const labels = ['Customer contract revenue, excluding assessed tax', 'Revenue', 'Net sales revenue'];" +
@@ -1364,12 +1365,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " if (expected === null) return value.querySelector(':scope > span')?.textContent === 'Unavailable. ' + (valueIndex === 0 ? '' : 'Reported revenue: ') + missing" +
             " && value.querySelectorAll(':scope > small').length === 1 && !value.querySelector('.sec-annual-liquidity-amount');" +
             " return value.querySelector('.sec-annual-liquidity-amount')?.textContent === expected" +
-            " && [...value.querySelectorAll(':scope > small')].map(e => e.textContent).slice(1).join('|') === periods[side] + '|Within current-use limits at this load.'; }); }); }); })()");
-        assertAnnualComparisonCashMarginSources();
-    }
-
-    private void assertAnnualComparisonCashMarginSources() throws Exception {
-        awaitPage("cash margin inputs keep all original side-specific operand IDs, complete coordinates and source clocks outside the old raw-cash block",
+            " && [...value.querySelectorAll(':scope > small')].map(e => e.textContent).slice(1).join('|') === periods[side] + '|Within current-use limits at this load.'; }); }); }); })()"},
+            {"cash margin inputs keep all original side-specific operand IDs, complete coordinates and source clocks outside the old raw-cash block",
             "(() => { const sources = [...document.querySelectorAll('[data-annual-comparison-cash-margin-source]')];" +
             " const concepts = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'];" +
             " const labels = ['Customer contract revenue, excluding assessed tax', 'Revenue', 'Net sales revenue'];" +
@@ -1398,7 +1395,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && groups.length === 3 && groups.map(group => group.querySelectorAll(':scope > ol > li').length).join('|') === (hasRevenue ? '1|1|1' : '1|1|0')" +
             " && groups.map((group, operand) => group.querySelector(':scope > p')?.textContent).join('|') === 'Operating cash flow references: ' + ids[0] + '|PP&E purchases references: ' + ids[1] + '|' + concepts[index] + ' references: ' + (hasRevenue ? ids[2] : 'None')" +
             " && rows.length === originals.length && rows.every((row, operand) => coordinates(row).length === 10 && JSON.stringify(coordinates(row)) === JSON.stringify(coordinates(originals[operand])))" +
-            " && input.querySelector(':scope > p:last-of-type')?.textContent === 'Calculation references: ' + ids.join(' · '); }); }); })()");
+            " && input.querySelector(':scope > p:last-of-type')?.textContent === 'Calculation references: ' + ids.join(' · '); }); }); })()"}
+        };
+        for (String[] expectation : expectations) {
+            awaitPage(expectation[0], expectation[1]);
+        }
     }
 
     private void inspectAnnualComparisonCashMarginInputs() throws Exception {

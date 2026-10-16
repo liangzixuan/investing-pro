@@ -72,6 +72,42 @@ function sources(response: Response) {
   );
 }
 
+function expectMarginValuesAndReferences(
+  html: string,
+  inputs: string,
+  basisInputs: ReturnType<typeof derivePersonalSecAnnualCashMargins>,
+  side: Side,
+) {
+  for (const basis of basisInputs) {
+    expect(cells(html, basis.concept)[side === "left" ? 0 : 1]).toContain(
+      renderToStaticMarkup(<SecAnnualCashMarginValueContent basis={basis} />),
+    );
+    for (const id of basis.margin.observationIds) expect(inputs).toContain(id);
+  }
+}
+function expectOriginalSourceCoordinates(inputs: string, response: Response) {
+  for (const observation of [
+    ...response.evidence.observations,
+    ...response.evidence.cashGeneration.operatingCashFlow.observations,
+    ...response.evidence.cashGeneration.ppePurchases.observations,
+  ]) {
+    for (const value of [
+      observation.sourceLocator,
+      observation.accessionNumber,
+      observation.filedDate,
+    ])
+      expect(inputs).toContain(value);
+  }
+  const generation = response.evidence.generation;
+  for (const value of [
+    generation.cutoffAt,
+    generation.completedAt,
+    generation.sources.companyFacts.fetchedAt!,
+    generation.sources.submissions.fetchedAt!,
+  ])
+    expect(inputs).toContain(value);
+}
+
 describe("cash margin comparison presentation", () => {
   it("keeps three fixed semantic rows unloaded and adds no action or selected basis", () => {
     const html = rows(null, null);
@@ -140,35 +176,8 @@ describe("cash margin comparison presentation", () => {
         ),
       ).toHaveLength(3);
       expect(inputs).not.toMatch(/<details[^>]*\sopen(?:[ =>])/u);
-      for (const basis of basisInputs) {
-        expect(cells(html, basis.concept)[side === "left" ? 0 : 1]).toContain(
-          renderToStaticMarkup(
-            <SecAnnualCashMarginValueContent basis={basis} />,
-          ),
-        );
-        for (const id of basis.margin.observationIds)
-          expect(inputs).toContain(id);
-      }
-      for (const observation of [
-        ...response.evidence.observations,
-        ...response.evidence.cashGeneration.operatingCashFlow.observations,
-        ...response.evidence.cashGeneration.ppePurchases.observations,
-      ]) {
-        for (const value of [
-          observation.sourceLocator,
-          observation.accessionNumber,
-          observation.filedDate,
-        ])
-          expect(inputs).toContain(value);
-      }
-      const generation = response.evidence.generation;
-      for (const value of [
-        generation.cutoffAt,
-        generation.completedAt,
-        generation.sources.companyFacts.fetchedAt!,
-        generation.sources.submissions.fetchedAt!,
-      ])
-        expect(inputs).toContain(value);
+      expectMarginValuesAndReferences(html, inputs, basisInputs, side);
+      expectOriginalSourceCoordinates(inputs, response);
       const otherAccession =
         side === "left" ? "0000000002-25-000001" : "0000000001-26-000001";
       expect(inputs).not.toContain(otherAccession);
