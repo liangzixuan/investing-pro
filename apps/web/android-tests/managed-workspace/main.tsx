@@ -7,7 +7,11 @@ import { ManagedWorkspaceRouter } from "../../src/clerk-trial/ManagedWorkspaceSc
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { TrialFrame } from "../../src/clerk-trial/TrialFrame";
 import "../../src/clerk-trial/trial.css";
-import { createFixture } from "./fixture";
+import {
+  authoredValuationNoteDraft,
+  authoredValuationPrefix,
+  createFixture,
+} from "./fixture";
 import {
   operatingComparisonPrefix,
   operatingComparisonNoteDraft,
@@ -35,6 +39,7 @@ if (
   scenario !== "annual-operating-history" &&
   scenario !== "annual-liquidity-history" &&
   scenario !== "annual-financial-review" &&
+  scenario !== "authored-valuation" &&
   scenario !== "annual-balance-sheet" &&
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
@@ -358,8 +363,28 @@ function FixtureDraftDiagnostics({
     workspace.coordinator.subscribe,
     workspace.coordinator.getSnapshot,
   );
+  const valuation = useSyncExternalStore(
+    workspace.valuation.subscribe,
+    workspace.valuation.getSnapshot,
+  );
   return (
     <aside aria-label="Invented draft diagnostics">
+      {scenario === "authored-valuation" && (
+        <>
+          <pre id="fixture-valuation-expected">
+            {JSON.stringify({
+              prefix: authoredValuationPrefix,
+              expectedNote: authoredValuationNoteDraft,
+            })}
+          </pre>
+          <pre
+            id="fixture-valuation-draft"
+            style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+          >
+            {JSON.stringify(valuation)}
+          </pre>
+        </>
+      )}
       {nativeExport && (
         <pre id="fixture-export-document">
           {JSON.stringify(

@@ -18,11 +18,19 @@ small { display: block; }
 summary { min-height: 44px; display: list-item; align-content: center; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
 summary:focus-visible { outline: 2px solid #244e76; outline-offset: 3px; }
 pre { padding: 12px; border: 1px solid #d8dde1; font-size: .85rem; }
+.managed-valuation-results { min-width: 0; }
+.managed-valuation-table { max-width: 100%; overflow-x: auto; margin-block: 16px; }
+.managed-valuation-table table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.managed-valuation-table :is(th, td) { padding: 8px; border-bottom: 1px solid #d8dde1; text-align: right; overflow-wrap: anywhere; }
+.managed-valuation-table :is(th, td):first-child { text-align: left; }
+.managed-valuation-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.managed-valuation-facts > div { min-width: 0; }
+.managed-valuation-facts dd { margin-top: 4px; }
 @media (max-width: 520px) { dl { grid-template-columns: minmax(0, 1fr); gap: 4px; } dd { margin-bottom: 12px; } }
 @media print { html { background: #fff; } body, main { padding: 0; border: 0; } h2, h3 { break-after: avoid; } .fact { break-inside: avoid; } }
 `;
 export const COMPANY_REPORT_HTML_STYLE_HASH =
-  "sha256-nXvxxaf/ke6b0nfJmPMax9636buDIOrAfSsh6vX+BgE=";
+  "sha256-rt+H76JcbbZE1LoQgEWWe0N81UMQRnMELezPzveOWGg=";
 export const COMPANY_REPORT_HTML_CSP =
   "default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; style-src '" +
   COMPANY_REPORT_HTML_STYLE_HASH +

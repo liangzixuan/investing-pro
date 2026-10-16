@@ -7,11 +7,13 @@ import type { PreparedCompanyReport } from "./managed-company-report";
 
 // Compact source JSON stays within each admitted response bound. The extra
 // allowance covers selection, a bounded authored note and document framing.
+export const COMPANY_REPORT_VALUATION_MAX_BYTES = 131_072;
 export const COMPANY_REPORT_DOCUMENT_MAX_BYTES =
   MANAGED_EOD_HISTORY_LIMITS.responseBytes +
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes +
   MANAGED_SEC_FILINGS_LIMITS.responseBytes +
-  32_768;
+  32_768 +
+  COMPANY_REPORT_VALUATION_MAX_BYTES;
 const NOTE_JSON_MAX_BYTES = 16_384;
 const encoder = new TextEncoder();
 
@@ -79,7 +81,7 @@ export function isCompanyReportDocument(
     const data = parsed as Record<string, unknown>;
     if (
       data.purpose !== fields.purpose ||
-      data.schemaVersion !== "1.0.0" ||
+      data.schemaVersion !== "2.0.0" ||
       !data.listing ||
       typeof data.listing !== "object" ||
       Array.isArray(data.listing)
@@ -122,6 +124,12 @@ export function formatCompanyReportDocument(
 ): CompanyReportDocument | null {
   if (report.kind !== "loaded_company_research") return null;
   const noteJson = JSON.stringify(report.note);
+  const valuation = report.valuation ?? null;
+  if (
+    encoder.encode(JSON.stringify(valuation)).byteLength >
+    COMPANY_REPORT_VALUATION_MAX_BYTES
+  )
+    return null;
   if (
     encoder.encode(noteJson).byteLength > NOTE_JSON_MAX_BYTES ||
     (report.note !== null && /\p{Cs}/u.test(report.note))
@@ -132,7 +140,7 @@ export function formatCompanyReportDocument(
   if (!name) return null;
   const document = {
     purpose: "investment.company-research",
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     preparedAt: report.preparedAt,
     scope: {
       sourceEvidence:
@@ -143,7 +151,9 @@ export function formatCompanyReportDocument(
         "A retained previous response was not confirmed by the latest attempt; its original dates still apply.",
       priceBasis: "Raw USD closes, unadjusted for splits or dividends.",
       financials:
-        "Original periods, revenue bases, validation and unavailable values are retained. No new calculation.",
+        "Original periods, revenue bases, validation and unavailable source values are retained. Authored valuation calculations are separate from source evidence.",
+      valuation:
+        "Explicit authored USD assumptions, model versions, results and independent sensitivity refusals. Inputs are not verified reported facts or investment recommendations; source dates are not valuation dates.",
       authoredResearch:
         "The draft's claims and links are not verified; this document does not establish that it is saved.",
       retention:
@@ -168,6 +178,7 @@ export function formatCompanyReportDocument(
       status: report.note === null ? "not_in_watchlist" : "watchlist_draft",
       note: report.note,
     },
+    valuation,
     sources: {
       price: sourceDocument(report.evidence.price),
       annual: sourceDocument(report.evidence.annual),

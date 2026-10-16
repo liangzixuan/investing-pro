@@ -1072,6 +1072,18 @@ export function ManagedWorkspaceScreen({
                   annual={workspace.annual}
                   filings={workspace.filings}
                   eod={workspace.eod}
+                  valuation={workspace.valuation}
+                  valuationNoteActions={{
+                    prepare: (model, scenario) =>
+                      workspace.prepareValuationNote(
+                        discovery.research!.selection,
+                        model,
+                        scenario,
+                      ),
+                    isCurrent: (preview) =>
+                      workspace.valuationNotePreviewIsCurrent(preview),
+                    append: (preview) => workspace.appendValuationNote(preview),
+                  }}
                   companyNavigationState={workspace.getResearchCompanyNavigation(
                     discovery.research,
                   )}

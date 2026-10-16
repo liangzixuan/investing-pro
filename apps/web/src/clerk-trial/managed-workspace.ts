@@ -1,4 +1,12 @@
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import { ManagedValuationWorkbench } from "./managed-valuation-workbench";
+import {
+  prepareValuationNote,
+  isValuationNoteCurrent,
+  appendValuationNote,
+  type PreparedValuationNote,
+} from "./valuation-note";
+import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
 import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
 import {
   encodeMainWatchlistPayload,
@@ -109,6 +117,7 @@ export interface ResearchCompanyNavigationState {
   readonly reason: string;
 }
 export interface ResearchWatchlistState {
+  readonly revision?: symbol;
   readonly member: WatchlistMembership | null;
   readonly canAdd: boolean;
   readonly canEdit: boolean;
@@ -238,6 +247,7 @@ export class ManagedWorkspace {
   readonly followups: ManagedResearchFollowups;
   readonly portfolio: ManagedPortfolio;
   readonly sessionOwner: ManagedSessionOwner;
+  readonly valuation = new ManagedValuationWorkbench();
   readonly annual: ManagedAnnualReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
   readonly filings: ManagedCompanyFilings;
@@ -271,6 +281,8 @@ export class ManagedWorkspace {
     result: DraftValidation;
   } | null = null;
   private readonly financialReview = new ManagedFinancialReview();
+  private readonly valuationNotePreviews = new WeakSet<PreparedValuationNote>();
+  private readonly reportWatchlistRevisions = new WeakMap<object, symbol>();
 
   constructor(
     private readonly api: ManagedApi,
@@ -329,6 +341,7 @@ export class ManagedWorkspace {
       },
       session,
       () => this.clear(),
+      this.valuation,
     );
     this.annual = new ManagedAnnualReport(
       (request, signal) => api.annualReport(request, signal),
@@ -549,6 +562,7 @@ export class ManagedWorkspace {
     this.followupResearch = null;
     this.followups.retire();
     this.portfolio.retire();
+    this.valuation.retire();
     this.closeResearch();
     this.annual.retire();
     this.annualComparison.retire();
@@ -1160,11 +1174,14 @@ export class ManagedWorkspace {
       return;
     }
     const captured = this[section].getSnapshot().selection;
-    if (captured)
+    if (captured) {
       this.update({
         research: Object.freeze({ selection: captured, section }),
         companyRoute: options.companyRoute ?? null,
       });
+      if (owns() && this.state.research?.selection === captured)
+        this.valuation.activate(captured);
+    }
   }
   closeResearch() {
     this.cancelFollowupOpening();
@@ -1180,6 +1197,8 @@ export class ManagedWorkspace {
     // Model close notifications must never expose the visit with a cleared section.
     if (hadResearch)
       this.state = { ...this.state, research: null, companyRoute: null };
+    this.valuation.activate(null);
+    if (this.researchOperation !== operation) return hadResearch;
     this.annual.close();
     if (this.researchOperation !== operation) return hadResearch;
     this.filings.close();
@@ -1541,10 +1560,17 @@ export class ManagedWorkspace {
   getResearchWatchlist(
     selection: ManagedResearchSelection,
   ): ResearchWatchlistState {
+    const snapshot = this.coordinator.getSnapshot();
+    let revision = this.reportWatchlistRevisions.get(snapshot);
+    if (!revision) {
+      revision = Symbol();
+      this.reportWatchlistRevisions.set(snapshot, revision);
+    }
     const blocked = (
       reason: string,
       member: WatchlistMembership | null = null,
     ): ResearchWatchlistState => ({
+      revision,
       member,
       canAdd: false,
       canEdit: false,
@@ -1589,6 +1615,7 @@ export class ManagedWorkspace {
         "Remove an entry from My Watchlist before adding this company.",
       );
     return {
+      revision,
       member,
       canAdd: member === null,
       canEdit: member !== null,
@@ -1653,6 +1680,77 @@ export class ManagedWorkspace {
   }
   financialReviewPreviewIsCurrent(preview: PreparedFinancialReview) {
     return this.financialReview.isCurrent(preview);
+  }
+  prepareValuationNote(
+    selection: ManagedResearchSelection,
+    model: "dcf" | "exit",
+    scenario: AuthoredValuationScenario,
+  ) {
+    const watchlist = this.getResearchWatchlist(selection);
+    const valuation = this.valuation.getSnapshot();
+    const capture = valuation.calculation;
+    if (
+      !watchlist.canEdit ||
+      !watchlist.member ||
+      !capture ||
+      !valuation.editable
+    )
+      return {
+        preview: null,
+        reason:
+          watchlist.reason ??
+          "Calculate this company's valuation and add it to the watchlist draft before preparing a note.",
+      };
+    const visit = this.state.research;
+    const saved = this.coordinator.getSnapshot();
+    const annual = this.annual.getSnapshot();
+    const price = this.eod.getSnapshot();
+    const filings = this.filings.getSnapshot();
+    const navigationRevision = this.navigationRevision;
+    const isCurrent = () =>
+      !this.retired &&
+      this.navigationRevision === navigationRevision &&
+      this.state.research === visit &&
+      visit?.selection === selection &&
+      this.researchSourceRouteReady(selection) &&
+      this.valuation.getSnapshot() === valuation &&
+      this.annual.getSnapshot() === annual &&
+      !annual.running &&
+      !annual.catalogChanged &&
+      this.eod.getSnapshot() === price &&
+      !price.running &&
+      !price.catalogChanged &&
+      this.filings.getSnapshot() === filings &&
+      !filings.running &&
+      !filings.catalogChanged &&
+      this.coordinator.getSnapshot() === saved &&
+      this.getResearchWatchlist(selection).canEdit;
+    const proposal = prepareValuationNote({
+      capture,
+      model,
+      scenario,
+      note: watchlist.member.note,
+      isCurrent,
+      apply: (note) =>
+        this.noteResearch(selection, note, watchlist.member!.note),
+    });
+    if (proposal.preview) this.valuationNotePreviews.add(proposal.preview);
+    return proposal;
+  }
+  valuationNotePreviewIsCurrent(preview: PreparedValuationNote) {
+    return (
+      this.valuationNotePreviews.has(preview) && isValuationNoteCurrent(preview)
+    );
+  }
+  appendValuationNote(preview: PreparedValuationNote) {
+    if (!this.valuationNotePreviews.has(preview))
+      return {
+        appended: false,
+        message:
+          "Preview this valuation note in the current workspace before appending.",
+      };
+    this.valuationNotePreviews.delete(preview);
+    return appendValuationNote(preview);
   }
   appendFinancialReview(preview: PreparedFinancialReview) {
     return this.financialReview.append(preview);

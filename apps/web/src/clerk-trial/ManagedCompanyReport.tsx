@@ -2,7 +2,14 @@ import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import { ManagedCompanyReportDelivery } from "./ManagedCompanyReportDelivery";
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+import type { ManagedValuationWorkbench } from "./managed-valuation-workbench";
+import { ManagedValuationResults } from "./ManagedValuationResults";
 import type { ResearchWatchlistState } from "./managed-workspace";
 import { CompanySnapshotEvidenceView } from "./ManagedCompanySnapshot";
 import { CompanyReportDocument } from "./CompanyReportDocument";
@@ -24,9 +31,11 @@ export function ManagedCompanyReport({
   reportDelivery,
   readReportWatchlist,
   onSection,
+  valuation,
   ...models
 }: CompanyEvidenceModels & {
   navigationPending: boolean;
+  valuation?: ManagedValuationWorkbench;
   watchlist: ResearchWatchlistState;
   reportDelivery?: CompanyReportDeliveryAdapter;
   readReportWatchlist?: (
@@ -35,15 +44,32 @@ export function ManagedCompanyReport({
   onSection: (section: "eod" | "annual" | "filings") => void;
 }) {
   const evidence = useCompanySnapshotEvidence(models);
+  const valuationState = useSyncExternalStore(
+    valuation?.subscribe ?? subscribeNone,
+    valuation?.getSnapshot ?? emptyValuation,
+    valuation?.getSnapshot ?? emptyValuation,
+  );
+  const calculation = valuationState?.calculation ?? null;
   const [preview, setPreview] = useState<{
     report: PreparedCompanyReport | null;
     invalidated: boolean;
   }>({ report: null, invalidated: false });
   const { report } = preview;
-  const block = companyReportBlock(models.selection, evidence, watchlist);
+  const block = companyReportBlock(
+    models.selection,
+    evidence,
+    watchlist,
+    calculation,
+  );
   const current =
     report &&
-    companyReportIsCurrent(report, models.selection, evidence, watchlist);
+    companyReportIsCurrent(
+      report,
+      models.selection,
+      evidence,
+      watchlist,
+      calculation,
+    );
   useEffect(() => {
     if (report && !current) setPreview({ report: null, invalidated: true });
   }, [report, current]);
@@ -56,7 +82,13 @@ export function ManagedCompanyReport({
       invalidated={preview.invalidated}
       onPrepare={() =>
         setPreview({
-          report: prepareCompanyReport(models.selection, evidence, watchlist),
+          report: prepareCompanyReport(
+            models.selection,
+            evidence,
+            watchlist,
+            undefined,
+            calculation,
+          ),
           invalidated: false,
         })
       }
@@ -78,6 +110,7 @@ export function ManagedCompanyReport({
                   models.filings.getSnapshot(),
                 ),
                 readReportWatchlist(models.selection),
+                valuation?.getSnapshot().calculation ?? null,
               )
             }
           />
@@ -113,7 +146,8 @@ export function CompanyReportView({
       <summary>Research report</summary>
       <p>
         Prepare a read-only view of this company's loaded evidence and your
-        watchlist draft. Preparation makes no request or saved change.
+        watchlist draft, including any calculated valuation assumptions.
+        Preparation makes no request or saved change.
       </p>
       <div className="trial-actions">
         <button
@@ -132,7 +166,8 @@ export function CompanyReportView({
       {block && <p role="status">{block}</p>}
       {((report && !current) || invalidated) && (
         <p role="status">
-          Sources, company selection or the note changed. Prepare a new report.
+          Sources, company selection, valuation inputs or the note changed.
+          Prepare a new report.
         </p>
       )}
       {report && current && (
@@ -169,6 +204,9 @@ export function CompanyReportView({
                   : report.note}
             </p>
           </section>
+          {report.valuation && (
+            <ManagedValuationResults calculation={report.valuation} />
+          )}
           <h4>Loaded source evidence</h4>
           <CompanySnapshotEvidenceView
             navigationPending={navigationPending}
@@ -181,3 +219,5 @@ export function CompanyReportView({
     </details>
   );
 }
+const subscribeNone = () => () => {};
+const emptyValuation = () => null;

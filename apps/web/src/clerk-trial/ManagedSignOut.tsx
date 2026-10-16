@@ -47,7 +47,8 @@ export function ManagedSignOut({ owner }: { owner: ManagedSessionOwner }) {
       resource.phase === "saving" ||
       resource.phase === "reconciling",
   );
-  const dirty = resources.some((resource) => resource.dirty);
+  const dirty =
+    state.valuationInputs || resources.some((resource) => resource.dirty);
 
   useLayoutEffect(() => {
     if (visible) stayButton.current?.focus();
@@ -126,6 +127,13 @@ export function ManagedSignOut({ owner }: { owner: ManagedSessionOwner }) {
                   ? "A saved version still needs review. Signing out clears all three local drafts and their recovery details. Sign in again and load each saved version to check it."
                   : "There are no unconfirmed local changes. Signing out clears this screen and leaves the saved watchlist, follow-ups and portfolio intact."}
           </p>
+          {state.valuationInputs && (
+            <p>
+              Valuation inputs are temporary. Signing out discards these inputs
+              and calculated results, including any assumptions that were not
+              appended to a saved note or exported.
+            </p>
+          )}
           <dl aria-label="Local save states">
             <div>
               <dt>Watchlist</dt>
@@ -138,6 +146,14 @@ export function ManagedSignOut({ owner }: { owner: ManagedSessionOwner }) {
             <div>
               <dt>Portfolio</dt>
               <dd>{resourceStatus(state.portfolio)}</dd>
+            </div>
+            <div>
+              <dt>Valuation inputs</dt>
+              <dd>
+                {state.valuationInputs
+                  ? "Temporary inputs will be discarded."
+                  : "No temporary assumptions."}
+              </dd>
             </div>
           </dl>
           <p>Other signed-in devices keep their own sessions.</p>

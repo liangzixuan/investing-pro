@@ -11,6 +11,21 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Authored valuation workbench
+
+Keep the workbench in an initially closed native disclosure below the report.
+Group assumptions by model with clear full-USD, shares, percent and years labels.
+Use 44px controls, two field columns and three scenario columns when space permits;
+stack them on narrow screens. Keep a retained company's identity visible and use
+an explicit discard action to change ownership. Invalid entries remain visible
+with refusals; a rejected oversized paste must block calculation.
+
+Show scenario values and material DCF sensitivity warnings before closed detail
+disclosures. Keep exact projections, methods and the 25-cell sensitivity tables
+inside contained keyboard scroll regions. Wrap long operands in both application
+reports and the self-contained HTML copy. Use neutral values and refusal text.
+Preview the complete note before append, and keep Append, Review and Save distinct.
+
 ## Company Financial review
 
 Company **Financial review** groups five independent Annual facts in the existing
