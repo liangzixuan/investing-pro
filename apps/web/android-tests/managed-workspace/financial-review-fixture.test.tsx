@@ -1,9 +1,56 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createFinancialReviewNativeFixture } from "./financial-review-native-fixture";
 import { derivePersonalSecAnnualFinancialReview } from "@research-cockpit/personal-financial-analytics";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { createFixture } from "./fixture";
 
 describe("invented native Financial review journey", () => {
+  it("constructs without any seed API read and caches coherent subscribed snapshots", async () => {
+    const shared = await createFixture("annual-note");
+    const load = vi.spyOn(shared.api, "load");
+    const status = vi.spyOn(shared.api, "status");
+    const annual = vi.spyOn(shared.api, "annualReport");
+    const price = vi.spyOn(shared.api, "eodHistory");
+    const filings = vi.spyOn(shared.api, "recentFilings");
+    const fixture = await createFinancialReviewNativeFixture(shared);
+    for (const operation of [load, status, annual, price, filings])
+      expect(operation).not.toHaveBeenCalled();
+    const initial = fixture.getSnapshot();
+    expect(initial).toMatchObject({
+      load: 0,
+      status: 0,
+      annual: 0,
+      save: 0,
+      eod: 0,
+      filings: 0,
+    });
+    expect(fixture.getSnapshot()).toBe(initial);
+    expect(fixture.financialReview!.expectedNote).toContain(
+      "Financial review thesis · Café 東京 📈",
+    );
+    const changed = vi.fn();
+    const unsubscribe = fixture.subscribe(changed);
+    const signal = new AbortController().signal;
+    await fixture.api.load(signal);
+    expect(load).toHaveBeenCalledExactlyOnceWith(signal);
+    expect(fixture.getSnapshot()).toMatchObject({
+      load: 1,
+      status: 0,
+      annual: 0,
+      save: 0,
+    });
+    expect(fixture.getSnapshot()).not.toBe(initial);
+    expect(changed).toHaveBeenCalled();
+    await fixture.api.status(signal);
+    expect(status).toHaveBeenCalledExactlyOnceWith(signal);
+    const loaded = fixture.getSnapshot();
+    expect(loaded).toMatchObject({ load: 1, status: 1, annual: 0, save: 0 });
+    expect(fixture.getSnapshot()).toBe(loaded);
+    for (const operation of [annual, price, filings])
+      expect(operation).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
   it("uses admitted independent facts, one complete Unicode append, retained failed/Cancel source, explicit Save/reload and retired late completion", async () => {
     const fixture = await createFixture("annual-financial-review");
     const workspace = new ManagedWorkspace(
@@ -139,7 +186,7 @@ describe("invented native Financial review journey", () => {
     ).rejects.toThrow();
     expect(fixture.getSnapshot().save).toBe(1);
     expect(fixture.getSnapshot().annual).toBe(0);
-    expect(() => fixture.api.load(signal)).toThrow(
+    await expect(fixture.api.load(signal)).rejects.toThrow(
       "Unexpected financial review watchlist read",
     );
     expect(() => fixture.settleCancelledRead()).toThrow(

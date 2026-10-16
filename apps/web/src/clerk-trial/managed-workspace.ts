@@ -1570,14 +1570,15 @@ export class ManagedWorkspace {
       !annual.catalogChanged &&
       this.coordinator.getSnapshot() === saved &&
       this.getResearchWatchlist(selection).canEdit;
-    return this.financialReview.prepare(
-      watchlist.member.note,
+    return this.financialReview.prepare({
+      note: watchlist.member.note,
       response,
       keys,
-      annual.showingPrevious,
+      showingPrevious: annual.showingPrevious,
       isCurrent,
-      (note) => this.noteResearch(selection, note, watchlist.member!.note),
-    );
+      apply: (note) =>
+        this.noteResearch(selection, note, watchlist.member!.note),
+    });
   }
   financialReviewPreviewIsCurrent(preview: PreparedFinancialReview) {
     return this.financialReview.isCurrent(preview);
