@@ -100,3 +100,6 @@ No target was provisioned or enabled by the source work. Configuration, schema
 provisioning, isolated persistence/recovery checks and matching API, web and
 Android delivery must be reviewed before live use. Historical source evidence,
 synthetic tests and successful compilation do not replace those checks.
+
+The internal [storage qualification guide](MANAGED_PORTFOLIO_STORAGE_PROOF.md)
+defines the fixed invented-data recovery phases and their operational limits.

@@ -6890,6 +6890,26 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
   const managedAnnual = await readFile(join(root, managedAnnualPath), "utf8");
   const managedFilingsPath = "apps/api/src/managed-sec-filings-service.ts";
   const managedFilings = await readFile(join(root, managedFilingsPath), "utf8");
+  const portfolioProofBuilderPath = "scripts/portfolio/build-proof.ts";
+  const portfolioProofBuilder = await cycle2kText(
+    portfolioProofBuilderPath,
+    found,
+  );
+  for (const violation of [
+    filingParserNormalizationHandoffExternalCompositionViolation,
+    filingParserNormalizationExecutionExternalCompositionViolation,
+  ]) {
+    if (
+      violation(portfolioProofBuilderPath, portfolioProofBuilder) !== null ||
+      violation(
+        portfolioProofBuilderPath,
+        `${portfolioProofBuilder}\nconst path = process.argv[2]; await import(path);`,
+      ) === null
+    )
+      found.push(
+        "scripts/verify-boundaries.ts: fixed Portfolio builder must retain execution isolation",
+      );
+  }
   const managedEodPath = "apps/api/src/managed-eod-service.ts";
   const managedEod = await readFile(join(root, managedEodPath), "utf8");
   const managedEodMutations = [
@@ -11058,6 +11078,21 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/portfolio-proof-data.ts",
+      [
+        "admitManagedSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/portfolio-proof-data.test.ts",
+      [
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+      ],
+    ],
+    [
       "apps/api/src/appwrite-research-followups-repository.ts",
       [
         "lookupPersonalSecurityMasterListing",
@@ -11326,6 +11361,42 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     found.push(
       "scripts/verify-boundaries.ts: managed filings security-master import classifier regressed",
     );
+  for (const portfolioProofDataPath of [
+    "apps/api/src/portfolio-proof-data.ts",
+    "apps/api/src/portfolio-proof-data.test.ts",
+  ]) {
+    const source = await cycle2kText(portfolioProofDataPath, found);
+    if (
+      personalSecurityMasterApiImportViolation(
+        portfolioProofDataPath,
+        source,
+        allowedApiImporters,
+      ) !== null ||
+      personalSecurityMasterApiImportViolation(
+        `${portfolioProofDataPath}.neighbor.ts`,
+        source,
+        allowedApiImporters,
+      ) === null ||
+      [
+        source.replace(
+          "lookupPersonalSecurityMasterListing",
+          "searchPersonalSecurityMaster",
+        ),
+        `${source}\nimport * as extra from "@research-cockpit/personal-security-master";`,
+        `${source}\nimport { searchPersonalSecurityMaster } from "@research-cockpit/personal-security-master";`,
+      ].some(
+        (changed) =>
+          personalSecurityMasterApiImportViolation(
+            portfolioProofDataPath,
+            changed,
+            allowedApiImporters,
+          ) === null,
+      )
+    )
+      found.push(
+        "scripts/verify-boundaries.ts: fixed Portfolio proof catalog import scope regressed",
+      );
+  }
   const followupsProofDataPath =
     "apps/api/src/research-followups-proof-data.ts";
   const followupsProofDataSource = await cycle2kText(
