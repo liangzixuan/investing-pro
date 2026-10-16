@@ -25,6 +25,7 @@ import {
   ManagedWorkspace,
   reviewChanges,
   type CatalogReview,
+  type FollowupReview,
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
@@ -32,6 +33,7 @@ import {
   ManagedWatchlistEditor,
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
+import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
@@ -569,8 +571,12 @@ export function ManagedWorkspaceScreen({
   const marketsHeading = useRef<HTMLHeadingElement | null>(null);
   const agendaHeading = useRef<HTMLHeadingElement | null>(null);
   const announcementsHeading = useRef<HTMLHeadingElement | null>(null);
+  const dailyReviewHeading = useRef<HTMLHeadingElement | null>(null);
   const [noteReview, setNoteReview] = useState<NoteReviewRequest | null>(null);
   const [noteReviewNotice, setNoteReviewNotice] = useState<string | null>(null);
+  const [followupReview, setFollowupReview] = useState<FollowupReview | null>(
+    null,
+  );
   const liveNoteReview = useRef<NoteReviewRequest | null>(null);
   const noteReviewReturn = useRef<{ route: number; local: number } | null>(
     null,
@@ -1138,6 +1144,7 @@ export function ManagedWorkspaceScreen({
                   )}
                 >
                   <ManagedResearchFollowups
+                    review={followupReview}
                     navigationPending={navigationPending}
                     workspace={workspace}
                     onResearch={(entry, opener) => {
@@ -1172,6 +1179,10 @@ export function ManagedWorkspaceScreen({
                       <ManagedMarketsNavigation
                         containerRef={marketsContent}
                         targets={{
+                          review: {
+                            id: "managed-daily-research-heading",
+                            ref: dailyReviewHeading,
+                          },
                           board: {
                             id: "managed-markets-heading",
                             ref: marketsHeading,
@@ -1196,6 +1207,23 @@ export function ManagedWorkspaceScreen({
                     onWatchlist={() => {
                       if (!setView("watchlist")) return;
                       watchlistNavigation.current?.focus();
+                    }}
+                  />
+                  <ManagedDailyResearchReview
+                    workspace={workspace}
+                    navigationPending={navigationPending}
+                    headingRef={dailyReviewHeading}
+                    isCurrent={isMarketsCurrent}
+                    onReview={(entry) => {
+                      const request = workspace.reviewFollowup(entry, () =>
+                        setView("followups"),
+                      );
+                      if (request) setFollowupReview(request);
+                    }}
+                    onManage={() => {
+                      if (!setView("followups")) return;
+                      setFollowupReview(null);
+                      followupsNavigation.current?.focus();
                     }}
                   />
                   <ManagedBeaReleaseAgenda

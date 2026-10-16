@@ -149,7 +149,7 @@ vi.mock("react", async (original) => {
       }
       if (mounted.direct) {
         const index = mounted.screenStateIndex++;
-        if (index >= 4) return [value, vi.fn()];
+        if (index >= 5) return [value, vi.fn()];
         if (!(index in mounted.screenState)) mounted.screenState[index] = value;
         return [
           mounted.screenState[index],

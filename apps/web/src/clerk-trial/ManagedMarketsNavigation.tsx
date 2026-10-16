@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 
 const sections = {
   board: "Company board",
+  review: "Research checks due",
   calendar: "Economic calendar",
   announcements: "Fed announcements",
 } as const;

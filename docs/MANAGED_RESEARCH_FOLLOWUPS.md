@@ -42,11 +42,23 @@ the row's Research button when that row still exists. A direct company URL in a
 new session has no private follow-up return context. The URL contains no check,
 result, entry ID or due date.
 
-Due groups use a captured UTC calendar day. Reassessing the due day does not load
-financial data. A due date is a planning date, not a source freshness claim. An
+Due groups use one captured UTC calendar day owned by the workspace and shared
+with **Research checks due** on Markets. Reassess due date in either view updates
+both without loading financial data. A due date is a planning date, not a source freshness claim. An
 invalid raw date remains visible for correction and cannot be saved or treated
 as overdue. Completion records the author's explicit action; it is not an
 immutable audit history or an automatic investment verdict.
+
+## Start a daily review on Markets
+
+[Research checks due](MANAGED_MARKETS_HOME.md#review-research-checks-due) uses this
+same draft and explicit Load. It shows open overdue and due-today checks, with a
+separate invalid-date correction group and counts for later/completed entries.
+Review check opens the exact current editor; it does not load a source, create a
+check or save data. The full Follow-ups screen remains the place to author,
+resolve conflicts or uncertain saves, and persist changes. Both drafts survive
+the existing research-and-Back journey. A completed unsaved check leaves the
+Markets due queue immediately and still needs explicit Save follow-ups.
 
 ## Keep identity changes explicit
 

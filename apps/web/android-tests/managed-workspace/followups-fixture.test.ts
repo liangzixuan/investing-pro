@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { ManagedResearchFollowupsCommand } from "@research-cockpit/contracts";
 import { createFixture } from "./fixture";
 import { createResearchFollowupsFixture } from "./followups-fixture";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
+import { ManagedDailyResearchReview } from "../../src/clerk-trial/ManagedDailyResearchReview";
 
 const signal = () => new AbortController().signal;
 const command = (
@@ -164,6 +167,155 @@ describe("shared fixture and actual aggregate lifetime", () => {
     await workspace.refreshCatalog();
     return { fixture, workspace, controls: fixture.followups! };
   }
+
+  function dailyReview(workspace: ManagedWorkspace) {
+    return renderToStaticMarkup(
+      createElement(ManagedDailyResearchReview, {
+        workspace,
+        navigationPending: false,
+        isCurrent: () => workspace.getSnapshot().view === "markets",
+        onReview: () => undefined,
+        onManage: () => undefined,
+      }),
+    );
+  }
+
+  it("reviews the actual due draft with the shared captured day and leaves both resources unsaved", async () => {
+    const { fixture, workspace, controls } = await setup();
+    await workspace.followups.coordinator.load();
+    workspace.note("listing-zero", "Independent draft α 日本語  ");
+    const watchlist = workspace.coordinator.getSnapshot().draft!;
+    const clock = new Date("2026-10-16T00:01:00.000Z");
+    workspace.followups.reassessDueDate(clock);
+    workspace.followups.add(watchlist.memberships[0]!, "2026-10-16");
+    const id = workspace.followups.getSnapshot().selectedId!;
+    workspace.followups.edit(
+      workspace.followups.currentEntry(id)!,
+      "check",
+      "Review ZERO Δ  ",
+    );
+    workspace.followups.edit(
+      workspace.followups.currentEntry(id)!,
+      "result",
+      "Keep raw result  ",
+    );
+    workspace.followups.setFilter("completed");
+    const entry = workspace.followups.currentEntry(id)!;
+    const draft = workspace.followups.coordinator.getSnapshot().draft!;
+    const requests = fixture.getSnapshot();
+    const followupRequests = controls.getSnapshot();
+    const local = workspace.followups.getSnapshot();
+
+    clock.setUTCDate(17);
+    const html = dailyReview(workspace);
+    expect(html).toContain('dateTime="2026-10-16"');
+    expect(html).toContain('aria-label="Due today"');
+    expect(html).toContain("Review ZERO Δ  ");
+    expect(html).toContain("Due 2026-10-16");
+    expect(html).toContain(`id="managed-daily-review-${id}"`);
+    expect(html).toContain("Class A · XNAS · Common stock");
+    expect(workspace.followups.getSnapshot()).toBe(local);
+    expect(workspace.reviewFollowup(entry, () => false)).toBeNull();
+    expect(workspace.followups.getSnapshot()).toBe(local);
+    expect(workspace.getSnapshot().view).toBe("markets");
+
+    const review = workspace.reviewFollowup(entry, () => {
+      workspace.setView("followups");
+      return true;
+    });
+    expect(review).toMatchObject({ entry, draft });
+    expect(review?.entry).toBe(entry);
+    expect(review?.draft).toBe(draft);
+    expect(review?.isCurrent()).toBe(true);
+    expect(workspace.followups.getSnapshot()).toMatchObject({
+      selectedId: id,
+      filter: "open",
+      assessmentTime: Date.parse("2026-10-16T00:01:00.000Z"),
+    });
+    expect(workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+    expect(workspace.followups.coordinator.getSnapshot().draft).toBe(draft);
+    expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+    expect(workspace.followups.coordinator.getSnapshot().dirty).toBe(true);
+    expect(fixture.getSnapshot()).toEqual(requests);
+    expect(controls.getSnapshot()).toEqual(followupRequests);
+    expect(followupRequests).toMatchObject({ load: 1, save: 0, commits: 0 });
+
+    workspace.followups.edit(entry, "dueOn", "2026-02-30 ");
+    expect(workspace.followups.currentEntry(id)).toMatchObject({
+      dueOn: "2026-02-30 ",
+      check: "Review ZERO Δ  ",
+      result: "Keep raw result  ",
+    });
+    expect(entry.dueOn).toBe("2026-10-16");
+    expect(review?.isCurrent()).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+    expect(controls.getSnapshot()).toEqual(followupRequests);
+    workspace.sessionOwner.dispose();
+  });
+
+  it("keeps the due draft after an explicit failed load and clears its clock and late reply on retirement", async () => {
+    const { fixture, workspace, controls } = await setup();
+    await workspace.followups.coordinator.load();
+    workspace.note("listing-zero", "Retained separate draft  ");
+    const watchlist = workspace.coordinator.getSnapshot().draft!;
+    workspace.followups.reassessDueDate(new Date("2026-10-16T23:59:00.000Z"));
+    workspace.followups.add(watchlist.memberships[0]!, "2026-10-16");
+    const id = workspace.followups.getSnapshot().selectedId!;
+    workspace.followups.edit(
+      workspace.followups.currentEntry(id)!,
+      "check",
+      "Inspect this authored check 日本語  ",
+    );
+    const draft = workspace.followups.coordinator.getSnapshot().draft!;
+    const requests = fixture.getSnapshot();
+    controls.setNextRead("fail");
+    await workspace.followups.coordinator.load();
+    expect(workspace.followups.coordinator.getSnapshot()).toMatchObject({
+      phase: "idle",
+      baseVersion: 0,
+      dirty: true,
+    });
+    expect(workspace.followups.coordinator.getSnapshot().draft).toBe(draft);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+    expect(dailyReview(workspace)).toContain(
+      "Inspect this authored check 日本語  ",
+    );
+    expect(dailyReview(workspace)).toContain('dateTime="2026-10-16"');
+    expect(controls.getSnapshot()).toMatchObject({
+      load: 2,
+      save: 0,
+      commits: 0,
+    });
+
+    controls.setNextRead("hold");
+    const late = workspace.followups.coordinator.load();
+    workspace.sessionOwner.dispose();
+    expect(controls.getSnapshot()).toMatchObject({
+      load: 3,
+      aborted: 1,
+      held: 1,
+    });
+    expect(workspace.followups.getSnapshot().assessmentTime).toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(workspace.followups.coordinator.getSnapshot().draft).toBeNull();
+    controls.settleHeld();
+    await late;
+    expect(workspace.followups.coordinator.getSnapshot().draft).toBeNull();
+    expect(workspace.followups.getSnapshot().assessmentTime).toBeNull();
+    const retired = dailyReview(workspace);
+    expect(retired).not.toContain("Inspect this authored check");
+    expect(retired).not.toContain(`managed-daily-review-${id}`);
+    expect(fixture.getSnapshot()).toEqual(requests);
+    expect(controls.getSnapshot()).toMatchObject({
+      load: 3,
+      save: 0,
+      commits: 0,
+      settled: 1,
+      held: 0,
+      signOut: 0,
+      token: 0,
+    });
+  });
 
   it("does not load follow-ups on mount and preserves old scenarios' fail-fast resource methods", async () => {
     const { fixture, workspace, controls } = await setup();

@@ -14,6 +14,8 @@ import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 const hooks = vi.hoisted(() => ({ values: [] as unknown[], index: 0 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof React>()),
+  useRef: (initial: unknown) => ({ current: initial }),
+  useLayoutEffect: () => {},
   useState: (initial: unknown) => {
     const index = hooks.index++;
     if (!(index in hooks.values))

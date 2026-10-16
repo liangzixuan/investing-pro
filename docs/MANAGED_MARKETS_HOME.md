@@ -10,7 +10,7 @@ in [Current work](CURRENT_WORK.md).
 
 ## Move between Markets sections
 
-**On Markets** offers **Company board**, **Economic calendar** and **Fed
+**On Markets** offers **Company board**, **Research checks due**, **Economic calendar** and **Fed
 announcements** below the Markets toolbar. Each link moves focus to that
 section's heading and scrolls it into view. All sections stay on the same page.
 The links wrap on narrow screens and have a minimum target height of 44 pixels.
@@ -25,6 +25,38 @@ The app checks the heading and view again after focus moves. It stops if the
 view changes or the target is hidden, detached or no longer belongs to Markets.
 Loading a response does not trigger a jump. Browser and native verification,
 and delivery status, remain in [Current work](CURRENT_WORK.md).
+
+## Review research checks due
+
+**Research checks due** connects Markets to the current Follow-ups draft. Use
+**Load follow-ups** explicitly. The page distinguishes an unloaded resource,
+an empty loaded draft, no dated checks due, and a failed read. Loading the latest
+version retains dirty or unresolved drafts through the existing coordinator.
+Version, unsaved changes and recovery messages identify what the queue shows.
+
+Open checks appear in Overdue and Due today groups, in their original draft
+order. Each row retains the full listing identity, authored question and due
+date. Later and completed counts remain visible. Invalid raw dates stay in a
+separate correction group and never become overdue. A removed watchlist member
+or older catalog identity does not remove its separately saved follow-up.
+
+**Review check** selects that exact current entry in Follow-ups and focuses its
+editor. **Correct due date** uses the same guarded handoff. A changed draft,
+retired session or intervening navigation stops the handoff. **Manage follow-ups**
+opens the existing authoring and recovery screen. These controls do not load
+financial data or save either resource.
+
+From the editor, **Research company** retains its exact catalog identity check.
+Price, Annual and Filings load only through their own explicit actions. Back
+retains the selected check and both drafts. Enter a result, mark completion and
+Save follow-ups explicitly. Completion removes a check from the due queue in the
+current draft; saving that draft remains a separate action.
+
+Markets and Follow-ups share one captured UTC assessment day for the workspace.
+**Reassess due date** in either view updates both without a timer or source read.
+Planning dates do not establish financial-source freshness or imply a relevant
+filing, earnings event or news alert. Existing calendar and announcement loads
+stay separate. Session retirement clears the queue and fences late reads.
 
 ## Inputs and scope
 

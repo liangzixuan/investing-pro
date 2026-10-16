@@ -141,6 +141,12 @@ const emptyDiscovery = (): ManagedDiscoveryState => ({
   research: null,
   companyRoute: null,
 });
+export interface FollowupReview {
+  readonly entry: ResearchFollowup;
+  readonly draft: ResearchFollowupsPayload;
+  readonly isCurrent: () => boolean;
+}
+
 export interface PreparedFollowupResearch {
   readonly entry: ResearchFollowup;
   readonly draft: ResearchFollowupsPayload;
@@ -233,6 +239,7 @@ export class ManagedWorkspace {
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
   private navigationBlocked = false;
+  private viewRevision = 0;
   private navigationRevision = 0;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
@@ -576,6 +583,7 @@ export class ManagedWorkspace {
   }
   setView(view: ManagedDiscoveryState["view"]) {
     if (this.retired) return;
+    this.viewRevision++;
     this.closeResearch();
     if (view === this.state.view) return;
     if (view === "markets") {
@@ -1193,6 +1201,51 @@ export class ManagedWorkspace {
     this.followupOpenOperation = null;
     this.preparedFollowup = null;
     if (this.state.followupOpening) this.update({ followupOpening: false });
+  }
+  reviewFollowup(
+    entry: ResearchFollowup,
+    navigate: () => boolean,
+  ): FollowupReview | null {
+    const draft = this.followups.coordinator.getSnapshot().draft;
+    const active = () =>
+      !this.retired &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.followups.coordinator.getSnapshot().draft === draft &&
+      draft !== null &&
+      draft.entries.includes(entry) &&
+      this.followups.currentEntry(entry.id) === entry;
+    if (
+      !active() ||
+      this.navigationBlocked ||
+      this.state.view !== "markets" ||
+      this.state.research ||
+      this.state.companyRoute ||
+      !draft
+    )
+      return null;
+    const revision = this.viewRevision;
+    if (!navigate()) return null;
+    const navigation = this.navigationRevision;
+    const current = () =>
+      active() &&
+      !this.navigationBlocked &&
+      this.navigationRevision === navigation &&
+      this.viewRevision === revision + 1 &&
+      this.state.view === "followups" &&
+      !this.state.research &&
+      !this.state.companyRoute;
+    if (!current()) return null;
+    this.followups.select(entry.id);
+    if (!current()) return null;
+    this.followups.setFilter(
+      entry.status === "completed" ? "completed" : "open",
+    );
+    const selected = this.followups.getSnapshot();
+    const isCurrent = () =>
+      current() &&
+      this.followups.getSnapshot() === selected &&
+      selected.selectedId === entry.id;
+    return isCurrent() ? Object.freeze({ entry, draft, isCurrent }) : null;
   }
   async prepareFollowupResearch(
     entry: ResearchFollowup,
