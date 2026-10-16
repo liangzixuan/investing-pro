@@ -356,7 +356,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && row.querySelector('.managed-listing-detail')?.textContent === 'Class A · XNAS · Common stock'" +
             " && row.querySelector('.managed-daily-research-check + p')?.textContent === " + JSONObject.quote("Due " + assessedDay) +
             " && button.textContent === 'Review check' && button.disabled === false && button.getBoundingClientRect().height >= 44" +
-            " && q.textContent.includes('Current draft based on version 0.') && q.textContent.includes('Unsaved follow-up changes.')" +
+            " && q.querySelector('.managed-daily-research-status[role=status]')?.textContent.trim() === 'Unsaved follow-up changes. Loaded version 0.'" +
+            " && " + FOLLOWUP_DRAFT + ".baseVersion === 0 && " + FOLLOWUP_DRAFT + ".saved?.version === 0 && " + FOLLOWUP_DRAFT + ".saved?.payload.entries.length === 0 && " + FOLLOWUP_DRAFT + ".dirty === true" +
             " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries) === " + JSONObject.quote(entriesBefore) +
             " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlistBefore) +
             " && " + FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUPS + ".commits === 0" +
