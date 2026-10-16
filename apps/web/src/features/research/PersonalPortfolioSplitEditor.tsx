@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 export interface PersonalPortfolioSplitEditorProps {
+  readonly saveLabel: string;
   readonly ledger: PersonalPortfolioLedgerPayloadV3;
   readonly disabled: boolean;
   readonly editing: PersonalPortfolioLedgerSplit | null;
@@ -39,6 +40,7 @@ type Preview = Readonly<{
 }>;
 
 export function PersonalPortfolioSplitEditor({
+  saveLabel,
   ledger,
   disabled,
   editing,
@@ -198,7 +200,7 @@ export function PersonalPortfolioSplitEditor({
       epoch: epoch.current,
     });
     setMessage(
-      "Review the share adjustment and all later ledger effects. Apply updates the draft; Save My Portfolio persists it.",
+      `Review the share adjustment and all later ledger effects. Apply updates the draft; ${saveLabel} persists it.`,
     );
   }
 
@@ -220,7 +222,7 @@ export function PersonalPortfolioSplitEditor({
     if (onApply(preview.candidate)) {
       reset();
       setMessage(
-        "Reviewed split applied to the draft. Save My Portfolio to keep it.",
+        `Reviewed split applied to the draft. ${saveLabel} to keep it.`,
       );
     }
   }

@@ -1,4 +1,6 @@
 import {
+  MANAGED_PORTFOLIO_PATH,
+  MANAGED_PORTFOLIO_LIMITS,
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_CATALOG_LIMITS,
@@ -21,6 +23,11 @@ import { TablesDB } from "node-appwrite";
 
 import { createAppwriteTransport } from "./appwrite-transport";
 import { appwriteVersionedRowStore } from "./appwrite-versioned-row-store";
+import { createAppwritePortfolioRepository } from "./appwrite-portfolio-repository";
+import {
+  MANAGED_PORTFOLIO_STORAGE_ENVIRONMENT_KEY,
+  managedPortfolioStorageEnabled,
+} from "./managed-portfolio-config";
 import { createAppwriteResearchFollowupsRepository } from "./appwrite-research-followups-repository";
 import {
   appwriteWatchlistStore,
@@ -105,6 +112,7 @@ declare const __MANAGED_WORKSPACE_SERVER_CONFIG__: unknown;
 declare const __MANAGED_SEC_CONFIG__: unknown;
 declare const __MANAGED_EOD_CONFIG__: unknown;
 const PATHS: readonly string[] = [
+  MANAGED_PORTFOLIO_PATH,
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_CATALOG_SEARCH_PATH,
@@ -156,17 +164,19 @@ export function bridgeManagedWorkspaceRequest(
   if (!Buffer.isBuffer(req.bodyBinary))
     throw new BridgeFailure(400, "invalid_request");
   const maximum =
-    req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH
-      ? MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes
-      : req.path === MANAGED_WATCHLIST_PATH
-        ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
-        : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
-          ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
-          : req.path === MANAGED_SEC_FILINGS_PATH
-            ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
-            : req.path === MANAGED_EOD_HISTORY_PATH
-              ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
-              : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
+    req.path === MANAGED_PORTFOLIO_PATH
+      ? MANAGED_PORTFOLIO_LIMITS.envelopeBytes
+      : req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH
+        ? MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes
+        : req.path === MANAGED_WATCHLIST_PATH
+          ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
+          : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
+            ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
+            : req.path === MANAGED_SEC_FILINGS_PATH
+              ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
+              : req.path === MANAGED_EOD_HISTORY_PATH
+                ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
+                : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
   if (req.bodyBinary.byteLength > maximum)
     throw new BridgeFailure(413, "payload_too_large");
   if (req.method !== "POST" && req.bodyBinary.byteLength !== 0)
@@ -247,6 +257,9 @@ export function createManagedWorkspaceFunction(
         : bridged;
       // Copy the supplied authority before auth awaits; it is never user authority.
       const executionKey = req.headers["x-appwrite-key"];
+      const portfolioEnabled = managedPortfolioStorageEnabled(
+        process.env[MANAGED_PORTFOLIO_STORAGE_ENVIRONMENT_KEY],
+      );
       const openSecAdmission = (
         signal: AbortSignal,
         remainingMs: number,
@@ -387,6 +400,38 @@ export function createManagedWorkspaceFunction(
             throw new Error("Managed follow-up storage unavailable");
           }
         },
+        ...(portfolioEnabled
+          ? {
+              async openPortfolioRepository(signal: AbortSignal) {
+                if (!executionKey)
+                  throw new Error("Execution authority unavailable");
+                const transport = createAppwriteTransport({
+                  endpoint: "https://nyc.cloud.appwrite.io/v1",
+                  signal,
+                });
+                try {
+                  transport.client
+                    .setProject("6abac57a0007b7c1a671")
+                    .setKey(executionKey);
+                  return {
+                    repository: createAppwritePortfolioRepository({
+                      store: appwriteVersionedRowStore(
+                        new TablesDB(transport.client),
+                      ),
+                      databaseId: "investment_managed_portfolio_v1",
+                      portfoliosTableId: "portfolios",
+                      receiptsTableId: "receipts",
+                      catalog: getManagedWorkspaceCatalog(),
+                    }),
+                    close: () => transport.close(),
+                  };
+                } catch {
+                  await transport.close();
+                  throw new Error("Managed portfolio storage unavailable");
+                }
+              },
+            }
+          : {}),
         async openRepository(signal) {
           if (!executionKey) throw new Error("Execution authority unavailable");
           const transport = createAppwriteTransport({
@@ -416,6 +461,7 @@ export function createManagedWorkspaceFunction(
       dispatchedWrite =
         req.method === "POST" &&
         (req.path === MANAGED_WATCHLIST_PATH ||
+          req.path === MANAGED_PORTFOLIO_PATH ||
           req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH);
       const response = await (sourceController
         ? announcements

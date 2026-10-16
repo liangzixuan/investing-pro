@@ -16,6 +16,7 @@ export interface ManagedSessionState {
   readonly phase: "active" | "signing_out" | "retired";
   readonly watchlist: Readonly<ManagedResourceSaveSummary>;
   readonly followups: Readonly<ManagedResourceSaveSummary>;
+  readonly portfolio: Readonly<ManagedResourceSaveSummary>;
   readonly needsLeaveReview: boolean;
   readonly signOutFailed: boolean;
   readonly cleanupFailed: boolean;
@@ -39,7 +40,7 @@ export function resourceNeedsLeaveReview(resource: ManagedResourceSaveSummary) {
   );
 }
 
-/** One session lifetime owns both independent save resources and the SDK sign-out. */
+/** One session lifetime owns all three independent save resources and the SDK sign-out. */
 export class ManagedSessionOwner {
   private phase: ManagedSessionState["phase"] = "active";
   private state: Readonly<ManagedSessionState>;
@@ -57,22 +58,26 @@ export class ManagedSessionOwner {
     private readonly resources: Readonly<{
       watchlist: Resource;
       followups: Resource;
+      portfolio: Resource;
     }>,
     private readonly session: Pick<TrialSession, "signOut">,
     private readonly clearResearch: () => void,
   ) {
     this.state = this.snapshot();
-    this.unsubscribers = [resources.watchlist, resources.followups].map(
-      (resource) =>
-        resource.subscribe(() => {
-          if (this.retiring || this.disposed) return;
-          if (
-            this.phase === "active" &&
-            resource.getSnapshot().phase === "retired"
-          ) {
-            this.retire(resource.getSnapshot().message);
-          } else this.publish();
-        }),
+    this.unsubscribers = [
+      resources.watchlist,
+      resources.followups,
+      resources.portfolio,
+    ].map((resource) =>
+      resource.subscribe(() => {
+        if (this.retiring || this.disposed) return;
+        if (
+          this.phase === "active" &&
+          resource.getSnapshot().phase === "retired"
+        ) {
+          this.retire(resource.getSnapshot().message);
+        } else this.publish();
+      }),
     );
   }
   getSnapshot = (): Readonly<ManagedSessionState> => this.state;
@@ -83,14 +88,17 @@ export class ManagedSessionOwner {
   private snapshot(): Readonly<ManagedSessionState> {
     const watchlist = summary(this.resources.watchlist);
     const followups = summary(this.resources.followups);
+    const portfolio = summary(this.resources.portfolio);
     return Object.freeze({
       phase: this.phase,
       watchlist,
       followups,
+      portfolio,
       needsLeaveReview:
         this.phase === "active" &&
         (resourceNeedsLeaveReview(watchlist) ||
-          resourceNeedsLeaveReview(followups)),
+          resourceNeedsLeaveReview(followups) ||
+          resourceNeedsLeaveReview(portfolio)),
       signOutFailed: this.signOutFailed,
       cleanupFailed: this.cleanupFailed,
       message: this.message,
@@ -117,6 +125,7 @@ export class ManagedSessionOwner {
       for (const cleanup of [
         () => this.resources.watchlist.retire(message),
         () => this.resources.followups.retire(message),
+        () => this.resources.portfolio.retire(message),
         this.clearResearch,
       ]) {
         try {
@@ -157,7 +166,7 @@ export class ManagedSessionOwner {
           if (this.disposed || generation !== this.generation) return;
           this.message = this.cleanupFailed
             ? "Signed out. Local cleanup could not be fully confirmed."
-            : "Signed out. Both local drafts have been cleared.";
+            : "Signed out. All three local drafts have been cleared.";
         },
         () => {
           if (this.disposed || generation !== this.generation) return;

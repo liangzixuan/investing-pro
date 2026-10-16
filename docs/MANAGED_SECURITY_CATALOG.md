@@ -44,14 +44,52 @@ issuer/security/share-class/listing identifiers remain distinct from ticker,
 CIK and provider identifiers. The same assignments must be retained when a
 catalog is refreshed.
 
-## Reviewed October 12 cohort
+## Reviewed October 16 cohort
 
-The fixed managed cohort contains AAPL, GOOG, GOOGL and MSFT: four listings for
-three issuers. GOOG and GOOGL retain separate securities, share classes and
-listings. This is a small reviewed cohort, with no price data or whole-market
-claim. The original three complete identities and provider mappings are retained;
-only Microsoft's internal identifiers are new. Saved records keep their existing
-identity, note and reconciliation rules.
+The fixed source candidate contains 19 listings for 18 issuers: AAPL, AEM, AFL,
+AIG, ALCO, AMD, AP, AVD, AXP, BKTI, GOOG, GOOGL, HWM, LNG, MATX, MSFT, SWKS,
+UHAL and UNM. This remains limited coverage. The four October 12 identities and
+their 12 typed FIGIs are unchanged. Fifteen additional identities use separately
+minted issuer, security, share-class, listing and mapping IDs.
+
+The existing offline preparer produced 19 admitted records from 33 candidates.
+Thirteen candidates are quarantined: ten lack unambiguous reviewed cover evidence
+and three lack exact accepted mappings (BRK-B, CECO and ALX). UNMA is an unsupported
+debt security. Partial filings, ambiguous classes and unresolved symbols stay
+excluded. No alternate symbol or MIC query supplies a fallback identity.
+
+The new immutable snapshot and manifest preserve the October 12 assets. The API
+reconstructs canonical JSON bytes and checks the prepared digest; the formatted
+file's byte digest is separate. The manifest pins the actual preparation receipt,
+source-policy decision and independent review. Its public receipt retains the
+original issuer filing links and adds a labelled SEC cover-collection link. All
+additional selected filing URLs, filing and acceptance dates, capture times and
+completeness flags remain in the server-only manifest. Exact exclusion reasons
+also remain there; the public receipt keeps its existing closed reason labels.
+The source and exclusion caps remain eight and 64.
+
+The October 16 policy review covers this attributed identity projection. It uses
+SEC issuer and literal cover facts, OpenFIGI identifiers and metadata, and limited
+ISO 10383/SWIFT venue facts. It does not redistribute the raw filings or full MIC
+registry. OpenFIGI returns no SEC CIK in these mappings; the reviewed join uses
+the exact ticker, class, issuer and venue evidence. Listed status follows the
+documented mapping-request default. Source-role acquisition clocks and older
+capture dates are preserved. Assembly time does not refresh the sources.
+
+Discovery does not enable financial feeds. Price remains limited to AAPL, GOOG
+and GOOGL. Annual and Filings retain the existing Apple, Alphabet and Microsoft
+CIKs. The 15 additional identities are refused before source admission or a
+provider request. Saved records still require the current catalog review for new
+writes; historical reads and original-command reconciliation retain their
+existing rules. Source integration does not establish a running deployment.
+
+## Retained October 12 evidence
+
+The October 12 cohort introduced MSFT beside AAPL, GOOG and GOOGL. GOOG and GOOGL
+retain separate securities, share classes and listings. The original three
+complete identities and provider mappings were retained; only Microsoft's
+internal identifiers were new. Those four identities remain exact in the current
+candidate.
 
 The API reconstructs canonical bytes from its selected snapshot asset and checks
 the exact digest before admission. The adjacent manifest identifies public

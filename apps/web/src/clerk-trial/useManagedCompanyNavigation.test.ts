@@ -159,6 +159,14 @@ async function settle() {
 }
 function fixture() {
   const api: ManagedApi = {
+    loadPortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
+    savePortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
     loadFollowups: vi
       .fn<ManagedApi["loadFollowups"]>()
       .mockRejectedValue(
@@ -925,4 +933,63 @@ describe("Annual comparison router boundaries", () => {
     expect(f.api.annualReport).not.toHaveBeenCalled();
     expect(f.api.resolve).not.toHaveBeenCalled();
   });
+});
+
+it("returns to the exact Portfolio draft without Watchlist additions or source reads, and blocks raw-form navigation", async () => {
+  const f = fixture();
+  await f.ready();
+  f.api.loadPortfolio = vi
+    .fn<ManagedApi["loadPortfolio"]>()
+    .mockResolvedValue({ version: 0, payload: null });
+  await f.workspace.portfolio.coordinator.load();
+  f.api.loadFollowups = vi.fn<ManagedApi["loadFollowups"]>().mockResolvedValue({
+    version: 0,
+    payload: { schemaVersion: 1, entries: [] },
+  });
+  await f.workspace.followups.coordinator.load();
+  f.workspace.note(eodSelection.listing.listingId, "Raw Watchlist draft 财报");
+  f.workspace.followups.add(
+    { ...eodSelection.listing, note: "" },
+    "2026-10-30",
+  );
+  const followups = f.workspace.followups.coordinator.getSnapshot().draft;
+  f.workspace.setView("portfolio");
+  f.workspace.portfolio.start("2026-10-01", "1000.00");
+  await f.workspace.portfolio.register(eodSelection.listing);
+  const draft = f.workspace.portfolio.coordinator.getSnapshot().draft!;
+  const watchlist = f.workspace.coordinator.getSnapshot();
+  let navigation = f.render();
+  const opener = vi.fn(() =>
+    f.workspace.openPortfolioResearch(draft, draft.ledger!.identities[0]!),
+  );
+  f.workspace.portfolio.setPendingEditor(draft, true);
+  navigation.open(opener);
+  expect(navigation.view("discover")).toBe(false);
+  navigation.back();
+  expect(opener).not.toHaveBeenCalled();
+  expect(mount.navigate).not.toHaveBeenCalled();
+  expect(f.workspace.portfolio.coordinator.getSnapshot().draft).toBe(draft);
+  f.workspace.portfolio.setPendingEditor(draft, false);
+  navigation.open(opener);
+  navigation = f.render();
+  expect(f.workspace.getSnapshot().research?.selection.origin).toBe(
+    "portfolio",
+  );
+  expect(mount.entries[mount.cursor]!.state).toMatchObject({
+    companyReturn: { view: "portfolio" },
+  });
+  expect(f.api.eodHistory).not.toHaveBeenCalled();
+  expect(f.api.annualReport).not.toHaveBeenCalled();
+  expect(f.api.recentFilings).not.toHaveBeenCalled();
+  navigation.back();
+  navigation = f.render();
+  expect(f.workspace.getSnapshot().view).toBe("portfolio");
+  expect(navigation.returnFocus).toBe(0);
+  expect(f.render().returnFocus).toBe(1);
+  expect(f.workspace.portfolio.coordinator.getSnapshot().draft).toBe(draft);
+  expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(followups);
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  expect(f.api.resolve).toHaveBeenCalledOnce();
+  expect(f.api.save).not.toHaveBeenCalled();
 });

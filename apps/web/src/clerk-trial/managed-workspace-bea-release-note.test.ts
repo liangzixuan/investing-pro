@@ -94,6 +94,14 @@ function deferred<T>() {
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    loadPortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
+    savePortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
     loadFollowups: vi
       .fn<ManagedApi["loadFollowups"]>()
       .mockRejectedValue(

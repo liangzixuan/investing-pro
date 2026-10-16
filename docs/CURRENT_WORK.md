@@ -48,6 +48,27 @@ does not establish authenticated production journeys, provider health or physica
 Android use. The earlier fixed Follow-ups storage proof failed in its recorded
 scope; full live-storage qualification and backup/restore acceptance remain open.
 
+## Managed portfolio in progress
+
+The selected M5 outcome is an [authored managed portfolio](MANAGED_PORTFOLIO.md):
+opening balances, ordered transactions and manual splits, exact holdings and
+cash, independent Review and Save, conflict/uncertain-save recovery, and company
+Research/Back with the same draft. It reuses the existing schema-3 ledger and
+FIFO calculation. A first load represents an uninitialized record explicitly;
+the owner supplies the opening date. Portfolio joins Watchlist and Follow-ups
+as a third independent session resource, including unapplied form protection.
+
+The contract, backend, transport and client-model checks pass within their
+recorded source scope. UI, shared-editor and navigation checks also pass. The
+composed Start/register/Apply/Review/Save/reopen case retains USD 948 cash, one
+share, USD 100.50 basis and USD 48.50 realized gain from the documented example.
+Other cases retain all three drafts through research return, protect unapplied
+forms and refuse a stale Save callback after the base version changes.
+Broader identity review is separate from feed eligibility and does not establish
+Price, Annual or Filings coverage. Storage is disabled by default; provisioning,
+rendered geometry, current packaged execution and publication are not accepted.
+This is a capability candidate. Adding an individual ticker is a coverage fix.
+
 ## Company Financial review source integration
 
 The [Company Financial review](MANAGED_SEC_ANNUAL.md#review-financial-facts-in-the-company-note)

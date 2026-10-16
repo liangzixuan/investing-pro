@@ -53,6 +53,7 @@ function returnLocation(state: unknown, scope: string): ReturnLocation | null {
     (value.view === "markets" ||
       value.view === "discover" ||
       value.view === "followups" ||
+      value.view === "portfolio" ||
       value.view === "watchlist")
     ? { scope, view: value.view }
     : null;
@@ -94,6 +95,11 @@ export function useManagedCompanyNavigation(
       location.pathname === "/"
         ? parseManagedCompanyRoute(new URLSearchParams(location.search))
         : { kind: "invalid" as const };
+    if (workspace.portfolio.getSnapshot().pendingEditor) {
+      if (parsed.kind !== "none")
+        void navigate("/", { replace: true, state: null });
+      return;
+    }
     const prior = previous.current;
     previous.current = {
       company: parsed.kind !== "none",
@@ -114,6 +120,7 @@ export function useManagedCompanyNavigation(
     location.pathname,
     location.search,
     location.state,
+    navigate,
     scope,
     setNavigationPending,
     workspace,
@@ -144,7 +151,7 @@ export function useManagedCompanyNavigation(
 
   const open = useCallback(
     (openResearch: () => void) => {
-      if (pendingNavigation.current) return;
+      if (pendingNavigation.current || !workspace.canNavigate()) return;
       openResearch();
       const current = workspace.getSnapshot();
       if (!current.research) return;
@@ -178,7 +185,7 @@ export function useManagedCompanyNavigation(
 
   const section = useCallback(
     (next: "annual" | "eod" | "filings") => {
-      if (pendingNavigation.current) return;
+      if (pendingNavigation.current || !workspace.canNavigate()) return;
       if (next === "annual") workspace.switchToAnnual();
       else if (next === "eod") workspace.switchToEod();
       else if (next === "filings") workspace.switchToFilings();
@@ -207,7 +214,7 @@ export function useManagedCompanyNavigation(
 
   const view = useCallback(
     (next: WorkspaceView) => {
-      if (pendingNavigation.current) return false;
+      if (pendingNavigation.current || !workspace.canNavigate()) return false;
       workspace.setNavigationBlocked(true);
       setNavigationPending(true);
       workspace.setView(next);
@@ -223,7 +230,7 @@ export function useManagedCompanyNavigation(
   );
 
   const back = useCallback(() => {
-    if (pendingNavigation.current) return;
+    if (pendingNavigation.current || !workspace.canNavigate()) return;
     workspace.setNavigationBlocked(true);
     setNavigationPending(true);
     workspace.closeResearch();

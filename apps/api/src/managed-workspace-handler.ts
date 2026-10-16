@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 
 import {
+  MANAGED_PORTFOLIO_PATH,
+  MANAGED_PORTFOLIO_LIMITS,
+  encodePortfolioPayload,
+  parseManagedPortfolio,
+  parseManagedPortfolioCommand,
+  parseManagedPortfolioReceipt,
+  type ManagedPortfolioCommand,
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
   parseManagedResearchFollowups,
@@ -46,6 +53,12 @@ import {
 
 import type { ClerkTrialAuth } from "./clerk-trial-auth";
 import {
+  PortfolioRepositoryError,
+  type PortfolioRepository,
+  type PortfolioRecord,
+  type PortfolioReceipt,
+} from "./portfolio-repository";
+import {
   ResearchFollowupsRepositoryError,
   type ResearchFollowupsRepository,
   type ResearchFollowupsRecord,
@@ -87,6 +100,10 @@ export interface ManagedFollowupsRepositoryOperation {
   readonly repository: ResearchFollowupsRepository;
   close(): Promise<void>;
 }
+export interface ManagedPortfolioRepositoryOperation {
+  readonly repository: PortfolioRepository;
+  close(): Promise<void>;
+}
 export interface ManagedWorkspaceHandlerOptions {
   readonly auth: ClerkTrialAuth;
   readonly catalog: ManagedCatalogService;
@@ -101,6 +118,9 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly openFollowupsRepository: (
     signal: AbortSignal,
   ) => Promise<ManagedFollowupsRepositoryOperation>;
+  readonly openPortfolioRepository?: (
+    signal: AbortSignal,
+  ) => Promise<ManagedPortfolioRepositoryOperation>;
 }
 
 export const MANAGED_WORKSPACE_ORIGIN = "https://app.investingpro.app";
@@ -114,6 +134,7 @@ export function getManagedWorkspaceOrigin(origin: string | null | undefined) {
 }
 
 const PATHS: readonly string[] = [
+  MANAGED_PORTFOLIO_PATH,
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_CATALOG_SEARCH_PATH,
@@ -174,6 +195,7 @@ function decodeSearchQuery(search: string): string {
 function methods(path: string): readonly string[] {
   if (
     path === MANAGED_WATCHLIST_PATH ||
+    path === MANAGED_PORTFOLIO_PATH ||
     path === MANAGED_RESEARCH_FOLLOWUPS_PATH
   )
     return ["GET", "POST"];
@@ -193,6 +215,7 @@ function admitRoute(request: Request) {
     request.method !== "POST" ||
     !(
       [
+        MANAGED_PORTFOLIO_PATH,
         MANAGED_RESEARCH_FOLLOWUPS_PATH,
         MANAGED_WATCHLIST_PATH,
         MANAGED_CATALOG_RESOLVE_PATH,
@@ -354,6 +377,35 @@ function writeResult(
   );
 }
 
+function readPortfolioResult(record: PortfolioRecord | null) {
+  if (record !== null && (record.id !== "main" || record.version < 1))
+    throw new Error("Invalid portfolio record");
+  return parseManagedPortfolio(
+    record === null
+      ? { version: 0, payload: null }
+      : { version: record.version, payload: record.payload },
+  );
+}
+
+function writePortfolioResult(
+  receipt: PortfolioReceipt,
+  command: ManagedPortfolioCommand,
+) {
+  const digest = createHash("sha256")
+    .update(encodePortfolioPayload(command.payload))
+    .digest("hex");
+  if (receipt.id !== "main" || receipt.digestSha256 !== digest)
+    throw new Error("Invalid portfolio receipt");
+  return parseManagedPortfolioReceipt(
+    {
+      version: receipt.version,
+      payload: command.payload,
+      replayed: receipt.replayed,
+    },
+    command,
+  );
+}
+
 function readFollowupsResult(record: ResearchFollowupsRecord | null) {
   if (record !== null && (record.id !== "main" || record.version < 1))
     throw new Error("Invalid follow-up record");
@@ -450,6 +502,7 @@ function errorResponse(
   } else if (
     repositoryOpened &&
     (error instanceof WatchlistRepositoryError ||
+      error instanceof PortfolioRepositoryError ||
       error instanceof ResearchFollowupsRepositoryError) &&
     error.code !== "invalid_response"
   ) {
@@ -488,6 +541,7 @@ export function createManagedWorkspaceHandler(
     if (origin === null) return fail(403, "origin_denied");
     let operation: ManagedWorkspaceRepositoryOperation | undefined;
     let followupsOperation: ManagedFollowupsRepositoryOperation | undefined;
+    let portfolioOperation: ManagedPortfolioRepositoryOperation | undefined;
     let writeStarted = false;
     let response: Response;
     try {
@@ -629,7 +683,45 @@ export function createManagedWorkspaceHandler(
         requireActiveRequest(request);
         return response;
       }
-      if (route.path === MANAGED_RESEARCH_FOLLOWUPS_PATH) {
+      if (route.path === MANAGED_PORTFOLIO_PATH) {
+        const command =
+          request.method === "POST"
+            ? parseManagedPortfolioCommand(
+                await readJson(request, MANAGED_PORTFOLIO_LIMITS.envelopeBytes),
+              )
+            : undefined;
+        if (command === null) throw new RequestFailure(400, "invalid_request");
+        requireActiveRequest(request);
+        if (!options.openPortfolioRepository)
+          throw new Error("Portfolio storage unavailable");
+        portfolioOperation = await options.openPortfolioRepository(
+          request.signal,
+        );
+        requireActiveRequest(request);
+        if (command) {
+          writeStarted = true;
+          const receipt = await portfolioOperation.repository.put(
+            auth.principal,
+            command,
+          );
+          if (request.signal.aborted) throw new Error("Write response retired");
+          response = jsonResponse(
+            writePortfolioResult(receipt, command),
+            MANAGED_PORTFOLIO_LIMITS.envelopeBytes,
+            headers,
+          );
+        } else {
+          const record = await portfolioOperation.repository.get(
+            auth.principal,
+          );
+          requireActiveRequest(request);
+          response = jsonResponse(
+            readPortfolioResult(record),
+            MANAGED_PORTFOLIO_LIMITS.envelopeBytes,
+            headers,
+          );
+        }
+      } else if (route.path === MANAGED_RESEARCH_FOLLOWUPS_PATH) {
         const command =
           request.method === "POST"
             ? parseManagedResearchFollowupsCommand(
@@ -705,11 +797,13 @@ export function createManagedWorkspaceHandler(
       response = errorResponse(
         error,
         writeStarted,
-        operation !== undefined || followupsOperation !== undefined,
+        operation !== undefined ||
+          followupsOperation !== undefined ||
+          portfolioOperation !== undefined,
         headers,
       );
     } finally {
-      const opened = operation ?? followupsOperation;
+      const opened = operation ?? followupsOperation ?? portfolioOperation;
       if (opened) {
         try {
           await opened.close();
@@ -724,7 +818,9 @@ export function createManagedWorkspaceHandler(
           ? new Error("Write response retired")
           : new RequestFailure(408, "request_timeout"),
         writeStarted,
-        operation !== undefined || followupsOperation !== undefined,
+        operation !== undefined ||
+          followupsOperation !== undefined ||
+          portfolioOperation !== undefined,
         headers,
       );
     return response;

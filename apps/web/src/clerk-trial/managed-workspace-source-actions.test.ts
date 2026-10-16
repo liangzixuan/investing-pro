@@ -81,6 +81,14 @@ async function fixture(
     memberships: [listingMembership(zero), listingMembership(other)],
   };
   const api: ManagedApi = {
+    loadPortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
+    savePortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
     loadFollowups: vi
       .fn<ManagedApi["loadFollowups"]>()
       .mockRejectedValue(

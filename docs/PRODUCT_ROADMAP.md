@@ -13,6 +13,15 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
+The selected M5 outcome is a complete [authored portfolio workflow](MANAGED_PORTFOLIO.md):
+opening balances, transactions and manual splits, exact holdings and cash,
+independent Review and Save, recovery and return from company research. It reuses
+the existing schema-3 ledger and calculation engine. Broad lawful identity
+coverage and live storage qualification are part of readiness. Provider quotes,
+broker synchronization, market value, performance, benchmarks and tax accounting
+remain separate capabilities. A single ticker addition is a coverage fix; a
+selected metric row is a small increment. Neither completes a product milestone.
+
 The source-integrated M2/M4 increment connects [Company Financial review](MANAGED_SEC_ANNUAL.md#review-financial-facts-in-the-company-note)
 to the existing note and report. Five independent admitted Annual facts retain
 their exact values, signs, dates and refusal reasons. Explicit selection and a

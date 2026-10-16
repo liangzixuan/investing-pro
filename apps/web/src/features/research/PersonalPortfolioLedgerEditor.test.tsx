@@ -45,6 +45,9 @@ beforeEach(() => {
   splitBridge.current = null;
   props = {
     ledger: ledger(),
+    profile: "local",
+    saveHelp:
+      "Ledger changes update your draft. Save My Portfolio to keep them in encrypted storage.",
     disabled: false,
     selectedListing: identity(1),
     onChange: vi.fn((next: PersonalPortfolioLedgerPayload) => {
@@ -58,6 +61,55 @@ afterEach(() => {
 });
 
 describe("PersonalPortfolioLedgerEditor", () => {
+  it.each(["local", "managed"] as const)(
+    "keeps stable %s transaction select IDs joined to their visible labels",
+    async (profile) => {
+      props = { ...props, profile };
+      await mount();
+      const check = () => {
+        const tree = render();
+        for (const [name, suffix] of [
+          ["Transaction type", "type"],
+          ["Transaction listing", "listing"],
+        ]) {
+          const id = `${profile}-portfolio-transaction-${suffix}`;
+          const all = elements(tree);
+          const select = all.find(
+            (element) =>
+              element.type === "select" && element.props["aria-label"] === name,
+          );
+          expect(select?.props.id).toBe(id);
+          expect(all.filter((element) => element.props.id === id)).toHaveLength(
+            1,
+          );
+          const label = all.find(
+            (element) =>
+              element.type === "label" && element.props.htmlFor === id,
+          );
+          expect(label).toBeDefined();
+          expect(
+            elements(label).filter((element) => element.type === "select"),
+          ).toEqual([select]);
+        }
+      };
+      check();
+      change(render(), "Transaction type", "sell");
+      check();
+      expect(input(render(), "Transaction type").props.value).toBe("sell");
+      expect(props.onChange).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    ["local", "Save My Portfolio"],
+    ["managed", "Save Portfolio"],
+  ] as const)(
+    "passes the %s save action to split review",
+    async (profile, label) => {
+      props = { ...props, profile, ledger: splitLedger() };
+      await mount();
+      expect(bridge().saveLabel).toBe(label);
+    },
+  );
   it("upgrades split support explicitly while preserving existing records and opening balances", async () => {
     props = { ...props, ledger: ledger([transaction("existing")]) };
     const before = props.ledger;

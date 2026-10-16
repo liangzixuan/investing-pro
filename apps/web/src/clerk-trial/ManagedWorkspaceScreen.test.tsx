@@ -10,7 +10,7 @@ import {
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
 import type { ManagedApi } from "./managed-api";
-import { ManagedWorkspace } from "./managed-workspace";
+import { ManagedWorkspace, listingIdentity } from "./managed-workspace";
 import {
   ManagedSessionScreen,
   ManagedWorkspaceScreen,
@@ -43,6 +43,7 @@ import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedResearchNote } from "./ManagedResearchNote";
+import { ManagedPortfolio } from "./ManagedPortfolio";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
@@ -304,6 +305,14 @@ function fixture(
   priceCoverage = [eodSelection.listing, ...payload.memberships],
 ) {
   const api: ManagedApi = {
+    loadPortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
+    savePortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
     loadFollowups: vi
       .fn<ManagedApi["loadFollowups"]>()
       .mockRejectedValue(
@@ -4793,6 +4802,24 @@ describe("managed workspace screen", () => {
       expect(native.historyBack).not.toHaveBeenCalled();
       expect(native.adapter.exitApp).not.toHaveBeenCalled();
       native.press(true);
+      expect(native.historyBack).not.toHaveBeenCalled();
+      mounted.refIndex = 0;
+      const leaveReview = ManagedWorkspaceScreen({
+        workspace,
+        androidBack: native.adapter,
+      });
+      expect(renderToStaticMarkup(leaveReview)).toContain(
+        "Review local changes before leaving",
+      );
+      const confirm = elements(leaveReview).find(
+        (node) =>
+          (node.props as React.ComponentProps<"button">).id ===
+          "managed-leave-confirm",
+      );
+      expect(confirm).toBeDefined();
+      (confirm!.props as React.ComponentProps<"button">).onClick!(
+        {} as React.MouseEvent<HTMLButtonElement>,
+      );
       expect(native.historyBack).toHaveBeenCalledOnce();
       expect(api.save).not.toHaveBeenCalled();
     },
@@ -5008,6 +5035,24 @@ describe("managed workspace screen", () => {
       native.press(false);
       expect(native.historyBack).not.toHaveBeenCalled();
       native.press(true);
+      expect(native.historyBack).not.toHaveBeenCalled();
+      mounted.refIndex = 0;
+      const leaveReview = ManagedWorkspaceScreen({
+        workspace,
+        androidBack: native.adapter,
+      });
+      expect(renderToStaticMarkup(leaveReview)).toContain(
+        "Review local changes before leaving",
+      );
+      const confirm = elements(leaveReview).find(
+        (node) =>
+          (node.props as React.ComponentProps<"button">).id ===
+          "managed-leave-confirm",
+      );
+      expect(confirm).toBeDefined();
+      (confirm!.props as React.ComponentProps<"button">).onClick!(
+        {} as React.MouseEvent<HTMLButtonElement>,
+      );
       expect(native.historyBack).toHaveBeenCalledOnce();
       expect(native.adapter.exitApp).not.toHaveBeenCalled();
     },
@@ -6134,4 +6179,73 @@ describe("managed workspace screen", () => {
     expect(workspace.canSavePayload()).toBe(true);
     expect(html()).toContain("<button>Save watchlist</button>");
   });
+});
+
+it("restores Portfolio research opener focus and retains all three drafts without automatic source or save calls", async () => {
+  const f = fixture();
+  await f.workspace.coordinator.load();
+  await f.workspace.refreshCatalog();
+  f.api.loadPortfolio = vi
+    .fn<ManagedApi["loadPortfolio"]>()
+    .mockResolvedValue({ version: 0, payload: null });
+  vi.mocked(f.api.loadFollowups).mockResolvedValue({
+    version: 0,
+    payload: { schemaVersion: 1, entries: [] },
+  });
+  vi.mocked(f.api.resolve).mockImplementation((request) =>
+    Promise.resolve({
+      snapshotSha256: request.snapshotSha256,
+      results: request.listingIds.map((listingId) => ({
+        listingId,
+        listing: listingIdentity(payload.memberships[0]!),
+      })),
+    }),
+  );
+  await f.workspace.portfolio.coordinator.load();
+  await f.workspace.followups.coordinator.load();
+  f.workspace.note("listing-one", "Keep Watchlist raw note");
+  f.workspace.followups.add(payload.memberships[0]!, "2026-10-30");
+  f.workspace.setView("portfolio");
+  f.workspace.portfolio.start("2026-10-01", "1000.00");
+  await f.workspace.portfolio.register(
+    listingIdentity(payload.memberships[0]!),
+  );
+  const draft = f.workspace.portfolio.coordinator.getSnapshot().draft!;
+  const otherDrafts = [
+    f.workspace.coordinator.getSnapshot().draft,
+    f.workspace.followups.coordinator.getSnapshot().draft,
+  ];
+  mounted.direct = true;
+  mounted.refIndex = 0;
+  const screen = ManagedWorkspaceScreen({ workspace: f.workspace });
+  const portfolio = elements(screen).find(
+    (node) => node.type === ManagedPortfolio,
+  ) as React.ReactElement<React.ComponentProps<typeof ManagedPortfolio>>;
+  expect(portfolio).toBeDefined();
+  const opener = { isConnected: true, focus: vi.fn() };
+  portfolio.props.onResearch(
+    draft,
+    draft.ledger!.identities[0]!,
+    opener as unknown as HTMLButtonElement,
+  );
+  mounted.refIndex = 0;
+  const company = elements(
+    ManagedWorkspaceScreen({ workspace: f.workspace }),
+  ).find((node) => node.type === ManagedCompanyResearch) as React.ReactElement<
+    React.ComponentProps<typeof ManagedCompanyResearch>
+  >;
+  company.props.onBack();
+  commitReturnFocus(f.workspace);
+  expect(opener.focus).toHaveBeenCalledOnce();
+  expect(f.workspace.getSnapshot().view).toBe("portfolio");
+  expect(f.workspace.portfolio.coordinator.getSnapshot().draft).toBe(draft);
+  expect([
+    f.workspace.coordinator.getSnapshot().draft,
+    f.workspace.followups.coordinator.getSnapshot().draft,
+  ]).toEqual(otherDrafts);
+  expect(f.api.eodHistory).not.toHaveBeenCalled();
+  expect(f.api.annualReport).not.toHaveBeenCalled();
+  expect(f.api.recentFilings).not.toHaveBeenCalled();
+  expect(f.api.save).not.toHaveBeenCalled();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
 });

@@ -51,18 +51,28 @@ function fixture() {
   };
   const watchlist = make("watchlist", MANAGED_WATCHLIST_SAVE_COPY);
   const followups = make("followups", MANAGED_FOLLOWUPS_SAVE_COPY);
+  const portfolio = make("portfolio", MANAGED_WATCHLIST_SAVE_COPY);
   const clearResearch = vi.fn();
   const owner = new ManagedSessionOwner(
-    { watchlist: watchlist.coordinator, followups: followups.coordinator },
+    {
+      watchlist: watchlist.coordinator,
+      followups: followups.coordinator,
+      portfolio: portfolio.coordinator,
+    },
     { signOut: sdkSignOut },
     clearResearch,
   );
   const loadBoth = () =>
-    Promise.all([watchlist.coordinator.load(), followups.coordinator.load()]);
+    Promise.all([
+      watchlist.coordinator.load(),
+      followups.coordinator.load(),
+      portfolio.coordinator.load(),
+    ]);
   return {
     owner,
     watchlist,
     followups,
+    portfolio,
     sdkSignOut,
     resourceSignOut,
     clearResearch,
@@ -151,7 +161,7 @@ it("keeps the original uncertain follow-up command during independent watchlist 
   expect(f.watchlist.save).not.toHaveBeenCalled();
 });
 
-it.each(["watchlist", "followups"] as const)(
+it.each(["watchlist", "followups", "portfolio"] as const)(
   "retires both resources on a fatal %s result and fences the other late save",
   async (resource) => {
     const f = fixture();
@@ -286,4 +296,37 @@ it("closes disposal before retirement callbacks can reenter disposal or SDK sign
   expect(f.watchlist.coordinator.getSnapshot().draft).toBeNull();
   expect(f.followups.coordinator.getSnapshot().draft).toBeNull();
   expect(f.sdkSignOut).not.toHaveBeenCalled();
+});
+
+it("keeps the third Portfolio save independent and clears all three once on retirement", async () => {
+  const f = fixture();
+  await f.loadBoth();
+  f.watchlist.coordinator.replaceDraft("Raw Watchlist 财报");
+  f.followups.coordinator.replaceDraft("Raw follow-up 复查");
+  f.portfolio.coordinator.replaceDraft("Authored ledger");
+  const watchlist = f.watchlist.coordinator.getSnapshot(),
+    followups = f.followups.coordinator.getSnapshot();
+  f.portfolio.save.mockResolvedValue({
+    version: 2,
+    payload: "Authored ledger",
+    replayed: false,
+  });
+  await f.portfolio.coordinator.save();
+  expect(f.watchlist.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.followups.coordinator.getSnapshot()).toBe(followups);
+  expect(f.owner.getSnapshot()).toMatchObject({
+    watchlist: { dirty: true },
+    followups: { dirty: true },
+    portfolio: { dirty: false },
+    needsLeaveReview: true,
+  });
+  expect(f.watchlist.save).not.toHaveBeenCalled();
+  expect(f.followups.save).not.toHaveBeenCalled();
+  const retirements = [f.watchlist, f.followups, f.portfolio].map((resource) =>
+    vi.spyOn(resource.coordinator, "retire"),
+  );
+  await f.owner.signOut();
+  for (const retired of retirements) expect(retired).toHaveBeenCalledOnce();
+  expect(f.portfolio.coordinator.getSnapshot().draft).toBeNull();
+  expect(f.sdkSignOut).toHaveBeenCalledOnce();
 });

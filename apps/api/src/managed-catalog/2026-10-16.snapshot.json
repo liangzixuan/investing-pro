@@ -1,0 +1,1290 @@
+{
+  "asOf": "2026-10-16T20:49:57.249Z",
+  "catalogId": "investment-managed-cohort",
+  "catalogVersion": "2026-10-16.tranche-1-review",
+  "generatedAt": "2026-10-16T20:49:57.249Z",
+  "issuers": [
+    {
+      "cik": "0000320193",
+      "issuerId": "oid-issuer-0e4ae79b2a6b4443b11946c6b9171c45",
+      "issuerName": "Apple Inc."
+    },
+    {
+      "cik": "0000004127",
+      "issuerId": "oid-issuer-131ab919fd8f448abf0b43b47818da5c",
+      "issuerName": "SKYWORKS SOLUTIONS, INC."
+    },
+    {
+      "cik": "0000002186",
+      "issuerId": "oid-issuer-21fa02c0803d46818e246bbded430e14",
+      "issuerName": "BK Technologies Corp"
+    },
+    {
+      "cik": "0001652044",
+      "issuerId": "oid-issuer-2744343830e3421ab970a3e5f4e4a719",
+      "issuerName": "Alphabet Inc."
+    },
+    {
+      "cik": "0000004281",
+      "issuerId": "oid-issuer-2e21cdbb77dd4f668011eb3f09e733ca",
+      "issuerName": "Howmet Aerospace Inc."
+    },
+    {
+      "cik": "0000002809",
+      "issuerId": "oid-issuer-3e7e815dbcb043b3aec08eec9771678e",
+      "issuerName": "AGNICO EAGLE MINES LTD"
+    },
+    {
+      "cik": "0000004457",
+      "issuerId": "oid-issuer-43d151a561ae486fa79a1bc309ff706d",
+      "issuerName": "U-Haul Holding Co /NV/"
+    },
+    {
+      "cik": "0000003545",
+      "issuerId": "oid-issuer-77324088f0b44d5dad69f1e0c2677e89",
+      "issuerName": "ALICO, INC."
+    },
+    {
+      "cik": "0000006176",
+      "issuerId": "oid-issuer-7ed3fc2cfcae44598f4c26ef7d9d32fb",
+      "issuerName": "AMPCO PITTSBURGH CORP"
+    },
+    {
+      "cik": "0000005272",
+      "issuerId": "oid-issuer-89d261609bcc4630bb23f59ce420097f",
+      "issuerName": "AMERICAN INTERNATIONAL GROUP, INC."
+    },
+    {
+      "cik": "0000004977",
+      "issuerId": "oid-issuer-955ec5f868644b0da919e233e36d6e49",
+      "issuerName": "AFLAC INC"
+    },
+    {
+      "cik": "0000002488",
+      "issuerId": "oid-issuer-a1a475874935425ab378daefabedb969",
+      "issuerName": "ADVANCED MICRO DEVICES INC"
+    },
+    {
+      "cik": "0000003570",
+      "issuerId": "oid-issuer-a3a488c7c80145418f9fd0b71c0f7221",
+      "issuerName": "Cheniere Energy, Inc."
+    },
+    {
+      "cik": "0000003453",
+      "issuerId": "oid-issuer-b827d01928714597994ee82c6024c90b",
+      "issuerName": "Matson, Inc."
+    },
+    {
+      "cik": "0000005513",
+      "issuerId": "oid-issuer-c207d9abbb824fa09ec2f45641edea1f",
+      "issuerName": "Unum Group"
+    },
+    {
+      "cik": "0000004962",
+      "issuerId": "oid-issuer-e202447ec5b94c6692e73f5f318bdf18",
+      "issuerName": "AMERICAN EXPRESS CO"
+    },
+    {
+      "cik": "0000789019",
+      "issuerId": "oid-issuer-e7c1e6ac71e24818b40d36b0d0f91b8f",
+      "issuerName": "MICROSOFT CORP"
+    },
+    {
+      "cik": "0000005981",
+      "issuerId": "oid-issuer-fac43be7e1b64d2e9275b02cc0ab35f7",
+      "issuerName": "AMERICAN VANGUARD CORP"
+    }
+  ],
+  "profile": "personal_single_user_managed_security_master",
+  "provenance": {
+    "acquiredAt": "2026-10-16T20:49:57.249Z",
+    "artifacts": [
+      {
+        "acquiredAt": "2026-10-16T20:38:14.812Z",
+        "artifactId": "investment-draft-aggregated-openfigi-mappings",
+        "contentSha256": "sha256:7e6207e37301fdc38a5227d5f47c29e6df18caa1ecd91734e3cdb52dd60aae2f",
+        "mediaType": "application/json",
+        "sourceUri": "https://api.openfigi.com/v3/mapping",
+        "sourceVersion": "mixed-retained-and-public-tranche-1; exact source times/pins in mapping-assessment and packet provenance"
+      },
+      {
+        "acquiredAt": "2026-10-16T19:59:39.789Z",
+        "artifactId": "investment-draft-iso-mic-registry",
+        "contentSha256": "sha256:c292bbd90cfbee6269d26f22754dac2aa120d80d8d0f71d4e00e4e374bf959d6",
+        "mediaType": "application/json",
+        "sourceUri": "https://www.iso20022.org/market-identifier-codes",
+        "sourceVersion": "mixed-retained-and-public-tranche-1; exact source times/pins in mapping-assessment and packet provenance"
+      },
+      {
+        "acquiredAt": "2026-10-16T20:15:04.010Z",
+        "artifactId": "investment-draft-normalized-sec-cover-evidence",
+        "contentSha256": "sha256:7d071a6a4ff5b16f515f9995669c687a252420de433bc018ec8fed3d1d59193e",
+        "mediaType": "application/json",
+        "sourceUri": "https://www.sec.gov/Archives/edgar/data/",
+        "sourceVersion": "mixed-retained-and-public-tranche-1; exact source times/pins in mapping-assessment and packet provenance"
+      },
+      {
+        "acquiredAt": "2026-10-16T20:41:43.200Z",
+        "artifactId": "investment-draft-opaque-identity-assignments",
+        "contentSha256": "sha256:23db95f4b2705e6bc8420fb96e53524e4ea5f56675d533d36b57238f3327cd60",
+        "mediaType": "application/json",
+        "sourceUri": "https://github.com/liangzixuan/investing-pro",
+        "sourceVersion": "mixed-retained-and-public-tranche-1; exact source times/pins in mapping-assessment and packet provenance"
+      },
+      {
+        "acquiredAt": "2026-10-16T19:59:37.785Z",
+        "artifactId": "investment-draft-sec-candidates",
+        "contentSha256": "sha256:7c401145ced30a0f8aca580049d993c8f16d3dd9e7d516a928cf9411ecd55742",
+        "mediaType": "application/json",
+        "sourceUri": "https://www.sec.gov/files/company_tickers_exchange.json",
+        "sourceVersion": "mixed-retained-and-public-tranche-1; exact source times/pins in mapping-assessment and packet provenance"
+      }
+    ],
+    "attribution": "Issuer/security facts: SEC EDGAR. Identifiers: OpenFIGI. Limited MIC facts: ISO 10383 Registration Authority (SWIFT); Investment is not the official registry. Existing identities retained. Internal IDs minted by Investment. No provider endorsement.",
+    "contentKind": "redistributable_source",
+    "sourceId": "investment-public-identity-tranche-2026-10-16",
+    "sourceLocator": "managed-composite-manifest:sha256:a2540c44cf2a9669ad68259451069c6d76f9e55c9cf5e0734e12484ae06aef88",
+    "sourceRevision": "sha256:a2540c44cf2a9669ad68259451069c6d76f9e55c9cf5e0734e12484ae06aef88"
+  },
+  "providerMappings": [
+    {
+      "mappingId": "oid-mapping-0124fe47d7a049be986f7826c5164645",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG00DYNJH69",
+      "targetId": "oid-share-class-60e7a6d751204ef58e16461cfc722f00"
+    },
+    {
+      "mappingId": "oid-mapping-029863e448474868a52134cd461d35ba",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG009S39JX6",
+      "targetId": "oid-share-class-75f07939ba714dbcbfac6a097deba503"
+    },
+    {
+      "mappingId": "oid-mapping-032e225cd95f45c89a571b3750453c50",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000DPXXH2",
+      "targetId": "oid-listing-761dd788312e43ec94fa70152b714ef2"
+    },
+    {
+      "mappingId": "oid-mapping-043ea0ab4ae04245bde2d77d93fe349f",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5NS08",
+      "targetId": "oid-share-class-3f062c5bf71046a19dc65e8a3313ccb5"
+    },
+    {
+      "mappingId": "oid-mapping-0b8cee037d144348a7824016f58471c8",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG009S3NB30",
+      "targetId": "oid-share-class-f81365021c5a4909aa983603a54f634d"
+    },
+    {
+      "mappingId": "oid-mapping-0ba69e653edf43a3a48024d95b125a0e",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBJR57",
+      "targetId": "oid-share-class-d24f858b0b194c23a3a6edc04198b186"
+    },
+    {
+      "mappingId": "oid-mapping-0d8b4e69545a46d58831d9bd73337e82",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG00DYNJGH9",
+      "targetId": "oid-share-class-60e7a6d751204ef58e16461cfc722f00"
+    },
+    {
+      "mappingId": "oid-mapping-14a818c00921430c83e64e24d63bd346",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BCR153",
+      "targetId": "oid-listing-1c349e39481c4ac3a809de85320ac624"
+    },
+    {
+      "mappingId": "oid-mapping-17acba66fe984bb6b966d7473079ec61",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG009S4MVF2",
+      "targetId": "oid-listing-44bc5fe9c57246a3adef40bbcbcb88a7"
+    },
+    {
+      "mappingId": "oid-mapping-203d387a25cf4117b1a703bc2a999142",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBF265",
+      "targetId": "oid-listing-ca6320aaed1546b4b60a39cfac5216c6"
+    },
+    {
+      "mappingId": "oid-mapping-287eff3452ea4386af3055f0efcf0566",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BC22L0",
+      "targetId": "oid-listing-7caea5222b61491bbdf4e108858bec02"
+    },
+    {
+      "mappingId": "oid-mapping-2892e41561724c218e8298c8a2118f18",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001SCYWS2",
+      "targetId": "oid-share-class-660abf2a5a194d798d1fd20e24270477"
+    },
+    {
+      "mappingId": "oid-mapping-2b7ce4a6675d45e498882cb6cbb790a8",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S77MK3",
+      "targetId": "oid-share-class-0f94f5059eab476cb71f4108c92efcc0"
+    },
+    {
+      "mappingId": "oid-mapping-2d8e1e600a6e4112a11698c38f197813",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000KLB4Q1",
+      "targetId": "oid-share-class-660abf2a5a194d798d1fd20e24270477"
+    },
+    {
+      "mappingId": "oid-mapping-43d463633e23494ebd27a54fdfdf25e4",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BCQZS4",
+      "targetId": "oid-share-class-492dd604d28149a88ce8792d4abf2da1"
+    },
+    {
+      "mappingId": "oid-mapping-44c22fa05fc341b9baa6282feb927b40",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5N8V8",
+      "targetId": "oid-share-class-de665b6392eb4a03b7ec2c09ba97dc1c"
+    },
+    {
+      "mappingId": "oid-mapping-476c48ab8bdb4f65900ab8e76e696100",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBQCY0",
+      "targetId": "oid-share-class-5bb57c1a1d8a48b5b3532addaabd4aeb"
+    },
+    {
+      "mappingId": "oid-mapping-4797cf1fd585458fade3c91da9ef430d",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000DPXVW9",
+      "targetId": "oid-share-class-455d20d96b9b4fcc8e52ecba1e04dcb7"
+    },
+    {
+      "mappingId": "oid-mapping-4a7c44b31f9346d090fb0e2cea529e6a",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BPH459",
+      "targetId": "oid-share-class-10ba14af13b14f048b4105f6b0e16a5b"
+    },
+    {
+      "mappingId": "oid-mapping-55ae04c5e32c4a10855eb3eb27404d48",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000B9XRY4",
+      "targetId": "oid-share-class-de665b6392eb4a03b7ec2c09ba97dc1c"
+    },
+    {
+      "mappingId": "oid-mapping-6242a60ea5d0402dbf6ebe851a7f9e43",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BW2QX0",
+      "targetId": "oid-share-class-7b816de13bca4359a69d7d595ad2caa1"
+    },
+    {
+      "mappingId": "oid-mapping-62f6162efa5b43c3b9d105db7fc00deb",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5NGJ4",
+      "targetId": "oid-share-class-150e061f80a840a48d1ee3e1597ffd41"
+    },
+    {
+      "mappingId": "oid-mapping-63264fa3a5c54f6fbfb7f6b30d7137c0",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5NJG1",
+      "targetId": "oid-share-class-a51711ff2d88491ba98f3b09465df9d0"
+    },
+    {
+      "mappingId": "oid-mapping-6a0e75f74c5c4f909223e30fbc35c59c",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5NL21",
+      "targetId": "oid-share-class-58ed1182f2b74e2e8e03820cf8e9ada6"
+    },
+    {
+      "mappingId": "oid-mapping-6ed6d2efc7ec4eefb43f94ad02e9dd1a",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBK0L6",
+      "targetId": "oid-listing-aaa05639eb514de0b4e50eca8e2772a8"
+    },
+    {
+      "mappingId": "oid-mapping-739dabc2a993464c8c623d08e67128db",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S8KSH7",
+      "targetId": "oid-share-class-455d20d96b9b4fcc8e52ecba1e04dcb7"
+    },
+    {
+      "mappingId": "oid-mapping-77578ecbcdde47fd88266fcd8c2ef818",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBK5Q0",
+      "targetId": "oid-listing-fa59842c214846238f516e08f48d0dd6"
+    },
+    {
+      "mappingId": "oid-mapping-77f226f771d445dca92db327bcc01b5d",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBBNC6",
+      "targetId": "oid-share-class-150e061f80a840a48d1ee3e1597ffd41"
+    },
+    {
+      "mappingId": "oid-mapping-7efe95cd768b4ae499ba7703ecbfd393",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000DLVDK3",
+      "targetId": "oid-share-class-0f94f5059eab476cb71f4108c92efcc0"
+    },
+    {
+      "mappingId": "oid-mapping-82119085621249bc90787415d1a3cfa0",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG00NKSM4N7",
+      "targetId": "oid-share-class-a88c058f344f4b149618260c2b9727d4"
+    },
+    {
+      "mappingId": "oid-mapping-86f1a36f258048fd91bf1b8900d52041",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5NN36",
+      "targetId": "oid-share-class-5bb57c1a1d8a48b5b3532addaabd4aeb"
+    },
+    {
+      "mappingId": "oid-mapping-86f4d430a4ec48cd8307145c5150cc20",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBQPP1",
+      "targetId": "oid-listing-e2f6df3fdcf14a7c8dad342145ed2865"
+    },
+    {
+      "mappingId": "oid-mapping-8b0b2571c3de444089603496142cb7e5",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000B9Y5X2",
+      "targetId": "oid-listing-fdc1a316c06e4efca10b09944c908bbc"
+    },
+    {
+      "mappingId": "oid-mapping-98a2f776bc70458683457e4c9ba6a340",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG00NKSQGG4",
+      "targetId": "oid-listing-34697b1c4cea41238c7142c2fd450af6"
+    },
+    {
+      "mappingId": "oid-mapping-9953e994671c443f986629df11314485",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000KLDQZ0",
+      "targetId": "oid-listing-ec4641726d8e48a1b1eee268a2134d00"
+    },
+    {
+      "mappingId": "oid-mapping-99b0b16f42424728801a22a51d858669",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBBRC7",
+      "targetId": "oid-listing-df5875b9129b425eb7a71639d386bf0f"
+    },
+    {
+      "mappingId": "oid-mapping-9f891523b103495593fd32d45ed1f0d9",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BCG0H4",
+      "targetId": "oid-listing-aab6d6f78b3442a3a6260edef5df0819"
+    },
+    {
+      "mappingId": "oid-mapping-9fd3de2f24ae4340bea04573e46e5aad",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG009S4MT03",
+      "targetId": "oid-listing-5acae2cd933a4a32a3ac19e428ab27ce"
+    },
+    {
+      "mappingId": "oid-mapping-a223be2f0eb44c83bdd74bad5d11ba5a",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG009S3NB21",
+      "targetId": "oid-share-class-f81365021c5a4909aa983603a54f634d"
+    },
+    {
+      "mappingId": "oid-mapping-a5ca7bdd674e42879756e4de848e70f7",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5TD05",
+      "targetId": "oid-share-class-10ba14af13b14f048b4105f6b0e16a5b"
+    },
+    {
+      "mappingId": "oid-mapping-b1aa9d2dacc643ee9c8706e3b33a8c05",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BC20T6",
+      "targetId": "oid-share-class-3f062c5bf71046a19dc65e8a3313ccb5"
+    },
+    {
+      "mappingId": "oid-mapping-b2b2a12da8f546229b86e27072c631e1",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBK401",
+      "targetId": "oid-share-class-58ed1182f2b74e2e8e03820cf8e9ada6"
+    },
+    {
+      "mappingId": "oid-mapping-b4802d4f886748278e5024c89d8bd0e6",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5P034",
+      "targetId": "oid-share-class-492dd604d28149a88ce8792d4abf2da1"
+    },
+    {
+      "mappingId": "oid-mapping-b5bb02e316ad4827812edd69a8c543bd",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000C3HSR0",
+      "targetId": "oid-share-class-75b6b94aabff47de8c739b68943dd84d"
+    },
+    {
+      "mappingId": "oid-mapping-baeab944c3d14a4db97ea330403758d8",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BPHFS9",
+      "targetId": "oid-listing-eac65ef4a5d24849a600626df89fc761"
+    },
+    {
+      "mappingId": "oid-mapping-be31feeafc3e489b9f5ca285bf0e4309",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BCFXT0",
+      "targetId": "oid-share-class-5f5acfe0188b4438931c9f8b168d4cee"
+    },
+    {
+      "mappingId": "oid-mapping-c13df971ef854316a9118ba737a6ac7c",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000C3HV48",
+      "targetId": "oid-listing-f2b374cd393c440da682a6117d0f0722"
+    },
+    {
+      "mappingId": "oid-mapping-c35fa7ac3d2546b0946a1f98ab864e1a",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5NKW0",
+      "targetId": "oid-share-class-d24f858b0b194c23a3a6edc04198b186"
+    },
+    {
+      "mappingId": "oid-mapping-c46568e5ef92445b9271fc2fb22b6fdf",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000DLVGV4",
+      "targetId": "oid-listing-f2a900e0dbe04e54a112ed3605c15b9f"
+    },
+    {
+      "mappingId": "oid-mapping-cfad8ddf45c94060bc68e39620a88d8f",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BW2T82",
+      "targetId": "oid-listing-f4cdc0dadb6844d382c8efa99a85022f"
+    },
+    {
+      "mappingId": "oid-mapping-d0f5cff4c2724544b190998ee0b21ef2",
+      "mappingKind": "listing",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG00DYNJGM3",
+      "targetId": "oid-listing-4d7eaeadda75432580d22693b0b0550d"
+    },
+    {
+      "mappingId": "oid-mapping-d3ce7487587d44c99b24a7cdc80483bf",
+      "mappingKind": "composite",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG000BBDZG3",
+      "targetId": "oid-share-class-a51711ff2d88491ba98f3b09465df9d0"
+    },
+    {
+      "mappingId": "oid-mapping-d486fbe41d4c421ab3576905403d6b1b",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S6VFM1",
+      "targetId": "oid-share-class-5f5acfe0188b4438931c9f8b168d4cee"
+    },
+    {
+      "mappingId": "oid-mapping-e5e7a0217b4746d5ad1bf8b6557fd5fb",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG009S39JY5",
+      "targetId": "oid-share-class-75f07939ba714dbcbfac6a097deba503"
+    },
+    {
+      "mappingId": "oid-mapping-f8ee15bec42d47f98b009181e48e488a",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S5X2J4",
+      "targetId": "oid-share-class-7b816de13bca4359a69d7d595ad2caa1"
+    },
+    {
+      "mappingId": "oid-mapping-f93121f8e14f4d20a7ad8341c4d74acb",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG00NKSM4P5",
+      "targetId": "oid-share-class-a88c058f344f4b149618260c2b9727d4"
+    },
+    {
+      "mappingId": "oid-mapping-fb9102042e474951bcdd24b7d73dbcd9",
+      "mappingKind": "share_class",
+      "providerId": "openfigi_v3",
+      "providerSecurityId": "BBG001S7W158",
+      "targetId": "oid-share-class-75b6b94aabff47de8c739b68943dd84d"
+    }
+  ],
+  "records": [
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-2744343830e3421ab970a3e5f4e4a719",
+      "securityId": "oid-security-0377495156384622865c558c1bf79449",
+      "securityName": "Class A Common Stock, $0.001 par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "GOOGL",
+              "exchangeMic": "XNAS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-5acae2cd933a4a32a3ac19e428ab27ce",
+              "securityId": "oid-security-0377495156384622865c558c1bf79449",
+              "shareClassId": "oid-share-class-75f07939ba714dbcbfac6a097deba503",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-5acae2cd933a4a32a3ac19e428ab27ce",
+                  "symbol": "GOOGL",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-07-23T01:15:54.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-0377495156384622865c558c1bf79449",
+          "shareClassId": "oid-share-class-75f07939ba714dbcbfac6a097deba503",
+          "shareClassName": "Class A Common Stock, $0.001 par value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-131ab919fd8f448abf0b43b47818da5c",
+      "securityId": "oid-security-03b8e087c29346569539c0141a3f0bb3",
+      "securityName": "Common Stock, par value $0.25 per share",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "SWKS",
+              "exchangeMic": "XNAS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-ec4641726d8e48a1b1eee268a2134d00",
+              "securityId": "oid-security-03b8e087c29346569539c0141a3f0bb3",
+              "shareClassId": "oid-share-class-660abf2a5a194d798d1fd20e24270477",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-ec4641726d8e48a1b1eee268a2134d00",
+                  "symbol": "SWKS",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2025-11-08T02:08:12.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-03b8e087c29346569539c0141a3f0bb3",
+          "shareClassId": "oid-share-class-660abf2a5a194d798d1fd20e24270477",
+          "shareClassName": "Common Stock, par value $0.25 per share"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-955ec5f868644b0da919e233e36d6e49",
+      "securityId": "oid-security-07a0ad3ce580474ab54cadf1d9c2dfbe",
+      "securityName": "Common Stock, $.10 Par Value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "AFL",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-df5875b9129b425eb7a71639d386bf0f",
+              "securityId": "oid-security-07a0ad3ce580474ab54cadf1d9c2dfbe",
+              "shareClassId": "oid-share-class-150e061f80a840a48d1ee3e1597ffd41",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-df5875b9129b425eb7a71639d386bf0f",
+                  "symbol": "AFL",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-02-25T18:03:02.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-07a0ad3ce580474ab54cadf1d9c2dfbe",
+          "shareClassId": "oid-share-class-150e061f80a840a48d1ee3e1597ffd41",
+          "shareClassName": "Common Stock, $.10 Par Value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-0e4ae79b2a6b4443b11946c6b9171c45",
+      "securityId": "oid-security-2c607f13eb744e61a209f61b7a1e172d",
+      "securityName": "Common Stock, $0.00001 par value per share",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "AAPL",
+              "exchangeMic": "XNAS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-fdc1a316c06e4efca10b09944c908bbc",
+              "securityId": "oid-security-2c607f13eb744e61a209f61b7a1e172d",
+              "shareClassId": "oid-share-class-de665b6392eb4a03b7ec2c09ba97dc1c",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-fdc1a316c06e4efca10b09944c908bbc",
+                  "symbol": "AAPL",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-07-31T10:01:02.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-2c607f13eb744e61a209f61b7a1e172d",
+          "shareClassId": "oid-share-class-de665b6392eb4a03b7ec2c09ba97dc1c",
+          "shareClassName": "Common Stock, $0.00001 par value per share"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-b827d01928714597994ee82c6024c90b",
+      "securityId": "oid-security-4b46128ba6184802a9e59cab4f0145f4",
+      "securityName": "Common Stock, without par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "MATX",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-fa59842c214846238f516e08f48d0dd6",
+              "securityId": "oid-security-4b46128ba6184802a9e59cab4f0145f4",
+              "shareClassId": "oid-share-class-58ed1182f2b74e2e8e03820cf8e9ada6",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-fa59842c214846238f516e08f48d0dd6",
+                  "symbol": "MATX",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-02-27T11:16:08.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-4b46128ba6184802a9e59cab4f0145f4",
+          "shareClassId": "oid-share-class-58ed1182f2b74e2e8e03820cf8e9ada6",
+          "shareClassName": "Common Stock, without par value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-3e7e815dbcb043b3aec08eec9771678e",
+      "securityId": "oid-security-4bdef2ba010247b58aac5c6d26721aa2",
+      "securityName": "Common Shares, without par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "AEM",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-f2a900e0dbe04e54a112ed3605c15b9f",
+              "securityId": "oid-security-4bdef2ba010247b58aac5c6d26721aa2",
+              "shareClassId": "oid-share-class-0f94f5059eab476cb71f4108c92efcc0",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-f2a900e0dbe04e54a112ed3605c15b9f",
+                  "symbol": "AEM",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-03-19T21:00:49.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-4bdef2ba010247b58aac5c6d26721aa2",
+          "shareClassId": "oid-share-class-0f94f5059eab476cb71f4108c92efcc0",
+          "shareClassName": "Common Shares, without par value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-43d151a561ae486fa79a1bc309ff706d",
+      "securityId": "oid-security-5313be33291d42419c1d1c8f034bcdda",
+      "securityName": "Common stock, $0.25 par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "UHAL",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-aab6d6f78b3442a3a6260edef5df0819",
+              "securityId": "oid-security-5313be33291d42419c1d1c8f034bcdda",
+              "shareClassId": "oid-share-class-5f5acfe0188b4438931c9f8b168d4cee",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-aab6d6f78b3442a3a6260edef5df0819",
+                  "symbol": "UHAL",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-05-27T20:03:26.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-5313be33291d42419c1d1c8f034bcdda",
+          "shareClassId": "oid-share-class-5f5acfe0188b4438931c9f8b168d4cee",
+          "shareClassName": "Common stock, $0.25 par value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-2e21cdbb77dd4f668011eb3f09e733ca",
+      "securityId": "oid-security-9868af6953ac461791fd55cca4c0a1c4",
+      "securityName": "Common Stock, par value $1.00 per share",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "HWM",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-4d7eaeadda75432580d22693b0b0550d",
+              "securityId": "oid-security-9868af6953ac461791fd55cca4c0a1c4",
+              "shareClassId": "oid-share-class-60e7a6d751204ef58e16461cfc722f00",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-4d7eaeadda75432580d22693b0b0550d",
+                  "symbol": "HWM",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-02-13T03:23:47.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-9868af6953ac461791fd55cca4c0a1c4",
+          "shareClassId": "oid-share-class-60e7a6d751204ef58e16461cfc722f00",
+          "shareClassName": "Common Stock, par value $1.00 per share"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-fac43be7e1b64d2e9275b02cc0ab35f7",
+      "securityId": "oid-security-9f1726e352894d308a350248966c3a36",
+      "securityName": "Common Stock, $0.10 par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "AVD",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-761dd788312e43ec94fa70152b714ef2",
+              "securityId": "oid-security-9f1726e352894d308a350248966c3a36",
+              "shareClassId": "oid-share-class-455d20d96b9b4fcc8e52ecba1e04dcb7",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-761dd788312e43ec94fa70152b714ef2",
+                  "symbol": "AVD",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-03-16T21:08:05.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-9f1726e352894d308a350248966c3a36",
+          "shareClassId": "oid-share-class-455d20d96b9b4fcc8e52ecba1e04dcb7",
+          "shareClassName": "Common Stock, $0.10 par value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-2744343830e3421ab970a3e5f4e4a719",
+      "securityId": "oid-security-b3826929532e4221a42d3c753046c7c8",
+      "securityName": "Class C Capital Stock, $0.001 par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "GOOG",
+              "exchangeMic": "XNAS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-44bc5fe9c57246a3adef40bbcbcb88a7",
+              "securityId": "oid-security-b3826929532e4221a42d3c753046c7c8",
+              "shareClassId": "oid-share-class-f81365021c5a4909aa983603a54f634d",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-44bc5fe9c57246a3adef40bbcbcb88a7",
+                  "symbol": "GOOG",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-07-23T01:15:54.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-b3826929532e4221a42d3c753046c7c8",
+          "shareClassId": "oid-share-class-f81365021c5a4909aa983603a54f634d",
+          "shareClassName": "Class C Capital Stock, $0.001 par value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-21fa02c0803d46818e246bbded430e14",
+      "securityId": "oid-security-b38da2d8836a4e95b7b800fc044c7576",
+      "securityName": "Common Stock, par value $0.60",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "BKTI",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-34697b1c4cea41238c7142c2fd450af6",
+              "securityId": "oid-security-b38da2d8836a4e95b7b800fc044c7576",
+              "shareClassId": "oid-share-class-a88c058f344f4b149618260c2b9727d4",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-34697b1c4cea41238c7142c2fd450af6",
+                  "symbol": "BKTI",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-03-12T15:06:07.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-b38da2d8836a4e95b7b800fc044c7576",
+          "shareClassId": "oid-share-class-a88c058f344f4b149618260c2b9727d4",
+          "shareClassName": "Common Stock, par value $0.60"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-c207d9abbb824fa09ec2f45641edea1f",
+      "securityId": "oid-security-b7313a2457544658b75d8eda23948fb9",
+      "securityName": "Common stock, $0.10 par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "UNM",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-f4cdc0dadb6844d382c8efa99a85022f",
+              "securityId": "oid-security-b7313a2457544658b75d8eda23948fb9",
+              "shareClassId": "oid-share-class-7b816de13bca4359a69d7d595ad2caa1",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-f4cdc0dadb6844d382c8efa99a85022f",
+                  "symbol": "UNM",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-02-17T21:30:42.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-b7313a2457544658b75d8eda23948fb9",
+          "shareClassId": "oid-share-class-7b816de13bca4359a69d7d595ad2caa1",
+          "shareClassName": "Common stock, $0.10 par value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-77324088f0b44d5dad69f1e0c2677e89",
+      "securityId": "oid-security-baa555d25c4c4d208148a32dbd5bf088",
+      "securityName": "Common Stock",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "ALCO",
+              "exchangeMic": "XNAS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-aaa05639eb514de0b4e50eca8e2772a8",
+              "securityId": "oid-security-baa555d25c4c4d208148a32dbd5bf088",
+              "shareClassId": "oid-share-class-d24f858b0b194c23a3a6edc04198b186",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-aaa05639eb514de0b4e50eca8e2772a8",
+                  "symbol": "ALCO",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2025-11-25T02:22:27.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-baa555d25c4c4d208148a32dbd5bf088",
+          "shareClassId": "oid-share-class-d24f858b0b194c23a3a6edc04198b186",
+          "shareClassName": "Common Stock"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-89d261609bcc4630bb23f59ce420097f",
+      "securityId": "oid-security-c9ff1c5aeb8c4f94848e8e9bd4a18d73",
+      "securityName": "Common Stock, Par Value $2.50 Per Share",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "AIG",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-ca6320aaed1546b4b60a39cfac5216c6",
+              "securityId": "oid-security-c9ff1c5aeb8c4f94848e8e9bd4a18d73",
+              "shareClassId": "oid-share-class-a51711ff2d88491ba98f3b09465df9d0",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-ca6320aaed1546b4b60a39cfac5216c6",
+                  "symbol": "AIG",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-02-12T21:44:59.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-c9ff1c5aeb8c4f94848e8e9bd4a18d73",
+          "shareClassId": "oid-share-class-a51711ff2d88491ba98f3b09465df9d0",
+          "shareClassName": "Common Stock, Par Value $2.50 Per Share"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-7ed3fc2cfcae44598f4c26ef7d9d32fb",
+      "securityId": "oid-security-cc7ed2f9b47b4399a7fa589e19cf4ea7",
+      "securityName": "Common Stock, $1 par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "AP",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-7caea5222b61491bbdf4e108858bec02",
+              "securityId": "oid-security-cc7ed2f9b47b4399a7fa589e19cf4ea7",
+              "shareClassId": "oid-share-class-3f062c5bf71046a19dc65e8a3313ccb5",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-7caea5222b61491bbdf4e108858bec02",
+                  "symbol": "AP",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-03-16T21:09:16.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-cc7ed2f9b47b4399a7fa589e19cf4ea7",
+          "shareClassId": "oid-share-class-3f062c5bf71046a19dc65e8a3313ccb5",
+          "shareClassName": "Common Stock, $1 par value"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-e202447ec5b94c6692e73f5f318bdf18",
+      "securityId": "oid-security-d2567ee865064e0887326dc0f234f5f0",
+      "securityName": "Common Shares (par value $0.20 per Share)",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "AXP",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-1c349e39481c4ac3a809de85320ac624",
+              "securityId": "oid-security-d2567ee865064e0887326dc0f234f5f0",
+              "shareClassId": "oid-share-class-492dd604d28149a88ce8792d4abf2da1",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-1c349e39481c4ac3a809de85320ac624",
+                  "symbol": "AXP",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-02-06T22:31:47.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-d2567ee865064e0887326dc0f234f5f0",
+          "shareClassId": "oid-share-class-492dd604d28149a88ce8792d4abf2da1",
+          "shareClassName": "Common Shares (par value $0.20 per Share)"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-e7c1e6ac71e24818b40d36b0d0f91b8f",
+      "securityId": "oid-security-d947b85284824c86ae3424d2d209348c",
+      "securityName": "Common stock, $0.00000625 par value per share",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "MSFT",
+              "exchangeMic": "XNAS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-eac65ef4a5d24849a600626df89fc761",
+              "securityId": "oid-security-d947b85284824c86ae3424d2d209348c",
+              "shareClassId": "oid-share-class-10ba14af13b14f048b4105f6b0e16a5b",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-eac65ef4a5d24849a600626df89fc761",
+                  "symbol": "MSFT",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-07-29T20:08:01.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-d947b85284824c86ae3424d2d209348c",
+          "shareClassId": "oid-share-class-10ba14af13b14f048b4105f6b0e16a5b",
+          "shareClassName": "Common stock, $0.00000625 par value per share"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-a1a475874935425ab378daefabedb969",
+      "securityId": "oid-security-de62febbcd3046439e01f77e264e10c2",
+      "securityName": "Common Stock, $0.01 par value per share",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "AMD",
+              "exchangeMic": "XNAS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-e2f6df3fdcf14a7c8dad342145ed2865",
+              "securityId": "oid-security-de62febbcd3046439e01f77e264e10c2",
+              "shareClassId": "oid-share-class-5bb57c1a1d8a48b5b3532addaabd4aeb",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-e2f6df3fdcf14a7c8dad342145ed2865",
+                  "symbol": "AMD",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-02-04T04:14:52.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-de62febbcd3046439e01f77e264e10c2",
+          "shareClassId": "oid-share-class-5bb57c1a1d8a48b5b3532addaabd4aeb",
+          "shareClassName": "Common Stock, $0.01 par value per share"
+        }
+      ]
+    },
+    {
+      "active": true,
+      "eligibility": "eligible",
+      "instrumentType": "common_stock",
+      "issuerId": "oid-issuer-a3a488c7c80145418f9fd0b71c0f7221",
+      "securityId": "oid-security-f9560004efc44a8b9da5950e79ddf65a",
+      "securityName": "Common Stock, $ 0.003 par value",
+      "shareClasses": [
+        {
+          "active": true,
+          "listings": [
+            {
+              "active": true,
+              "country": "US",
+              "currentSymbol": "LNG",
+              "exchangeMic": "XNYS",
+              "exchangeMicType": "operating",
+              "listingId": "oid-listing-f2b374cd393c440da682a6117d0f0722",
+              "securityId": "oid-security-f9560004efc44a8b9da5950e79ddf65a",
+              "shareClassId": "oid-share-class-75b6b94aabff47de8c739b68943dd84d",
+              "tickerHistory": [
+                {
+                  "listingId": "oid-listing-f2b374cd393c440da682a6117d0f0722",
+                  "symbol": "LNG",
+                  "timeBasis": "sec_filing_observed",
+                  "validFrom": "2026-02-25T23:14:34.000Z",
+                  "validTo": null
+                }
+              ]
+            }
+          ],
+          "securityId": "oid-security-f9560004efc44a8b9da5950e79ddf65a",
+          "shareClassId": "oid-share-class-75b6b94aabff47de8c739b68943dd84d",
+          "shareClassName": "Common Stock, $ 0.003 par value"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": "1.0.0",
+  "sourceCoverage": {
+    "admittedRecords": 19,
+    "ineligibleRecords": 0,
+    "quarantinedRecords": 13,
+    "sourceRecords": 33,
+    "staleRecords": 0,
+    "unsupportedRecords": 1
+  },
+  "sourcePolicyCompatibility": {
+    "attribution": "required",
+    "cache": "permitted_managed",
+    "decision": "compatible",
+    "deleteOnRequest": true,
+    "display": "permitted_managed",
+    "effectiveAt": "2026-10-16T20:49:57.249Z",
+    "expiresAt": "2027-10-16T00:00:00.000Z",
+    "export": "permitted_with_attribution",
+    "intendedUse": "personal_security_research",
+    "localOnly": false,
+    "operation": "fetch_snapshot",
+    "policyDocumentSha256": "sha256:589b9b2db2e0ea66a73646d59b61f972a2d34af2ed2c1aeeed3ee3b79ac0e776",
+    "policyId": "investment-public-identity-tranche-2026-10-16",
+    "policyProfile": "personal_single_user_managed_connected",
+    "policySchemaVersion": "1.0.0",
+    "policyVersion": "2026-10-16-v1",
+    "redistribution": "permitted_with_attribution",
+    "retention": "permitted_managed",
+    "reviewedAt": "2026-10-16T20:49:57.249Z",
+    "revocationCheck": "offline_snapshot_only_cannot_discover_later_revocation",
+    "revokedAt": null,
+    "rightsBasis": "reviewed_redistributable_source",
+    "search": "permitted_managed",
+    "sourceId": "investment-public-identity-tranche-2026-10-16"
+  }
+}

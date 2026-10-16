@@ -4,6 +4,7 @@ import bookmark from "./icons/bookmark.svg?raw";
 
 const icons = {
   markets: chart,
+  portfolio: chart,
   discover: search,
   watchlist: bookmark,
 };

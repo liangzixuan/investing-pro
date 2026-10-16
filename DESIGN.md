@@ -686,6 +686,16 @@ Navigation uses three unmodified local Tabler outline SVGs, rendered as decorati
 images beside text labels. Their MIT notice is available in Software licenses.
 Do not add runtime icon requests or copy another product's wordmark.
 
+Managed Portfolio uses the same dark surfaces, type scale and focus tokens. Keep
+opening balances, activity, holdings and Save review in separate labelled
+sections. Forms wrap into one column on narrow screens; exact-value tables keep
+their own horizontal scroll. Company, class and venue stay readable; internal
+IDs belong in initially closed details. All form controls and actions have at
+least 44px height. Opening Portfolio moves focus to its heading; returning from
+Research restores the originating action. Keep pending form values visible until
+Apply or Reset. Review, Save and recovery remain separate, with an explicit
+unknown value when an authored amount or basis is missing.
+
 ## Verification
 
 Use invented data with the actual managed frame, components and CSS. Keep fixture

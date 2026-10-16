@@ -140,6 +140,7 @@ jobs:
                   "dailyResearchReviewKeepsDraftAndCompletesThroughResearch",
                   "marketsDayViewKeepsSourcesSeparateAndRetiresLateResponses",
                   "researchFollowupsReplayAndSessionRetirementFenceLateReplies",
+                  "portfolioLedgerKeepsExactFifoAndIndependentSave",
               },
           }
           executed = set()

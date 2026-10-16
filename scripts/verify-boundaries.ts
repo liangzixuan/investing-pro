@@ -138,6 +138,8 @@ const ownedProductionDomainPaths = new Set([
   "apps/api/src/managed-workspace-handler.ts",
   "apps/api/src/managed-workspace-handler.test.ts",
   "apps/api/src/managed-followups-handler.test.ts",
+  "apps/api/src/managed-portfolio-handler.test.ts",
+  "apps/api/src/managed-portfolio-function.test.ts",
   "apps/api/src/managed-workspace-function.test.ts",
   "apps/api/src/clerk-trial-config.ts",
   "apps/api/src/clerk-trial-config.test.ts",
@@ -192,7 +194,8 @@ function ownedProductionHostnameSpan(
 
 function competitorText(relativePath: string, content: string): string {
   const fixedCatalog =
-    relativePath === "apps/api/src/managed-catalog/2026-10-12.snapshot.json";
+    relativePath === "apps/api/src/managed-catalog/2026-10-12.snapshot.json" ||
+    relativePath === "apps/api/src/managed-catalog/2026-10-16.snapshot.json";
   const fixedAndroidConfig =
     relativePath ===
     "apps/web/android/app/src/main/assets/capacitor.config.json";
@@ -310,23 +313,30 @@ function verifyOwnedProductionDomainTextClassifier(): void {
       throw new Error("Unowned copied Android package text was admitted");
   if (!matchesForbiddenText(`${copiedAndroidPath}.old`, copiedAndroidIdentity))
     throw new Error("Unselected copied Android package path was admitted");
-  const catalogPath = "apps/api/src/managed-catalog/2026-10-12.snapshot.json";
   const repository = "https://github.com/liangzixuan/investing-pro";
   const canonicalReference = JSON.stringify({ sourceUri: repository });
-  if (matchesForbiddenText(catalogPath, canonicalReference))
-    throw new Error("Owned catalog provenance classifier regressed");
-  for (const content of [
-    JSON.stringify({ label: repository }),
-    JSON.stringify({ sourceUri: `${repository}/other` }),
-    JSON.stringify({ sourceUri: `${repository}?query` }),
-    JSON.stringify({ sourceUri: `${repository}#fragment` }),
-    JSON.stringify({ sourceUri: repository, extra: "investingpro" }),
-    JSON.stringify({ sourceUri: "https://github.com/other/investing-pro" }),
-    JSON.stringify({ sourceUri: "https://app.investingpro.app" }),
-    JSON.stringify({ sourceUri: repository }).replace("github", "git\\u0068ub"),
+  for (const catalogPath of [
+    "apps/api/src/managed-catalog/2026-10-12.snapshot.json",
+    "apps/api/src/managed-catalog/2026-10-16.snapshot.json",
   ]) {
-    if (!matchesForbiddenText(catalogPath, content))
-      throw new Error("Unowned catalog provenance text was admitted");
+    if (matchesForbiddenText(catalogPath, canonicalReference))
+      throw new Error("Owned catalog provenance classifier regressed");
+    for (const content of [
+      JSON.stringify({ label: repository }),
+      JSON.stringify({ sourceUri: `${repository}/other` }),
+      JSON.stringify({ sourceUri: `${repository}?query` }),
+      JSON.stringify({ sourceUri: `${repository}#fragment` }),
+      JSON.stringify({ sourceUri: repository, extra: "investingpro" }),
+      JSON.stringify({ sourceUri: "https://github.com/other/investing-pro" }),
+      JSON.stringify({ sourceUri: "https://app.investingpro.app" }),
+      JSON.stringify({ sourceUri: repository }).replace(
+        "github",
+        "git\\u0068ub",
+      ),
+    ]) {
+      if (!matchesForbiddenText(catalogPath, content))
+        throw new Error("Unowned catalog provenance text was admitted");
+    }
   }
   if (
     !matchesForbiddenText(
@@ -11052,6 +11062,22 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       [
         "lookupPersonalSecurityMasterListing",
         "type ManagedSecurityMasterCatalog",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/appwrite-portfolio-repository.ts",
+      [
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/appwrite-portfolio-repository.test.ts",
+      [
+        "admitPersonalSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
         "type PersonalSecurityMasterCatalog",
       ],
     ],

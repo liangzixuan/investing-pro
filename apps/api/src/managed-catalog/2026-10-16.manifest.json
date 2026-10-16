@@ -1,0 +1,761 @@
+{
+  "schemaVersion": 1,
+  "snapshotSha256": "sha256:5852beb972fdb7e1a93669d51996b3cca431f006b741c697c1952f7e14d3d5a0",
+  "preparationEvidenceSha256": "sha256:1e049b5e032a81bb86e20b72ebf23d32784d9598fbe658f93189107dbda92f98",
+  "actualPreparationReviewSha256": "sha256:70ce40f28cbe8087e0f4f749a18c1a5ec81b5245820ffac36a7dbea7cc4fb326",
+  "sourcePolicyReviewSha256": "sha256:17532322f93f4657a6e7b6a2f2375e146fad1b831ac8c1304ad2195cf0f9c9d5",
+  "sourcePolicyDocumentSha256": "sha256:589b9b2db2e0ea66a73646d59b61f972a2d34af2ed2c1aeeed3ee3b79ac0e776",
+  "sources": [
+    {
+      "label": "SEC listed-company file",
+      "url": "https://www.sec.gov/files/company_tickers_exchange.json",
+      "issuerName": null,
+      "filingDate": null
+    },
+    {
+      "label": "Apple quarterly filing",
+      "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000020/aapl-20260627.htm",
+      "issuerName": "Apple Inc.",
+      "filingDate": "2026-07-31"
+    },
+    {
+      "label": "Alphabet quarterly filing",
+      "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000071/goog-20260630.htm",
+      "issuerName": "Alphabet Inc.",
+      "filingDate": "2026-07-23"
+    },
+    {
+      "label": "Microsoft annual filing",
+      "url": "https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm",
+      "issuerName": "MICROSOFT CORPORATION",
+      "filingDate": "2026-07-29"
+    },
+    {
+      "label": "OpenFIGI reference metadata",
+      "url": "https://www.openfigi.com/about/faq",
+      "issuerName": null,
+      "filingDate": null
+    },
+    {
+      "label": "Official ISO 10383 MIC registry",
+      "url": "https://www.iso20022.org/market-identifier-codes",
+      "issuerName": null,
+      "filingDate": null
+    },
+    {
+      "label": "SEC filing collection for additional reviewed covers",
+      "url": "https://www.sec.gov/Archives/edgar/data/",
+      "issuerName": null,
+      "filingDate": null
+    }
+  ],
+  "excludedCandidates": [
+    {
+      "symbol": "BRK-B",
+      "reason": "identity_not_resolved"
+    },
+    {
+      "symbol": "TSM",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "AIR",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "ABT",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "ACU",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "ADX",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "APD",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "CECO",
+      "reason": "identity_not_resolved"
+    },
+    {
+      "symbol": "ALX",
+      "reason": "identity_not_resolved"
+    },
+    {
+      "symbol": "UHAL-B",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "AEP",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "VBF",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "UNMA",
+      "reason": "source_review_incomplete"
+    },
+    {
+      "symbol": "AAL",
+      "reason": "source_review_incomplete"
+    }
+  ],
+  "preparationReceipt": {
+    "admittedRecords": 19,
+    "artifactCount": 6,
+    "candidateRecords": 33,
+    "ineligibleRecords": 0,
+    "quarantinedRecords": 13,
+    "exclusionReasonCounts": {
+      "classificationDisagreement": 0,
+      "inactiveOrNonUsOperatingMic": 0,
+      "missingOrAmbiguousIsoMic": 0,
+      "missingOrAmbiguousNormalizedSecCoverEvidence": 10,
+      "missingOrAmbiguousOpaqueIdentityAssignment": 0,
+      "missingOrAmbiguousOpenFigiMapping": 3,
+      "staleSecCoverEvidence": 0,
+      "unsupportedClassification": 1
+    },
+    "schemaVersion": "1.0.0",
+    "snapshotSha256": "sha256:5852beb972fdb7e1a93669d51996b3cca431f006b741c697c1952f7e14d3d5a0",
+    "sourceBundleSha256": "sha256:a2540c44cf2a9669ad68259451069c6d76f9e55c9cf5e0734e12484ae06aef88",
+    "sourceProfile": "sec_openfigi_v1",
+    "staleRecords": 0,
+    "status": "prepared_with_exclusions",
+    "unsupportedRecords": 1
+  },
+  "filingEvidence": {
+    "retainedOctober12ManifestSha256": "sha256:986f571f23fa356c0a193a462491788dc09e74f173fd1af00cebdb2d92246783",
+    "retainedFilingSources": [
+      {
+        "label": "Apple quarterly filing",
+        "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000020/aapl-20260627.htm",
+        "issuerName": "Apple Inc.",
+        "filingDate": "2026-07-31"
+      },
+      {
+        "label": "Alphabet quarterly filing",
+        "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000071/goog-20260630.htm",
+        "issuerName": "Alphabet Inc.",
+        "filingDate": "2026-07-23"
+      },
+      {
+        "label": "Microsoft annual filing",
+        "url": "https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm",
+        "issuerName": "MICROSOFT CORPORATION",
+        "filingDate": "2026-07-29"
+      }
+    ],
+    "additionalCandidates": [
+      {
+        "symbol": "AIR",
+        "cik": "0000001750",
+        "issuerName": "AAR CORP",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0001104659-26-085459",
+          "filingDate": "2026-07-22",
+          "reportDate": "2026-05-31",
+          "acceptanceDateTime": "2026-07-21T21:36:34.000Z",
+          "form": "10-K",
+          "primaryDocument": "air-20260531x10k.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/1750/000110465926085459/air-20260531x10k.htm",
+          "acquiredAt": "2026-10-16T20:14:15.239Z",
+          "complete": true,
+          "sourceBytes": 3591747,
+          "sourceSha256": "sha256:22987e7bf3f38f9a1c7ddf546b144d563761fca7452bbe7dbd8d7392b3542ff9"
+        }
+      },
+      {
+        "symbol": "ABT",
+        "cik": "0000001800",
+        "issuerName": "ABBOTT LABORATORIES",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0001628280-26-010185",
+          "filingDate": "2026-02-20",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-20T21:05:29.000Z",
+          "form": "10-K",
+          "primaryDocument": "abt-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/1800/000162828026010185/abt-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:17.313Z",
+          "complete": true,
+          "sourceBytes": 2656131,
+          "sourceSha256": "sha256:bfc28ddf43f536775cb23022b1d50784dc2b2aafe2c1715b99b903a51ad2222a"
+        }
+      },
+      {
+        "symbol": "ACU",
+        "cik": "0000002098",
+        "issuerName": "ACME UNITED CORP",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0001193125-26-102079",
+          "filingDate": "2026-03-11",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-03-11T20:00:51.000Z",
+          "form": "10-K",
+          "primaryDocument": "acu-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/2098/000119312526102079/acu-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:19.693Z",
+          "complete": true,
+          "sourceBytes": 2458153,
+          "sourceSha256": "sha256:f2f3d6f158226e63c4b58dcf47fb9bd4e604461a7db6f71c26f0a4fcc949c547"
+        }
+      },
+      {
+        "symbol": "BKTI",
+        "cik": "0000002186",
+        "issuerName": "BK Technologies Corp",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0001437749-26-007826",
+          "filingDate": "2026-03-12",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-03-12T15:06:07.000Z",
+          "form": "10-K",
+          "primaryDocument": "bkti20251231_10k.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/2186/000143774926007826/bkti20251231_10k.htm",
+          "acquiredAt": "2026-10-16T20:14:21.834Z",
+          "complete": true,
+          "sourceBytes": 1516697,
+          "sourceSha256": "sha256:fe87c86e554f862111bcefae14c02722299c416aa46f9ea8606d0b392cb01a9c"
+        }
+      },
+      {
+        "symbol": "ADX",
+        "cik": "0000002230",
+        "issuerName": "ADAMS DIVERSIFIED EQUITY FUND, INC.",
+        "status": "excluded",
+        "filing": null
+      },
+      {
+        "symbol": "AMD",
+        "cik": "0000002488",
+        "issuerName": "ADVANCED MICRO DEVICES INC",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0000002488-26-000018",
+          "filingDate": "2026-02-04",
+          "reportDate": "2025-12-27",
+          "acceptanceDateTime": "2026-02-04T04:14:52.000Z",
+          "form": "10-K",
+          "primaryDocument": "amd-20251227.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+          "acquiredAt": "2026-10-16T20:14:24.839Z",
+          "complete": true,
+          "sourceBytes": 2174701,
+          "sourceSha256": "sha256:a2afef04d0d5d3572c74e1046a6941b7b55f09665801555f14a1649c9f66b6a5"
+        }
+      },
+      {
+        "symbol": "AEM",
+        "cik": "0000002809",
+        "issuerName": "AGNICO EAGLE MINES LTD",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0001104659-26-032153",
+          "filingDate": "2026-03-19",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-03-19T21:00:49.000Z",
+          "form": "40-F",
+          "primaryDocument": "aem-20251231x40f.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/2809/000110465926032153/aem-20251231x40f.htm",
+          "acquiredAt": "2026-10-16T20:14:26.826Z",
+          "complete": true,
+          "sourceBytes": 375923,
+          "sourceSha256": "sha256:992dccb33a36481a5e376a3038a70e0b5394dcd8747828684168307840569cfb"
+        }
+      },
+      {
+        "symbol": "APD",
+        "cik": "0000002969",
+        "issuerName": "Air Products & Chemicals, Inc.",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0000002969-25-000055",
+          "filingDate": "2025-11-20",
+          "reportDate": "2025-09-30",
+          "acceptanceDateTime": "2025-11-20T15:20:44.000Z",
+          "form": "10-K",
+          "primaryDocument": "apd-20250930.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/2969/000000296925000055/apd-20250930.htm",
+          "acquiredAt": "2026-10-16T20:14:29.454Z",
+          "complete": true,
+          "sourceBytes": 4071343,
+          "sourceSha256": "sha256:612d1b0fd0c0050d871b1224ddd0d46669744015db85586c9b096fae2d1931a0"
+        }
+      },
+      {
+        "symbol": "CECO",
+        "cik": "0000003197",
+        "issuerName": "CECO ENVIRONMENTAL CORP",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0001193125-26-085815",
+          "filingDate": "2026-03-02",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-03-03T03:30:36.000Z",
+          "form": "10-K",
+          "primaryDocument": "ceco-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/3197/000119312526085815/ceco-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:31.282Z",
+          "complete": true,
+          "sourceBytes": 4813493,
+          "sourceSha256": "sha256:e5bad06ad2a55451af3c2373a3843c0770c3b42efca4302b7ac46ac1143cc680"
+        }
+      },
+      {
+        "symbol": "MATX",
+        "cik": "0000003453",
+        "issuerName": "Matson, Inc.",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0001104659-26-020944",
+          "filingDate": "2026-02-27",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-27T11:16:08.000Z",
+          "form": "10-K",
+          "primaryDocument": "matx-20251231x10k.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/3453/000110465926020944/matx-20251231x10k.htm",
+          "acquiredAt": "2026-10-16T20:14:33.493Z",
+          "complete": true,
+          "sourceBytes": 4757462,
+          "sourceSha256": "sha256:841b9a1383566eb1a07e172a80fb215462fea9587e95e309ea5cdadac1c53fe7"
+        }
+      },
+      {
+        "symbol": "ALX",
+        "cik": "0000003499",
+        "issuerName": "ALEXANDERS INC",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0000003499-26-000005",
+          "filingDate": "2026-02-09",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-09T13:30:31.000Z",
+          "form": "10-K",
+          "primaryDocument": "alx-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/3499/000000349926000005/alx-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:35.184Z",
+          "complete": true,
+          "sourceBytes": 1470554,
+          "sourceSha256": "sha256:8a85a0c80a3ed9b50fafabb4a2cae1a01b3ea92ef49f9431c937a5e52e91eaa9"
+        }
+      },
+      {
+        "symbol": "ALCO",
+        "cik": "0000003545",
+        "issuerName": "ALICO, INC.",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0000003545-25-000140",
+          "filingDate": "2025-11-24",
+          "reportDate": "2025-09-30",
+          "acceptanceDateTime": "2025-11-25T02:22:27.000Z",
+          "form": "10-K",
+          "primaryDocument": "alco-20250930.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/3545/000000354525000140/alco-20250930.htm",
+          "acquiredAt": "2026-10-16T20:14:37.727Z",
+          "complete": true,
+          "sourceBytes": 1597422,
+          "sourceSha256": "sha256:904c7455ba4e58b88c8a942bf4b059f501546650735e21deffaa6173ef667dd0"
+        }
+      },
+      {
+        "symbol": "LNG",
+        "cik": "0000003570",
+        "issuerName": "Cheniere Energy, Inc.",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0000003570-26-000005",
+          "filingDate": "2026-02-26",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-25T23:14:34.000Z",
+          "form": "10-K",
+          "primaryDocument": "lng-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/3570/000000357026000005/lng-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:40.201Z",
+          "complete": true,
+          "sourceBytes": 3155062,
+          "sourceSha256": "sha256:50e580df93cf56ca79c0460b27500b84d71c4161f3f1423af8df763402e071d2"
+        }
+      },
+      {
+        "symbol": "SWKS",
+        "cik": "0000004127",
+        "issuerName": "SKYWORKS SOLUTIONS, INC.",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0000004127-25-000085",
+          "filingDate": "2025-11-07",
+          "reportDate": "2025-10-03",
+          "acceptanceDateTime": "2025-11-08T02:08:12.000Z",
+          "form": "10-K",
+          "primaryDocument": "swks-20251003.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+          "acquiredAt": "2026-10-16T20:14:41.968Z",
+          "complete": true,
+          "sourceBytes": 1708710,
+          "sourceSha256": "sha256:2819e8be711351dedca5abb398811786e7edc0d719d6b0389919a367b4f7eade"
+        }
+      },
+      {
+        "symbol": "HWM",
+        "cik": "0000004281",
+        "issuerName": "Howmet Aerospace Inc.",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0000004281-26-000012",
+          "filingDate": "2026-02-12",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-13T03:23:47.000Z",
+          "form": "10-K",
+          "primaryDocument": "hwm-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/4281/000000428126000012/hwm-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:44.038Z",
+          "complete": true,
+          "sourceBytes": 3061909,
+          "sourceSha256": "sha256:6d2b8ae9f634459be6d6982df650ba45c7ccc773d616357e8bd477f798934fa0"
+        }
+      },
+      {
+        "symbol": "UHAL",
+        "cik": "0000004457",
+        "issuerName": "U-Haul Holding Co /NV/",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0001193125-26-241850",
+          "filingDate": "2026-05-27",
+          "reportDate": "2026-03-31",
+          "acceptanceDateTime": "2026-05-27T20:03:26.000Z",
+          "form": "10-K",
+          "primaryDocument": "uhal-20260331.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/4457/000119312526241850/uhal-20260331.htm",
+          "acquiredAt": "2026-10-16T20:14:46.974Z",
+          "complete": true,
+          "sourceBytes": 12067199,
+          "sourceSha256": "sha256:a9482638b5ee707675b6d8d263a86f588d0010820499802a649921baa49f0676"
+        }
+      },
+      {
+        "symbol": "UHAL-B",
+        "cik": "0000004457",
+        "issuerName": "U-Haul Holding Co /NV/",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0001193125-26-241850",
+          "filingDate": "2026-05-27",
+          "reportDate": "2026-03-31",
+          "acceptanceDateTime": "2026-05-27T20:03:26.000Z",
+          "form": "10-K",
+          "primaryDocument": "uhal-20260331.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/4457/000119312526241850/uhal-20260331.htm",
+          "acquiredAt": "2026-10-16T20:14:46.974Z",
+          "complete": true,
+          "sourceBytes": 12067199,
+          "sourceSha256": "sha256:a9482638b5ee707675b6d8d263a86f588d0010820499802a649921baa49f0676"
+        }
+      },
+      {
+        "symbol": "AEP",
+        "cik": "0000004904",
+        "issuerName": "AMERICAN ELECTRIC POWER CO INC",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0000004904-26-000013",
+          "filingDate": "2026-02-12",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-12T20:12:43.000Z",
+          "form": "10-K",
+          "primaryDocument": "aep-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/4904/000000490426000013/aep-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:50.327Z",
+          "complete": false,
+          "sourceBytes": 16777216,
+          "sourceSha256": "sha256:23f079f1a97df0a4b27044baf2c7b6a517cfaa73609231f9d0f9cfc19256862e"
+        }
+      },
+      {
+        "symbol": "AXP",
+        "cik": "0000004962",
+        "issuerName": "AMERICAN EXPRESS CO",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0000004962-26-000080",
+          "filingDate": "2026-02-06",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-06T22:31:47.000Z",
+          "form": "10-K",
+          "primaryDocument": "axp-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/4962/000000496226000080/axp-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:52.037Z",
+          "complete": true,
+          "sourceBytes": 5080727,
+          "sourceSha256": "sha256:a799dfaca2f699cc8bd7316e01e1b546db27737def355e4adae550b23c23f748"
+        }
+      },
+      {
+        "symbol": "AFL",
+        "cik": "0000004977",
+        "issuerName": "AFLAC INC",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0001628280-26-011402",
+          "filingDate": "2026-02-25",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-25T18:03:02.000Z",
+          "form": "10-K",
+          "primaryDocument": "afl-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/4977/000162828026011402/afl-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:54.220Z",
+          "complete": true,
+          "sourceBytes": 8903506,
+          "sourceSha256": "sha256:ce6095aa7d696d6e19a6bcc26b38bbb05989c807220dd9260ab36f5b7c178c1f"
+        }
+      },
+      {
+        "symbol": "VBF",
+        "cik": "0000005094",
+        "issuerName": "Invesco Bond Fund",
+        "status": "excluded",
+        "filing": null
+      },
+      {
+        "symbol": "AIG",
+        "cik": "0000005272",
+        "issuerName": "AMERICAN INTERNATIONAL GROUP, INC.",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0000005272-26-000023",
+          "filingDate": "2026-02-12",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-12T21:44:59.000Z",
+          "form": "10-K",
+          "primaryDocument": "aig-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/5272/000000527226000023/aig-20251231.htm",
+          "acquiredAt": "2026-10-16T20:14:57.494Z",
+          "complete": true,
+          "sourceBytes": 9811711,
+          "sourceSha256": "sha256:538755e97dd4447bb48df1468d8a6670fe3c7d12ff2359c0a6d3af446102a996"
+        }
+      },
+      {
+        "symbol": "UNM",
+        "cik": "0000005513",
+        "issuerName": "Unum Group",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0000005513-26-000008",
+          "filingDate": "2026-02-17",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-17T21:30:42.000Z",
+          "form": "10-K",
+          "primaryDocument": "unm-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/5513/000000551326000008/unm-20251231.htm",
+          "acquiredAt": "2026-10-16T20:15:00.405Z",
+          "complete": true,
+          "sourceBytes": 8245575,
+          "sourceSha256": "sha256:f60a8af81ee3e8e5c2faf8c7e08e93408a030f79a87d046da1183850d80b37b2"
+        }
+      },
+      {
+        "symbol": "UNMA",
+        "cik": "0000005513",
+        "issuerName": "Unum Group",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0000005513-26-000008",
+          "filingDate": "2026-02-17",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-17T21:30:42.000Z",
+          "form": "10-K",
+          "primaryDocument": "unm-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/5513/000000551326000008/unm-20251231.htm",
+          "acquiredAt": "2026-10-16T20:15:00.405Z",
+          "complete": true,
+          "sourceBytes": 8245575,
+          "sourceSha256": "sha256:f60a8af81ee3e8e5c2faf8c7e08e93408a030f79a87d046da1183850d80b37b2"
+        }
+      },
+      {
+        "symbol": "AVD",
+        "cik": "0000005981",
+        "issuerName": "AMERICAN VANGUARD CORP",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0001193125-26-108593",
+          "filingDate": "2026-03-16",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-03-16T21:08:05.000Z",
+          "form": "10-K",
+          "primaryDocument": "avd-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/5981/000119312526108593/avd-20251231.htm",
+          "acquiredAt": "2026-10-16T20:15:02.425Z",
+          "complete": true,
+          "sourceBytes": 4016630,
+          "sourceSha256": "sha256:e9f4af41e4dec0aef3238cf173daafef937f323ae1af2277a9ddfe1a1b55831c"
+        }
+      },
+      {
+        "symbol": "AP",
+        "cik": "0000006176",
+        "issuerName": "AMPCO PITTSBURGH CORP",
+        "status": "prepared_identity",
+        "filing": {
+          "accessionNumber": "0001193125-26-108598",
+          "filingDate": "2026-03-16",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-03-16T21:09:16.000Z",
+          "form": "10-K",
+          "primaryDocument": "ap-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/6176/000119312526108598/ap-20251231.htm",
+          "acquiredAt": "2026-10-16T20:15:04.010Z",
+          "complete": true,
+          "sourceBytes": 5571473,
+          "sourceSha256": "sha256:76e604a7c6d737b83d4cbd3ab24bf1614284453e755a0419c334256357b540f8"
+        }
+      },
+      {
+        "symbol": "AAL",
+        "cik": "0000006201",
+        "issuerName": "American Airlines Group Inc.",
+        "status": "excluded",
+        "filing": {
+          "accessionNumber": "0000006201-26-000014",
+          "filingDate": "2026-02-18",
+          "reportDate": "2025-12-31",
+          "acceptanceDateTime": "2026-02-18T21:46:12.000Z",
+          "form": "10-K",
+          "primaryDocument": "aal-20251231.htm",
+          "url": "https://www.sec.gov/Archives/edgar/data/6201/000000620126000014/aal-20251231.htm",
+          "acquiredAt": "2026-10-16T20:15:06.118Z",
+          "complete": true,
+          "sourceBytes": 4938209,
+          "sourceSha256": "sha256:0a154279fcb4cec83472141f51f2bac1e903d4df042d67866b28b1fbee13d16b"
+        }
+      }
+    ],
+    "coverReviewSha256": "sha256:90bba37abdf1f0cd22d0ca8ca480bda9f5c6fb58bde30570d00b273e64afaf0d",
+    "meaning": "Filing and acceptance dates describe issuer evidence; acquiredAt records capture. Complete bodies support literal cover text only. Partial, ambiguous and unsupported evidence remains excluded."
+  },
+  "exclusionDetails": [
+    {
+      "symbol": "BRK-B",
+      "cik": "0001067983",
+      "issuerName": "BERKSHIRE HATHAWAY INC",
+      "preparationReason": "missingOrAmbiguousOpenFigiMapping",
+      "coverReviewReason": "Retained October 12 exclusion; see previous source manifest."
+    },
+    {
+      "symbol": "TSM",
+      "cik": "0001046179",
+      "issuerName": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "Retained October 12 exclusion; see previous source manifest."
+    },
+    {
+      "symbol": "AIR",
+      "cik": "0000001750",
+      "issuerName": "AAR CORP",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "duplicate_security_facts_and_multiple_exchange_contexts"
+    },
+    {
+      "symbol": "ABT",
+      "cik": "0000001800",
+      "issuerName": "ABBOTT LABORATORIES",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "incomplete_additional_exchange_context"
+    },
+    {
+      "symbol": "ACU",
+      "cik": "0000002098",
+      "issuerName": "ACME UNITED CORP",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "cover_venue_not_in_reviewed_three_MIC_facts"
+    },
+    {
+      "symbol": "ADX",
+      "cik": "0000002230",
+      "issuerName": "ADAMS DIVERSIFIED EQUITY FUND, INC.",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "no_eligible_recent_10K_20F_40F"
+    },
+    {
+      "symbol": "APD",
+      "cik": "0000002969",
+      "issuerName": "Air Products & Chemicals, Inc.",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "existing_20_selected_fact_parser_bound"
+    },
+    {
+      "symbol": "CECO",
+      "cik": "0000003197",
+      "issuerName": "CECO ENVIRONMENTAL CORP",
+      "preparationReason": "missingOrAmbiguousOpenFigiMapping",
+      "coverReviewReason": null
+    },
+    {
+      "symbol": "ALX",
+      "cik": "0000003499",
+      "issuerName": "ALEXANDERS INC",
+      "preparationReason": "missingOrAmbiguousOpenFigiMapping",
+      "coverReviewReason": null
+    },
+    {
+      "symbol": "UHAL-B",
+      "cik": "0000004457",
+      "issuerName": "U-Haul Holding Co /NV/",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "no_exact_candidate_ticker_join"
+    },
+    {
+      "symbol": "AEP",
+      "cik": "0000004904",
+      "issuerName": "AMERICAN ELECTRIC POWER CO INC",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "incomplete_at_16MiB_cap"
+    },
+    {
+      "symbol": "VBF",
+      "cik": "0000005094",
+      "issuerName": "Invesco Bond Fund",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "no_eligible_recent_10K_20F_40F"
+    },
+    {
+      "symbol": "UNMA",
+      "cik": "0000005513",
+      "issuerName": "Unum Group",
+      "preparationReason": "unsupportedClassification",
+      "coverReviewReason": "explicit_debt_title"
+    },
+    {
+      "symbol": "AAL",
+      "cik": "0000006201",
+      "issuerName": "American Airlines Group Inc.",
+      "preparationReason": "missingOrAmbiguousNormalizedSecCoverEvidence",
+      "coverReviewReason": "multiple_issuer_facts_and_incomplete_rights_context"
+    }
+  ],
+  "limitations": [
+    "Nineteen listings for eighteen issuers are a limited reviewed cohort, not broad-market coverage.",
+    "Four existing complete identities and all twelve typed FIGIs are unchanged; fifteen additional identities use independently minted opaque IDs.",
+    "Price coverage remains AAPL, GOOG and GOOGL. Annual and Filings retain the three existing SEC CIKs; discovery does not enable provider reads.",
+    "Thirteen candidates are quarantined and one is unsupported. CECO, ALX and BRK-B have no exact accepted mapping; UNMA is debt. No fallback symbol or venue is admitted.",
+    "Original failed, partial and ambiguous filing evidence is retained outside the repository. No partial body or unsupported inline-XBRL transform is admitted.",
+    "Source assembly and policy-review time does not refresh older captures or filing observations. The five source-role clocks and mixed-source lineage are retained.",
+    "OpenFIGI returned no CIK. The reviewed join uses exact ticker/class/issuer/venue evidence. Listed status is the documented request-default inference, not a returned boolean.",
+    "ISO 10383/SWIFT facts are a limited unofficial projection with attribution. The full registry is not redistributed.",
+    "No source authenticity guarantee, whole-market claim, provider entitlement or running deployment follows from this candidate."
+  ]
+}

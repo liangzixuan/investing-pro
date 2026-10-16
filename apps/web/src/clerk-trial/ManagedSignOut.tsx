@@ -24,7 +24,7 @@ function resourceStatus(resource: ManagedResourceSaveSummary): string {
   return details.join(" ") || "No unconfirmed local changes.";
 }
 
-/** Review both save resources before the session owner performs one sign-out. */
+/** Review all three save resources before the session owner performs one sign-out. */
 export function ManagedSignOut({ owner }: { owner: ManagedSessionOwner }) {
   const state = useSyncExternalStore(
     owner.subscribe,
@@ -39,7 +39,7 @@ export function ManagedSignOut({ owner }: { owner: ManagedSessionOwner }) {
   const headingId = useId();
   const retired = state.phase === "retired" || state.phase === "signing_out";
   const visible = reviewOpen && !retired;
-  const resources = [state.watchlist, state.followups];
+  const resources = [state.watchlist, state.followups, state.portfolio];
   const uncertain = resources.some((resource) => resource.uncertain);
   const pending = resources.some(
     (resource) =>
@@ -119,12 +119,12 @@ export function ManagedSignOut({ owner }: { owner: ManagedSessionOwner }) {
           </h2>
           <p>
             {pending
-              ? `${uncertain ? "The save result is uncertain." : "The save is still in progress."} The server may already have saved it. Signing out clears both local drafts and their pending save details. Sign in again and load the saved version of each resource to check the outcome.`
+              ? `${uncertain ? "The save result is uncertain." : "The save is still in progress."} The server may already have saved it. Signing out clears all three local drafts and their pending save details. Sign in again and load the saved version of each resource to check the outcome.`
               : dirty
-                ? "Your changes have not been confirmed as saved. Signing out discards both local drafts. It does not change the saved watchlist or follow-ups."
+                ? "Your changes have not been confirmed as saved. Signing out discards all three local drafts. It does not change the saved watchlist, follow-ups or portfolio."
                 : state.needsLeaveReview
-                  ? "A saved version still needs review. Signing out clears both local drafts and their recovery details. Sign in again and load each saved version to check it."
-                  : "There are no unconfirmed local changes. Signing out clears this screen and leaves the saved watchlist and follow-ups intact."}
+                  ? "A saved version still needs review. Signing out clears all three local drafts and their recovery details. Sign in again and load each saved version to check it."
+                  : "There are no unconfirmed local changes. Signing out clears this screen and leaves the saved watchlist, follow-ups and portfolio intact."}
           </p>
           <dl aria-label="Local save states">
             <div>
@@ -134,6 +134,10 @@ export function ManagedSignOut({ owner }: { owner: ManagedSessionOwner }) {
             <div>
               <dt>Follow-ups</dt>
               <dd>{resourceStatus(state.followups)}</dd>
+            </div>
+            <div>
+              <dt>Portfolio</dt>
+              <dd>{resourceStatus(state.portfolio)}</dd>
             </div>
           </dl>
           <p>Other signed-in devices keep their own sessions.</p>

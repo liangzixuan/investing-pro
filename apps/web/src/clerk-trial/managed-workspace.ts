@@ -22,6 +22,7 @@ import {
   type WatchlistMembership,
   type ResearchFollowup,
   type ResearchFollowupsPayload,
+  type PersonalPortfolioIdentity,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
@@ -84,6 +85,7 @@ import {
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import { ManagedResearchFollowups } from "./managed-research-followups";
+import { ManagedPortfolio, type PortfolioDraft } from "./managed-portfolio";
 import { ManagedSessionOwner } from "./managed-session-owner";
 import { MANAGED_WATCHLIST_SAVE_COPY } from "./save-coordinator-copy";
 import {
@@ -120,7 +122,8 @@ export interface CompanyRouteState {
   readonly message: string;
 }
 export interface ManagedDiscoveryState {
-  readonly view: "markets" | "discover" | "watchlist" | "followups";
+  readonly view:
+    "markets" | "discover" | "watchlist" | "followups" | "portfolio";
   readonly followupOpening: boolean;
   readonly query: string;
   readonly read: "status" | "search" | null;
@@ -205,7 +208,7 @@ function capture(payload: MainWatchlistPayload): DraftValidation {
   return { payload: JSON.parse(encoded) as MainWatchlistPayload, issue: null };
 }
 
-function listingIdentity(
+export function listingIdentity(
   result: Omit<WatchlistMembership, "note">,
 ): Omit<WatchlistMembership, "note"> {
   return {
@@ -233,6 +236,7 @@ export function listingMembership(
 export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
   readonly followups: ManagedResearchFollowups;
+  readonly portfolio: ManagedPortfolio;
   readonly sessionOwner: ManagedSessionOwner;
   readonly annual: ManagedAnnualReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
@@ -309,8 +313,20 @@ export class ManagedWorkspace {
         ),
       ...(newKey ? { newKey } : {}),
     });
+    this.portfolio = new ManagedPortfolio(api, resourceSession, {
+      getCatalogSnapshot: () => this.state.snapshot,
+      onRetire: () =>
+        this.sessionOwner.retire(
+          this.portfolio.coordinator.getSnapshot().message,
+        ),
+      ...(newKey ? { newKey } : {}),
+    });
     this.sessionOwner = new ManagedSessionOwner(
-      { watchlist: this.coordinator, followups: this.followups.coordinator },
+      {
+        watchlist: this.coordinator,
+        followups: this.followups.coordinator,
+        portfolio: this.portfolio.sessionResource,
+      },
       session,
       () => this.clear(),
     );
@@ -407,6 +423,14 @@ export class ManagedWorkspace {
         this.cancelReview();
       }
     });
+    this.portfolio.coordinator.subscribe(() => {
+      const selection = this.state.research?.selection;
+      if (
+        selection?.origin === "portfolio" &&
+        !this.canSwitchResearch(selection)
+      )
+        this.closeResearch();
+    });
     this.followups.coordinator.subscribe(() => {
       const selection = this.state.research?.selection;
       if (
@@ -424,6 +448,7 @@ export class ManagedWorkspace {
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
     this.followups.syncCatalog(this.state.snapshot?.snapshotSha256 ?? null);
+    this.portfolio.syncCatalog();
     this.syncAnnouncements();
     this.syncWatchlistPrices();
     this.syncAnnualComparison();
@@ -523,6 +548,7 @@ export class ManagedWorkspace {
     this.cancelFollowupOpening();
     this.followupResearch = null;
     this.followups.retire();
+    this.portfolio.retire();
     this.closeResearch();
     this.annual.retire();
     this.annualComparison.retire();
@@ -576,8 +602,11 @@ export class ManagedWorkspace {
       message = "Enter a company name or ticker of at most 128 characters.";
     this.update({ message });
   }
+  canNavigate() {
+    return !this.retired && !this.portfolio.getSnapshot().pendingEditor;
+  }
   setQuery(query: string) {
-    if (this.retired) return;
+    if (!this.canNavigate()) return;
     this.searchOperation?.abort();
     this.searchOperation = null;
     this.update({
@@ -589,8 +618,10 @@ export class ManagedWorkspace {
     });
   }
   setView(view: ManagedDiscoveryState["view"]) {
-    if (this.retired) return;
+    if (!this.canNavigate()) return;
     this.viewRevision++;
+    if (this.state.view === "portfolio" && view !== "portfolio")
+      this.portfolio.cancelReview();
     this.closeResearch();
     if (view === this.state.view) return;
     if (view === "markets") {
@@ -628,7 +659,7 @@ export class ManagedWorkspace {
     await this.readCatalog("search");
   }
   private async readCatalog(read: "status" | "search") {
-    if (this.retired) return;
+    if (!this.canNavigate()) return;
     this.searchOperation?.abort();
     const operation = new AbortController();
     this.searchOperation = operation;
@@ -853,7 +884,7 @@ export class ManagedWorkspace {
     });
   }
   async setCompanyRoute(route: ManagedCompanyRoute | null) {
-    if (this.retired) return;
+    if (!this.canNavigate()) return;
     this.cancelFollowupOpening();
     this.watchlistPrices.cancel();
     if (
@@ -1098,6 +1129,7 @@ export class ManagedWorkspace {
       admit?: (phase: "before-clear" | "after-clear") => boolean;
     } = {},
   ) {
+    if (!this.canNavigate()) return;
     const operation = Symbol();
     this.researchOperation = operation;
     const owns = () => this.researchOperation === operation;
@@ -1190,6 +1222,16 @@ export class ManagedWorkspace {
         )
       );
     }
+    if (selection.origin === "portfolio") {
+      const draft = this.portfolio.coordinator.getSnapshot().draft;
+      return (
+        selection.cik === null &&
+        draft?.ledger?.snapshotSha256 === selection.catalogSnapshotSha256 &&
+        draft.ledger.identities.some((identity) =>
+          membershipMatchesResult({ ...identity, note: "" }, selection.listing),
+        )
+      );
+    }
     if (selection.origin !== "watchlist") return false;
     const draft = this.coordinator.getSnapshot().draft;
     return (
@@ -1199,6 +1241,35 @@ export class ManagedWorkspace {
         membershipMatchesResult(member, selection.listing),
       )
     );
+  }
+  openPortfolioResearch(
+    capturedDraft: PortfolioDraft,
+    listing: PersonalPortfolioIdentity,
+  ) {
+    const ledger = capturedDraft.ledger;
+    if (
+      !this.canNavigate() ||
+      this.navigationBlocked ||
+      this.state.view !== "portfolio" ||
+      this.state.research ||
+      this.state.companyRoute ||
+      !this.portfolio.canEdit() ||
+      this.portfolio.coordinator.getSnapshot().draft !== capturedDraft ||
+      !ledger?.identities.includes(listing) ||
+      ledger.snapshotSha256 !== this.state.snapshot?.snapshotSha256
+    )
+      return;
+    const selection: ManagedResearchSelection = {
+      catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
+      listing: listingIdentity(listing),
+      cik: null,
+      origin: "portfolio",
+    };
+    this.openResearch(selection, "eod", {
+      admit: () =>
+        this.portfolio.coordinator.getSnapshot().draft === capturedDraft &&
+        this.canSwitchResearch(selection),
+    });
   }
   switchToFilings() {
     this.switchResearch("filings");
