@@ -6910,6 +6910,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("thesis-review") ||
             scenarioName.equals("company-snapshot") ||
             scenarioName.equals("research-followups") ||
+            scenarioName.equals("markets-day-view") ||
             scenarioName.equals("company-price-ranges") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
             scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
