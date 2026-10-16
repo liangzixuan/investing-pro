@@ -117,6 +117,29 @@ complete original Annual packet, including these comparative observations and
 clocks. Failed refresh, Cancel, late completion, selection change and session
 retirement retain the existing source, report and saved-draft rules.
 
+### Read reported balance sheet change
+
+Inside **Reported balance sheet history**, **Reported balance sheet change**
+shows three independent app calculations in USD: current minus prior total assets,
+total liabilities and parent equity. The two dates are the first two displayed
+history dates. They need not be consecutive year-ends. Exact signed differences
+retain zero and negative inputs; they are not growth rates, annualized returns or
+a ranking of financial strength.
+
+Each calculation requires its own amount at both dates. Missing or refused cells
+retain their current or prior reason; an older available value cannot replace
+them. One date leaves the prior amount unavailable. All original amounts,
+observation IDs, filing coordinates and source clocks remain in the history and
+source disclosures. Existing history eligibility governs the calculation at the
+original load; historical prior amounts do not acquire a current-use label.
+
+The shared domain calculation consumes the already resolved history. It uses
+isolated Decimal.js precision without rounding or scaling the dollar difference.
+Opening history adds no request, note action or save. Current totals, the snapshot
+and captured report format are unchanged; the complete captured Annual packet
+retains the inputs needed to reproduce the difference. Source, browser, native
+and delivery acceptance remain separate in [Current work](CURRENT_WORK.md).
+
 ## Watchlist Annual comparison
 
 **Compare annual results** lets the owner choose two different companies from

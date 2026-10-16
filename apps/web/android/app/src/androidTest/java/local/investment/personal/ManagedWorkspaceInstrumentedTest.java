@@ -5008,6 +5008,9 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("native Right scrolls balance history while retaining exact independent cells", exact +
             " && document.querySelector(" + JSONObject.quote(historyTable) + ").scrollLeft > 0 && document.activeElement === document.querySelector(" + JSONObject.quote(historyTable) + ")");
         retainAnnualNoteFrame("balanceSheetHistoryLoaded", historyTable + " thead th:nth-child(3)", historyTable + " thead th:nth-child(3), " + historyTable + " tbody td:nth-of-type(2)", 4);
+        String change = history + " > .managed-annual-balance-sheet-change";
+        awaitPage("signed changes use the first two shared dates without borrowing the older liability", exact + " && " + balanceSheetChangeExact());
+        retainAnnualNoteFrame("balanceSheetChangeLoaded", change + " > h6", change + " > h6, " + change + " > dl > div", 4);
         focusCashHistoryControl(historyReferences + " > summary");
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
         awaitPage("native keyboard exposes each date and metric's exact source references", exact +
@@ -5062,11 +5065,14 @@ public class ManagedWorkspaceInstrumentedTest {
         JSONObject capturedEvidence = new JSONObject(captured).getJSONObject("evidence");
         assertEquals("Captured Annual clock remains the original load", "2026-09-20T00:00:02.000Z", capturedEvidence.getJSONObject("generation").getString("completedAt"));
         assertEquals("Captured parent equity remains its exact signed source value", "-200.125", capturedEvidence.getJSONObject("balanceSheet").getJSONObject("resolution").getJSONObject("shareholdersEquity").getString("value"));
+        assertEquals("Captured prior assets retain the exact subtraction operand", "900.5", capturedEvidence.getJSONObject("balanceSheet").getJSONObject("totalAssets").getJSONArray("observations").getJSONObject(1).getString("value"));
+        assertEquals("Captured older liability retains its own date and cannot fill the missing prior cell", "2023-09-30", capturedEvidence.getJSONObject("balanceSheet").getJSONObject("totalLiabilities").getJSONArray("observations").getJSONObject(1).getString("endDate"));
         click(".managed-annual-report .trial-actions button:first-child");
         awaitPage("third explicit refresh holds without replacing any total", exact + " && " + DIAGNOSTICS + ".annual === 3 && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'");
         click(CATALOG_REFRESH);
         String retired = DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
             " && document.querySelector('.managed-company-research') === null && document.querySelector('.sec-annual-balance-sheet') === null && document.querySelector('.managed-annual-balance-sheet-history') === null" +
+            " && document.querySelector('.managed-annual-balance-sheet-change') === null" +
             " && document.querySelector('.managed-company-snapshot') === null && document.querySelector('#managed-prepared-report-heading') === null && document.querySelector('#managed-report-document') === null";
         awaitPage("aggregate expiry clears the report, all three totals and the watchlist draft", retired + " && " + DIAGNOSTICS + ".aborted === 1");
         click("#settle-cancelled-read");
@@ -5127,7 +5133,24 @@ public class ManagedWorkspaceInstrumentedTest {
             " && history.textContent.includes('Selected filing report date 2025-12-31') && history.textContent.includes('Earlier dates are historical comparatives in this filing, not current-use values.')" +
             " && history.textContent.includes('Original Annual cutoff 2026-09-20T00:00:00.000Z') && history.textContent.includes('Company Facts captured 2026-09-20T00:00:01.000Z')" +
             " && history.textContent.includes('Submissions captured 2026-09-20T00:00:02.000Z') && history.textContent.includes('Original load completed 2026-09-20T00:00:02.000Z')" +
-            " && !history.textContent.includes('901.5'); })()";
+            " && !history.textContent.includes('901.5'); })() && " + balanceSheetChangeExact();
+    }
+
+    private String balanceSheetChangeExact() {
+        return "(() => { const history = document.querySelector('.managed-annual-report .managed-annual-balance-sheet-history'), change = history?.querySelector(':scope > .managed-annual-balance-sheet-change');" +
+            " const rows = [...(change?.querySelectorAll(':scope > dl > div') || [])], times = [...(change?.querySelectorAll(':scope > p:first-of-type time') || [])];" +
+            " const keys = ['totalAssets','totalLiabilities','shareholdersEquity'], labels = ['Total assets change','Total liabilities change','Parent equity change'];" +
+            " const values = ['99.625','Unavailable. Prior amount: No reported amount at this date.','-200.125'];" +
+            " return history.querySelectorAll('.managed-annual-balance-sheet-change').length === 1 && change.getAttribute('aria-label') === 'Reported balance sheet change'" +
+            " && change.querySelector(':scope > h6')?.textContent === 'Reported balance sheet change' && times.length === 2" +
+            " && times.every((time,i) => time.textContent === ['2024-12-31','2025-12-31'][i] && time.getAttribute('datetime') === time.textContent)" +
+            " && rows.length === 3 && rows.every((row,i) => row.getAttribute('data-balance-change') === keys[i]" +
+            " && row.querySelector('dt')?.textContent === labels[i] + ' · USDApp calculation' && row.querySelector('dd')?.textContent === values[i]" +
+            " && (i === 1 ? row.querySelector('.managed-annual-unavailable') !== null && row.querySelector('.managed-balance-sheet-change-amount') === null : row.querySelector('.managed-balance-sheet-change-amount')?.textContent === values[i]))" +
+            " && change.textContent.includes('Current minus prior, using the first two displayed dates.')" +
+            " && change.textContent.includes('Older dates do not replace missing or refused inputs.')" +
+            " && !change.textContent.includes('2023-09-30') && !change.textContent.includes('300.25')" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
     }
 
     private String balanceSheetSnapshotExact(String container) {

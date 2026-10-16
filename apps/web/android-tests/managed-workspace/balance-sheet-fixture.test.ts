@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { resolvePersonalSecAnnualBalanceSheetHistory } from "@research-cockpit/personal-financial-analytics";
+import {
+  comparePersonalSecAnnualBalanceSheetHistory,
+  resolvePersonalSecAnnualBalanceSheetHistory,
+} from "@research-cockpit/personal-financial-analytics";
 import { SecAnnualBalanceSheetHistory } from "../../src/features/research/SecAnnualBalanceSheetHistory";
+import { SecAnnualBalanceSheetChange } from "../../src/features/research/SecAnnualBalanceSheetChange";
 import type { ManagedApi } from "../../src/clerk-trial/managed-api";
-import { ManagedAnnualReport } from "../../src/clerk-trial/managed-annual-report";
-import { eodSelection } from "../../src/clerk-trial/eod-history-fixture";
 import { createFixture } from "./fixture";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
@@ -83,6 +85,43 @@ describe("invented balance-sheet acceptance", () => {
       totalLiabilities: { value: "900" },
       shareholdersEquity: { value: "-98.625" },
     });
+    const change = changeFor(decoded);
+    expect(change).toMatchObject({
+      status: "available",
+      accessionNumber: "0000000001-26-000001",
+      currentDate: "2025-12-31",
+      priorDate: "2024-12-31",
+      totalAssets: {
+        status: "available",
+        difference: "99.625",
+        current: history.balances[0]!.totalAssets,
+        prior: history.balances[1]!.totalAssets,
+        observationIds: decoded.evidence.balanceSheet.totalAssets.observations
+          .slice(0, 2)
+          .map((row) => row.id),
+      },
+      totalLiabilities: {
+        status: "unavailable",
+        current: history.balances[0]!.totalLiabilities,
+        prior: history.balances[1]!.totalLiabilities,
+      },
+      shareholdersEquity: {
+        status: "available",
+        difference: "-200.125",
+        current: history.balances[0]!.shareholdersEquity,
+        prior: history.balances[1]!.shareholdersEquity,
+      },
+    });
+    if (change.status !== "available") throw new Error("Expected change dates");
+    expect(change.totalLiabilities).not.toHaveProperty("difference");
+    const calculated = changeMarkup(decoded);
+    expect(calculated).toContain("99.625</span>");
+    expect(calculated).toContain("-200.125</span>");
+    expect(calculated).toContain(
+      "Prior amount: No reported amount at this date.",
+    );
+    expect(calculated).not.toContain("300.25");
+    expect(calculated).not.toContain("2023-09-30");
     for (const key of keys)
       for (const row of decoded.evidence.balanceSheet[key].observations) {
         expect(row.accessionNumber).toBe("0000000001-26-000001");
@@ -151,11 +190,27 @@ describe("invented balance-sheet acceptance", () => {
       },
     });
     const historyBefore = markup(initial);
+    const changeBefore = changeFor(initial);
+    const calculatedBefore = changeMarkup(initial);
     expect(historyBefore).toContain("900.5");
     expect(historyBefore).toContain("No reported amount at this date.");
     expect(JSON.stringify(JSON.parse(document.text))).toContain(
       JSON.stringify(initial),
     );
+    const captured = await parseSecAnnualEvidenceResponse(
+      (
+        JSON.parse(document.text) as {
+          sources: { annual: { response: unknown } };
+        }
+      ).sources.annual.response,
+      request,
+      new AbortController().signal,
+    );
+    expect(captured).toEqual(initial);
+    if (!captured) throw new Error("Expected decoded captured evidence");
+    expect(changeFor(captured)).toEqual(changeBefore);
+    expect(changeMarkup(captured)).toBe(calculatedBefore);
+    expect(fixture.getSnapshot().save).toBe(0);
     expect(
       initial.evidence.balanceSheet.totalAssets.observations.map(
         (row) => row.endDate,
@@ -177,6 +232,9 @@ describe("invented balance-sheet acceptance", () => {
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     expect(markup(workspace.annual.getSnapshot().response!)).toBe(
       historyBefore,
+    );
+    expect(changeMarkup(workspace.annual.getSnapshot().response!)).toBe(
+      calculatedBefore,
     );
     expect(JSON.parse(document.text)).toMatchObject({
       sources: { annual: { response: initial } },
@@ -201,6 +259,8 @@ describe("invented balance-sheet acceptance", () => {
     expect(workspace.annual.getSnapshot().response).toBeNull();
     expect(workspace.getSnapshot().research).toBeNull();
     expect(report()).toBeNull();
+    expect(changeFor(captured)).toEqual(changeBefore);
+    expect(changeMarkup(captured)).toBe(calculatedBefore);
     expect(fixture.getSnapshot()).toMatchObject({
       load: 1,
       status: 2,
@@ -310,12 +370,33 @@ function markup(response: Awaited<ReturnType<typeof balanceSheetPacket>>) {
     createElement(SecAnnualBalanceSheetHistory, { response }),
   );
 }
+function changeFor(response: Awaited<ReturnType<typeof balanceSheetPacket>>) {
+  return comparePersonalSecAnnualBalanceSheetHistory(historyFor(response));
+}
+function changeMarkup(
+  response: Awaited<ReturnType<typeof balanceSheetPacket>>,
+) {
+  return renderToStaticMarkup(
+    createElement(SecAnnualBalanceSheetChange, {
+      history: historyFor(response),
+    }),
+  );
+}
 
 describe("balance-sheet history cancellation and replacement", () => {
   it("retains dated history on Cancel, ignores a changed late packet and replaces only after a new explicit read", async () => {
-    const first = await balanceSheetPacket(),
-      replacement = await balanceSheetPacket(true);
-    let settle: ((value: typeof first) => void) | undefined;
+    const first = await parseSecAnnualEvidenceResponse(
+        await balanceSheetPacket(),
+        request,
+        new AbortController().signal,
+      ),
+      replacement = await parseSecAnnualEvidenceResponse(
+        await balanceSheetPacket(true),
+        request,
+        new AbortController().signal,
+      );
+    if (!first || !replacement) throw new Error("Expected admitted v5 packets");
+    let settle: ((value: NonNullable<typeof first>) => void) | undefined;
     const read = vi
       .fn<ManagedApi["annualReport"]>()
       .mockResolvedValueOnce(first)
@@ -326,12 +407,53 @@ describe("balance-sheet history cancellation and replacement", () => {
           }),
       )
       .mockResolvedValueOnce(replacement);
-    const model = new ManagedAnnualReport(read, vi.fn());
-    model.open(eodSelection);
+    const fixture = await createFixture("annual-balance-sheet");
+    const workspace = new ManagedWorkspace(
+      { ...fixture.api, annualReport: read },
+      fixture.session,
+      undefined,
+      {
+        marketsCohort: fixture.marketsCohort,
+        priceCoverage: fixture.priceCoverage,
+      },
+    );
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.note("listing-zero", "Change draft · Café 東京 📈  ");
+    workspace.move("listing-zero", 1);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    if (!draft) throw new Error("Expected watchlist draft");
+    workspace.openWatchlistAnnual(draft.memberships[1]!);
+    const selection = workspace.getSnapshot().research?.selection;
+    if (!selection) throw new Error("Expected exact company selection");
+    const model = workspace.annual;
+    expect(read).not.toHaveBeenCalled();
     await model.load();
     const original = model.getSnapshot().response;
     if (!original) throw new Error("Expected original admitted packet");
     const before = markup(original);
+    const changeBefore = changeFor(original);
+    const calculatedBefore = changeMarkup(original);
+    const report = prepareCompanyReport(
+      selection,
+      companySnapshotEvidence(
+        selection,
+        workspace.eod.getSnapshot(),
+        model.getSnapshot(),
+        workspace.filings.getSnapshot(),
+      ),
+      workspace.getResearchWatchlist(selection),
+    );
+    if (!report) throw new Error("Expected original captured report");
+    const captured = formatCompanyReportDocument(report);
+    if (!captured) throw new Error("Expected complete report document");
+    const capturedBefore = captured.text;
+    expect(changeBefore).toMatchObject({
+      totalAssets: { difference: "99.625" },
+      shareholdersEquity: { difference: "-200.125" },
+    });
+    expect(read).toHaveBeenCalledTimes(1);
     const pending = model.load();
     expect(model.getSnapshot().response).toBe(original);
     model.cancel();
@@ -340,15 +462,52 @@ describe("balance-sheet history cancellation and replacement", () => {
     settle(replacement);
     await pending;
     expect(markup(model.getSnapshot().response!)).toBe(before);
+    expect(changeMarkup(model.getSnapshot().response!)).toBe(calculatedBefore);
+    expect(changeFor(model.getSnapshot().response!)).toEqual(changeBefore);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     expect(read).toHaveBeenCalledTimes(2);
     expect(read.mock.calls[1]![1].aborted).toBe(true);
     await model.load();
     expect(read).toHaveBeenCalledTimes(3);
     expect(markup(model.getSnapshot().response!)).toContain("901.5");
+    expect(changeFor(model.getSnapshot().response!)).toMatchObject({
+      currentDate: "2025-12-31",
+      priorDate: "2024-12-31",
+      totalAssets: { difference: "98.375" },
+      totalLiabilities: {
+        status: "unavailable",
+        prior: { reason: "no_report_date" },
+      },
+      shareholdersEquity: { difference: "777.375" },
+    });
+    expect(changeMarkup(model.getSnapshot().response!)).toContain(
+      "98.375</span>",
+    );
+    expect(changeMarkup(model.getSnapshot().response!)).not.toContain(
+      "99.625</span>",
+    );
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(formatCompanyReportDocument(report)?.text).toBe(capturedBefore);
+    expect(JSON.parse(capturedBefore)).toMatchObject({
+      authoredResearch: { note: "Change draft · Café 東京 📈  " },
+      sources: { annual: { response: original } },
+    });
+    expect(changeFor(original)).toEqual(changeBefore);
+    expect(fixture.getSnapshot()).toMatchObject({
+      load: 1,
+      status: 1,
+      save: 0,
+      eod: 0,
+      filings: 0,
+      marketsEod: 0,
+      calendar: 0,
+      fed: 0,
+    });
     expect(model.getSnapshot().response?.evidence.generation.completedAt).toBe(
       "2026-09-21T00:00:02.000Z",
     );
     model.close();
     expect(model.getSnapshot().response).toBeNull();
+    workspace.sessionOwner.dispose();
   });
 });
