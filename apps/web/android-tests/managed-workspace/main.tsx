@@ -38,6 +38,7 @@ if (
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
   scenario !== "research-followups" &&
+  scenario !== "markets-day-view" &&
   scenario !== "company-price-ranges" &&
   scenario !== "thesis-review" &&
   scenario !== "price-comparison-note" &&
@@ -319,6 +320,7 @@ function Fixture() {
         )}
         {(scenario === "bea-agenda" ||
           scenario === "bea-agenda-comparison" ||
+          scenario === "markets-day-view" ||
           scenario === "bea-session-retirement") && (
           <button
             id="settle-cancelled-calendar"
@@ -347,7 +349,8 @@ function Fixture() {
             Settle cancelled invented Annual comparison
           </button>
         )}
-        {scenario === "fed-announcements" && (
+        {(scenario === "fed-announcements" ||
+          scenario === "markets-day-view") && (
           <button
             id="settle-cancelled-announcements"
             disabled={state.fedAborted !== state.fedLateResolved + 1}

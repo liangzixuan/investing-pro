@@ -290,6 +290,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("annual-operating-comparison");
         if (testName.getMethodName().equals("fedAnnouncementsRetainDatesCancelAndRetireWithSession"))
             selectFixtureScenario("fed-announcements");
+        if (testName.getMethodName().equals("marketsDayViewKeepsSourcesSeparateAndRetiresLateResponses"))
+            selectFixtureScenario("markets-day-view");
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("watchlist-export");
         if (testName.getMethodName().equals("researchFollowupsSaveResearchAndCompleteAcrossSessions") ||
@@ -322,6 +324,161 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) assertCompanyHistory("listing-zero", "annual", true);
         else assertRootHistory();
         Log.i("ManagedFixture", "source=" + expectedSourceSha + ", files=" + copiedFiles + ", bytes=" + copiedBytes);
+    }
+
+    @Test
+    public void marketsDayViewKeepsSourcesSeparateAndRetiresLateResponses() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Independent calendar draft");
+        openFollowupsView();
+        awaitPage("day review has not automatically loaded follow-ups", FOLLOWUPS + ".load === 0 && " + FOLLOWUPS + ".save === 0");
+        click("#managed-followups-load");
+        awaitPage("one explicit day-review follow-up load admits version zero", FOLLOWUPS + ".load === 1 && " + FOLLOWUP_DRAFT + ".baseVersion === 0");
+        String check = "Read the original schedule and publication dates";
+        String id = authorFollowup(check, "2026-10-30");
+        assertFollowupEntry(id, check, "2026-10-30", "", "open", null, 0, true);
+        String watchlistBefore = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String followupsBefore = readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ")");
+        selectWorkspaceView("Markets");
+        assertDayViewCounts(0, 0, 0, 0, 0, 0, 1);
+        awaitPage("both day-view sources start explicitly unloaded",
+            "document.querySelector('.managed-markets-day-view')?.textContent.includes('BEA schedule not loaded.')" +
+            " && document.querySelector('.managed-markets-day-view')?.textContent.includes('Fed announcements not loaded.')" +
+            " && document.querySelectorAll('.managed-markets-day-view [data-day-source]').length === 0");
+        String originalLocation = readFixtureString("location.href");
+        String originalHistoryLength = readFixtureString("String(history.length)");
+        click(".managed-day-sources [aria-label='BEA source status'] a");
+        awaitPage("Inspect agenda focuses its existing heading without routing",
+            "document.activeElement?.id === 'bea-agenda-title' && location.href === " + JSONObject.quote(originalLocation) +
+            " && String(history.length) === " + JSONObject.quote(originalHistoryLength));
+        assertDayViewCounts(0, 0, 0, 0, 0, 0, 1);
+        clickBeaAction("Load agenda");
+        awaitPage("only the requested BEA packet is admitted", DIAGNOSTICS + ".calendar === 1 && " + DIAGNOSTICS + ".fed === 0" +
+            " && document.querySelectorAll('.managed-markets-day-view [data-day-source=bea]').length === 3");
+        click(".managed-day-sources [aria-label='Federal Reserve source status'] a");
+        awaitPage("Inspect announcements focuses its existing heading without routing",
+            "document.activeElement?.id === 'fed-announcements-title' && location.href === " + JSONObject.quote(originalLocation) +
+            " && String(history.length) === " + JSONObject.quote(originalHistoryLength));
+        assertDayViewCounts(1, 0, 0, 0, 0, 0, 1);
+        clickFedAction("Load announcements");
+        awaitPage("day view retains independent retrieval clocks and original coverage",
+            "(() => { const q = document.querySelector('.managed-markets-day-view');" +
+            " const bea = q?.querySelector('[aria-label=\"BEA source status\"]'), fed = q?.querySelector('[aria-label=\"Federal Reserve source status\"]');" +
+            " return [...(bea?.querySelectorAll('time') ?? [])].map(t => t.dateTime).join('|') === '2026-10-20T18:00:00.000Z|2026-10-20T18:00:00.000Z|2026-11-19T18:00:00.000Z'" +
+            " && fed?.querySelector('time')?.dateTime === '2026-10-30T18:00:00.000Z'" +
+            " && bea.textContent.includes('3 scheduled releases in this loaded 30-day window.') && fed.textContent.includes('2 of 2 announcements from this loaded feed.')" +
+            " && q.querySelectorAll('[data-day-source]').length === 5 && q.textContent.includes('Scheduled releases do not confirm publication or released values.')" +
+            " && q.textContent.includes('no company relevance or alert is inferred.'); })()");
+        chooseNativeSelectOption("#managed-day-date", "2026-10-29", "Thu, Oct 29, 2026 · 3");
+        awaitPage("Eastern date joins schedules and the next-UTC-date publication without assigning the unknown time",
+            "(() => { const q = document.querySelector('.managed-markets-day-view'), group = q?.querySelector('[aria-label=\"Thu, Oct 29, 2026\"]');" +
+            " const rows = [...(group?.querySelectorAll('[data-day-source]') ?? [])], unknown = q?.querySelector('[aria-label=\"Unknown publication time\"]');" +
+            " return rows.map(e => e.dataset.daySource).join('|') === 'bea|bea|fed'" +
+            " && rows.map(e => e.querySelector('a')?.textContent).join('|') === 'Invented GDP|Invented Income|Invented evening monetary announcement'" +
+            " && rows.map(e => e.querySelector('time')?.dateTime).join('|') === '2026-10-29T12:30:00.000Z|2026-10-29T12:30:00.000Z|2026-10-30T00:30:00.000Z'" +
+            " && rows.map(e => e.querySelector('.managed-day-kind')?.textContent).join('|') === 'Scheduled · BEA|Scheduled · BEA|Published · Federal Reserve'" +
+            " && rows[0].querySelector('a').href === 'https://www.bea.gov/news/schedule'" +
+            " && rows[2].querySelector('a').href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261030a.htm'" +
+            " && rows[0].querySelector('time').textContent.includes('8:30:00 AM EDT') && rows[2].querySelector('time').textContent.includes('8:30:00 PM EDT')" +
+            " && unknown?.querySelectorAll('[data-day-source=fed]').length === 1 && unknown.querySelector('time') === null" +
+            " && unknown.querySelector('a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && unknown.textContent.includes('Publication time unknown. This item is not assigned to a date.')" +
+            " && q.textContent.includes('3 dated items shown · 1 unknown-time items shown · 5 total loaded items.'); })()");
+        retainAnnualNoteFrame("marketsDayViewMixedSources", ".managed-markets-day-view section[aria-label='Thu, Oct 29, 2026']", ".managed-markets-day-view section[aria-label='Thu, Oct 29, 2026'] > h3, .managed-markets-day-view section[aria-label='Thu, Oct 29, 2026'] li", 4);
+        chooseNativeSelectOption("#managed-day-source", "bea", "BEA schedule");
+        awaitPage("BEA filter keeps only its two scheduled rows",
+            "document.querySelectorAll('.managed-markets-day-view [data-day-source=bea]').length === 2" +
+            " && document.querySelectorAll('.managed-markets-day-view [data-day-source=fed]').length === 0" +
+            " && document.querySelector('#managed-day-date')?.value === '2026-10-29'");
+        chooseNativeSelectOption("#managed-day-source", "fed", "Federal Reserve announcements");
+        awaitPage("Fed filter keeps its dated publication and separate unknown time",
+            "document.querySelectorAll('.managed-markets-day-view [data-day-source=bea]').length === 0" +
+            " && document.querySelectorAll('.managed-markets-day-view [data-day-source=fed]').length === 2" +
+            " && document.querySelector('.managed-markets-day-view [aria-label=\"Unknown publication time\"] time') === null" +
+            " && document.querySelector('#managed-day-date')?.value === '2026-10-29'");
+        chooseNativeSelectOption("#managed-day-source", "all", "Both sources");
+        click("nav[aria-label='On Markets'] [data-markets-jump=day]");
+        awaitPage("Day view jump focuses its owned visible heading and keeps local filters",
+            "document.activeElement?.id === 'managed-markets-day-heading' && document.activeElement.checkVisibility()" +
+            " && document.querySelector('#managed-day-source')?.value === 'all' && document.querySelector('#managed-day-date')?.value === '2026-10-29'" +
+            " && [...document.querySelectorAll('.managed-day-filters select,.managed-day-sources a')].every(e => e.getBoundingClientRect().height >= 44)" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth" +
+            " && location.href === " + JSONObject.quote(originalLocation) + " && String(history.length) === " + JSONObject.quote(originalHistoryLength));
+        assertDayViewCounts(1, 1, 0, 0, 0, 0, 1);
+        String packetBefore = readFixtureString(dayViewPacket());
+        assertDayViewRetained(watchlistBefore, followupsBefore, packetBefore);
+        clickBeaAction("Refresh agenda");
+        awaitPage("BEA failure qualifies only the previous schedule",
+            "document.querySelector('.managed-day-sources [aria-label=\"BEA source status\"] [role=alert]') !== null" +
+            " && document.querySelector('.managed-day-sources [aria-label=\"BEA source status\"]')?.textContent.includes('Previous schedule.')" +
+            " && document.querySelector('.managed-day-sources [aria-label=\"Federal Reserve source status\"] [role=alert]') === null" +
+            " && !document.querySelector('.managed-day-sources [aria-label=\"Federal Reserve source status\"]').textContent.includes('Previous announcements.')");
+        assertDayViewCounts(2, 1, 0, 0, 0, 0, 1);
+        assertDayViewRetained(watchlistBefore, followupsBefore, packetBefore);
+        clickFedAction("Refresh announcements");
+        awaitPage("Fed failure retains and qualifies its separate packet",
+            "document.querySelector('.managed-day-sources [aria-label=\"Federal Reserve source status\"] [role=alert]') !== null" +
+            " && document.querySelector('.managed-day-sources [aria-label=\"Federal Reserve source status\"]')?.textContent.includes('Previous announcements.')");
+        assertDayViewCounts(2, 2, 0, 0, 0, 0, 1);
+        assertDayViewRetained(watchlistBefore, followupsBefore, packetBefore);
+        clickBeaAction("Refresh agenda");
+        awaitPage("third calendar read is held", DIAGNOSTICS + ".calendar === 3 && document.querySelector('.bea-release-agenda [aria-busy=true]') !== null");
+        clickBeaAction("Cancel agenda");
+        click("#settle-cancelled-calendar");
+        assertDayViewCounts(3, 2, 1, 1, 0, 0, 1);
+        assertDayViewRetained(watchlistBefore, followupsBefore, packetBefore);
+        clickFedAction("Refresh announcements");
+        awaitPage("third announcement read is held", DIAGNOSTICS + ".fed === 3 && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+        clickFedAction("Cancel announcements");
+        click("#settle-cancelled-announcements");
+        assertDayViewCounts(3, 3, 1, 1, 1, 1, 1);
+        assertDayViewRetained(watchlistBefore, followupsBefore, packetBefore);
+        clickBeaAction("Refresh agenda");
+        clickFedAction("Refresh announcements");
+        awaitPage("both fourth source reads are held before expiry",
+            DIAGNOSTICS + ".calendar === 4 && " + DIAGNOSTICS + ".fed === 4" +
+            " && document.querySelector('.bea-release-agenda [aria-busy=true]') !== null && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+        assertDayViewRetained(watchlistBefore, followupsBefore, packetBefore);
+        click(CATALOG_REFRESH);
+        awaitPage("session expiry clears both dirty resources and both source views",
+            DIAGNOSTICS + ".status === 2 && document.querySelector('.managed-navigation') === null" +
+            " && document.querySelector('.managed-markets-day-view') === null && document.querySelector('.bea-release-agenda') === null && document.querySelector('.fed-announcements') === null" +
+            " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && " + DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false" +
+            " && " + FOLLOWUP_DRAFT + ".owner === 'retired' && " + FOLLOWUP_DRAFT + ".entries === null && " + FOLLOWUP_DRAFT + ".baseVersion === null && " + FOLLOWUP_DRAFT + ".dirty === false");
+        click("#settle-cancelled-calendar");
+        click("#settle-cancelled-announcements");
+        assertDayViewCounts(4, 4, 2, 2, 2, 2, 2);
+        awaitPage("both late packets leave the retired session and drafts cleared",
+            "document.querySelector('.managed-navigation') === null && document.querySelector('.managed-markets-day-view') === null" +
+            " && " + DRAFT + ".memberships === null && " + FOLLOWUP_DRAFT + ".entries === null" +
+            " && !document.body.textContent.includes('Invented evening monetary announcement') && !document.body.textContent.includes('Independent calendar draft')");
+        assertEquals("Day review preserves the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private String dayViewPacket() {
+        return "(() => { const q = document.querySelector('.managed-markets-day-view'); return JSON.stringify({" +
+            "date:q?.querySelector('#managed-day-date')?.value,source:q?.querySelector('#managed-day-source')?.value," +
+            "clocks:[...(q?.querySelectorAll('time') ?? [])].map(e=>[e.dateTime,e.textContent])," +
+            "rows:[...(q?.querySelectorAll('[data-day-source]') ?? [])].map(e=>[e.dataset.daySource,e.textContent,e.querySelector('a')?.href])}); })()";
+    }
+
+    private void assertDayViewRetained(String watchlistBefore, String followupsBefore, String packetBefore) throws Exception {
+        assertEquals("Day source actions preserve the entire watchlist draft", watchlistBefore, readFixtureString("JSON.stringify(" + DRAFT + ")"));
+        assertEquals("Day source actions preserve the entire independent follow-up draft", followupsBefore, readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ")"));
+        assertEquals("Source clocks, raw dates, rows and filters stay exact", packetBefore, readFixtureString(dayViewPacket()));
+    }
+
+    private void assertDayViewCounts(int calendar, int fed, int calendarAborted, int calendarLate, int fedAborted, int fedLate, int status) throws Exception {
+        awaitPage("day review uses only its bounded explicit source calls",
+            DIAGNOSTICS + ".calendar === " + calendar + " && " + DIAGNOSTICS + ".fed === " + fed +
+            " && " + DIAGNOSTICS + ".calendarAborted === " + calendarAborted + " && " + DIAGNOSTICS + ".calendarLateResolved === " + calendarLate +
+            " && " + DIAGNOSTICS + ".fedAborted === " + fedAborted + " && " + DIAGNOSTICS + ".fedLateResolved === " + fedLate +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === " + status + " && " + DIAGNOSTICS + ".marketsResolve === 2" +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0" +
+            " && " + DIAGNOSTICS + ".marketsEod === 0 && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
+            " && " + FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUPS + ".commits === 0");
     }
 
     @Test
@@ -1902,14 +2059,15 @@ public class ManagedWorkspaceInstrumentedTest {
             " source:document.querySelector('.bea-agenda-source a')?.href," +
             " busy:document.querySelector('.bea-release-agenda [aria-busy]')?.getAttribute('aria-busy')})";
         String originalPacket = readFixtureString(packet);
-        awaitPage("Markets offers four labelled native-sized section links",
+        awaitPage("Markets offers five labelled native-sized section links",
             "(() => { const links = [...document.querySelectorAll('nav[aria-label=\"On Markets\"] > a')];" +
-            " return links.length === 4 && links.map(a => a.textContent).join('|') === 'Company board|Research checks due|Economic calendar|Fed announcements'" +
+            " return links.length === 5 && links.map(a => a.textContent).join('|') === 'Company board|Research checks due|Markets day view|Economic calendar|Fed announcements'" +
             " && links.every(a => { const r = a.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }); })()");
-        for (String section : new String[] {"board", "review", "calendar", "announcements"}) {
+        for (String section : new String[] {"board", "review", "day", "calendar", "announcements"}) {
             String selector = "nav[aria-label='On Markets'] > a[data-markets-jump='" + section + "']";
             String targetId = section.equals("board") ? "managed-markets-heading" :
                 section.equals("review") ? "managed-daily-research-heading" :
+                section.equals("day") ? "managed-markets-day-heading" :
                 section.equals("calendar") ? "bea-agenda-title" : "fed-announcements-title";
             String geometry = readFixtureString(
                 "(() => { const link = document.querySelector(" + JSONObject.quote(selector) + ");" +

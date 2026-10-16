@@ -35,7 +35,13 @@ afterEach(() => {
   hooks.cleanup = undefined;
 });
 
-const sections = ["board", "review", "calendar", "announcements"] as const;
+const sections = [
+  "board",
+  "review",
+  "day",
+  "calendar",
+  "announcements",
+] as const;
 type Section = (typeof sections)[number];
 type Props = React.ComponentProps<typeof ManagedMarketsNavigation>;
 type Link = React.ReactElement<
@@ -74,6 +80,7 @@ function harness() {
   const nodes = {
     board: target("managed-markets-heading"),
     review: target("managed-daily-research-heading"),
+    day: target("managed-markets-day-heading"),
     calendar: target("bea-agenda-title"),
     announcements: target("fed-announcements-title"),
   };
@@ -130,7 +137,7 @@ function harness() {
 }
 
 describe("managed Markets section navigation", () => {
-  it("renders four named native links without running guards or moving focus", () => {
+  it("renders five named native links without running guards or moving focus", () => {
     const h = harness();
     const html = renderToStaticMarkup(
       <ManagedMarketsNavigation {...h.props} />,
@@ -147,6 +154,9 @@ describe("managed Markets section navigation", () => {
     );
     expect(html).toContain(
       'href="#managed-daily-research-heading" data-markets-jump="review">Research checks due</a>',
+    );
+    expect(html).toContain(
+      'href="#managed-markets-day-heading" data-markets-jump="day">Markets day view</a>',
     );
     expect(h.props.isCurrent).not.toHaveBeenCalled();
     for (const node of Object.values(h.nodes)) {

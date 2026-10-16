@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M3/M4 candidate adds [Research checks due](MANAGED_MARKETS_HOME.md#review-research-checks-due)
+The next M3 candidate adds [Markets day view](MANAGED_MARKETS_HOME.md#read-the-markets-day-view):
+one Eastern-date reading view of the already loaded BEA schedule and Fed
+announcements. Independent source controls, original UTC times, scheduled versus
+published labels, unknown times and coverage limits remain explicit. It adds no
+feed, schema, automatic load, relevance inference or alert. Broader company news,
+confirmed earnings/dividend coverage and released economic values remain open.
+
+The preceding M3/M4 candidate adds [Research checks due](MANAGED_MARKETS_HOME.md#review-research-checks-due)
 to Markets. Explicitly loaded Follow-ups provide authored overdue and due-today
 checks, exact entry review, and continuation through company research to result,
 completion and independent Save. One captured UTC day and existing draft,

@@ -34,6 +34,7 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
+import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
@@ -572,6 +573,7 @@ export function ManagedWorkspaceScreen({
   const agendaHeading = useRef<HTMLHeadingElement | null>(null);
   const announcementsHeading = useRef<HTMLHeadingElement | null>(null);
   const dailyReviewHeading = useRef<HTMLHeadingElement | null>(null);
+  const dayViewHeading = useRef<HTMLHeadingElement | null>(null);
   const [noteReview, setNoteReview] = useState<NoteReviewRequest | null>(null);
   const [noteReviewNotice, setNoteReviewNotice] = useState<string | null>(null);
   const [followupReview, setFollowupReview] = useState<FollowupReview | null>(
@@ -754,6 +756,20 @@ export function ManagedWorkspaceScreen({
       !navigation?.invalid &&
       !hasCompanyRoute?.()
     );
+  };
+  const marketsSectionNavigation = {
+    containerRef: marketsContent,
+    targets: {
+      board: { id: "managed-markets-heading", ref: marketsHeading },
+      review: { id: "managed-daily-research-heading", ref: dailyReviewHeading },
+      day: { id: "managed-markets-day-heading", ref: dayViewHeading },
+      calendar: { id: "bea-agenda-title", ref: agendaHeading },
+      announcements: {
+        id: "fed-announcements-title",
+        ref: announcementsHeading,
+      },
+    },
+    isCurrent: isMarketsCurrent,
   };
   const currentCatalog =
     discovery.snapshot?.snapshotSha256 === saved.draft?.snapshotSha256;
@@ -1176,28 +1192,7 @@ export function ManagedWorkspaceScreen({
                     model={workspace.markets}
                     headingRef={marketsHeading}
                     sectionNavigation={
-                      <ManagedMarketsNavigation
-                        containerRef={marketsContent}
-                        targets={{
-                          review: {
-                            id: "managed-daily-research-heading",
-                            ref: dailyReviewHeading,
-                          },
-                          board: {
-                            id: "managed-markets-heading",
-                            ref: marketsHeading,
-                          },
-                          calendar: {
-                            id: "bea-agenda-title",
-                            ref: agendaHeading,
-                          },
-                          announcements: {
-                            id: "fed-announcements-title",
-                            ref: announcementsHeading,
-                          },
-                        }}
-                        isCurrent={isMarketsCurrent}
-                      />
+                      <ManagedMarketsNavigation {...marketsSectionNavigation} />
                     }
                     onResearch={(kind, opener) => {
                       openResearch(opener, () =>
@@ -1225,6 +1220,12 @@ export function ManagedWorkspaceScreen({
                       setFollowupReview(null);
                       followupsNavigation.current?.focus();
                     }}
+                  />
+                  <ManagedMarketsDayView
+                    agenda={workspace.agenda}
+                    announcements={workspace.announcements}
+                    navigation={marketsSectionNavigation}
+                    headingRef={dayViewHeading}
                   />
                   <ManagedBeaReleaseAgenda
                     model={workspace.agenda}
