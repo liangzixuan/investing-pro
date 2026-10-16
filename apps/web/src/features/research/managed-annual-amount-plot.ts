@@ -21,12 +21,7 @@ export function projectManagedAnnualAmountPlot(
   const values: number[] = [];
   for (const amount of amounts) {
     const value = Number(amount);
-    if (
-      !withinPlotMagnitude(amount) ||
-      !Number.isFinite(value) ||
-      (amount !== "0" && value === 0) ||
-      value < 0 !== amount.startsWith("-")
-    )
+    if (!isSafePlotCoordinate(amount, value))
       return Object.freeze({
         status: "unavailable",
         reason: "unsafe_plot_value",
@@ -34,6 +29,13 @@ export function projectManagedAnnualAmountPlot(
     values.push(value);
   }
   return Object.freeze({ status: "ready", values: Object.freeze(values) });
+}
+
+function isSafePlotCoordinate(amount: string, value: number): boolean {
+  if (!withinPlotMagnitude(amount)) return false;
+  if (!Number.isFinite(value)) return false;
+  if (amount !== "0" && value === 0) return false;
+  return value < 0 === amount.startsWith("-");
 }
 
 // Match the local trend's conservative bound before Number can round away excess.
