@@ -39,6 +39,21 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Reported balance sheet change candidate
+
+The source candidate adds [reported balance sheet change](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-change)
+inside the existing company Annual history. Each metric uses the first two shared
+displayed dates and keeps its own exact signed USD difference or current/prior
+refusal. Older values cannot replace missing cells. The calculation reuses the
+resolved history without another packet parse, source request, schema or saved
+field. Current totals, source references, captured packets and draft/session rules
+retain their scope. The 280 focused domain and 64 UI, decoder and capacity cases
+pass, as do domain and web types, scoped lint and source boundaries. Chrome checks
+at 1440, 390 and 320 CSS pixels confirm the layout, exact long values, draft
+retention, failed refresh, cancellation, late responses and session retirement
+with invented data. Hosted native, integration and publication acceptance remain
+pending.
+
 ## Annual comparison reading flow candidate
 
 The source candidate groups the four existing calculation and scope explanations

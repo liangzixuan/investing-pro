@@ -137,6 +137,11 @@ export {
   type PersonalSecAnnualBalanceSheetHistoryReason,
 } from "./personal-sec-annual-balance-sheet";
 export {
+  comparePersonalSecAnnualBalanceSheetHistory,
+  type PersonalSecAnnualBalanceSheetChange,
+  type PersonalSecAnnualBalanceSheetMetricChange,
+} from "./personal-sec-annual-balance-sheet-change";
+export {
   resolvePersonalSecAnnualOperatingResults,
   resolvePersonalSecAnnualOperatingHistory,
   comparePersonalSecAnnualOperatingEvidence,

@@ -1,9 +1,7 @@
 import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
-import {
-  resolvePersonalSecAnnualBalanceSheetHistory,
-  type PersonalSecAnnualBalanceSheetHistoryReason,
-} from "@research-cockpit/personal-financial-analytics";
-import { annualLiquidityUnavailableReasonText } from "./SecAnnualLiquidity";
+import { resolvePersonalSecAnnualBalanceSheetHistory } from "@research-cockpit/personal-financial-analytics";
+import { SecAnnualBalanceSheetChange } from "./SecAnnualBalanceSheetChange";
+import { balanceSheetHistoryReason } from "./sec-annual-balance-sheet-history-display";
 
 const metrics = [
   ["totalAssets", "Total assets"],
@@ -32,7 +30,8 @@ export function SecAnnualBalanceSheetHistory({
       <summary>Reported balance sheet history</summary>
       {history.status === "unavailable" ? (
         <p className="managed-annual-unavailable">
-          Balance sheet history unavailable. {historyReason(history.reason)}
+          Balance sheet history unavailable.{" "}
+          {balanceSheetHistoryReason(history.reason)}
         </p>
       ) : (
         <>
@@ -77,7 +76,8 @@ export function SecAnnualBalanceSheetHistory({
                             </span>
                           ) : (
                             <span className="managed-annual-unavailable">
-                              Unavailable. {historyReason(value.reason)}
+                              Unavailable.{" "}
+                              {balanceSheetHistoryReason(value.reason)}
                             </span>
                           )}
                         </td>
@@ -88,6 +88,7 @@ export function SecAnnualBalanceSheetHistory({
               </tbody>
             </table>
           </div>
+          <SecAnnualBalanceSheetChange history={history} />
           <p className="managed-annual-basis-help">
             Up to three reported dates from filing {history.accessionNumber}.
             Selected filing report date{" "}
@@ -139,15 +140,4 @@ export function SecAnnualBalanceSheetHistory({
       )}
     </details>
   );
-}
-
-function historyReason(
-  reason: PersonalSecAnnualBalanceSheetHistoryReason,
-): string {
-  if (reason === "current_use_unavailable")
-    return "The selected report is outside the current-use limits at this load. Reported totals remain above.";
-  if (reason === "no_report_date") return "No reported amount at this date.";
-  if (reason === "report_end_mismatch")
-    return "This metric contains a date after the selected report date, or its filing report date does not match the selected filing.";
-  return annualLiquidityUnavailableReasonText(reason);
 }

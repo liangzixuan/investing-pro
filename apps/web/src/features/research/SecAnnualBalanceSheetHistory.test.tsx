@@ -45,6 +45,23 @@ describe("reported balance-sheet history", () => {
     expect(text(rows[2]!)).toBe(
       "Shareholders’ equity · parentReported · USD-200.1250-98.625",
     );
+    expect(html).toContain(
+      'class="managed-balance-sheet-change-amount">99.625</span>',
+    );
+    expect(html).toContain(
+      'class="managed-balance-sheet-change-amount">-200.125</span>',
+    );
+    expect(text(html)).toContain(
+      "Prior amount: No reported amount at this date.",
+    );
+    expect(
+      html.indexOf('aria-label="Reported balance sheet change"'),
+    ).toBeGreaterThan(html.indexOf("</table>"));
+    expect(
+      html.indexOf('aria-label="Reported balance sheet change"'),
+    ).toBeLessThan(html.indexOf("History source references</summary>"));
+    expect(html.match(/<table\b/gu)).toHaveLength(1);
+    expect(html.match(/<details\b/gu)).toHaveLength(2);
     for (const key of [
       "totalAssets",
       "totalLiabilities",
