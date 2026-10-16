@@ -1,6 +1,35 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { browserCompanyReportAdapter } from "./browser-company-report";
 import type { CompanyReportDocument } from "./managed-company-report-document";
+import type { CompanyReportHtmlDocument } from "./managed-company-report-html";
+
+// Transport-only seam: positive detached rendering and real ownership admission
+// require browser verification. The existing JSON formatter/guard stays real.
+const htmlOwnership = vi.hoisted(() => new WeakSet<object>());
+vi.mock("./managed-company-report-html", () => ({
+  formatCompanyReportHtml: vi.fn(),
+  isCompanyReportHtmlDocument: (value: unknown) =>
+    typeof value === "object" && value !== null && htmlOwnership.has(value),
+}));
+
+const htmlDocument: CompanyReportHtmlDocument = Object.freeze({
+  purpose: "investment.company-research-html",
+  filename: "Investment-research-ZERO-XNAS-20261015T000000000Z.html",
+  text: "<!doctype html><html><body>Café 東京 😀</body></html>",
+  byteLength: new TextEncoder().encode(
+    "<!doctype html><html><body>Café 東京 😀</body></html>",
+  ).byteLength,
+});
+htmlOwnership.add(htmlDocument);
+
+function htmlDelivery() {
+  if (
+    browserCompanyReportAdapter.destination !== "browser_download" ||
+    !browserCompanyReportAdapter.html
+  )
+    throw new Error("Missing HTML capability");
+  return browserCompanyReportAdapter.html;
+}
 
 const text =
   JSON.stringify({
@@ -63,6 +92,59 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.unstubAllGlobals());
 
 describe("browser company report delivery", () => {
+  it("hands the formatter-seam HTML bytes to the real transport in the click task with its own MIME", async () => {
+    const test = fixture();
+    const pending = htmlDelivery().deliver(htmlDocument, test.context);
+    expect(test.anchor.click).toHaveBeenCalledOnce();
+    expect(test.anchor.download).toBe(htmlDocument.filename);
+    const blob = test.createObjectURL.mock.calls[0]![0];
+    expect(blob.type).toBe("text/html;charset=utf-8");
+    expect(blob.size).toBe(htmlDocument.byteLength);
+    expect(await blob.text()).toBe(htmlDocument.text);
+    test.frame();
+    await expect(pending).resolves.toBe("download_requested");
+    expect(test.revokeObjectURL).toHaveBeenCalledOnce();
+    expect(test.anchor.remove).toHaveBeenCalledOnce();
+  });
+
+  it.each(["aborted", "stale", "pre-activation", "unowned", "click failure"])(
+    "applies the existing guarded cleanup to HTML for %s",
+    async (kind) => {
+      const test = fixture();
+      if (kind === "aborted") test.controller.abort();
+      if (kind === "stale") test.isCurrent.mockReturnValue(false);
+      if (kind === "pre-activation")
+        test.append.mockImplementation(() =>
+          test.isCurrent.mockReturnValue(false),
+        );
+      if (kind === "click failure")
+        test.anchor.click.mockImplementation(() => {
+          throw new Error("private detail");
+        });
+      const pending = htmlDelivery().deliver(
+        kind === "unowned" ? { ...htmlDocument } : htmlDocument,
+        test.context,
+      );
+      if (kind === "unowned" || kind === "click failure")
+        await expect(pending).rejects.toThrow("Report download unavailable");
+      else await expect(pending).resolves.toBe("cancelled");
+      if (kind !== "click failure")
+        expect(test.anchor.click).not.toHaveBeenCalled();
+      const allocated = kind === "pre-activation" || kind === "click failure";
+      expect(test.createObjectURL).toHaveBeenCalledTimes(allocated ? 1 : 0);
+      expect(test.revokeObjectURL).toHaveBeenCalledTimes(allocated ? 1 : 0);
+    },
+  );
+
+  it("releases HTML after retirement without claiming an activated download was undone", async () => {
+    const test = fixture();
+    const pending = htmlDelivery().deliver(htmlDocument, test.context);
+    test.controller.abort();
+    await expect(pending).resolves.toBe("download_requested");
+    test.frame();
+    expect(test.anchor.click).toHaveBeenCalledOnce();
+    expect(test.revokeObjectURL).toHaveBeenCalledOnce();
+  });
   it("requests the exact UTF-8 file in the click task and releases its temporary resources after a frame", async () => {
     const test = fixture();
     const result = browserCompanyReportAdapter.deliver(value, test.context);

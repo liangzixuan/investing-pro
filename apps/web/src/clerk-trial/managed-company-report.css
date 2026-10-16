@@ -45,3 +45,8 @@
   font-size: 13px;
   line-height: 1.6;
 }
+.managed-frame .managed-report-delivery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}

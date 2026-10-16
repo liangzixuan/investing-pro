@@ -40,22 +40,38 @@ export function ManagedCompanyReportDelivery({
           ? "Choose a destination for the prepared sources and this company’s exact watchlist note, including unsaved edits. The saved file does not update with later edits."
           : "Download the prepared sources and this company’s exact watchlist note, including unsaved edits. The file stays at the download destination and does not update with later edits."}
       </p>
-      <button
-        type="button"
-        className="trial-secondary"
-        disabled={!owned || !isCurrent() || state.busy}
-        onClick={() => {
-          if (owned) void model.start();
-        }}
-      >
-        {state.busy
-          ? native
-            ? "Saving report…"
-            : "Requesting report download…"
-          : native
-            ? "Save report (JSON)"
-            : "Download report (JSON)"}
-      </button>
+      <div className="managed-report-delivery-actions">
+        <button
+          type="button"
+          className="trial-secondary"
+          disabled={!owned || !isCurrent() || state.busy}
+          onClick={() => {
+            if (owned) void model.start("json");
+          }}
+        >
+          {state.busy
+            ? native
+              ? "Saving report…"
+              : "Requesting report download…"
+            : native
+              ? "Save report (JSON)"
+              : "Download report (JSON)"}
+        </button>
+        {!native && delivery.html && (
+          <button
+            type="button"
+            className="trial-secondary"
+            disabled={!owned || !isCurrent() || state.busy}
+            onClick={() => {
+              if (owned) void model.start("html");
+            }}
+          >
+            {state.busy
+              ? "Requesting report download…"
+              : "Download report (HTML)"}
+          </button>
+        )}
+      </div>
       {state.message && <p role="status">{state.message}</p>}
     </div>
   );
