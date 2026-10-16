@@ -73,22 +73,30 @@ function CashMarginBasis({ basis, evidence }: BasisProps) {
             <small>App calculation</small>
           </dt>
           <dd>
-            {basis.margin.status === "available" ? (
-              <SecAnnualOperatingValueContent value={basis.margin} />
-            ) : (
-              <span className="sec-annual-cash-unavailable">
-                Unavailable. {marginReason(basis)}
-              </span>
-            )}
+            <SecAnnualCashMarginValueContent basis={basis} />
           </dd>
         </div>
       </dl>
-      <CashMarginInputs basis={basis} evidence={evidence} />
+      <SecAnnualCashMarginInputs basis={basis} evidence={evidence} />
     </section>
   );
 }
 
-function CashMarginInputs({ basis, evidence }: BasisProps) {
+export function SecAnnualCashMarginValueContent({
+  basis,
+}: {
+  readonly basis: PersonalSecAnnualCashMargin;
+}) {
+  return basis.margin.status === "available" ? (
+    <SecAnnualOperatingValueContent value={basis.margin} />
+  ) : (
+    <span className="sec-annual-cash-unavailable">
+      Unavailable. {marginReason(basis)}
+    </span>
+  );
+}
+
+export function SecAnnualCashMarginInputs({ basis, evidence }: BasisProps) {
   const { generation } = evidence;
   return (
     <details className="sec-quarterly-row-details sec-annual-cash-margin-inputs">

@@ -41,6 +41,13 @@ subtraction. The exact table, original source dates, first-gap refusals and
 independent cash eligibility remain. It reuses the existing Annual chart renderer
 without another source request or a saved chart setting.
 
+The next M2/M4 candidate adds [cash margins to Annual comparison](MANAGED_SEC_ANNUAL.md#compare-cash-generation-relative-to-revenue).
+Both loaded companies retain independent percentages and exact inputs for all
+three named revenue bases. It reuses admitted Annual evidence and the existing
+cash-margin calculation without another source request, income eligibility gate,
+saved field or note action. Each company's periods and qualifications remain
+explicit; no cross-company ranking or fiscal-calendar alignment is implied.
+
 The preceding M3 increment adds [Markets day view](MANAGED_MARKETS_HOME.md#read-the-markets-day-view):
 one Eastern-date reading view of the already loaded BEA schedule and Fed
 announcements. Independent source controls, original UTC times, scheduled versus
@@ -327,6 +334,11 @@ distinguishes source, browser, native and delivery acceptance. Broader
 financial statements, valuation and complete company coverage remain open.
 
 ## Goal and constraints
+
+Report a single-symbol enablement as a coverage fix. Small field additions and
+presentation changes are increments within a capability, not evidence of broad
+InvestingPro parity. Select larger outcomes by the usable workflow they complete,
+and report supported universe, data limits and remaining gaps alongside them.
 
 Build our own personal Investing.com-style platform: a useful market overview,
 complete instrument pages, news and calendars, discovery, watchlists and portfolio

@@ -4,11 +4,51 @@ import { PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS } from "@research-cockpit/contract
 import { cashMarginsResponse } from "./sec-annual-cash-margins-fixture";
 import { cashRow } from "./sec-annual-cash-fixture";
 import { row } from "./sec-annual-evidence-fixture";
-import { SecAnnualCashMargins } from "./SecAnnualCashMargins";
+import {
+  SecAnnualCashMargins,
+  SecAnnualCashMarginInputs,
+  SecAnnualCashMarginValueContent,
+} from "./SecAnnualCashMargins";
+import { derivePersonalSecAnnualCashMargins } from "@research-cockpit/personal-financial-analytics";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 
 describe("Annual cash generation margins", () => {
+  it("shares exact available and refused value bodies and complete inputs with the company view", async () => {
+    const response = await cashMarginsResponse({
+      revenueRows: [row("Revenues", "1000"), row("SalesRevenueNet", "0")],
+    });
+    const company = renderToStaticMarkup(
+      <SecAnnualCashMargins response={response} />,
+    );
+    const bases = derivePersonalSecAnnualCashMargins(response.evidence);
+    const revenue = bases.find((basis) => basis.concept === "Revenues")!;
+    const zero = bases.find((basis) => basis.concept === "SalesRevenueNet")!;
+    expect(
+      renderToStaticMarkup(<SecAnnualCashMarginValueContent basis={revenue} />),
+    ).toBe(
+      '<span class="sec-annual-liquidity-amount">10.01%</span><small>2025-01-01 to 2025-12-31</small><small>Within current-use limits at this load.</small>',
+    );
+    expect(
+      renderToStaticMarkup(<SecAnnualCashMarginValueContent basis={zero} />),
+    ).toBe(
+      '<span class="sec-annual-cash-unavailable">Unavailable. This percentage requires reported revenue greater than zero.</span>',
+    );
+    for (const basis of bases) {
+      expect(company).toContain(
+        renderToStaticMarkup(<SecAnnualCashMarginValueContent basis={basis} />),
+      );
+      expect(company).toContain(
+        renderToStaticMarkup(
+          <SecAnnualCashMarginInputs
+            basis={basis}
+            evidence={response.evidence}
+          />,
+        ),
+      );
+    }
+  });
+
   it("shows each admitted revenue basis without operating or net income, with closed complete inputs", async () => {
     const response = await cashMarginsResponse();
     const before = JSON.stringify(response);

@@ -12,6 +12,10 @@ import {
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedAnnualBalanceSheetComparisonRows } from "./ManagedAnnualBalanceSheetComparisonRows";
+import {
+  ManagedAnnualCashMarginComparisonRows,
+  ManagedAnnualCashMarginComparisonSources,
+} from "./ManagedAnnualCashMarginComparison";
 import { ManagedAnnualComparisonMethods } from "./ManagedAnnualComparisonMethods";
 import { SecAnnualBalanceSheetSourceBody } from "../features/research/SecAnnualBalanceSheet";
 import { SecAnnualSourceDetails } from "../features/research/SecAnnualEvidenceResult";
@@ -244,6 +248,12 @@ export function ManagedWatchlistAnnualComparison({
             </ComparisonRow>
             <OperatingComparisonRows state={state} projections={projections} />
             <CashComparisonRows state={state} />
+            <ManagedAnnualCashMarginComparisonRows
+              responses={{
+                left: state.left.report.response,
+                right: state.right.report.response,
+              }}
+            />
             <LiquidityComparisonRows state={state} />
             <ManagedAnnualBalanceSheetComparisonRows
               responses={{
@@ -340,6 +350,15 @@ export function ManagedWatchlistAnnualComparison({
                   >
                     <h4>Cash sources and calculation inputs</h4>
                     <SecAnnualCashSourceBody response={response} />
+                  </div>
+                  <div
+                    className="managed-annual-comparison-cash-source"
+                    data-annual-comparison-cash-margin-source={side}
+                  >
+                    <h4>Cash generation relative to revenue inputs</h4>
+                    <ManagedAnnualCashMarginComparisonSources
+                      response={response}
+                    />
                   </div>
                   <div
                     className="managed-annual-comparison-liquidity-source"

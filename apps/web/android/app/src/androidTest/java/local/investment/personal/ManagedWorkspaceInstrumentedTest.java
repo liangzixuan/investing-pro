@@ -1199,6 +1199,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && p.textContent.includes('2026-09-20T00:00:00.000Z'))" +
             " && panels[0].textContent.includes('CIK 0000000001') && panels[0].textContent.includes('Accession 0000000001-26-000001')" +
             " && panels[1].textContent.includes('CIK 0000000002') && panels[1].textContent.includes('Accession 0000000002-25-000001'); })()");
+        inspectAnnualComparisonCashMarginInputs();
         chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(2, 0, 0);
@@ -1319,7 +1320,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {
         awaitPage("exact Annual values retain distinct fiscal periods and bases",
             "(() => { const rows = document.querySelectorAll('.managed-annual-comparison-table tbody tr');" +
-            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 19" +
+            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 22" +
             " && [...cells(0)[0].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2025-01-01|2025-12-31'" +
             " && [...cells(0)[1].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2024-07-01|2025-06-30'" +
             " && cells(1)[0].textContent === " + JSONObject.quote(basisLabel) +
@@ -1338,10 +1339,91 @@ public class ManagedWorkspaceInstrumentedTest {
             " && cells(5)[0].textContent.includes('2024-01-01 to 2024-12-31')" +
             " && cells(5)[1].textContent.includes('2023-07-01 to 2024-06-30'); })()");
         assertAnnualComparisonCash();
+        assertAnnualComparisonCashMargins();
         assertAnnualComparisonLiquidity();
         assertAnnualComparisonBalanceSheet();
         assertAnnualComparisonBalanceSheetSources();
     }
+
+    private void assertAnnualComparisonCashMargins() throws Exception {
+        awaitPage("three fixed cash margin bases retain each side's revenue, percentage, period and refusal independently of income selection",
+            "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-cash-margin]')];" +
+            " const concepts = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'];" +
+            " const labels = ['Customer contract revenue, excluding assessed tax', 'Revenue', 'Net sales revenue'];" +
+            " const revenue = [['500', null], ['1000', null], [null, '750']], ratios = [['150.00%', null], ['75.00%', null], [null, '80.00%']];" +
+            " const periods = ['2025-01-01 to 2025-12-31', '2024-07-01 to 2025-06-30'];" +
+            " const missing = \"No observation covers the selected annual filing's period.\";" +
+            " return rows.length === 3 && rows.every((row, index) => { const header = row.querySelector('th'), cells = [...row.querySelectorAll('td')];" +
+            " return row.dataset.annualComparisonCashMargin === concepts[index] && header?.scope === 'row'" +
+            " && header.firstChild.textContent === 'Cash generation relative to revenue'" +
+            " && [...header.querySelectorAll('small')].map(e => e.textContent).join('|') === labels[index] + '|' + concepts[index]" +
+            " && cells.length === 2 && cells.every((cell, side) => { const values = [...cell.querySelectorAll(':scope > p')];" +
+            " return values.length === 2 && values[0].querySelector(':scope > small')?.textContent === 'Reported revenue · USD'" +
+            " && values[1].querySelector(':scope > small')?.textContent === 'Operating cash flow less PP&E purchases / reported revenue (%) · App calculation'" +
+            " && values.every((value, valueIndex) => { const expected = valueIndex === 0 ? revenue[index][side] : ratios[index][side];" +
+            " if (expected === null) return value.querySelector(':scope > span')?.textContent === 'Unavailable. ' + (valueIndex === 0 ? '' : 'Reported revenue: ') + missing" +
+            " && value.querySelectorAll(':scope > small').length === 1 && !value.querySelector('.sec-annual-liquidity-amount');" +
+            " return value.querySelector('.sec-annual-liquidity-amount')?.textContent === expected" +
+            " && [...value.querySelectorAll(':scope > small')].map(e => e.textContent).slice(1).join('|') === periods[side] + '|Within current-use limits at this load.'; }); }); }); })()");
+        assertAnnualComparisonCashMarginSources();
+    }
+
+    private void assertAnnualComparisonCashMarginSources() throws Exception {
+        awaitPage("cash margin inputs keep all original side-specific operand IDs, complete coordinates and source clocks outside the old raw-cash block",
+            "(() => { const sources = [...document.querySelectorAll('[data-annual-comparison-cash-margin-source]')];" +
+            " const concepts = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'];" +
+            " const labels = ['Customer contract revenue, excluding assessed tax', 'Revenue', 'Net sales revenue'];" +
+            " const field = (row, label) => [...row.querySelectorAll(':scope > dl > div')].find(pair => pair.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " const coordinates = row => [...row.querySelectorAll(':scope > dl > div > dd')].map(e => e.textContent);" +
+            " return sources.length === 2 && sources.every((source, side) => { const company = source.closest('.managed-annual-comparison-source');" +
+            " const rawCash = company.querySelector('[data-annual-comparison-cash-source]');" +
+            " const cashRows = [...rawCash.querySelectorAll(':scope > section > ol > li > details')];" +
+            " const revenueRows = [...company.querySelectorAll(':scope > details > .sec-filing-context > ol > li > details')];" +
+            " const inputs = [...source.querySelectorAll(':scope > details')];" +
+            " const date = side === 0 ? '2025-12-31' : '2025-06-30', filed = side === 0 ? '2026-02-01' : '2025-08-01';" +
+            " const accession = side === 0 ? '0000000001-26-000001' : '0000000002-25-000001';" +
+            " return source.dataset.annualComparisonCashMarginSource === (side === 0 ? 'left' : 'right')" +
+            " && source.previousElementSibling === rawCash && source.parentElement === company.querySelector(':scope > details')" +
+            " && source.querySelector(':scope > h4')?.textContent === 'Cash generation relative to revenue inputs'" +
+            " && cashRows.length === 2 && inputs.length === 3 && inputs.every((input, index) => {" +
+            " const hasRevenue = side === 0 ? index < 2 : index === 2;" +
+            " const revenue = revenueRows.find(row => field(row, 'Company Facts source pointer') === '/facts/us-gaap/' + concepts[index] + '/units/USD/0');" +
+            " const originals = hasRevenue ? [...cashRows, revenue] : cashRows; if (originals.some(row => !row)) return false;" +
+            " const ids = originals.map(row => field(row, 'Observation identifier'));" +
+            " const groups = [...input.querySelectorAll(':scope > section')], rows = [...input.querySelectorAll(':scope > section > ol > li > details')];" +
+            " return input.classList.contains('sec-annual-cash-margin-inputs') && input.querySelector(':scope > summary')?.textContent === 'Cash margin inputs · ' + labels[index]" +
+            " && input.querySelector(':scope > p:first-of-type')?.textContent === 'Cutoff 2026-09-20T00:00:00.000Z. Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && input.querySelector(':scope > p:nth-of-type(2)')?.textContent === 'Selected filing ' + accession + '; report date ' + date + '; filed ' + filed + '.'" +
+            " && ids.every(id => /^sec-fact:[a-f0-9]{64}$/.test(id)) && new Set(ids).size === ids.length" +
+            " && groups.length === 3 && groups.map(group => group.querySelectorAll(':scope > ol > li').length).join('|') === (hasRevenue ? '1|1|1' : '1|1|0')" +
+            " && groups.map((group, operand) => group.querySelector(':scope > p')?.textContent).join('|') === 'Operating cash flow references: ' + ids[0] + '|PP&E purchases references: ' + ids[1] + '|' + concepts[index] + ' references: ' + (hasRevenue ? ids[2] : 'None')" +
+            " && rows.length === originals.length && rows.every((row, operand) => coordinates(row).length === 10 && JSON.stringify(coordinates(row)) === JSON.stringify(coordinates(originals[operand])))" +
+            " && input.querySelector(':scope > p:last-of-type')?.textContent === 'Calculation references: ' + ids.join(' · '); }); }); })()");
+    }
+
+    private void inspectAnnualComparisonCashMarginInputs() throws Exception {
+        String summary = "[data-annual-comparison-cash-margin-source=left] > details:nth-of-type(2) > summary";
+        String before = readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href,length:history.length})");
+        awaitPage("new comparison input disclosures start closed inside the open original company sources",
+            "document.querySelectorAll('[data-annual-comparison-cash-margin-source] > details').length === 6" +
+            " && [...document.querySelectorAll('[data-annual-comparison-cash-margin-source] > details')].every(e => !e.open && e.parentElement.parentElement.open)");
+        focusCashHistoryControl(summary);
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native Space opens one exact 44px cash-margin input summary with visible focus",
+            "(() => { const summary = document.querySelector(" + JSONObject.quote(summary) + ");" +
+            " return summary?.parentElement.open && document.activeElement === summary && summary.getBoundingClientRect().height >= 44" +
+            " && getComputedStyle(summary).outlineStyle !== 'none' && parseFloat(getComputedStyle(summary).outlineWidth) >= 2" +
+            " && document.querySelectorAll('[data-annual-comparison-cash-margin-source] > details[open]').length === 1; })()");
+        assertAnnualComparisonCashMargins();
+        focusCashHistoryControl(summary);
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native Space closes cash-margin inputs while preserving the exact focused summary",
+            "document.activeElement === document.querySelector(" + JSONObject.quote(summary) + ")" +
+            " && [...document.querySelectorAll('[data-annual-comparison-cash-margin-source] > details')].every(e => !e.open)");
+        assertEquals("Inspecting cash-margin inputs preserves both source counts, the complete draft and navigation", before,
+            readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href,length:history.length})"));
+    }
+
 
     private void assertAnnualComparisonCash() throws Exception {
         awaitPage("cash values keep each company's exact period and remain independent of the revenue basis",
