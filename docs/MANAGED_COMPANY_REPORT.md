@@ -78,6 +78,35 @@ and byte admission. Browser report and saved-watchlist delivery share only the
 temporary Blob/anchor transport and cleanup; their document contracts stay
 separate.
 
+## Read the HTML copy offline
+
+The managed browser also offers **Download report (HTML)**. This delivers a
+self-contained reading copy of the same current prepared report. It keeps the
+full company and share-class identity, exact authored note and original
+preparation time. The Annual section shows five independent financial facts
+with their own periods, eligibility, refusal reasons and input references.
+Missing Annual evidence stays missing. Price and Filings keep their own loaded
+status, source times and coverage limits.
+
+Open **Complete captured JSON** in the file to inspect all captured source
+packets. Decoding that appendix preserves the exact authored note, including
+line endings. The reading view uses normal HTML line-ending rules. The report
+checks no authored claim or link; HTML-looking text and URLs remain plain text.
+Its source dates and qualifications do not change when the file is exported or
+opened later.
+
+The HTML copy includes its fixed stylesheet and needs no script, external font,
+image or network request. Its light reading layout wraps long values and note
+text on narrow screens and supports printing. The complete UTF-8 file has an
+8 MiB limit. An oversized file is refused without clipping; the JSON action can
+still be available under its separate bound.
+
+Both browser formats share one pending operation and the same source, draft,
+visit and session checks. Neither starts another source request or saves the
+watchlist. **Download requested** confirms the browser handoff only. It does
+not establish that the file was saved or opened. Android continues to offer its
+JSON system save.
+
 ## Save from Android
 
 In the managed Android app, select **Save report (JSON)**. The system file picker

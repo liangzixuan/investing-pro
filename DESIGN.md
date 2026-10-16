@@ -159,6 +159,21 @@ Its disclosure retains a 44px target. Explain the exact-draft/source scope and
 file-delivery limit beside the field. Never display the document after its parent
 report is invalidated.
 
+Browser report download actions share one wrapping row, the existing secondary
+button and focus tokens, and 44px targets. Disable both while either handoff is
+pending. Keep the requested-download status beside them. Android shows its
+single JSON save action.
+
+The exported HTML report is a separate light reading document. Use a restrained
+paper surface, system fonts, a readable line length and clear section spacing.
+Keep the exact note in preserved whitespace, and wrap long amounts, identifiers
+and JSON without horizontal page overflow. Full input references use native
+closed disclosures with visible keyboard focus. Distinguish preparation time,
+source dates and authored research without status colors or ratings. The print
+layout retains the same evidence. The file has no application navigation,
+private fixture controls or remote assets. This paper treatment is an adaptation
+for an offline document; the managed application keeps Precision Desk.
+
 Keep reported cash history in an initially closed disclosure below current cash
 values and their note action. Use the existing Annual table style, with exact
 amounts, dates and reported/calculated labels. At narrow widths, keep the table

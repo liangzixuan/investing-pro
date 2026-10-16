@@ -1,8 +1,28 @@
 import type { PreparedCompanyReport } from "./managed-company-report";
 import { formatCompanyReportDocument } from "./managed-company-report-document";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
+import type {
+  TextDocumentDeliveryContext,
+  TextDocumentDeliveryResult,
+} from "./document-delivery";
 
 const idle = { busy: false, message: "" };
+
+function preparedHandoff<T extends { readonly filename: string }>(
+  document: T | null,
+  deliver: (
+    document: T,
+    context: TextDocumentDeliveryContext,
+  ) => Promise<TextDocumentDeliveryResult>,
+) {
+  return (
+    document && {
+      filename: document.filename,
+      deliver: (context: TextDocumentDeliveryContext) =>
+        deliver(document, context),
+    }
+  );
+}
 
 /** Owns one mounted report's explicit file handoff; retirement cannot undo a received file. */
 export class PreparedReportDelivery {
@@ -28,16 +48,14 @@ export class PreparedReportDelivery {
     for (const listener of this.listeners) listener();
   }
 
-  async start(): Promise<void> {
+  async start(format: "json" | "html"): Promise<void> {
+    if (format !== "json" && format !== "html") return;
+    const html =
+      this.delivery.destination === "browser_download"
+        ? this.delivery.html
+        : undefined;
+    if (format === "html" && !html) return;
     if (this.retired || this.pending || !this.isCurrent()) return;
-    const document = formatCompanyReportDocument(this.report);
-    if (!document) {
-      this.publish(
-        false,
-        "Report file unavailable: the complete document cannot be prepared within its limits.",
-      );
-      return;
-    }
     const operation = new AbortController();
     this.pending = operation;
     const current = () =>
@@ -45,10 +63,28 @@ export class PreparedReportDelivery {
       this.pending === operation &&
       !operation.signal.aborted &&
       this.isCurrent();
-    this.publish(true, "");
     try {
+      this.publish(true, "");
+      if (!current()) return;
+      const document =
+        format === "html" && html
+          ? preparedHandoff(html.format(this.report), (value, context) =>
+              html.deliver(value, context),
+            )
+          : preparedHandoff(
+              formatCompanyReportDocument(this.report),
+              (value, context) => this.delivery.deliver(value, context),
+            );
+      if (!current()) return;
+      if (!document) {
+        this.publish(
+          false,
+          "Report file unavailable: the complete document cannot be prepared within its limits.",
+        );
+        return;
+      }
       // Keep delivery in the initiating click task, before the first await.
-      const outcome = await this.delivery.deliver(document, {
+      const outcome = await document.deliver({
         signal: operation.signal,
         isCurrent: current,
       });

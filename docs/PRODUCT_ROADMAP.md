@@ -13,12 +13,19 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2/M4 candidate connects [Company Financial review](MANAGED_SEC_ANNUAL.md#review-financial-facts-in-the-company-note)
+The source-integrated M2/M4 increment connects [Company Financial review](MANAGED_SEC_ANNUAL.md#review-financial-facts-in-the-company-note)
 to the existing note and report. Five independent admitted Annual facts retain
 their exact values, signs, dates and refusal reasons. Explicit selection and a
 complete-note preview precede guarded append and the existing whole-draft Save.
 This adds no financial-health score, provider, schema or automatic source request.
 Full statements, valuation, peers and the broader InvestingPro goal remain open.
+
+The next M4 increment adds a [browser-readable offline report](MANAGED_COMPANY_REPORT.md#read-the-html-copy-offline)
+beside JSON. It retains the exact authored draft, independent Annual facts and
+original source qualifications, with a complete captured JSON appendix. The
+browser formats share currentness and pending-operation ownership. It adds no
+report store, import, provider request or AI verdict. Android keeps JSON save.
+Source, file-delivery and rendering acceptance remain separate from publication.
 
 The preceding M3 increment adds [Markets day view](MANAGED_MARKETS_HOME.md#read-the-markets-day-view):
 one Eastern-date reading view of the already loaded BEA schedule and Fed

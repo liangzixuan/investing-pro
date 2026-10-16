@@ -48,9 +48,9 @@ does not establish authenticated production journeys, provider health or physica
 Android use. The earlier fixed Follow-ups storage proof failed in its recorded
 scope; full live-storage qualification and backup/restore acceptance remain open.
 
-## Company Financial review candidate
+## Company Financial review source integration
 
-The next [Company Financial review](MANAGED_SEC_ANNUAL.md#review-financial-facts-in-the-company-note)
+The [Company Financial review](MANAGED_SEC_ANNUAL.md#review-financial-facts-in-the-company-note)
 connects five independent Annual facts to an authored note. It reuses admitted
 operating income, operating cash flow, cash after PP&E purchases, working capital
 and parent equity. Each exact USD value or refusal retains its own dates,
@@ -83,9 +83,40 @@ unchanged web interaction tests exceeded their existing five-second deadlines.
 Android, Ubuntu and the other source workflows passed. The web tests now keep
 unchanged source fixtures stable during controlled edits and inspect each real
 before/after comparison tree once. All 119 cases in both files pass locally.
-No deadline, assertion or test configuration has changed. Local timing does not
-establish hosted stability; fresh CI, source integration and publication are
-pending.
+No deadline, assertion or test configuration has changed. The next original
+attempt passed all five source workflows, including Windows. The reviewed source
+is merged at `1bacbe0` after the owner approved by email, including the reviewed
+CodeScene maintenance advisories. All five main workflows and six jobs also
+passed, including Windows and Ubuntu source-proof capture and retention.
+Publication is pending; the accepted production release above is unchanged.
+
+## Browser-readable report in progress
+
+The next M4 candidate adds an explicit HTML download beside JSON in a current
+prepared browser report. The file contains the exact authored draft, five
+independent Annual facts, original dates and source qualifications, plus the
+complete captured JSON appendix. Both formats share delivery and currentness
+ownership. Android retains its JSON system save.
+
+Focused formatter and delivery tests, web types, scoped lint and source boundaries
+pass. Independent source reviews found no actionable defect. Invented Chrome
+checks cover the actual received file bytes, note/source invalidation, session
+retirement and application controls at measured 1440, 390 and 320 CSS pixels.
+The real DOM formatter refuses a complete oversized HTML output while JSON still
+fits, and rejects unowned documents without reading their fields. These checks
+do not establish automated offline visual acceptance: the browser tool blocks
+local file URLs. The owner confirmed by email that the downloaded file opens and
+reads correctly. Appendix expansion was not separately reported. Local browser
+and managed Android builds pass with no server renderer or Node module in either output graph. The
+browser package is within its existing size bounds. Those local builds use a
+provisional base marker; current-head CI and release qualification are separate.
+Draft PR175 contains this candidate. Its first CodeScene check found structural
+issues in three new files. A focused refactor splits the passive report sections,
+simplifies the refusal condition and extracts calculation-reference assertions.
+The 19 original formatter cases and a private comparison across those same
+fixtures pass with identical before/after markup. Web types and scoped lint pass.
+The original CI attempt and the refactor's current-head checks remain separate.
+This surface is not released.
 
 ## Remaining milestones and acceptance limits
 
