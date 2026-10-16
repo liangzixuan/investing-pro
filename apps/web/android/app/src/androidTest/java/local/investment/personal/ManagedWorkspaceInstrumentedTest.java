@@ -5333,7 +5333,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("retired late financial facts cannot restore the source, draft or preview", retired + " && " + DIAGNOSTICS + ".lateResolved === 2 && !document.querySelector('.managed-frame').textContent.includes('999.875')");
         assertFinancialReviewCounts(4, 2, 2, 1, 2, 2);
         assertEquals("Financial review never reloads the document", origin, readDocumentTimeOrigin(), 0.0);
-        assertFixtureBoundary();
+        assertFixtureBoundary(0, 1);
     }
 
     private String financialReviewFactsExact() {
