@@ -1,0 +1,102 @@
+name: Appwrite tested site promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Accepted product source SHA in the staged archive
+        required: true
+        type: string
+      staging_run_id:
+        description: Original successful staging workflow run
+        required: true
+        type: string
+      staging_run_attempt:
+        description: Original accepted staging attempt
+        required: true
+        type: string
+      archive_sha256:
+        description: Accepted site.tar.gz SHA-256
+        required: true
+        type: string
+      manifest_sha256:
+        description: Accepted manifest.json SHA-256
+        required: true
+        type: string
+      staging_deployment_id:
+        description: Accepted active staging deployment
+        required: true
+        type: string
+      previous_production_deployment_id:
+        description: Approved production pointer to preserve
+        required: true
+        type: string
+      staging_receipt_sha256:
+        description: Accepted original staging receipt SHA-256
+        required: true
+        type: string
+      browserstack_acceptance_sha256:
+        description: Accepted original BrowserStack acceptance SHA-256
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: browserstack-deployed-preview-smoke
+  cancel-in-progress: false
+
+jobs:
+  production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: appwrite-production
+    steps:
+      - name: Check out the reviewed promotion controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Download the exact accepted staging artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: appwrite-site-${{ inputs.source_sha }}-${{ inputs.staging_run_attempt }}
+          path: dist/promotion-input
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.staging_run_id }}
+          digest-mismatch: error
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile --strict-peer-dependencies
+
+      - name: Promote the accepted bytes once
+        timeout-minutes: 9
+        env:
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_DEPLOY_KEY }}
+          PROMOTION_INPUTS_JSON: ${{ toJSON(inputs) }}
+        run: pnpm exec tsx scripts/appwrite/promote-tested-site.ts
+
+      - name: Retain production and controller receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: appwrite-promotion-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/promotion-receipt.json
+            dist/promotion-controller.json
+          if-no-files-found: ignore
+          retention-days: 30
