@@ -51,26 +51,27 @@ function observation(
   };
 }
 
-function metric<T>(row: T) {
+function metric<T>(...observations: [] | [T]) {
+  const count = observations.length;
   return {
     scan: {
       status: "available" as const,
-      absence: null,
+      absence: count === 0 ? ("concept_missing" as const) : null,
       coverage: {
         full: {
-          candidateRows: 1,
-          inspectedRows: 1,
+          candidateRows: count,
+          inspectedRows: count,
           invalidRows: 0,
           duplicateRows: 0,
-          uniqueObservations: 1,
+          uniqueObservations: count,
         },
-        selected: 1,
+        selected: count,
         otherAccessions: 0,
-        returned: 1,
+        returned: count,
         omittedSelected: 0,
       },
     },
-    observations: [row],
+    observations,
   };
 }
 
@@ -150,26 +151,7 @@ function incomeInput(): PersonalSecAnnualResolutionInput {
 
 function operatingResultsFixture() {
   return {
-    operatingIncome: {
-      scan: {
-        status: "available" as const,
-        absence: "concept_missing" as const,
-        coverage: {
-          full: {
-            candidateRows: 0,
-            inspectedRows: 0,
-            invalidRows: 0,
-            duplicateRows: 0,
-            uniqueObservations: 0,
-          },
-          selected: 0,
-          otherAccessions: 0,
-          returned: 0,
-          omittedSelected: 0,
-        },
-      },
-      observations: [],
-    },
+    operatingIncome: metric<PersonalSecAnnualOperatingObservationDto>(),
   };
 }
 
@@ -530,37 +512,37 @@ describe("cash margins from resolved Annual v5 cells", () => {
     expect(rows[0]!.concept).toBe(PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS[0]);
   });
 
-  it.each(["operatingCashFlow", "ppePurchases", "revenue"] as const)(
-    "rejects a same-end/different-start %s before a filing or sign problem",
-    (operand) => {
-      let input = evidence();
-      input = withOperand(input, operand, {
+  for (const { title, changes, reason } of [
+    {
+      title:
+        "rejects a same-end/different-start %s before a filing or sign problem",
+      changes: {
         startDate: "2025-01-02",
         accessionNumber: "0000999999-26-000002",
         value: "-1",
-      });
-      expect(derive(input)[0]!.margin).toMatchObject({
-        status: "unavailable",
-        stage: "calculation",
-        reason: "period_mismatch",
-      });
+      },
+      reason: "period_mismatch",
     },
-  );
-
-  it.each(["operatingCashFlow", "ppePurchases", "revenue"] as const)(
-    "rejects a different %s accession without using another filing",
-    (operand) => {
-      let input = evidence();
-      input = withOperand(input, operand, {
+    {
+      title: "rejects a different %s accession without using another filing",
+      changes: {
         accessionNumber: "0000999999-26-000002",
-      });
-      expect(derive(input)[0]!.margin).toMatchObject({
-        status: "unavailable",
-        stage: "calculation",
-        reason: "filing_mismatch",
-      });
+      },
+      reason: "filing_mismatch",
     },
-  );
+  ] as const) {
+    it.each(["operatingCashFlow", "ppePurchases", "revenue"] as const)(
+      title,
+      (operand) => {
+        const input = withOperand(evidence(), operand, changes);
+        expect(derive(input)[0]!.margin).toMatchObject({
+          status: "unavailable",
+          stage: "calculation",
+          reason,
+        });
+      },
+    );
+  }
 
   it.each(["0", "-5"])(
     "refuses nonpositive revenue %s while preserving raw operands",
