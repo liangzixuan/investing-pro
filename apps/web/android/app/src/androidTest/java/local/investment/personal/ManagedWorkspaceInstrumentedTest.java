@@ -2494,7 +2494,7 @@ public class ManagedWorkspaceInstrumentedTest {
             assertArrayEquals(expectedText.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.readReport(appContext, outputs[0]));
             assertNativeReportDraftAndReads(documentTimeOrigin, note);
             retainAnnualNoteFrame("companyReportSaved", ".managed-report-delivery",
-                ".managed-report-delivery > p, .managed-report-delivery > button", 3);
+                ".managed-report-delivery > p, .managed-report-delivery > .managed-report-delivery-actions > button", 3);
             for (String kind : new String[] { "maximum", "oversize", "unicode", "purpose", "filename" }) {
                 WatchlistTestDocuments.clear(appContext);
                 JSONObject started = startNativeReportProbe(kind, picker);
