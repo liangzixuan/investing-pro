@@ -104,11 +104,18 @@ checks cover the actual received file bytes, note/source invalidation, session
 retirement and application controls at measured 1440, 390 and 320 CSS pixels.
 The real DOM formatter refuses a complete oversized HTML output while JSON still
 fits, and rejects unowned documents without reading their fields. These checks
-do not establish offline visual readability: the browser tool blocks local file
-URLs. A manual file-opening check is pending. Local browser and managed Android
-builds pass with no server renderer or Node module in either output graph. The
+do not establish automated offline visual acceptance: the browser tool blocks
+local file URLs. The owner confirmed by email that the downloaded file opens and
+reads correctly. Appendix expansion was not separately reported. Local browser
+and managed Android builds pass with no server renderer or Node module in either output graph. The
 browser package is within its existing size bounds. Those local builds use a
 provisional base marker; current-head CI and release qualification are separate.
+Draft PR175 contains this candidate. Its first CodeScene check found structural
+issues in three new files. A focused refactor splits the passive report sections,
+simplifies the refusal condition and extracts calculation-reference assertions.
+The 19 original formatter cases and a private comparison across those same
+fixtures pass with identical before/after markup. Web types and scoped lint pass.
+The original CI attempt and the refactor's current-head checks remain separate.
 This surface is not released.
 
 ## Remaining milestones and acceptance limits

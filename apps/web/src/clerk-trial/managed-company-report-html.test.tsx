@@ -110,6 +110,32 @@ function fact(markup: string, label: string) {
   return markup.slice(start, markup.indexOf("</section>", start));
 }
 
+function calculationInputs(row: PersonalSecAnnualFinancialReviewRow) {
+  if (row.key === "workingCapital")
+    return [row.operands.currentAssets, row.operands.currentLiabilities];
+  if (row.key === "operatingCashFlowLessPpePurchases")
+    return [row.operands.operatingCashFlow, row.operands.ppePurchases];
+  return [];
+}
+function expectOperand(
+  details: string,
+  value: PersonalSecAnnualFinancialReviewRow["value"],
+) {
+  expect(value.status).toBe("available");
+  if (value.status === "available")
+    expect(details).toContain(`USD ${value.value}`);
+  value.observationIds.forEach((id) => expect(details).toContain(id));
+}
+function expectCalculationInputs(
+  markup: string,
+  row: PersonalSecAnnualFinancialReviewRow,
+) {
+  if (!row.operands) return;
+  const section = fact(markup, row.label);
+  const details = section.slice(section.indexOf("<details>"));
+  for (const value of calculationInputs(row)) expectOperand(details, value);
+}
+
 describe("passive readable company report", () => {
   it("shows independent signed/zero facts despite the missing income pair, without reads or mutation", async () => {
     const f = await fixture();
@@ -149,23 +175,7 @@ describe("passive readable company report", () => {
     const rows = derivePersonalSecAnnualFinancialReview(
       report.evidence.annual!.response!.evidence,
     );
-    for (const row of rows) {
-      if (!row.operands) continue;
-      const section = fact(markup, row.label);
-      const details = section.slice(section.indexOf("<details>"));
-      const operands: readonly PersonalSecAnnualFinancialReviewRow["value"][] =
-        row.key === "workingCapital"
-          ? [row.operands.currentAssets, row.operands.currentLiabilities]
-          : row.key === "operatingCashFlowLessPpePurchases"
-            ? [row.operands.operatingCashFlow, row.operands.ppePurchases]
-            : [];
-      for (const value of operands) {
-        expect(value.status).toBe("available");
-        if (value.status === "available")
-          expect(details).toContain(`USD ${value.value}`);
-        value.observationIds.forEach((id) => expect(details).toContain(id));
-      }
-    }
+    for (const row of rows) expectCalculationInputs(markup, row);
     expect(fact(markup, rows[2]!.label)).toContain("Less PP&amp;E purchases");
     expect(fact(markup, rows[3]!.label)).toContain("Less current liabilities");
   });

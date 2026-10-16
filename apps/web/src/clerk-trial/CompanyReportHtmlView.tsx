@@ -188,19 +188,14 @@ function Annual({ report }: { readonly report: PreparedCompanyReport }) {
   );
 }
 
-/** Passive document content only: no hooks, handlers, source requests or URL attributes. */
-export function CompanyReportHtmlView({
+function ReportIdentity({
   report,
-  jsonText,
 }: {
   readonly report: PreparedCompanyReport;
-  readonly jsonText: string;
 }) {
   const { listing } = report.selection;
-  const price = report.evidence.price;
-  const filings = report.evidence.filings;
   return (
-    <main>
+    <>
       <h1>Company research report</h1>
       <p>
         {listing.symbol} · {listing.exchangeMic} · {listing.issuerName}
@@ -234,6 +229,17 @@ export function CompanyReportHtmlView({
         and export do not refresh sources. This report provides no investment
         rating or recommendation.
       </p>
+    </>
+  );
+}
+
+function AuthoredResearch({
+  report,
+}: {
+  readonly report: PreparedCompanyReport;
+}) {
+  return (
+    <>
       <section>
         <h2>Authored research</h2>
         {report.note === null ? (
@@ -255,7 +261,14 @@ export function CompanyReportHtmlView({
           after later edits.
         </p>
       </section>
-      <Annual report={report} />
+    </>
+  );
+}
+
+function CapturedPrice({ report }: { readonly report: PreparedCompanyReport }) {
+  const price = report.evidence.price;
+  return (
+    <>
       <section>
         <h2>Captured Price source</h2>
         <SourceState source={price} />
@@ -282,6 +295,18 @@ export function CompanyReportHtmlView({
           </dl>
         )}
       </section>
+    </>
+  );
+}
+
+function CapturedFilings({
+  report,
+}: {
+  readonly report: PreparedCompanyReport;
+}) {
+  const filings = report.evidence.filings;
+  return (
+    <>
       <section>
         <h2>Captured Filings source</h2>
         <SourceState source={filings} />
@@ -321,6 +346,25 @@ export function CompanyReportHtmlView({
           </>
         )}
       </section>
+    </>
+  );
+}
+
+/** Passive document content only: no hooks, handlers, source requests or URL attributes. */
+export function CompanyReportHtmlView({
+  report,
+  jsonText,
+}: {
+  readonly report: PreparedCompanyReport;
+  readonly jsonText: string;
+}) {
+  return (
+    <main>
+      <ReportIdentity report={report} />
+      <AuthoredResearch report={report} />
+      <Annual report={report} />
+      <CapturedPrice report={report} />
+      <CapturedFilings report={report} />
       <section>
         <h2>Complete captured report document</h2>
         <p>

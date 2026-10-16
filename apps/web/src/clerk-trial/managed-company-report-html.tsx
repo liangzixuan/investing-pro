@@ -73,7 +73,8 @@ export function formatCompanyReportHtml(
       failed = true;
     }
   }
-  if (failed || !text || /\p{Cs}/u.test(text)) return null;
+  if (failed || !text) return null;
+  if (/\p{Cs}/u.test(text)) return null;
   const byteLength = encoder.encode(text).byteLength;
   if (byteLength > COMPANY_REPORT_HTML_MAX_BYTES) return null;
   const result: CompanyReportHtmlDocument = Object.freeze({
