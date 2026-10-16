@@ -13,7 +13,21 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 candidate adds [reported balance sheet totals](MANAGED_SEC_ANNUAL.md#reported-balance-sheet-totals)
+The next M2 candidate adds [reported balance sheet comparison](MANAGED_SEC_ANNUAL.md#compare-reported-balance-sheet-totals)
+to the existing two-company Annual table. Each company's total assets, total
+liabilities and parent equity keep independent exact USD amounts, balance dates,
+refusals and original source references. It uses the loaded Annual v5 packets
+without another request, calculation, note action or saved field. Full statements,
+valuation and peer ranking remain open.
+
+The preceding M2 candidate adds [reported balance-sheet history](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-history)
+to the existing Annual balance sheet. Up to three reported dates retain independent
+assets, liabilities and parent-equity amounts, missing cells and exact references
+from the selected filing. It uses existing admitted observations without another
+request, schema change, equation or ratio. Complete statements, valuation and peers
+remain open.
+
+The preceding M2 increment adds [reported balance sheet totals](MANAGED_SEC_ANNUAL.md#reported-balance-sheet-totals)
 to Annual, the company snapshot and captured reports. Total assets, total
 liabilities and parent equity retain independent admission, exact USD amounts,
 filing references and unavailable reasons. The existing two SEC requests and
@@ -91,16 +105,13 @@ and coverage qualifications. The Filings card reuses the existing admitted list
 and retains its original window, truncation and incomplete-coverage limits. It uses admitted evidence and explicit section
 navigation, with no automatic request, saved change or model verdict.
 
-The next M4 layer adds a [prepared research report preview](MANAGED_COMPANY_REPORT.md).
-It separates the exact authored watchlist draft from dated loaded source summaries.
-Preparation is explicit and adds no source read or saved change. Intervening source,
-note or visit changes remove the preview. Export and durable reports remain open.
-
-The next report layer exposes an initially closed, read-only JSON document with
-the exact authored draft and complete admitted Price, Annual and Filings packets.
-All financial inputs, revenue bases, source dates and unavailable values stay in
-their original packets. It adds no request or write. Purpose-specific file
-delivery remains separate from inspection and saved-watchlist export.
+The implemented [company report](MANAGED_COMPANY_REPORT.md) separates the exact
+authored watchlist draft from dated loaded sources. Explicit preparation exposes
+a read-only JSON document containing the complete admitted Price, Annual and
+Filings packets. Browser Download report and Android Save report deliver that
+purpose-specific document through their existing platform flows. Source, note
+or visit changes invalidate the prepared capture. Durable report storage and
+broader report inputs remain open; this is separate from saved-watchlist export.
 
 The preceding M4 thesis candidate adds optional **Research purpose** and **Time horizon**
 to the authored review. The owner can distinguish exploring an idea from reviewing

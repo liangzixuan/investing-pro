@@ -39,6 +39,49 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Annual comparison reading flow candidate
+
+The source candidate groups the four existing calculation and scope explanations
+in a closed **Calculation methods and comparison limits** disclosure after the
+table and before the note action. Full text remains mounted. Cell dates,
+qualifications and refusals stay visible, with a short reminder about differing
+dates and parent equity. Source requests, note actions and saved data are unchanged.
+The 61 affected tests, web types, scoped lint, format and boundaries pass. Invented-data Chrome checks pass at 1440, 390 and 320 CSS pixels, including keyboard and pointer use, exact draft and source retention, failed refresh, Cancel, late completion and session retirement. Hosted-native acceptance for this reading-flow change remains separate.
+
+## Reported balance sheet comparison candidate
+
+The next read-only M2 slice adds total assets, total liabilities and parent equity
+to the existing [Annual comparison](MANAGED_SEC_ANNUAL.md#compare-reported-balance-sheet-totals).
+Each company retains its own exact signed USD values, balance dates, eligibility
+and refusals, independently of income and the selected revenue basis. Complete
+inputs remain in the existing source disclosures. It adds no source request,
+schema, calculation, saved field or note action. Focused comparison, fixture and
+real-model lifetime checks pass, as do web types and scoped lint. Invented-data
+Chrome checks pass at 1440, 390 and 320 CSS pixels, including exact long values,
+independent missing cells, source details, failed refresh, Cancel, one-company
+replacement and session retirement with a late reply. The unsaved draft remains
+unchanged until retirement. Fresh hosted checks and native execution remain
+pending. Static native inventory
+retains all 40 cases and 111 previous frames, with one comparison frame for 112
+expected screenshots. Production is unchanged.
+
+## Reported balance-sheet history candidate
+
+The next M2 slice adds an initially closed [reported balance-sheet history](MANAGED_SEC_ANNUAL.md#read-reported-balance-sheet-history)
+inside Annual. It shows up to three dates from the loaded filing, with independent
+assets, liabilities and parent-equity cells. Missing or refused cells remain
+explicit. Exact signed amounts, original filing references and source clocks are
+retained; no balance equation or ratio is inferred. Annual v5, current totals,
+snapshot summaries, complete captured reports and the existing reads are unchanged.
+Focused domain, component, decoder, capacity and composed lifetime checks pass.
+Invented-data Chrome checks pass at 1440, 390 and 320 CSS pixels, including exact
+long values, independent missing cells, original references, failed-refresh
+retention, Cancel and session retirement with a late reply. Opening history adds
+no request and preserves the unsaved note. Independent source review is clear.
+Fresh hosted native acceptance remains pending. Its existing balance-sheet
+journey retains all 40 cases and previous 110 frames, with one added history
+frame for 111 expected screenshots.
+
 ## Balance sheet totals in main
 
 The source adds [reported balance sheet totals](MANAGED_SEC_ANNUAL.md#reported-balance-sheet-totals)
@@ -87,9 +130,17 @@ It uses invented records and the existing bounded transport and typed repository
 Focused offline checks cover the 18-read preflight, ten storage phases, strict
 request admission, rollback capacity and cleanup failures. The build binds its
 source, fixed data, tools and actual dependency graph. The local artifact build
-and static syntax check pass on integrated source `be55c8c`. The proof entry has
-not been invoked. Live transactions, service limits and persistence remain
-unverified. See the
+and static syntax check pass on integrated source `be55c8c`. That earlier private
+artifact completed four live phases with invented records, then failed prestage
+after a commit-time conflict. Offline regressions exposed a proof assumption
+about explicit rollback; the generic live failure does not locate the assertion.
+The repository already
+supports the observed commit-time conflict path. A source-only correction adds
+an independent winner read, retains exact receipt/absence checks and the strict
+dedicated rollback phase, and selects a fresh fixed invented cohort. The failed
+attempt and consumed authority stay retained; no replay or live qualification
+of the correction is claimed. Service limits and complete persistence acceptance
+remain open. See the
 [storage guide](APPWRITE_WATCHLIST.md#fixed-follow-ups-storage-proof).
 
 The operating-change and company-overview source increments are merged into main
@@ -610,11 +661,13 @@ each new source increment before integration. Keep live delivery separate under 
 and [Android](ANDROID_CLIENT.md) procedures. Continue the roadmap with admitted
 sources, exact identity, explicit reads and saved-draft/session boundaries.
 
-M4's next useful layer is an evidence-linked company report with exact loaded
-values, all bases, source dates and separate authored assessment. Its export needs
-its own document purpose and provenance; the saved-watchlist export contract must
-remain specific to saved watchlists. The read-only document inspection is
-implemented; report file delivery remains the next layer.
+The evidence-linked [company report](MANAGED_COMPANY_REPORT.md) already provides
+read-only JSON inspection, browser Download report and Android Save report. It
+keeps exact loaded packets, original source dates and the separate authored draft.
+Browser handoff does not prove that a file reached disk; native Save retains its
+existing provider and lifecycle checks. Durable report storage, broader research
+inputs and delivery acceptance remain separate work. Saved-watchlist export
+keeps its own contract.
 
 Price history still covers AAPL, GOOG and GOOGL, three listings for two issuers,
 with dated raw USD closes. Broader fields/cohorts, valuation, portfolio tools,

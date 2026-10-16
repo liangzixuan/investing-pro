@@ -920,6 +920,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("second explicitly loaded report exposes its own basis", "document.querySelector('.managed-annual-comparison select[id$=\"-right-basis\"]')?.value === 'SalesRevenueNet'");
         chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "Revenues", "Revenue");
         assertAnnualComparisonValues("1000", "10%", "25%", "Revenues", "Revenue");
+        retainAnnualNoteFrame("annualComparisonBalanceSheet", "[data-annual-comparison-balance-sheet=totalAssets] td:first-of-type",
+            "[data-annual-comparison-balance-sheet=totalAssets] td:first-of-type", 1);
         assertAnnualComparisonSources();
         click(".managed-annual-comparison-source:first-child details > summary");
         click(".managed-annual-comparison-source:last-child details > summary");
@@ -1050,7 +1052,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {
         awaitPage("exact Annual values retain distinct fiscal periods and bases",
             "(() => { const rows = document.querySelectorAll('.managed-annual-comparison-table tbody tr');" +
-            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 16" +
+            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 19" +
             " && [...cells(0)[0].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2025-01-01|2025-12-31'" +
             " && [...cells(0)[1].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2024-07-01|2025-06-30'" +
             " && cells(1)[0].textContent === " + JSONObject.quote(basisLabel) +
@@ -1070,6 +1072,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && cells(5)[1].textContent.includes('2023-07-01 to 2024-06-30'); })()");
         assertAnnualComparisonCash();
         assertAnnualComparisonLiquidity();
+        assertAnnualComparisonBalanceSheet();
+        assertAnnualComparisonBalanceSheetSources();
     }
 
     private void assertAnnualComparisonCash() throws Exception {
@@ -1122,6 +1126,45 @@ public class ManagedWorkspaceInstrumentedTest {
             " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'; })" +
             " && cash.lastElementChild.textContent === 'Calculation references: ' + ids.join(' · '); }); })()");
         assertAnnualComparisonLiquiditySources();
+    }
+
+    private void assertAnnualComparisonBalanceSheet() throws Exception {
+        awaitPage("reported balance totals retain independent exact dates and refusals through every comparison lifetime",
+            "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-balance-sheet]')];" +
+            " const keys = ['totalAssets', 'totalLiabilities', 'shareholdersEquity'];" +
+            " const labels = ['Total assets', 'Total liabilities', 'Shareholders’ equity · parent'];" +
+            " const values = [['1000.125', '1000.' + '0'.repeat(58) + '1'], ['0', '1200.25'], ['-200.125', null]];" +
+            " const dates = ['2025-12-31', '2025-06-30']; return rows.length === 3 && rows.every((row, i) => {" +
+            " const cells = [...row.querySelectorAll('td')], header = row.querySelector('th');" +
+            " return row.dataset.annualComparisonBalanceSheet === keys[i] && header?.scope === 'row'" +
+            " && header.firstChild.textContent === labels[i] && header.querySelector('small')?.textContent === 'Reported · USD'" +
+            " && cells.length === 2 && cells.every((cell, side) => values[i][side] === null" +
+            " ? cell.textContent === 'Unavailable. This reported balance concept is absent from the source.' && !cell.querySelector('.sec-annual-liquidity-amount')" +
+            " : cell.querySelector('.sec-annual-liquidity-amount')?.textContent === values[i][side]" +
+            " && cell.querySelectorAll('small')[0]?.textContent === 'At ' + dates[side]" +
+            " && cell.querySelectorAll('small')[1]?.textContent === 'Within current-use limits at this load.'); })" +
+            " && document.querySelector('.managed-annual-comparison').textContent.includes('Parent equity excludes noncontrolling interests.')" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
+    }
+
+    private void assertAnnualComparisonBalanceSheetSources() throws Exception {
+        awaitPage("balance totals keep complete original observation references inside each existing source disclosure",
+            "(() => { const sources = [...document.querySelectorAll('[data-annual-comparison-balance-sheet-source]')];" +
+            " return sources.length === 2 && sources.every((source, side) => {" +
+            " const inputs = [...source.querySelectorAll(':scope > section')], concepts = ['Assets', 'Liabilities', 'StockholdersEquity'];" +
+            " const expected = side === 0 ? ['1000.125', '0', '-200.125'] : ['1000.' + '0'.repeat(58) + '1', '1200.25', null];" +
+            " const date = side === 0 ? '2025-12-31' : '2025-06-30', accession = side === 0 ? '0000000001-26-000001' : '0000000002-25-000001';" +
+            " return source.dataset.annualComparisonBalanceSheetSource === (side === 0 ? 'left' : 'right')" +
+            " && source.closest('details') === source.closest('.managed-annual-comparison-source').querySelector(':scope > details')" +
+            " && source.querySelector(':scope > p')?.textContent === 'Annual cutoff 2026-09-20T00:00:00.000Z. Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && inputs.length === 3 && inputs.every((input, i) => { const rows = [...input.querySelectorAll('ol > li')];" +
+            " if (expected[i] === null) return rows.length === 0 && input.textContent.includes('Value references: None');" +
+            " const fields = [...input.querySelectorAll('dl > div')], field = label => fields.find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " const id = field('Observation identifier'); return rows.length === 1 && /^sec-fact:[a-f0-9]{64}$/.test(id)" +
+            " && input.textContent.includes('Value references: ' + id) && field('Exact USD observation') === expected[i]" +
+            " && field('Source end date') === date && field('Accession') === accession" +
+            " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'" +
+            " && input.querySelector('a')?.href === 'https://www.sec.gov/Archives/edgar/data/' + (side + 1) + '/' + accession + '-index.htm'; }); }); })()");
     }
 
     private void assertAnnualComparisonLiquidity() throws Exception {
@@ -4946,6 +4989,35 @@ public class ManagedWorkspaceInstrumentedTest {
             " && getComputedStyle(table).outlineStyle !== 'none' && parseFloat(getComputedStyle(table).outlineWidth) >= 2" +
             " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
         retainAnnualNoteFrame("balanceSheetLoaded", table + " table", table + " tbody tr", 3);
+        String history = root + " > .managed-annual-balance-sheet-history";
+        String historyTable = history + " .managed-balance-sheet-history-table";
+        String historyReferences = history + " .managed-balance-sheet-history-references";
+        awaitPage("balance history and its references start closed without another read", exact +
+            " && document.querySelector(" + JSONObject.quote(history) + ")?.open === false && document.querySelector(" + JSONObject.quote(historyReferences) + ")?.open === false");
+        focusCashHistoryControl(history + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native keyboard opens independent reported dates and keeps disclosure focus", exact +
+            " && document.querySelector(" + JSONObject.quote(history) + ")?.open === true && document.activeElement === document.querySelector(" + JSONObject.quote(history + " > summary") + ")");
+        focusCashHistoryControl(historyTable);
+        awaitPage("balance history is a keyboard-focusable contained financial table", exact +
+            " && (() => { const table = document.querySelector(" + JSONObject.quote(historyTable) + "), r = table?.getBoundingClientRect(), v = visualViewport;" +
+            " return table?.getAttribute('role') === 'region' && table.tabIndex === 0 && table.getAttribute('aria-label') === 'Reported balance sheet history amounts'" +
+            " && document.activeElement === table && getComputedStyle(table).outlineStyle !== 'none' && parseFloat(getComputedStyle(table).outlineWidth) >= 2" +
+            " && r.width <= v.width && table.scrollWidth > table.clientWidth && table.scrollLeft === 0; })()");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_DPAD_RIGHT));
+        awaitPage("native Right scrolls balance history while retaining exact independent cells", exact +
+            " && document.querySelector(" + JSONObject.quote(historyTable) + ").scrollLeft > 0 && document.activeElement === document.querySelector(" + JSONObject.quote(historyTable) + ")");
+        retainAnnualNoteFrame("balanceSheetHistoryLoaded", historyTable + " thead th:nth-child(3)", historyTable + " thead th:nth-child(3), " + historyTable + " tbody td:nth-of-type(2)", 4);
+        focusCashHistoryControl(historyReferences + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native keyboard exposes each date and metric's exact source references", exact +
+            " && document.querySelector(" + JSONObject.quote(historyReferences) + ")?.open === true && document.activeElement === document.querySelector(" + JSONObject.quote(historyReferences + " > summary") + ")");
+        assertOperatingCounts(1, 0, 0, 1);
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        focusCashHistoryControl(history + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("closing balance history preserves current totals and every captured observation", exact +
+            " && document.querySelector(" + JSONObject.quote(history) + ")?.open === false");
         focusCashHistoryControl(source + " > summary");
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
         awaitPage("native keyboard opens all three exact source records and original clocks",
@@ -4966,11 +5038,15 @@ public class ManagedWorkspaceInstrumentedTest {
             " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '1.0.0' && annual.schemaVersion === '5.0.0'" +
             " && annual.security.symbol === 'ZERO' && annual.security.listingId === 'listing-zero' && e.observations.length === 0 && e.resolution.pairs.length === 0" +
             " && keys.every((key,i) => { const metric = b[key], value = b.resolution[key], row = metric.observations[0];" +
-            " return metric.observations.length === 1 && row.value === amounts[i] && row.concept === concepts[i] && row.unit === 'USD' && row.startDate === null && row.durationDays === null" +
+            " return metric.observations.length === [3,2,3][i] && row.value === amounts[i] && row.concept === concepts[i] && row.unit === 'USD' && row.startDate === null && row.durationDays === null" +
             " && row.endDate === '2025-12-31' && row.accessionNumber === '0000000001-26-000001' && row.filing.reportDate === '2025-12-31'" +
             " && row.sourceLocator === '/facts/us-gaap/' + concepts[i] + '/units/USD/0' && /^sec-fact:[a-f0-9]{64}$/.test(row.id)" +
             " && value.status === 'available' && value.value === amounts[i] && value.unit === 'USD' && value.asOfDate === '2025-12-31' && value.currentUseEligible === true" +
-            " && value.observationIds.length === 1 && value.observationIds[0] === row.id; })" +
+            " && value.observationIds.length === 1 && value.observationIds[0] === row.id" +
+            " && metric.observations.every((item,j) => item.endDate === [['2025-12-31','2024-12-31','2023-09-30'],['2025-12-31','2023-09-30'],['2025-12-31','2024-12-31','2023-09-30']][i][j]" +
+            " && item.value === [['1000.125','900.5','800.875'],['1200.25','900'],['-200.125','0','-98.625']][i][j] && item.filing.reportDate === '2025-12-31'" +
+            " && item.accessionNumber === '0000000001-26-000001' && item.unit === 'USD' && item.startDate === null && item.durationDays === null" +
+            " && item.sourceLocator === '/facts/us-gaap/' + concepts[i] + '/units/USD/' + j && /^sec-fact:[a-f0-9]{64}$/.test(item.id)); })" +
             " && e.generation.cutoffAt === '2026-09-20T00:00:00.000Z' && e.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
             " && e.generation.sources.companyFacts.fetchedAt === '2026-09-20T00:00:01.000Z' && e.generation.sources.submissions.fetchedAt === '2026-09-20T00:00:02.000Z'" +
             " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded' && doc.authoredResearch.note === " + JSONObject.quote(note) + "; })()" +
@@ -4990,7 +5066,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("third explicit refresh holds without replacing any total", exact + " && " + DIAGNOSTICS + ".annual === 3 && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'");
         click(CATALOG_REFRESH);
         String retired = DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
-            " && document.querySelector('.managed-company-research') === null && document.querySelector('.sec-annual-balance-sheet') === null" +
+            " && document.querySelector('.managed-company-research') === null && document.querySelector('.sec-annual-balance-sheet') === null && document.querySelector('.managed-annual-balance-sheet-history') === null" +
             " && document.querySelector('.managed-company-snapshot') === null && document.querySelector('#managed-prepared-report-heading') === null && document.querySelector('#managed-report-document') === null";
         awaitPage("aggregate expiry clears the report, all three totals and the watchlist draft", retired + " && " + DIAGNOSTICS + ".aborted === 1");
         click("#settle-cancelled-read");
@@ -5010,7 +5086,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && row.querySelector('th')?.textContent === labels[i] + 'Reported · USD' && row.querySelector('td > span')?.textContent === amounts[i]" +
             " && [...row.querySelectorAll('td > small')].map(e => e.textContent).join('|') === 'At 2025-12-31|Within current-use limits at this load.')" +
             " && root.textContent.includes('Parent equity excludes noncontrolling interests.') && !root.textContent.includes('999.875')" +
-            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(draft) + " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(draft) + " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })() && " + balanceSheetHistoryExact();
     }
 
     private String balanceSheetSourceExact() {
@@ -5018,14 +5094,40 @@ public class ManagedWorkspaceInstrumentedTest {
             " const concepts = ['Assets','Liabilities','StockholdersEquity'], amounts = ['1000.125','1200.25','-200.125'], ids = [];" +
             " return groups.length === 3 && groups.every((group,i) => { const rows = [...group.querySelectorAll('ol > li > details')], row = rows[0];" +
             " const field = label => [...(row?.querySelectorAll('dl > div') || [])].find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent; const id = field('Observation identifier'); ids.push(id);" +
-            " return rows.length === 1 && row.querySelector('summary')?.textContent === concepts[i] + ' · Source end 2025-12-31 · ' + amounts[i] + ' USD'" +
+            " return rows.length === [3,2,3][i] && row.querySelector('summary')?.textContent === concepts[i] + ' · Source end 2025-12-31 · ' + amounts[i] + ' USD'" +
             " && field('Exact USD observation') === amounts[i] && field('Source end date') === '2025-12-31' && field('Source start date') === 'Not supplied'" +
             " && field('Source duration') === 'Not supplied; an instant balance requires no duration.' && field('Accession') === '0000000001-26-000001'" +
             " && field('Joined report / accepted time') === '2025-12-31 · 2026-02-01T00:00:00.000Z' && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'" +
             " && /^sec-fact:[a-f0-9]{64}$/.test(id) && [...group.querySelectorAll(':scope > p')].some(p => p.textContent === 'Value references: ' + id)" +
-            " && row.querySelector('a')?.getAttribute('href') === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'; }) && new Set(ids).size === 3" +
+            " && row.querySelector('a')?.getAttribute('href') === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
+            " && rows.every((item,j) => { const field = label => [...item.querySelectorAll('dl > div')].find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " return field('Source end date') === [['2025-12-31','2024-12-31','2023-09-30'],['2025-12-31','2023-09-30'],['2025-12-31','2024-12-31','2023-09-30']][i][j]" +
+            " && field('Exact USD observation') === [['1000.125','900.5','800.875'],['1200.25','900'],['-200.125','0','-98.625']][i][j]" +
+            " && field('Joined report / accepted time') === '2025-12-31 · 2026-02-01T00:00:00.000Z' && field('Accession') === '0000000001-26-000001'" +
+            " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/' + j && /^sec-fact:[a-f0-9]{64}$/.test(field('Observation identifier')); }); }) && new Set(ids).size === 3" +
             " && source.textContent.includes('Annual cutoff 2026-09-20T00:00:00.000Z') && source.textContent.includes('Company Facts captured 2026-09-20T00:00:01.000Z')" +
             " && source.textContent.includes('Submissions captured 2026-09-20T00:00:02.000Z') && source.textContent.includes('Completed 2026-09-20T00:00:02.000Z'); })()";
+    }
+
+    private String balanceSheetHistoryExact() {
+        return "(() => { const history = document.querySelector('.managed-annual-report .managed-annual-balance-sheet-history'), table = history?.querySelector('.managed-balance-sheet-history-table');" +
+            " const dates = ['2025-12-31','2024-12-31','2023-09-30'], labels = ['Total assets','Total liabilities','Shareholders’ equity · parent'];" +
+            " const values = [['1000.125','900.5','800.875'],['1200.25','Unavailable. No reported amount at this date.','900'],['-200.125','0','-98.625']];" +
+            " const heads = [...(table?.querySelectorAll('thead th time') || [])], rows = [...(table?.querySelectorAll('tbody tr') || [])];" +
+            " const references = [...(history?.querySelectorAll('.managed-balance-sheet-history-references dl > div') || [])];" +
+            " const source = [...document.querySelectorAll('.managed-annual-report .sec-annual-balance-sheet-source > section')];" +
+            " return history?.querySelector(':scope > summary')?.textContent === 'Reported balance sheet history' && table.querySelector('caption')?.textContent === 'Reported balances · 3 dates · newest first'" +
+            " && heads.length === 3 && heads.every((head,i) => head.textContent === dates[i] && head.getAttribute('datetime') === dates[i])" +
+            " && rows.length === 3 && rows.every((row,i) => row.cells.length === 4 && row.cells[0].textContent === labels[i] + 'Reported · USD' && row.cells[0].getAttribute('scope') === 'row'" +
+            " && [...row.querySelectorAll('td')].every((cell,j) => cell.textContent === values[i][j])) && references.length === 3" +
+            " && references.every((group,i) => { const time = group.querySelector('dt time'), refs = [...group.querySelectorAll('dd > p')]; return time?.textContent === dates[i] && time.getAttribute('datetime') === dates[i]" +
+            " && refs.length === 3 && refs.every((ref,j) => { const original = [...(source[j]?.querySelectorAll('ol > li > details') || [])].find(item => item.querySelector('summary')?.textContent.includes('Source end ' + dates[i]));" +
+            " const id = [...(original?.querySelectorAll('dl > div') || [])].find(pair => pair.querySelector('dt')?.textContent === 'Observation identifier')?.querySelector('dd')?.textContent;" +
+            " return ref.getAttribute('data-balance-history-references') === ['totalAssets','totalLiabilities','shareholdersEquity'][j] && ref.textContent === labels[j] + ': ' + (id || 'None'); }); })" +
+            " && history.textContent.includes('Selected filing report date 2025-12-31') && history.textContent.includes('Earlier dates are historical comparatives in this filing, not current-use values.')" +
+            " && history.textContent.includes('Original Annual cutoff 2026-09-20T00:00:00.000Z') && history.textContent.includes('Company Facts captured 2026-09-20T00:00:01.000Z')" +
+            " && history.textContent.includes('Submissions captured 2026-09-20T00:00:02.000Z') && history.textContent.includes('Original load completed 2026-09-20T00:00:02.000Z')" +
+            " && !history.textContent.includes('901.5'); })()";
     }
 
     private String balanceSheetSnapshotExact(String container) {

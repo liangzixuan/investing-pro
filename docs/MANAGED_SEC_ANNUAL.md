@@ -86,6 +86,37 @@ the existing 2 MiB response limit and the captured document limit. Annual schema
 and definition 5.0.0 require coordinated API, website and Android clients; older
 Annual packets are refused. Saved watchlists and follow-ups do not change.
 
+## Read reported balance-sheet history
+
+Open **Reported balance sheet history** below the current totals. The table shows
+the selected filing report date and up to two earlier reported dates, newest
+first. Total assets, total liabilities and shareholders’ equity attributable to
+the parent are checked independently at each date. Exact signed USD values,
+including zero and negative equity, are kept without an equation or ratio.
+
+A missing or conflicted cell stays visible beside valid cells. Dates need not be
+consecutive year-ends. A refused date is not replaced by an older date to fill the
+table. Invalid scans, selected-row overflow or future dates refuse the affected
+metric; its dates cannot displace valid sibling dates. The existing current
+totals above the history keep their original resolution. Shared source or filing
+refusals and current-use expiry make history unavailable without erasing those
+totals.
+
+Earlier amounts are historical comparatives reported in the selected filing.
+They retain that filing’s original report date, accession and source coordinates;
+the comparative row’s end date supplies the table column. No restatement or
+accounting adjustment is made, and the table does not establish a complete or
+as-originally-filed timeline. Open **History source references** for each cell’s
+observation IDs, then inspect the original rows in the existing balance-sheet
+source disclosure. Missing cells have no references; refused cells retain their
+relevant inputs.
+
+Opening these disclosures adds no request. Annual v5 and its existing bounds are
+unchanged. The snapshot retains current totals; a prepared report captures the
+complete original Annual packet, including these comparative observations and
+clocks. Failed refresh, Cancel, late completion, selection change and session
+retirement retain the existing source, report and saved-draft rules.
+
 ## Watchlist Annual comparison
 
 **Compare annual results** lets the owner choose two different companies from
@@ -103,6 +134,12 @@ becomes unavailable; another concept cannot silently replace it. Current-use
 restrictions remain visible, and valid historical amounts do not enable an
 ineligible growth comparison. Different fiscal calendars and accounting bases
 are shown without adjustment or cross-company ranking.
+
+**Calculation methods and comparison limits** is an initially closed disclosure
+after the table and before the note action. It keeps the complete operating-margin,
+cash, liquidity and balance-sheet explanations available without a source request.
+Each cell's dates, qualifications and refusal stay visible. A short visible
+reminder keeps differing periods and the parent-equity scope clear.
 
 Basis choices and the comparison table use the same distinct readable names as
 the financial overview. A wrapping line below each native selector shows the
@@ -174,6 +211,28 @@ source disclosure includes complete operating observations, scan counts and
 calculation references. Refresh, Cancel, retention and full-report navigation use
 the existing report owner. Choose **Operating results** in the note action to
 append both companies' complete chosen evidence with original provenance.
+
+### Compare reported balance sheet totals
+
+Three rows after liquidity show **Total assets**, **Total liabilities** and
+**Shareholders’ equity · parent** from each loaded Annual report. Each cell keeps
+its exact signed, unscaled USD amount, actual balance date and current-use or
+historical qualification. The two companies can have different balance dates.
+Zero and negative reported amounts remain visible. A missing or refused total
+keeps its own reason; valid siblings remain available even when revenue or net
+income is unavailable or another revenue basis is selected.
+
+Parent equity excludes noncontrolling interests. Different fiscal calendars and
+accounting policies can limit comparison. The app does not infer a balance
+equation, cross-company difference, rank or valuation. Each company's existing
+initially closed source disclosure includes the complete reported observations,
+agreeing references, original filing links and source clocks.
+
+These rows use the existing Annual v5 packets and report owners. Failed refresh
+and Cancel retain their original values and dates; a successful refresh replaces
+only that company's report. Selection and session retirement fence late replies.
+Reading these rows or opening source details makes no request and does not edit
+or save a note. The existing note actions retain their current evidence groups.
 
 ### Open the full report from a comparison
 

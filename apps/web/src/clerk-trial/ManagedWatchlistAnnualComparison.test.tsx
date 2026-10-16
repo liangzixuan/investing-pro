@@ -15,6 +15,7 @@ import {
   annualComparisonCashRows as cashRows,
   annualComparisonLiquidityRows as liquidityRows,
   annualComparisonOperatingRows as operatingRows,
+  annualComparisonBalanceRows as reportedRows,
   annualComparisonRows as incomeRows,
   annualComparisonResponse as packet,
 } from "./annual-comparison-fixture";
@@ -77,6 +78,7 @@ type ControlProps = {
   id?: string;
   value?: string;
   disabled?: boolean;
+  open?: boolean;
   className?: string;
   "aria-label"?: string;
   "aria-describedby"?: string;
@@ -433,6 +435,68 @@ describe("watchlist annual comparison controls and presentation", () => {
     expect(f.read).not.toHaveBeenCalled();
   });
 
+  it("keeps complete methods closed between visible qualified values and the note action", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    f.read
+      .mockResolvedValueOnce(
+        await packet("left", { balanceRows: reportedRows("left") }),
+      )
+      .mockResolvedValueOnce(
+        await packet("right", { balanceRows: reportedRows("right") }),
+      );
+    await f.load("left");
+    await f.load("right");
+    const tree = f.render();
+    const methods = walk(tree).filter(
+      (node) =>
+        node.type === "details" &&
+        node.props.className === "managed-annual-comparison-methods",
+    );
+    expect(methods).toHaveLength(1);
+    expect(methods[0]!.props.open).toBeUndefined();
+    const contents = walk(methods[0]!.props.children);
+    expect(contents[0]!.type).toBe("summary");
+    expect(textContent(contents[0]!.props.children)).toBe(
+      "Calculation methods and comparison limits",
+    );
+    expect(
+      contents
+        .filter((node) => node.type === "p")
+        .map((node) => textContent(node.props.children)),
+    ).toEqual([
+      "Operating margin divides reported operating income by the selected positive revenue for the same filing and exact period, then multiplies by 100. It is rounded to two decimal places, half up. Revenue bases stay separate; negative operating income is valid. This does not establish adjusted earnings, EBIT or EBITDA.",
+      "The app calculation subtracts purchases of property, plant and equipment from operating cash flow for the same filing and period. It does not adjust for leases, acquisitions or other investing cash flows.",
+      "Working capital subtracts current liabilities from current assets. Current ratio divides current assets by current liabilities and rounds to two decimal places, half up. Both calculations require nonnegative balances from the same filing and date; the ratio requires positive liabilities. Current assets are not all cash.",
+      "Balance sheet totals are independent reported amounts at each company’s own balance date. Parent equity excludes noncontrolling interests. Different fiscal dates and accounting policies can limit comparison. No balance equation or cross-company difference is inferred.",
+    ]);
+    const html = renderToStaticMarkup(tree);
+    const disclosure = html.indexOf(
+      '<details class="managed-annual-comparison-methods">',
+    );
+    expect(disclosure).toBeGreaterThan(html.indexOf("</table>"));
+    expect(html.indexOf('data-note-action="outside-table"')).toBeGreaterThan(
+      html.indexOf("</details>", disclosure),
+    );
+    const visible = html.slice(0, disclosure);
+    expect(visible).toContain(
+      "Fiscal periods and balance dates can differ. Parent equity excludes noncontrolling interests.",
+    );
+    expect(reportedAmounts(visible, "totalAssets")).toEqual([
+      "1000.125",
+      `1000.${"0".repeat(58)}1`,
+    ]);
+    expect(reportedRowHtml(visible, "totalAssets")).toContain("At 2025-12-31");
+    expect(reportedRowHtml(visible, "totalAssets")).toContain("At 2025-06-30");
+    expect(reportedRowHtml(visible, "shareholdersEquity")).toContain(
+      "Unavailable",
+    );
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.draft).toEqual(f.originalDraft);
+  });
+
   it("renders each exact fiscal period, basis and original source dates with closed complete details", async () => {
     const f = fixture();
     const left = await packet("left", { mode: "exact-decimal" });
@@ -688,7 +752,7 @@ describe("cash in the existing annual comparison", () => {
     }
     expect(
       html.split("<tbody>")[1]!.split("</tbody>")[0]!.match(/<tr/gu),
-    ).toHaveLength(16);
+    ).toHaveLength(19);
     expect(
       html.match(
         /It does not adjust for leases, acquisitions or other investing cash flows\./gu,
@@ -1675,5 +1739,201 @@ describe("operating results in the existing annual comparison", () => {
       );
     }
     expect(f.read).toHaveBeenCalledTimes(2);
+  });
+});
+
+const reportedMetrics = [
+  "totalAssets",
+  "totalLiabilities",
+  "shareholdersEquity",
+] as const;
+function reportedRowHtml(
+  html: string,
+  metric: (typeof reportedMetrics)[number],
+) {
+  return html
+    .split(`data-annual-comparison-balance-sheet="${metric}"`)[1]!
+    .split("</tr>")[0]!;
+}
+function reportedAmounts(
+  html: string,
+  metric: (typeof reportedMetrics)[number],
+) {
+  return Array.from(
+    reportedRowHtml(html, metric).matchAll(
+      /class="sec-annual-liquidity-amount">([^<]+)</gu,
+    ),
+    (match) => match[1],
+  );
+}
+
+describe("reported balance sheet totals in the existing annual comparison", () => {
+  it("keeps all three rows unloaded without requests or note actions", () => {
+    const f = fixture(),
+      html = renderToStaticMarkup(f.render());
+    for (const metric of reportedMetrics)
+      expect(
+        reportedRowHtml(html, metric).match(/<td>Not loaded<\/td>/gu),
+      ).toHaveLength(2);
+    expect(
+      html.indexOf('data-annual-comparison-balance-sheet="totalAssets"'),
+    ).toBeGreaterThan(
+      html.indexOf('data-annual-comparison-liquidity="currentRatio"'),
+    );
+    expect(f.read).not.toHaveBeenCalled();
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+  });
+
+  it("keeps own dates and complete closed provenance independent of income failure and selected basis", async () => {
+    const f = fixture();
+    const left = await packet("left", {
+      mode: "income-invalid",
+      balanceRows: reportedRows("left"),
+    });
+    const right = await packet("right", { balanceRows: reportedRows("right") });
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    f.read.mockResolvedValueOnce(left).mockResolvedValueOnce(right);
+    await f.load("left");
+    expect(
+      reportedRowHtml(renderToStaticMarkup(f.render()), "totalAssets"),
+    ).toContain("<td>Not loaded</td>");
+    await f.load("right");
+    const original = renderToStaticMarkup(f.render());
+    for (const [side, wire] of [
+      ["left", left],
+      ["right", right],
+    ] as const) {
+      const source = original
+        .split(`data-annual-comparison-balance-sheet-source="${side}">`)[1]!
+        .split("</details></section>")[0]!;
+      expect(source).toContain(wire.evidence.generation.completedAt);
+      expect(source).toContain(wire.evidence.generation.cutoffAt);
+      for (const metric of reportedMetrics)
+        for (const observation of wire.evidence.balanceSheet[metric]
+          .observations) {
+          for (const value of [
+            observation.id,
+            observation.sourceLocator,
+            observation.accessionNumber,
+            observation.endDate,
+            observation.value,
+            observation.filing.sourceUrl!,
+          ])
+            expect(source).toContain(value);
+        }
+      expect(original).toContain(
+        `<details><summary>${side === "left" ? "First" : "Second"} company source and validation details</summary>`,
+      );
+    }
+    expect(reportedAmounts(original, "totalAssets")).toEqual([
+      "1000.125",
+      `1000.${"0".repeat(58)}1`,
+    ]);
+    expect(reportedAmounts(original, "totalLiabilities")).toEqual([
+      "0",
+      "1200.25",
+    ]);
+    expect(reportedAmounts(original, "shareholdersEquity")).toEqual([
+      "-200.125",
+    ]);
+    expect(reportedRowHtml(original, "totalAssets")).toContain("At 2025-12-31");
+    expect(reportedRowHtml(original, "totalAssets")).toContain("At 2025-06-30");
+    chooseOperatingBasis(f, "left", "UnknownExplicitBasis");
+    const changed = renderToStaticMarkup(f.render());
+    for (const metric of reportedMetrics)
+      expect(reportedRowHtml(changed, metric)).toBe(
+        reportedRowHtml(original, metric),
+      );
+    expect(changed).toContain("Revenue and net income unavailable.");
+    expect(changed).toContain(
+      "Parent equity excludes noncontrolling interests.",
+    );
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.draft).toEqual(f.originalDraft);
+  });
+
+  it("retains original balances on failure and Cancel, replaces only one side and fences selection/session late replies", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    const initial = await packet("left", { balanceRows: reportedRows() }),
+      right = await packet("right", { balanceRows: reportedRows("right") });
+    f.read.mockResolvedValueOnce(initial).mockResolvedValueOnce(right);
+    await f.load("left");
+    await f.load("right");
+    const original = renderToStaticMarkup(f.render());
+    f.read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+    await f.load("left");
+    for (const metric of reportedMetrics)
+      expect(reportedRowHtml(renderToStaticMarkup(f.render()), metric)).toBe(
+        reportedRowHtml(original, metric),
+      );
+    const next = await packet("left", {
+      balanceRows: reportedRows().map((row) => ({
+        ...row,
+        value: row.metric === "total_assets" ? "2000.875" : row.value,
+      })),
+      cutoffAt: "2026-09-21T00:00:00.000Z",
+    });
+    let release!: (value: typeof next) => void;
+    f.read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const held = f.load("left");
+    const pending = f.model.getSnapshot().pending!;
+    pending.cancel();
+    release(next);
+    await held;
+    for (const metric of reportedMetrics)
+      expect(reportedRowHtml(renderToStaticMarkup(f.render()), metric)).toBe(
+        reportedRowHtml(original, metric),
+      );
+    expect(f.model.getSnapshot().right.report.response).toEqual(right);
+    f.read.mockResolvedValueOnce(next);
+    await f.load("left");
+    const replaced = renderToStaticMarkup(f.render());
+    expect(reportedAmounts(replaced, "totalAssets")).toEqual([
+      "2000.875",
+      `1000.${"0".repeat(58)}1`,
+    ]);
+    expect(f.model.getSnapshot().right.report.response).toEqual(right);
+    expect(replaced).toContain(next.evidence.generation.completedAt);
+    f.read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const selected = f.load("left");
+    f.choose("left", "");
+    release(initial);
+    await selected;
+    expect(
+      reportedAmounts(renderToStaticMarkup(f.render()), "totalAssets"),
+    ).toEqual([`1000.${"0".repeat(58)}1`]);
+    f.read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const retired = f.load("right");
+    f.model.retire();
+    release(right);
+    await retired;
+    const final = renderToStaticMarkup(f.render());
+    for (const metric of reportedMetrics)
+      expect(
+        reportedRowHtml(final, metric).match(/<td>Not loaded<\/td>/gu),
+      ).toHaveLength(2);
+    expect(final).not.toContain("data-annual-comparison-balance-sheet-source");
+    expect(f.read).toHaveBeenCalledTimes(7);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.draft).toEqual(f.originalDraft);
   });
 });

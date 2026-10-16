@@ -1,4 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { resolvePersonalSecAnnualBalanceSheetHistory } from "@research-cockpit/personal-financial-analytics";
+import { SecAnnualBalanceSheetHistory } from "../../src/features/research/SecAnnualBalanceSheetHistory";
+import type { ManagedApi } from "../../src/clerk-trial/managed-api";
+import { ManagedAnnualReport } from "../../src/clerk-trial/managed-annual-report";
+import { eodSelection } from "../../src/clerk-trial/eod-history-fixture";
 import { createFixture } from "./fixture";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
@@ -30,7 +37,7 @@ describe("invented balance-sheet acceptance", () => {
     expect(decoded.evidence.resolution.pairs).toEqual([]);
     for (const [index, key] of keys.entries()) {
       const metric = decoded.evidence.balanceSheet[key];
-      expect(metric.observations).toHaveLength(1);
+      expect(metric.observations).toHaveLength([3, 2, 3][index]!);
       expect(metric.observations[0]).toMatchObject({
         value: amounts[index],
         unit: "USD",
@@ -53,6 +60,35 @@ describe("invented balance-sheet acceptance", () => {
         observationIds: [metric.observations[0]!.id],
       });
     }
+    const history = historyFor(decoded);
+    expect(history.status).toBe("available");
+    if (history.status !== "available")
+      throw new Error("Expected reported dates");
+    expect(history.balances.map((balance) => balance.asOfDate)).toEqual([
+      "2025-12-31",
+      "2024-12-31",
+      "2023-09-30",
+    ]);
+    expect(history.balances[1]).toMatchObject({
+      totalAssets: { value: "900.5", currentUseEligible: false },
+      totalLiabilities: {
+        status: "unavailable",
+        reason: "no_report_date",
+        observationIds: [],
+      },
+      shareholdersEquity: { value: "0", currentUseEligible: false },
+    });
+    expect(history.balances[2]).toMatchObject({
+      totalAssets: { value: "800.875" },
+      totalLiabilities: { value: "900" },
+      shareholdersEquity: { value: "-98.625" },
+    });
+    for (const key of keys)
+      for (const row of decoded.evidence.balanceSheet[key].observations) {
+        expect(row.accessionNumber).toBe("0000000001-26-000001");
+        expect(row.filing.reportDate).toBe("2025-12-31");
+        expect(row.filing.acceptedAt).toBe("2026-02-01T00:00:00.000Z");
+      }
     expect(decoded.evidence.generation).toMatchObject({
       cutoffAt: "2026-09-20T00:00:00.000Z",
       completedAt: "2026-09-20T00:00:02.000Z",
@@ -114,6 +150,23 @@ describe("invented balance-sheet acceptance", () => {
         filings: { status: "not_loaded" },
       },
     });
+    const historyBefore = markup(initial);
+    expect(historyBefore).toContain("900.5");
+    expect(historyBefore).toContain("No reported amount at this date.");
+    expect(JSON.stringify(JSON.parse(document.text))).toContain(
+      JSON.stringify(initial),
+    );
+    expect(
+      initial.evidence.balanceSheet.totalAssets.observations.map(
+        (row) => row.endDate,
+      ),
+    ).toEqual(["2025-12-31", "2024-12-31", "2023-09-30"]);
+    expect(Object.keys(initial.evidence.balanceSheet)).toEqual([
+      "totalAssets",
+      "totalLiabilities",
+      "shareholdersEquity",
+      "resolution",
+    ]);
     expect(fixture.getSnapshot().annual).toBe(1);
     await workspace.annual.load();
     expect(workspace.annual.getSnapshot()).toMatchObject({
@@ -122,11 +175,17 @@ describe("invented balance-sheet acceptance", () => {
       error: true,
     });
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(markup(workspace.annual.getSnapshot().response!)).toBe(
+      historyBefore,
+    );
     expect(JSON.parse(document.text)).toMatchObject({
       sources: { annual: { response: initial } },
     });
     const held = workspace.annual.load();
     expect(fixture.getSnapshot().annual).toBe(3);
+    expect(markup(workspace.annual.getSnapshot().response!)).toBe(
+      historyBefore,
+    );
     expect(() => fixture.settleCancelledRead()).toThrow(
       "Only the retired balance-sheet read may settle",
     );
@@ -230,5 +289,66 @@ describe("invented balance-sheet acceptance", () => {
     await expect(fixture.api.loadFollowups(signal)).rejects.toThrow(
       "Follow-ups require an explicit fixture action",
     );
+  });
+});
+
+function historyFor(response: Awaited<ReturnType<typeof balanceSheetPacket>>) {
+  const { cik, generation, target, balanceSheet } = response.evidence;
+  return resolvePersonalSecAnnualBalanceSheetHistory({
+    cik,
+    generation,
+    target,
+    balanceSheet: {
+      totalAssets: balanceSheet.totalAssets,
+      totalLiabilities: balanceSheet.totalLiabilities,
+      shareholdersEquity: balanceSheet.shareholdersEquity,
+    },
+  });
+}
+function markup(response: Awaited<ReturnType<typeof balanceSheetPacket>>) {
+  return renderToStaticMarkup(
+    createElement(SecAnnualBalanceSheetHistory, { response }),
+  );
+}
+
+describe("balance-sheet history cancellation and replacement", () => {
+  it("retains dated history on Cancel, ignores a changed late packet and replaces only after a new explicit read", async () => {
+    const first = await balanceSheetPacket(),
+      replacement = await balanceSheetPacket(true);
+    let settle: ((value: typeof first) => void) | undefined;
+    const read = vi
+      .fn<ManagedApi["annualReport"]>()
+      .mockResolvedValueOnce(first)
+      .mockImplementationOnce(
+        () =>
+          new Promise<typeof first>((resolve) => {
+            settle = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(replacement);
+    const model = new ManagedAnnualReport(read, vi.fn());
+    model.open(eodSelection);
+    await model.load();
+    const original = model.getSnapshot().response;
+    if (!original) throw new Error("Expected original admitted packet");
+    const before = markup(original);
+    const pending = model.load();
+    expect(model.getSnapshot().response).toBe(original);
+    model.cancel();
+    expect(model.getSnapshot().response).toBe(original);
+    if (!settle) throw new Error("Expected held request");
+    settle(replacement);
+    await pending;
+    expect(markup(model.getSnapshot().response!)).toBe(before);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(read.mock.calls[1]![1].aborted).toBe(true);
+    await model.load();
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(markup(model.getSnapshot().response!)).toContain("901.5");
+    expect(model.getSnapshot().response?.evidence.generation.completedAt).toBe(
+      "2026-09-21T00:00:02.000Z",
+    );
+    model.close();
+    expect(model.getSnapshot().response).toBeNull();
   });
 });

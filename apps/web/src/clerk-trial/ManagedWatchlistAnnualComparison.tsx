@@ -11,6 +11,9 @@ import {
 } from "react";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
+import { ManagedAnnualBalanceSheetComparisonRows } from "./ManagedAnnualBalanceSheetComparisonRows";
+import { ManagedAnnualComparisonMethods } from "./ManagedAnnualComparisonMethods";
+import { SecAnnualBalanceSheetSourceBody } from "../features/research/SecAnnualBalanceSheet";
 import { SecAnnualSourceDetails } from "../features/research/SecAnnualEvidenceResult";
 import {
   SecAnnualCashSourceBody,
@@ -242,28 +245,16 @@ export function ManagedWatchlistAnnualComparison({
             <OperatingComparisonRows state={state} projections={projections} />
             <CashComparisonRows state={state} />
             <LiquidityComparisonRows state={state} />
+            <ManagedAnnualBalanceSheetComparisonRows
+              responses={{
+                left: state.left.report.response,
+                right: state.right.report.response,
+              }}
+            />
           </tbody>
         </table>
       </div>
-      <p className="managed-annual-comparison-help">
-        Operating margin divides reported operating income by the selected
-        positive revenue for the same filing and exact period, then multiplies
-        by 100. It is rounded to two decimal places, half up. Revenue bases stay
-        separate; negative operating income is valid. This does not establish
-        adjusted earnings, EBIT or EBITDA.
-      </p>
-      <p className="managed-annual-comparison-help">
-        The app calculation subtracts purchases of property, plant and equipment
-        from operating cash flow for the same filing and period. It does not
-        adjust for leases, acquisitions or other investing cash flows.
-      </p>
-      <p className="managed-annual-comparison-help">
-        Working capital subtracts current liabilities from current assets.
-        Current ratio divides current assets by current liabilities and rounds
-        to two decimal places, half up. Both calculations require nonnegative
-        balances from the same filing and date; the ratio requires positive
-        liabilities. Current assets are not all cash.
-      </p>
+      <ManagedAnnualComparisonMethods />
       <ManagedWatchlistAnnualComparisonNoteAction
         state={state}
         bases={{
@@ -356,6 +347,13 @@ export function ManagedWatchlistAnnualComparison({
                   >
                     <h4>Liquidity sources and calculation inputs</h4>
                     <SecAnnualLiquiditySourceBody response={response} />
+                  </div>
+                  <div
+                    className="managed-annual-comparison-balance-sheet-source"
+                    data-annual-comparison-balance-sheet-source={side}
+                  >
+                    <h4>Balance sheet sources and reported inputs</h4>
+                    <SecAnnualBalanceSheetSourceBody response={response} />
                   </div>
                 </details>
               )}

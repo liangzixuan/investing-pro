@@ -295,8 +295,10 @@
 .managed-frame .managed-icon {
   display: block;
   flex: 0 0 22px;
-  filter: invert(1);
   opacity: 0.75;
+}
+.managed-frame img.managed-icon {
+  filter: invert(1);
 }
 .managed-frame .managed-navigation [aria-current="page"] {
   color: var(--managed-ink);

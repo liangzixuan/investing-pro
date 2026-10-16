@@ -498,9 +498,14 @@ comes from the platform's `x-appwrite-key` header, captured before any await.
 An 18-read preflight requires all three current rows and fifteen receipt rows to
 be absent. Ten later phases check independent storage, stale edits, races,
 rollback, locally suppressed commit acknowledgement, a later invocation,
-capacity and domain refusals. Offline tests establish a successful model trace
-of 127 local calls, including preflight, within combined phase ceilings of 156.
-These counts do not measure live service calls or prove cold-process reopening.
+capacity and domain refusals. The staging-rejection model uses 128 local calls,
+including preflight, within unchanged combined phase ceilings of 156.
+Prestage independently reads the version-three winner, joins its exact payload,
+digest and application time to its receipt, and checks the loser's receipt is
+absent. A conflict can occur during staging or commit; a separate rollback is
+required by the dedicated rollback phase, not by every conflict. The three
+prestage model paths use 16, 18 and 17 calls for staging 400, typed commit 400 and
+commit 409 respectively. These counts do not prove cold-process reopening.
 The maximum current-catalog packet is 250,191 bytes. The separate 262,144-byte
 saved-shape limit and 262,145-byte refusal do not establish a catalog-matching
 write at that size.
@@ -512,6 +517,8 @@ or remains eligible. Cleanup starts transport closure even if an actor rejects
 or does not settle; it must finish within the remaining deadline. An unfinished
 rollback or failed cleanup makes the result incomplete. There is no automatic
 retry or record-deletion phase.
+Transport closure and local cleanup do not establish a server transaction's
+terminal status.
 
 Successful writes use the repository's actual UTC clock. The fixed year-9999
 completion probe and an injected old clock check refusals; neither supplies a
@@ -523,10 +530,15 @@ The fixed Node 24 builder disables configuration discovery and pins its explicit
 TypeScript configuration, source, lockfile, tools, catalog and commands. A
 discovery build records the full module graph; the final identity includes that
 graph and its bytes, which the final build must reproduce. The output admits one
-ESM entry plus its manifests. The local build and static
-syntax check pass. The proof entry has not been invoked.
-Schema provisioning, private function authority, service cost and limits, and
-live persistence require separate reviewed evidence and authorization.
+ESM entry plus its manifests. An earlier artifact completed four live phases
+with invented data, then failed prestage after a commit-time conflict. Offline
+regressions exposed an invalid requirement for an explicit rollback; the generic
+live report does not identify the failed assertion. That result remains retained.
+This source
+uses a new fixed three-principal cohort with 18 locations disjoint from the
+consumed cohort; it does not resume or delete the old records. The corrected
+artifact, live proof and production publication still require their own review
+and authorization.
 
 ## Cloud evidence and remaining acceptance
 

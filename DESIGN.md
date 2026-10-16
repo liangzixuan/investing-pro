@@ -93,6 +93,14 @@ Operating results to the existing evidence choice and retain the same note
 destination, feedback and Review controls. The table keeps its contained
 horizontal scroll and 44px keyboard-accessible selectors on narrow screens.
 
+Reported total assets, liabilities and parent equity follow liquidity in that
+same comparison table. Keep each cell's own date and qualification beside its
+exact amount, including zero, negative and unavailable values. Revenue selection
+does not change these independent rows. Reuse the existing per-company source
+disclosure for complete balance inputs and its spacing and typography. Keep
+parent equity's scope and differing company dates explicit; do not add a ranking
+or imply an accounting adjustment.
+
 ## Color and surfaces
 
 Follow-ups uses the same managed fields, focus outline and 44px actions. Place
@@ -313,6 +321,15 @@ inputs closed until opened. Wrap long values and identifiers within the region;
 preserve 44-pixel disclosure targets and visible keyboard focus. Add Balance sheet
 totals to the existing report navigation without starting a request.
 
+Place reported balance-sheet history in a separate, initially closed disclosure
+below current totals. Use a focusable, horizontally contained table with metric
+rows and up to three actual date columns. Keep signed figures exact and wrap long
+values; align date headings and numbers with the existing financial tables.
+Missing and refused cells stay readable beside valid siblings. Put full per-cell
+source references in a second closed disclosure. Preserve 44px summary targets,
+visible keyboard focus and the current totals’ separate selectors. Opening
+history must not request data or imply a complete timeline.
+
 Place Annual liquidity after cash in a two-column Measure/Value table. Show the
 two reported balances and two labelled app calculations with their exact balance
 dates, USD or multiple units and current-use qualifications. Keep thin row rules,
@@ -439,7 +456,7 @@ use restrictions retain their visible warning treatment.
 Follow the income rows with three cash-generation rows in the same comparison
 table. Each cash cell shows its exact USD amount, its own period and current-use
 status, or its specific unavailable reason. Label the subtraction as an app
-calculation and show its limits once below the table. Keep income periods and
+calculation and keep its full limits in the methods disclosure below the table. Keep income periods and
 warnings explicitly scoped to revenue and net income. Cash availability does
 not depend on the selected revenue basis. Put the complete cash inputs inside
 each company's existing source disclosure, preserving the original dates.
@@ -451,6 +468,13 @@ Keep liquidity independent of revenue-basis selection and income/cash warnings.
 Place instant observations and calculation references inside each company's
 existing source disclosure. Use the same shared value and source presentation as
 company Annual, with comparison-sized type and contained long-value wrapping.
+
+Place **Calculation methods and comparison limits** in an initially closed native
+disclosure after the table and before the note action. Keep all four method and
+scope paragraphs mounted inside it. Reuse the 44px summary, native marker and
+managed focus outline without adding a card. Keep each cell's dates, eligibility
+and refusal visible, plus a short visible reminder that periods and balance dates
+can differ and parent equity excludes noncontrolling interests.
 
 Place the Annual comparison note action outside the horizontal table scroll.
 Use compact labelled selectors for evidence group and the destination listing,

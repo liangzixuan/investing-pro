@@ -483,11 +483,18 @@ export async function runResearchFollowupsStorageProof(
       await success("a", "prestage-winner", {}, "winner");
       release.release();
       await refusal(loser, "conflict");
+      // Conflict reconciliation need not read current on every supported path.
+      await read("a", 3);
       await rawReceipt("a", "prestage-winner");
       joined("a", "prestage-winner");
       await requireAbsent("a", "prestage-loser");
-      requireProof(lifetime.rollbackObserved);
-      checks.push("prestage_CAS_refusal", "rollback", "loser_receipt_absent");
+      // A commit-time rejection has no separate client rollback. The dedicated
+      // rollback phase below still requires its acknowledged rollback.
+      checks.push(
+        "prestage_CAS_refusal",
+        "winner_current_and_receipt_preserved",
+        "loser_receipt_absent",
+      );
     } else if (phase === "overlap") {
       const ready = lifetime.barrier(),
         release = lifetime.barrier();
