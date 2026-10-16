@@ -75,6 +75,32 @@ placing it in the client configuration and workflow. Keep the accepted demo's
 service, database and prior site deployment available. An inert staging preview
 does not prove authenticated saves or a production native app.
 
+## Promote an accepted staging run
+
+Use `Appwrite tested site promotion` when an accepted staging-only run must later
+be published. Run the controller from a reviewed `main` revision after production
+approval. It downloads the original run's retained artifact and uses the existing
+site writer. It does not rebuild, stage again or repeat BrowserStack.
+
+Supply the product source SHA, original staging run ID and attempt, archive and
+manifest SHA-256 values, staging deployment ID, staging receipt and BrowserStack
+acceptance SHA-256 values, and the approved previous production deployment ID.
+The controller checks these exact bindings before any platform request. It then
+requires the current staging pointer to match the accepted receipt and the first
+production pointer to match the approved previous ID before uploading. The writer
+also checks for an intervening production change before activation.
+
+This workflow uses the existing `appwrite-production` environment, its
+`APPWRITE_DEPLOY_KEY` secret and the shared release concurrency group. Its target
+is the fixed `investment-production` site. The original combined release workflow
+continues to use its production-site environment variable.
+
+The controller receipt records the controller commit separately from the product
+commit embedded in the accepted archive. Controller-only changes need their own
+source checks; they do not replace the original product, staging or BrowserStack
+evidence. A prepared controller or ready deployment does not establish production
+publication or authenticated application health.
+
 ## One-time configuration
 
 Create GitHub environments `appwrite-staging` and `appwrite-production`. Restrict
