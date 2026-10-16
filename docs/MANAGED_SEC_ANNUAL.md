@@ -135,6 +135,12 @@ restrictions remain visible, and valid historical amounts do not enable an
 ineligible growth comparison. Different fiscal calendars and accounting bases
 are shown without adjustment or cross-company ranking.
 
+**Calculation methods and comparison limits** is an initially closed disclosure
+after the table and before the note action. It keeps the complete operating-margin,
+cash, liquidity and balance-sheet explanations available without a source request.
+Each cell's dates, qualifications and refusal stay visible. A short visible
+reminder keeps differing periods and the parent-equity scope clear.
+
 Basis choices and the comparison table use the same distinct readable names as
 the financial overview. A wrapping line below each native selector shows the
 complete selected name even when that basis is unavailable. The control references

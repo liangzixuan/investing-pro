@@ -78,6 +78,7 @@ type ControlProps = {
   id?: string;
   value?: string;
   disabled?: boolean;
+  open?: boolean;
   className?: string;
   "aria-label"?: string;
   "aria-describedby"?: string;
@@ -432,6 +433,68 @@ describe("watchlist annual comparison controls and presentation", () => {
     expect(selected).toContain("One Company");
     expect(selected).toContain("Common stock");
     expect(f.read).not.toHaveBeenCalled();
+  });
+
+  it("keeps complete methods closed between visible qualified values and the note action", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    f.read
+      .mockResolvedValueOnce(
+        await packet("left", { balanceRows: reportedRows("left") }),
+      )
+      .mockResolvedValueOnce(
+        await packet("right", { balanceRows: reportedRows("right") }),
+      );
+    await f.load("left");
+    await f.load("right");
+    const tree = f.render();
+    const methods = walk(tree).filter(
+      (node) =>
+        node.type === "details" &&
+        node.props.className === "managed-annual-comparison-methods",
+    );
+    expect(methods).toHaveLength(1);
+    expect(methods[0]!.props.open).toBeUndefined();
+    const contents = walk(methods[0]!.props.children);
+    expect(contents[0]!.type).toBe("summary");
+    expect(textContent(contents[0]!.props.children)).toBe(
+      "Calculation methods and comparison limits",
+    );
+    expect(
+      contents
+        .filter((node) => node.type === "p")
+        .map((node) => textContent(node.props.children)),
+    ).toEqual([
+      "Operating margin divides reported operating income by the selected positive revenue for the same filing and exact period, then multiplies by 100. It is rounded to two decimal places, half up. Revenue bases stay separate; negative operating income is valid. This does not establish adjusted earnings, EBIT or EBITDA.",
+      "The app calculation subtracts purchases of property, plant and equipment from operating cash flow for the same filing and period. It does not adjust for leases, acquisitions or other investing cash flows.",
+      "Working capital subtracts current liabilities from current assets. Current ratio divides current assets by current liabilities and rounds to two decimal places, half up. Both calculations require nonnegative balances from the same filing and date; the ratio requires positive liabilities. Current assets are not all cash.",
+      "Balance sheet totals are independent reported amounts at each company’s own balance date. Parent equity excludes noncontrolling interests. Different fiscal dates and accounting policies can limit comparison. No balance equation or cross-company difference is inferred.",
+    ]);
+    const html = renderToStaticMarkup(tree);
+    const disclosure = html.indexOf(
+      '<details class="managed-annual-comparison-methods">',
+    );
+    expect(disclosure).toBeGreaterThan(html.indexOf("</table>"));
+    expect(html.indexOf('data-note-action="outside-table"')).toBeGreaterThan(
+      html.indexOf("</details>", disclosure),
+    );
+    const visible = html.slice(0, disclosure);
+    expect(visible).toContain(
+      "Fiscal periods and balance dates can differ. Parent equity excludes noncontrolling interests.",
+    );
+    expect(reportedAmounts(visible, "totalAssets")).toEqual([
+      "1000.125",
+      `1000.${"0".repeat(58)}1`,
+    ]);
+    expect(reportedRowHtml(visible, "totalAssets")).toContain("At 2025-12-31");
+    expect(reportedRowHtml(visible, "totalAssets")).toContain("At 2025-06-30");
+    expect(reportedRowHtml(visible, "shareholdersEquity")).toContain(
+      "Unavailable",
+    );
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.draft).toEqual(f.originalDraft);
   });
 
   it("renders each exact fiscal period, basis and original source dates with closed complete details", async () => {

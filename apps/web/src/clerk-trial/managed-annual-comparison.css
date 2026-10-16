@@ -100,7 +100,8 @@
   color: var(--managed-muted);
   font-weight: 400;
 }
-.managed-frame .managed-annual-comparison-source {
+.managed-frame .managed-annual-comparison-source,
+.managed-frame .managed-annual-comparison-methods {
   min-width: 0;
   font-size: 13px;
 }
@@ -113,8 +114,10 @@
   min-height: 44px;
   max-width: 100%;
 }
-.managed-frame .managed-annual-comparison-source summary {
+.managed-frame .managed-annual-comparison-source summary,
+.managed-frame .managed-annual-comparison-methods > summary {
   display: list-item;
+  min-height: 44px;
   padding-block: 12px;
   cursor: pointer;
 }

@@ -39,6 +39,15 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Annual comparison reading flow candidate
+
+The source candidate groups the four existing calculation and scope explanations
+in a closed **Calculation methods and comparison limits** disclosure after the
+table and before the note action. Full text remains mounted. Cell dates,
+qualifications and refusals stay visible, with a short reminder about differing
+dates and parent equity. Source requests, note actions and saved data are unchanged.
+The 61 affected tests, web types, scoped lint, format and boundaries pass. Invented-data Chrome checks pass at 1440, 390 and 320 CSS pixels, including keyboard and pointer use, exact draft and source retention, failed refresh, Cancel, late completion and session retirement. Hosted-native acceptance for this reading-flow change remains separate.
+
 ## Reported balance sheet comparison candidate
 
 The next read-only M2 slice adds total assets, total liabilities and parent equity

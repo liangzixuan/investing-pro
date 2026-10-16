@@ -456,7 +456,7 @@ use restrictions retain their visible warning treatment.
 Follow the income rows with three cash-generation rows in the same comparison
 table. Each cash cell shows its exact USD amount, its own period and current-use
 status, or its specific unavailable reason. Label the subtraction as an app
-calculation and show its limits once below the table. Keep income periods and
+calculation and keep its full limits in the methods disclosure below the table. Keep income periods and
 warnings explicitly scoped to revenue and net income. Cash availability does
 not depend on the selected revenue basis. Put the complete cash inputs inside
 each company's existing source disclosure, preserving the original dates.
@@ -468,6 +468,13 @@ Keep liquidity independent of revenue-basis selection and income/cash warnings.
 Place instant observations and calculation references inside each company's
 existing source disclosure. Use the same shared value and source presentation as
 company Annual, with comparison-sized type and contained long-value wrapping.
+
+Place **Calculation methods and comparison limits** in an initially closed native
+disclosure after the table and before the note action. Keep all four method and
+scope paragraphs mounted inside it. Reuse the 44px summary, native marker and
+managed focus outline without adding a card. Keep each cell's dates, eligibility
+and refusal visible, plus a short visible reminder that periods and balance dates
+can differ and parent equity excludes noncontrolling interests.
 
 Place the Annual comparison note action outside the horizontal table scroll.
 Use compact labelled selectors for evidence group and the destination listing,

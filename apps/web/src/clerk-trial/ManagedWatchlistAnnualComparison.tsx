@@ -12,6 +12,7 @@ import {
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedAnnualBalanceSheetComparisonRows } from "./ManagedAnnualBalanceSheetComparisonRows";
+import { ManagedAnnualComparisonMethods } from "./ManagedAnnualComparisonMethods";
 import { SecAnnualBalanceSheetSourceBody } from "../features/research/SecAnnualBalanceSheet";
 import { SecAnnualSourceDetails } from "../features/research/SecAnnualEvidenceResult";
 import {
@@ -253,31 +254,7 @@ export function ManagedWatchlistAnnualComparison({
           </tbody>
         </table>
       </div>
-      <p className="managed-annual-comparison-help">
-        Operating margin divides reported operating income by the selected
-        positive revenue for the same filing and exact period, then multiplies
-        by 100. It is rounded to two decimal places, half up. Revenue bases stay
-        separate; negative operating income is valid. This does not establish
-        adjusted earnings, EBIT or EBITDA.
-      </p>
-      <p className="managed-annual-comparison-help">
-        The app calculation subtracts purchases of property, plant and equipment
-        from operating cash flow for the same filing and period. It does not
-        adjust for leases, acquisitions or other investing cash flows.
-      </p>
-      <p className="managed-annual-comparison-help">
-        Working capital subtracts current liabilities from current assets.
-        Current ratio divides current assets by current liabilities and rounds
-        to two decimal places, half up. Both calculations require nonnegative
-        balances from the same filing and date; the ratio requires positive
-        liabilities. Current assets are not all cash.
-      </p>
-      <p className="managed-annual-comparison-help">
-        Balance sheet totals are independent reported amounts at each company’s
-        own balance date. Parent equity excludes noncontrolling interests.
-        Different fiscal dates and accounting policies can limit comparison. No
-        balance equation or cross-company difference is inferred.
-      </p>
+      <ManagedAnnualComparisonMethods />
       <ManagedWatchlistAnnualComparisonNoteAction
         state={state}
         bases={{
