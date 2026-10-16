@@ -70,8 +70,15 @@ in source review has failing-before/passing-after regression evidence. Invented
 Chrome checks at 1440, 390 and 320 CSS pixels cover exact note preview/append,
 whole-note refusal, historical and missing values, refresh failure, Cancel,
 late replies, independent dirty drafts, explicit Save, report capture and session
-retirement. The new native journey has source/model and syntax checks; hosted
-execution, source integration and publication of this increment are pending.
+retirement. An original API 36 run passed all 43 native cases; all 119 expected
+images and source markers were checked, with representative pixel review.
+
+That revision passed Ubuntu CI, but Windows exceeded the unchanged five-second
+deadline in an existing parser corpus test. The ZIP fixture builder now uses
+Node's CRC32 implementation. All 103 archive hashes and expected outcomes remain
+unchanged; the manifest records the reviewed builder's new source hash. Local
+parser checks pass, including mutation isolation. The original failure remains
+recorded. Fresh CI, source integration and publication are pending.
 
 ## Remaining milestones and acceptance limits
 

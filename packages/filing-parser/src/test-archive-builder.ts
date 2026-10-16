@@ -1,4 +1,4 @@
-import { deflateRawSync } from "node:zlib";
+import { crc32, deflateRawSync } from "node:zlib";
 
 import {
   FILING_PARSER_LIMITS,
@@ -1056,18 +1056,6 @@ function renderEntry(entry: TestZipEntry): RenderedEntry {
     includeLocal: entry.centralDirectoryOnly !== true,
     includeCentral: entry.localHeaderOnly !== true,
   };
-}
-
-function crc32(value: Uint8Array): number {
-  let checksum = 0xffffffff;
-  for (const byte of value) {
-    checksum ^= byte;
-    for (let bit = 0; bit < 8; bit += 1) {
-      const mask = -(checksum & 1);
-      checksum = (checksum >>> 1) ^ (0xedb88320 & mask);
-    }
-  }
-  return (checksum ^ 0xffffffff) >>> 0;
 }
 
 function bytes(value: string | Uint8Array): Buffer {
