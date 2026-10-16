@@ -47,6 +47,12 @@ import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { annualOperatingNoteExcerpt } from "./managed-annual-operating-note";
 import type { PersonalSecAnnualOperatingMarginDto } from "@research-cockpit/contracts";
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
+import type { PersonalSecAnnualFinancialReviewKey } from "@research-cockpit/personal-financial-analytics";
+import {
+  ManagedFinancialReview,
+  type PreparedFinancialReview,
+  type FinancialReviewPreparation,
+} from "./managed-financial-review";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { getManagedWatchlistComparisonNoteEvidence } from "./managed-watchlist-comparison-note";
 import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
@@ -260,6 +266,7 @@ export class ManagedWorkspace {
     digest: string | null;
     result: DraftValidation;
   } | null = null;
+  private readonly financialReview = new ManagedFinancialReview();
 
   constructor(
     private readonly api: ManagedApi,
@@ -1532,6 +1539,52 @@ export class ManagedWorkspace {
   ) {
     if (!this.getResearchWatchlist(selection).canEdit) return;
     this.note(selection.listing.listingId, note, expectedNote);
+  }
+  prepareFinancialReview(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+    keys: readonly PersonalSecAnnualFinancialReviewKey[],
+  ): FinancialReviewPreparation {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        preview: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before preparing a financial review.",
+      };
+    const visit = this.state.research;
+    const annual = this.annual.getSnapshot();
+    const saved = this.coordinator.getSnapshot();
+    const navigationRevision = this.navigationRevision;
+    const isCurrent = () =>
+      !this.retired &&
+      this.researchSourceRouteReady(selection) &&
+      this.navigationRevision === navigationRevision &&
+      this.state.research === visit &&
+      visit?.section === "annual" &&
+      visit.selection === selection &&
+      this.annual.getSnapshot() === annual &&
+      annual.response === response &&
+      !annual.running &&
+      !annual.catalogChanged &&
+      this.coordinator.getSnapshot() === saved &&
+      this.getResearchWatchlist(selection).canEdit;
+    return this.financialReview.prepare({
+      note: watchlist.member.note,
+      response,
+      keys,
+      showingPrevious: annual.showingPrevious,
+      isCurrent,
+      apply: (note) =>
+        this.noteResearch(selection, note, watchlist.member!.note),
+    });
+  }
+  financialReviewPreviewIsCurrent(preview: PreparedFinancialReview) {
+    return this.financialReview.isCurrent(preview);
+  }
+  appendFinancialReview(preview: PreparedFinancialReview) {
+    return this.financialReview.append(preview);
   }
   private annualNoteProposal(
     selection: ManagedResearchSelection,

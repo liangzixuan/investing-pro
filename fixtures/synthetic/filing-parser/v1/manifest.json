@@ -9,7 +9,7 @@
     },
     {
       "path": "packages/filing-parser/src/test-archive-builder.ts",
-      "sha256": "sha256:688e4281ee801f42f381daf82fa828c6f49cd4fe99bda1726d3c20c2199f686d"
+      "sha256": "sha256:68044d605d038cc2b75a04722a61ed2ccd6947c53e001c1c99b0da2b08ca99a7"
     },
     {
       "path": "packages/filing-parser/worker/Dockerfile",

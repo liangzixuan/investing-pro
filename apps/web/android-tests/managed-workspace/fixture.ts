@@ -1,3 +1,4 @@
+import { createFinancialReviewNativeFixture } from "./financial-review-native-fixture";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { liquidityHistoryPacket } from "./liquidity-history-fixture";
 import { operatingHistoryPacket } from "./operating-history-fixture";
@@ -235,7 +236,7 @@ const snapshot: ManagedCatalogSnapshotDto = {
 };
 
 /** Test-APK-only data port. There is no fetch, credential, storage, or native-auth fallback. */
-export async function createFixture(
+async function createSharedFixture(
   scenarioName:
     | "default"
     | "catalog-startup-recovery"
@@ -1902,4 +1903,30 @@ export async function createFixture(
       reject(new TrialApiError("unavailable"));
     },
   };
+}
+
+export type SharedNativeFixture = Awaited<
+  ReturnType<typeof createSharedFixture>
+>;
+export type NativeFinancialReviewMetadata = {
+  readonly prefix: string;
+  readonly expectedNote: string;
+  readonly generation: SharedNativeFixture["generations"]["initial"];
+};
+export type ManagedNativeFixture = SharedNativeFixture & {
+  readonly financialReview: NativeFinancialReviewMetadata | null;
+};
+
+/** Dispatch only the new fixed journey; all existing scenario bodies remain unchanged. */
+export async function createFixture(
+  scenario:
+    | Parameters<typeof createSharedFixture>[0]
+    | "annual-financial-review" = "default",
+): Promise<ManagedNativeFixture> {
+  if (scenario === "annual-financial-review") {
+    return createFinancialReviewNativeFixture(
+      await createSharedFixture("annual-note"),
+    );
+  }
+  return { ...(await createSharedFixture(scenario)), financialReview: null };
 }

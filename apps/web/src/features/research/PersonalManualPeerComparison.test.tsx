@@ -926,14 +926,16 @@ describe("manual peer metric input disclosures", () => {
                       ),
               });
       const next = { ...props, annualFinancials: changed };
-      expect(disclosure(next, "ZERO", "Gross margin").key).not.toBe(
-        disclosure(props, "ZERO", "Gross margin").key,
-      );
-      expect(disclosure(next, "ZERO", "Price / earnings").key).toBe(
-        disclosure(props, "ZERO", "Price / earnings").key,
-      );
-      expect(disclosure(next, "PEER", "Gross margin").key).toBe(
-        disclosure(props, "PEER", "Gross margin").key,
+      const beforeDisclosures = nativeDisclosures(props);
+      const afterDisclosures = nativeDisclosures(next);
+      expect(
+        findDisclosure(afterDisclosures, "ZERO", "Gross margin").key,
+      ).not.toBe(findDisclosure(beforeDisclosures, "ZERO", "Gross margin").key);
+      expect(
+        findDisclosure(afterDisclosures, "ZERO", "Price / earnings").key,
+      ).toBe(findDisclosure(beforeDisclosures, "ZERO", "Price / earnings").key);
+      expect(findDisclosure(afterDisclosures, "PEER", "Gross margin").key).toBe(
+        findDisclosure(beforeDisclosures, "PEER", "Gross margin").key,
       );
     },
   );
@@ -1320,7 +1322,15 @@ function disclosure(
   symbol: string,
   metric: string,
 ): Disclosure {
-  const result = nativeDisclosures(props).find((node) =>
+  return findDisclosure(nativeDisclosures(props), symbol, metric);
+}
+
+function findDisclosure(
+  disclosures: readonly Disclosure[],
+  symbol: string,
+  metric: string,
+): Disclosure {
+  const result = disclosures.find((node) =>
     summaryLabel(node).startsWith(`Inspect ${symbol} ${metric} inputs`),
   );
   if (!result) throw new Error(`Missing ${symbol} ${metric} disclosure`);

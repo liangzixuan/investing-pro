@@ -34,6 +34,7 @@ if (
   scenario !== "annual-operating-results" &&
   scenario !== "annual-operating-history" &&
   scenario !== "annual-liquidity-history" &&
+  scenario !== "annual-financial-review" &&
   scenario !== "annual-balance-sheet" &&
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
@@ -416,6 +417,11 @@ function Fixture() {
         >
           {JSON.stringify(fixture.generations)}
         </pre>
+        {fixture.financialReview && (
+          <pre id="fixture-financial-review" hidden>
+            {JSON.stringify(fixture.financialReview)}
+          </pre>
+        )}
         {scenario === "annual-operating-comparison" && (
           <pre
             id="fixture-operating-comparison"
@@ -452,7 +458,8 @@ function Fixture() {
             scenario === "annual-liquidity-history"
               ? state.aborted !== state.lateResolved + 1 ||
                 ![3, 5].includes(state.annual)
-              : scenario === "annual-operating-results"
+              : scenario === "annual-operating-results" ||
+                  scenario === "annual-financial-review"
                 ? state.aborted !== state.lateResolved + 1 ||
                   ![3, 4].includes(state.annual)
                 : state.aborted !== 1 || state.lateResolved !== 0
