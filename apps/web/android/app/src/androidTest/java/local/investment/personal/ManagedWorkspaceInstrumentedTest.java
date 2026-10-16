@@ -5962,6 +5962,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector(\"section[aria-label='Annual revenue basis SalesRevenueNet']\") === null" +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
         assertAnnualCashGeneration();
+        assertAnnualCashMargins();
         String comparison = basis + " .managed-annual-changes[aria-label='Reported annual comparison Revenues']";
         awaitPage("same-filing annual comparison retains exact dates, amounts and both changes",
             "document.querySelector(" + JSONObject.quote(comparison) + ")?.getAttribute('aria-label') === 'Reported annual comparison Revenues'" +
@@ -6412,6 +6413,117 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
     }
+
+    private void assertAnnualCashMargins() throws Exception {
+        String root = ".sec-annual-cash-margins";
+        String currentRevenue = "section[aria-label='Annual revenue basis Revenues'] > div > details:first-of-type > section:first-of-type > ol > li:first-child > details";
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String originalLocation = readFixtureString("location.href");
+        String originalHistoryLength = readFixtureString("String(history.length)");
+        String originalGeneration = readFixtureString("JSON.stringify(JSON.parse(document.querySelector('#fixture-report-generations').textContent).initial)");
+        String originalIds = readFixtureString(
+            "JSON.stringify([...Array.from(document.querySelectorAll('.sec-annual-cash-source > section > ol > li > details')).map(row => row.querySelectorAll('dd')[9]?.textContent)," +
+            " document.querySelector(" + JSONObject.quote(currentRevenue) + ")?.querySelectorAll('dd')[9]?.textContent])");
+        String exact =
+            "(() => { const root = document.querySelector('.sec-annual-cash-margins');" +
+            " const bases = Array.from(root?.querySelectorAll(':scope > section[data-cash-margin-basis]') || []);" +
+            " const expectedIds = " + originalIds + ";" +
+            " const period = '2025-01-01 to 2025-12-31', eligible = 'Within current-use limits at this load.';" +
+            " const missing = \"No observation covers the selected annual filing's period.\";" +
+            " const generation = JSON.parse(document.querySelector('#fixture-report-generations').textContent).initial;" +
+            " return root?.getAttribute('aria-label') === 'Annual cash generation margins'" +
+            " && root.querySelector(':scope > h5')?.textContent === 'Cash generation relative to revenue'" +
+            " && root.querySelector(':scope > p')?.textContent === 'Operating cash flow less PP&E purchases / reported revenue (%). Each revenue concept is a separate basis. The app uses the same filing and period, then rounds the percentage once to two decimal places.'" +
+            " && bases.length === 3 && bases.map(b => b.dataset.cashMarginBasis).join('|') === 'RevenueFromContractWithCustomerExcludingAssessedTax|Revenues|SalesRevenueNet'" +
+            " && bases.map(b => b.querySelector(':scope > h6')?.textContent).join('|') === 'Customer contract revenue, excluding assessed tax|Revenue|Net sales revenue'" +
+            " && bases.every((b, i) => { const cells = Array.from(b.querySelectorAll(':scope > dl > div > dd'));" +
+            " const labels = Array.from(b.querySelectorAll(':scope > dl > div > dt')).map(e => e.textContent);" +
+            " return cells.length === 2 && labels.join('|') === 'Reported revenue · USD|Operating cash flow less PP&E purchases / reported revenue (%)App calculation'" +
+            " && (i === 1 ? cells.map(c => c.querySelector(':scope > span')?.textContent).join('|') === '1000|10.01%'" +
+            " && cells.every(c => c.querySelector(':scope > small:first-of-type')?.textContent === period && c.querySelector(':scope > small:last-of-type')?.textContent === eligible)" +
+            " : cells[0].textContent === 'Unavailable. ' + missing && cells[1].textContent === 'Unavailable. Reported revenue: ' + missing); })" +
+            " && root.querySelectorAll('button,input,select,textarea').length === 0" +
+            " && expectedIds.length === 3 && expectedIds.every(id => /^sec-fact:[a-f0-9]{64}$/.test(id)) && new Set(expectedIds).size === 3" +
+            " && JSON.stringify(generation) === " + JSONObject.quote(originalGeneration) +
+            " && document.querySelector('.sec-quarterly-comparison')?.textContent.includes(generation.sha256)" +
+            " && document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
+            " && document.querySelector('#managed-research-note')?.getAttribute('data-managed-note-listing-id') === 'listing-zero'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft) +
+            " && location.href === " + JSONObject.quote(originalLocation) + " && String(history.length) === " + JSONObject.quote(originalHistoryLength) +
+            " && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0; })()";
+        awaitPage("cash margins preserve one exact percentage and two independent missing revenue bases", exact +
+            " && document.querySelectorAll('.sec-annual-cash-margins > section > details').length === 3" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-margins > section > details')).every(e => e.open === false)");
+        assertAnnualNoteCounts(1, 0, 1);
+        for (String concept : new String[] {"RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet"}) {
+            boolean hasRevenue = concept.equals("Revenues");
+            String basis = root + " > section[data-cash-margin-basis='" + concept + "']";
+            String inputs = basis + " > .sec-annual-cash-margin-inputs";
+            String summary = inputs + " > summary";
+            focusCashHistoryControl(summary);
+            onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+            awaitPage("native Space opens only the selected margin inputs with visible focus: " + concept, exact +
+                " && (() => { const inputs = document.querySelector(" + JSONObject.quote(inputs) + "), summary = document.querySelector(" + JSONObject.quote(summary) + ");" +
+                " return inputs?.open === true && document.activeElement === summary && getComputedStyle(summary).outlineStyle !== 'none'" +
+                " && parseFloat(getComputedStyle(summary).outlineWidth) >= 2" +
+                " && document.querySelectorAll('.sec-annual-cash-margins > section > details[open]').length === 1; })()");
+            if (hasRevenue) {
+                for (int operand = 1; operand <= 3; operand++) {
+                    String observation = inputs + " > section:nth-of-type(" + operand + ") > ol > li > details > summary";
+                    focusCashHistoryControl(observation);
+                    onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+                    awaitPage("native Space opens original margin operand " + operand,
+                        "document.querySelector(" + JSONObject.quote(observation) + ")?.parentElement.open === true");
+                }
+            }
+            awaitPage("cash margin inputs retain all exact operands, joined source IDs and original clocks: " + concept, exact +
+                " && (() => { const inputs = document.querySelector(" + JSONObject.quote(inputs) + "); const expectedIds = " + originalIds + ";" +
+                " const hasRevenue = " + hasRevenue + ";" +
+                " const cells = Array.from(inputs.querySelectorAll(':scope > dl > div > dd'));" +
+                " const groups = Array.from(inputs.querySelectorAll(':scope > section'));" +
+                " const rows = Array.from(inputs.querySelectorAll(':scope > section > ol > li > details'));" +
+                " const values = rows.map(row => Array.from(row.querySelectorAll('dd')).map(e => e.textContent));" +
+                " const shared = '|365 days|2025 · FY|CY2025|10-K · 2026-02-01|0000000001-26-000001|Matched to current submissions · 10-K · 2026-02-01|2025-12-31 · 2026-02-01T00:00:00.000Z|';" +
+                " return inputs.querySelector(':scope > p:first-of-type')?.textContent === 'Cutoff 2026-09-20T00:00:00.000Z. Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+                " && inputs.querySelector(':scope > p:nth-of-type(2)')?.textContent === 'Selected filing 0000000001-26-000001; report date 2025-12-31; filed 2026-02-01.'" +
+                " && cells.length === 3 && cells.slice(0,2).map(c => c.querySelector(':scope > span')?.textContent).join('|') === '120.125|20.025'" +
+                " && cells.slice(0,hasRevenue ? 3 : 2).every(c => c.querySelector(':scope > small:first-of-type')?.textContent === '2025-01-01 to 2025-12-31' && c.querySelector(':scope > small:last-of-type')?.textContent === 'Within current-use limits at this load.')" +
+                " && (hasRevenue ? cells[2].querySelector(':scope > span')?.textContent === '1000' : cells[2].textContent === \"Unavailable. No observation covers the selected annual filing's period.\")" +
+                " && groups.length === 3 && groups.map(g => g.querySelectorAll(':scope > ol > li').length).join(',') === (hasRevenue ? '1,1,1' : '1,1,0')" +
+                " && rows.length === (hasRevenue ? 3 : 2) && rows.every(row => row.open === hasRevenue)" +
+                " && values[0].slice(0,9).join('|') === '120.125' + shared + '/facts/us-gaap/NetCashProvidedByUsedInOperatingActivities/units/USD/0'" +
+                " && values[1].slice(0,9).join('|') === '20.025' + shared + '/facts/us-gaap/PaymentsToAcquirePropertyPlantAndEquipment/units/USD/0'" +
+                " && (!hasRevenue || values[2].slice(0,9).join('|') === '1000' + shared + '/facts/us-gaap/Revenues/units/USD/0')" +
+                " && values.every((value,i) => value.length === 10 && value[9] === expectedIds[i])" +
+                " && groups[0].querySelector(':scope > p')?.textContent === 'Operating cash flow references: ' + expectedIds[0]" +
+                " && groups[1].querySelector(':scope > p')?.textContent === 'PP&E purchases references: ' + expectedIds[1]" +
+                " && groups[2].querySelector(':scope > p')?.textContent === " + JSONObject.quote(concept + " references: ") + " + (hasRevenue ? expectedIds[2] : 'None')" +
+                " && inputs.querySelector(':scope > p:last-of-type')?.textContent === 'Calculation references: ' + expectedIds.slice(0,hasRevenue ? 3 : 2).join(' · '); })()");
+            if (hasRevenue) {
+                for (int operand = 1; operand <= 3; operand++) {
+                    String observation = inputs + " > section:nth-of-type(" + operand + ") > ol > li > details > summary";
+                    focusCashHistoryControl(observation);
+                    onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+                    awaitPage("native Space closes original margin operand " + operand,
+                        "document.querySelector(" + JSONObject.quote(observation) + ")?.parentElement.open === false");
+                }
+            }
+            focusCashHistoryControl(summary);
+            onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+            awaitPage("cash margin inputs close without changing values, source clocks or draft: " + concept, exact +
+                " && document.querySelector(" + JSONObject.quote(inputs) + ")?.open === false" +
+                " && document.activeElement === document.querySelector(" + JSONObject.quote(summary) + ")" +
+                " && Array.from(document.querySelectorAll('.sec-annual-cash-margins details')).every(e => e.open === false)");
+            assertAnnualNoteCounts(1, 0, 1);
+        }
+        String amounts = root + " > section[data-cash-margin-basis='Revenues'] > dl > div > dd > span";
+        retainAnnualNoteFrame("annualCashMarginRevenue", amounts, amounts, 2);
+        awaitPage("cash margin capture preserves the original Annual note journey", exact);
+        assertAnnualNoteCounts(1, 0, 1);
+    }
+
 
     private void assertAnnualNoteCounts(int annual, int saves, int loads) throws Exception {
         awaitPage("Annual note has only its explicit source load, save and reload",

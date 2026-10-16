@@ -1,6 +1,7 @@
 import { ObservationDetails } from "./SecAnnualObservation";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
+import { SecAnnualCashMargins } from "./SecAnnualCashMargins";
 import { SecAnnualOperatingResults } from "./SecAnnualOperatingResults";
 import { SecAnnualOperatingHistory } from "./SecAnnualOperatingHistory";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
@@ -242,6 +243,7 @@ function ManagedAnnualFinancialResult({
         response={response}
         cashAction={cashAction}
         headingTarget={targets.cash}
+        margins={<SecAnnualCashMargins response={response} />}
         history={<SecAnnualCashHistory response={response} />}
       />
       <SecAnnualLiquidity
