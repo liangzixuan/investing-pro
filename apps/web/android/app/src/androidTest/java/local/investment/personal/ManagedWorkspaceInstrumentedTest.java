@@ -253,6 +253,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
+        if (testName.getMethodName().equals("annualFinancialReviewRequiresPreviewAndExplicitSave"))
+            selectFixtureScenario("annual-financial-review");
         if (testName.getMethodName().equals("annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh"))
             selectFixtureScenario("annual-balance-sheet");
         if (testName.getMethodName().equals("annualLiquidityHistoryRetainsDatesAndRefusals"))
@@ -5228,6 +5230,142 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void annualFinancialReviewRequiresPreviewAndExplicitSave() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String metadata = "JSON.parse(document.querySelector('#fixture-financial-review').textContent)";
+        String note = readFixtureString(metadata + ".prefix");
+        String expected = readFixtureString(metadata + ".expectedNote");
+        String tools = ".managed-financial-review-note";
+        String preview = ".managed-financial-review-preview";
+        awaitPage("financial review starts with no source request", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("financial review retains both exact memberships", DRAFT + ".memberships?.map(m => m.symbol).join(',') === 'ONE,ZERO'");
+        typeIntoInput("managed-note-1", NOTE);
+        click(ANNUAL);
+        awaitPage("settled actual Annual route permits the explicit source load",
+            "new URL(location.href).searchParams.get('company') === 'listing-zero' && new URL(location.href).searchParams.get('section') === 'annual'" +
+            " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.disabled === false && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(NOTE));
+        replaceReportNoteWithNativeIme(NOTE, note);
+        assertFinancialReviewCounts(0, 0, 0, 0, 1, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("one explicit Annual load supplies five independent facts and closed note tools",
+            financialReviewFactsExact() + " && document.querySelector(" + JSONObject.quote(tools) + ")?.open === false" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(note));
+        click(".managed-financial-review button[aria-label='Inspect Reported operating income']");
+        awaitPage("Inspect focuses original operating inputs without another source read",
+            "document.activeElement === document.querySelector('[data-annual-report-target=operating]') && " + financialReviewFactsExact());
+        assertFinancialReviewCounts(1, 0, 0, 0, 1, 1);
+        focusCashHistoryControl(tools + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native keyboard opens the existing closed note tools",
+            "document.querySelector(" + JSONObject.quote(tools) + ")?.open === true && document.querySelectorAll(" + JSONObject.quote(tools + " input[type=checkbox]") + ").length === 5");
+        click(tools + " label:nth-of-type(1) input");
+        click(tools + " label:nth-of-type(5) input");
+        awaitPage("two explicit facts enable Preview on the settled Company route",
+            "document.querySelector(" + JSONObject.quote(tools + " > button") + ")?.disabled === false && new URL(location.href).searchParams.get('section') === 'annual'" +
+            " && [...document.querySelectorAll(" + JSONObject.quote(tools + " input[type=checkbox]") + ")].map(e => e.checked).join(',') === 'true,false,false,false,true'");
+        click(tools + " > button");
+        awaitPage("complete Unicode preview retains both exact source facts before any append",
+            financialReviewPreviewExact(expected, true) + " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(note));
+        retainAnnualNoteFrame("financialReviewPreview", preview + " > h5", preview + " > h5", 1);
+        replaceReportNoteWithNativeIme(note, note + " edited");
+        replaceReportNoteWithNativeIme(note + " edited", note);
+        awaitPage("editing then restoring the note does not revive the previous preview", financialReviewPreviewExact(expected, false));
+        click(tools + " > button");
+        awaitPage("a new explicit preview is current again", financialReviewPreviewExact(expected, true));
+        click(preview + " > button");
+        awaitPage("append changes the complete draft exactly once without saving",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(expected) + " && " + DRAFT + ".dirty === true" +
+            " && document.querySelector(" + JSONObject.quote(tools + " [role=status]") + ")?.textContent === 'Financial review added to the note draft. Review and save all changes in My Watchlist.'");
+        assertFinancialReviewCounts(1, 0, 0, 0, 1, 1);
+        click(".managed-company-report > summary");
+        click(".managed-company-report .trial-actions button:first-child");
+        click(".managed-report-document > summary");
+        awaitPage("captured report retains the complete note and all independent Annual inputs",
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), a = d.sources.annual.response, e = a.evidence;" +
+            " return JSON.stringify(d).includes(" + JSONObject.quote(expected) + ") && a.schemaVersion === '5.0.0' && e.observations.length === 0" +
+            " && e.operatingResults.resolution.operatingIncome.value === '250.125' && e.cashGeneration.resolution.operatingCashFlow.value === '120.125'" +
+            " && e.cashGeneration.resolution.operatingCashFlowLessPpePurchases.value === '-80.125' && e.liquidity.resolution.workingCapital.value === '0'" +
+            " && e.balanceSheet.resolution.shareholdersEquity.value === '-7.5' && e.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
+            " && e.generation.sha256 === " + metadata + ".generation.sha256 && " + JSONObject.quote(expected) + ".includes(e.operatingResults.resolution.operatingIncome.observationIds[0])" +
+            " && " + JSONObject.quote(expected) + ".includes(e.balanceSheet.resolution.shareholdersEquity.observationIds[0]); })()");
+        click(".managed-company-report > summary");
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("failed refresh retains exact facts and the appended draft",
+            financialReviewFactsExact() + " && " + DIAGNOSTICS + ".refreshFailed === 1 && document.querySelector('.managed-annual-report [role=alert]') !== null" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expected) + " && document.querySelector('#managed-report-document') === null");
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("third explicit request is held without replacing facts", financialReviewFactsExact() + " && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'");
+        click(".managed-annual-report .trial-actions button:nth-child(2)");
+        awaitPage("Cancel aborts only the held source", DIAGNOSTICS + ".aborted === 1");
+        click("#settle-cancelled-read");
+        awaitPage("changed late completion cannot replace retained facts or draft",
+            financialReviewFactsExact() + " && " + DIAGNOSTICS + ".lateResolved === 1 && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expected) +
+            " && document.querySelector('.managed-company-visit') !== null && !document.querySelector('.managed-company-visit').textContent.includes('999.875')");
+        assertFinancialReviewCounts(3, 1, 1, 0, 1, 1);
+        click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
+        awaitPage("Review opens the exact watchlist note reader without saving",
+            "document.querySelector('.managed-company-visit') === null && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')");
+        assertFullNoteReading("managed-note-1", expected, true);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
+        awaitPage("one explicit whole-watchlist Save acknowledges version two", DIAGNOSTICS + ".save === 1 && " + DRAFT + ".baseVersion === 2 && " + DRAFT + ".dirty === false");
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
+        awaitPage("explicit reload preserves both full memberships and the complete saved Unicode note",
+            DIAGNOSTICS + ".load === 2 && " + DRAFT + ".memberships?.length === 2 && " + DRAFT + ".memberships?.[0]?.listingId === 'listing-one'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note' && " + DRAFT + ".memberships?.[1]?.listingId === 'listing-zero'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(expected) + " && " + DRAFT + ".dirty === false");
+        assertFinancialReviewCounts(3, 1, 1, 1, 2, 1);
+        click(ANNUAL);
+        awaitPage("new visit is unloaded and preserves the saved note without a source read",
+            "document.querySelector('.managed-financial-review') === null && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expected) +
+            " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.disabled === false");
+        assertFinancialReviewCounts(3, 1, 1, 1, 2, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("fourth explicit source read holds for session retirement", DIAGNOSTICS + ".annual === 4 && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'");
+        click(CATALOG_REFRESH);
+        String retired = DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && document.querySelector('.managed-company-visit') === null && document.querySelector('.managed-financial-review') === null";
+        awaitPage("session retirement clears the draft and preview", retired + " && " + DIAGNOSTICS + ".aborted === 2");
+        click("#settle-cancelled-read");
+        awaitPage("retired late financial facts cannot restore the source, draft or preview", retired + " && " + DIAGNOSTICS + ".lateResolved === 2 && !document.querySelector('.managed-frame').textContent.includes('999.875')");
+        assertFinancialReviewCounts(4, 2, 2, 1, 2, 2);
+        assertEquals("Financial review never reloads the document", origin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private String financialReviewFactsExact() {
+        return "(() => { const root = document.querySelector('.managed-financial-review'); const rows = [...(root?.querySelectorAll('.managed-financial-review-facts > div') || [])];" +
+            " const labels = ['Reported operating incomeReported · USD','Reported operating cash flowReported · USD','Operating cash flow less PP&E purchasesApp calculation · USD','Working capitalApp calculation · USD','Reported parent equityReported · USD'];" +
+            " const values = ['250.125','120.125','-80.125','0','-7.5'], signs = ['positive','positive','negative','zero','negative'];" +
+            " return rows.length === 5 && rows.every((row,i) => row.querySelector('dt')?.textContent === labels[i] && row.querySelector('dd > span')?.textContent === values[i]" +
+            " && row.querySelector('dd')?.textContent.includes('Amount sign: ' + signs[i]) && row.querySelector('dd')?.textContent.includes(i === 3 || i === 4 ? '2025-12-31' : '2025-01-01 to 2025-12-31')" +
+            " && row.querySelector('button')?.textContent === 'Inspect inputs') && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
+    }
+
+    private String financialReviewPreviewExact(String expected, boolean current) {
+        return "(() => { const root = document.querySelector('.managed-financial-review-preview'), text = root?.querySelector('p'); return text?.textContent === " + JSONObject.quote(expected) +
+            " && text.children.length === 0 && root.querySelector('h5')?.textContent === " + JSONObject.quote(current ? "Complete note preview" : "Previous note preview") +
+            " && root.querySelector('button')?.disabled === " + !current +
+            " && text.textContent.startsWith('Financial review thesis · Café 東京 📈 Financial review: ZERO (XNAS), listing listing-zero, CIK 0000000001.')" +
+            " && text.textContent.includes('USD 250.125; period 2025-01-01 to 2025-12-31') && text.textContent.includes('USD -7.5; as of 2025-12-31')" +
+            " && (text.textContent.match(/sec-fact:[a-f0-9]{64}/g) || []).length === 2 && text.textContent.includes('Original load: cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z')" +
+            " && text.textContent.includes('Company Facts available, captured 2026-09-20T00:00:01.000Z') && text.textContent.includes('Submissions available, captured 2026-09-20T00:00:02.000Z')" +
+            " && text.textContent.includes('current use eligible') && text.textContent.endsWith('No source refresh.') && [...text.textContent.normalize('NFC')].length <= 2000; })()";
+    }
+
+    private void assertFinancialReviewCounts(int annual, int aborted, int late, int saves, int loads, int status) throws Exception {
+        awaitPage("financial review has only its exact explicit reads, Save and reload",
+            DIAGNOSTICS + ".annual === " + annual + " && " + DIAGNOSTICS + ".aborted === " + aborted + " && " + DIAGNOSTICS + ".lateResolved === " + late +
+            " && " + DIAGNOSTICS + ".save === " + saves + " && " + DIAGNOSTICS + ".load === " + loads + " && " + DIAGNOSTICS + ".status === " + status +
+            " && " + DIAGNOSTICS + ".marketsResolve === 1 && " + DIAGNOSTICS + ".search === 0 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0 && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    @Test
     public void annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh() throws Exception {
         double origin = readDocumentTimeOrigin();
         String note = "Balance sheet draft · Café 東京 📈";
@@ -6903,7 +7041,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
-            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-operating-comparison") ||
+            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-financial-review") || scenarioName.equals("annual-operating-comparison") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||

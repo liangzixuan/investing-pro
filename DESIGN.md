@@ -11,6 +11,20 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Company Financial review
+
+Company **Financial review** groups five independent Annual facts in the existing
+Annual section. Use two columns when space permits and one column on narrow
+screens. Keep exact amounts, dates, historical qualifications and refusal reasons
+visible. Positive, zero and negative describe an amount without a traffic-light
+rating. **Inspect inputs** moves focus to the existing detail section.
+
+Keep note tools in an initially closed native disclosure. Each fact selection
+has a full 44px label target. Show the complete candidate note before enabling
+append; preserve authored whitespace and wrap long references without page
+overflow. A changed source or draft marks the old preview unavailable and
+requires a new preview. Append, Review and Save remain separate actions.
+
 ## Profiles and ownership
 
 The managed browser and Android workspace share the Precision Desk presentation.

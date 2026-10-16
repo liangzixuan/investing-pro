@@ -18,6 +18,9 @@ import {
   ManagedAnnualLiquidityNoteAction,
   type ManagedAnnualLiquidityNoteActions,
 } from "./ManagedAnnualLiquidityNoteAction";
+import { ManagedCompanyFinancialReview } from "./ManagedCompanyFinancialReview";
+import type { ManagedFinancialReviewActions } from "./managed-financial-review";
+import type { ResearchWatchlistState } from "./managed-workspace";
 
 export function ManagedAnnualReport({
   model,
@@ -25,12 +28,16 @@ export function ManagedAnnualReport({
   cashNoteActions,
   liquidityNoteActions,
   operatingNoteActions,
+  financialReviewActions,
+  watchlist,
 }: {
   model: AnnualReportModel;
   noteActions?: ManagedAnnualNoteActions;
   cashNoteActions?: ManagedAnnualCashNoteActions;
   liquidityNoteActions?: ManagedAnnualLiquidityNoteActions;
   operatingNoteActions?: ManagedAnnualOperatingNoteActions;
+  financialReviewActions?: ManagedFinancialReviewActions;
+  watchlist?: ResearchWatchlistState;
 }) {
   const state = useSyncExternalStore(
     model.subscribe,
@@ -87,8 +94,8 @@ export function ManagedAnnualReport({
         </div>
       </div>
       <p className="managed-annual-scope">
-        Reported revenue, net income, operating results, cash generation and
-        liquidity from SEC Company Facts.
+        Reported revenue, net income, operating results, cash generation,
+        liquidity and balance sheet totals from SEC Company Facts.
       </p>
       <p
         className="managed-annual-status"
@@ -114,6 +121,17 @@ export function ManagedAnnualReport({
         <SecAnnualEvidenceResult
           response={state.response}
           appearance="financial"
+          renderFinancialReview={(onInspect) =>
+            financialReviewActions && watchlist && state.response ? (
+              <ManagedCompanyFinancialReview
+                response={state.response}
+                actions={financialReviewActions}
+                watchlist={watchlist}
+                running={state.running}
+                onInspect={onInspect}
+              />
+            ) : null
+          }
           renderOperatingAction={(basis) =>
             operatingNoteActions && state.response ? (
               <ManagedAnnualOperatingNoteAction

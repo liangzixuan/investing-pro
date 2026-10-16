@@ -1,3 +1,5 @@
+import { financialReviewResponse } from "../../src/clerk-trial/financial-review-fixture";
+import { proposeFinancialReviewNote } from "../../src/clerk-trial/managed-financial-review-note";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { liquidityHistoryPacket } from "./liquidity-history-fixture";
 import { operatingHistoryPacket } from "./operating-history-fixture";
@@ -245,6 +247,7 @@ export async function createFixture(
     | "annual-operating-results"
     | "annual-operating-history"
     | "annual-liquidity-history"
+    | "annual-financial-review"
     | "annual-balance-sheet"
     | "annual-operating-comparison"
     | "company-snapshot"
@@ -320,6 +323,25 @@ export async function createFixture(
   const annualHistoryLate = historyScenario
     ? await historyPacket(false, true)
     : null;
+  const financialScenario = scenarioName === "annual-financial-review";
+  const financialAnnual = financialScenario
+    ? await financialReviewResponse()
+    : null;
+  const financialLate = financialScenario
+    ? await financialReviewResponse({ operatingIncome: "999.875" })
+    : null;
+  const financialPrefix = "Financial review thesis · Café 東京 📈";
+  const financialProposal = financialAnnual
+    ? proposeFinancialReviewNote(
+        financialPrefix,
+        financialAnnual,
+        ["operatingIncome", "shareholdersEquity"],
+        false,
+      )
+    : null;
+  const financialExpectedNote = financialProposal?.note ?? null;
+  if (financialScenario && !financialExpectedNote)
+    throw new Error("Invalid invented financial review note");
   const balanceScenario = scenarioName === "annual-balance-sheet";
   const annualBalance = balanceScenario ? await balanceSheetPacket() : null;
   const annualBalanceLate = balanceScenario
@@ -697,6 +719,10 @@ export async function createFixture(
         new Error("Follow-ups require an explicit fixture action"),
       ),
     recentFilings: (input, signal) => {
+      if (financialScenario) {
+        count("filings");
+        throw new Error("Unexpected financial review Filings read");
+      }
       if (balanceScenario) {
         count("filings");
         throw new Error("Unexpected balance-sheet Filings read");
@@ -752,6 +778,14 @@ export async function createFixture(
     },
     load: (signal) => {
       count("load");
+      if (
+        financialScenario &&
+        (signal.aborted ||
+          state.load > 2 ||
+          (state.load === 2 &&
+            (state.save !== 1 || savedWatchlist.version !== 2)))
+      )
+        throw new Error("Unexpected financial review watchlist read");
       if (balanceScenario && (signal.aborted || state.load !== 1))
         throw new Error("Unexpected balance-sheet watchlist read");
       if (scenario === "watchlist-recovery") {
@@ -783,6 +817,21 @@ export async function createFixture(
     },
     status: () => {
       count("status");
+      if (financialScenario && state.status !== 1) {
+        if (
+          state.status !== 2 ||
+          state.annual !== 4 ||
+          !pending ||
+          state.save !== 1 ||
+          state.load !== 2 ||
+          state.aborted !== 1 ||
+          state.lateResolved !== 1
+        )
+          throw new Error(
+            "Hold fourth financial review read before retirement",
+          );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (balanceScenario && state.status !== 1) {
         if (
           state.status !== 2 ||
@@ -962,6 +1011,8 @@ export async function createFixture(
     },
     search: (query) => {
       count("search");
+      if (financialScenario)
+        throw new Error("Unexpected financial review search");
       if (balanceScenario) throw new Error("Unexpected balance-sheet search");
       if (query !== "ZERO")
         return Promise.reject(new Error("Unexpected fixture query"));
@@ -981,6 +1032,50 @@ export async function createFixture(
       if (scenario === "company-price-ranges") return unexpected("save");
       if (scenario === "watchlist-comparison") return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
+      if (financialScenario) {
+        const expected: MainWatchlistPayload = {
+          ...payload,
+          memberships: [
+            payload.memberships[1]!,
+            { ...payload.memberships[0]!, note: financialExpectedNote! },
+          ],
+        };
+        if (
+          signal.aborted ||
+          state.save !== 0 ||
+          state.load !== 1 ||
+          state.status !== 1 ||
+          state.annual !== 3 ||
+          state.refreshFailed !== 1 ||
+          state.aborted !== 1 ||
+          state.lateResolved !== 1 ||
+          pending ||
+          state.eod !== 0 ||
+          state.marketsEod !== 0 ||
+          state.filings !== 0 ||
+          state.search !== 0 ||
+          state.resolve !== 0 ||
+          state.calendar !== 0 ||
+          state.fed !== 0 ||
+          state.token !== 0 ||
+          state.signOut !== 0 ||
+          savedWatchlist.version !== 1 ||
+          captured?.expectedVersion !== 1 ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(expected)
+        )
+          return unexpected("save");
+        count("save");
+        savedWatchlist = {
+          version: 2,
+          payload: structuredClone(captured.payload),
+        };
+        return Promise.resolve({
+          ...structuredClone(savedWatchlist),
+          replayed: false,
+        });
+      }
+
       if (scenario === "thesis-review") {
         const expected = {
           ...payload,
@@ -1288,6 +1383,10 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
+      if (financialScenario) {
+        count("eod");
+        throw new Error("Unexpected financial review Price read");
+      }
       if (balanceScenario) {
         count("eod");
         throw new Error("Unexpected balance-sheet Price read");
@@ -1453,6 +1552,43 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (financialScenario) {
+        if (
+          !financialAnnual ||
+          signal.aborted ||
+          pending ||
+          request.schemaVersion !== "5.0.0" ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.listingId !== "listing-zero" ||
+          request.symbol !== "ZERO" ||
+          state.status !== 1 ||
+          state.annual >= 4 ||
+          (state.annual === 2 && state.refreshFailed !== 1) ||
+          (state.annual === 3 &&
+            (state.save !== 1 ||
+              state.load !== 2 ||
+              state.aborted !== 1 ||
+              state.lateResolved !== 1))
+        )
+          throw new Error(
+            "Unexpected financial review Annual request or order",
+          );
+        count("annual");
+        if (state.annual === 1)
+          return Promise.resolve(structuredClone(financialAnnual));
+        if (state.annual === 2) {
+          count("refreshFailed");
+          return Promise.reject(new TrialApiError("unavailable"));
+        }
+        signal.addEventListener("abort", () => count("aborted"), {
+          once: true,
+        });
+        // Ignore cancellation deliberately; the real model must reject this late source.
+        return new Promise((resolve) => {
+          pending = resolve;
+        });
+      }
+
       if (balanceScenario) {
         if (
           !annualBalance ||
@@ -1718,6 +1854,13 @@ export async function createFixture(
       resolve(fedPacket("2026-10-22T18:00:00.000Z"));
       void Promise.resolve().then(() => count("fedLateResolved"));
     },
+    financialReview: financialScenario
+      ? {
+          prefix: financialPrefix,
+          expectedNote: financialExpectedNote!,
+          generation: financialAnnual!.evidence.generation,
+        }
+      : null,
     generations: {
       initial: annual.evidence.generation,
       recovered: recovered.evidence.generation,
@@ -1825,6 +1968,22 @@ export async function createFixture(
       void Promise.resolve().then(() => count("eodLateResolved"));
     },
     settleCancelledRead: () => {
+      if (financialScenario) {
+        if (
+          !financialLate ||
+          !pending ||
+          state.aborted !== state.lateResolved + 1 ||
+          ![3, 4].includes(state.annual) ||
+          (state.annual === 4 && state.status !== 2)
+        )
+          throw new Error("Only an aborted financial review read may settle");
+        const resolve = pending;
+        pending = null;
+        resolve(structuredClone(financialLate));
+        void Promise.resolve().then(() => count("lateResolved"));
+        return;
+      }
+
       if (balanceScenario) {
         if (
           !annualBalanceLate ||

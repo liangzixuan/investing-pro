@@ -651,3 +651,99 @@
     border-top: 1px solid var(--managed-line);
   }
 }
+.managed-frame .managed-financial-review {
+  min-width: 0;
+  margin-block: 16px;
+  padding-block: 16px;
+  border-block: 1px solid var(--managed-line);
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-financial-review h4 {
+  margin: 0;
+  font-size: 16px;
+}
+.managed-frame .managed-financial-review p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.managed-frame .managed-financial-review-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-block: 16px;
+}
+.managed-frame .managed-financial-review-facts > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+  background: var(--managed-surface);
+}
+.managed-frame .managed-financial-review-facts dt {
+  font-size: 13px;
+  font-weight: 600;
+}
+.managed-frame .managed-financial-review-facts dd {
+  margin: 8px 0 0;
+}
+.managed-frame .managed-financial-review small {
+  display: block;
+  margin-block: 4px;
+  color: var(--managed-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.managed-frame .managed-financial-review .discovery-warning {
+  color: var(--managed-warning, #f3c477);
+}
+.managed-frame .managed-financial-review summary {
+  display: list-item;
+  min-height: 44px;
+  padding-block: 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.managed-frame .managed-financial-review button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  margin-top: 8px;
+}
+.managed-frame .managed-financial-review-facts dd > button {
+  display: block;
+}
+.managed-frame .managed-financial-review fieldset {
+  min-width: 0;
+  margin-block: 12px;
+  border: 1px solid var(--managed-line);
+}
+.managed-frame .managed-financial-review fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.clerk-trial.managed-frame .managed-financial-review input[type="checkbox"] {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  accent-color: var(--managed-action);
+}
+.managed-frame .managed-financial-review-preview {
+  margin-block: 12px;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+  background: var(--managed-surface);
+}
+.managed-frame .managed-financial-review-preview h5 {
+  margin: 0;
+  font-size: 14px;
+}
+@media (max-width: 760px) {
+  .managed-frame .managed-financial-review-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

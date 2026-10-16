@@ -40,6 +40,12 @@ and show feedback beside the field. **Go to first invalid note** in My Watchlist
 focuses the first invalid editor in the current order. Correct the note, review
 the draft, then save when ready.
 
+The company Annual view includes a [Financial review](docs/MANAGED_SEC_ANNUAL.md#review-financial-facts-in-the-company-note)
+of five independent loaded facts. Select facts and preview the complete note
+before adding them to the draft. Exact values, unavailable reasons, original
+dates and selected references stay attached. Save and report preparation remain
+explicit actions; [Current work](docs/CURRENT_WORK.md) records acceptance.
+
 Intentional sign-out reviews unsaved drafts, active saves and uncertain results.
 Keep editing or check the original save command before choosing to sign out.
 Expiry and session replacement still clear the retired workspace immediately.

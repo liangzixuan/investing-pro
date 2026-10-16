@@ -164,6 +164,13 @@ export {
 export { assessPersonalSecQuarterEvidence } from "./personal-sec-quarter-assessment";
 
 export {
+  derivePersonalSecAnnualFinancialReview,
+  type PersonalSecAnnualFinancialReviewKey,
+  type PersonalSecAnnualFinancialReviewRow,
+  type PersonalSecAnnualFinancialReviewSign,
+} from "./personal-sec-annual-financial-review";
+
+export {
   comparePersonalSecAnnualEvidence,
   resolvePersonalSecAnnualHistory,
   type PersonalSecAnnualChange,

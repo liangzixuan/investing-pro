@@ -1068,6 +1068,18 @@ export function ManagedWorkspaceScreen({
                         basis,
                       ),
                   }}
+                  financialReviewActions={{
+                    prepare: (response, keys) =>
+                      workspace.prepareFinancialReview(
+                        discovery.research!.selection,
+                        response,
+                        keys,
+                      ),
+                    isCurrent: (preview) =>
+                      workspace.financialReviewPreviewIsCurrent(preview),
+                    append: (preview) =>
+                      workspace.appendFinancialReview(preview),
+                  }}
                   priceNoteActions={{
                     getAction: (response, start, end) =>
                       workspace.getPriceNoteAction(

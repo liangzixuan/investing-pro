@@ -12,7 +12,7 @@ import type {
   PersonalSecAnnualOperatingMarginDto,
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
-import { useId, useRef, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { ManagedAnnualReportNavigation } from "./ManagedAnnualReportNavigation";
 import { ManagedAnnualTrend } from "./ManagedAnnualTrend";
 import {
@@ -33,6 +33,12 @@ import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
 
 type AnnualBasis =
   PersonalSecAnnualEvidenceResponseDto["evidence"]["resolution"]["bases"][number];
+
+type FinancialReviewSlot = (
+  inspect: (
+    section: "operating" | "cash" | "liquidity" | "balanceSheet",
+  ) => void,
+) => ReactNode;
 
 const sourceStatuses = {
   available: "Available",
@@ -95,6 +101,7 @@ export function SecAnnualEvidenceResult({
   cashAction,
   liquidityAction,
   renderOperatingAction,
+  renderFinancialReview,
   appearance = "evidence",
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
@@ -104,6 +111,7 @@ export function SecAnnualEvidenceResult({
   readonly renderOperatingAction?: (
     basis: PersonalSecAnnualOperatingMarginDto,
   ) => ReactNode;
+  readonly renderFinancialReview?: FinancialReviewSlot;
   readonly appearance?: "evidence" | "financial";
 }) {
   if (appearance === "financial")
@@ -114,6 +122,7 @@ export function SecAnnualEvidenceResult({
         cashAction={cashAction}
         liquidityAction={liquidityAction}
         renderOperatingAction={renderOperatingAction}
+        renderFinancialReview={renderFinancialReview}
       />
     );
   return (
@@ -134,6 +143,7 @@ function ManagedAnnualFinancialResult({
   cashAction,
   liquidityAction,
   renderOperatingAction,
+  renderFinancialReview,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly renderPairAction:
@@ -142,6 +152,7 @@ function ManagedAnnualFinancialResult({
   readonly liquidityAction: ReactNode;
   readonly renderOperatingAction:
     ((basis: PersonalSecAnnualOperatingMarginDto) => ReactNode) | undefined;
+  readonly renderFinancialReview: FinancialReviewSlot | undefined;
 }) {
   const id = useId();
   const income = useRef<HTMLDivElement>(null);
@@ -151,6 +162,15 @@ function ManagedAnnualFinancialResult({
   const balanceSheet = useRef<HTMLHeadingElement>(null);
   const sources = useRef<HTMLElement>(null);
   const sourceDetails = useRef<HTMLDetailsElement>(null);
+  const committedResponse = useRef<PersonalSecAnnualEvidenceResponseDto | null>(
+    null,
+  );
+  useLayoutEffect(() => {
+    committedResponse.current = response;
+    return () => {
+      committedResponse.current = null;
+    };
+  }, [response]);
   const targets = {
     income: { id: `${id}-income`, ref: income },
     operating: { id: `${id}-operating`, ref: operating },
@@ -175,6 +195,22 @@ function ManagedAnnualFinancialResult({
         targets={targets}
         sourceDetails={sourceDetails}
       />
+      {renderFinancialReview?.((section) => {
+        const target = targets[section].ref.current;
+        if (
+          committedResponse.current !== response ||
+          !target?.isConnected ||
+          target.getClientRects().length === 0
+        )
+          return;
+        target.focus({ preventScroll: true });
+        if (
+          committedResponse.current === response &&
+          targets[section].ref.current === target &&
+          target.isConnected
+        )
+          target.scrollIntoView({ block: "start", behavior: "instant" });
+      })}
       <ManagedAnnualTrend response={response} />
       <div
         className="managed-annual-financial-region"

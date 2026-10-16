@@ -55,6 +55,46 @@ note draft and Back remain available. Existing price mappings keep their exact
 listing identities. Catalog admission neither enables a price feed nor changes
 the three-listing Markets board.
 
+## Review financial facts in the company note
+
+After an explicit Annual load, **Financial review** shows five independent facts:
+reported operating income, reported operating cash flow, operating cash flow less
+PP&E purchases, working capital and reported parent equity. Values remain exact,
+unscaled USD. Positive, zero and negative describe the amount. They are not
+financial-health ratings or recommendations. Each fact keeps its own dates,
+current-use qualification and unavailable reason. Missing revenue or net income
+does not hide valid cash or balance facts.
+
+**Inspect inputs** moves focus to that fact's existing Annual section without a
+request. Calculation inputs remain available in the review and full section.
+Parent equity excludes noncontrolling interests. Cash after PP&E purchases uses
+the existing subtraction without adjustments for leases, acquisitions or other
+investing cash flows. Working capital uses the admitted same-date current
+assets less current liabilities. Flows and balances are not compared with each
+other.
+
+Open **Add financial facts to the note draft**, select facts, then choose
+**Preview financial review**. Nothing is selected initially. The preview shows
+the complete candidate note, including the exact authored text, selected facts,
+calculation operands, observation references, filing link and original source
+dates. Unavailable and historical facts keep those qualifications. The complete
+proposal must fit the existing single-line, 2,000-character note limit. If it
+does not fit, select fewer facts or edit the note. No selected evidence is clipped
+or silently omitted.
+
+**Add financial review to note draft** applies only that reviewed proposal.
+Changing the note, source state, visit, catalog or save state invalidates it.
+Editing and restoring the same note cannot restore an old preview. Failed
+refresh and Cancel can keep the previous report readable; prepare a new preview
+to include its retained-report warning. Pending source work blocks append.
+
+Use **Review in My Watchlist** and **Save watchlist** to save the full draft
+explicitly. Follow-ups keeps its separate draft and Save. Prepare the existing
+company report after append to capture the authored note and complete admitted
+Annual packet. This workflow adds no provider request, saved review field,
+report schema, composite score or generated thesis. [Current work](CURRENT_WORK.md)
+records verification and delivery status.
+
 ## Reported balance sheet totals
 
 The Annual 5.0.0 candidate adds three independent totals from the selected annual

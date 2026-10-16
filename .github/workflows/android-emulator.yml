@@ -120,6 +120,7 @@ jobs:
                   "annualLiquidityHistoryRetainsDatesAndRefusals",
                   "annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh",
                   "annualOperatingResultsRetainFactsDraftAndRetireWithSession",
+                  "annualFinancialReviewRequiresPreviewAndExplicitSave",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",
                   "companyLinkDirectEntryAndBackPreserveDraft",
