@@ -2543,7 +2543,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertSignOutCleared() throws Exception {
         awaitPage("signed-out workspace stays cleared without a sign-out review",
-            "document.body.textContent.includes('Signed out. Both local drafts have been cleared.')" +
+            "document.body.textContent.includes('Signed out. All three local drafts have been cleared.')" +
             " && document.querySelector('.managed-navigation') === null && document.querySelector('.managed-search-bar') === null" +
             " && document.querySelector('#managed-note-0') === null && document.querySelector('#managed-note-1') === null" +
             " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
