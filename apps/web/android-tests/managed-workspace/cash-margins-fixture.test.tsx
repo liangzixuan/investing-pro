@@ -25,53 +25,118 @@ function heldRead() {
   return { promise, finish };
 }
 
+async function prepareCashMarginJourney() {
+  const fixture = await createFixture("research-followups");
+  const first = await cashMarginsResponse();
+  const replacement = await cashMarginsResponse({
+    cutoffAt: "2026-09-21T00:00:00.000Z",
+    cashRows: [
+      cashRow("operating_cash_flow", "100"),
+      cashRow("ppe_purchases", "200"),
+    ],
+  });
+  const cancelled = heldRead();
+  const changedCompany = heldRead();
+  const retired = heldRead();
+  const annual = vi
+    .fn<ManagedApi["annualReport"]>()
+    .mockResolvedValueOnce(first)
+    .mockRejectedValueOnce(new TrialApiError("unavailable"))
+    .mockReturnValueOnce(cancelled.promise)
+    .mockResolvedValueOnce(replacement)
+    .mockReturnValueOnce(changedCompany.promise)
+    .mockReturnValueOnce(retired.promise);
+  const workspace = new ManagedWorkspace(
+    { ...fixture.api, annualReport: annual },
+    fixture.session,
+    undefined,
+    {
+      priceCoverage: fixture.priceCoverage,
+      marketsCohort: fixture.marketsCohort,
+    },
+  );
+  await workspace.coordinator.load();
+  await workspace.refreshCatalog();
+  await workspace.followups.coordinator.load();
+  workspace.setView("watchlist");
+  workspace.note("listing-zero", "Cash review · Café 東京  ");
+  const watchlist = workspace.coordinator.getSnapshot().draft!;
+  workspace.followups.add(watchlist.memberships[0]!, "2026-10-30");
+  const entryId = workspace.followups.getSnapshot().selectedId!;
+  workspace.followups.edit(
+    workspace.followups.currentEntry(entryId)!,
+    "check",
+    "Keep independent cash check  ",
+  );
+  const followups = workspace.followups.coordinator.getSnapshot().draft;
+  expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+  expect(workspace.followups.coordinator.getSnapshot().dirty).toBe(true);
+  return {
+    fixture,
+    first,
+    replacement,
+    cancelled,
+    changedCompany,
+    retired,
+    annual,
+    workspace,
+    watchlist,
+    followups,
+  };
+}
+
+function expectRetiredJourney(
+  journey: Awaited<ReturnType<typeof prepareCashMarginJourney>>,
+  html: () => string,
+) {
+  const { workspace, annual, fixture } = journey;
+  expect(workspace.annual.getSnapshot()).toMatchObject({
+    response: null,
+    selection: null,
+  });
+  expect(workspace.coordinator.getSnapshot()).toMatchObject({
+    phase: "retired",
+    draft: null,
+  });
+  expect(workspace.followups.coordinator.getSnapshot()).toMatchObject({
+    phase: "retired",
+    draft: null,
+  });
+  expect(html()).toBe("");
+  expect(annual).toHaveBeenCalledTimes(6);
+  expect(fixture.getSnapshot()).toMatchObject({
+    load: 1,
+    status: 1,
+    save: 0,
+    annual: 0,
+    eod: 0,
+    filings: 0,
+    calendar: 0,
+    fed: 0,
+    token: 0,
+    signOut: 0,
+  });
+  expect(fixture.followups!.getSnapshot()).toMatchObject({
+    load: 1,
+    save: 0,
+    commits: 0,
+  });
+}
+
 describe("strictly admitted cash margins in the managed workspace", () => {
   it("loads explicitly, retains failed and cancelled evidence, replaces the packet, and fences company/session late replies with both drafts intact", async () => {
-    const fixture = await createFixture("research-followups");
-    const first = await cashMarginsResponse();
-    const replacement = await cashMarginsResponse({
-      cutoffAt: "2026-09-21T00:00:00.000Z",
-      cashRows: [
-        cashRow("operating_cash_flow", "100"),
-        cashRow("ppe_purchases", "200"),
-      ],
-    });
-    const cancelled = heldRead();
-    const changedCompany = heldRead();
-    const retired = heldRead();
-    const annual = vi
-      .fn<ManagedApi["annualReport"]>()
-      .mockResolvedValueOnce(first)
-      .mockRejectedValueOnce(new TrialApiError("unavailable"))
-      .mockReturnValueOnce(cancelled.promise)
-      .mockResolvedValueOnce(replacement)
-      .mockReturnValueOnce(changedCompany.promise)
-      .mockReturnValueOnce(retired.promise);
-    const workspace = new ManagedWorkspace(
-      { ...fixture.api, annualReport: annual },
-      fixture.session,
-      undefined,
-      {
-        priceCoverage: fixture.priceCoverage,
-        marketsCohort: fixture.marketsCohort,
-      },
-    );
-    await workspace.coordinator.load();
-    await workspace.refreshCatalog();
-    await workspace.followups.coordinator.load();
-    workspace.setView("watchlist");
-    workspace.note("listing-zero", "Cash review · Café 東京  ");
-    const watchlist = workspace.coordinator.getSnapshot().draft!;
-    workspace.followups.add(watchlist.memberships[0]!, "2026-10-30");
-    const entryId = workspace.followups.getSnapshot().selectedId!;
-    workspace.followups.edit(
-      workspace.followups.currentEntry(entryId)!,
-      "check",
-      "Keep independent cash check  ",
-    );
-    const followups = workspace.followups.coordinator.getSnapshot().draft;
-    expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
-    expect(workspace.followups.coordinator.getSnapshot().dirty).toBe(true);
+    const journey = await prepareCashMarginJourney();
+    const {
+      first,
+      replacement,
+      cancelled,
+      changedCompany,
+      retired,
+      annual,
+      workspace,
+      watchlist,
+      followups,
+    } = journey;
     workspace.openWatchlistAnnual(watchlist.memberships[0]!);
     const selection = workspace.getSnapshot().research!.selection;
     const html = () => {
@@ -167,36 +232,6 @@ describe("strictly admitted cash margins in the managed workspace", () => {
     expect(annual.mock.calls[5]![1].aborted).toBe(true);
     retired.finish(replacement);
     await pendingRetire;
-    expect(workspace.annual.getSnapshot()).toMatchObject({
-      response: null,
-      selection: null,
-    });
-    expect(workspace.coordinator.getSnapshot()).toMatchObject({
-      phase: "retired",
-      draft: null,
-    });
-    expect(workspace.followups.coordinator.getSnapshot()).toMatchObject({
-      phase: "retired",
-      draft: null,
-    });
-    expect(html()).toBe("");
-    expect(annual).toHaveBeenCalledTimes(6);
-    expect(fixture.getSnapshot()).toMatchObject({
-      load: 1,
-      status: 1,
-      save: 0,
-      annual: 0,
-      eod: 0,
-      filings: 0,
-      calendar: 0,
-      fed: 0,
-      token: 0,
-      signOut: 0,
-    });
-    expect(fixture.followups!.getSnapshot()).toMatchObject({
-      load: 1,
-      save: 0,
-      commits: 0,
-    });
+    expectRetiredJourney(journey, html);
   });
 });

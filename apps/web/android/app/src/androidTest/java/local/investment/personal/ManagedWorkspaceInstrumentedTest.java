@@ -6469,15 +6469,7 @@ public class ManagedWorkspaceInstrumentedTest {
                 " return inputs?.open === true && document.activeElement === summary && getComputedStyle(summary).outlineStyle !== 'none'" +
                 " && parseFloat(getComputedStyle(summary).outlineWidth) >= 2" +
                 " && document.querySelectorAll('.sec-annual-cash-margins > section > details[open]').length === 1; })()");
-            if (hasRevenue) {
-                for (int operand = 1; operand <= 3; operand++) {
-                    String observation = inputs + " > section:nth-of-type(" + operand + ") > ol > li > details > summary";
-                    focusCashHistoryControl(observation);
-                    onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
-                    awaitPage("native Space opens original margin operand " + operand,
-                        "document.querySelector(" + JSONObject.quote(observation) + ")?.parentElement.open === true");
-                }
-            }
+            toggleAnnualCashMarginOperands(inputs, hasRevenue, true);
             awaitPage("cash margin inputs retain all exact operands, joined source IDs and original clocks: " + concept, exact +
                 " && (() => { const inputs = document.querySelector(" + JSONObject.quote(inputs) + "); const expectedIds = " + originalIds + ";" +
                 " const hasRevenue = " + hasRevenue + ";" +
@@ -6501,15 +6493,7 @@ public class ManagedWorkspaceInstrumentedTest {
                 " && groups[1].querySelector(':scope > p')?.textContent === 'PP&E purchases references: ' + expectedIds[1]" +
                 " && groups[2].querySelector(':scope > p')?.textContent === " + JSONObject.quote(concept + " references: ") + " + (hasRevenue ? expectedIds[2] : 'None')" +
                 " && inputs.querySelector(':scope > p:last-of-type')?.textContent === 'Calculation references: ' + expectedIds.slice(0,hasRevenue ? 3 : 2).join(' · '); })()");
-            if (hasRevenue) {
-                for (int operand = 1; operand <= 3; operand++) {
-                    String observation = inputs + " > section:nth-of-type(" + operand + ") > ol > li > details > summary";
-                    focusCashHistoryControl(observation);
-                    onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
-                    awaitPage("native Space closes original margin operand " + operand,
-                        "document.querySelector(" + JSONObject.quote(observation) + ")?.parentElement.open === false");
-                }
-            }
+            toggleAnnualCashMarginOperands(inputs, hasRevenue, false);
             focusCashHistoryControl(summary);
             onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
             awaitPage("cash margin inputs close without changing values, source clocks or draft: " + concept, exact +
@@ -6524,6 +6508,17 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualNoteCounts(1, 0, 1);
     }
 
+
+    private void toggleAnnualCashMarginOperands(String inputs, boolean hasRevenue, boolean open) throws Exception {
+        if (!hasRevenue) return;
+        for (int operand = 1; operand <= 3; operand++) {
+            String observation = inputs + " > section:nth-of-type(" + operand + ") > ol > li > details > summary";
+            focusCashHistoryControl(observation);
+            onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+            awaitPage("native Space " + (open ? "opens" : "closes") + " original margin operand " + operand,
+                "document.querySelector(" + JSONObject.quote(observation) + ")?.parentElement.open === " + open);
+        }
+    }
 
     private void assertAnnualNoteCounts(int annual, int saves, int loads) throws Exception {
         awaitPage("Annual note has only its explicit source load, save and reload",

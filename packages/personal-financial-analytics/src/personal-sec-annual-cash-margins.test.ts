@@ -75,7 +75,33 @@ function metric<T>(row: T) {
 }
 
 /** Real resolver outputs over invented normalized rows; NOT a wire/strict-decoder fixture. */
-function evidence(): Evidence {
+function generationFixture(): PersonalSecAnnualResolutionInput["generation"] {
+  return {
+    definitionVersion: "5.0.0",
+    cutoffAt: "2026-09-20T06:00:00.000Z",
+    completedAt: "2026-09-20T06:00:03.000Z",
+    sha256: `sha256:${"a".repeat(64)}`,
+    sources: {
+      companyFacts: {
+        status: "available",
+        sourceUrl:
+          "https://data.sec.gov/api/xbrl/companyfacts/CIK0000000042.json",
+        fetchedAt: "2026-09-20T06:00:02.000Z",
+        sha256: `sha256:${"b".repeat(64)}`,
+        bytes: 1000,
+      },
+      submissions: {
+        status: "available",
+        sourceUrl: "https://data.sec.gov/submissions/CIK0000000042.json",
+        fetchedAt: "2026-09-20T06:00:01.000Z",
+        sha256: `sha256:${"c".repeat(64)}`,
+        bytes: 500,
+      },
+    },
+  };
+}
+
+function incomeInput(): PersonalSecAnnualResolutionInput {
   const observations = PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map(
     (concept, index) => ({
       ...observation(index + 20, ["1000", "800", "500"][index]!, concept),
@@ -85,31 +111,9 @@ function evidence(): Evidence {
   );
   const counts = { observations: 3, revenue: 3, netIncome: 0 };
   const zero = { observations: 0, revenue: 0, netIncome: 0 };
-  const input: PersonalSecAnnualResolutionInput = {
+  return {
     cik: "0000000042",
-    generation: {
-      definitionVersion: "5.0.0",
-      cutoffAt: "2026-09-20T06:00:00.000Z",
-      completedAt: "2026-09-20T06:00:03.000Z",
-      sha256: `sha256:${"a".repeat(64)}`,
-      sources: {
-        companyFacts: {
-          status: "available",
-          sourceUrl:
-            "https://data.sec.gov/api/xbrl/companyfacts/CIK0000000042.json",
-          fetchedAt: "2026-09-20T06:00:02.000Z",
-          sha256: `sha256:${"b".repeat(64)}`,
-          bytes: 1000,
-        },
-        submissions: {
-          status: "available",
-          sourceUrl: "https://data.sec.gov/submissions/CIK0000000042.json",
-          fetchedAt: "2026-09-20T06:00:01.000Z",
-          sha256: `sha256:${"c".repeat(64)}`,
-          bytes: 500,
-        },
-      },
-    },
+    generation: generationFixture(),
     target: {
       status: "target",
       accessionNumber,
@@ -142,7 +146,10 @@ function evidence(): Evidence {
     },
     observations,
   };
-  const operatingResults = {
+}
+
+function operatingResultsFixture() {
+  return {
     operatingIncome: {
       scan: {
         status: "available" as const,
@@ -164,7 +171,10 @@ function evidence(): Evidence {
       observations: [],
     },
   };
-  const cashGeneration = {
+}
+
+function cashGenerationFixture() {
+  return {
     operatingCashFlow: metric({
       ...observation(
         2,
@@ -180,7 +190,10 @@ function evidence(): Evidence {
       concept: "PaymentsToAcquirePropertyPlantAndEquipment" as const,
     }),
   };
-  const liquidity = {
+}
+
+function liquidityFixture() {
+  return {
     currentAssets: metric({
       ...observation(4, "50.125", "AssetsCurrent", true),
       metric: "current_assets" as const,
@@ -192,7 +205,10 @@ function evidence(): Evidence {
       concept: "LiabilitiesCurrent" as const,
     }),
   };
-  const balanceSheet = {
+}
+
+function balanceSheetFixture() {
+  return {
     totalAssets: metric({
       ...observation(6, "100.125", "Assets", true),
       metric: "total_assets" as const,
@@ -209,6 +225,14 @@ function evidence(): Evidence {
       concept: "StockholdersEquity" as const,
     }),
   };
+}
+
+function evidence(): Evidence {
+  const input = incomeInput();
+  const operatingResults = operatingResultsFixture();
+  const cashGeneration = cashGenerationFixture();
+  const liquidity = liquidityFixture();
+  const balanceSheet = balanceSheetFixture();
   return structuredClone({
     ...input,
     resolution: resolvePersonalSecAnnualEvidence(input),
@@ -279,6 +303,27 @@ function available<T extends { status: string }>(
     throw new Error("Expected resolved available fixture value");
   return value as Extract<T, { status: "available" }>;
 }
+type Operand = "revenue" | "operatingCashFlow" | "ppePurchases";
+function withOperand(
+  input: Evidence,
+  operand: Operand,
+  changes: Partial<
+    Extract<PersonalSecAnnualCashValueDto, { status: "available" }>
+  >,
+): Evidence {
+  return operand === "revenue"
+    ? withRevenue(input, {
+        ...available(input.operatingResults.resolution.margins[0]!.revenue),
+        ...changes,
+      })
+    : withCash(input, {
+        [operand]: {
+          ...available(input.cashGeneration.resolution[operand]),
+          ...changes,
+        },
+      });
+}
+
 function objects(value: unknown): object[] {
   if (value === null || typeof value !== "object") return [];
   return [value, ...Object.values(value).flatMap(objects)];
@@ -489,22 +534,11 @@ describe("cash margins from resolved Annual v5 cells", () => {
     "rejects a same-end/different-start %s before a filing or sign problem",
     (operand) => {
       let input = evidence();
-      if (operand === "revenue")
-        input = withRevenue(input, {
-          ...available(input.operatingResults.resolution.margins[0]!.revenue),
-          startDate: "2025-01-02",
-          accessionNumber: "0000999999-26-000002",
-          value: "-1",
-        });
-      else
-        input = withCash(input, {
-          [operand]: {
-            ...available(input.cashGeneration.resolution[operand]),
-            startDate: "2025-01-02",
-            accessionNumber: "0000999999-26-000002",
-            value: "-1",
-          },
-        });
+      input = withOperand(input, operand, {
+        startDate: "2025-01-02",
+        accessionNumber: "0000999999-26-000002",
+        value: "-1",
+      });
       expect(derive(input)[0]!.margin).toMatchObject({
         status: "unavailable",
         stage: "calculation",
@@ -517,18 +551,9 @@ describe("cash margins from resolved Annual v5 cells", () => {
     "rejects a different %s accession without using another filing",
     (operand) => {
       let input = evidence();
-      if (operand === "revenue")
-        input = withRevenue(input, {
-          ...available(input.operatingResults.resolution.margins[0]!.revenue),
-          accessionNumber: "0000999999-26-000002",
-        });
-      else
-        input = withCash(input, {
-          [operand]: {
-            ...available(input.cashGeneration.resolution[operand]),
-            accessionNumber: "0000999999-26-000002",
-          },
-        });
+      input = withOperand(input, operand, {
+        accessionNumber: "0000999999-26-000002",
+      });
       expect(derive(input)[0]!.margin).toMatchObject({
         status: "unavailable",
         stage: "calculation",
@@ -585,18 +610,7 @@ describe("cash margins from resolved Annual v5 cells", () => {
     "preserves historical %s and its independent original flag",
     (operand) => {
       let input = evidence();
-      if (operand === "revenue")
-        input = withRevenue(input, {
-          ...available(input.operatingResults.resolution.margins[0]!.revenue),
-          currentUseEligible: false,
-        });
-      else
-        input = withCash(input, {
-          [operand]: {
-            ...available(input.cashGeneration.resolution[operand]),
-            currentUseEligible: false,
-          },
-        });
+      input = withOperand(input, operand, { currentUseEligible: false });
       const first = derive(input)[0]!;
       expect(first.margin).toMatchObject({
         status: "available",
