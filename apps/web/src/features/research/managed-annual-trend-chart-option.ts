@@ -1,3 +1,4 @@
+import type { ManagedAnnualAmountChartInput } from "./managed-annual-amount-plot";
 import type { EChartsOption } from "echarts";
 import type {
   ManagedAnnualTrendMetric,
@@ -18,9 +19,30 @@ export function annualTrendSummary(
   return `${projection.concept}: ${annualTrendMetricLabel(metric)} in USD across ${projection.periods.length} reported annual periods, oldest to newest. Negative amounts extend below zero; known zero has zero height. Exact amounts and dates remain in the tables below.`;
 }
 
-export function managedAnnualTrendChartOption(
+export function annualTrendChartInput(
   projection: ReadyAnnualTrend,
   metric: ManagedAnnualTrendMetric,
+): ManagedAnnualAmountChartInput {
+  return Object.freeze({
+    contentKey: JSON.stringify([projection.contentKey, metric]),
+    label: annualTrendMetricLabel(metric),
+    summary: annualTrendSummary(projection, metric),
+    unit: "USD",
+    periods: Object.freeze(
+      projection.periods.map((period) =>
+        Object.freeze({
+          startDate: period.startDate,
+          endDate: period.endDate,
+          amount: metric === "revenue" ? period.revenue : period.netIncome,
+        }),
+      ),
+    ),
+    plot: projection.plots[metric],
+  });
+}
+
+export function managedAnnualTrendChartOption(
+  input: ManagedAnnualAmountChartInput,
   animation: boolean,
   colors: {
     ink: string;
@@ -30,12 +52,12 @@ export function managedAnnualTrendChartOption(
     text: string;
   },
 ): EChartsOption {
-  const plot = projection.plots[metric];
+  const plot = input.plot;
   return {
     animation,
     aria: {
       enabled: true,
-      description: annualTrendSummary(projection, metric),
+      description: input.summary,
     },
     grid: { left: 8, right: 12, top: 32, bottom: 24, containLabel: true },
     tooltip: {
@@ -47,12 +69,11 @@ export function managedAnnualTrendChartOption(
       borderColor: colors.line,
       textStyle: { color: colors.text, fontSize: 12, lineHeight: 15 },
       axisPointer: { type: "shadow" },
-      formatter: (params: unknown) =>
-        annualTrendTooltip(projection, metric, params),
+      formatter: (params: unknown) => annualTrendTooltip(input, params),
     },
     xAxis: {
       type: "category",
-      data: projection.periods.map((period) => period.endDate),
+      data: input.periods.map((period) => period.endDate),
       axisLabel: { hideOverlap: true, color: colors.ink },
     },
     yAxis: {
@@ -64,7 +85,7 @@ export function managedAnnualTrendChartOption(
     },
     series: [
       {
-        name: annualTrendMetricLabel(metric),
+        name: input.label,
         type: "bar",
         data: plot.status === "ready" ? [...plot.values] : [],
         barMaxWidth: 48,
@@ -89,8 +110,7 @@ function compactAmount(value: number) {
 }
 
 export function annualTrendTooltip(
-  projection: ReadyAnnualTrend,
-  metric: ManagedAnnualTrendMetric,
+  input: ManagedAnnualAmountChartInput,
   params: unknown,
 ) {
   const item: unknown = Array.isArray(params) ? params[0] : params;
@@ -102,14 +122,13 @@ export function annualTrendTooltip(
     !Number.isInteger(item.dataIndex)
   )
     return "Annual period unavailable";
-  const period = projection.periods[item.dataIndex];
+  const period = input.periods[item.dataIndex];
   if (!period) return "Annual period unavailable";
-  const value = metric === "revenue" ? period.revenue : period.netIncome;
   const lines = [
-    annualTrendMetricLabel(metric),
+    input.label,
     `${period.startDate} to`,
     period.endDate,
-    `USD: ${value}`,
+    `USD: ${period.amount}`,
   ].flatMap((line) => line.match(/.{1,24}/gu) ?? []);
   return lines.length > 10
     ? `${period.startDate} to\n${period.endDate}\nLong value: inspect the\nexact amounts table below.`

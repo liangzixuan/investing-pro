@@ -568,6 +568,30 @@ Current cash note actions and prepared-report documents keep their existing
 scope. Source, browser, native and publication acceptance remain separate in
 [Current work](CURRENT_WORK.md).
 
+### Read the cash history chart
+
+Inside **Reported cash history**, **Cash trend metric** selects operating cash
+flow, PP&E purchases or operating cash flow less PP&E purchases. The chart uses
+the same admitted periods as the exact table, with dates ordered oldest first.
+It needs at least two periods. A refused third period leaves the two accepted
+periods usable; an older year cannot replace a gap. Income eligibility does not
+govern this chart.
+
+Bars use a zero baseline. Operating cash flow and the subtraction can be negative
+or zero; PP&E purchases keep their reported positive sign. The subtraction is an
+app calculation with the limits above, not comprehensive free cash flow. Numeric
+coordinates are approximate. Tooltips keep exact amount strings and dates, with
+long values referred to the exact table. An unsafe coordinate withholds that
+metric's whole chart while the table and other metric choices remain available.
+
+The disclosure starts closed. Opening it or changing the metric does not load
+sources or save a change. The choice remains while the Annual view is mounted,
+including when a replacement makes the selected metric unavailable. Closing the
+disclosure disposes its chart. Failed refresh and Cancel retain the original
+packet, qualification and clocks; accepted replacement updates the chart.
+Company and session retirement clear it. Resize, reduced motion and chart
+failure use the shared guarded Annual chart renderer.
+
 ## Liquidity at fiscal year-end
 
 Company Annual shows independently reported **Current assets** and **Current

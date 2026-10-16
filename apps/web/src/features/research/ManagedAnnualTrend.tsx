@@ -1,3 +1,4 @@
+import { annualTrendChartInput } from "./managed-annual-trend-chart-option";
 import { useId, useState } from "react";
 import {
   PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
@@ -149,7 +150,9 @@ function TrendResult({
         <time dateTime={projection.completedAt}>{projection.completedAt}</time>
       </p>
       {open && (
-        <ManagedAnnualTrendChart projection={projection} metric={metric} />
+        <ManagedAnnualTrendChart
+          input={annualTrendChartInput(projection, metric)}
+        />
       )}
       {projection.stoppedReason && (
         <p className="managed-annual-basis-help">

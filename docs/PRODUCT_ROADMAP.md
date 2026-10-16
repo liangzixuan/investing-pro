@@ -34,6 +34,13 @@ the current admitted graph without an income-pair requirement or another source
 request. This is a narrow statement ratio; full statements, valuation, screening
 and the broader InvestingPro goal remain open.
 
+The next M2 candidate adds a [reported cash history chart](MANAGED_SEC_ANNUAL.md#read-the-cash-history-chart)
+for the two or three same-filing periods already loaded. One metric selector
+switches between reported cash flow, PP&E purchases and their app-calculated
+subtraction. The exact table, original source dates, first-gap refusals and
+independent cash eligibility remain. It reuses the existing Annual chart renderer
+without another source request or a saved chart setting.
+
 The preceding M3 increment adds [Markets day view](MANAGED_MARKETS_HOME.md#read-the-markets-day-view):
 one Eastern-date reading view of the already loaded BEA schedule and Fed
 announcements. Independent source controls, original UTC times, scheduled versus

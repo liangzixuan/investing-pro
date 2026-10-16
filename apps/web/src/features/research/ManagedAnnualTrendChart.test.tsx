@@ -2,7 +2,14 @@ import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { annualHistoryRows, response } from "./sec-annual-evidence-fixture";
 import { projectManagedAnnualTrend } from "./managed-annual-trend-input";
+import { annualCashHistoryRows, cashResponse } from "./sec-annual-cash-fixture";
 import {
+  cashTrendChartInput,
+  projectManagedAnnualCashTrend,
+} from "./managed-annual-cash-trend-input";
+import type { ManagedAnnualAmountChartInput } from "./managed-annual-amount-plot";
+import {
+  annualTrendChartInput,
   annualTrendTooltip,
   managedAnnualTrendChartOption,
   type ReadyAnnualTrend,
@@ -110,7 +117,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 function render(metric: "revenue" | "net_income" = "revenue") {
-  const tree = ManagedAnnualTrendChart({ projection, metric });
+  return renderInput(annualTrendChartInput(projection, metric));
+}
+function renderInput(input: ManagedAnnualAmountChartInput) {
+  const tree = ManagedAnnualTrendChart({ input });
   const pending = hooks.pending;
   hooks.pending = undefined;
   pending?.();
@@ -118,6 +128,67 @@ function render(metric: "revenue" | "net_income" = "revenue") {
 }
 
 describe("managed annual trend chart", () => {
+  it("uses the same renderer for signed cash amounts and keeps exact cash tooltip values", async () => {
+    const cash = projectManagedAnnualCashTrend(
+      await cashResponse(annualCashHistoryRows()),
+    );
+    if (cash.status !== "ready")
+      throw new Error("Invented cash trend unavailable");
+    const first = cashTrendChartInput(cash, "operatingCashFlow");
+    renderInput(first);
+    const oldResize = resize;
+    renderInput(cashTrendChartInput(cash, "ppePurchases"));
+    const calculated = cashTrendChartInput(
+      cash,
+      "operatingCashFlowLessPpePurchases",
+    );
+    const tree = renderInput(calculated);
+    expect(
+      chart.setOption.mock.calls.map(
+        ([option]) => (option as { series: unknown }).series,
+      ),
+    ).toEqual([
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Operating cash flow",
+          data: [500, -50, 120.125],
+        }),
+      ]),
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "PP&E purchases",
+          data: [750, 0, 20.025],
+        }),
+      ]),
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Operating cash flow less PP&E purchases",
+          data: [-250, -50, 100.1],
+        }),
+      ]),
+    ]);
+    expect(tree.props["aria-label"]).toBe(
+      "Operating cash flow less PP&E purchases in USD across 3 reported annual periods from one filing, oldest to newest. Negative amounts extend below zero; known zero has zero height. Exact amounts and dates remain in the table below.",
+    );
+    expect(annualTrendTooltip(calculated, { dataIndex: 0 })).toBe(
+      "Operating cash flow less\n PP&E purchases\n2023-01-01 to\n2023-12-31\nUSD: -250",
+    );
+    expect(annualTrendTooltip(first, { dataIndex: 2 })).toBe(
+      "Operating cash flow\n2025-01-01 to\n2025-12-31\nUSD: 120.125",
+    );
+    expect(chart.dispose).toHaveBeenCalledTimes(2);
+    oldResize();
+    expect(chart.resize).not.toHaveBeenCalled();
+    const unsafe = {
+      ...calculated,
+      contentKey: "unsafe-cash",
+      plot: { status: "unavailable", reason: "unsafe_plot_value" },
+    } as const;
+    expect(renderInput(unsafe).props.role).toBe("status");
+    expect(chart.init).toHaveBeenCalledTimes(3);
+    expect(chart.dispose).toHaveBeenCalledTimes(3);
+  });
+
   it("uses exact period ends, a zero baseline and the managed colors", () => {
     const tree = render();
     expect(tree.props.role).toBe("img");
@@ -285,8 +356,7 @@ describe("managed annual trend chart", () => {
 
   it("keeps exact strings and start/end dates in confined rich-text tooltips", () => {
     const option = managedAnnualTrendChartOption(
-      projection,
-      "net_income",
+      annualTrendChartInput(projection, "net_income"),
       false,
       colors,
     );
@@ -295,7 +365,9 @@ describe("managed annual trend chart", () => {
       confine: true,
     });
     expect(
-      annualTrendTooltip(projection, "net_income", [{ dataIndex: 0 }]),
+      annualTrendTooltip(annualTrendChartInput(projection, "net_income"), [
+        { dataIndex: 0 },
+      ]),
     ).toBe("Net income\n2023-01-01 to\n2023-12-31\nUSD: 32");
     const original = projection.periods[0]!;
     projection = {
@@ -306,10 +378,9 @@ describe("managed annual trend chart", () => {
       ],
     };
     expect(
-      annualTrendTooltip(projection, "net_income", { dataIndex: 0 }).replaceAll(
-        "\n",
-        "",
-      ),
+      annualTrendTooltip(annualTrendChartInput(projection, "net_income"), {
+        dataIndex: 0,
+      }).replaceAll("\n", ""),
     ).toContain("USD: -0.00000000000000000000000000001");
     for (const invalid of [
       null,
@@ -319,8 +390,11 @@ describe("managed annual trend chart", () => {
       { dataIndex: 0.5 },
       { dataIndex: 8 },
     ])
-      expect(annualTrendTooltip(projection, "revenue", invalid)).toBe(
-        "Annual period unavailable",
-      );
+      expect(
+        annualTrendTooltip(
+          annualTrendChartInput(projection, "revenue"),
+          invalid,
+        ),
+      ).toBe("Annual period unavailable");
   });
 });
