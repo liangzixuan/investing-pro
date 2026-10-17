@@ -19,6 +19,10 @@ summary { min-height: 44px; display: list-item; align-content: center; cursor: p
 summary:focus-visible { outline: 2px solid #244e76; outline-offset: 3px; }
 pre { padding: 12px; border: 1px solid #d8dde1; font-size: .85rem; }
 .managed-valuation-results { min-width: 0; }
+.captured-price-studies { min-width: 0; }
+.captured-price-studies .managed-price-studies-table-wrap { max-width: 100%; overflow-x: auto; margin-block: 16px; }
+.captured-price-studies table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.captured-price-studies :is(th, td) { padding: 10px; border-bottom: 1px solid #d8dde1; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 .managed-valuation-table { max-width: 100%; overflow-x: auto; margin-block: 16px; }
 .managed-valuation-table table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .managed-valuation-table :is(th, td) { padding: 8px; border-bottom: 1px solid #d8dde1; text-align: right; overflow-wrap: anywhere; }
@@ -43,7 +47,7 @@ pre { padding: 12px; border: 1px solid #d8dde1; font-size: .85rem; }
 @media print { html { background: #fff; } body, main { padding: 0; border: 0; } h2, h3 { break-after: avoid; } .fact { break-inside: avoid; } }
 `;
 export const COMPANY_REPORT_HTML_STYLE_HASH =
-  "sha256-8+LGJbYZC9u5y4gOTj4VCeCJ5UJ5eXPMvI/k/+nIGdM=";
+  "sha256-0prZMY8NvuxrM52UL/gsirqQ7bU+/xP67p90kVL2EMQ=";
 export const COMPANY_REPORT_HTML_CSP =
   "default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; style-src '" +
   COMPANY_REPORT_HTML_STYLE_HASH +

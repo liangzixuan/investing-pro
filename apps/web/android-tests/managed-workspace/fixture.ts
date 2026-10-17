@@ -2,6 +2,7 @@ import {
   createAnnualStatementsNativeFixture,
   type NativeAnnualStatementsMetadata,
 } from "./annual-statements-fixture";
+import { createPriceStudiesNativeFixture } from "./price-studies-fixture";
 import {
   createPortfolioNativeFixture,
   type PortfolioNativeControls,
@@ -1996,8 +1997,13 @@ export async function createFixture(
     | Parameters<typeof createSharedFixture>[0]
     | "annual-financial-review"
     | "annual-statements"
+    | "price-studies"
     | "portfolio-ledger" = "default",
 ): Promise<ManagedNativeFixture> {
+  if (scenario === "price-studies")
+    return createPriceStudiesNativeFixture(
+      await createSharedFixture("price-comparison-note"),
+    );
   if (scenario === "annual-statements")
     return createAnnualStatementsNativeFixture(
       await createSharedFixture("annual-note"),

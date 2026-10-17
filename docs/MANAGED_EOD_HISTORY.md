@@ -33,6 +33,10 @@ packet, labelled with its actual range. This makes no source request or saved ch
 
 ## Read the observed close range
 
+The development source also connects [raw close research studies](MANAGED_PRICE_STUDIES.md)
+to selected-result note preview, the existing Save/recovery flow and captured
+reports. It uses the same admitted packet without another source request.
+
 Company Price, the loaded snapshot and a prepared report show **Highest reported
 close · USD** and **Lowest reported close · USD**. Each value keeps its exact
 reported decimal and date. The calculation uses every row in the loaded packet,

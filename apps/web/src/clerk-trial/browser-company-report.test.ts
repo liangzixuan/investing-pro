@@ -34,7 +34,7 @@ function htmlDelivery() {
 const text =
   JSON.stringify({
     purpose: "investment.company-research",
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     preparedAt: "2026-10-15T00:00:00.000Z",
     listing: { symbol: "ZERO", exchangeMic: "XNAS" },
     authoredResearch: {
@@ -242,6 +242,17 @@ describe("browser company report delivery", () => {
   });
 
   it.each([
+    ...["2.0.0", "3.0.0"].map((schema) => {
+      const oldText = text.replace(
+        '"schemaVersion":"4.0.0"',
+        `"schemaVersion":"${schema}"`,
+      );
+      return {
+        ...value,
+        text: oldText,
+        byteLength: new TextEncoder().encode(oldText).byteLength,
+      };
+    }),
     { ...value, filename: "../../private.txt" },
     { ...value, byteLength: 1 },
     { ...value, purpose: "investment.saved-watchlist" },

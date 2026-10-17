@@ -50,6 +50,7 @@ if (
   scenario !== "company-price-ranges" &&
   scenario !== "thesis-review" &&
   scenario !== "price-comparison-note" &&
+  scenario !== "price-studies" &&
   scenario !== "company-filings" &&
   scenario !== "markets-price-handoff" &&
   scenario !== "watchlist-recovery" &&

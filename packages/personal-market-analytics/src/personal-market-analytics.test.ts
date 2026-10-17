@@ -11,8 +11,10 @@ import {
   PERSONAL_MARKET_ANALYTICS_SESSION_POLICY,
   PERSONAL_MARKET_ANALYTICS_TREND_CLASSIFICATIONS,
   calculatePersonalMarketAnalytics,
+  calculatePersonalRawCloseAnalytics,
   type PersonalMarketAnalyticsBar,
   type PersonalMarketAnalyticsResult,
+  type PersonalRawCloseAnalyticsInput,
 } from "./index";
 
 const DAY_MILLISECONDS = 86_400_000;
@@ -394,6 +396,382 @@ describe("personal market analytics", () => {
     });
   });
 });
+
+describe("raw-close market analytics", () => {
+  it("matches independent metric goldens without an adjusted series", () => {
+    const rows = rawRows(252, (index) => String(100 + index));
+    const result = calculatePersonalRawCloseAnalytics({
+      asOfDate: dateAt(251),
+      rows,
+    });
+    expect(result.mode).toBe("raw");
+    expect(result.inputWindow).toEqual({
+      firstDate: dateAt(0),
+      lastDate: dateAt(251),
+      sessionCount: 252,
+      sessionPolicy: PERSONAL_MARKET_ANALYTICS_SESSION_POLICY,
+    });
+    expect(result.metrics.selectedWindowReturn).toMatchObject({
+      status: "available",
+      valuePercent: "251.0000",
+    });
+    expect(result.metrics.maximumDrawdown).toMatchObject({
+      status: "available",
+      valuePercent: "0.0000",
+      peakDate: dateAt(0),
+      troughDate: dateAt(0),
+    });
+    expect(result.metrics.trailing20SessionAnnualizedVolatility).toMatchObject({
+      status: "available",
+      valuePercent: "0.0808",
+      observedSessions: 21,
+      sampleFirstDate: dateAt(231),
+      sampleLastDate: dateAt(251),
+    });
+    expect(result.metrics.trailing252SessionCloseRangePosition).toMatchObject({
+      status: "available",
+      valuePercent: "100.0000",
+      observedSessions: 252,
+    });
+    for (const [metric, distancePercent, observedSessions] of [
+      [result.metrics.smaTrend.sma20, "2.7818", 20],
+      [result.metrics.smaTrend.sma50, "7.5038", 50],
+      [result.metrics.smaTrend.sma200, "39.5626", 200],
+    ] as const) {
+      expect(metric).toMatchObject({
+        status: "available",
+        classification: "above",
+        distancePercent,
+        observedSessions,
+        sampleFirstDate: dateAt(252 - observedSessions),
+        sampleLastDate: dateAt(251),
+      });
+    }
+    expectFormulaMetadata(result);
+    expect(result).toEqual(
+      calculatePersonalMarketAnalytics({
+        asOfDate: dateAt(251),
+        bars: rows.map(({ date, close }) => bar(date, "1", close)),
+        mode: "raw",
+      }),
+    );
+  });
+
+  it.each([0, 1, 2, 19, 20, 21, 49, 50, 199, 200, 251, 252, 253])(
+    "preserves every metric's history boundary for %i observed sessions",
+    (count) => {
+      const result = calculatePersonalRawCloseAnalytics({
+        asOfDate: dateAt(Math.max(0, count - 1)),
+        rows: rawRows(count, () => "42.5"),
+      });
+      const metrics = [
+        [result.metrics.selectedWindowReturn, 2, count],
+        [result.metrics.maximumDrawdown, 2, count],
+        [result.metrics.trailing20SessionAnnualizedVolatility, 21, 21],
+        [result.metrics.trailing252SessionCloseRangePosition, 200, 252],
+        [result.metrics.smaTrend.sma20, 20, 20],
+        [result.metrics.smaTrend.sma50, 50, 50],
+        [result.metrics.smaTrend.sma200, 200, 200],
+      ] as const;
+      for (const [metric, requiredSessions, window] of metrics) {
+        expectMetricSample(metric, count, window);
+        if (count < requiredSessions) {
+          expectInsufficientMetric(metric, requiredSessions);
+        } else if (
+          metric === result.metrics.trailing252SessionCloseRangePosition
+        ) {
+          expectZeroRangeMetric(metric);
+        } else {
+          expectAvailableConstantMetric(metric);
+        }
+      }
+    },
+  );
+
+  it("keeps signed returns, drawdown ties and observed gaps", () => {
+    const closes = ["100", "120", "90", "140", "105", "80"];
+    const result = calculatePersonalRawCloseAnalytics({
+      asOfDate: dateAt(15),
+      rows: closes.map((close, index) => ({ close, date: dateAt(index * 3) })),
+    });
+    expect(result.metrics.selectedWindowReturn).toMatchObject({
+      valuePercent: "-20.0000",
+    });
+    expect(result.metrics.maximumDrawdown).toMatchObject({
+      valuePercent: "42.8571",
+      peakDate: dateAt(9),
+      troughDate: dateAt(15),
+    });
+    expect(result.inputWindow.sessionCount).toBe(6);
+    const tied = calculatePersonalRawCloseAnalytics({
+      asOfDate: dateAt(5),
+      rows: ["100", "120", "90", "140", "105", "150"].map((close, index) => ({
+        close,
+        date: dateAt(index),
+      })),
+    });
+    expect(tied.metrics.maximumDrawdown).toMatchObject({
+      valuePercent: "25.0000",
+      peakDate: dateAt(1),
+      troughDate: dateAt(2),
+    });
+  });
+
+  it("uses the latest 252 closes for range position", () => {
+    const result = calculatePersonalRawCloseAnalytics({
+      asOfDate: dateAt(252),
+      rows: rawRows(253, (index) => (index === 0 ? "1000" : String(index))),
+    });
+    expect(result.metrics.trailing252SessionCloseRangePosition).toMatchObject({
+      status: "available",
+      observedSessions: 252,
+      sampleFirstDate: dateAt(1),
+      valuePercent: "100.0000",
+    });
+  });
+
+  it("isolates 80-digit arithmetic and retains exact decimal comparisons", () => {
+    const priorMaxE = Decimal.maxE;
+    const priorPrecision = Decimal.precision;
+    const priorRounding = Decimal.rounding;
+    try {
+      Decimal.set({ maxE: 1, precision: 2, rounding: Decimal.ROUND_DOWN });
+      const result = calculatePersonalRawCloseAnalytics({
+        asOfDate: dateAt(251),
+        rows: rawRows(252, (index) => String(100 + index)),
+      });
+      expect(
+        result.metrics.trailing20SessionAnnualizedVolatility,
+      ).toMatchObject({ valuePercent: "0.0808" });
+      expect(result.metrics.smaTrend.sma200).toMatchObject({
+        distancePercent: "39.5626",
+      });
+      const precise = calculatePersonalRawCloseAnalytics({
+        asOfDate: dateAt(19),
+        rows: rawRows(20, (index) =>
+          index === 19 ? `1${"0".repeat(63)}` : `1${"0".repeat(62)}1`,
+        ),
+      });
+      expect(precise.metrics.smaTrend.sma20).toMatchObject({
+        classification: "below",
+        distancePercent: "0.0000",
+      });
+      const tiny = calculatePersonalRawCloseAnalytics({
+        asOfDate: dateAt(1),
+        rows: [
+          { date: dateAt(0), close: `0.${"0".repeat(61)}1` },
+          { date: dateAt(1), close: `0.${"0".repeat(61)}2` },
+        ],
+      });
+      expect(tiny.metrics.selectedWindowReturn).toMatchObject({
+        valuePercent: "100.0000",
+      });
+    } finally {
+      Decimal.set({
+        maxE: priorMaxE,
+        precision: priorPrecision,
+        rounding: priorRounding,
+      });
+    }
+    expect(
+      calculatePersonalRawCloseAnalytics({
+        asOfDate: dateAt(1),
+        rows: [
+          { date: dateAt(0), close: "100000" },
+          { date: dateAt(1), close: "99999.99999" },
+        ],
+      }).metrics.selectedWindowReturn,
+    ).toMatchObject({ valuePercent: "0.0000" });
+  });
+
+  it("owns frozen results without retaining or freezing caller input", () => {
+    const rows = rawRows(2, (index) => (index === 0 ? "100" : "90"));
+    const input: PersonalRawCloseAnalyticsInput = { asOfDate: dateAt(1), rows };
+    const result = calculatePersonalRawCloseAnalytics(input);
+    expectDeepFrozen(result);
+    expect(Object.isFrozen(input)).toBe(false);
+    expect(Object.isFrozen(rows)).toBe(false);
+    const first = rows[0];
+    if (first === undefined) throw new TypeError();
+    expect(Object.isFrozen(first)).toBe(false);
+    first.close = "999";
+    first.date = dateAt(100);
+    rows.pop();
+    expect(result.metrics.selectedWindowReturn).toMatchObject({
+      valuePercent: "-10.0000",
+    });
+    expect(result.inputWindow).toMatchObject({
+      firstDate: dateAt(0),
+      sessionCount: 2,
+    });
+    expect(JSON.stringify(result)).not.toContain('"close"');
+    expect(JSON.stringify(result)).not.toContain('"adjusted"');
+  });
+
+  it("refuses malformed, extra or incomplete shapes with a generic TypeError", () => {
+    const calculate = calculatePersonalRawCloseAnalytics as (
+      input: unknown,
+    ) => PersonalMarketAnalyticsResult;
+    const valid = {
+      asOfDate: dateAt(0),
+      rows: [{ date: dateAt(0), close: "10" }],
+    };
+    const malformed: unknown[] = [
+      null,
+      [],
+      {},
+      { ...valid, mode: "raw" },
+      { ...valid, adjusted: [] },
+      { ...valid, rows: {} },
+      { rows: [] },
+      { ...valid, rows: [{ date: dateAt(0) }] },
+      { ...valid, rows: [{ ...valid.rows[0], extra: true }] },
+      { ...valid, rows: [{ date: dateAt(0), close: 10 }] },
+    ];
+    for (const close of [
+      "",
+      "0",
+      "-0",
+      "-1",
+      "NaN",
+      "Infinity",
+      "1e2",
+      ".5",
+      "01",
+      "+1",
+      " 1",
+      "1 ",
+      `1${"0".repeat(64)}`,
+    ]) {
+      malformed.push({ ...valid, rows: [{ date: dateAt(0), close }] });
+    }
+    for (const date of [
+      "0000-01-01",
+      "2025-02-29",
+      "2025-1-01",
+      "2025-04-31",
+      dateAt(1),
+    ]) {
+      malformed.push({ ...valid, rows: [{ date, close: "10" }] });
+    }
+    malformed.push({ ...valid, asOfDate: "2025-02-29" });
+    malformed.push({
+      ...valid,
+      asOfDate: dateAt(1),
+      rows: [
+        { date: dateAt(1), close: "10" },
+        { date: dateAt(0), close: "10" },
+      ],
+    });
+    malformed.push({ ...valid, rows: [valid.rows[0], valid.rows[0]] });
+    for (const input of malformed) {
+      expect(() => calculate(input)).toThrow(new TypeError());
+    }
+    expect(
+      calculatePersonalRawCloseAnalytics({
+        asOfDate: "2024-02-29",
+        rows: [{ date: "2024-02-29", close: "10.00" }],
+      }).inputWindow.sessionCount,
+    ).toBe(1);
+  });
+
+  it("rejects accessors, hidden fields, symbols, sparse arrays and custom iterators without reading them", () => {
+    const calculate = calculatePersonalRawCloseAnalytics as (
+      input: unknown,
+    ) => PersonalMarketAnalyticsResult;
+    let reads = 0;
+    const get = () => {
+      reads += 1;
+      return "10";
+    };
+    const row = { date: dateAt(0), close: "10" };
+    const valid = { asOfDate: dateAt(0), rows: [row] };
+    const arrayAccessor = Object.defineProperty([row], "0", {
+      enumerable: true,
+      get,
+    });
+    const inputs = [
+      Object.defineProperty({ asOfDate: dateAt(0) }, "rows", {
+        enumerable: true,
+        get,
+      }),
+      {
+        ...valid,
+        rows: [
+          Object.defineProperty({ date: dateAt(0) }, "close", {
+            enumerable: true,
+            get,
+          }),
+        ],
+      },
+      Object.defineProperty({ ...valid }, "hidden", { value: true }),
+      { ...valid, [Symbol("extra")]: true },
+      {
+        ...valid,
+        rows: [Object.defineProperty({ ...row }, "hidden", { value: true })],
+      },
+      { ...valid, rows: [{ ...row, [Symbol("extra")]: true }] },
+      { ...valid, rows: new Array(1) },
+      { ...valid, rows: arrayAccessor },
+      {
+        ...valid,
+        rows: Object.defineProperty([row], Symbol.iterator, { get }),
+      },
+      { ...valid, rows: Object.assign([row], { extra: true }) },
+      { ...valid, rows: Object.setPrototypeOf([row], null) as unknown },
+      { ...valid, rows: [Object.create(row)] },
+    ];
+    for (const input of inputs)
+      expect(() => calculate(input)).toThrow(new TypeError());
+    expect(reads).toBe(0);
+  });
+});
+
+function rawRows(length: number, closeAt: (index: number) => string) {
+  return Array.from({ length }, (_, index) => ({
+    date: dateAt(index),
+    close: closeAt(index),
+  }));
+}
+
+function expectMetricSample(
+  metric: MetricLeaf,
+  count: number,
+  window: number,
+): void {
+  expect(metric).toMatchObject({
+    observedSessions: Math.min(count, window),
+    sampleFirstDate: count === 0 ? null : dateAt(Math.max(0, count - window)),
+    sampleLastDate: count === 0 ? null : dateAt(count - 1),
+  });
+}
+
+function expectInsufficientMetric(
+  metric: MetricLeaf,
+  requiredSessions: number,
+): void {
+  expect(metric).toMatchObject({
+    status: "insufficient_history",
+    requiredSessions,
+  });
+  expect(metric).not.toHaveProperty("valuePercent");
+  expect(metric).not.toHaveProperty("distancePercent");
+}
+
+function expectZeroRangeMetric(metric: MetricLeaf): void {
+  expect(metric.status).toBe("zero_range");
+  expect(metric).not.toHaveProperty("valuePercent");
+}
+
+function expectAvailableConstantMetric(metric: MetricLeaf): void {
+  expect(metric.status).toBe("available");
+  if ("valuePercent" in metric) expect(metric.valuePercent).toBe("0.0000");
+  else
+    expect(metric).toMatchObject({
+      classification: "at",
+      distancePercent: "0.0000",
+    });
+}
 
 function bar(
   date: string,

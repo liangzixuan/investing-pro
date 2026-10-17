@@ -5,6 +5,7 @@ import {
 } from "@research-cockpit/contracts";
 import {
   companyReportAnnualEvidenceIsOwned,
+  companyReportPriceStudiesIsOwned,
   type PreparedCompanyReport,
 } from "./managed-company-report";
 
@@ -84,7 +85,7 @@ export function isCompanyReportDocument(
     const data = parsed as Record<string, unknown>;
     if (
       data.purpose !== fields.purpose ||
-      data.schemaVersion !== "3.0.0" ||
+      data.schemaVersion !== "4.0.0" ||
       !data.listing ||
       typeof data.listing !== "object" ||
       Array.isArray(data.listing)
@@ -163,7 +164,8 @@ export function formatCompanyReportDocument(
 ): CompanyReportDocument | null {
   if (
     report.kind !== "loaded_company_research" ||
-    !companyReportAnnualEvidenceIsOwned(report.evidence.annual)
+    !companyReportAnnualEvidenceIsOwned(report.evidence.annual) ||
+    !companyReportPriceStudiesIsOwned(report)
   )
     return null;
   const noteJson = JSON.stringify(report.note);
@@ -183,7 +185,7 @@ export function formatCompanyReportDocument(
   if (!name) return null;
   const document = {
     purpose: "investment.company-research",
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     preparedAt: report.preparedAt,
     scope: {
       sourceEvidence:
@@ -223,7 +225,19 @@ export function formatCompanyReportDocument(
     },
     valuation,
     sources: {
-      price: sourceDocument(report.evidence.price),
+      price: report.evidence.price?.response
+        ? {
+            ...sourceDocument(report.evidence.price),
+            studies: report.priceStudies
+              ? {
+                  status: "available",
+                  scope:
+                    "Descriptive raw unadjusted close calculations over observed dates; no filled gaps, total-return, forecast or recommendation claim.",
+                  calculation: report.priceStudies.calculation,
+                }
+              : { status: "unavailable", reason: "unsupported_price_values" },
+          }
+        : sourceDocument(report.evidence.price),
       annual: annualDocument(report.evidence.annual),
       filings: sourceDocument(report.evidence.filings),
     },

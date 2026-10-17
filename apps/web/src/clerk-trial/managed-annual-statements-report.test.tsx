@@ -138,7 +138,7 @@ function fullHtml(
   };
 }
 
-describe("canonical statements in captured schema3 company reports", () => {
+describe("canonical statements in captured schema4 company reports", () => {
   it("keeps three flow periods and two balance dates with missing income and independent negative equity", async () => {
     const conceptRows: NonNullable<ReportAnnualFixtureOptions["conceptRows"]> =
       {};
@@ -206,7 +206,7 @@ describe("canonical statements in captured schema3 company reports", () => {
     );
     const document = formatCompanyReportDocument(f.report)!;
     const data = parseReport(document.text);
-    expect(data.schemaVersion).toBe("3.0.0");
+    expect(data.schemaVersion).toBe("4.0.0");
     const captured = data.sources.annual;
     const source = f.annual.getSnapshot();
     expect(captured.response).toEqual(source.response);
@@ -404,10 +404,10 @@ describe("canonical statements in captured schema3 company reports", () => {
       } else expect(result.bytes).not.toBeNull();
       const expected =
         rowsPerConcept === 60
-          ? { wire: 2072519, json: 2445086, html: 8949475 }
+          ? { wire: 2072519, json: 2445086, html: 8949897 }
           : escapedMetadata
-            ? { wire: 1728729, json: 2042016, html: 7474265 }
-            : { wire: 1231479, json: 1544166, html: 4174997 };
+            ? { wire: 1728729, json: 2042016, html: 7474687 }
+            : { wire: 1231479, json: 1544166, html: 4175419 };
       expect({
         wire: wireBytes,
         json: result.json.byteLength,

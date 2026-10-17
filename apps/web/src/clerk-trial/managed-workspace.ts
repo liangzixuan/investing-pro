@@ -1,5 +1,10 @@
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
+  ManagedPriceStudiesNote,
+  type PreparedPriceStudiesNote,
+} from "./managed-price-studies-note";
+import type { ManagedPriceStudyKey } from "./managed-price-studies";
+import {
   prepareManagedAnnualStatementsNote,
   isManagedAnnualStatementsNoteCurrent,
   appendManagedAnnualStatementsNote,
@@ -289,6 +294,7 @@ export class ManagedWorkspace {
     result: DraftValidation;
   } | null = null;
   private readonly financialReview = new ManagedFinancialReview();
+  private readonly priceStudiesNote = new ManagedPriceStudiesNote();
   private readonly valuationNotePreviews = new WeakSet<PreparedValuationNote>();
   private readonly annualStatementsPreviews =
     new WeakSet<PreparedManagedAnnualStatementsNote>();
@@ -1647,6 +1653,69 @@ export class ManagedWorkspace {
   ) {
     if (!this.getResearchWatchlist(selection).canEdit) return;
     this.note(selection.listing.listingId, note, expectedNote);
+  }
+  preparePriceStudiesNote(
+    selection: ManagedResearchSelection,
+    response: ManagedEodHistoryResponseDto,
+    keys: readonly ManagedPriceStudyKey[],
+    selectionIsCurrent: () => boolean,
+  ) {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        preview: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before preparing study results.",
+      };
+    const member = watchlist.member;
+    const visit = this.state.research;
+    const operation = this.researchOperation;
+    const source = this.eod.getSnapshot();
+    const saved = this.coordinator.getSnapshot();
+    const navigationRevision = this.navigationRevision;
+    const workspaceIsCurrent = () =>
+      !this.retired &&
+      this.researchOperation === operation &&
+      this.navigationRevision === navigationRevision &&
+      this.researchSourceRouteReady(selection) &&
+      this.canUseResearchSource(selection) &&
+      this.state.research === visit &&
+      visit?.section === "eod" &&
+      visit.selection === selection &&
+      this.eod.getSnapshot() === source &&
+      source.response === response &&
+      !source.running &&
+      !source.catalogChanged &&
+      this.coordinator.getSnapshot() === saved &&
+      this.getResearchWatchlist(selection).canEdit;
+    const isCurrent = () =>
+      workspaceIsCurrent() && selectionIsCurrent() && workspaceIsCurrent();
+    return this.priceStudiesNote.prepare({
+      response,
+      keys,
+      note: member.note,
+      showingPrevious: source.showingPrevious,
+      isCurrent,
+      apply: (note) => {
+        if (!isCurrent()) throw new Error("Study note capture changed.");
+        this.noteResearch(selection, note, member.note);
+        if (
+          this.coordinator
+            .getSnapshot()
+            .draft?.memberships.find(
+              (entry) => entry.listingId === selection.listing.listingId,
+            )?.note !== note
+        )
+          throw new Error("Study note could not be applied.");
+      },
+    });
+  }
+  priceStudiesNoteIsCurrent(preview: PreparedPriceStudiesNote) {
+    return this.priceStudiesNote.isCurrent(preview);
+  }
+  appendPriceStudiesNote(preview: PreparedPriceStudiesNote) {
+    return this.priceStudiesNote.append(preview);
   }
   prepareAnnualStatementsNote(
     selection: ManagedResearchSelection,

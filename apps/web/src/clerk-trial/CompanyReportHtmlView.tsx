@@ -2,6 +2,7 @@ import { type PersonalSecAnnualFinancialReviewRow } from "@research-cockpit/pers
 import { AnnualStatementsReportView } from "./AnnualStatementsReportView";
 import { type PreparedCompanyReport } from "./managed-company-report";
 import { ManagedValuationResults } from "./ManagedValuationResults";
+import { CapturedPriceStudies } from "./ManagedPriceStudies";
 
 type Value = PersonalSecAnnualFinancialReviewRow["value"];
 type Source = NonNullable<
@@ -282,6 +283,12 @@ function CapturedPrice({ report }: { readonly report: PreparedCompanyReport }) {
     <>
       <section>
         <h2>Captured Price source</h2>
+        {report.priceStudies && (
+          <CapturedPriceStudies
+            studies={report.priceStudies}
+            showingPrevious={price?.showingPrevious ?? false}
+          />
+        )}
         <SourceState source={price} />
         {price?.response && (
           <dl>

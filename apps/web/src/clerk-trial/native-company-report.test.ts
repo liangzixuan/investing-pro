@@ -12,7 +12,7 @@ const handle = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const text =
   JSON.stringify({
     purpose: "investment.company-research",
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     preparedAt: "2026-10-15T00:00:00.000Z",
     listing: { symbol: "ZERO", exchangeMic: "XNAS" },
     authoredResearch: { note: "Invented draft: Café 東京 📈\nwhitespace  " },
@@ -162,25 +162,28 @@ describe("native company report delivery", () => {
     },
   );
 
-  it("refuses schema2 before opening the picker", async () => {
-    const { adapter, plugin, context } = fixture();
-    const oldText = text.replace(
-      '"schemaVersion":"3.0.0"',
-      '"schemaVersion":"2.0.0"',
-    );
-    await expect(
-      adapter.deliver(
-        {
-          ...document(),
-          text: oldText,
-          byteLength: new TextEncoder().encode(oldText).byteLength,
-        },
-        context,
-      ),
-    ).rejects.toThrow("Report save unavailable");
-    expect(plugin.choose).not.toHaveBeenCalled();
-    expect(plugin.write).not.toHaveBeenCalled();
-  });
+  it.each(["2.0.0", "3.0.0"])(
+    "refuses schema %s before opening the picker",
+    async (schema) => {
+      const { adapter, plugin, context } = fixture();
+      const oldText = text.replace(
+        '"schemaVersion":"4.0.0"',
+        `"schemaVersion":"${schema}"`,
+      );
+      await expect(
+        adapter.deliver(
+          {
+            ...document(),
+            text: oldText,
+            byteLength: new TextEncoder().encode(oldText).byteLength,
+          },
+          context,
+        ),
+      ).rejects.toThrow("Report save unavailable");
+      expect(plugin.choose).not.toHaveBeenCalled();
+      expect(plugin.write).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects a malformed native handle without delivering text", async () => {
     const { plugin, context, adapter } = fixture();
