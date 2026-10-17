@@ -154,10 +154,12 @@ describe("managed annual trend controls", () => {
     const chart = elements(tree).find(
       (e) => e.type === ManagedAnnualTrendChart,
     )!;
-    expect(chart.props.projection).toMatchObject({
-      concept,
-      periods: [{ revenue: "640" }, { revenue: "800" }, { revenue: "1000" }],
+    expect(chart.props.input).toMatchObject({
+      periods: [{ amount: "640" }, { amount: "800" }, { amount: "1000" }],
     });
+    expect((chart.props.input as { summary: string }).summary).toContain(
+      concept,
+    );
     tree = render(await response(annualHistoryRows()));
     expect(select(tree, 0).props.value).toBe(concept);
     expect(select(tree, 0).props["aria-describedby"]).toBe(descriptionId);
@@ -178,9 +180,9 @@ describe("managed annual trend controls", () => {
     choose(tree, 1, "net_income");
     tree = render(original);
     let chart = elements(tree).find((e) => e.type === ManagedAnnualTrendChart)!;
-    expect(chart.props.metric).toBe("net_income");
-    expect(chart.props.projection).toMatchObject({
-      periods: [{ netIncome: "32" }, { netIncome: "80" }, { netIncome: "100" }],
+    expect(chart.props.input).toMatchObject({ label: "Net income" });
+    expect(chart.props.input).toMatchObject({
+      periods: [{ amount: "32" }, { amount: "80" }, { amount: "100" }],
     });
     tree = render(await response([row("NetIncomeLoss", "75")]));
     expect(elements(tree)[0]!.props.open).toBe(true);
@@ -202,8 +204,8 @@ describe("managed annual trend controls", () => {
     );
     tree = render(replacement);
     chart = elements(tree).find((e) => e.type === ManagedAnnualTrendChart)!;
-    expect(chart.props.projection).toMatchObject({
-      periods: [{ netIncome: "25" }, { netIncome: "25" }],
+    expect(chart.props.input).toMatchObject({
+      periods: [{ amount: "25" }, { amount: "25" }],
     });
     expect(select(tree, 1).props.value).toBe("net_income");
   });

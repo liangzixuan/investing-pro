@@ -1,29 +1,21 @@
 import * as echarts from "echarts";
 import { useEffect, useRef, useState } from "react";
-import type { ManagedAnnualTrendMetric } from "./managed-annual-trend-input";
-import {
-  annualTrendSummary,
-  managedAnnualTrendChartOption,
-  type ReadyAnnualTrend,
-} from "./managed-annual-trend-chart-option";
+import type { ManagedAnnualAmountChartInput } from "./managed-annual-amount-plot";
+import { managedAnnualTrendChartOption } from "./managed-annual-trend-chart-option";
 
 export function ManagedAnnualTrendChart({
-  projection,
-  metric,
+  input,
 }: {
-  readonly projection: ReadyAnnualTrend;
-  readonly metric: ManagedAnnualTrendMetric;
+  readonly input: ManagedAnnualAmountChartInput;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const [failedKey, setFailedKey] = useState<string | null>(null);
-  const key = JSON.stringify([projection.contentKey, metric]);
-  const unavailable = projection.plots[metric].status !== "ready";
+  const key = input.contentKey;
+  const unavailable = input.plot.status !== "ready";
   const failed = failedKey === key;
   useEffect(() => {
     if (!element.current || unavailable || failed) return;
-    return mountAnnualTrend(element.current, projection, metric, () =>
-      setFailedKey(key),
-    );
+    return mountAnnualTrend(element.current, input, () => setFailedKey(key));
     // The content key covers every projected chart input. Fresh equivalent
     // projections preserve the mounted canvas and its listeners.
   }, [key, unavailable, failed]);
@@ -41,15 +33,14 @@ export function ManagedAnnualTrendChart({
       ref={element}
       className="managed-annual-trend-canvas"
       role="img"
-      aria-label={annualTrendSummary(projection, metric)}
+      aria-label={input.summary}
     />
   );
 }
 
 function mountAnnualTrend(
   element: HTMLDivElement,
-  projection: ReadyAnnualTrend,
-  metric: ManagedAnnualTrendMetric,
+  input: ManagedAnnualAmountChartInput,
   fail: () => void,
 ) {
   let chart: echarts.ECharts | null = null;
@@ -77,7 +68,7 @@ function mountAnnualTrend(
     const style = getComputedStyle(element);
     chart = echarts.init(element, undefined, { renderer: "canvas" });
     chart.setOption(
-      managedAnnualTrendChartOption(projection, metric, !motion?.matches, {
+      managedAnnualTrendChartOption(input, !motion?.matches, {
         ink: style.getPropertyValue("--managed-muted").trim(),
         line: style.getPropertyValue("--managed-line").trim(),
         bar: style.getPropertyValue("--managed-action").trim(),

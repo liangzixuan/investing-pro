@@ -39,6 +39,17 @@ original clocks use the existing evidence renderers. Do not add a selected basis
 new request control or score. Preserve the surrounding Annual section hierarchy,
 retained-report warning and independent note draft.
 
+## Reported cash history chart
+
+Reported cash history keeps its initially closed native disclosure and exact
+table. Place one **Cash trend metric** selector above the table, using the
+existing 44px field and focus tokens. Repeat the full selected label in wrapping
+text so narrow screens can read it. Mount the shared 250px Annual bar chart only
+while the disclosure is open. Use neutral bars, a visible zero baseline and dates
+ordered oldest first. Keep exact tooltips, original source qualifications and the
+table's contained keyboard scroll region. Preserve the selected metric through
+source changes; show its unavailable reason without choosing a different metric.
+
 ## Profiles and ownership
 
 The managed browser and Android workspace share the Precision Desk presentation.

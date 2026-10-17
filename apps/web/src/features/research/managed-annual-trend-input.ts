@@ -1,3 +1,7 @@
+import {
+  projectManagedAnnualAmountPlot,
+  type ManagedAnnualAmountPlot,
+} from "./managed-annual-amount-plot";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualRevenueConcept,
@@ -14,10 +18,6 @@ export const MANAGED_ANNUAL_TREND_METRICS = Object.freeze([
 ] as const);
 export type ManagedAnnualTrendMetric =
   (typeof MANAGED_ANNUAL_TREND_METRICS)[number];
-
-export type ManagedAnnualTrendPlot =
-  | Readonly<{ status: "ready"; values: readonly number[] }>
-  | Readonly<{ status: "unavailable"; reason: "unsafe_plot_value" }>;
 
 type AvailableHistory = Extract<
   PersonalSecAnnualHistory,
@@ -42,7 +42,9 @@ export type ManagedAnnualTrendProjection =
       contentKey: string;
       /** Oldest first, with the original exact amounts and dates. */
       periods: readonly PersonalSecAnnualPeriod[];
-      plots: Readonly<Record<ManagedAnnualTrendMetric, ManagedAnnualTrendPlot>>;
+      plots: Readonly<
+        Record<ManagedAnnualTrendMetric, ManagedAnnualAmountPlot>
+      >;
       stoppedReason: AvailableHistory["stoppedReason"];
     }>;
 
@@ -75,8 +77,12 @@ export function projectManagedAnnualTrend(
     contentKey: contentKey(response, history, periods),
     periods,
     plots: Object.freeze({
-      revenue: projectPlot(periods.map((period) => period.revenue)),
-      net_income: projectPlot(periods.map((period) => period.netIncome)),
+      revenue: projectManagedAnnualAmountPlot(
+        periods.map((period) => period.revenue),
+      ),
+      net_income: projectManagedAnnualAmountPlot(
+        periods.map((period) => period.netIncome),
+      ),
     }),
     stoppedReason: history.stoppedReason,
   });
@@ -116,36 +122,4 @@ function contentKey(
     ]),
     history.stoppedReason,
   ]);
-}
-
-function projectPlot(amounts: readonly string[]): ManagedAnnualTrendPlot {
-  const values: number[] = [];
-  for (const amount of amounts) {
-    const value = Number(amount);
-    if (
-      !withinPlotMagnitude(amount) ||
-      !Number.isFinite(value) ||
-      (amount !== "0" && value === 0) ||
-      value < 0 !== amount.startsWith("-")
-    )
-      return Object.freeze({
-        status: "unavailable",
-        reason: "unsafe_plot_value",
-      });
-    values.push(value);
-  }
-  return Object.freeze({ status: "ready", values: Object.freeze(values) });
-}
-
-// Match the local trend's conservative bound before Number can round away excess.
-function withinPlotMagnitude(amount: string): boolean {
-  const maximumInteger = "9007199254740991";
-  const unsigned = amount.startsWith("-") ? amount.slice(1) : amount;
-  const [integer = "", fraction] = unsigned.split(".");
-  if (integer.length < maximumInteger.length) return true;
-  if (integer.length > maximumInteger.length) return false;
-  return (
-    integer < maximumInteger ||
-    (integer === maximumInteger && fraction === undefined)
-  );
 }

@@ -121,6 +121,10 @@ was caused by a selector that still expected the JSON button as a direct child.
 The selector now follows its action container; all three visibility targets and
 the original deadline and save assertions remain. The original failure is
 retained; current-head checks remain separate.
+The repaired revision passed all four original workflows and five jobs, including
+Android, Ubuntu and Windows. CodeScene passes with no maintenance warnings. The
+reviewed source was merged at `6c6679c` after the owner approved by email.
+Main checks and publication have separate acceptance.
 This surface is not released.
 
 ## Annual cash margin in progress
@@ -140,10 +144,29 @@ keyboard inputs, long-value wrapping, failed/Cancel refresh retention, late repl
 historical and missing-revenue replacements, and session retirement. Six explicit
 Annual reads made no price/filings/calendar/Fed request or save. The composed test
 separately covers both dirty drafts and company replacement. The additive native
-journey extension has passed syntax and source review; packaged execution is
-pending. It preserves all prior cases and frames, adding one percentage frame.
+journey extension passed the original packaged run: all 43 cases, with 120 image
+structures checked and the new percentage frame inspected. A later test-only
+refactor preserves the domain cases, composed actions and native assertions and
+deadlines; its current-head checks remain separate from the original run.
 This branch is stacked on the unreleased
 readable-report candidate; its acceptance and publication are separate.
+
+## Reported cash chart in progress
+
+The next M2 candidate adds a metric selector and bar chart inside Reported cash
+history. It uses only the two or three adjacent periods already admitted from the
+loaded filing. Operating cash flow, PP&E purchases and their subtraction keep
+exact table values, original dates and references. Cash eligibility remains
+independent of income. A shared guarded Annual chart renderer keeps numeric plot
+coordinates separate from exact amounts. All 82 focused cases, the composed
+workspace journey, scoped lint, formatting and boundaries pass. Independent
+source review found no actionable defect. The original income chart outputs and
+cash table are preserved. An initial invented Chrome check at 1152 CSS pixels
+showed the default signed chart, closed/open behavior and a 44px picker with
+keyboard focus. Full responsive, tooltip and browser lifetime checks remain
+unverified. The additive native test retains all prior assertions and adds one
+image; packaged execution is pending. This candidate is stacked on the unreleased
+cash-margin source. Source integration and publication remain separate.
 
 ## Remaining milestones and acceptance limits
 

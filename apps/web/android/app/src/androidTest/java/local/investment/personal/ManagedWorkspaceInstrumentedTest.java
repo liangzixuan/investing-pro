@@ -5828,11 +5828,16 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("cash history starts closed with exact independent same-filing amounts", exact +
             " && document.querySelector('.managed-annual-cash-history')?.open === false" +
             " && document.querySelector('.managed-cash-history-references')?.open === false");
+        awaitPage("closed cash history has no mounted trend canvas", exact +
+            " && document.querySelector('.managed-annual-cash-trend .managed-annual-trend-canvas') === null" +
+            " && document.querySelector('[data-cash-trend-metric]')?.value === 'operatingCashFlow'");
         focusCashHistoryControl(history + " > summary");
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
         awaitPage("native Space opens the focused history disclosure", exact +
             " && document.querySelector('.managed-annual-cash-history')?.open === true" +
             " && document.activeElement === document.querySelector('.managed-annual-cash-history > summary')");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_TAB));
+        assertAnnualCashTrendChoices(exact);
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_TAB));
         awaitPage("native Tab reaches the contained cash table with a visible focus outline",
             "(() => { const table = document.querySelector('.managed-cash-history-table'); const r = table?.getBoundingClientRect(), v = visualViewport;" +
@@ -5873,6 +5878,9 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-annual-cash-history')?.open === false" +
             " && document.querySelector('.managed-cash-history-table').checkVisibility() === false" +
             " && document.activeElement === document.querySelector('.managed-annual-cash-history > summary')");
+        awaitPage("closing cash history disposes the canvas and retains the selected calculation", exact +
+            " && document.querySelector('.managed-annual-cash-trend .managed-annual-trend-canvas') === null" +
+            " && document.querySelector('[data-cash-trend-metric]')?.value === 'operatingCashFlowLessPpePurchases'");
         onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_TAB));
         awaitPage("native Tab skips the closed history table and its nested references", exact +
             " && document.querySelector('.managed-annual-cash-history')?.open === false" +
@@ -5883,6 +5891,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-annual-cash-history')?.open === true" +
             " && document.querySelector('.managed-cash-history-table').checkVisibility() === true");
         assertAnnualNoteCounts(1, 0, 1);
+        assertAnnualCashTrendMetric(exact, "operatingCashFlowLessPpePurchases", "Operating cash flow less PP&E purchases", "App calculation", 2, "-250|-50|100.1");
         awaitPage("history adds no other source reads or persistence",
             DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0");
         click(CATALOG_REFRESH);
@@ -5896,9 +5905,55 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0" +
             " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0" +
             " && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0");
+        awaitPage("session retirement removes cash trend controls and mounted canvas",
+            "document.querySelector('.managed-annual-cash-trend') === null" +
+            " && document.querySelector('[data-cash-trend-metric]') === null" +
+            " && document.querySelector('[data-cash-trend-selected-metric]') === null" +
+            " && document.querySelector('.managed-annual-cash-trend .managed-annual-trend-canvas') === null");
         assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary();
     }
+
+    private void assertAnnualCashTrendChoices(String exact) throws Exception {
+        String picker = "[data-cash-trend-metric]";
+        awaitPage("native Tab reaches the labelled cash trend metric with visible focus", exact +
+            " && (() => { const select = document.querySelector('[data-cash-trend-metric]'); const r = select?.getBoundingClientRect(), v = visualViewport;" +
+            " return select instanceof HTMLSelectElement && !select.disabled && select.value === 'operatingCashFlow'" +
+            " && document.activeElement === select && select.labels.length === 1 && select.labels[0].querySelector('span')?.textContent === 'Cash trend metric'" +
+            " && Array.from(select.options).map(o => o.value).join('|') === 'operatingCashFlow|ppePurchases|operatingCashFlowLessPpePurchases'" +
+            " && Array.from(select.options).map(o => o.textContent).join('|') === 'Operating cash flow|PP&E purchases|Operating cash flow less PP&E purchases'" +
+            " && getComputedStyle(select).outlineStyle !== 'none' && parseFloat(getComputedStyle(select).outlineWidth) >= 2" +
+            " && v && r.height >= 44 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; })()");
+        chooseNativeSelectOption(picker, "operatingCashFlow", "Operating cash flow");
+        assertAnnualCashTrendMetric(exact, "operatingCashFlow", "Operating cash flow", "Reported", 0, "500|-50|120.125");
+        chooseNativeSelectOption(picker, "ppePurchases", "PP&E purchases");
+        assertAnnualCashTrendMetric(exact, "ppePurchases", "PP&E purchases", "Reported", 1, "750|0|20.025");
+        chooseNativeSelectOption(picker, "operatingCashFlowLessPpePurchases", "Operating cash flow less PP&E purchases");
+        assertAnnualCashTrendMetric(exact, "operatingCashFlowLessPpePurchases", "Operating cash flow less PP&E purchases", "App calculation", 2, "-250|-50|100.1");
+        retainAnnualNoteFrame("cashTrendCalculated", "[data-cash-trend-selected-metric]",
+            "[data-cash-trend-selected-metric], .managed-annual-cash-trend .managed-annual-trend-canvas canvas", 2);
+        focusCashHistoryControl(picker);
+    }
+
+    private void assertAnnualCashTrendMetric(String exact, String metric, String label, String basis, int row, String values) throws Exception {
+        awaitPage("cash trend preserves the exact selected metric, original periods and source: " + metric, exact +
+            " && (() => { const trend = document.querySelector('.managed-annual-cash-trend');" +
+            " const select = trend?.querySelector('[data-cash-trend-metric]'), selected = trend?.querySelector('[data-cash-trend-selected-metric]');" +
+            " const chart = trend?.querySelector('.managed-annual-trend-canvas'), canvas = chart?.querySelector('canvas');" +
+            " const rows = document.querySelectorAll('.managed-cash-history-table tbody tr');" +
+            " return document.querySelector('.managed-annual-cash-history')?.open === true" +
+            " && select?.value === " + JSONObject.quote(metric) + " && !select.disabled" +
+            " && selected?.textContent === " + JSONObject.quote("Selected metric: " + label + " · " + basis) +
+            " && selected.id && select.getAttribute('aria-describedby')?.split(' ').includes(selected.id)" +
+            " && chart?.getAttribute('role') === 'img' && chart.getAttribute('aria-label') === " + JSONObject.quote(label + " in USD across 3 reported annual periods from one filing, oldest to newest. Negative amounts extend below zero; known zero has zero height. Exact amounts and dates remain in the table below.") +
+            " && trend.querySelectorAll('canvas').length === 1 && canvas.width > 0 && canvas.height > 0 && canvas.checkVisibility()" +
+            " && Array.from(rows[" + row + "].querySelectorAll('td')).reverse().map(e => e.textContent).join('|') === " + JSONObject.quote(values) +
+            " && trend.querySelector('.managed-annual-basis-help')?.textContent === 'Same-filing amounts in USD, oldest to newest. Chart coordinates are approximate; exact amounts and dates remain in the table below.'" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1; })()");
+        assertAnnualNoteCounts(1, 0, 1);
+    }
+
 
     private void focusCashHistoryControl(String selector) throws Exception {
         CountDownLatch focused = new CountDownLatch(1);

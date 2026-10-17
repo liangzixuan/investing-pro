@@ -1,4 +1,6 @@
 import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import { useState } from "react";
+import { ManagedAnnualCashTrend } from "./ManagedAnnualCashTrend";
 import {
   resolvePersonalSecAnnualCashHistory,
   type PersonalSecAnnualCashHistoryReason,
@@ -10,10 +12,18 @@ export function SecAnnualCashHistory({
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
 }) {
+  const [open, setOpen] = useState(false);
   const history = resolvePersonalSecAnnualCashHistory(response.evidence);
   return (
-    <details className="managed-annual-cash-history">
+    <details
+      className="managed-annual-cash-history"
+      onToggle={(event) => {
+        if (event.target === event.currentTarget)
+          setOpen(event.currentTarget.open);
+      }}
+    >
       <summary>Reported cash history</summary>
+      <ManagedAnnualCashTrend response={response} open={open} />
       {history.status === "unavailable" ? (
         <p className="managed-annual-unavailable">
           Cash history unavailable. {historyReason(history.reason)}
