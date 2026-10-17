@@ -48,7 +48,7 @@
     "@types/js-yaml": "4.0.9",
     "@types/node": "26.2.0",
     "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.4",
+    "@types/react-dom": "19.3.0",
     "browserstack-node-sdk": "1.70.2",
     "eslint": "10.8.1",
     "globals": "17.11.0",
