@@ -12,6 +12,7 @@ import { eodSelection } from "./eod-history-fixture";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import { prepareCompanyReport } from "./managed-company-report";
 import { formatCompanyReportDocument } from "./managed-company-report-document";
+import { annualComparisonResponse } from "./test-canonical-annual-comparison-fixture";
 
 const digest = eodSelection.catalogSnapshotSha256;
 const snapshot: ManagedCatalogSnapshotDto = {
@@ -52,9 +53,24 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function fixture() {
-  const response = await financialReviewResponse();
+async function fixture(twoCompanies = false) {
+  const response = twoCompanies
+    ? await annualComparisonResponse("left")
+    : await financialReviewResponse();
+  const rightResponse = twoCompanies
+    ? await annualComparisonResponse("right")
+    : null;
   const listing = eodSelection.listing;
+  const secondListing = {
+    ...listing,
+    listingId: "listing-one",
+    issuerId: "issuer-one",
+    issuerName: "One Company",
+    securityId: "security-one",
+    securityName: "One Class A",
+    shareClassId: "class-one",
+    symbol: "ONE",
+  };
   let stored: { version: number; payload: MainWatchlistPayload } = {
     version: 1,
     payload: {
@@ -92,13 +108,24 @@ async function fixture() {
         snapshotSha256: digest,
         results: request.listingIds.map((listingId) => ({
           listingId,
-          listing: listingId === listing.listingId ? listing : null,
+          listing:
+            listingId === listing.listingId
+              ? listing
+              : twoCompanies && listingId === secondListing.listingId
+                ? secondListing
+                : null,
         })),
       }),
     ),
     annualReport: vi
       .fn<ManagedApi["annualReport"]>()
-      .mockResolvedValue(response),
+      .mockImplementation((request) =>
+        Promise.resolve(
+          rightResponse && request.listingId === secondListing.listingId
+            ? rightResponse
+            : response,
+        ),
+      ),
     eodHistory: vi
       .fn<ManagedApi["eodHistory"]>()
       .mockImplementation(unexpected),
@@ -140,7 +167,11 @@ async function fixture() {
     getToken: vi.fn(),
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
-  const options = { financialScreenListingIds: [listing.listingId] };
+  const options = {
+    financialScreenListingIds: twoCompanies
+      ? [listing.listingId, secondListing.listingId]
+      : [listing.listingId],
+  };
   const workspace = new ManagedWorkspace(api, session, undefined, options);
   owners.push(workspace);
   await workspace.coordinator.load();
@@ -161,6 +192,7 @@ async function fixture() {
     session,
     options,
     response,
+    rightResponse,
     listing,
     stored: () => stored,
   };
@@ -187,6 +219,89 @@ async function runScreen(f: Awaited<ReturnType<typeof fixture>>) {
 }
 
 describe("financial screening through company research and Save", () => {
+  it("keeps a two-company statement comparison and all independent drafts through either research visit without another Annual read", async () => {
+    const f = await fixture(true);
+    const screen = f.workspace.financialScreen;
+    await screen.loadUniverse(screen.getSnapshot());
+    const drafts = [
+      f.workspace.coordinator.getSnapshot().draft,
+      f.workspace.followups.coordinator.getSnapshot().draft,
+      f.workspace.portfolio.coordinator.getSnapshot().draft,
+    ];
+    vi.useFakeTimers({
+      toFake: ["Date", "performance", "setTimeout", "clearTimeout"],
+    });
+    vi.setSystemTime(new Date("2026-09-20T00:00:00.000Z"));
+    try {
+      const running = screen.run(screen.getSnapshot());
+      await vi.advanceTimersByTimeAsync(0);
+      expect(f.api.annualReport).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(19_999);
+      expect(f.api.annualReport).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1);
+      await running;
+      expect(f.api.annualReport).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+    const run = screen.getSnapshot().run!;
+    const [left, right] = run.rows;
+    expect(left!.report!.response).toEqual(f.response);
+    expect(right!.report!.response).toEqual(f.rightResponse);
+    expect(left!.report!.response!.evidence.target).toMatchObject({
+      status: "target",
+      reportDate: "2025-12-31",
+    });
+    expect(right!.report!.response!.evidence.target).toMatchObject({
+      status: "target",
+      reportDate: "2025-06-30",
+    });
+    screen.selectComparison(screen.getSnapshot(), "left", left!);
+    screen.selectComparison(screen.getSnapshot(), "right", right!);
+    const pair = screen.getSnapshot().comparison;
+    expect(pair).toEqual({ left, right });
+    screen.toggleShortlist(screen.getSnapshot(), right!);
+    const criteria = screen.getSnapshot().criteria;
+    for (const row of [right!, left!]) {
+      f.workspace.openFinancialScreenReport({
+        run,
+        row,
+        response: row.report!.response!,
+      });
+      await vi.waitFor(() =>
+        expect(f.workspace.annual.getSnapshot().checkingSeed).toBe(false),
+      );
+      expect(
+        f.workspace.getSnapshot().research!.selection.listing.listingId,
+      ).toBe(row.member.listing.listingId);
+      expect(f.workspace.annual.getSnapshot().response).toEqual(
+        row.report!.response,
+      );
+      expect(f.workspace.annual.getSnapshot().responseOrigin).toBe(
+        "financial-screen",
+      );
+      expect(f.api.annualReport).toHaveBeenCalledTimes(2);
+      f.workspace.closeResearch();
+      expect(f.workspace.getSnapshot().view).toBe("discover");
+      expect(screen.getSnapshot().run).toBe(run);
+      expect(screen.getSnapshot().comparison).toBe(pair);
+      expect(screen.getSnapshot().criteria).toBe(criteria);
+      expect(screen.getSnapshot().shortlist).toEqual([right]);
+      expect([
+        f.workspace.coordinator.getSnapshot().draft,
+        f.workspace.followups.coordinator.getSnapshot().draft,
+        f.workspace.portfolio.coordinator.getSnapshot().draft,
+      ]).toEqual(drafts);
+    }
+    for (const request of [
+      f.api.save,
+      f.api.saveFollowups,
+      f.api.savePortfolio,
+      f.api.eodHistory,
+      f.api.recentFilings,
+    ])
+      expect(request).not.toHaveBeenCalled();
+  });
   it("adds a screened company to the watchlist only through the explicit company action", async () => {
     const f = await fixture();
     f.workspace.remove(f.listing.listingId);

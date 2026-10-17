@@ -61,6 +61,10 @@ Partial or cancelled runs state which companies were never read.
 
 ## Continue research
 
+Choose two loaded results for [Annual statement comparison](MANAGED_SCREEN_COMPARISON.md)
+before continuing either company's research. The pair uses the already loaded
+reports and retains each company's independent dates and source context.
+
 Shortlist a result or choose **Research** after the run finishes or Cancel
 settles. The exact report is validated for that company visit and identified as
 coming from financial screening. This handoff makes no additional Annual read.

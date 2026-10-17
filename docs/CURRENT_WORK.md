@@ -48,9 +48,19 @@ does not establish authenticated production journeys, provider health or physica
 Android use. The earlier fixed Follow-ups storage proof failed in its recorded
 scope; full live-storage qualification and backup/restore acceptance remain open.
 
-## Valuation and dated price comparison in progress
+## Annual statement comparison from screening in progress
 
-The next M4 outcome connects [authored valuation to dated raw closes](MANAGED_VALUATION_PRICE_CONTEXT.md):
+The next M2/M4 outcome connects two loaded screening results to
+[Annual statement comparison](MANAGED_SCREEN_COMPARISON.md), independent source
+inspection, either company's research and Back to retained criteria, results,
+pair and drafts. It reuses the complete canonical reports and existing statement
+tables without another Annual read, new financial field or stored comparison.
+Implementation and verification are in progress. The previous source candidate
+remains unchanged.
+
+## Valuation and dated price comparison integrated in source
+
+The source-integrated M4 outcome connects [authored valuation to dated raw closes](MANAGED_VALUATION_PRICE_CONTEXT.md):
 explicit Price loading, six scenario comparisons with independent refusals,
 original source inspection, optional complete-note Preview and single-use Append,
 existing Review/Save/recovery and reproducible JSON/HTML reports. It reuses the
@@ -59,8 +69,12 @@ Company report format 5 and the Android receiver change together. Source,
 packaged native, visual, integration and publication acceptance remain separate.
 The local web suite passes 8,818 tests, including the composed note Save,
 fresh-read, comparison capture and passive HTML cases. Types, scoped lint,
-formatting and source boundaries pass. A new 50th native journey is prepared;
-its packaged execution and new image review are pending.
+formatting and source boundaries pass. All 50 native tests pass; three new images
+were reviewed for the live comparison, dated note preview and captured report
+values. Intentional horizontal scrolling clips part of the model column while
+the selected values remain visible. This establishes synthetic native acceptance
+for those frames. Desktop, physical-device and HTML-file delivery remain separate.
+Final-main checks and publication retain their own acceptance.
 
 ## Annual financial screen integrated in source
 

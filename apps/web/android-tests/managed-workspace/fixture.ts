@@ -1,4 +1,8 @@
 import {
+  createScreenComparisonNativeFixture,
+  type NativeScreenComparisonMetadata,
+} from "./screen-comparison-fixture";
+import {
   createAnnualStatementsNativeFixture,
   type NativeAnnualStatementsMetadata,
 } from "./annual-statements-fixture";
@@ -1999,6 +2003,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly annualStatements?: NativeAnnualStatementsMetadata;
   readonly financialScreen?: NativeFinancialScreenMetadata;
   readonly valuationPrice?: NativeValuationPriceMetadata;
+  readonly screenComparison?: NativeScreenComparisonMetadata;
 };
 
 /** Dispatch only the new fixed journey; all existing scenario bodies remain unchanged. */
@@ -2008,10 +2013,13 @@ export async function createFixture(
     | "annual-financial-review"
     | "annual-statements"
     | "price-studies"
+    | "screen-comparison"
     | "financial-screen"
     | "valuation-price"
     | "portfolio-ledger" = "default",
 ): Promise<ManagedNativeFixture> {
+  if (scenario === "screen-comparison")
+    return createScreenComparisonNativeFixture(await createSharedFixture());
   if (scenario === "valuation-price")
     return createValuationPriceNativeFixture(
       await createSharedFixture("price-comparison-note"),

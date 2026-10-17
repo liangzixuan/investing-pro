@@ -295,6 +295,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("price-comparison-note");
         if (testName.getMethodName().equals("priceStudiesPreviewSaveReloadAndReportPreserveRawSource"))
             selectFixtureScenario("price-studies");
+        if (testName.getMethodName().equals("screenComparisonKeepsIndependentStatementsSourcesAndResearchBack"))
+            selectFixtureScenario("screen-comparison");
         if (testName.getMethodName().equals("financialScreenExplicitRunInspectionAndResearchBackPreserveDraft"))
             selectFixtureScenario("financial-screen");
         if (testName.getMethodName().equals("thesisReviewPreviewAppendSaveAndReloadPreservesDraft"))
@@ -5733,6 +5735,133 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFixtureBoundary(1, 0);
     }
 
+    @Test
+    public void screenComparisonKeepsIndependentStatementsSourcesAndResearchBack() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String pair = ".managed-screen-comparison";
+        String left = pair + " .managed-screen-comparison-company:first-child";
+        String right = pair + " .managed-screen-comparison-company:last-child";
+        String selector = pair + " .managed-annual-statement-selector select";
+        awaitPage("comparison startup has no financial reads", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Comparison left draft");
+        selectWatchlistNote(1);
+        touchInput("managed-note-1");
+        replaceFocusedInput("managed-note-1", "Invented second note", "Comparison right draft");
+        selectWorkspaceView("Discover");
+        assertFinancialScreenCounts(0, 0);
+        clickFinancialScreenAction("Load screening cohort");
+        awaitPage("two exact companies are selected without source reads",
+            "[...document.querySelectorAll('.managed-screen-cohort label')].map(e=>e.textContent).join('|') === 'ZERO · XNASZero Company|ONE · XNASOne Company'" +
+            " && [...document.querySelectorAll('.managed-screen-cohort input')].every(e=>e.checked)");
+        clickFinancialScreenAction("Add criterion");
+        clickFinancialScreenAction("Apply criteria");
+        clickFinancialScreenAction("Run screen (2 companies)");
+        awaitPage("first explicit read leaves comparison actions disabled while the paced run waits",
+            DIAGNOSTICS + ".annual === 1 && [...document.querySelectorAll('.managed-screen-table button')].filter(e=>e.textContent.startsWith('Compare ')).every(e=>e.disabled)");
+        // This new journey observes the existing 20-second inter-company pacing unchanged.
+        Thread.sleep(20_000);
+        awaitPage("both original Annual packets complete before pair selection", DIAGNOSTICS + ".annual === 2 && [...document.querySelectorAll('.managed-screen-table button')].find(e=>e.textContent==='Compare left ZERO')?.disabled === false");
+        clickFinancialScreenAction("Compare left ZERO");
+        clickFinancialScreenAction("Compare right ONE");
+        awaitPage("two owned identities and independent Income dates are compared",
+            screenComparisonStatementExact("Income statement") +
+            " && document.querySelector(" + JSONObject.quote(left + " > h5") + ")?.textContent === 'Left company: ZERO · Zero Company'" +
+            " && document.querySelector(" + JSONObject.quote(right + " > h5") + ")?.textContent === 'Right company: ONE · One Company'" +
+            " && " + screenComparisonCellExact(left, "Revenues", "USD 1000", "2025-01-01 through 2025-12-31") +
+            " && " + screenComparisonCellExact(right, "Net sales revenue (legacy basis)", "USD 750", "2024-07-01 through 2025-06-30"));
+        retainScreenComparisonFrame("screenComparisonLeftIdentity", left + " > h5");
+        retainScreenComparisonFrame("screenComparisonRightIdentity", right + " > h5");
+        click(left + " .managed-annual-statement-context > summary");
+        click(right + " .managed-annual-statement-context > summary");
+        awaitPage("both source contexts retain their original independent filing dates and load clocks",
+            "(() => { const companies=[...document.querySelectorAll('.managed-screen-comparison-company')]; return companies.every((e,i)=>{ const context=e.querySelector('.managed-annual-statement-context'), text=context?.textContent ?? '';" +
+            " return context?.open===true && text.includes(i===0?'10-K · report date 2025-12-31 · filed 2026-02-01.':'10-K · report date 2025-06-30 · filed 2025-08-01.')" +
+            " && text.includes('Company Facts captured 2026-09-20T00:00:01.000Z') && text.includes('Submissions captured 2026-09-20T00:00:02.000Z') && text.includes('Original load completed 2026-09-20T00:00:02.000Z'); }); })()");
+        retainScreenComparisonFrame("screenComparisonRightOriginalClocks", right + " .managed-annual-statement-source-clocks");
+        click(left + " .managed-annual-statement-context .managed-annual-statement-inspect > summary");
+        click(right + " .managed-annual-statement-context .managed-annual-statement-inspect > summary");
+        awaitPage("each original cutoff, exact issuer and source reference remains inspectable",
+            "(() => { const companies=[...document.querySelectorAll('.managed-screen-comparison-company')]; return companies.every((e,i)=>{ const context=e.querySelector('.managed-annual-statement-context .managed-annual-statement-inspect'), groups=[...context.querySelectorAll('dl > div')], get=name=>groups.find(g=>g.querySelector('dt')?.textContent===name)?.querySelector('dd')?.textContent, cik=i===0?'0000000001':'0000000002';" +
+            " return context.open && get('Issuer CIK')===cik && get('Original load cutoff')==='2026-09-20T00:00:00.000Z' && /^sha256:[a-f0-9]{64}$/.test(get('Generation digest'))" +
+            " && get('Company Facts source').startsWith('available · https://data.sec.gov/api/xbrl/companyfacts/CIK'+cik+'.json') && get('Company Facts source').includes('Captured 2026-09-20T00:00:01.000Z')" +
+            " && get('Submissions source').startsWith('available · https://data.sec.gov/submissions/CIK'+cik+'.json') && get('Submissions source').includes('Captured 2026-09-20T00:00:02.000Z'); }); })()");
+        click(left + " .managed-annual-statement-context > summary");
+        click(right + " .managed-annual-statement-context > summary");
+        chooseNativeSelectOption(selector, "balance_sheet", "Balance sheet");
+        awaitPage("Balance retains exact decimals and independent missing parent equity",
+            screenComparisonStatementExact("Balance sheet") +
+            " && " + screenComparisonCellExact(left, "Total assets", "USD 1000.125", "At 2025-12-31") +
+            " && " + screenComparisonCellExact(right, "Total assets", "USD 1000." + "0".repeat(58) + "1", "At 2025-06-30") +
+            " && (()=>{ const row=[...document.querySelector(" + JSONObject.quote(right) + ").querySelectorAll('tbody tr')].find(e=>e.querySelector('th > span')?.textContent==='Equity or deficit attributable to parent'); return row?.querySelector('td')?.textContent.includes('Unavailable.'); })()");
+        chooseNativeSelectOption(selector, "cash_flow", "Cash flow");
+        String cashLabel = "Net operating cash flow, including discontinued operations";
+        String cashLeft = left + " tbody tr:first-child > td:first-of-type .managed-annual-statement-cell";
+        String cashRight = right + " tbody tr:first-child > td:first-of-type .managed-annual-statement-cell";
+        String cashExact = screenComparisonStatementExact("Cash flow") +
+            " && " + screenComparisonCellExact(left, cashLabel, "USD 1000", "2025-01-01 through 2025-12-31") +
+            " && " + screenComparisonCellExact(right, cashLabel, "USD 900", "2024-07-01 through 2025-06-30");
+        awaitPage("Cash flow preserves each exact value and original period", cashExact);
+        retainScreenComparisonFrame("screenComparisonLeftCashPeriod", cashLeft);
+        retainScreenComparisonFrame("screenComparisonRightCashPeriod", cashRight);
+        String source = right + " tbody tr:first-child .managed-annual-statement-inspect";
+        click(source + " > summary");
+        String original = "(() => { const root=document.querySelector(" + JSONObject.quote(source) + "), d=[...root.querySelectorAll('.managed-annual-statement-observation dd')].map(e=>e.textContent);" +
+            " return root.open && d.length===10 && /^sec-fact:[a-f0-9]{64}$/.test(d[0]) && d[1]==='USD 900' && d[2]==='2024-07-01 through 2025-06-30'" +
+            " && d[4]==='/facts/us-gaap/NetCashProvidedByUsedInOperatingActivities/units/USD/0'" +
+            " && d[5]==='10-K · 0000000002-25-000001 · filed 2025-08-01'" +
+            " && d[8]==='https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm'; })()";
+        awaitPage("right source belongs to its own issuer and filing without a left-side fallback", original);
+        retainScreenComparisonFrame("screenComparisonRightSourceAmount", source + " .managed-annual-statement-observation dl > div:nth-child(2)");
+        awaitPage("inspection keeps both independent table periods", cashExact + " && " + original);
+        clickFinancialScreenAction("Research ONE from comparison");
+        String visit = "(() => { const panel=document.querySelector('.managed-annual-report'), heading=document.querySelector('#managed-annual-heading'), back=document.querySelector('.managed-company-visit .trial-toolbar > button');" +
+            " return location.pathname==='/' && location.search==='?company=listing-one&section=annual' && location.hash===''" +
+            " && document.querySelector('#managed-company-heading')?.textContent==='Company research · ONE' && heading?.textContent==='Annual report' && document.activeElement===heading" +
+            " && panel?.getAttribute('aria-busy')==='false' && back?.disabled===false && back.textContent==='Back to workspace'" +
+            " && document.querySelector('.managed-annual-origin')?.textContent==='Showing the report loaded for financial screening. Original source and observation times are unchanged.'" +
+            " && document.querySelector('#managed-research-note')?.value==='Comparison right draft' && panel.textContent.includes('2025-06-30'); })()";
+        awaitPage("exact seeded Annual visit commits before native Back", visit, true);
+        assertFinancialScreenCounts(1, 2);
+        awaitPage("same visit remains ready for its single Back", visit, true);
+        pressBack();
+        awaitPage("single native Back retains exact pair, results, criteria and comparison opener",
+            screenComparisonStatementExact("Cash flow") +
+            " && document.querySelector(" + JSONObject.quote(selector) + ")?.value==='cash_flow'" +
+            " && location.pathname==='/' && location.search==='' && location.hash==='' && document.querySelector('.managed-company-visit')===null" +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Discover'" +
+            " && document.querySelector('.managed-screen-clause select:first-of-type')?.value==='operatingCashFlow' && document.querySelector('.managed-screen-clause input')?.value==='0'" +
+            " && document.activeElement===[...document.querySelectorAll('.managed-screen-comparison button')].find(e=>e.textContent==='Research ONE from comparison')" +
+            " && [...document.querySelectorAll('.managed-screen-table button[aria-pressed=true]')].map(e=>e.textContent).join('|')==='Compare right ONE|Compare left ZERO'", true);
+        assertFinancialScreenCounts(1, 2);
+        awaitPage("both independent authored notes remain unsaved and ordered",
+            DRAFT + ".memberships?.map(m=>m.symbol).join('|')==='ZERO|ONE' && " + DRAFT + ".memberships?.[0]?.note==='Comparison left draft' && " + DRAFT + ".memberships?.[1]?.note==='Comparison right draft' && " + DRAFT + ".dirty===true && " + DRAFT + ".baseVersion===1");
+        assertEquals("Comparison retains one document", origin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(1, 0);
+    }
+
+    private String screenComparisonStatementExact(String label) {
+        return "(() => { const root=document.querySelector('.managed-screen-comparison'), companies=[...root.querySelectorAll('.managed-screen-comparison-company')];" +
+            " return companies.length===2 && companies.every((e,i)=>e.querySelector('.managed-annual-statement-table')?.getAttribute('aria-label')===" + JSONObject.quote(label + " reported USD table") +
+            " && e.querySelector('thead th:nth-child(2)')?.childNodes[0]?.textContent===(i===0?'2025-12-31':'2025-06-30'))" +
+            " && root.querySelectorAll('input[type=checkbox]').length===0 && document.documentElement.scrollWidth<=document.documentElement.clientWidth; })()";
+    }
+
+    private String screenComparisonCellExact(String company, String label, String amount, String period) {
+        return "(() => { const root=document.querySelector(" + JSONObject.quote(company) + "), row=[...root.querySelectorAll('tbody tr')].find(e=>e.querySelector('th > span')?.textContent===" + JSONObject.quote(label) + "); const cell=row?.querySelector('td');" +
+            " return cell?.querySelector('strong')?.textContent===" + JSONObject.quote(amount) + " && cell?.querySelector('small')?.textContent===" + JSONObject.quote(period) + "; })()";
+    }
+
+    private void retainScreenComparisonFrame(String name, String selector) throws Exception {
+        retainAnnualNoteFrame(name, selector, selector, 1);
+        String visible = "(() => { const e=document.querySelector(" + JSONObject.quote(selector) + "), r=e.getBoundingClientRect(), v=visualViewport;" +
+            " return r.width>0 && r.height>0 && r.left>=v.offsetLeft && r.right<=v.offsetLeft+v.width && r.top>=v.offsetTop && r.bottom<=v.offsetTop+v.height" +
+            " && [0.1,0.5,0.9].every(x=>[0.1,0.5,0.9].every(y=>{ const h=document.elementFromPoint(r.left+r.width*x,r.top+r.height*y); return h && (h===e || e.contains(h)); })); })()";
+        awaitPage("comparison actual identity or value/period is unobscured: " + name, visible);
+        retainScreenshot(name);
+        awaitPage("comparison actual content remains unobscured: " + name, visible);
+    }
+
     private String financialScreenExact() {
         return "(() => { const root = document.querySelector('.managed-financial-screen'), rows = [...root.querySelectorAll('.managed-screen-table tbody > tr')];" +
             " if (rows.length !== 1) return false; const cells = [...rows[0].querySelectorAll(':scope > td')];" +
@@ -8184,7 +8313,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-financial-review") || scenarioName.equals("annual-operating-comparison") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
-            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") || scenarioName.equals("price-studies") || scenarioName.equals("financial-screen") ||
+            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") || scenarioName.equals("price-studies") || scenarioName.equals("financial-screen") || scenarioName.equals("screen-comparison") ||
             scenarioName.equals("thesis-review") ||
             scenarioName.equals("company-snapshot") || scenarioName.equals("authored-valuation") || scenarioName.equals("valuation-price") ||
             scenarioName.equals("research-followups") || scenarioName.equals("portfolio-ledger") ||

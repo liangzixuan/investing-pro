@@ -12,6 +12,7 @@ import type {
   ManagedFinancialScreenResultRow,
 } from "./managed-financial-screen";
 import "./managed-financial-screen.css";
+import { ManagedFinancialScreenComparison } from "./ManagedFinancialScreenComparison";
 import {
   AnnualStatementObservation,
   AnnualStatementsContext,
@@ -442,6 +443,27 @@ export function ManagedFinancialScreen({
                         >
                           Research {row.member.listing.symbol}
                         </button>
+                        <div className="managed-screen-compare-actions">
+                          {(["left", "right"] as const).map((side) => (
+                            <button
+                              key={side}
+                              type="button"
+                              className="trial-secondary"
+                              aria-pressed={state.comparison[side] === row}
+                              disabled={
+                                !actionable ||
+                                state.comparison[
+                                  side === "left" ? "right" : "left"
+                                ] === row
+                              }
+                              onClick={() =>
+                                model.selectComparison(state, side, row)
+                              }
+                            >
+                              Compare {side} {row.member.listing.symbol}
+                            </button>
+                          ))}
+                        </div>
                         <Evidence row={row} />
                       </th>
                       <td>
@@ -478,6 +500,11 @@ export function ManagedFinancialScreen({
           </p>
         </>
       )}
+      <ManagedFinancialScreenComparison
+        model={model}
+        state={state}
+        onOpenReport={onOpenReport}
+      />
     </section>
   );
 }

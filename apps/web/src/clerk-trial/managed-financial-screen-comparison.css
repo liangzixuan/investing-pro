@@ -1,0 +1,52 @@
+.managed-frame .managed-screen-comparison {
+  min-width: 0;
+  margin-block: 24px;
+  padding-block: 16px;
+  border-top: 1px solid var(--managed-line);
+}
+
+.managed-frame .managed-screen-comparison-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.managed-frame .managed-screen-comparison-company {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+  background: var(--managed-surface);
+}
+
+.managed-frame .managed-screen-comparison :is(p, h5) {
+  overflow-wrap: anywhere;
+}
+
+.managed-frame .managed-screen-comparison button,
+.managed-frame .managed-screen-comparison select,
+.managed-frame .managed-screen-compare-actions button {
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.managed-frame .managed-screen-compare-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.managed-frame
+  .managed-screen-comparison
+  :is(button, select, summary, [tabindex="0"]):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+
+@media (max-width: 1100px) {
+  .managed-frame .managed-screen-comparison-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

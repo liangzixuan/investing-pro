@@ -58,6 +58,10 @@ export interface ManagedFinancialScreenReportHandoff {
     readonly provenance: "financial-screen";
   };
 }
+export interface ManagedFinancialScreenComparison {
+  readonly left: ManagedFinancialScreenResultRow | null;
+  readonly right: ManagedFinancialScreenResultRow | null;
+}
 interface Pending {
   readonly kind: "universe" | "waiting" | "reading";
   readonly member: ManagedFinancialScreenMember | null;
@@ -76,6 +80,7 @@ export interface ManagedFinancialScreenState {
   readonly pending: Pending | null;
   readonly run: ManagedFinancialScreenRun | null;
   readonly shortlist: readonly ManagedFinancialScreenResultRow[];
+  readonly comparison: ManagedFinancialScreenComparison;
   readonly catalogChanged: boolean;
   readonly message: string;
   readonly error: boolean;
@@ -83,6 +88,8 @@ export interface ManagedFinancialScreenState {
 interface Operation {
   readonly controller: AbortController;
 }
+const emptyComparison = (): ManagedFinancialScreenComparison =>
+  Object.freeze({ left: null, right: null });
 const empty = (): ManagedFinancialScreenState =>
   Object.freeze({
     active: false,
@@ -97,6 +104,7 @@ const empty = (): ManagedFinancialScreenState =>
     pending: null,
     run: null,
     shortlist: Object.freeze([]),
+    comparison: emptyComparison(),
     catalogChanged: false,
     message: "",
     error: false,
@@ -227,7 +235,14 @@ export class ManagedFinancialScreen {
     }
     if ((!active || !canRead) && this.operation) this.cancel();
     if (this.retired) return;
+    const accessRetired =
+      active &&
+      !canRead &&
+      (this.state.canRead ||
+        this.state.comparison.left !== null ||
+        this.state.comparison.right !== null);
     if (
+      accessRetired ||
       this.state.active !== active ||
       this.state.canRead !== (canRead && active && !!digest && !this.blocked) ||
       this.state.catalogSnapshotSha256 !== digest
@@ -236,6 +251,9 @@ export class ManagedFinancialScreen {
         active,
         canRead: canRead && active && !!digest && !this.blocked,
         catalogSnapshotSha256: digest,
+        ...(accessRetired && {
+          comparison: emptyComparison(),
+        }),
       });
   }
   async loadUniverse(captured: ManagedFinancialScreenState) {
@@ -319,6 +337,7 @@ export class ManagedFinancialScreen {
       criteria,
       criteriaRevision: Symbol(),
       criteriaStaged: false,
+      comparison: emptyComparison(),
     });
   }
   stageCriteria(captured: ManagedFinancialScreenState) {
@@ -331,7 +350,11 @@ export class ManagedFinancialScreen {
       this.state.selectionRevision !== captured.selectionRevision
     )
       return;
-    this.update({ criteriaRevision: Symbol(), criteriaStaged: true });
+    this.update({
+      criteriaRevision: Symbol(),
+      criteriaStaged: true,
+      comparison: emptyComparison(),
+    });
   }
   select(
     captured: ManagedFinancialScreenState,
@@ -372,6 +395,7 @@ export class ManagedFinancialScreen {
           : captured.selected.filter((row) => row !== member),
       ),
       selectionRevision: Symbol(),
+      comparison: emptyComparison(),
     });
   }
   private failBoundary(error: unknown) {
@@ -488,6 +512,7 @@ export class ManagedFinancialScreen {
     this.update({
       run,
       shortlist: Object.freeze([]),
+      comparison: emptyComparison(),
       error: false,
       message: "Running the selected annual financial screen…",
     });
@@ -637,6 +662,39 @@ export class ManagedFinancialScreen {
       !!capture.row.report?.response &&
       capture.row.report.response === capture.response
     );
+  }
+  selectComparison(
+    captured: ManagedFinancialScreenState,
+    side: "left" | "right",
+    row: ManagedFinancialScreenResultRow | null,
+  ) {
+    if (
+      !this.accepts(captured) ||
+      (side !== "left" && side !== "right") ||
+      captured.pending ||
+      captured.criteriaStaged ||
+      !captured.run ||
+      captured.run.status === "running" ||
+      captured.run.criteriaRevision !== captured.criteriaRevision ||
+      captured.run.selectionRevision !== captured.selectionRevision ||
+      captured.comparison[side] === row
+    )
+      return;
+    if (
+      row !== null &&
+      (!captured.run.rows.includes(row) ||
+        row === captured.comparison[side === "left" ? "right" : "left"] ||
+        !row.report?.response ||
+        !this.canAdmitReport({
+          run: captured.run,
+          row,
+          response: row.report.response,
+        }))
+    )
+      return;
+    this.update({
+      comparison: Object.freeze({ ...captured.comparison, [side]: row }),
+    });
   }
   admitReport(
     capture: ManagedFinancialScreenReportCapture,
