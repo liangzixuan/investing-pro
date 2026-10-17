@@ -48,9 +48,23 @@ does not establish authenticated production journeys, provider health or physica
 Android use. The earlier fixed Follow-ups storage proof failed in its recorded
 scope; full live-storage qualification and backup/restore acceptance remain open.
 
-## Annual financial screen in progress
+## Valuation and dated price comparison in progress
 
-The next complete M2 outcome is an [annual financial screening workflow](MANAGED_FINANCIAL_SCREEN.md):
+The next M4 outcome connects [authored valuation to dated raw closes](MANAGED_VALUATION_PRICE_CONTEXT.md):
+explicit Price loading, six scenario comparisons with independent refusals,
+original source inspection, optional complete-note Preview and single-use Append,
+existing Review/Save/recovery and reproducible JSON/HTML reports. It reuses the
+existing decimal comparison engine and adds no source request or resource.
+Company report format 5 and the Android receiver change together. Source,
+packaged native, visual, integration and publication acceptance remain separate.
+The local web suite passes 8,818 tests, including the composed note Save,
+fresh-read, comparison capture and passive HTML cases. Types, scoped lint,
+formatting and source boundaries pass. A new 50th native journey is prepared;
+its packaged execution and new image review are pending.
+
+## Annual financial screen integrated in source
+
+The integrated M2 outcome is an [annual financial screening workflow](MANAGED_FINANCIAL_SCREEN.md):
 choose exact listings and criteria, run paced explicit reads, inspect dated
 values and independent unknowns, create a session shortlist, then visit company
 research and return to the retained screen. It uses the existing canonical
@@ -62,9 +76,11 @@ limits. Missing concepts remain explicit. AEM's current 40-F is excluded.
 The complete local web suite passes 8,761 tests, including the screen, source
 inspection, explicit watchlist addition, three-draft preservation, note Save and
 fresh-read, report provenance and Research/Back cases. The affected API suites,
-types, lint, formatting and source boundaries pass. The isolated Android fixture
-and its new journey are prepared. Packaged native execution, visual acceptance,
-source integration and publication remain open.
+types, lint, formatting and source boundaries pass. The packaged Android suite
+passes all 49 journeys. PR186 is merged at `32952665`; final-main checks
+are in progress. Three distinct mobile frames show the exact cash-flow value and
+period, original source amount and retained criteria after Back. Full-table and
+desktop geometry, physical use and publication remain open.
 
 ## Raw close research workflow integrated in source
 

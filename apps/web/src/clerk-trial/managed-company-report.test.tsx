@@ -122,6 +122,9 @@ describe("prepared loaded company research report", () => {
     expect(html).toContain("Loaded request range: One year.");
     expect(html).toContain("2025-09-20 to 2026-09-20");
     expect(html).toContain("2026-09-20T00:00:01.000Z");
+    expect(report.valuationPrice).toBeNull();
+    expect(html).not.toContain("Authored scenarios versus dated raw close");
+    expect(html).not.toContain("Calculate authored scenarios for this company");
     expect(report.note).toBe(note);
     expect(f.readPrice).toHaveBeenCalledOnce();
     expect(f.readAnnual).not.toHaveBeenCalled();

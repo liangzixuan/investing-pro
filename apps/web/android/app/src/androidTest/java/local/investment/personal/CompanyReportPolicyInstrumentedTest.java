@@ -12,10 +12,10 @@ public class CompanyReportPolicyInstrumentedTest {
     @Test
     public void acceptsCurrentReportSchemaAndRefusesOldSchemaOrIdentity() {
         String filename = "Investment-research-ZERO-XNAS-20261017T000000000Z.json";
-        String current = "{\"purpose\":\"investment.company-research\",\"schemaVersion\":\"4.0.0\","
+        String current = "{\"purpose\":\"investment.company-research\",\"schemaVersion\":\"5.0.0\","
             + "\"preparedAt\":\"2026-10-17T00:00:00.000Z\",\"listing\":{\"symbol\":\"ZERO\",\"exchangeMic\":\"XNAS\"}}";
         assertTrue(CompanyReportDocumentPolicy.INSTANCE.acceptsText(filename, current));
-        assertFalse(CompanyReportDocumentPolicy.INSTANCE.acceptsText(filename, current.replace("4.0.0", "3.0.0")));
+        assertFalse(CompanyReportDocumentPolicy.INSTANCE.acceptsText(filename, current.replace("5.0.0", "4.0.0")));
         assertFalse(CompanyReportDocumentPolicy.INSTANCE.acceptsText(filename, current.replace("ZERO", "ONE")));
         assertFalse(CompanyReportDocumentPolicy.INSTANCE.acceptsText(filename, current + "{}"));
     }

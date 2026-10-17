@@ -2,6 +2,7 @@ import { type PersonalSecAnnualFinancialReviewRow } from "@research-cockpit/pers
 import { AnnualStatementsReportView } from "./AnnualStatementsReportView";
 import { type PreparedCompanyReport } from "./managed-company-report";
 import { ManagedValuationResults } from "./ManagedValuationResults";
+import { ManagedValuationPriceContext } from "./ManagedValuationPriceContext";
 import { CapturedPriceStudies } from "./ManagedPriceStudies";
 
 type Value = PersonalSecAnnualFinancialReviewRow["value"];
@@ -385,6 +386,9 @@ export function CompanyReportHtmlView({
           <h2>Authored valuation</h2>
           <ManagedValuationResults calculation={report.valuation} />
         </section>
+      )}
+      {report.valuationPrice && (
+        <ManagedValuationPriceContext context={report.valuationPrice} />
       )}
       <Annual report={report} />
       <CapturedPrice report={report} />

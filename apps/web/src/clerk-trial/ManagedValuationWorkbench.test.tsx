@@ -10,7 +10,8 @@ import {
   type ManagedValuationWorkbenchProps,
 } from "./ManagedValuationWorkbench";
 import { ManagedValuationWorkbench as WorkbenchModel } from "./managed-valuation-workbench";
-import { eodSelection } from "./eod-history-fixture";
+import { eodSelection, eodResponse } from "./eod-history-fixture";
+import { ManagedEodHistory } from "./managed-eod-history";
 import type { PreparedValuationNote } from "./valuation-note";
 
 const hooks = vi.hoisted(() => ({
@@ -118,6 +119,43 @@ function proposed(): PreparedValuationNote {
     model: "dcf",
     scenario: "base",
   };
+}
+function fillScenarios(model: WorkbenchModel) {
+  model.setDcfField("startingUnleveredCashFlowUsd", "100");
+  model.setDcfField("enterpriseToEquityBridgeUsd", "0");
+  model.setDcfField("dilutedShares", "10");
+  model.setDcfField("waccPercent", "10");
+  model.setDcfField("terminalGrowthPercent", "2");
+  model.setExitField("baseRevenue", "1000");
+  model.setExitField("cash", "0");
+  model.setExitField("debt", "0");
+  model.setExitField("dilutedShares", "10");
+  model.setExitField("discountRatePercent", "10");
+  for (const scenario of ["conservative", "base", "expansion"] as const) {
+    model.setDcfScenario(scenario, "5");
+    model.setExitScenario(scenario, "annualRevenueGrowthPercent", "5");
+    model.setExitScenario(scenario, "targetEbitdaMarginPercent", "20");
+    model.setExitScenario(scenario, "exitMultiple", "10");
+  }
+  model.calculate();
+}
+const comparisonCheckbox = (node: React.ReactNode) =>
+  elements(node).find(
+    (e) => e.type === "input" && e.props.type === "checkbox",
+  )!;
+const changeCheckbox = (node: React.ReactNode, checked: boolean) =>
+  (
+    comparisonCheckbox(node).props
+      .onChange as React.ChangeEventHandler<HTMLInputElement>
+  )({ currentTarget: { checked } } as React.ChangeEvent<HTMLInputElement>);
+async function explicitPrice() {
+  const read = vi.fn().mockResolvedValue(eodResponse());
+  const price = new ManagedEodHistory(read, vi.fn(), undefined, [
+    eodSelection.listing,
+  ]);
+  price.open(eodSelection);
+  await price.load();
+  return { price, read };
 }
 describe("authored valuation workbench", () => {
   it("starts closed, labels authored full-USD assumptions and leaves financial operands empty", () => {
@@ -328,5 +366,118 @@ describe("authored valuation workbench", () => {
     expect(model.getSnapshot().dcfDraft.startingUnleveredCashFlowUsd).toBe(
       "200",
     );
+  });
+  it("opens only the existing Price section and keeps comparison inclusion explicitly unchecked", async () => {
+    const { model, props, render, actions } = setup();
+    fillScenarios(model);
+    const { price, read } = await explicitPrice();
+    const onOpenPrice = vi.fn();
+    const next = { ...props, price, onOpenPrice };
+    const node = render(next);
+    expect(comparisonCheckbox(node).props.checked).toBe(false);
+    click(button(node, "Open Price section"));
+    expect(onOpenPrice).toHaveBeenCalledOnce();
+    click(button(node, "Preview valuation note"));
+    expect(actions.prepare).toHaveBeenCalledExactlyOnceWith("dcf", "base");
+    expect(read).toHaveBeenCalledOnce();
+    const paused = render({ ...next, navigationPending: true });
+    click(button(paused, "Open Price section"));
+    expect(onOpenPrice).toHaveBeenCalledOnce();
+  });
+  it("previews the explicitly chosen model, scenario and dated comparison, fencing a restored checkbox choice", async () => {
+    const { model, props, render, actions } = setup();
+    fillScenarios(model);
+    const { price, read } = await explicitPrice();
+    const next = { ...props, price };
+    const changeSelect = (suffix: string, value: string) => {
+      const select = elements(render(next)).find(
+        (e) => e.type === "select" && String(e.props.id).endsWith(suffix),
+      )!;
+      (select.props.onChange as React.ChangeEventHandler<HTMLSelectElement>)({
+        currentTarget: { value },
+      } as React.ChangeEvent<HTMLSelectElement>);
+    };
+    changeSelect("note-model", "exit");
+    changeSelect("note-scenario", "expansion");
+    changeCheckbox(render(next), true);
+    vi.mocked(actions.prepare).mockReturnValue({
+      preview: proposed(),
+      reason: null,
+    });
+    click(button(render(next), "Preview valuation note"));
+    expect(actions.prepare).toHaveBeenCalledExactlyOnceWith(
+      "exit",
+      "expansion",
+      true,
+    );
+    const oldPreview = elements(render(next)).find(
+      (e) => e.type === ValuationNotePreview,
+    )!;
+    expect(renderToStaticMarkup(render(next))).toContain(
+      "My note | Authored valuation &lt;assumption&gt;",
+    );
+    changeCheckbox(render(next), false);
+    changeCheckbox(render(next), true);
+    (oldPreview.props.onAppend as () => void)();
+    expect(actions.append).not.toHaveBeenCalled();
+    click(button(render(next), "Preview valuation note"));
+    const currentPreview = elements(render(next)).find(
+      (e) => e.type === ValuationNotePreview,
+    )!;
+    (currentPreview.props.onAppend as () => void)();
+    (currentPreview.props.onAppend as () => void)();
+    expect(actions.append).toHaveBeenCalledExactlyOnceWith(proposed());
+    expect(renderToStaticMarkup(render(next))).not.toContain(
+      "Complete note preview",
+    );
+    expect(read).toHaveBeenCalledOnce();
+  });
+  it("fences source replacement and pending/cancel transitions while keeping valuation-only preview usable", async () => {
+    const { model, props, render, actions } = setup();
+    fillScenarios(model);
+    const { price, read } = await explicitPrice();
+    const next = { ...props, price };
+    changeCheckbox(render(next), true);
+    vi.mocked(actions.prepare).mockReturnValue({
+      preview: proposed(),
+      reason: null,
+    });
+    click(button(render(next), "Preview valuation note"));
+    const oldPreview = elements(render(next)).find(
+      (e) => e.type === ValuationNotePreview,
+    )!;
+    let finish!: (response: ReturnType<typeof eodResponse>) => void;
+    read.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const pending = price.load();
+    (oldPreview.props.onAppend as () => void)();
+    expect(actions.append).not.toHaveBeenCalled();
+    expect(button(render(next), "Preview valuation note").props.disabled).toBe(
+      true,
+    );
+    changeCheckbox(render(next), false);
+    click(button(render(next), "Preview valuation note"));
+    expect(actions.prepare).toHaveBeenLastCalledWith("dcf", "base");
+    price.cancel();
+    (oldPreview.props.onAppend as () => void)();
+    expect(actions.append).not.toHaveBeenCalled();
+    finish(eodResponse());
+    await pending;
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(renderToStaticMarkup(render(next))).toContain(
+      "Previous note preview",
+    );
+  });
+  it("refuses opt-in without an available selected comparison and keeps source-free note preparation", () => {
+    const { model, render, actions } = setup();
+    model.calculate();
+    const node = render();
+    expect(comparisonCheckbox(node).props.disabled).toBe(true);
+    changeCheckbox(node, true);
+    click(button(render(), "Preview valuation note"));
+    expect(actions.prepare).toHaveBeenCalledExactlyOnceWith("dcf", "base");
   });
 });

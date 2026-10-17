@@ -6,8 +6,10 @@ import {
 import {
   companyReportAnnualEvidenceIsOwned,
   companyReportPriceStudiesIsOwned,
+  companyReportValuationPriceIsOwned,
   type PreparedCompanyReport,
 } from "./managed-company-report";
+import { valuationPriceDocument } from "./managed-valuation-price-document";
 
 // Fixed whole-document ceiling: canonical sources, explicit resolved references,
 // authored inputs and document framing must fit together or the whole output fails.
@@ -85,7 +87,7 @@ export function isCompanyReportDocument(
     const data = parsed as Record<string, unknown>;
     if (
       data.purpose !== fields.purpose ||
-      data.schemaVersion !== "4.0.0" ||
+      data.schemaVersion !== "5.0.0" ||
       !data.listing ||
       typeof data.listing !== "object" ||
       Array.isArray(data.listing)
@@ -165,13 +167,15 @@ export function formatCompanyReportDocument(
   if (
     report.kind !== "loaded_company_research" ||
     !companyReportAnnualEvidenceIsOwned(report.evidence.annual) ||
-    !companyReportPriceStudiesIsOwned(report)
+    !companyReportPriceStudiesIsOwned(report) ||
+    !companyReportValuationPriceIsOwned(report)
   )
     return null;
   const noteJson = JSON.stringify(report.note);
   const valuation = report.valuation ?? null;
+  const valuationPrice = valuationPriceDocument(report.valuationPrice);
   if (
-    encoder.encode(JSON.stringify(valuation)).byteLength >
+    encoder.encode(JSON.stringify({ valuation, valuationPrice })).byteLength >
     COMPANY_REPORT_VALUATION_MAX_BYTES
   )
     return null;
@@ -185,7 +189,7 @@ export function formatCompanyReportDocument(
   if (!name) return null;
   const document = {
     purpose: "investment.company-research",
-    schemaVersion: "4.0.0",
+    schemaVersion: "5.0.0",
     preparedAt: report.preparedAt,
     scope: {
       sourceEvidence:
@@ -198,7 +202,7 @@ export function formatCompanyReportDocument(
       financials:
         "Original periods, revenue bases, validation and unavailable source values are retained. Authored valuation calculations are separate from source evidence.",
       valuation:
-        "Explicit authored USD assumptions, model versions, results and independent sensitivity refusals. Inputs are not verified reported facts or investment recommendations; source dates are not valuation dates.",
+        "Explicit authored USD assumptions, model versions, results and independent sensitivity refusals. Dated raw-close comparisons use displayed scenario values per authored diluted share; no split or dividend adjustment or verified share-basis equivalence is inferred. Inputs are not verified reported facts or investment recommendations; source dates are not valuation dates.",
       authoredResearch:
         "The draft's claims and links are not verified; this document does not establish that it is saved.",
       retention:
@@ -224,6 +228,7 @@ export function formatCompanyReportDocument(
       note: report.note,
     },
     valuation,
+    valuationPrice,
     sources: {
       price: report.evidence.price?.response
         ? {

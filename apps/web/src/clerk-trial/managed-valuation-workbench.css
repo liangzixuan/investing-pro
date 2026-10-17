@@ -138,6 +138,39 @@
 .managed-frame .managed-valuation-facts dd {
   margin: 4px 0 0;
 }
+.managed-frame .managed-valuation-price-context {
+  min-width: 0;
+  margin-block: 24px;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-valuation-price-context summary {
+  min-height: 44px;
+  padding-block: 10px;
+  cursor: pointer;
+}
+.managed-frame
+  .managed-valuation-price-context
+  :is(summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.managed-frame .managed-valuation-price-context td:nth-child(2) {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.managed-frame .managed-valuation-price-opt-in {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.managed-frame .managed-valuation-price-opt-in input {
+  flex: 0 0 24px;
+}
+.managed-frame .managed-valuation-price-previous {
+  color: var(--managed-warning, var(--managed-ink));
+}
 @media (max-width: 760px) {
   .managed-frame .managed-valuation-fields,
   .managed-frame .managed-valuation-scenarios,

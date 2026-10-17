@@ -26,13 +26,11 @@ import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ManagedResearchCompanyNavigation } from "./ManagedResearchCompanyNavigation";
 import type { ManagedFinancialReviewActions } from "./managed-financial-review";
-import { ManagedValuationWorkbench } from "./ManagedValuationWorkbench";
+import {
+  ManagedValuationWorkbench,
+  type ManagedValuationNoteActions,
+} from "./ManagedValuationWorkbench";
 import type { ManagedValuationWorkbench as ValuationModel } from "./managed-valuation-workbench";
-import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
-import type {
-  PreparedValuationNote,
-  ValuationNotePreparation,
-} from "./valuation-note";
 
 export function ManagedCompanyResearch({
   research,
@@ -89,17 +87,7 @@ export function ManagedCompanyResearch({
   financialReviewActions?: ManagedFinancialReviewActions;
   annualStatementsActions?: ManagedAnnualStatementsReviewActions;
   valuation?: ValuationModel;
-  valuationNoteActions?: {
-    prepare: (
-      model: "dcf" | "exit",
-      scenario: AuthoredValuationScenario,
-    ) => ValuationNotePreparation;
-    isCurrent: (preview: PreparedValuationNote) => boolean;
-    append: (preview: PreparedValuationNote) => {
-      appended: boolean;
-      message: string;
-    };
-  };
+  valuationNoteActions?: ManagedValuationNoteActions;
   priceNoteActions: ManagedPriceNoteActions;
   priceStudiesActions?: ManagedPriceStudiesActions;
   filingsNoteActions: ManagedFilingsNoteActions;
@@ -185,6 +173,8 @@ export function ManagedCompanyResearch({
           navigationPending={navigationPending}
           noteActions={valuationNoteActions}
           watchlist={watchlist}
+          price={eod}
+          onOpenPrice={() => onSection("eod")}
         />
       )}
       <div className="managed-research-body">

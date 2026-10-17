@@ -14,6 +14,8 @@ import {
   type PreparedValuationNote,
 } from "./valuation-note";
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import type { ManagedEodHistoryState } from "./managed-eod-history";
+import { eodResponse } from "./eod-history-fixture";
 
 const selection: ManagedResearchSelection = {
   catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
@@ -70,6 +72,100 @@ function fixture() {
   };
   return { workbench, capture, apply, options };
 }
+
+function comparisonPrice(): ManagedEodHistoryState {
+  return {
+    selection,
+    available: true,
+    selectedRange: "1m",
+    response: {
+      ...eodResponse(),
+      security: selection.listing,
+      rows: [{ date: "2026-09-19", close: "100" }],
+    },
+    responseOrigin: "company",
+    showingPrevious: false,
+    running: false,
+    catalogChanged: false,
+    message: "Loaded explicitly",
+    error: false,
+  };
+}
+
+describe("dated price in a complete valuation note", () => {
+  it("requires explicit inclusion, retains the observed date and clocks, then appends once", () => {
+    const { options, apply } = fixture();
+    const price = comparisonPrice();
+    const ordinary = prepareValuationNote({ ...options, price });
+    expect(ordinary.preview!.excerpt).not.toContain(
+      "Dated raw-close comparison",
+    );
+    const result = prepareValuationNote({
+      ...options,
+      price,
+      includePriceComparison: true,
+    });
+    expect(result.reason).toBeNull();
+    const preview = result.preview!;
+    expect(preview.excerpt).toContain("Tiingo raw USD 100 on 2026-09-19");
+    expect(preview.excerpt).toContain("window 2026-08-20 through 2026-09-20");
+    expect(preview.excerpt).toContain(
+      "source request 2026-09-20T00:00:00.000Z, completed 2026-09-20T00:00:01.000Z",
+    );
+    expect(preview.excerpt).toContain(
+      "equivalence with authored diluted shares is unverified",
+    );
+    expect(preview.note).toBe(`${options.note} ${preview.excerpt}`);
+    expect(appendValuationNote(preview).appended).toBe(true);
+    expect(apply).toHaveBeenCalledExactlyOnceWith(preview.note);
+    expect(appendValuationNote(preview).appended).toBe(false);
+  });
+
+  it("refuses missing, foreign or staged Price without hiding a valuation-only note", () => {
+    const { options } = fixture();
+    const price = comparisonPrice();
+    const foreign = {
+      ...price,
+      selection: { ...selection, origin: "discover" as const },
+    };
+    for (const candidate of [
+      null,
+      foreign,
+      { ...price, selectedRange: "1y" as const },
+      { ...price, running: true },
+    ]) {
+      expect(
+        prepareValuationNote({
+          ...options,
+          price: candidate,
+          includePriceComparison: true,
+        }).preview,
+      ).toBeNull();
+      expect(
+        prepareValuationNote({ ...options, price: candidate }).preview,
+      ).not.toBeNull();
+    }
+  });
+
+  it("keeps retained-source qualification and permanently retires an observed source mutation", () => {
+    const { options } = fixture();
+    const price = { ...comparisonPrice(), showingPrevious: true };
+    const preview = prepareValuationNote({
+      ...options,
+      price,
+      includePriceComparison: true,
+    }).preview!;
+    expect(preview.excerpt).toContain(
+      "retained previous response, not confirmed by the latest attempt",
+    );
+    expect(isValuationNoteCurrent(preview)).toBe(true);
+    price.showingPrevious = false;
+    expect(isValuationNoteCurrent(preview)).toBe(false);
+    price.showingPrevious = true;
+    expect(isValuationNoteCurrent(preview)).toBe(false);
+    expect(appendValuationNote(preview).appended).toBe(false);
+  });
+});
 
 describe("valuation note preview capability", () => {
   it.each(["dcf", "exit"] as const)(

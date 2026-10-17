@@ -126,6 +126,7 @@ jobs:
                   "annualFinancialReviewRequiresPreviewAndExplicitSave",
                   "annualStatementsPreviewAppendSaveAndCapturePreserveSources",
                   "authoredValuationPreviewSaveReportAndRetirementPreserveBoundaries",
+                  "valuationPriceComparisonPreviewSaveFreshReadAndReportPreserveSources",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",
                   "priceStudiesPreviewSaveReloadAndReportPreserveRawSource",

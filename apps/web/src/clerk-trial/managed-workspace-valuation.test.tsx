@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
 import type {
   MainWatchlistPayload,
   ManagedCatalogSnapshotDto,
@@ -7,7 +8,8 @@ import type {
 import type { ManagedApi } from "./managed-api";
 import { TrialApiError } from "./api";
 import { ManagedWorkspace } from "./managed-workspace";
-import { eodSelection } from "./eod-history-fixture";
+import { eodSelection, eodResponse, eodRequest } from "./eod-history-fixture";
+import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import {
   companyReportIsCurrent,
@@ -67,7 +69,7 @@ const owners: ManagedWorkspace[] = [];
 afterEach(() => {
   for (const workspace of owners.splice(0)) workspace.sessionOwner.dispose();
 });
-async function fixture() {
+async function fixture(withPrice = false) {
   let stored: { version: number; payload: MainWatchlistPayload } = {
     version: 1,
     payload: {
@@ -109,7 +111,12 @@ async function fixture() {
     getToken: vi.fn(),
     signOut: vi.fn().mockResolvedValue(undefined),
   };
-  const workspace = new ManagedWorkspace(api, session);
+  const workspace = new ManagedWorkspace(
+    api,
+    session,
+    undefined,
+    withPrice ? { priceCoverage: [eodSelection.listing] } : {},
+  );
   owners.push(workspace);
   workspace.setView("watchlist");
   await workspace.coordinator.load();
@@ -229,7 +236,7 @@ describe("composed authored valuation workflow", () => {
     const doc = formatCompanyReportDocument(report)!;
     expect(isCompanyReportDocument(doc)).toBe(true);
     const parsed: unknown = JSON.parse(doc.text);
-    expect(parsed).toHaveProperty("schemaVersion", "4.0.0");
+    expect(parsed).toHaveProperty("schemaVersion", "5.0.0");
     expect(parsed).toHaveProperty("authoredResearch.note", preview.note);
     expect(parsed).toHaveProperty("valuation", capture);
     expect(parsed).toHaveProperty(
@@ -459,5 +466,268 @@ describe("composed authored valuation workflow", () => {
     expect(f.session.signOut).toHaveBeenCalledOnce();
     unbind();
     f.noSources();
+  });
+});
+
+function datedPricePacket(lastClose = "110.000000000000000003") {
+  const packet = parseManagedEodHistoryResponse(
+    {
+      ...eodResponse(),
+      rows: [
+        { date: "2026-09-17", close: "100.000000000000000001" },
+        { date: "2026-09-18", close: "107.500000000000000002" },
+        { date: "2026-09-19", close: lastClose },
+      ],
+    },
+    eodRequest(),
+  );
+  if (!packet) throw new Error("Invented dated price packet was refused");
+  return packet;
+}
+async function pricedFixture() {
+  const f = await fixture(true);
+  const calculation = f.fill();
+  const packet = datedPricePacket();
+  vi.mocked(f.api.eodHistory).mockResolvedValue(packet);
+  f.workspace.switchToEod();
+  await f.workspace.requestResearchSource(
+    f.workspace.getSnapshot().research!,
+    "eod",
+  );
+  const prepare = () =>
+    f.workspace.prepareValuationNote(f.selection(), "dcf", "base", true);
+  return { ...f, calculation, packet, prepare };
+}
+function pendingPrice() {
+  let resolve!: (packet: ReturnType<typeof datedPricePacket>) => void;
+  const promise = new Promise<ReturnType<typeof datedPricePacket>>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+describe("composed authored valuation with explicitly dated Price", () => {
+  it("opts in to a whole dated-comparison note, appends once, captures schema5, Reviews/Saves and reads the exact note in a fresh workspace", async () => {
+    const f = await pricedFixture();
+    const before = f.workspace.coordinator.getSnapshot().draft;
+    const without = f.workspace.prepareValuationNote(
+      f.selection(),
+      "dcf",
+      "base",
+    );
+    expect(without.preview!.note).not.toContain("110.000000000000000003");
+    const prepared = f.prepare();
+    expect(prepared.reason).toBeNull();
+    const preview = prepared.preview!;
+    expect(preview.note.startsWith(member.note + " ")).toBe(true);
+    expect(preview.note).toContain("140.00");
+    expect(preview.note).toContain("27.27%");
+    expect(preview.note).toContain("110.000000000000000003");
+    expect(preview.note).toContain("2026-09-19");
+    expect([...preview.note].length).toBeLessThanOrEqual(2000);
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(f.workspace.appendValuationNote(preview).appended).toBe(true);
+    expect(f.workspace.appendValuationNote(preview).appended).toBe(false);
+    const report = f.report()!;
+    expect(report.valuation).toBe(f.calculation);
+    const doc = formatCompanyReportDocument(report)!;
+    expect(isCompanyReportDocument(doc)).toBe(true);
+    const parsed: unknown = JSON.parse(doc.text);
+    expect(parsed).toHaveProperty("schemaVersion", "5.0.0");
+    expect(parsed).toHaveProperty("authoredResearch.note", preview.note);
+    expect(parsed).toHaveProperty("sources.price.response", f.packet);
+    expect(parsed).toHaveProperty("valuationPrice.reference", {
+      date: "2026-09-19",
+      rawCloseUsd: "110.000000000000000003",
+      showingPrevious: false,
+      sourcePath: "sources.price.response",
+    });
+    expect(parsed).not.toHaveProperty("valuationPrice.calculation");
+    expect(parsed).not.toHaveProperty("valuationPrice.selection");
+    expect(parsed).not.toHaveProperty("valuationPrice.reference.response");
+    expect(doc.text.split(JSON.stringify(f.packet))).toHaveLength(2);
+    expect(report.valuationPrice!.rows).toHaveLength(6);
+    expect(
+      report.valuationPrice!.rows.map((row) => `${row.model}:${row.scenario}`),
+    ).toEqual([
+      "dcf:conservative",
+      "dcf:base",
+      "dcf:expansion",
+      "exit:conservative",
+      "exit:base",
+      "exit:expansion",
+    ]);
+    expect(
+      report.valuationPrice!.rows.find(
+        (row) => row.model === "dcf" && row.scenario === "base",
+      ),
+    ).toMatchObject({
+      modelValuePerShareUsd: "140.00",
+      result: { status: "available", differencePercent: "27.27" },
+    });
+    expect(
+      report.valuationPrice!.rows.find(
+        (row) => row.model === "exit" && row.scenario === "base",
+      ),
+    ).toMatchObject({
+      modelValuePerShareUsd: "19.00",
+      result: { status: "available", differencePercent: "-82.73" },
+    });
+    const html = renderToStaticMarkup(
+      <CompanyReportHtmlView report={report} jsonText={doc.text} />,
+    );
+    expect(html).toContain("110.000000000000000003");
+    expect(html).toContain("2026-09-19");
+    expect(html).toContain("27.27");
+    expect(html).toContain("-82.73");
+    const $ = load(html);
+    const comparison = $(".managed-valuation-price-context");
+    expect(comparison).toHaveLength(1);
+    expect(comparison.find("h3").text()).toBe(
+      "Authored scenarios versus dated raw close",
+    );
+    expect(comparison.find("tbody tr")).toHaveLength(6);
+    expect(comparison.find("button,input,select,textarea")).toHaveLength(0);
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.eodHistory).toHaveBeenCalledOnce();
+    f.workspace.closeResearch();
+    f.workspace.setView("watchlist");
+    expect(f.workspace.valuation.getSnapshot()).toMatchObject({
+      context: null,
+      calculation: null,
+      dcfDraft: { startingUnleveredCashFlowUsd: "100" },
+      exitDraft: { cash: "100" },
+    });
+    expect(f.workspace.coordinator.getSnapshot().draft!.memberships[1]).toEqual(
+      other,
+    );
+    await f.workspace.coordinator.save();
+    const fresh = new ManagedWorkspace(f.api, {
+      ...f.session,
+      sessionId: "dated-price-fresh-session",
+    });
+    owners.push(fresh);
+    await fresh.coordinator.load();
+    expect(fresh.coordinator.getSnapshot().draft!.memberships).toEqual([
+      { ...member, note: preview.note },
+      other,
+    ]);
+    expect(fresh.valuation.getSnapshot().calculation).toBeNull();
+    expect(f.api.save).toHaveBeenCalledOnce();
+    expect(f.api.eodHistory).toHaveBeenCalledOnce();
+    for (const key of [
+      "annualReport",
+      "recentFilings",
+      "economicCalendar",
+      "monetaryAnnouncements",
+      "loadPortfolio",
+      "savePortfolio",
+      "loadFollowups",
+      "saveFollowups",
+    ] as const)
+      expect(f.api[key]).not.toHaveBeenCalled();
+  });
+  it.each([
+    "model edit restore",
+    "range edit restore",
+    "navigation round trip",
+    "retirement",
+  ] as const)(
+    "does not renew a dated note handle after %s",
+    async (boundary) => {
+      const f = await pricedFixture();
+      const preview = f.prepare().preview!;
+      const report = f.report()!;
+      if (boundary === "model edit restore") {
+        f.workspace.valuation.setDcfField("waccPercent", "11");
+        f.workspace.valuation.setDcfField("waccPercent", "10");
+        f.fill();
+      }
+      if (boundary === "range edit restore") {
+        f.workspace.eod.selectRange("1y");
+        f.workspace.eod.selectRange("1m");
+      }
+      if (boundary === "navigation round trip") {
+        f.workspace.switchToAnnual();
+        f.workspace.switchToEod();
+      }
+      if (boundary === "retirement") f.workspace.sessionOwner.retire();
+      expect(f.workspace.valuationNotePreviewIsCurrent(preview)).toBe(false);
+      expect(f.workspace.appendValuationNote(preview).appended).toBe(false);
+      if (boundary !== "retirement" && boundary !== "navigation round trip")
+        expect(
+          companyReportIsCurrent(
+            report,
+            f.selection(),
+            f.evidence(),
+            f.workspace.getResearchWatchlist(f.selection()),
+            f.workspace.valuation.getSnapshot().calculation,
+          ),
+        ).toBe(false);
+      expect(f.api.eodHistory).toHaveBeenCalledOnce();
+    },
+  );
+  it("retires old handles on refresh cancellation and refuses a late packet without changing the original source or authored draft", async () => {
+    const f = await pricedFixture();
+    const preview = f.prepare().preview!;
+    const report = f.report()!;
+    const waiting = pendingPrice();
+    vi.mocked(f.api.eodHistory).mockReturnValueOnce(waiting.promise);
+    const visit = f.workspace.getSnapshot().research!;
+    const refresh = f.workspace.requestResearchSource(visit, "eod");
+    expect(f.workspace.eod.getSnapshot().running).toBe(true);
+    expect(f.workspace.valuationNotePreviewIsCurrent(preview)).toBe(false);
+    f.workspace.cancelResearchSource(
+      f.workspace.getSnapshot().research!,
+      "eod",
+    );
+    waiting.resolve(datedPricePacket("999.75"));
+    await refresh;
+    expect(f.workspace.eod.getSnapshot().response).toBe(f.packet);
+    expect(f.workspace.eod.getSnapshot().showingPrevious).toBe(true);
+    expect(f.workspace.appendValuationNote(preview).appended).toBe(false);
+    expect(
+      companyReportIsCurrent(
+        report,
+        f.selection(),
+        f.evidence(),
+        f.workspace.getResearchWatchlist(f.selection()),
+        f.calculation,
+      ),
+    ).toBe(false);
+    expect(f.workspace.coordinator.getSnapshot().draft!.memberships).toEqual([
+      member,
+      other,
+    ]);
+    expect(f.api.eodHistory).toHaveBeenCalledTimes(2);
+  });
+  it("keeps the original dates after a failed refresh and fences an equal-valued replacement", async () => {
+    const f = await pricedFixture();
+    const preview = f.prepare().preview!;
+    vi.mocked(f.api.eodHistory).mockRejectedValueOnce(
+      new TrialApiError("unavailable"),
+    );
+    await f.workspace.requestResearchSource(
+      f.workspace.getSnapshot().research!,
+      "eod",
+    );
+    expect(f.workspace.eod.getSnapshot().response).toBe(f.packet);
+    expect(f.workspace.eod.getSnapshot().showingPrevious).toBe(true);
+    expect(f.workspace.appendValuationNote(preview).appended).toBe(false);
+    const retained = f.report()!;
+    expect(retained.valuationPrice!.reference).toMatchObject({
+      date: "2026-09-19",
+      showingPrevious: true,
+    });
+    const previous = f.prepare().preview!;
+    expect(previous.note).toMatch(/previous|retained/iu);
+    vi.mocked(f.api.eodHistory).mockResolvedValueOnce(datedPricePacket());
+    await f.workspace.requestResearchSource(
+      f.workspace.getSnapshot().research!,
+      "eod",
+    );
+    expect(f.workspace.appendValuationNote(previous).appended).toBe(false);
+    expect(f.workspace.eod.getSnapshot().response).not.toBe(f.packet);
+    expect(f.workspace.eod.getSnapshot().showingPrevious).toBe(false);
+    expect(f.api.eodHistory).toHaveBeenCalledTimes(3);
   });
 });

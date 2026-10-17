@@ -129,7 +129,7 @@ function assertReportDocument(
   const text = formatCompanyReportDocument(report)!.text;
   const parsed: unknown = JSON.parse(text);
   expect(parsed).toMatchObject({
-    schemaVersion: "4.0.0",
+    schemaVersion: "5.0.0",
     authoredResearch: { note: priceStudiesNoteDraft },
     sources: {
       price: {

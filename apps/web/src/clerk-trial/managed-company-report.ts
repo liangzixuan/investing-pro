@@ -12,6 +12,11 @@ import type { ResearchWatchlistState } from "./managed-workspace";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import type { ManagedValuationCalculation } from "./managed-valuation-workbench";
 import {
+  resolveManagedValuationPrice,
+  managedValuationPriceContextIsOwned,
+  type ManagedValuationPriceContext,
+} from "./managed-valuation-price";
+import {
   companyEvidenceSelectionMatches,
   type companySnapshotEvidence,
 } from "./managed-company-snapshot";
@@ -27,6 +32,7 @@ export interface PreparedCompanyReport {
   readonly note: string | null;
   readonly watchlistRevision: symbol | undefined;
   readonly valuation: ManagedValuationCalculation | null;
+  readonly valuationPrice: ManagedValuationPriceContext | null;
   readonly priceStudies: ManagedPriceStudies | null;
 }
 
@@ -85,6 +91,12 @@ export function prepareCompanyReport(
 ): PreparedCompanyReport | null {
   if (companyReportBlock(selection, evidence, watchlist, valuation))
     return null;
+  const valuationPrice = resolveManagedValuationPrice(
+    selection,
+    valuation,
+    evidence.price,
+  );
+  if (valuation !== null && valuationPrice === null) return null;
   return {
     kind: "loaded_company_research",
     preparedAt: now().toISOString(),
@@ -93,6 +105,7 @@ export function prepareCompanyReport(
     note: watchlist.member?.note ?? null,
     watchlistRevision: watchlist.revision,
     valuation,
+    valuationPrice,
     priceStudies: evidence.price?.response
       ? resolveManagedPriceStudies(evidence.price.response)
       : null,
@@ -111,6 +124,7 @@ export function companyReportIsCurrent(
     report.selection === selection &&
     companyReportBlock(selection, evidence, watchlist, valuation) === null &&
     report.valuation === valuation &&
+    companyReportValuationPriceIsOwned(report) &&
     companyReportPriceStudiesIsOwned(report) &&
     report.evidence.price === evidence.price &&
     report.evidence.annual === evidence.annual &&
@@ -118,6 +132,26 @@ export function companyReportIsCurrent(
     report.note === (watchlist.member?.note ?? null) &&
     report.watchlistRevision === watchlist.revision
   );
+}
+
+/** The comparison belongs to this exact model capture and admitted source state. */
+export function companyReportValuationPriceIsOwned(
+  report: PreparedCompanyReport,
+): boolean {
+  try {
+    if (report.valuation === null) return report.valuationPrice === null;
+    return (
+      report.valuationPrice !== null &&
+      managedValuationPriceContextIsOwned(
+        report.valuationPrice,
+        report.selection,
+        report.valuation,
+        report.evidence.price,
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Match captured calculations to the exact validated raw source and formula result. */

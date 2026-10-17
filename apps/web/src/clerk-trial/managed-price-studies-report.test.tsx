@@ -90,7 +90,7 @@ describe("captured managed raw close studies", () => {
     const price = data.sources.price;
     const calculation = price.studies.calculation;
     const metrics = calculation.metrics;
-    expect(data.schemaVersion).toBe("4.0.0");
+    expect(data.schemaVersion).toBe("5.0.0");
     expect(price.response).toEqual(f.packet);
     expect(price.studies.status).toBe("available");
     expect(document.text.match(/"rows":/gu)).toHaveLength(1);

@@ -13,7 +13,15 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The current M2 candidate is an [annual financial screening workflow](MANAGED_FINANCIAL_SCREEN.md):
+The current M4 candidate connects [authored valuation to dated raw closes](MANAGED_VALUATION_PRICE_CONTEXT.md):
+explicit Price loading, six independently qualified scenario comparisons,
+optional complete-note Preview/Append, existing Review/Save/recovery and captured
+JSON/HTML reports. It reuses the existing comparison engine without a new feed,
+request route, resource or current-price verdict. Authored diluted shares and
+unadjusted raw prices retain their distinct basis. Source, native and publication
+acceptance remain separate.
+
+The source-integrated M2 outcome is an [annual financial screening workflow](MANAGED_FINANCIAL_SCREEN.md):
 explicit criteria and a named cohort, paced source reads, dated results and
 unknowns, source inspection, a session shortlist, and company research with Back
 to the retained screen. It reuses canonical Annual calculations and the existing

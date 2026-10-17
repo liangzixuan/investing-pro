@@ -4,6 +4,10 @@ import {
 } from "./annual-statements-fixture";
 import { createPriceStudiesNativeFixture } from "./price-studies-fixture";
 import {
+  createValuationPriceNativeFixture,
+  type NativeValuationPriceMetadata,
+} from "./valuation-price-fixture";
+import {
   createFinancialScreenNativeFixture,
   type NativeFinancialScreenMetadata,
 } from "./financial-screen-fixture";
@@ -1994,6 +1998,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly portfolio?: PortfolioNativeControls;
   readonly annualStatements?: NativeAnnualStatementsMetadata;
   readonly financialScreen?: NativeFinancialScreenMetadata;
+  readonly valuationPrice?: NativeValuationPriceMetadata;
 };
 
 /** Dispatch only the new fixed journey; all existing scenario bodies remain unchanged. */
@@ -2004,8 +2009,13 @@ export async function createFixture(
     | "annual-statements"
     | "price-studies"
     | "financial-screen"
+    | "valuation-price"
     | "portfolio-ledger" = "default",
 ): Promise<ManagedNativeFixture> {
+  if (scenario === "valuation-price")
+    return createValuationPriceNativeFixture(
+      await createSharedFixture("price-comparison-note"),
+    );
   if (scenario === "financial-screen")
     return createFinancialScreenNativeFixture(await createSharedFixture());
   if (scenario === "price-studies")
