@@ -385,6 +385,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && [...exit.querySelectorAll('td')].map(e => e.textContent).join('|') === '1610.510|322.102|2000.000|1900.000|19.00'" +
             " && v.calculation.dcfResult.sensitivity.cells.length === 25 && v.calculation.exitResult.sensitivity.cells.length === 25; })()";
         awaitPage("explicit Calculate shows the two exact base outcomes and full independent sensitivities", exactResults);
+        awaitPage("both valuation tables keep complete scenario names on one line inside each header",
+            "(() => { const headers = [...document.querySelectorAll('.managed-valuation-workbench [aria-label=\"Cash flow DCF scenarios\"] tbody th, .managed-valuation-workbench [aria-label=\"Exit multiple scenarios\"] tbody th')];" +
+            " return headers.length === 6 && headers.every(header => { const range = document.createRange(); range.selectNodeContents(header);" +
+            " const lines = [...range.getClientRects()], cell = header.getBoundingClientRect(); return lines.length === 1" +
+            " && lines[0].left >= cell.left && lines[0].right <= cell.right; }); })()");
         retainAnnualNoteFrame("authoredValuationResults", model + " [aria-label='Cash flow DCF calculated scenarios'] > h4", model + " [aria-label='Cash flow DCF calculated scenarios'] > h4", 1);
         click(".managed-valuation-note > summary");
         click(".managed-valuation-note > button");
@@ -461,8 +466,15 @@ public class ManagedWorkspaceInstrumentedTest {
             ignored -> valuationReviewScrolled.countDown()));
         assertTrue("Valuation sign-out review did not scroll into view", valuationReviewScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String valuationSignOutVisible = "(() => { const targets=Array.from(document.querySelectorAll('#managed-signout-review h2, #managed-signout-review p, #managed-signout-review button'));" +
-            " const v=visualViewport; return v && targets.length === 6 && targets.every(e=>{const r=e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
-            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft+v.width && r.top >= v.offsetTop && r.bottom <= v.offsetTop+v.height;});})()";
+            " const v=visualViewport, nav=document.querySelector('.managed-navigation'), navRect=nav?.getBoundingClientRect();" +
+            " const overlay=nav && nav.checkVisibility() && ['fixed','sticky'].includes(getComputedStyle(nav).position);" +
+            " return v && nav?.isConnected && nav.checkVisibility() && targets.length === 6 && targets.every(e=>{const r=e.getBoundingClientRect();" +
+            " if (!e.isConnected || e.closest('[hidden], [inert]') || !e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})" +
+            " || r.width <= 0 || r.height <= 0 || r.left < v.offsetLeft || r.right > v.offsetLeft+v.width" +
+            " || r.top < v.offsetTop || r.bottom > v.offsetTop+v.height) return false;" +
+            " if (overlay && r.left < navRect.right && r.right > navRect.left && r.top < navRect.bottom && r.bottom > navRect.top) return false;" +
+            " const dx=Math.min(8,r.width/4), dy=Math.min(8,r.height/4);" +
+            " return [r.left+dx,(r.left+r.right)/2,r.right-dx].every(x=>[r.top+dy,(r.top+r.bottom)/2,r.bottom-dy].every(y=>e.contains(document.elementFromPoint(x,y))));});})()";
         awaitPage("entire valuation sign-out explanation and both actions visible before capture", valuationSignOutVisible);
         retainScreenshot("authoredValuationSignOut");
         awaitPage("entire valuation sign-out review and focus retained through capture",
@@ -477,7 +489,9 @@ public class ManagedWorkspaceInstrumentedTest {
             " && d.save === 1 && d.load === 2 && d.status === 1 && d.signOut === 0 && d.annual === 0 && d.eod === 0 && d.filings === 0 && d.marketsEod === 0" +
             " && d.calendar === 0 && d.fed === 0 && d.search === 0 && d.resolve === 0 && d.token === 0; })()");
         click("#managed-signout-stay");
-        awaitPage("Keep editing preserves valuation and saved note", "document.querySelector('#managed-signout-review') === null && " + valuation + ".calculation !== null && " + DIAGNOSTICS + ".signOut === 0");
+        awaitPage("Keep editing restores fixed workspace navigation and preserves valuation and saved note",
+            "document.querySelector('#managed-signout-review') === null && getComputedStyle(document.querySelector('.managed-navigation')).position === 'fixed'" +
+            " && " + valuation + ".calculation !== null && " + DIAGNOSTICS + ".signOut === 0");
         click("#managed-signout-open");
         click("#managed-signout-confirm");
         awaitPage("session retirement clears every raw valuation operand and result",

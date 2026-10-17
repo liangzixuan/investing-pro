@@ -123,6 +123,10 @@
 .managed-frame .managed-valuation-table :is(th, td):first-child {
   text-align: left;
 }
+.managed-frame .managed-valuation-table th:first-child {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
 .managed-frame .managed-valuation-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
