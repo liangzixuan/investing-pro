@@ -1,3 +1,4 @@
+import { getPersonalSecAnnualSourceUtilityAge } from "@research-cockpit/personal-financial-analytics";
 import type { ManagedFilingsAnnualBaseline } from "./managed-filings-annual-baseline";
 import type { ManagedFilingsScope } from "./managed-filings-filter";
 
@@ -73,7 +74,8 @@ function AnnualBaseline({
   fromDate: string;
   throughDate: string;
 }) {
-  const { generation, resolution } = response.evidence;
+  const { generation } = response.evidence;
+  const utilityAge = getPersonalSecAnnualSourceUtilityAge(generation, target);
   return (
     <div className="managed-filings-annual-details">
       <p>
@@ -95,7 +97,7 @@ function AnnualBaseline({
         {generation.sources.submissions.fetchedAt ?? "Not captured"}.
         {fromComparison && " Loaded from the watchlist comparison."}
       </p>
-      {resolution.utilityAge?.withinWindow === false && (
+      {utilityAge?.withinWindow === false && (
         <p className="managed-filings-scope">
           This Annual report is outside the current-use age limits. Its original
           filing date still supplies this filter.

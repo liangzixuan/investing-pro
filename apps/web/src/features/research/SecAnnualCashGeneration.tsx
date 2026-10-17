@@ -1,8 +1,10 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type {
-  PersonalSecAnnualCashMetricEvidenceDto,
+  PersonalSecAnnualStatementScanDto,
+  PersonalSecAnnualStatementObservationDto,
   PersonalSecAnnualCashUnavailableReason,
   PersonalSecAnnualCashValueDto,
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import { ObservationDetails } from "./SecAnnualObservation";
 import type { ReactNode, Ref } from "react";
@@ -46,12 +48,14 @@ const reasons: Record<PersonalSecAnnualCashUnavailableReason, string> = {
 
 export function SecAnnualCashGeneration({
   response,
+  view,
   cashAction,
   margins,
   history,
   headingTarget,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly cashAction?: ReactNode;
   readonly margins?: ReactNode;
   readonly history?: ReactNode;
@@ -60,7 +64,7 @@ export function SecAnnualCashGeneration({
     readonly ref: Ref<HTMLHeadingElement>;
   };
 }) {
-  const { cashGeneration: cash } = response.evidence;
+  const cash = view.cashGeneration;
   return (
     <section className="sec-annual-cash" aria-label="Annual cash generation">
       <h4
@@ -100,7 +104,7 @@ export function SecAnnualCashGeneration({
       {history}
       <details className="sec-quarterly-row-details sec-annual-cash-source">
         <summary>Cash sources and calculation inputs</summary>
-        <SecAnnualCashSourceBody response={response} />
+        <SecAnnualCashSourceBody response={response} view={view} />
       </details>
     </section>
   );
@@ -162,10 +166,13 @@ export function annualCashUnavailableReasonText(
 
 export function SecAnnualCashSourceBody({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
-  const { cashGeneration: cash, generation } = response.evidence;
+  const { generation, facts } = response.evidence;
+  const cash = view.cashGeneration;
   return (
     <>
       <p>
@@ -184,9 +191,28 @@ export function SecAnnualCashSourceBody({
       )}
       <CashInputs
         label="Operating cash flow"
-        evidence={cash.operatingCashFlow}
+        scan={
+          facts.scans.find(
+            (entry) =>
+              entry.concept === "NetCashProvidedByUsedInOperatingActivities",
+          )!.scan
+        }
+        observations={facts.observations.filter(
+          (row) => row.concept === "NetCashProvidedByUsedInOperatingActivities",
+        )}
       />
-      <CashInputs label="PP&E purchases" evidence={cash.ppePurchases} />
+      <CashInputs
+        label="PP&E purchases"
+        scan={
+          facts.scans.find(
+            (entry) =>
+              entry.concept === "PaymentsToAcquirePropertyPlantAndEquipment",
+          )!.scan
+        }
+        observations={facts.observations.filter(
+          (row) => row.concept === "PaymentsToAcquirePropertyPlantAndEquipment",
+        )}
+      />
       <p>
         Calculation references:{" "}
         {cash.resolution.operatingCashFlowLessPpePurchases.observationIds.join(
@@ -199,12 +225,13 @@ export function SecAnnualCashSourceBody({
 
 function CashInputs({
   label,
-  evidence,
+  scan,
+  observations,
 }: {
   readonly label: string;
-  readonly evidence: PersonalSecAnnualCashMetricEvidenceDto;
+  readonly scan: PersonalSecAnnualStatementScanDto;
+  readonly observations: readonly PersonalSecAnnualStatementObservationDto[];
 }) {
-  const { scan } = evidence;
   return (
     <section aria-label={`${label} source inputs`}>
       <h5>{label}</h5>
@@ -222,7 +249,7 @@ function CashInputs({
         <p>{reasons[scan.status]}</p>
       )}
       <ol>
-        {evidence.observations.map((row) => (
+        {observations.map((row) => (
           <li key={row.id}>
             <ObservationDetails row={row} />
           </li>

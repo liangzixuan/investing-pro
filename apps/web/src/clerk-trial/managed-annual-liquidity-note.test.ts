@@ -1,27 +1,29 @@
-import { operatingResults } from "../features/research/sec-annual-operating-fixture";
 import { describe, expect, it, vi } from "vitest";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualLiquidityResolutionDto,
+  PersonalSecAnnualLiquidityObservationDto,
 } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualEvidence } from "@research-cockpit/personal-financial-analytics";
+import { liquidityRow } from "../features/research/sec-annual-liquidity-fixture";
+import { cashRow } from "../features/research/sec-annual-cash-fixture";
+import { row } from "../features/research/sec-annual-evidence-fixture";
+import { admitUiPacket } from "../features/research/test-canonical-annual-ui-fixture";
 import {
-  liquidity,
-  liquidityResponse,
-  liquidityRow,
-} from "../features/research/sec-annual-liquidity-fixture";
-import {
-  cashGeneration,
-  cashRow,
-} from "../features/research/sec-annual-cash-fixture";
-import {
-  request,
-  response,
-} from "../features/research/sec-annual-evidence-fixture";
-import { parseSecAnnualEvidenceResponse } from "../lib/sec-annual-evidence-response";
+  annualComparisonResponse,
+  viewOf as view,
+} from "./test-canonical-annual-comparison-fixture";
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 
-type Report = PersonalSecAnnualEvidenceResponseDto;
+type Report = PersonalSecAnnualCanonicalResponseDto;
+const liquidityResponse = (
+  inputs: readonly PersonalSecAnnualLiquidityObservationDto[],
+  cutoffAt?: string,
+) =>
+  annualComparisonResponse("left", {
+    rows: [row(), row("NetIncomeLoss", "100")],
+    liquidityRows: inputs,
+    ...(cutoffAt ? { cutoffAt } : {}),
+  });
 const rows = () => [
   liquidityRow("current_assets", "120.125"),
   liquidityRow("current_liabilities", "80.025"),
@@ -30,28 +32,23 @@ const fixture = () => liquidityResponse(rows());
 const expected =
   "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. Reported current assets (AssetsCurrent) USD 120.125; reported current liabilities (LiabilitiesCurrent) USD 80.025. App calculations: working capital USD 40.1; current ratio 1.50 multiple (two decimal places, half up). Same filing and date. Current assets are not all cash. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
 async function admitted(wire: Report) {
-  const parsed = await parseSecAnnualEvidenceResponse(
-    wire,
-    request(),
-    new AbortController().signal,
-  );
-  expect(parsed).not.toBeNull();
-  return parsed!;
+  return admitUiPacket(wire);
 }
 function patch(
   report: Report,
   changes: Partial<PersonalSecAnnualLiquidityResolutionDto>,
 ): Report {
-  return {
+  // V6 has no serialized result slots; forged overlays have no decoder ownership.
+  const unowned = {
     ...report,
     evidence: {
       ...report.evidence,
       liquidity: {
-        ...report.evidence.liquidity,
-        resolution: { ...report.evidence.liquidity.resolution, ...changes },
+        resolution: { ...view(report).liquidity.resolution, ...changes },
       },
     },
   };
+  return unowned;
 }
 
 describe("Annual liquidity note excerpt", () => {
@@ -109,7 +106,7 @@ describe("Annual liquidity note excerpt", () => {
           liquidityRow("current_liabilities", "0"),
         ]),
       );
-      expect(report.evidence.liquidity.resolution.currentRatio).toMatchObject({
+      expect(view(report).liquidity.resolution.currentRatio).toMatchObject({
         status: "unavailable",
         reason: "nonpositive_current_liabilities",
       });
@@ -143,29 +140,16 @@ describe("Annual liquidity note excerpt", () => {
   it.each(["missing", "invalid"])(
     "keeps valid liquidity independent of %s income and absent cash",
     async (income) => {
-      const base = await response([]);
-      const evidence =
-        income === "invalid"
-          ? {
-              ...base.evidence,
-              incomeScanStatus: "invalid_response" as const,
-              coverage: null,
-              completeness: {
-                status: "refused" as const,
-                reason: "source_unavailable" as const,
-              },
-            }
-          : base.evidence;
-      const report = await admitted({
-        ...base,
-        evidence: {
-          ...evidence,
-          resolution: resolvePersonalSecAnnualEvidence(evidence),
-          operatingResults: await operatingResults(evidence),
-          liquidity: await liquidity(evidence, rows()),
-        },
+      const report = await annualComparisonResponse("left", {
+        rows: [],
+        cashRows: [],
+        liquidityRows: rows(),
+        ...(income === "invalid" ? { mode: "income-invalid" } : {}),
       });
-      expect(report.evidence.resolution.currentTargetEligible).toBe(false);
+      expect(view(report).income.resolution.currentTargetEligible).toBe(false);
+      expect(
+        view(report).cashGeneration.resolution.operatingCashFlow.status,
+      ).toBe("unavailable");
       expect(annualLiquidityNoteExcerpt(report, false)).toBe(expected);
     },
   );
@@ -222,24 +206,37 @@ describe("Annual liquidity note excerpt", () => {
     { accessionNumber: "0000000001-25-000001" },
     { currentUseEligible: false },
     { observationIds: [`sec-fact:${"a".repeat(64)}` as const] },
-  ])("refuses changed calculation/provenance %j", async (change) => {
-    const report = await fixture();
-    expect(
-      annualLiquidityNoteExcerpt(
-        patch(report, {
-          workingCapital: {
-            ...report.evidence.liquidity.resolution.workingCapital,
-            ...change,
-          },
-        }),
-        false,
-      ),
-    ).toBeNull();
-  });
+  ])(
+    "refuses opaque serialized calculation/provenance overlays %j",
+    async (change) => {
+      const report = await fixture();
+      await expect(
+        admitUiPacket(
+          patch(report, {
+            workingCapital: {
+              ...view(report).liquidity.resolution.workingCapital,
+              ...change,
+            },
+          }),
+        ),
+      ).rejects.toThrow("Invented canonical UI evidence was refused");
+      expect(
+        annualLiquidityNoteExcerpt(
+          patch(report, {
+            workingCapital: {
+              ...view(report).liquidity.resolution.workingCapital,
+              ...change,
+            },
+          }),
+          false,
+        ),
+      ).toBeNull();
+    },
+  );
 
   it("does not invent a zero-liability refusal or accept an unrelated unavailable ratio", async () => {
     const report = await fixture();
-    const currentRatio = report.evidence.liquidity.resolution.currentRatio;
+    const currentRatio = view(report).liquidity.resolution.currentRatio;
     expect(
       annualLiquidityNoteExcerpt(
         patch(report, {
@@ -265,7 +262,7 @@ describe("Annual liquidity note excerpt", () => {
             unit: "multiple",
             reason: "source_stale",
             observationIds:
-              zero.evidence.liquidity.resolution.currentRatio.observationIds,
+              view(zero).liquidity.resolution.currentRatio.observationIds,
           },
         }),
         false,
@@ -276,30 +273,34 @@ describe("Annual liquidity note excerpt", () => {
   it.each(["income", "operating", "purchases"])(
     "reserves existing %s observation identities",
     async (metric) => {
-      const base = await fixture();
-      const report = await admitted({
-        ...base,
-        evidence: {
-          ...base.evidence,
-          cashGeneration: await cashGeneration(base.evidence, [
-            cashRow("operating_cash_flow", "100"),
-            cashRow("ppe_purchases", "25"),
-          ]),
-        },
+      const report = await annualComparisonResponse("left", {
+        liquidityRows: rows(),
+        cashRows: [
+          cashRow("operating_cash_flow", "100"),
+          cashRow("ppe_purchases", "25"),
+        ],
       });
       const changed = structuredClone(report);
-      const target =
+      const concept =
         metric === "income"
-          ? changed.evidence.observations[0]!
+          ? "NetIncomeLoss"
           : metric === "operating"
-            ? changed.evidence.cashGeneration.operatingCashFlow.observations[0]!
-            : changed.evidence.cashGeneration.ppePurchases.observations[0]!;
+            ? "NetCashProvidedByUsedInOperatingActivities"
+            : "PaymentsToAcquirePropertyPlantAndEquipment";
+      const target = changed.evidence.facts.observations.find(
+        (row) => row.concept === concept,
+      )!;
       Reflect.set(
         target,
         "id",
-        changed.evidence.liquidity.currentAssets.observations[0]!.id,
+        changed.evidence.facts.observations.find(
+          (row) => row.concept === "AssetsCurrent",
+        )!.id,
       );
       expect(annualLiquidityNoteExcerpt(changed, false)).toBeNull();
+      await expect(admitUiPacket(changed)).rejects.toThrow(
+        "Invented canonical UI evidence was refused",
+      );
     },
   );
 
@@ -309,7 +310,7 @@ describe("Annual liquidity note excerpt", () => {
     "foreign filing URL",
     "changed source value",
   ])("refuses %s", async (kind) => {
-    const report = await fixture();
+    const report = structuredClone(await fixture());
     if (kind === "wrong issuer")
       Reflect.set(report.security, "cik", "0000000002");
     else if (kind === "unresolved target")
@@ -319,17 +320,24 @@ describe("Annual liquidity note excerpt", () => {
       });
     else if (kind === "foreign filing URL")
       Reflect.set(
-        report.evidence.liquidity.currentAssets.observations[0]!.filing,
+        report.evidence.facts.observations.find(
+          (row) => row.concept === "AssetsCurrent",
+        )!.filing,
         "sourceUrl",
         "https://example.invalid/",
       );
     else
       Reflect.set(
-        report.evidence.liquidity.currentAssets.observations[0]!,
+        report.evidence.facts.observations.find(
+          (row) => row.concept === "AssetsCurrent",
+        )!,
         "value",
         "121",
       );
     expect(annualLiquidityNoteExcerpt(report, false)).toBeNull();
+    await expect(admitUiPacket(report)).rejects.toThrow(
+      "Invented canonical UI evidence was refused",
+    );
   });
 
   it.each(["companyFacts", "submissions"] as const)(
@@ -340,9 +348,12 @@ describe("Annual liquidity note excerpt", () => {
         { fetchedAt: null },
         { fetchedAt: "2026-09-01T00:00:00.000Z" },
       ]) {
-        const report = await fixture();
+        const report = structuredClone(await fixture());
         Object.assign(report.evidence.generation.sources[source], change);
         expect(annualLiquidityNoteExcerpt(report, false)).toBeNull();
+        await expect(admitUiPacket(report)).rejects.toThrow(
+          "Invented canonical UI evidence was refused",
+        );
       }
     },
   );

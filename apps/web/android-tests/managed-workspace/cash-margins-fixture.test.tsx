@@ -1,8 +1,9 @@
+import { viewOf } from "../../src/features/research/test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { createFixture } from "./fixture";
-import { cashMarginsResponse } from "../../src/features/research/sec-annual-cash-margins-fixture";
+import { cashMarginsResponse } from "../../src/features/research/test-canonical-annual-cash-ui-fixture";
 import { cashRow } from "../../src/features/research/sec-annual-cash-fixture";
 import { SecAnnualEvidenceResult } from "../../src/features/research/SecAnnualEvidenceResult";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
@@ -16,8 +17,8 @@ import {
 import { formatCompanyReportDocument } from "../../src/clerk-trial/managed-company-report-document";
 
 function heldRead() {
-  let finish!: (response: PersonalSecAnnualEvidenceResponseDto) => void;
-  const promise = new Promise<PersonalSecAnnualEvidenceResponseDto>(
+  let finish!: (response: PersonalSecAnnualCanonicalResponseDto) => void;
+  const promise = new Promise<PersonalSecAnnualCanonicalResponseDto>(
     (resolve) => {
       finish = resolve;
     },
@@ -145,6 +146,7 @@ describe("strictly admitted cash margins in the managed workspace", () => {
         ? renderToStaticMarkup(
             <SecAnnualEvidenceResult
               response={response}
+              view={viewOf(response)}
               appearance="financial"
             />,
           )
@@ -166,7 +168,7 @@ describe("strictly admitted cash margins in the managed workspace", () => {
     expect(initialHtml).toContain(">12.51%<");
     expect(annual).toHaveBeenCalledTimes(1);
     expect(annual.mock.calls[0]![0]).toEqual({
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       catalogSnapshotSha256: first.catalogSnapshotSha256,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -182,7 +184,12 @@ describe("strictly admitted cash margins in the managed workspace", () => {
     expect(JSON.parse(document.text) as unknown).toMatchObject({
       sources: { annual: { response: first } },
     });
-    expect(document.text).not.toContain('"cashMargins"');
+    expect(JSON.stringify(first.evidence)).not.toContain('"cashMargins"');
+    expect(JSON.parse(document.text) as unknown).toMatchObject({
+      sources: {
+        annual: { financials: { cashMargins: viewOf(first).cashMargins } },
+      },
+    });
     await workspace.annual.load();
     expect(workspace.annual.getSnapshot()).toMatchObject({
       response: first,

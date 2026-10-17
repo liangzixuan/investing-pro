@@ -13,6 +13,12 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
+The next independent M2 outcome is a complete [standardized annual statement explorer](MANAGED_ANNUAL_STATEMENTS.md).
+All three statement groups connect selected-filing comparative dates and exact
+source inspection to selected-cell note actions, existing Save/recovery and
+captured reports. Its canonical version 6 graph keeps each concept independent.
+This does not complete custom-taxonomy, IFRS, quarterly or broad issuer coverage.
+
 The selected M5 outcome is a complete [authored portfolio workflow](MANAGED_PORTFOLIO.md):
 opening balances, transactions and manual splits, exact holdings and cash,
 independent Review and Save, recovery and return from company research. It reuses

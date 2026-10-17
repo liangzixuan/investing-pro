@@ -1,50 +1,24 @@
 import { createHash } from "node:crypto";
-
 import {
-  PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
+  PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS as LIMITS,
-  type PersonalSecAnnualCashMetricEvidenceDto,
-  type PersonalSecAnnualLiquidityMetricEvidenceDto,
-  type PersonalSecAnnualOperatingMetricEvidenceDto,
-  type PersonalSecAnnualBalanceSheetMetricEvidenceDto,
-  type PersonalSecAnnualEvidenceDto,
-  type PersonalSecAnnualMetricCountsDto,
-  type PersonalSecAnnualResolutionInput,
+  type PersonalSecAnnualCanonicalEvidenceDto,
   type PersonalSecAnnualSourceDto,
-  type PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
+import { selectPersonalSecAnnualTarget } from "@research-cockpit/personal-financial-analytics";
+import { createPersonalSecAnnualCanonicalEvidence } from "./personal-sec-annual-canonical-evidence";
 import {
-  getPersonalSecAnnualRefusalReason,
-  resolvePersonalSecAnnualEvidence,
-  resolvePersonalSecAnnualCashGeneration,
-  resolvePersonalSecAnnualLiquidity,
-  resolvePersonalSecAnnualOperatingResults,
-  resolvePersonalSecAnnualBalanceSheet,
-  selectPersonalSecAnnualTarget,
-  serializePersonalSecAnnualGeneration,
-} from "@research-cockpit/personal-financial-analytics";
-
-import {
-  normalizePersonalSecAnnualCompanyFacts,
-  unavailablePersonalSecAnnualCashMetric,
-  unavailablePersonalSecAnnualLiquidityMetric,
-  unavailablePersonalSecAnnualOperatingMetric,
-  unavailablePersonalSecAnnualBalanceSheetMetric,
-  type PersonalSecAnnualCashSourceMetric,
-  type PersonalSecAnnualLiquiditySourceMetric,
-  type PersonalSecAnnualOperatingSourceMetric,
-  type PersonalSecAnnualBalanceSheetSourceMetric,
-} from "./personal-sec-annual-company-facts";
+  normalizePersonalSecAnnualStatementCompanyFacts,
+  unavailablePersonalSecAnnualStatementCompanyFacts,
+} from "./personal-sec-annual-statement-company-facts";
 import {
   decodePersonalSecSourceUtf8,
   fetchPersonalSecSourceBytes,
   isPersonalSecClock,
   isPersonalSecUserAgent,
-  type normalizePersonalSecCompanyFacts,
   normalizePersonalSecSubmissions,
   parsePersonalSecSourceJson,
   PersonalSecSourceError,
-  retainPersonalSecQuarterlyObservations,
 } from "./personal-sec-quarterly-evidence-provider";
 import {
   PersonalSecRequestSchedulerError,
@@ -60,7 +34,7 @@ export interface PersonalSecAnnualEvidenceProvider {
   loadEvidence(
     cik: string,
     signal?: AbortSignal,
-  ): Promise<PersonalSecAnnualEvidenceDto>;
+  ): Promise<PersonalSecAnnualCanonicalEvidenceDto>;
   close(): void;
 }
 
@@ -71,10 +45,6 @@ export interface SecPersonalAnnualEvidenceProviderDependencies {
 }
 
 const MESSAGE = "Personal SEC annual evidence is unavailable.";
-type RawObservation = ReturnType<
-  typeof normalizePersonalSecCompanyFacts
->["observations"][number];
-type Submissions = ReturnType<typeof normalizePersonalSecSubmissions>;
 type SourceResult<T> = Readonly<{
   source: PersonalSecAnnualSourceDto;
   value?: T;
@@ -135,7 +105,7 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
   public async loadEvidence(
     cik: string,
     signal?: AbortSignal,
-  ): Promise<PersonalSecAnnualEvidenceDto> {
+  ): Promise<PersonalSecAnnualCanonicalEvidenceDto> {
     if (this.#closed || signal?.aborted === true) fail("aborted");
     if (this.#userAgent === undefined) fail("not_configured");
     if (typeof cik !== "string" || !/^\d{10}$/u.test(cik) || /^0+$/u.test(cik))
@@ -185,7 +155,7 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
         `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
         controller.signal,
         (value) =>
-          normalizePersonalSecAnnualCompanyFacts(
+          normalizePersonalSecAnnualStatementCompanyFacts(
             value,
             cik,
             targetAccession(target),
@@ -194,15 +164,6 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
       );
       if (controller.signal.aborted || this.#closed) fail("aborted");
       const completedAt = capture();
-      const income = facts.value?.income;
-      const incomeScanStatus =
-        facts.value?.incomeScanStatus ?? "source_unavailable";
-      const all = income?.observations ?? [];
-      const selected =
-        target.status === "target"
-          ? all.filter((row) => row.accessionNumber === target.accessionNumber)
-          : null;
-      const selectedCounts = selected === null ? null : counts(selected);
       const targetScan =
         submissions.value === undefined
           ? null
@@ -213,179 +174,25 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
               ).length,
               olderHistoryAvailable: submissions.value.olderHistoryAvailable,
             });
-      const generation = Object.freeze({
-        definitionVersion: PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
-        cutoffAt,
-        completedAt,
-        sources: Object.freeze({
-          companyFacts: facts.source,
-          submissions: submissions.source,
-        }),
-      });
-      const history = retainPersonalSecQuarterlyObservations(all);
-      const boundGeneration = Object.freeze({
-        ...generation,
-        sha256: sha256(
-          serializePersonalSecAnnualGeneration({
-            cik,
-            generation,
-            target,
-            targetScan,
-          }),
-        ),
-      });
-      const preliminaryCoverage =
-        income === undefined
-          ? null
-          : Object.freeze({
-              full: Object.freeze({
-                ...counts(all),
-                inspectedRows: income.inspectedRows,
-                invalidRows: income.invalidRows,
-                duplicateRows: income.duplicateRows,
-                uniqueObservations: all.length,
-                conceptsWithoutUsd: income.conceptsWithoutUsd,
-              }),
-              selected: selectedCounts,
-              otherAccessions:
-                selected === null
-                  ? null
-                  : counts(
-                      all.filter(
-                        (row) =>
-                          row.accessionNumber !== targetAccession(target),
-                      ),
-                    ),
-              returned: counts([]),
-              omittedSelected: selectedCounts,
-              history: Object.freeze({
-                returned: counts(history),
-                truncated: history.length < all.length,
-              }),
-            });
-      const reason = getPersonalSecAnnualRefusalReason({
-        generation: boundGeneration,
-        target,
-        incomeScanStatus,
-        coverage: preliminaryCoverage,
-      });
-      const observations = Object.freeze(
-        reason === null
-          ? selected!.map((row): PersonalSecQuarterlyObservationDto =>
-              Object.freeze({
-                ...row,
-                filing: joinFiling(row, submissions.value),
-              }),
-            )
-          : [],
-      );
-      const returned = counts(observations);
-      const input: PersonalSecAnnualResolutionInput = Object.freeze({
+      return createPersonalSecAnnualCanonicalEvidence({
         cik,
-        generation: boundGeneration,
+        generation: {
+          definitionVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
+          cutoffAt,
+          completedAt,
+          sources: {
+            companyFacts: facts.source,
+            submissions: submissions.source,
+          },
+        },
         target,
         targetScan,
-        incomeScanStatus,
-        completeness:
-          reason === null
-            ? Object.freeze({ status: "complete", reason: null })
-            : Object.freeze({ status: "refused", reason }),
-        coverage:
-          preliminaryCoverage === null
-            ? null
-            : Object.freeze({
-                ...preliminaryCoverage,
-                returned,
-                omittedSelected:
-                  selectedCounts === null
-                    ? null
-                    : Object.freeze({
-                        observations:
-                          selectedCounts.observations - returned.observations,
-                        revenue: selectedCounts.revenue - returned.revenue,
-                        netIncome:
-                          selectedCounts.netIncome - returned.netIncome,
-                      }),
-              }),
-        observations,
-      });
-      const cashGeneration = Object.freeze({
-        operatingCashFlow: joinCashMetric(
-          facts.value?.operatingCashFlow,
-          submissions.value,
-        ),
-        ppePurchases: joinCashMetric(
-          facts.value?.ppePurchases,
-          submissions.value,
-        ),
-      });
-      const liquidity = Object.freeze({
-        currentAssets: joinLiquidityMetric(
-          facts.value?.currentAssets,
-          submissions.value,
-        ),
-        currentLiabilities: joinLiquidityMetric(
-          facts.value?.currentLiabilities,
-          submissions.value,
-        ),
-      });
-      const operatingResults = Object.freeze({
-        operatingIncome: joinOperatingMetric(
-          facts.value?.operatingIncome,
-          submissions.value,
-        ),
-      });
-      const balanceSheet = Object.freeze({
-        totalAssets: joinBalanceSheetMetric(
-          facts.value?.totalAssets,
-          submissions.value,
-        ),
-        totalLiabilities: joinBalanceSheetMetric(
-          facts.value?.totalLiabilities,
-          submissions.value,
-        ),
-        shareholdersEquity: joinBalanceSheetMetric(
-          facts.value?.shareholdersEquity,
-          submissions.value,
-        ),
-      });
-      return Object.freeze({
-        ...input,
-        resolution: resolvePersonalSecAnnualEvidence(input),
-        cashGeneration: Object.freeze({
-          ...cashGeneration,
-          resolution: resolvePersonalSecAnnualCashGeneration({
-            cik,
-            generation: boundGeneration,
-            target,
-            cashGeneration,
-          }),
-        }),
-        liquidity: Object.freeze({
-          ...liquidity,
-          resolution: resolvePersonalSecAnnualLiquidity({
-            cik,
-            generation: boundGeneration,
-            target,
-            liquidity,
-          }),
-        }),
-        operatingResults: Object.freeze({
-          ...operatingResults,
-          resolution: resolvePersonalSecAnnualOperatingResults({
-            ...input,
-            operatingResults,
-          }),
-        }),
-        balanceSheet: Object.freeze({
-          ...balanceSheet,
-          resolution: resolvePersonalSecAnnualBalanceSheet({
-            cik,
-            generation: boundGeneration,
-            target,
-            balanceSheet,
-          }),
-        }),
+        facts:
+          facts.value ??
+          unavailablePersonalSecAnnualStatementCompanyFacts(
+            "source_unavailable",
+          ),
+        submissions: submissions.value,
       });
     } finally {
       signal?.removeEventListener("abort", onAbort);
@@ -444,129 +251,13 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
 }
 
 function targetAccession(
-  target: PersonalSecAnnualResolutionInput["target"],
+  target: PersonalSecAnnualCanonicalEvidenceDto["target"],
 ): string | null {
   return target.status === "target" ? target.accessionNumber : null;
 }
-
-function counts(
-  rows: readonly Pick<RawObservation, "metric">[],
-): PersonalSecAnnualMetricCountsDto {
-  const revenue = rows.filter((row) => row.metric === "revenue").length;
-  return Object.freeze({
-    observations: rows.length,
-    revenue,
-    netIncome: rows.length - revenue,
-  });
-}
-
-function joinFiling(
-  row: Pick<RawObservation, "accessionNumber" | "form" | "filedDate">,
-  submissions: Submissions | undefined,
-): PersonalSecQuarterlyObservationDto["filing"] {
-  const filing = submissions?.filings.get(row.accessionNumber);
-  return filing === undefined
-    ? Object.freeze({
-        status:
-          submissions === undefined
-            ? "submissions_unavailable"
-            : "not_in_current_submissions",
-        form: null,
-        filedDate: null,
-        reportDate: null,
-        acceptedAt: null,
-        sourceUrl: null,
-      })
-    : Object.freeze({
-        ...filing,
-        status:
-          filing.form === row.form && filing.filedDate === row.filedDate
-            ? "matched"
-            : "metadata_conflict",
-      });
-}
-
-function joinCashMetric(
-  source: PersonalSecAnnualCashSourceMetric | undefined,
-  submissions: Submissions | undefined,
-): PersonalSecAnnualCashMetricEvidenceDto {
-  const metric =
-    source ?? unavailablePersonalSecAnnualCashMetric("source_unavailable");
-  return Object.freeze({
-    scan: metric.scan,
-    observations: Object.freeze(
-      metric.observations.map((row) =>
-        Object.freeze({
-          ...row,
-          filing: joinFiling(row, submissions),
-        }),
-      ),
-    ),
-  });
-}
-
-function joinLiquidityMetric(
-  source: PersonalSecAnnualLiquiditySourceMetric | undefined,
-  submissions: Submissions | undefined,
-): PersonalSecAnnualLiquidityMetricEvidenceDto {
-  const metric =
-    source ?? unavailablePersonalSecAnnualLiquidityMetric("source_unavailable");
-  return Object.freeze({
-    scan: metric.scan,
-    observations: Object.freeze(
-      metric.observations.map((row) =>
-        Object.freeze({
-          ...row,
-          filing: joinFiling(row, submissions),
-        }),
-      ),
-    ),
-  });
-}
-
 function sha256(value: string | Uint8Array): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
-
-function joinOperatingMetric(
-  source: PersonalSecAnnualOperatingSourceMetric | undefined,
-  submissions: Submissions | undefined,
-): PersonalSecAnnualOperatingMetricEvidenceDto {
-  const metric =
-    source ?? unavailablePersonalSecAnnualOperatingMetric("source_unavailable");
-  return Object.freeze({
-    scan: metric.scan,
-    observations: Object.freeze(
-      metric.observations.map((row) =>
-        Object.freeze({
-          ...row,
-          filing: joinFiling(row, submissions),
-        }),
-      ),
-    ),
-  });
-}
-
 function fail(code: PersonalSecAnnualEvidenceProviderErrorCode): never {
   throw new PersonalSecAnnualEvidenceProviderError(code);
-}
-
-function joinBalanceSheetMetric(
-  source: PersonalSecAnnualBalanceSheetSourceMetric | undefined,
-  submissions: Submissions | undefined,
-): PersonalSecAnnualBalanceSheetMetricEvidenceDto {
-  const metric =
-    source ??
-    unavailablePersonalSecAnnualBalanceSheetMetric("source_unavailable");
-  return Object.freeze({
-    scan: metric.scan,
-    observations: Object.freeze(
-      metric.observations.map((row) =>
-        Object.freeze({
-          ...row,
-          filing: joinFiling(row, submissions),
-        }),
-      ),
-    ),
-  });
 }

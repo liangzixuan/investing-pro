@@ -1,16 +1,16 @@
-import { operatingResults } from "./sec-annual-operating-fixture";
+import { viewOf } from "./test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualPairDto,
 } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualEvidence } from "@research-cockpit/personal-financial-analytics";
-import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 import { annualNoteExcerpt } from "../../clerk-trial/managed-annual-note";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
-import { cashGeneration, cashRow } from "./sec-annual-cash-fixture";
-import { request, response, row } from "./sec-annual-evidence-fixture";
+import { cashResponse, cashRow } from "./test-canonical-annual-cash-ui-fixture";
+import { incomeRefusalResponse } from "./test-canonical-annual-read-fixture";
+import { request, response, row } from "./test-canonical-annual-read-fixture";
 
 const contractRevenue = "RevenueFromContractWithCustomerExcludingAssessedTax";
 const labels = {
@@ -20,10 +20,10 @@ const labels = {
   SalesRevenueNet: "Net sales revenue",
 } as const;
 const missingText = "Missing from this report&#x27;s loaded evidence.";
-type Wire = PersonalSecAnnualEvidenceResponseDto;
+type Wire = PersonalSecAnnualCanonicalResponseDto;
 
 async function admitted(wire: Wire): Promise<Wire> {
-  const result = await parseSecAnnualEvidenceResponse(
+  const result = await parseSecAnnualCanonicalResponse(
     wire,
     request(),
     new AbortController().signal,
@@ -34,7 +34,11 @@ async function admitted(wire: Wire): Promise<Wire> {
 
 function render(wire: Wire) {
   return renderToStaticMarkup(
-    <SecAnnualEvidenceResult response={wire} appearance="financial" />,
+    <SecAnnualEvidenceResult
+      response={wire}
+      view={viewOf(wire)}
+      appearance="financial"
+    />,
   );
 }
 
@@ -65,6 +69,7 @@ describe("managed Annual revenue-basis readability", () => {
     const html = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={wire}
+        view={viewOf(wire)}
         appearance="financial"
         renderPairAction={action}
       />,
@@ -77,10 +82,10 @@ describe("managed Annual revenue-basis readability", () => {
     }
     expect(visible(html)).not.toContain("managed-annual-missing-bases");
     expect(action.mock.calls.map(([pair]) => pair)).toEqual(
-      wire.evidence.resolution.bases.flatMap((basis) => basis.pairs),
+      viewOf(wire).income.resolution.bases.flatMap((basis) => basis.pairs),
     );
     for (const [index, [pair]] of action.mock.calls.entries())
-      expect(pair).toBe(wire.evidence.resolution.bases[index]!.pairs[0]);
+      expect(pair).toBe(viewOf(wire).income.resolution.bases[index]!.pairs[0]);
     expect(JSON.stringify(wire)).toBe(before);
   });
 
@@ -109,22 +114,19 @@ describe("managed Annual revenue-basis readability", () => {
     const provenance = html.slice(shown.length);
     expect(provenance).toContain("Revenue basis source status");
     expect(provenance).toContain(sourceStatus("Revenues", "eligible"));
-    for (const observation of wire.evidence.observations)
+    for (const observation of wire.evidence.facts.observations)
       expect(provenance).toContain(observation.id);
   });
 
   it("names an all-missing list without implying another revenue basis, while retaining independent cash", async () => {
-    const base = await response([]);
-    const wire = await admitted({
-      ...base,
-      evidence: {
-        ...base.evidence,
-        cashGeneration: await cashGeneration(base.evidence, [
-          cashRow("operating_cash_flow", "120.125"),
-          cashRow("ppe_purchases", "20.025"),
-        ]),
-      },
-    });
+    const wire = await cashResponse(
+      [
+        cashRow("operating_cash_flow", "120.125"),
+        cashRow("ppe_purchases", "20.025"),
+      ],
+      undefined,
+      [],
+    );
     const html = render(wire);
     expect(visible(html)).toContain("<h4>Revenue bases</h4>");
     expect(visible(html)).not.toContain("Other revenue bases");
@@ -153,7 +155,7 @@ describe("managed Annual revenue-basis readability", () => {
       "NetIncomeLoss is missing for this filing and exact period.",
     );
     expect(visible(html)).toContain("Inspect annual pair inputs · Revenues");
-    expect(html).toContain(wire.evidence.observations[0]!.id);
+    expect(html).toContain(wire.evidence.facts.observations[0]!.id);
     expect(visible(html)).not.toContain('data-annual-missing-basis="Revenues"');
     expect(html).toContain(sourceStatus("Revenues", "rejected"));
   });
@@ -161,24 +163,7 @@ describe("managed Annual revenue-basis readability", () => {
   it.each(["invalid_response", "candidate_limit"] as const)(
     "does not present an income scan %s refusal as missing revenue",
     async (incomeScanStatus) => {
-      const base = await response([]);
-      const input = {
-        ...base.evidence,
-        incomeScanStatus,
-        completeness: {
-          status: "refused",
-          reason: "source_unavailable",
-        } as const,
-        coverage: null,
-      };
-      const wire = await admitted({
-        ...base,
-        evidence: {
-          ...input,
-          resolution: resolvePersonalSecAnnualEvidence(input),
-          operatingResults: await operatingResults(input),
-        },
-      });
+      const wire = await incomeRefusalResponse(incomeScanStatus);
       const html = render(wire);
       expect(visible(html)).not.toContain("managed-annual-missing-bases");
       expect(visible(html)).not.toContain(missingText);
@@ -223,6 +208,7 @@ describe("managed Annual revenue-basis readability", () => {
     const nextHtml = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={second}
+        view={viewOf(second)}
         appearance="financial"
         renderPairAction={action}
       />,
@@ -239,7 +225,7 @@ describe("managed Annual revenue-basis readability", () => {
     expect(visible(nextHtml)).toContain('data-annual-missing-basis="Revenues"');
     expect(visible(nextHtml)).not.toContain("<td>1000</td>");
     expect(action).toHaveBeenCalledTimes(1);
-    const pair = second.evidence.resolution.bases.find(
+    const pair = viewOf(second).income.resolution.bases.find(
       (basis) => basis.concept === "SalesRevenueNet",
     )!.pairs[0]!;
     expect(action.mock.calls[0]![0]).toBe(pair);
@@ -256,9 +242,9 @@ describe("managed Annual revenue-basis readability", () => {
   it("preserves the local profile's exact concept headings, order and full missing explanations", async () => {
     const wire = await admitted(await response());
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
-    const positions = wire.evidence.resolution.bases.map((basis) => {
+    const positions = viewOf(wire).income.resolution.bases.map((basis) => {
       expect(html).toContain(`<h4>${basis.concept}</h4>`);
       return html.indexOf(`aria-label="Annual revenue basis ${basis.concept}"`);
     });

@@ -1,8 +1,9 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import { annualTrendChartInput } from "./managed-annual-trend-chart-option";
 import { useId, useState } from "react";
 import {
   PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
   type PersonalSecAnnualRevenueConcept,
 } from "@research-cockpit/contracts";
 import {
@@ -16,14 +17,16 @@ import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
 
 export function ManagedAnnualTrend({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
-  const [concept, setConcept] = useState(() => initialConcept(response));
+  const [concept, setConcept] = useState(() => initialConcept(response, view));
   const [metric, setMetric] = useState<ManagedAnnualTrendMetric>("revenue");
-  const projection = projectManagedAnnualTrend(response, concept);
+  const projection = projectManagedAnnualTrend(response, view, concept);
   return (
     <details
       className="managed-annual-trend"
@@ -48,10 +51,13 @@ export function ManagedAnnualTrend({
   );
 }
 
-function initialConcept(response: PersonalSecAnnualEvidenceResponseDto) {
+function initialConcept(
+  response: PersonalSecAnnualCanonicalResponseDto,
+  view: PersonalSecAnnualCanonicalView,
+) {
   const bases = PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((concept) => ({
     concept,
-    projection: projectManagedAnnualTrend(response, concept),
+    projection: projectManagedAnnualTrend(response, view, concept),
   }));
   return (
     bases.find(({ projection }) => projection.status === "ready")?.concept ??

@@ -1,10 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
-  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-  type PersonalSecAnnualEvidenceRequestDto,
+  PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
+  PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY,
+  type PersonalSecAnnualCanonicalRequestDto,
 } from "@research-cockpit/contracts";
 
+import {
+  derivePersonalSecAnnualCanonicalView,
+  derivePersonalSecAnnualFinancialInputs,
+} from "@research-cockpit/personal-financial-analytics";
 import { ManagedSecAdmissionError } from "./managed-sec-admission";
 import { createManagedSecAnnualService } from "./managed-sec-annual-service";
 import {
@@ -15,13 +20,13 @@ import {
 const ENTRY = "2026-10-01T12:00:00.000Z";
 const CONTACT = "Synthetic annual fixture fixture@example.test";
 const PRINCIPAL = { userId: "synthetic_sec_principal_01" };
-function command(symbol = "AAPL"): PersonalSecAnnualEvidenceRequestDto {
+function command(symbol = "AAPL"): PersonalSecAnnualCanonicalRequestDto {
   const catalog = createManagedCatalogService();
   const listing = catalog
     .search(symbol)!
     .results.find((r) => r.symbol === symbol)!;
   return {
-    schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+    schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
     catalogSnapshotSha256: catalog.status().snapshot.snapshotSha256,
     listingId: listing.listingId,
     symbol,
@@ -132,10 +137,11 @@ function fixture(
 }
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("managed annual evidence service", () => {
-  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0"])(
     "rejects version %s before reserving a budget or acquiring either source",
     async (schemaVersion) => {
       const f = fixture();
@@ -144,7 +150,7 @@ describe("managed annual evidence service", () => {
           {
             ...command(),
             schemaVersion,
-          } as unknown as PersonalSecAnnualEvidenceRequestDto,
+          } as unknown as PersonalSecAnnualCanonicalRequestDto,
           PRINCIPAL,
           new AbortController().signal,
         ),
@@ -166,6 +172,7 @@ describe("managed annual evidence service", () => {
         request = command(symbol),
         signal = new AbortController().signal;
       const result = await f.service.load(request, PRINCIPAL, signal);
+      const view = derivePersonalSecAnnualCanonicalView(result.evidence);
       const listing = createManagedCatalogService()
         .search(symbol)!
         .results.find(
@@ -181,16 +188,14 @@ describe("managed annual evidence service", () => {
         listingId: request.listingId,
         cik,
       });
-      expect(result.evidence.resolution.currentTargetEligible).toBe(true);
-      expect(
-        result.evidence.operatingResults.resolution.operatingIncome,
-      ).toMatchObject({
+      expect(view.income.resolution.currentTargetEligible).toBe(true);
+      expect(view.operatingResults.resolution.operatingIncome).toMatchObject({
         status: "available",
         unit: "USD",
         value: "18",
       });
       expect(
-        result.evidence.operatingResults.resolution.margins.find(
+        view.operatingResults.resolution.margins.find(
           (basis) => basis.concept === "Revenues",
         ),
       ).toMatchObject({
@@ -202,32 +207,27 @@ describe("managed annual evidence service", () => {
           value: "15",
         },
       });
-      expect(result.schemaVersion).toBe(
-        PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-      );
+      expect(result.schemaVersion).toBe(PERSONAL_SEC_ANNUAL_CANONICAL_VERSION);
       expect(
-        result.evidence.cashGeneration.resolution
-          .operatingCashFlowLessPpePurchases,
+        view.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
       ).toMatchObject({
         status: "available",
         value: "-5",
         currentUseEligible: true,
       });
-      expect(result.evidence.liquidity.resolution.workingCapital).toMatchObject(
-        {
-          status: "available",
-          unit: "USD",
-          value: "40",
-          asOfDate: "2025-09-30",
-        },
-      );
-      expect(result.evidence.liquidity.resolution.currentRatio).toMatchObject({
+      expect(view.liquidity.resolution.workingCapital).toMatchObject({
+        status: "available",
+        unit: "USD",
+        value: "40",
+        asOfDate: "2025-09-30",
+      });
+      expect(view.liquidity.resolution.currentRatio).toMatchObject({
         status: "available",
         unit: "multiple",
         value: "1.50",
         asOfDate: "2025-09-30",
       });
-      expect(result.evidence.balanceSheet.resolution).toMatchObject({
+      expect(view.balanceSheet.resolution).toMatchObject({
         totalAssets: {
           status: "available",
           value: "500",
@@ -269,7 +269,7 @@ describe("managed annual evidence service", () => {
         });
     },
   );
-  it("serializes all 1000 admitted observations under the unchanged response cap without clipping", async () => {
+  it("serializes all 1000 admitted canonical observations under the unchanged response cap without clipping", async () => {
     const f = fixture();
     const rows = Array.from({ length: 100 }, (_, index) => ({
       start: "2024-10-01",
@@ -319,18 +319,21 @@ describe("managed annual evidence service", () => {
       new AbortController().signal,
     );
     const evidence = result.evidence;
+    const projected = derivePersonalSecAnnualFinancialInputs(evidence);
+    const view = derivePersonalSecAnnualCanonicalView(evidence);
     const metrics = [
-      evidence.operatingResults.operatingIncome,
-      evidence.cashGeneration.operatingCashFlow,
-      evidence.cashGeneration.ppePurchases,
-      evidence.liquidity.currentAssets,
-      evidence.liquidity.currentLiabilities,
-      evidence.balanceSheet.totalAssets,
-      evidence.balanceSheet.totalLiabilities,
-      evidence.balanceSheet.shareholdersEquity,
+      projected.operatingResults.operatingIncome,
+      projected.cashGeneration.operatingCashFlow,
+      projected.cashGeneration.ppePurchases,
+      projected.liquidity.currentAssets,
+      projected.liquidity.currentLiabilities,
+      projected.balanceSheet.totalAssets,
+      projected.balanceSheet.totalLiabilities,
+      projected.balanceSheet.shareholdersEquity,
     ];
-    expect(evidence.observations).toHaveLength(200);
-    expect(evidence.completeness.status).toBe("complete");
+    expect(evidence.facts.observations).toHaveLength(1000);
+    expect(projected.income.observations).toHaveLength(200);
+    expect(projected.income.reason).toBeNull();
     for (const metric of metrics) {
       expect(metric.observations).toHaveLength(100);
       expect(metric.scan).toMatchObject({
@@ -338,7 +341,7 @@ describe("managed annual evidence service", () => {
       });
     }
     const observations = [
-      evidence.observations,
+      projected.income.observations,
       ...metrics.map((metric) => metric.observations),
     ];
     expect(observations.reduce((total, rows) => total + rows.length, 0)).toBe(
@@ -348,12 +351,12 @@ describe("managed annual evidence service", () => {
       expect(
         rows.every((row) => row.value === decimal && row.frame?.length === 128),
       ).toBe(true);
-    expect(evidence.operatingResults.resolution.operatingIncome).toMatchObject({
+    expect(view.operatingResults.resolution.operatingIncome).toMatchObject({
       status: "available",
       value: decimal,
     });
     expect(
-      evidence.operatingResults.resolution.margins.map(
+      view.operatingResults.resolution.margins.map(
         (basis) => basis.operatingMargin,
       ),
     ).toMatchObject([
@@ -363,9 +366,9 @@ describe("managed annual evidence service", () => {
     ]);
     expect(MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes).toBe(2_097_152);
     for (const value of [
-      evidence.balanceSheet.resolution.totalAssets,
-      evidence.balanceSheet.resolution.totalLiabilities,
-      evidence.balanceSheet.resolution.shareholdersEquity,
+      view.balanceSheet.resolution.totalAssets,
+      view.balanceSheet.resolution.totalLiabilities,
+      view.balanceSheet.resolution.shareholdersEquity,
     ]) {
       expect(value).toMatchObject({ status: "available", value: decimal });
       expect(value.observationIds).toHaveLength(100);
@@ -390,6 +393,83 @@ describe("managed annual evidence service", () => {
     expect(f.reserve).not.toHaveBeenCalled();
     expect(f.fetch).not.toHaveBeenCalled();
   });
+  it.each([50, 100])(
+    "encodes all 32 concepts with %d selected rows or refuses the entire escaped packet",
+    async (rowsPerConcept) => {
+      const f = fixture();
+      const text = capacityBody(rowsPerConcept, rowsPerConcept === 100);
+      f.fetch.mockImplementation((input) =>
+        Promise.resolve(
+          input === "https://data.sec.gov/submissions/CIK0000320193.json"
+            ? Response.json(packets()[0])
+            : new Response(text),
+        ),
+      );
+      const operation = f.service.load(
+        command(),
+        PRINCIPAL,
+        new AbortController().signal,
+      );
+      if (rowsPerConcept === 100) {
+        await expect(operation).rejects.toMatchObject({
+          code: "unavailable",
+          message: "unavailable",
+        });
+      } else {
+        const result = await operation;
+        expect(result.evidence.facts.observations).toHaveLength(1600);
+        expect(result.evidence.facts.scans.map((item) => item.concept)).toEqual(
+          PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.map((item) => item.concept),
+        );
+        for (const item of result.evidence.facts.scans)
+          expect(item.scan).toMatchObject({
+            coverage: { selected: 50, returned: 50, omittedSelected: 0 },
+          });
+        expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(
+          2_097_152,
+        );
+        expect(Object.keys(result.evidence)).toEqual([
+          "cik",
+          "generation",
+          "target",
+          "targetScan",
+          "facts",
+        ]);
+      }
+      expect(Buffer.byteLength(text)).toBeLessThan(8 * 1024 * 1024);
+      expect(f.fetch).toHaveBeenCalledTimes(2);
+      expect(f.reserve).toHaveBeenCalledOnce();
+      expect(f.close).toHaveBeenCalledOnce();
+    },
+  );
+  it.each(["deadline", "retirement"] as const)(
+    "does not return a packet after %s during final encoding",
+    async (kind) => {
+      const f = fixture();
+      const controller = new AbortController();
+      const stringify = JSON.stringify;
+      let prepared = false;
+      vi.spyOn(JSON, "stringify").mockImplementation((value, ...args) => {
+        if (
+          value !== null &&
+          typeof value === "object" &&
+          "security" in value &&
+          "evidence" in value
+        ) {
+          prepared = true;
+          if (kind === "deadline") f.elapsed(7500);
+          else controller.abort();
+        }
+        return stringify(value, ...args);
+      });
+      await expect(
+        f.service.load(command(), PRINCIPAL, controller.signal),
+      ).rejects.toMatchObject({ code: "request_timeout" });
+      expect(prepared).toBe(true);
+      expect(f.fetch).toHaveBeenCalledTimes(2);
+      expect(f.close).toHaveBeenCalledOnce();
+    },
+  );
   it.each([
     { catalogSnapshotSha256: `sha256:${"a".repeat(64)}` },
     { symbol: "GOOG" },
@@ -400,7 +480,7 @@ describe("managed annual evidence service", () => {
       const f = fixture();
       await expect(
         f.service.load(
-          { ...command(), ...patch } as PersonalSecAnnualEvidenceRequestDto,
+          { ...command(), ...patch } as PersonalSecAnnualCanonicalRequestDto,
           PRINCIPAL,
           new AbortController().signal,
         ),
@@ -499,7 +579,14 @@ describe("managed annual evidence service", () => {
       PRINCIPAL,
       new AbortController().signal,
     );
-    expect(result.evidence.completeness.status).toBe("refused");
+    expect(result.evidence.generation.sources.submissions.status).toBe(
+      "invalid_response",
+    );
+    expect(result.evidence.facts.observations).toEqual([]);
+    expect(result.evidence.facts.scans).toHaveLength(32);
+    for (const entry of result.evidence.facts.scans)
+      if (entry.scan.status === "available")
+        expect(entry.scan.coverage.selected).toBeNull();
     expect(result.evidence.target.status).toBe("unresolved");
     expect(f.fetch).toHaveBeenCalledTimes(2);
   });
@@ -533,3 +620,35 @@ describe("managed annual evidence service", () => {
     expect(f.openAdmission).not.toHaveBeenCalled();
   });
 });
+
+function capacityBody(
+  rowsPerConcept: number,
+  escapedMetadata: boolean,
+): string {
+  return JSON.stringify({
+    cik: 320193,
+    facts: {
+      "us-gaap": Object.fromEntries(
+        PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.map((entry) => [
+          entry.concept,
+          {
+            units: {
+              USD: Array.from({ length: rowsPerConcept }, (_, index) => ({
+                start:
+                  entry.periodType === "instant" ? undefined : "2024-10-01",
+                end: "2025-09-30",
+                val: index - 50,
+                accn: "0000320193-25-000042",
+                fy: 2025,
+                fp: escapedMetadata ? '\\"'.repeat(16) : "FY",
+                form: "10-K",
+                filed: "2025-11-01",
+                frame: escapedMetadata ? '\\"'.repeat(64) : "capacity-" + index,
+              })),
+            },
+          },
+        ]),
+      ),
+    },
+  });
+}

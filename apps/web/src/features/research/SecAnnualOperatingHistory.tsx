@@ -1,8 +1,8 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualRevenueConcept,
 } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualOperatingHistory } from "@research-cockpit/personal-financial-analytics";
 import {
   SecAnnualOperatingChange,
   annualOperatingHistoryReasonText,
@@ -11,15 +11,16 @@ import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
 
 export function SecAnnualOperatingHistory({
   response,
+  view,
   concept,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly concept: PersonalSecAnnualRevenueConcept;
 }) {
-  const history = resolvePersonalSecAnnualOperatingHistory(
-    response.evidence,
-    concept,
-  );
+  const history = view.operatingResults.bases.find(
+    (basis) => basis.concept === concept,
+  )!.history;
   return (
     <details
       className="managed-annual-operating-history"
@@ -85,7 +86,11 @@ export function SecAnnualOperatingHistory({
           </table>
         </div>
       )}
-      <SecAnnualOperatingChange response={response} concept={concept} />
+      <SecAnnualOperatingChange
+        response={response}
+        view={view}
+        concept={concept}
+      />
       {history.status === "available" && (
         <>
           {history.stoppedReason !== null && (

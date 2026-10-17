@@ -8,8 +8,21 @@ import {
   annualComparisonMemberships,
   annualComparisonResponse,
   parseAnnualComparisonFixture as admit,
-} from "./annual-comparison-fixture";
+} from "./test-canonical-annual-comparison-fixture";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
+import { viewOf } from "./test-canonical-annual-comparison-fixture";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
+
+function displayOf(
+  response: PersonalSecAnnualCanonicalResponseDto | null,
+  basis?: string,
+) {
+  return projectAnnualComparison(
+    response,
+    response ? viewOf(response) : null,
+    basis,
+  );
+}
 
 const packet = (
   rows = annualComparativeRows(),
@@ -25,8 +38,20 @@ function withRevenue(current: string, prior: string) {
 }
 
 describe("managed Annual comparison display", () => {
+  it("refuses a financial view owned by a separately admitted equal packet", async () => {
+    const input = await packet();
+    const equalPacket = await packet();
+    expect(equalPacket).toEqual(input);
+    expect(equalPacket).not.toBe(input);
+    const display = projectAnnualComparison(input, viewOf(equalPacket));
+    expect(display.current).toBeNull();
+    expect(display.revenueChange).toBeNull();
+    expect(display.source).toBeNull();
+    expect(display.currentReason).toContain("Load an Annual report");
+  });
+
   it("keeps an unloaded column empty without inventing a basis or source dates", () => {
-    const display = projectAnnualComparison(null);
+    const display = displayOf(null);
     expect(display).toMatchObject({
       basisChoices: [],
       selectedBasis: null,
@@ -36,14 +61,12 @@ describe("managed Annual comparison display", () => {
       source: null,
     });
     expect(display.currentReason).toContain("Load an Annual report");
-    expect(projectAnnualComparison(null, "Revenues").selectedBasis).toBe(
-      "Revenues",
-    );
+    expect(displayOf(null, "Revenues").selectedBasis).toBe("Revenues");
   });
 
   it("projects exact current amounts, same-filing change and original source coordinates", async () => {
     const input = await packet();
-    const display = projectAnnualComparison(input);
+    const display = displayOf(input);
     expect(display.selectedBasis).toBe("Revenues");
     expect(display.current).toMatchObject({
       startDate: "2025-01-01",
@@ -94,7 +117,7 @@ describe("managed Annual comparison display", () => {
         value: item.endDate === "2025-12-31" ? "500" : "250",
       }));
     const input = await packet([...rows, ...additional]);
-    const display = projectAnnualComparison(input, "SalesRevenueNet");
+    const display = displayOf(input, "SalesRevenueNet");
     expect(display.basisChoices).toEqual([
       {
         concept: "RevenueFromContractWithCustomerExcludingAssessedTax",
@@ -112,15 +135,13 @@ describe("managed Annual comparison display", () => {
       differenceUSD: "250",
       percentText: "100%",
     });
-    expect(projectAnnualComparison(input, "Revenues").current?.revenueUSD).toBe(
-      "1000",
-    );
+    expect(displayOf(input, "Revenues").current?.revenueUSD).toBe("1000");
   });
 
   it.each(["SalesRevenueNet", "unknown-basis", ""])(
     "does not replace the explicit unavailable basis %j with a different basis",
     async (basis) => {
-      const display = projectAnnualComparison(await packet(), basis);
+      const display = displayOf(await packet(), basis);
       expect(display.selectedBasis).toBe(basis);
       expect(display.current).toBeNull();
       expect(display.revenueChange).toBeNull();
@@ -133,7 +154,7 @@ describe("managed Annual comparison display", () => {
 
   it("withholds old amounts when replacement removes the chosen basis", async () => {
     const original = await packet();
-    const old = projectAnnualComparison(original, "Revenues");
+    const old = displayOf(original, "Revenues");
     const replacement = await packet(
       annualComparativeRows().map((item) =>
         item.concept === "Revenues"
@@ -142,7 +163,7 @@ describe("managed Annual comparison display", () => {
       ),
       "2026-09-21T00:00:00.000Z",
     );
-    const next = projectAnnualComparison(replacement, old.selectedBasis!);
+    const next = displayOf(replacement, old.selectedBasis!);
     expect(next.selectedBasis).toBe("Revenues");
     expect(next.current).toBeNull();
     expect(next.revenueChange).toBeNull();
@@ -156,9 +177,7 @@ describe("managed Annual comparison display", () => {
   it("preserves 64-character amounts and a nonzero change that rounds below 0.01%", async () => {
     const exact = `1000.${"0".repeat(58)}1`;
     expect(exact).toHaveLength(64);
-    const display = projectAnnualComparison(
-      await packet(withRevenue(exact, "1000")),
-    );
+    const display = displayOf(await packet(withRevenue(exact, "1000")));
     expect(display.current?.revenueUSD).toBe(exact);
     expect(display.revenueChange?.differenceUSD).toBe(`0.${"0".repeat(58)}1`);
     expect(display.revenueChange?.percentText).toBe("Less than 0.01% higher");
@@ -175,14 +194,14 @@ describe("managed Annual comparison display", () => {
           ? { ...item, value: income }
           : item,
       );
-      const display = projectAnnualComparison(await packet(rows));
+      const display = displayOf(await packet(rows));
       expect(display.current?.netIncomeUSD).toBe(income);
       expect(display.current?.netMarginPercent).toBe(margin);
     },
   );
 
   it("keeps a valid current pair when the prior annual period is missing", async () => {
-    const display = projectAnnualComparison(
+    const display = displayOf(
       await packet([row(), row("NetIncomeLoss", "100")]),
     );
     expect(display.current?.revenueUSD).toBe("1000");
@@ -199,9 +218,7 @@ describe("managed Annual comparison display", () => {
   ])(
     "keeps the absolute change but refuses percent for %s prior revenue",
     async (prior, difference, reason) => {
-      const display = projectAnnualComparison(
-        await packet(withRevenue("1000", prior)),
-      );
+      const display = displayOf(await packet(withRevenue("1000", prior)));
       expect(display.revenueChange?.differenceUSD).toBe(difference);
       expect(display.revenueChange?.percentText).toBe(
         `Unavailable: prior value is ${reason}`,
@@ -214,7 +231,7 @@ describe("managed Annual comparison display", () => {
       annualComparativeRows(),
       "2028-09-20T00:00:00.000Z",
     );
-    const display = projectAnnualComparison(input);
+    const display = displayOf(input);
     expect(display.current).toMatchObject({
       revenueUSD: "1000",
       netIncomeUSD: "100",
@@ -238,7 +255,7 @@ describe("managed Annual comparison display", () => {
       [row()],
       [row(), row("Revenues", "2000"), row("NetIncomeLoss", "100")],
     ]) {
-      const display = projectAnnualComparison(await packet(rows), "Revenues");
+      const display = displayOf(await packet(rows), "Revenues");
       expect(display.current).toBeNull();
       expect(display.currentReason).toContain("No valid same-filing annual");
       expect(display.revenueChange).toBeNull();
@@ -248,23 +265,23 @@ describe("managed Annual comparison display", () => {
   it.each(["left", "right"] as const)(
     "admits the complete %s fixture presets",
     async (side) => {
-      const multiple = projectAnnualComparison(
+      const multiple = displayOf(
         await annualComparisonResponse(side, { mode: "multiple-bases" }),
         "RevenueFromContractWithCustomerExcludingAssessedTax",
       );
       expect(multiple.current?.revenueUSD).toBe("500");
       expect(multiple.revenueChange?.percentText).toBe("100%");
-      const exact = projectAnnualComparison(
+      const exact = displayOf(
         await annualComparisonResponse(side, { mode: "exact-decimal" }),
       );
       expect(exact.current?.revenueUSD).toHaveLength(64);
       expect(exact.revenueChange?.percentText).toBe("Less than 0.01% higher");
-      const missing = projectAnnualComparison(
+      const missing = displayOf(
         await annualComparisonResponse(side, { mode: "missing-prior" }),
       );
       expect(missing.current).not.toBeNull();
       expect(missing.revenueChange).toBeNull();
-      const restricted = projectAnnualComparison(
+      const restricted = displayOf(
         await annualComparisonResponse(side, {
           mode: "current-use-unavailable",
         }),
@@ -272,7 +289,7 @@ describe("managed Annual comparison display", () => {
       expect(restricted.current).not.toBeNull();
       expect(restricted.currentUse?.eligible).toBe(false);
       expect(restricted.revenueChange).toBeNull();
-      const unavailable = projectAnnualComparison(
+      const unavailable = displayOf(
         await annualComparisonResponse(side, { mode: "source-unavailable" }),
       );
       expect(unavailable.current).toBeNull();
@@ -288,10 +305,18 @@ describe("managed Annual comparison display", () => {
       ...raw,
       evidence: {
         ...raw.evidence,
-        incomeScanStatus: "source_unavailable",
-        completeness: { status: "refused", reason: "source_unavailable" },
-        observations: [],
-        coverage: null,
+        facts: {
+          ...raw.evidence.facts,
+          observations: [],
+          scans: raw.evidence.facts.scans.map(({ concept }) => ({
+            concept,
+            scan: {
+              status: "source_unavailable",
+              absence: null,
+              coverage: null,
+            } as const,
+          })),
+        },
         generation: {
           ...raw.evidence.generation,
           sources: {
@@ -307,7 +332,7 @@ describe("managed Annual comparison display", () => {
         },
       },
     });
-    const display = projectAnnualComparison(input, "Revenues");
+    const display = displayOf(input, "Revenues");
     expect(display.current).toBeNull();
     expect(display.revenueChange).toBeNull();
     expect(display.currentReason).toContain("evidence is incomplete");
@@ -331,15 +356,13 @@ describe("managed Annual comparison display", () => {
       "CIK0000000002.json",
     );
     expect(
-      fiscal.evidence.observations.every(
+      fiscal.evidence.facts.observations.every(
         (item) => item.accessionNumber === "0000000002-25-000001",
       ),
     ).toBe(true);
     const before = JSON.stringify([calendar, fiscal]);
-    expect(projectAnnualComparison(calendar).current?.endDate).toBe(
-      "2025-12-31",
-    );
-    const display = projectAnnualComparison(fiscal);
+    expect(displayOf(calendar).current?.endDate).toBe("2025-12-31");
+    const display = displayOf(fiscal);
     expect(display.current).toMatchObject({
       startDate: "2024-07-01",
       endDate: "2025-06-30",

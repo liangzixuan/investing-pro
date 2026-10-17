@@ -1,3 +1,4 @@
+import { parseAnnualComparisonFixture } from "./test-canonical-annual-comparison-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -15,16 +16,10 @@ import { eodSelection, eodResponse } from "./eod-history-fixture";
 import {
   response,
   row,
-} from "../features/research/sec-annual-evidence-fixture";
-import {
-  cashGeneration,
-  cashRow,
-} from "../features/research/sec-annual-cash-fixture";
-import {
-  liquidity,
-  liquidityRow,
-} from "../features/research/sec-annual-liquidity-fixture";
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+} from "../features/research/test-canonical-annual-ui-fixture";
+import { cashRow } from "../features/research/sec-annual-cash-fixture";
+import { liquidityRow } from "../features/research/sec-annual-liquidity-fixture";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import { CompanySnapshotPrice } from "./CompanySnapshotPrice";
 import { CompanySnapshotAnnual } from "./CompanySnapshotAnnual";
@@ -32,10 +27,10 @@ import { CompanySnapshotFilings } from "./CompanySnapshotFilings";
 import {
   operatingResponse,
   operatingRow,
-} from "../features/research/sec-annual-operating-fixture";
+} from "../features/research/test-canonical-annual-operating-ui-fixture";
 
 async function fixture(
-  packet?: PersonalSecAnnualEvidenceResponseDto,
+  packet?: PersonalSecAnnualCanonicalResponseDto,
   pricePacket = eodResponse(),
 ) {
   const readPrice = vi.fn().mockResolvedValue(pricePacket);
@@ -319,20 +314,14 @@ describe("loaded company snapshot", () => {
 
   it("keeps cash and liquidity independently available when income cannot form a pair", async () => {
     const base = await response([row()]);
-    const packet = {
-      ...base,
-      evidence: {
-        ...base.evidence,
-        cashGeneration: await cashGeneration(base.evidence, [
-          cashRow("operating_cash_flow", "250"),
-          cashRow("ppe_purchases", "75"),
-        ]),
-        liquidity: await liquidity(base.evidence, [
-          liquidityRow("current_assets", "800"),
-          liquidityRow("current_liabilities", "400"),
-        ]),
-      },
-    };
+    const packet = await parseAnnualComparisonFixture(
+      base,
+      [cashRow("operating_cash_flow", "250"), cashRow("ppe_purchases", "75")],
+      [
+        liquidityRow("current_assets", "800"),
+        liquidityRow("current_liabilities", "400"),
+      ],
+    );
     const f = await fixture(packet);
     await f.annual.load();
     const html = f.html();
@@ -351,20 +340,14 @@ describe("loaded company snapshot", () => {
 
   it("retains historical income and independently flags historical cash and liquidity", async () => {
     const base = await response(undefined, "2027-09-20T00:00:00.000Z");
-    const packet = {
-      ...base,
-      evidence: {
-        ...base.evidence,
-        cashGeneration: await cashGeneration(base.evidence, [
-          cashRow("operating_cash_flow", "250"),
-          cashRow("ppe_purchases", "75"),
-        ]),
-        liquidity: await liquidity(base.evidence, [
-          liquidityRow("current_assets", "800"),
-          liquidityRow("current_liabilities", "400"),
-        ]),
-      },
-    };
+    const packet = await parseAnnualComparisonFixture(
+      base,
+      [cashRow("operating_cash_flow", "250"), cashRow("ppe_purchases", "75")],
+      [
+        liquidityRow("current_assets", "800"),
+        liquidityRow("current_liabilities", "400"),
+      ],
+    );
     const f = await fixture(packet);
     await f.annual.load();
     const html = f.html();

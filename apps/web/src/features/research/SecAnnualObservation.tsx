@@ -2,6 +2,7 @@ import type {
   PersonalSecQuarterlyObservationDto,
   PersonalSecAnnualCashObservationDto,
   PersonalSecAnnualOperatingObservationDto,
+  PersonalSecAnnualStatementObservationDto,
 } from "@research-cockpit/contracts";
 
 export function ObservationDetails({
@@ -10,7 +11,8 @@ export function ObservationDetails({
   readonly row:
     | PersonalSecQuarterlyObservationDto
     | PersonalSecAnnualCashObservationDto
-    | PersonalSecAnnualOperatingObservationDto;
+    | PersonalSecAnnualOperatingObservationDto
+    | PersonalSecAnnualStatementObservationDto;
 }) {
   return (
     <details className="sec-quarterly-row-details">
@@ -55,7 +57,9 @@ export function ObservationDetails({
           <dd>
             {row.filing.status === "matched"
               ? "Matched to current submissions"
-              : "Filing metadata conflict"}{" "}
+              : row.filing.status === "metadata_conflict"
+                ? "Filing metadata conflict"
+                : "Not in current submissions"}{" "}
             · {row.filing.form} · {row.filing.filedDate}
           </dd>
         </div>

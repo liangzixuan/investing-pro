@@ -1,6 +1,6 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import {
-  resolvePersonalSecAnnualLiquidityHistory,
   type PersonalSecAnnualLiquidityHistoryBalance,
   type PersonalSecAnnualLiquidityHistoryReason,
 } from "@research-cockpit/personal-financial-analytics";
@@ -8,10 +8,12 @@ import { annualLiquidityUnavailableReasonText } from "./SecAnnualLiquidity";
 
 export function SecAnnualLiquidityHistory({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
-  const history = resolvePersonalSecAnnualLiquidityHistory(response.evidence);
+  const history = view.liquidity.history;
   const { generation, target } = response.evidence;
   return (
     <details className="managed-annual-liquidity-history">

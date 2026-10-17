@@ -31,16 +31,17 @@ session clears its evidence and preview. Clear report preview removes it explici
 
 In a current prepared report, open **Inspect report document (JSON)**. The
 read-only field contains a bounded UTF-8 document with purpose
-`investment.company-research`, schema `2.0.0`, preparation time, exact listing and
+`investment.company-research`, schema `3.0.0` in the Annual 6 development source,
+preparation time, exact listing and
 catalog identity. Its authored-research section preserves the draft's full text,
 including whitespace and Unicode. JSON escapes preserve that text when decoded;
 they do not verify its claims or establish a saved version. A missing watchlist
 note and an empty note remain different states.
 
 Each loaded source contains its full admitted response, original source clocks,
-origin and retained-previous/failed-attempt flags. Annual includes all admitted
-observations, revenue bases, resolution and coverage details, cash-flow inputs,
-liquidity inputs and filing references. Price keeps its raw closes and original
+origin and retained-previous/failed-attempt flags. Annual includes its complete canonical observation graph and per-concept scans
+once. Separate statement cells and financial results keep their exact source
+identifiers, independent refusals, comparative dates and original eligibility. Price keeps its raw closes and original
 window; Filings keeps its recent-list window and incomplete-history limits.
 These are the admitted packets, not provider bodies or complete issuer history.
 Unavailable values remain unavailable, and a source that was never loaded stays

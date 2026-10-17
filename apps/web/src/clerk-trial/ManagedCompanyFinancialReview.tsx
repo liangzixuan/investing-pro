@@ -1,8 +1,8 @@
 import { useId, useMemo } from "react";
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import {
-  derivePersonalSecAnnualFinancialReview,
   type PersonalSecAnnualFinancialReviewRow,
+  type PersonalSecAnnualCanonicalView,
 } from "@research-cockpit/personal-financial-analytics";
 import { SecAnnualOperatingValueContent } from "../features/research/SecAnnualOperatingResults";
 import { SecAnnualCashValueContent } from "../features/research/SecAnnualCashGeneration";
@@ -93,12 +93,14 @@ function FinancialReviewFact({
 
 export function ManagedCompanyFinancialReview({
   response,
+  view,
   actions,
   watchlist,
   running,
   onInspect,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly actions: ManagedFinancialReviewActions;
   readonly watchlist: ResearchWatchlistState;
   readonly running: boolean;
@@ -107,10 +109,7 @@ export function ManagedCompanyFinancialReview({
   ) => void;
 }) {
   const id = useId();
-  const rows = useMemo(
-    () => derivePersonalSecAnnualFinancialReview(response.evidence),
-    [response],
-  );
+  const rows = useMemo(() => view.financialReview, [view]);
   return (
     <section
       className="managed-financial-review"

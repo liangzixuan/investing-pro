@@ -1060,6 +1060,9 @@ export * from "./personal-sec-annual-cash-generation";
 export * from "./personal-sec-annual-liquidity";
 export * from "./personal-sec-annual-balance-sheet";
 export * from "./personal-sec-annual-operating-results";
+export * from "./personal-sec-annual-statement-registry";
+export * from "./personal-sec-annual-statement-facts";
+export * from "./personal-sec-annual-statements";
 
 export * from "./personal-sec-quarter-assessment";
 export * from "./personal-sec-source-json";

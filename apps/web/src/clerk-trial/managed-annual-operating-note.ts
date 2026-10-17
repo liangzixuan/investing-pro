@@ -1,18 +1,20 @@
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualOperatingMarginDto,
 } from "@research-cockpit/contracts";
-import { annualOperatingResults } from "../lib/sec-annual-operating-response";
+import { getManagedAnnualView } from "./managed-annual-view";
 
 /** Formats one admitted basis; the workspace owns current response and draft guards. */
 export function annualOperatingNoteExcerpt(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   basis: PersonalSecAnnualOperatingMarginDto,
   showingPrevious: boolean,
 ): string | null {
+  const view = getManagedAnnualView(response);
+  if (view === null) return null;
   const { evidence, security } = response;
-  const { generation, target, operatingResults, cashGeneration, liquidity } =
-    evidence;
+  const { generation, target } = evidence;
+  const { operatingResults } = view;
   if (
     security.cik !== evidence.cik ||
     target.status !== "target" ||
@@ -21,20 +23,6 @@ export function annualOperatingNoteExcerpt(
     !operatingResults.resolution.margins.includes(basis)
   )
     return null;
-  const ids = new Set(
-    [
-      ...evidence.observations,
-      ...cashGeneration.operatingCashFlow.observations,
-      ...cashGeneration.ppePurchases.observations,
-      ...liquidity.currentAssets.observations,
-      ...liquidity.currentLiabilities.observations,
-    ].map((row) => row.id),
-  );
-  try {
-    if (!annualOperatingResults(operatingResults, evidence, ids)) return null;
-  } catch {
-    return null;
-  }
   const income = operatingResults.resolution.operatingIncome;
   const { revenue, operatingMargin } = basis;
   if (

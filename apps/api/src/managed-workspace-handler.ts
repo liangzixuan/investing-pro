@@ -47,7 +47,7 @@ import {
   parseManagedWatchlist,
   parseManagedWatchlistCommand,
   parseManagedWatchlistReceipt,
-  parseManagedSecAnnualEvidenceRequest,
+  parseManagedSecAnnualCanonicalRequest,
   type ManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
 
@@ -600,7 +600,7 @@ export function createManagedWorkspaceHandler(
         return response;
       }
       if (route.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH) {
-        const command = parseManagedSecAnnualEvidenceRequest(
+        const command = parseManagedSecAnnualCanonicalRequest(
           await readJson(
             request,
             MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes,

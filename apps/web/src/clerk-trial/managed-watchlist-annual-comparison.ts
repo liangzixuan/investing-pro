@@ -2,7 +2,7 @@ import {
   membershipMatchesResult,
   type MainWatchlistPayload,
   type ManagedEodIdentity,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
@@ -22,7 +22,7 @@ export interface ManagedWatchlistAnnualComparisonMember {
 export interface ManagedAnnualComparisonReportCapture {
   readonly side: ManagedWatchlistAnnualComparisonSide;
   readonly member: ManagedWatchlistAnnualComparisonMember;
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
 }
 export interface ManagedAnnualComparisonReportHandoff {
   readonly selection: ManagedResearchSelection;

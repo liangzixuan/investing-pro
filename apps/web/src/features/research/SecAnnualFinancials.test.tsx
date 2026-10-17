@@ -7,11 +7,16 @@ import {
   annualHistoryRows,
   response,
   row,
-} from "./sec-annual-evidence-fixture";
+  viewOf,
+} from "./test-canonical-annual-ui-fixture";
 
 const render = (wire: Awaited<ReturnType<typeof response>>) =>
   renderToStaticMarkup(
-    <SecAnnualEvidenceResult response={wire} appearance="financial" />,
+    <SecAnnualEvidenceResult
+      response={wire}
+      view={viewOf(wire)}
+      appearance="financial"
+    />,
   );
 const overview = (html: string) =>
   html.split('<details class="managed-annual-provenance">')[0]!;
@@ -78,7 +83,7 @@ describe("managed annual financial overview", () => {
         "Margin change subtracts the unrounded ratios",
       );
       expect(provenance).toContain("unusual items in NetIncomeLoss");
-      for (const observation of wire.evidence.observations)
+      for (const observation of wire.evidence.facts.observations)
         expect(html).toContain(observation.id);
       if (count > 1) {
         expect(visible).toContain("<td>800</td>");
@@ -97,7 +102,7 @@ describe("managed annual financial overview", () => {
   it("keeps the local renderer's context-first structure and existing history disclosure", async () => {
     const wire = await response(annualHistoryRows());
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     expect(html.indexOf("Revenue and income evidence")).toBeLessThan(
       html.indexOf("Revenue · USD"),
@@ -119,12 +124,13 @@ describe("managed annual financial overview", () => {
     const action = vi.fn((pair: PersonalSecAnnualPairDto) => (
       <button>Add {pair.concept} to note draft</button>
     ));
-    const originalOrder = wire.evidence.resolution.bases.map(
+    const originalOrder = viewOf(wire).income.resolution.bases.map(
       (basis) => basis.concept,
     );
     const html = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={wire}
+        view={viewOf(wire)}
         appearance="financial"
         renderPairAction={action}
       />,
@@ -138,7 +144,7 @@ describe("managed annual financial overview", () => {
       expect(visible).toContain(`Add ${concept} to note draft`);
     }
     expect(action.mock.calls.map(([pair]) => pair)).toEqual(
-      wire.evidence.resolution.bases.flatMap((basis) =>
+      viewOf(wire).income.resolution.bases.flatMap((basis) =>
         basis.pairs.filter((pair) => pair.status === "eligible"),
       ),
     );
@@ -146,7 +152,7 @@ describe("managed annual financial overview", () => {
       "Missing from this report&#x27;s loaded evidence.",
     );
     expect(
-      wire.evidence.resolution.bases.map((basis) => basis.concept),
+      viewOf(wire).income.resolution.bases.map((basis) => basis.concept),
     ).toEqual(originalOrder);
     expect(
       visible.match(/aria-label="Annual financial results"/gu),
@@ -163,7 +169,7 @@ describe("managed annual financial overview", () => {
       ),
     );
     const local = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     const positions = originalOrder.map((concept) =>
       local.indexOf(`aria-label="Annual revenue basis ${concept}"`),
@@ -247,6 +253,7 @@ describe("managed annual financial overview", () => {
       renderToStaticMarkup(
         <SecAnnualEvidenceResult
           response={wire}
+          view={viewOf(wire)}
           appearance="financial"
           renderPairAction={action}
         />,

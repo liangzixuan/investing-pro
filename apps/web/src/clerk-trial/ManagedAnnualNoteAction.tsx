@@ -1,16 +1,16 @@
 import { useId, useState } from "react";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualPairDto,
 } from "@research-cockpit/contracts";
 
 export interface ManagedAnnualNoteActions {
   getAction: (
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     pair: PersonalSecAnnualPairDto,
   ) => { canAppend: boolean; reason: string | null };
   append: (
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     pair: PersonalSecAnnualPairDto,
   ) => { appended: boolean; message: string };
 }

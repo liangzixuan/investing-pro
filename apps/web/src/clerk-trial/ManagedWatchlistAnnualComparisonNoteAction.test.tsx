@@ -13,7 +13,7 @@ import {
   annualComparisonOperatingRows,
   annualComparisonRows,
   annualComparisonResponse as packet,
-} from "./annual-comparison-fixture";
+} from "./test-canonical-annual-comparison-fixture";
 
 const hooks = vi.hoisted(() => ({
   states: [] as unknown[],

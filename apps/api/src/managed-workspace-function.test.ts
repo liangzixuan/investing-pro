@@ -7,13 +7,19 @@ import {
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
-  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
   parseManagedMonetaryAnnouncements,
   parseManagedEconomicCalendar,
   type ManagedWatchlistCommand,
   type ManagedResearchFollowupsCommand,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  resolvePersonalSecAnnualCanonicalIncome,
+  resolvePersonalSecAnnualCanonicalOperatingResults,
+  resolvePersonalSecAnnualCanonicalLiquidity,
+} from "@research-cockpit/personal-financial-analytics";
 
 import * as authModule from "./clerk-trial-auth";
 import * as configModule from "./clerk-trial-config";
@@ -827,7 +833,7 @@ describe("managed annual composed function", () => {
       .search(symbol)!
       .results.find((row) => row.symbol === symbol)!;
     return {
-      schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+      schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
       catalogSnapshotSha256: service.status().snapshot.snapshotSha256,
       listingId: selected.listingId,
       symbol,
@@ -989,49 +995,41 @@ describe("managed annual composed function", () => {
     expect(answer).toMatchObject({
       status: 200,
       body: {
+        schemaVersion: "6.0.0",
         security: { symbol: "AAPL", cik: "0000320193" },
-        evidence: {
-          resolution: { currentTargetEligible: true },
-          operatingResults: {
-            resolution: {
-              operatingIncome: {
-                status: "available",
-                unit: "USD",
-                value: "18",
-              },
-              margins: [
-                {
-                  concept:
-                    "RevenueFromContractWithCustomerExcludingAssessedTax",
-                },
-                {
-                  concept: "Revenues",
-                  revenue: {
-                    status: "available",
-                    value: "120",
-                  },
-                  operatingMargin: {
-                    status: "available",
-                    unit: "percent",
-                    value: "15",
-                  },
-                },
-                { concept: "SalesRevenueNet" },
-              ],
-            },
-          },
-          liquidity: {
-            resolution: {
-              workingCapital: { status: "available", unit: "USD", value: "40" },
-              currentRatio: {
-                status: "available",
-                unit: "multiple",
-                value: "1.50",
-              },
-            },
+        evidence: { generation: { definitionVersion: "6.0.0" } },
+      },
+    });
+    const evidence = (answer as { body: PersonalSecAnnualCanonicalResponseDto })
+      .body.evidence;
+    expect(evidence.facts.scans).toHaveLength(32);
+    expect(
+      evidence.facts.observations.every((row) => !Object.hasOwn(row, "metric")),
+    ).toBe(true);
+    expect(resolvePersonalSecAnnualCanonicalIncome(evidence)).toMatchObject({
+      currentTargetEligible: true,
+    });
+    expect(
+      resolvePersonalSecAnnualCanonicalOperatingResults(evidence),
+    ).toMatchObject({
+      operatingIncome: { status: "available", unit: "USD", value: "18" },
+      margins: [
+        { concept: "RevenueFromContractWithCustomerExcludingAssessedTax" },
+        {
+          concept: "Revenues",
+          revenue: { status: "available", value: "120" },
+          operatingMargin: {
+            status: "available",
+            unit: "percent",
+            value: "15",
           },
         },
-      },
+        { concept: "SalesRevenueNet" },
+      ],
+    });
+    expect(resolvePersonalSecAnnualCanonicalLiquidity(evidence)).toMatchObject({
+      workingCapital: { status: "available", unit: "USD", value: "40" },
+      currentRatio: { status: "available", unit: "multiple", value: "1.50" },
     });
     expect(fetch.mock.calls.map(([url]) => url)).toEqual([
       "https://data.sec.gov/submissions/CIK0000320193.json",

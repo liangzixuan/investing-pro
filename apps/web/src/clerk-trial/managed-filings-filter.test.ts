@@ -15,7 +15,7 @@ import {
   type ManagedFilingsRefreshView,
 } from "./managed-filings-filter";
 import { compareManagedFilingsResponses } from "./managed-filings-refresh-comparison";
-import { annualComparisonResponse } from "./annual-comparison-fixture";
+import { response as annualComparisonResponse } from "../features/research/test-canonical-annual-ui-fixture";
 import type { ManagedFilingsAnnualBaseline } from "./managed-filings-annual-baseline";
 import { filingsResponse } from "./sec-filings-fixture";
 

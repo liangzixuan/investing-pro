@@ -6,7 +6,11 @@ import {
   annualComparisonMemberships,
   annualComparisonResponse,
   annualComparisonRows,
-} from "./annual-comparison-fixture";
+  parseAnnualComparisonFixture as admit,
+  viewOf,
+} from "./test-canonical-annual-comparison-fixture";
+import { parseSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
+import { derivePersonalSecAnnualFinancialInputs } from "@research-cockpit/personal-financial-analytics";
 import {
   getAnnualComparisonNoteEvidence,
   type AnnualComparisonNoteCapture,
@@ -14,6 +18,56 @@ import {
 } from "./managed-watchlist-annual-comparison-note";
 
 type Column = AnnualComparisonNoteCapture["left"];
+const ownershipRefusal =
+  "Choose two distinct companies with matching report identities.";
+function decode(response: Column["response"]) {
+  return parseSecAnnualCanonicalResponse(
+    response,
+    {
+      schemaVersion: "6.0.0",
+      catalogSnapshotSha256: response.catalogSnapshotSha256,
+      listingId: response.security.listingId,
+      symbol: response.security.symbol,
+    },
+    new AbortController().signal,
+  );
+}
+
+async function withBoundCik(
+  response: Column["response"],
+): Promise<Column["response"]> {
+  const cik = response.security.cik;
+  return admit({
+    ...response,
+    evidence: {
+      ...response.evidence,
+      cik,
+      generation: {
+        ...response.evidence.generation,
+        sources: {
+          companyFacts: {
+            ...response.evidence.generation.sources.companyFacts,
+            sourceUrl: `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
+          },
+          submissions: {
+            ...response.evidence.generation.sources.submissions,
+            sourceUrl: `https://data.sec.gov/submissions/CIK${cik}.json`,
+          },
+        },
+      },
+      facts: {
+        ...response.evidence.facts,
+        observations: response.evidence.facts.observations.map((row) => ({
+          ...row,
+          filing: {
+            ...row.filing,
+            sourceUrl: `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${row.accessionNumber}-index.htm`,
+          },
+        })),
+      },
+    },
+  });
+}
 type Options = Parameters<typeof annualComparisonResponse>[1];
 async function capture(
   group: AnnualComparisonNoteGroup = "income",
@@ -65,6 +119,54 @@ const expectedCash = [
   "The app calculation uses each company's same filing and period; no adjustment for leases, acquisitions or other investing cash flows.",
   ending,
 ].join(" ");
+
+describe("canonical comparison note source edits", () => {
+  it.each([
+    [
+      "cash",
+      "NetCashProvidedByUsedInOperatingActivities",
+      "1001",
+      "app calculation OCF less PP&E USD 751.",
+    ],
+    [
+      "liquidity",
+      "AssetsCurrent",
+      "1501",
+      "working capital USD 901; current ratio 2.50 multiple",
+    ],
+    ["operating", "OperatingIncomeLoss", "99", "operating margin 9.9%."],
+  ] as const)(
+    "binds actual %s source values before formatting their calculated results",
+    async (group, concept, value, expected) => {
+      const input =
+        group === "operating" ? await operatingCapture() : await capture(group);
+      const original = getAnnualComparisonNoteEvidence(input);
+      const before = JSON.stringify(input);
+      const changed = structuredClone(input.left.response);
+      const row = changed.evidence.facts.observations.find(
+        (row) => row.concept === concept,
+      )!;
+      const originalId = row.id;
+      Reflect.set(row, "value", value);
+      expect(await decode(changed)).toBeNull();
+      const rebound = await admit(changed);
+      expect(
+        rebound.evidence.facts.observations.find(
+          (row) => row.concept === concept,
+        )!.id,
+      ).not.toBe(originalId);
+      expect(viewOf(rebound).canonical).toBe(rebound.evidence);
+      const result = getAnnualComparisonNoteEvidence({
+        ...input,
+        left: { ...input.left, response: rebound },
+      });
+      expect(result.reason).toBeNull();
+      expect(result.excerpt).toContain(expected);
+      expect(getAnnualComparisonNoteEvidence(input)).toEqual(original);
+      expect(JSON.stringify(input)).toBe(before);
+    },
+  );
+});
 
 describe("Annual comparison note evidence", () => {
   it.each([
@@ -240,7 +342,7 @@ describe("Annual comparison note evidence", () => {
       value: row.metric === "operating_cash_flow" ? value : "0",
     }));
     const input = await capture("cash", { cashRows });
-    const longIdentity = (column: Column): Column => ({
+    const longIdentity = async (column: Column): Promise<Column> => ({
       ...column,
       member: {
         ...column.member,
@@ -251,19 +353,19 @@ describe("Annual comparison note evidence", () => {
           shareClassName: "類".repeat(128),
         },
       },
-      response: {
+      response: await admit({
         ...column.response,
         security: {
           ...column.response.security,
           issuerName: "名".repeat(128),
           securityName: "株".repeat(128),
         },
-      },
+      }),
     });
     const result = getAnnualComparisonNoteEvidence({
       ...input,
-      left: longIdentity(input.left),
-      right: longIdentity(input.right),
+      left: await longIdentity(input.left),
+      right: await longIdentity(input.right),
     });
     expect(result.reason).toBeNull();
     expect(result.excerpt).toContain(`reported OCF USD ${value}`);
@@ -356,6 +458,7 @@ describe("Annual comparison note evidence", () => {
     if (mode === "blank-share-class") right.member.listing.shareClassName = "";
     if (mode === "different-catalog")
       right.response.catalogSnapshotSha256 = `sha256:${"b".repeat(64)}`;
+    right.response = await withBoundCik(right.response);
     expect(getAnnualComparisonNoteEvidence({ ...input, right })).toEqual({
       excerpt: null,
       reason: "Choose two distinct companies with matching report identities.",
@@ -387,19 +490,28 @@ describe("Annual comparison note evidence", () => {
           : mode === "wrong-clock"
             ? { ...generation, completedAt: "2020-01-01T00:00:00.000Z" }
             : generation;
+      const alteredResponse = {
+        ...response,
+        evidence: { ...response.evidence, generation: altered },
+      };
+      if (mode !== "source-unavailable")
+        expect(await decode(alteredResponse)).toBeNull();
       const result = getAnnualComparisonNoteEvidence({
         ...input,
         left: {
           ...input.left,
-          response: {
-            ...response,
-            evidence: { ...response.evidence, generation: altered },
-          },
+          response:
+            mode === "source-unavailable"
+              ? input.left.response
+              : alteredResponse,
         },
       });
       expect(result).toEqual({
         excerpt: null,
-        reason: "First company: Annual source or filing is unavailable.",
+        reason:
+          mode === "source-unavailable"
+            ? "First company: Annual source or filing is unavailable."
+            : ownershipRefusal,
       });
     },
   );
@@ -408,9 +520,8 @@ describe("Annual comparison note evidence", () => {
     "refuses inconsistent cash resolution: %s",
     async (mode) => {
       const input = await capture("cash");
-      const evidence = input.left.response.evidence;
-      const original =
-        evidence.cashGeneration.resolution.operatingCashFlowLessPpePurchases;
+      const cash = viewOf(input.left.response).cashGeneration;
+      const original = cash.resolution.operatingCashFlowLessPpePurchases;
       expect(original.status).toBe("available");
       const changed =
         mode === "value"
@@ -423,19 +534,16 @@ describe("Annual comparison note evidence", () => {
                   observationIds: [`sec-fact:${"a".repeat(64)}` as const],
                 }
               : { ...original, currentUseEligible: false };
-      const response = {
-        ...input.left.response,
-        evidence: {
-          ...evidence,
-          cashGeneration: {
-            ...evidence.cashGeneration,
-            resolution: {
-              ...evidence.cashGeneration.resolution,
-              operatingCashFlowLessPpePurchases: changed,
-            },
-          },
+      const response = structuredClone(input.left.response);
+      // A derived wire section is forbidden; its former mutations remain explicit probes.
+      Reflect.set(response.evidence, "cashGeneration", {
+        ...cash,
+        resolution: {
+          ...cash.resolution,
+          operatingCashFlowLessPpePurchases: changed,
         },
-      };
+      });
+      expect(await decode(response)).toBeNull();
       expect(
         getAnnualComparisonNoteEvidence({
           ...input,
@@ -443,8 +551,9 @@ describe("Annual comparison note evidence", () => {
         }),
       ).toEqual({
         excerpt: null,
-        reason: "First company: Cash evidence could not be validated.",
+        reason: ownershipRefusal,
       });
+      expect(getAnnualComparisonNoteEvidence(input).excerpt).toBe(expectedCash);
     },
   );
 });
@@ -692,7 +801,12 @@ describe("Annual liquidity comparison note evidence", () => {
   ] as const)("refuses externally changed liquidity %s", async (mode) => {
     const input = await capture("liquidity");
     const response = structuredClone(input.left.response);
-    const liquidity = response.evidence.liquidity;
+    const liquidity = {
+      ...derivePersonalSecAnnualFinancialInputs(response.evidence).liquidity,
+      resolution: structuredClone(
+        viewOf(input.left.response).liquidity.resolution,
+      ),
+    };
     if (mode === "working-capital")
       Reflect.set(liquidity.resolution.workingCapital, "value", "901");
     if (mode === "ratio")
@@ -730,16 +844,24 @@ describe("Annual liquidity comparison note evidence", () => {
       });
     if (mode === "other-family-id")
       Reflect.set(
-        response.evidence.observations[0]!,
+        response.evidence.facts.observations.find(
+          (row) => row.concept === "Revenues",
+        )!,
         "id",
         liquidity.currentAssets.observations[0]!.id,
       );
+    if (!["source-value", "filing-url", "other-family-id"].includes(mode))
+      Reflect.set(response.evidence, "liquidity", liquidity);
+    expect(await decode(response)).toBeNull();
     expect(
       getAnnualComparisonNoteEvidence({
         ...input,
         left: { ...input.left, response },
       }),
-    ).toEqual({ excerpt: null, reason: `First company: ${liquidityRefusal}` });
+    ).toEqual({ excerpt: null, reason: ownershipRefusal });
+    expect(getAnnualComparisonNoteEvidence(input).excerpt).toBe(
+      expectedLiquidity,
+    );
   });
 
   it.each(["source-unavailable", "wrong-source-url", "wrong-clock"] as const)(
@@ -762,14 +884,23 @@ describe("Annual liquidity comparison note evidence", () => {
           "completedAt",
           "2020-01-01T00:00:00.000Z",
         );
+      if (mode !== "source-unavailable")
+        expect(await decode(response)).toBeNull();
       expect(
         getAnnualComparisonNoteEvidence({
           ...input,
-          left: { ...input.left, response },
+          left: {
+            ...input.left,
+            response:
+              mode === "source-unavailable" ? input.left.response : response,
+          },
         }),
       ).toEqual({
         excerpt: null,
-        reason: "First company: Annual source or filing is unavailable.",
+        reason:
+          mode === "source-unavailable"
+            ? "First company: Annual source or filing is unavailable."
+            : ownershipRefusal,
       });
     },
   );
@@ -808,7 +939,11 @@ describe("Annual liquidity comparison note evidence", () => {
       expect(
         getAnnualComparisonNoteEvidence({
           ...input,
-          right: { ...input.right, member, response },
+          right: {
+            ...input.right,
+            member,
+            response: await withBoundCik(response),
+          },
         }),
       ).toEqual({
         excerpt: null,
@@ -833,14 +968,14 @@ describe("Annual liquidity comparison note evidence", () => {
       securityName: "株".repeat(128),
       shareClassName: "類".repeat(128),
     };
-    const response = {
+    const response = await admit({
       ...input.left.response,
       security: {
         ...input.left.response.security,
         issuerName: listing.issuerName,
         securityName: listing.securityName,
       },
-    };
+    });
     const result = getAnnualComparisonNoteEvidence({
       ...input,
       left: {
@@ -906,13 +1041,13 @@ describe("Annual operating comparison note evidence", () => {
     });
     for (const side of [input.left, input.right]) {
       expect(
-        side.response.evidence.observations.every(
-          (row) => row.metric === "revenue",
+        side.response.evidence.facts.observations.every(
+          (row) => row.concept !== "NetIncomeLoss",
         ),
       ).toBe(true);
-      expect(side.response.evidence.resolution.selectedReportPairEligible).toBe(
-        false,
-      );
+      expect(
+        viewOf(side.response).income.resolution.selectedReportPairEligible,
+      ).toBe(false);
     }
     expect([...`Café 東京📈 ${expectedOperating}`].length).toBeLessThan(2000);
     expect(expectedOperating.split(operatingFormula)).toHaveLength(2);
@@ -1093,7 +1228,15 @@ describe("Annual operating comparison note evidence", () => {
   ] as const)("refuses forged operating evidence %s", async (mode) => {
     const input = await operatingCapture();
     const response = structuredClone(input.left.response);
-    const graph = response.evidence.operatingResults;
+    const operatingInput = derivePersonalSecAnnualFinancialInputs(
+      response.evidence,
+    ).operatingResults;
+    const graph = {
+      operatingIncome: operatingInput.operatingIncome,
+      resolution: structuredClone(
+        viewOf(input.left.response).operatingResults.resolution,
+      ),
+    };
     const margin = graph.resolution.margins.find(
       (basis) => basis.concept === "Revenues",
     )!.operatingMargin;
@@ -1106,9 +1249,14 @@ describe("Annual operating comparison note evidence", () => {
       Reflect.set(
         graph.operatingIncome.observations[0]!,
         "id",
-        response.evidence.cashGeneration.operatingCashFlow.observations[0]!.id,
+        response.evidence.facts.observations.find(
+          (row) => row.concept === "NetCashProvidedByUsedInOperatingActivities",
+        )!.id,
       );
     else Reflect.set(graph.operatingIncome.scan.coverage!, "returned", 0);
+    if (mode !== "cross-section-id" && mode !== "coverage")
+      Reflect.set(response.evidence, "operatingResults", graph);
+    expect(await decode(response)).toBeNull();
     expect(
       getAnnualComparisonNoteEvidence({
         ...input,
@@ -1116,8 +1264,11 @@ describe("Annual operating comparison note evidence", () => {
       }),
     ).toEqual({
       excerpt: null,
-      reason: "First company: Operating evidence could not be validated.",
+      reason: ownershipRefusal,
     });
+    expect(getAnnualComparisonNoteEvidence(input).excerpt).toBe(
+      expectedOperating,
+    );
   });
 
   it("preserves unsafe-number exact source amounts and leaves full-note overflow to the workspace", async () => {
@@ -1131,7 +1282,7 @@ describe("Annual operating comparison note evidence", () => {
         value: exact,
       })),
     });
-    const longIdentity = (column: Column): Column => ({
+    const longIdentity = async (column: Column): Promise<Column> => ({
       ...column,
       member: {
         ...column.member,
@@ -1142,19 +1293,19 @@ describe("Annual operating comparison note evidence", () => {
           shareClassName: "類".repeat(128),
         },
       },
-      response: {
+      response: await admit({
         ...column.response,
         security: {
           ...column.response.security,
           issuerName: "名".repeat(128),
           securityName: "株".repeat(128),
         },
-      },
+      }),
     });
     const result = getAnnualComparisonNoteEvidence({
       ...input,
-      left: longIdentity(input.left),
-      right: longIdentity(input.right),
+      left: await longIdentity(input.left),
+      right: await longIdentity(input.right),
     });
     expect(result.reason).toBeNull();
     expect(result.excerpt).toContain(

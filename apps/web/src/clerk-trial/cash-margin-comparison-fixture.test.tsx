@@ -13,7 +13,8 @@ import {
   annualComparisonMemberships as members,
   annualComparisonResponse,
   annualComparisonRows,
-} from "./annual-comparison-fixture";
+  viewOf,
+} from "./test-canonical-annual-comparison-fixture";
 import { TrialApiError } from "./api";
 import { eodSelection } from "./eod-history-fixture";
 import type { ManagedApi } from "./managed-api";
@@ -334,14 +335,20 @@ function assertSources(html: string, packets: readonly Packet[]) {
       ownInputs.match(/<summary>Cash margin inputs · /gu) ?? [],
     ).toHaveLength(3);
     const { evidence } = packet;
-    expect(evidence.resolution.currentTargetEligible).toBe(false);
-    expect(evidence.operatingResults.resolution.operatingIncome.status).toBe(
-      "unavailable",
-    );
+    expect(viewOf(packet).income.resolution.currentTargetEligible).toBe(false);
+    expect(
+      viewOf(packet).operatingResults.resolution.operatingIncome.status,
+    ).toBe("unavailable");
     for (const row of [
-      ...evidence.observations,
-      ...evidence.cashGeneration.operatingCashFlow.observations,
-      ...evidence.cashGeneration.ppePurchases.observations,
+      ...evidence.facts.observations.filter(
+        (row) =>
+          PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.some(
+            (concept) => concept === row.concept,
+          ) ||
+          row.concept === "NetIncomeLoss" ||
+          row.concept === "NetCashProvidedByUsedInOperatingActivities" ||
+          row.concept === "PaymentsToAcquirePropertyPlantAndEquipment",
+      ),
     ]) {
       expect(ownInputs).toContain(row.id);
       expect(ownInputs).toContain(row.sourceLocator);

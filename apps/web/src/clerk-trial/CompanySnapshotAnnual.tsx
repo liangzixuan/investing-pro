@@ -1,4 +1,5 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type { ManagedAnnualReportState } from "./managed-annual-report";
 import { managedAnnualBasisLabel } from "../features/research/managed-annual-basis-label";
 import { SecAnnualCashValueContent } from "../features/research/SecAnnualCashGeneration";
@@ -16,12 +17,14 @@ export function CompanySnapshotAnnual({
   onOpen: () => void;
 }) {
   const annual = state?.response;
+  const view =
+    annual && state?.view?.canonical === annual.evidence ? state.view : null;
   return (
     <section aria-label="Snapshot annual">
       <h3>Annual</h3>
       {annual ? (
         <>
-          <AnnualSnapshot response={annual} />
+          <AnnualSnapshot response={annual} view={view} />
           {(state?.running || state?.showingPrevious) && (
             <p className="discovery-warning">
               Showing previous annual evidence. This refresh has not confirmed
@@ -45,20 +48,30 @@ export function CompanySnapshotAnnual({
     </section>
   );
 }
-type Props = { response: PersonalSecAnnualEvidenceResponseDto };
-function AnnualSnapshot({ response }: Props) {
+type Props = {
+  response: PersonalSecAnnualCanonicalResponseDto;
+  view: PersonalSecAnnualCanonicalView | null;
+};
+type ViewProps = { view: PersonalSecAnnualCanonicalView };
+function AnnualSnapshot({ response, view }: Props) {
   return (
     <>
-      <AnnualSnapshotHeader response={response} />
-      <SnapshotIncome response={response} />
-      <SnapshotOperating response={response} />
-      <SnapshotCashLiquidity response={response} />
-      <SnapshotBalanceSheet response={response} />
+      <AnnualSnapshotHeader response={response} view={view} />
+      {view ? (
+        <>
+          <SnapshotIncome view={view} />
+          <SnapshotOperating view={view} />
+          <SnapshotCashLiquidity view={view} />
+          <SnapshotBalanceSheet view={view} />
+        </>
+      ) : (
+        <p>Financial values are unavailable for this loaded annual evidence.</p>
+      )}
     </>
   );
 }
-function AnnualSnapshotHeader({ response }: Props) {
-  const { target, resolution, generation } = response.evidence;
+function AnnualSnapshotHeader({ response, view }: Props) {
+  const { target, generation } = response.evidence;
   return (
     <>
       <p>
@@ -91,7 +104,7 @@ function AnnualSnapshotHeader({ response }: Props) {
         Exact, unscaled USD. Revenue bases stay separate; period length and
         accounting changes are unadjusted.
       </p>
-      {!resolution.currentTargetEligible && (
+      {view && !view.income.resolution.currentTargetEligible && (
         <p className="discovery-warning">
           Revenue and net income cannot form a current-use pair at this load.
           Independent measures retain their own eligibility below.
@@ -100,8 +113,8 @@ function AnnualSnapshotHeader({ response }: Props) {
     </>
   );
 }
-function SnapshotIncome({ response }: Props) {
-  const { resolution } = response.evidence;
+function SnapshotIncome({ view }: ViewProps) {
+  const { resolution } = view.income;
   return (
     <>
       {[...resolution.bases]
@@ -160,8 +173,8 @@ function SnapshotIncome({ response }: Props) {
     </>
   );
 }
-function SnapshotCashLiquidity({ response }: Props) {
-  const { cashGeneration, liquidity } = response.evidence;
+function SnapshotCashLiquidity({ view }: ViewProps) {
+  const { cashGeneration, liquidity } = view;
   return (
     <>
       <dl className="managed-snapshot-independent">
@@ -209,8 +222,8 @@ function SnapshotCashLiquidity({ response }: Props) {
   );
 }
 
-function SnapshotBalanceSheet({ response }: Props) {
-  const { resolution } = response.evidence.balanceSheet;
+function SnapshotBalanceSheet({ view }: ViewProps) {
+  const { resolution } = view.balanceSheet;
   return (
     <section aria-label="Snapshot balance sheet totals">
       <h4>Balance sheet totals</h4>
@@ -238,9 +251,8 @@ function SnapshotBalanceSheet({ response }: Props) {
   );
 }
 
-function SnapshotOperating({ response }: Props) {
-  const { operatingIncome, margins } =
-    response.evidence.operatingResults.resolution;
+function SnapshotOperating({ view }: ViewProps) {
+  const { operatingIncome, margins } = view.operatingResults.resolution;
   return (
     <section aria-label="Snapshot operating results">
       <h4>Operating results</h4>

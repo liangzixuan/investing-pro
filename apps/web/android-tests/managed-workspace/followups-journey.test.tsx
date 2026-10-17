@@ -46,6 +46,8 @@ vi.mock("react", async (original) => ({
   useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) =>
     snapshot(),
   useEffect: () => {},
+  // This renderer does not mount effects or a native Back subscription.
+  useEffectEvent: (callback: unknown) => callback,
   useLayoutEffect: () => {},
   useCallback: (callback: unknown) => callback,
   useMemo: (factory: () => unknown) => factory(),

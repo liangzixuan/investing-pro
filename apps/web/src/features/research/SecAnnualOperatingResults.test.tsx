@@ -8,9 +8,9 @@ import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import {
   operatingResponse,
   operatingRow,
-} from "./sec-annual-operating-fixture";
-import { row, request } from "./sec-annual-evidence-fixture";
-import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
+} from "./test-canonical-annual-operating-ui-fixture";
+import { row, viewOf } from "./test-canonical-annual-ui-fixture";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 import { annualOperatingNoteExcerpt } from "../../clerk-trial/managed-annual-operating-note";
 
 describe("Annual operating result presentation and note", () => {
@@ -20,19 +20,20 @@ describe("Annual operating result presentation and note", () => {
       [row("Revenues", "1000")],
     );
     const body = renderToStaticMarkup(
-      <SecAnnualOperatingSourceBody response={packet} />,
+      <SecAnnualOperatingSourceBody response={packet} view={viewOf(packet)} />,
     );
     const company = renderToStaticMarkup(
-      <SecAnnualOperatingResults response={packet} />,
+      <SecAnnualOperatingResults response={packet} view={viewOf(packet)} />,
     );
     expect(company).toContain(
       `<summary>Operating sources and calculation inputs</summary>${body}</details>`,
     );
     expect(body).not.toContain("sec-annual-operating-source");
     for (const observation of [
-      ...packet.evidence.operatingResults.operatingIncome.observations,
-      ...packet.evidence.observations.filter(
-        (value) => value.metric === "revenue",
+      ...packet.evidence.facts.observations.filter(
+        (value) =>
+          value.concept === "OperatingIncomeLoss" ||
+          value.concept === "Revenues",
       ),
     ]) {
       expect(body).toContain(observation.id);
@@ -55,9 +56,14 @@ describe("Annual operating result presentation and note", () => {
       [operatingRow("-25.125")],
       [row("Revenues", "1000")],
     );
-    const parsed = await parseSecAnnualEvidenceResponse(
+    const parsed = await parseSecAnnualCanonicalResponse(
       wire,
-      request(),
+      {
+        schemaVersion: "6.0.0",
+        catalogSnapshotSha256: wire.catalogSnapshotSha256,
+        listingId: wire.security.listingId,
+        symbol: wire.security.symbol,
+      },
       new AbortController().signal,
     );
     expect(parsed).not.toBeNull();
@@ -65,6 +71,7 @@ describe("Annual operating result presentation and note", () => {
     const html = renderToStaticMarkup(
       <SecAnnualOperatingResults
         response={parsed!}
+        view={viewOf(parsed!)}
         renderOperatingAction={action}
       />,
     );
@@ -86,7 +93,7 @@ describe("Annual operating result presentation and note", () => {
     expect(html).not.toContain("sec-annual-liquidity-source");
     expect(html).toContain("<details");
     expect(html).not.toContain("<details open");
-    const basis = parsed!.evidence.operatingResults.resolution.margins.find(
+    const basis = viewOf(parsed!).operatingResults.resolution.margins.find(
       (b) => b.concept === "Revenues",
     )!;
     const text = annualOperatingNoteExcerpt(parsed!, basis, true)!;
@@ -106,7 +113,7 @@ describe("Annual operating result presentation and note", () => {
       [row("Revenues", "0")],
     );
     const html = renderToStaticMarkup(
-      <SecAnnualOperatingResults response={packet} />,
+      <SecAnnualOperatingResults response={packet} view={viewOf(packet)} />,
     );
     expect(html).toContain("-1");
     expect(html).toContain(
@@ -115,7 +122,7 @@ describe("Annual operating result presentation and note", () => {
     expect(
       annualOperatingNoteExcerpt(
         packet,
-        packet.evidence.operatingResults.resolution.margins[1]!,
+        viewOf(packet).operatingResults.resolution.margins[1]!,
         false,
       ),
     ).toBeNull();
@@ -132,7 +139,11 @@ describe("Annual operating result presentation and note", () => {
       vi.setSystemTime(new Date("2035-01-01T00:00:00.000Z"));
       for (const appearance of ["evidence", "financial"] as const) {
         const html = renderToStaticMarkup(
-          <SecAnnualEvidenceResult response={packet} appearance={appearance} />,
+          <SecAnnualEvidenceResult
+            response={packet}
+            view={viewOf(packet)}
+            appearance={appearance}
+          />,
         );
         expect(html).toContain('aria-label="Annual operating results"');
         expect(html).toContain(
@@ -142,7 +153,7 @@ describe("Annual operating result presentation and note", () => {
       }
       const text = annualOperatingNoteExcerpt(
         packet,
-        packet.evidence.operatingResults.resolution.margins[1]!,
+        viewOf(packet).operatingResults.resolution.margins[1]!,
         false,
       )!;
       expect(text).toContain(

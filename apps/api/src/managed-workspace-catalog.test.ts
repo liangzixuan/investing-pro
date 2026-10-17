@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import {
   MANAGED_CATALOG_LIMITS,
-  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
 } from "@research-cockpit/contracts";
 import { lookupPersonalSecurityMasterListing } from "@research-cockpit/personal-security-master";
 import * as securityMaster from "@research-cockpit/personal-security-master";
@@ -331,7 +331,7 @@ describe("fixed managed catalog", () => {
         f.annual.load(
           {
             ...request,
-            schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+            schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
           },
           { userId: "invented-owner" },
           new AbortController().signal,

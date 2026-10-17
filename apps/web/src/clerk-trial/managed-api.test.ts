@@ -23,10 +23,10 @@ import {
   ManagedEodCooldownError,
 } from "./managed-api";
 import {
-  request as annualRequest,
-  response as annualResponse,
-} from "../features/research/sec-annual-evidence-fixture";
-import * as annualDecoder from "../lib/sec-annual-evidence-response";
+  canonicalAnnualRequest,
+  canonicalAnnualPacket as annualResponse,
+} from "../features/research/sec-annual-canonical-fixture";
+import * as annualDecoder from "../lib/sec-annual-canonical-response";
 import type { TrialSession } from "./session";
 import { eodRequest, eodResponse } from "./eod-history-fixture";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
@@ -703,6 +703,8 @@ describe("managed browser transport", () => {
   });
 });
 
+const annualRequest = () => ({ ...canonicalAnnualRequest });
+
 describe("managed annual transport", () => {
   it("captures the exact four-key request before awaiting the token and validates owned evidence", async () => {
     const { api, fetcher, session, abort } = fixture();
@@ -716,7 +718,9 @@ describe("managed annual transport", () => {
     token.resolve("synthetic-token");
     const result = await loading;
     expect(result).toEqual(wire);
-    expect(Object.isFrozen(result.evidence.observations[0]?.filing)).toBe(true);
+    expect(Object.isFrozen(result.evidence.facts.observations[0]?.filing)).toBe(
+      true,
+    );
     expect(fetcher).toHaveBeenCalledExactlyOnceWith(
       `${origin}/v1/managed/sec-annual-evidence`,
       expect.objectContaining({
@@ -738,12 +742,12 @@ describe("managed annual transport", () => {
       const decoding =
         deferred<
           Awaited<
-            ReturnType<typeof annualDecoder.parseSecAnnualEvidenceResponse>
+            ReturnType<typeof annualDecoder.parseSecAnnualCanonicalResponse>
           >
         >();
       vi.spyOn(
         annualDecoder,
-        "parseSecAnnualEvidenceResponse",
+        "parseSecAnnualCanonicalResponse",
       ).mockImplementation((_value, _request, signal) => {
         entered.resolve(signal);
         return decoding.promise;
@@ -787,10 +791,13 @@ describe("managed annual transport", () => {
   it("measures the 2 MiB response cap with fatal UTF-8, ignoring a false Content-Length", async () => {
     const { api, fetcher, abort } = fixture();
     const wire = await annualResponse();
-    const padded = JSON.stringify(wire).padEnd(
-      MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes,
-      " ",
-    );
+    const serialized = JSON.stringify(wire);
+    const padded =
+      serialized +
+      " ".repeat(
+        MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes -
+          new TextEncoder().encode(serialized).byteLength,
+      );
     fetcher.mockResolvedValueOnce(
       new Response(padded, {
         headers: { "content-type": "application/json", "content-length": "1" },
@@ -872,6 +879,18 @@ describe("managed annual transport", () => {
     await expect(
       api.annualReport(
         { ...annualRequest(), symbol: "bad ticker" },
+        abort.signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(session.getToken).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("rejects Annual v5 before token acquisition without a fallback", async () => {
+    const { api, fetcher, session, abort } = fixture();
+    const old = { ...annualRequest(), schemaVersion: "5.0.0" };
+    await expect(
+      api.annualReport(
+        old as unknown as Parameters<typeof api.annualReport>[0],
         abort.signal,
       ),
     ).rejects.toMatchObject({ code: "invalid_request" });

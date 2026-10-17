@@ -9,7 +9,7 @@ import { ManagedSecCooldownError } from "./managed-api";
 import { TrialApiError } from "./api";
 import { eodSelection, eodResponse } from "./eod-history-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
-import { response } from "../features/research/sec-annual-evidence-fixture";
+import { response } from "../features/research/test-canonical-annual-ui-fixture";
 
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
@@ -210,8 +210,7 @@ describe("company research source actions", () => {
     f.readAnnual.mockResolvedValueOnce(await response([]));
     await f.annual.load();
     expect(
-      f.annual.getSnapshot().response?.evidence.resolution
-        .currentTargetEligible,
+      f.annual.getSnapshot().view?.income.resolution.currentTargetEligible,
     ).toBe(false);
     const html = f.html();
     expect(html).toContain("Source response loaded.");

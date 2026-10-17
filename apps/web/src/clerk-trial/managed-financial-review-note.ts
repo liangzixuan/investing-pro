@@ -1,9 +1,9 @@
+import { getManagedAnnualView } from "./managed-annual-view";
 import {
   normalizeWatchlistNote,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import {
-  derivePersonalSecAnnualFinancialReview,
   type PersonalSecAnnualFinancialReviewKey,
   type PersonalSecAnnualFinancialReviewRow,
 } from "@research-cockpit/personal-financial-analytics";
@@ -43,7 +43,7 @@ function describeRow(row: PersonalSecAnnualFinancialReviewRow): string {
 }
 
 function describeContext(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
 ): string {
   const { target, generation, cik } = response.evidence;
   const filing =
@@ -57,7 +57,7 @@ function describeContext(
 /** Propose one complete note from already admitted evidence, without saving it. */
 export function proposeFinancialReviewNote(
   note: string,
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   keys: readonly PersonalSecAnnualFinancialReviewKey[],
   showingPrevious: boolean,
 ): Proposal {
@@ -69,13 +69,18 @@ export function proposeFinancialReviewNote(
       reason: "Correct the current note before adding this review.",
     };
   }
+  const view = getManagedAnnualView(response);
+  if (view === null)
+    return {
+      note: null,
+      excerpt: null,
+      reason: "Load a valid Annual report before adding financial checks.",
+    };
   const selection = keys.length > 0 && keys.length <= 5 ? new Set(keys) : null;
   const rows =
     selection === null
       ? []
-      : derivePersonalSecAnnualFinancialReview(response.evidence).filter(
-          (row) => selection.has(row.key),
-        );
+      : view.financialReview.filter((row) => selection.has(row.key));
   if (
     selection === null ||
     selection.size !== keys.length ||

@@ -1,11 +1,11 @@
 import type {
   PersonalSecAnnualBalanceSheetValueDto,
   PersonalSecAnnualCashValueDto,
-  PersonalSecAnnualEvidenceDto,
   PersonalSecAnnualLiquidityValueDto,
   PersonalSecAnnualOperatingValueDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
+import type { PersonalSecAnnualResolvedFinancials } from "./personal-sec-annual-resolved-financials";
 
 const D = Decimal.clone({ defaults: true, precision: 256 });
 
@@ -82,7 +82,7 @@ function sign(value: Value): PersonalSecAnnualFinancialReviewSign | null {
  * No income-pair eligibility, clock, threshold or overall verdict is introduced.
  */
 export function derivePersonalSecAnnualFinancialReview(
-  evidence: PersonalSecAnnualEvidenceDto,
+  evidence: PersonalSecAnnualResolvedFinancials,
 ): readonly PersonalSecAnnualFinancialReviewRow[] {
   const operating = evidence.operatingResults.resolution;
   const cash = evidence.cashGeneration.resolution;

@@ -1,9 +1,10 @@
 import {
   PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
   type PersonalSecAnnualRevenueConcept,
 } from "@research-cockpit/contracts";
 import { describe, expect, it } from "vitest";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 import {
   MANAGED_ANNUAL_TREND_METRICS,
   projectManagedAnnualTrend,
@@ -12,20 +13,37 @@ import {
   annualComparativeRows,
   annualHistoryRows,
   response,
+  viewOf,
   row,
-} from "./sec-annual-evidence-fixture";
+  admitUiPacket,
+  sourceUnavailableResponse,
+} from "./test-canonical-annual-ui-fixture";
 
 function ready(
-  packet: PersonalSecAnnualEvidenceResponseDto,
+  packet: PersonalSecAnnualCanonicalResponseDto,
   concept: PersonalSecAnnualRevenueConcept = "Revenues",
 ) {
-  const result = projectManagedAnnualTrend(packet, concept);
+  const result = projectManagedAnnualTrend(packet, viewOf(packet), concept);
   expect(result.status).toBe("ready");
   if (result.status !== "ready") throw new Error("Expected an admitted trend");
   return result;
 }
 
 describe("projectManagedAnnualTrend", () => {
+  it("refuses a view from an equal but separately admitted packet", async () => {
+    const packet = await response(annualHistoryRows());
+    const equalPacket = await admitUiPacket(structuredClone(packet));
+    expect(equalPacket).toEqual(packet);
+    expect(equalPacket.evidence).not.toBe(packet.evidence);
+    expect(
+      projectManagedAnnualTrend(packet, viewOf(equalPacket), "Revenues"),
+    ).toEqual({
+      status: "unavailable",
+      reason: "current_report_unavailable",
+      stoppedReason: null,
+    });
+    expect(ready(packet).periods).toHaveLength(3);
+  });
   it("keeps three exact same-filing periods in chronological chart order", async () => {
     const packet = await response(annualHistoryRows());
     const trend = ready(packet);
@@ -71,7 +89,9 @@ describe("projectManagedAnnualTrend", () => {
     expect(
       trend.periods.flatMap((period) => period.observationIds).sort(),
     ).toEqual(
-      packet.evidence.observations.map((observation) => observation.id).sort(),
+      packet.evidence.facts.observations
+        .map((observation) => observation.id)
+        .sort(),
     );
   });
 
@@ -96,8 +116,9 @@ describe("projectManagedAnnualTrend", () => {
       [row(), row("NetIncomeLoss", "100")],
       annualHistoryRows().filter((item) => item.endDate !== "2024-12-31"),
     ]) {
+      const packet = await response(rows);
       expect(
-        projectManagedAnnualTrend(await response(rows), "Revenues"),
+        projectManagedAnnualTrend(packet, viewOf(packet), "Revenues"),
       ).toEqual({
         status: "unavailable",
         reason: "insufficient_periods",
@@ -172,7 +193,9 @@ describe("projectManagedAnnualTrend", () => {
           : item,
       ),
     );
-    expect(projectManagedAnnualTrend(mixed, "Revenues")).toMatchObject({
+    expect(
+      projectManagedAnnualTrend(mixed, viewOf(mixed), "Revenues"),
+    ).toMatchObject({
       status: "unavailable",
       reason: "insufficient_periods",
       stoppedReason: "previous_period_missing",
@@ -182,32 +205,49 @@ describe("projectManagedAnnualTrend", () => {
       ...packet,
       evidence: {
         ...packet.evidence,
-        observations: packet.evidence.observations.map((item) =>
-          item.endDate === "2024-12-31"
-            ? { ...item, accessionNumber: "0000000001-25-000001" }
-            : item,
-        ),
+        facts: {
+          ...packet.evidence.facts,
+          observations: packet.evidence.facts.observations.map((item) =>
+            item.endDate === "2024-12-31"
+              ? { ...item, accessionNumber: "0000000001-25-000001" }
+              : item,
+          ),
+        },
       },
     };
-    expect(() => projectManagedAnnualTrend(wrongFiling, "Revenues")).toThrow(
-      "Invalid annual SEC evidence input",
-    );
+    expect(
+      await parseSecAnnualCanonicalResponse(
+        wrongFiling,
+        {
+          schemaVersion: "6.0.0",
+          catalogSnapshotSha256: packet.catalogSnapshotSha256,
+          listingId: packet.security.listingId,
+          symbol: packet.security.symbol,
+        },
+        new AbortController().signal,
+      ),
+    ).toBeNull();
+    expect(
+      projectManagedAnnualTrend(wrongFiling, viewOf(packet), "Revenues"),
+    ).toEqual({
+      status: "unavailable",
+      reason: "current_report_unavailable",
+      stoppedReason: null,
+    });
   });
 
   it("preserves missing-basis and current-use refusal rather than plotting historical pairs", async () => {
+    const packet = await response(annualHistoryRows());
     expect(
-      projectManagedAnnualTrend(
-        await response(annualHistoryRows()),
-        "SalesRevenueNet",
-      ),
+      projectManagedAnnualTrend(packet, viewOf(packet), "SalesRevenueNet"),
     ).toEqual({
       status: "unavailable",
       reason: "current_report_unavailable",
       stoppedReason: null,
     });
     const old = await response(annualHistoryRows(), "2027-09-20T00:00:00.000Z");
-    expect(old.evidence.resolution.selectedReportPairEligible).toBe(true);
-    expect(projectManagedAnnualTrend(old, "Revenues")).toEqual({
+    expect(viewOf(old).income.resolution.selectedReportPairEligible).toBe(true);
+    expect(projectManagedAnnualTrend(old, viewOf(old), "Revenues")).toEqual({
       status: "unavailable",
       reason: "current_use_unavailable",
       stoppedReason: null,
@@ -215,29 +255,10 @@ describe("projectManagedAnnualTrend", () => {
   });
 
   it("withholds a refused source response", async () => {
-    const packet = await response([]);
-    const refused: PersonalSecAnnualEvidenceResponseDto = {
-      ...packet,
-      evidence: {
-        ...packet.evidence,
-        completeness: { status: "refused", reason: "source_unavailable" },
-        coverage: null,
-        generation: {
-          ...packet.evidence.generation,
-          sources: {
-            ...packet.evidence.generation.sources,
-            companyFacts: {
-              ...packet.evidence.generation.sources.companyFacts,
-              status: "upstream_unavailable",
-              fetchedAt: null,
-              sha256: null,
-              bytes: null,
-            },
-          },
-        },
-      },
-    };
-    expect(projectManagedAnnualTrend(refused, "Revenues")).toEqual({
+    const refused = await sourceUnavailableResponse();
+    expect(
+      projectManagedAnnualTrend(refused, viewOf(refused), "Revenues"),
+    ).toEqual({
       status: "unavailable",
       reason: "current_report_unavailable",
       stoppedReason: null,
@@ -297,11 +318,13 @@ describe("projectManagedAnnualTrend", () => {
         ),
       );
       expect(
-        packet.evidence.resolution.bases.find(
+        viewOf(packet).income.resolution.bases.find(
           (basis) => basis.concept === "Revenues",
         )?.pairs[0]?.status,
       ).toBe("nonpositive_revenue");
-      expect(projectManagedAnnualTrend(packet, "Revenues")).toEqual({
+      expect(
+        projectManagedAnnualTrend(packet, viewOf(packet), "Revenues"),
+      ).toEqual({
         status: "unavailable",
         reason: "current_report_unavailable",
         stoppedReason: null,
@@ -363,16 +386,24 @@ describe("projectManagedAnnualTrend", () => {
   it("uses stable source-bound keys for equivalent renders and replaces them on identity or generation changes", async () => {
     const packet = await response(annualHistoryRows());
     const original = ready(packet).contentKey;
-    expect(ready(structuredClone(packet)).contentKey).toBe(original);
+    expect(ready(await admitUiPacket(structuredClone(packet))).contentKey).toBe(
+      original,
+    );
     expect(
-      ready({
-        ...packet,
-        security: { ...packet.security, listingId: "listing-other" },
-      }).contentKey,
+      ready(
+        await admitUiPacket({
+          ...packet,
+          security: { ...packet.security, listingId: "listing-other" },
+        }),
+      ).contentKey,
     ).not.toBe(original);
     expect(
-      ready({ ...packet, catalogSnapshotSha256: `sha256:${"d".repeat(64)}` })
-        .contentKey,
+      ready(
+        await admitUiPacket({
+          ...packet,
+          catalogSnapshotSha256: `sha256:${"d".repeat(64)}`,
+        }),
+      ).contentKey,
     ).not.toBe(original);
     const refreshed = await response(
       annualHistoryRows(),

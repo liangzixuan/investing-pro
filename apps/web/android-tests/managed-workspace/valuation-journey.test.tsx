@@ -93,7 +93,7 @@ function author(workspace: ManagedWorkspace) {
   return model.calculate()!;
 }
 describe("invented native authored valuation scenario", () => {
-  it("retains one exact draft across Back, saves and fresh-loads its complete note, captures schema 2 results and retires without source calls", async () => {
+  it("retains one exact draft across Back, saves and fresh-loads its complete note, captures schema 3 results and retires without source calls", async () => {
     const f = await setup();
     let capture = author(f.workspace);
     expect(capture.dcfResult).toMatchObject({
@@ -195,7 +195,7 @@ describe("invented native authored valuation scenario", () => {
       authoredResearch: { note: unknown };
       sources: Record<string, unknown>;
     };
-    expect(parsed.schemaVersion).toBe("2.0.0");
+    expect(parsed.schemaVersion).toBe("3.0.0");
     expect(parsed.valuation).toEqual(capture);
     expect(capture.dcfDraft.forecastYears).toBe("5");
     expect(capture.exitDraft.horizonYears).toBe("5");

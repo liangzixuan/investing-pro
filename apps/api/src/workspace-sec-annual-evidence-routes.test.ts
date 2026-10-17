@@ -1,12 +1,11 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import {
-  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-  PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
-  PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
-  type PersonalSecAnnualEvidenceDto,
-  type PersonalSecAnnualEvidenceResponseDto,
+  PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
+  PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY,
+  type PersonalSecAnnualCanonicalEvidenceDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import {
   LOCAL_RESEARCH_VAULT_PROFILE,
@@ -25,9 +24,16 @@ import { bootstrapTestPersonalOwnerSession } from "./test-personal-owner-session
 import { buildTestSecurityMasterAdmission } from "./test-personal-security-master-builder";
 import { buildPersonalWorkspaceApp } from "./workspace-app";
 import { PERSONAL_SEC_ANNUAL_EVIDENCE_PATH } from "./workspace-sec-annual-evidence-routes";
+import { createPersonalSecAnnualCanonicalEvidence } from "./personal-sec-annual-canonical-evidence";
+import { normalizePersonalSecAnnualStatementCompanyFacts } from "./personal-sec-annual-statement-company-facts";
+import {
+  normalizePersonalSecSubmissions,
+  parsePersonalSecSourceJson,
+} from "./personal-sec-quarterly-evidence-provider";
 
 const applications: FastifyInstance[] = [];
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(applications.splice(0).map((app) => app.close()));
 });
 
@@ -37,10 +43,8 @@ describe("selected-company observed annual SEC evidence route", () => {
     const response = await fixture.request();
     expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBe("private, no-store");
-    const body = response.json<PersonalSecAnnualEvidenceResponseDto>();
-    expect(body.schemaVersion).toBe(
-      PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-    );
+    const body = response.json<PersonalSecAnnualCanonicalResponseDto>();
+    expect(body.schemaVersion).toBe(PERSONAL_SEC_ANNUAL_CANONICAL_VERSION);
     expect(body.catalogSnapshotSha256).toBe(fixture.body.catalogSnapshotSha256);
     expect(body.security).toEqual({
       country: "US",
@@ -53,6 +57,25 @@ describe("selected-company observed annual SEC evidence route", () => {
       cik: "0000000001",
     });
     expect(body.evidence.cik).toBe(body.security.cik);
+    expect(body.evidence.generation.definitionVersion).toBe("6.0.0");
+    expect(body.evidence.facts.scans).toHaveLength(32);
+    expect(body.evidence.facts.observations).toHaveLength(32);
+    expect(
+      body.evidence.facts.observations.find(
+        (row) => row.concept === "StockholdersEquity",
+      )!.value,
+    ).toBe("-9007199254740993.125");
+    expect(
+      body.evidence.facts.observations.find(
+        (row) => row.concept === "Revenues",
+      )!.value,
+    ).toBe("9007199254740993.125");
+    expect(
+      body.evidence.facts.observations.find(
+        (row) => row.concept === "Revenues",
+      )!.sourceLocator,
+    ).toBe("/facts/us-gaap/Revenues/units/USD/0");
+    expect(response.payload.match(/"observations":/gu)).toHaveLength(1);
     expect(fixture.loadEvidence).toHaveBeenCalledWith(
       "0000000001",
       expect.any(AbortSignal),
@@ -70,7 +93,7 @@ describe("selected-company observed annual SEC evidence route", () => {
     expect((await fixture.request("{ private-canary")).statusCode).toBe(400);
   });
 
-  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0"])(
     "rejects version %s before calling the source",
     async (schemaVersion) => {
       const fixture = await setup();
@@ -87,7 +110,7 @@ describe("selected-company observed annual SEC evidence route", () => {
     {},
     { listingId: "lst-00000", symbol: "S00000" },
     {
-      schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+      schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
       catalogSnapshotSha256: "bad",
       listingId: "lst-00000",
       symbol: "S00000",
@@ -166,6 +189,132 @@ describe("selected-company observed annual SEC evidence route", () => {
     const response = await fixture.request();
     expect(response.statusCode).toBe(403);
     expect(response.payload).not.toContain("observations");
+  });
+
+  it("preserves the shared local owner JSON framing limit before body parsing", async () => {
+    const fixture = await setup();
+    const body = JSON.stringify(fixture.body);
+    expect(
+      (await fixture.request(" ".repeat(4096 - Buffer.byteLength(body)) + body))
+        .statusCode,
+    ).toBe(200);
+    fixture.loadEvidence.mockClear();
+    const response = await fixture.request(
+      " ".repeat(4097 - Buffer.byteLength(body)) + body,
+    );
+    expect(response.statusCode).toBe(403);
+    expect(fixture.loadEvidence).not.toHaveBeenCalled();
+  });
+
+  it.each([50, 100])(
+    "delivers all 32 concepts with %d rows or refuses the whole over-bound response",
+    async (rowsPerConcept) => {
+      const fixture = await setup();
+      const graph = evidence(
+        "0000000001",
+        rowsPerConcept,
+        rowsPerConcept === 100,
+      );
+      const before = JSON.stringify(graph);
+      fixture.loadEvidence.mockResolvedValueOnce(graph);
+      const response = await fixture.request();
+      expect(response.statusCode).toBe(rowsPerConcept === 50 ? 200 : 502);
+      expect(response.headers["cache-control"]).toBe("private, no-store");
+      if (rowsPerConcept === 50) {
+        const body = response.json<PersonalSecAnnualCanonicalResponseDto>();
+        expect(body.evidence.facts.observations).toHaveLength(1600);
+        expect(body.evidence).toEqual(graph);
+        expect(Buffer.byteLength(response.payload)).toBeLessThanOrEqual(
+          2_097_152,
+        );
+      } else {
+        expect(graph.facts.observations).toHaveLength(3200);
+        expect(response.json()).toMatchObject({ code: "provider_unavailable" });
+        expect(response.payload).not.toContain("observations");
+        expect(response.payload).not.toContain("response_too_large");
+      }
+      expect(JSON.stringify(graph)).toBe(before);
+      expect(fixture.loadEvidence).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(["unfrozen", "generation", "extra"] as const)(
+    "sanitizes an invalid canonical provider graph: %s",
+    async (kind) => {
+      const fixture = await setup();
+      const graph = evidence("0000000001");
+      const changed =
+        kind === "unfrozen"
+          ? structuredClone(graph)
+          : kind === "generation"
+            ? Object.freeze({
+                ...graph,
+                generation: Object.freeze({
+                  ...graph.generation,
+                  sha256: `sha256:${"f".repeat(64)}` as const,
+                }),
+              })
+            : Object.freeze({ ...graph, derivedPrivateCanary: true });
+      fixture.loadEvidence.mockResolvedValueOnce(changed);
+      const response = await fixture.request();
+      expect(response.statusCode).toBe(502);
+      expect(response.json()).toMatchObject({ code: "provider_unavailable" });
+      expect(response.payload).not.toContain("derivedPrivateCanary");
+      expect(response.payload).not.toContain("Invalid canonical");
+    },
+  );
+
+  it("rechecks owner authority after final packet serialization", async () => {
+    const fixture = await setup();
+    const stringify = JSON.stringify;
+    let prepared = false;
+    vi.spyOn(JSON, "stringify").mockImplementation((value, ...args) => {
+      if (
+        value !== null &&
+        typeof value === "object" &&
+        "security" in value &&
+        "evidence" in value
+      ) {
+        prepared = true;
+        fixture.authority.close();
+      }
+      return stringify(value, ...args);
+    });
+    const response = await fixture.request();
+    expect(prepared).toBe(true);
+    expect(response.statusCode).toBe(403);
+    expect(response.payload).not.toContain("observations");
+  });
+
+  it("suppresses a prepared body after disconnect during encoding and removes its listeners", async () => {
+    const fixture = await setup();
+    let requestRaw: IncomingMessage | undefined;
+    let replyRaw: ServerResponse | undefined;
+    fixture.app.addHook("preHandler", (request, reply, done) => {
+      requestRaw = request.raw;
+      replyRaw = reply.raw;
+      done();
+    });
+    const stringify = JSON.stringify;
+    let prepared = false;
+    vi.spyOn(JSON, "stringify").mockImplementation((value, ...args) => {
+      if (
+        value !== null &&
+        typeof value === "object" &&
+        "security" in value &&
+        "evidence" in value
+      ) {
+        prepared = true;
+        requestRaw!.emit("aborted");
+        replyRaw!.end();
+      }
+      return stringify(value, ...args);
+    });
+    const response = await fixture.request();
+    expect(prepared).toBe(true);
+    expect(response.payload).not.toContain("observations");
+    expect(requestRaw!.listenerCount("aborted")).toBe(0);
+    expect(replyRaw!.listenerCount("close")).toBe(0);
   });
 
   it.each(["cutoffAt", "accessionNumber", "sourceUrl", "target", "generation"])(
@@ -266,7 +415,7 @@ async function setup() {
     (
       cik: string,
       _signal?: AbortSignal,
-    ): Promise<PersonalSecAnnualEvidenceDto> => {
+    ): Promise<PersonalSecAnnualCanonicalEvidenceDto> => {
       void _signal;
       return Promise.resolve(evidence(cik));
     },
@@ -295,7 +444,7 @@ async function setup() {
   );
   applications.push(app);
   const body = {
-    schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+    schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
     catalogSnapshotSha256: catalog.snapshotSha256,
     listingId: "lst-00000",
     symbol: "S00000",
@@ -336,163 +485,106 @@ function headers(cookie?: string) {
   };
 }
 
-function evidence(cik: string): PersonalSecAnnualEvidenceDto {
-  const zero = { observations: 0, revenue: 0, netIncome: 0 };
-  const source = (sourceUrl: string) => ({
+function evidence(
+  cik: string,
+  rowsPerConcept = 1,
+  escapedMetadata = false,
+): PersonalSecAnnualCanonicalEvidenceDto {
+  const accession = cik + "-26-000001";
+  const companyText = JSON.stringify({
+    cik: Number(cik),
+    facts: {
+      "us-gaap": Object.fromEntries(
+        PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.map((entry) => [
+          entry.concept,
+          {
+            units: {
+              USD: Array.from({ length: rowsPerConcept }, (_, index) => ({
+                start:
+                  entry.periodType === "instant" ? undefined : "2025-01-01",
+                end: "2025-12-31",
+                val:
+                  entry.concept === "StockholdersEquity" && index === 0
+                    ? "UNSAFE_NEGATIVE"
+                    : index === 0
+                      ? "UNSAFE_POSITIVE"
+                      : entry.concept === "StockholdersEquity"
+                        ? -index
+                        : index,
+                accn: accession,
+                form: "10-K",
+                filed: "2026-02-01",
+                fy: 2025,
+                fp: escapedMetadata ? '\\"'.repeat(16) : "FY",
+                frame: escapedMetadata ? '\\"'.repeat(64) : "fixture-" + index,
+              })),
+            },
+          },
+        ]),
+      ),
+    },
+  })
+    .replaceAll('"UNSAFE_POSITIVE"', "9007199254740993.125")
+    .replaceAll('"UNSAFE_NEGATIVE"', "-9007199254740993.125");
+  const submissionsText = JSON.stringify({
+    cik: Number(cik),
+    filings: {
+      recent: {
+        accessionNumber: [accession],
+        form: ["10-K"],
+        filingDate: ["2026-02-01"],
+        reportDate: ["2025-12-31"],
+        acceptanceDateTime: ["2026-02-01T12:00:00.000Z"],
+      },
+      files: [],
+    },
+  });
+  const source = (sourceUrl: string, text: string) => ({
     status: "available" as const,
     sourceUrl,
     fetchedAt: "2026-09-20T12:00:00.000Z",
-    sha256: `sha256:${"1".repeat(64)}` as const,
-    bytes: 2,
+    sha256: ("sha256:" +
+      createHash("sha256").update(text).digest("hex")) as `sha256:${string}`,
+    bytes: Buffer.byteLength(text),
   });
-  return {
+  return createPersonalSecAnnualCanonicalEvidence({
     cik,
     generation: {
-      definitionVersion: PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
+      definitionVersion: "6.0.0",
       cutoffAt: "2026-09-20T12:00:00.000Z",
       completedAt: "2026-09-20T12:00:00.000Z",
       sources: {
         companyFacts: source(
           `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
+          companyText,
         ),
-        submissions: source(`https://data.sec.gov/submissions/CIK${cik}.json`),
+        submissions: source(
+          `https://data.sec.gov/submissions/CIK${cik}.json`,
+          submissionsText,
+        ),
       },
-      sha256: `sha256:${"2".repeat(64)}`,
     },
-    target: { status: "unresolved", reason: "no_observed_annual_target" },
+    target: {
+      status: "target",
+      accessionNumber: accession,
+      form: "10-K",
+      filedDate: "2026-02-01",
+      reportDate: "2025-12-31",
+      acceptedAt: "2026-02-01T12:00:00.000Z",
+    },
     targetScan: {
-      currentFilings: 0,
-      annualFilings: 0,
+      currentFilings: 1,
+      annualFilings: 1,
       olderHistoryAvailable: false,
     },
-    incomeScanStatus: "available",
-    cashGeneration: emptyCashGeneration(),
-    liquidity: emptyLiquidity(),
-    operatingResults: emptyOperatingResults(),
-    balanceSheet: emptyBalanceSheet(),
-    completeness: { status: "refused", reason: "target_unresolved" },
-    coverage: {
-      full: {
-        ...zero,
-        inspectedRows: 0,
-        invalidRows: 0,
-        duplicateRows: 0,
-        uniqueObservations: 0,
-        conceptsWithoutUsd: [],
-      },
-      selected: null,
-      otherAccessions: null,
-      returned: zero,
-      omittedSelected: null,
-      history: { returned: zero, truncated: false },
-    },
-    observations: [],
-    resolution: {
-      pairs: [],
-      bases: [],
-      selectedReportPairEligible: false,
-      currentTargetEligible: false,
-      utilityAge: null,
-    },
-  };
-}
-
-function emptyCashGeneration(): PersonalSecAnnualEvidenceDto["cashGeneration"] {
-  const metric = {
-    scan: {
-      status: "available" as const,
-      absence: "concept_missing" as const,
-      coverage: {
-        full: {
-          candidateRows: 0,
-          inspectedRows: 0,
-          invalidRows: 0,
-          duplicateRows: 0,
-          uniqueObservations: 0,
-        },
-        selected: null,
-        otherAccessions: null,
-        returned: 0,
-        omittedSelected: null,
-      },
-    },
-    observations: [],
-  };
-  const value = {
-    status: "unavailable" as const,
-    reason: "target_unresolved" as const,
-    observationIds: [],
-  };
-  return {
-    operatingCashFlow: metric,
-    ppePurchases: metric,
-    resolution: {
-      operatingCashFlow: value,
-      ppePurchases: value,
-      operatingCashFlowLessPpePurchases: value,
-      utilityAge: null,
-    },
-  };
-}
-
-function emptyLiquidity(): PersonalSecAnnualEvidenceDto["liquidity"] {
-  const metric = emptyCashGeneration().operatingCashFlow;
-  const value = {
-    status: "unavailable" as const,
-    reason: "target_unresolved" as const,
-    observationIds: [],
-  };
-  return {
-    currentAssets: { scan: metric.scan, observations: [] },
-    currentLiabilities: { scan: metric.scan, observations: [] },
-    resolution: {
-      currentAssets: { ...value, unit: "USD" },
-      currentLiabilities: { ...value, unit: "USD" },
-      workingCapital: { ...value, unit: "USD" },
-      currentRatio: { ...value, unit: "multiple" },
-      utilityAge: null,
-    },
-  };
-}
-
-function emptyOperatingResults(): PersonalSecAnnualEvidenceDto["operatingResults"] {
-  const metric = emptyCashGeneration().operatingCashFlow;
-  const value = {
-    status: "unavailable" as const,
-    reason: "target_unresolved" as const,
-    observationIds: [],
-  };
-  return {
-    operatingIncome: { scan: metric.scan, observations: [] },
-    resolution: {
-      operatingIncome: { ...value, unit: "USD" },
-      margins: PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((concept) => ({
-        concept,
-        revenue: { ...value, unit: "USD" },
-        operatingMargin: { ...value, unit: "percent" },
-      })),
-      utilityAge: null,
-    },
-  };
-}
-
-function emptyBalanceSheet(): PersonalSecAnnualEvidenceDto["balanceSheet"] {
-  const metric = emptyCashGeneration().operatingCashFlow;
-  const value = {
-    status: "unavailable" as const,
-    unit: "USD" as const,
-    reason: "target_unresolved" as const,
-    observationIds: [],
-  };
-  return {
-    totalAssets: { scan: metric.scan, observations: [] },
-    totalLiabilities: { scan: metric.scan, observations: [] },
-    shareholdersEquity: { scan: metric.scan, observations: [] },
-    resolution: {
-      totalAssets: value,
-      totalLiabilities: value,
-      shareholdersEquity: value,
-      utilityAge: null,
-    },
-  };
+    facts: normalizePersonalSecAnnualStatementCompanyFacts(
+      parsePersonalSecSourceJson(companyText),
+      cik,
+      accession,
+    ),
+    submissions: normalizePersonalSecSubmissions(
+      parsePersonalSecSourceJson(submissionsText),
+      cik,
+    ),
+  });
 }

@@ -172,6 +172,47 @@ function input(op = [operating()], revenues = [revenue()]): Input {
 const resultMargin = (packet: Input) => resolve(packet).margins[1]!;
 
 describe("Annual operating results", () => {
+  it("retains full version-5 packet admission before returning an independent operating amount", () => {
+    const packet = input();
+    Object.assign(packet.generation, { definitionVersion: "6.0.0" });
+    expect(() => resolve(packet)).toThrow(TypeError);
+    expect(() => history(packet, "Revenues")).toThrow(TypeError);
+    expect(() => compare(packet, "Revenues")).toThrow(TypeError);
+    packet.observations = [];
+    packet.coverage = coverage([]);
+    packet.completeness = { status: "refused", reason: "invalid_clock" };
+    expect(resolve(packet).operatingIncome).toMatchObject({
+      status: "unavailable",
+      reason: "invalid_clock",
+    });
+    expect(resolve(packet).utilityAge).toBeNull();
+    expect(history(packet, "Revenues")).toEqual({
+      status: "unavailable",
+      reason: "invalid_clock",
+    });
+  });
+
+  it.each([
+    "income completeness",
+    "income counts",
+    "income metric",
+    "operating metric",
+  ] as const)("retains complete packet admission for %s", (kind) => {
+    const packet = input();
+    if (kind === "income completeness")
+      packet.completeness = { status: "refused", reason: "invalid_clock" };
+    if (kind === "income counts") packet.coverage = coverage([]);
+    if (kind === "income metric")
+      Object.assign(packet.observations[0]!, { metric: "net_income" });
+    if (kind === "operating metric")
+      Object.assign(packet.operatingResults.operatingIncome.observations[0]!, {
+        metric: "revenue",
+      });
+    expect(() => resolve(packet)).toThrow(TypeError);
+    expect(() => history(packet, "Revenues")).toThrow(TypeError);
+    expect(() => compare(packet, "Revenues")).toThrow(TypeError);
+  });
+
   it("resolves every separate revenue basis without net income and owns frozen result references", () => {
     const packet = input(
       [operating()],

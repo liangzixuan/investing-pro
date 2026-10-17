@@ -1,44 +1,25 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
-import { annualCashGeneration } from "../lib/sec-annual-cash-response";
-
-function hasConsistentCash(
-  response: PersonalSecAnnualEvidenceResponseDto,
-): boolean {
-  const { evidence, security } = response;
-  const { generation } = evidence;
-  if (
-    security.cik !== evidence.cik ||
-    generation.sources.companyFacts.status !== "available" ||
-    generation.sources.submissions.status !== "available" ||
-    generation.sources.companyFacts.fetchedAt === null ||
-    generation.sources.submissions.fetchedAt === null
-  )
-    return false;
-  try {
-    return annualCashGeneration(
-      evidence.cashGeneration,
-      evidence,
-      new Set(evidence.observations.map((row) => row.id)),
-    );
-  } catch {
-    return false;
-  }
-}
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
+import { getManagedAnnualView } from "./managed-annual-view";
 
 /** Formats admitted cash evidence; the caller owns current-response and draft guards. */
 export function annualCashNoteExcerpt(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   showingPrevious: boolean,
 ): string | null {
-  const { target, generation, cik, cashGeneration } = response.evidence;
+  const view = getManagedAnnualView(response);
+  if (view === null) return null;
+  const { target, generation, cik } = response.evidence;
   const { operatingCashFlow, ppePurchases, operatingCashFlowLessPpePurchases } =
-    cashGeneration.resolution;
+    view.cashGeneration.resolution;
   if (
     target.status !== "target" ||
     operatingCashFlow.status !== "available" ||
     ppePurchases.status !== "available" ||
     operatingCashFlowLessPpePurchases.status !== "available" ||
-    !hasConsistentCash(response)
+    generation.sources.companyFacts.status !== "available" ||
+    generation.sources.submissions.status !== "available" ||
+    generation.sources.companyFacts.fetchedAt === null ||
+    generation.sources.submissions.fetchedAt === null
   )
     return null;
 

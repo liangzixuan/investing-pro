@@ -1,10 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { resolvePersonalSecAnnualEvidence } from "@research-cockpit/personal-financial-analytics";
+import { derivePersonalSecAnnualFinancialInputs } from "@research-cockpit/personal-financial-analytics";
+import { withCanonicalAnnualGeneration } from "./sec-annual-canonical-fixture";
+import { admitUiPacket } from "./test-canonical-annual-ui-fixture";
 import {
   liquidityResponse,
   liquidityRow,
-} from "./sec-annual-liquidity-fixture";
+  viewOf,
+} from "./test-canonical-annual-liquidity-ui-fixture";
 import {
   SecAnnualLiquidity,
   SecAnnualLiquiditySourceBody,
@@ -32,9 +35,9 @@ describe("Annual liquidity presentation", () => {
     for (const response of [current, historical, zeroLiabilities]) {
       const before = JSON.stringify(response);
       const company = renderToStaticMarkup(
-        <SecAnnualLiquidity response={response} />,
+        <SecAnnualLiquidity response={response} view={viewOf(response)} />,
       );
-      const { resolution } = response.evidence.liquidity;
+      const { resolution } = viewOf(response).liquidity;
       for (const value of [
         resolution.currentAssets,
         resolution.currentLiabilities,
@@ -73,7 +76,10 @@ describe("Annual liquidity presentation", () => {
     ]);
     const before = JSON.stringify(response);
     const body = renderToStaticMarkup(
-      <SecAnnualLiquiditySourceBody response={response} />,
+      <SecAnnualLiquiditySourceBody
+        response={response}
+        view={viewOf(response)}
+      />,
     );
     expect(body).toMatch(/^<p>Annual cutoff 2026-09-20T00:00:00.000Z/u);
     expect(body).toContain("Company Facts captured 2026-09-20T00:00:01.000Z");
@@ -85,7 +91,9 @@ describe("Annual liquidity presentation", () => {
     expect(body).not.toContain("Liquidity sources and calculation inputs");
     expect(body).not.toContain("sec-annual-liquidity-source");
     expect(
-      renderToStaticMarkup(<SecAnnualLiquidity response={response} />),
+      renderToStaticMarkup(
+        <SecAnnualLiquidity response={response} view={viewOf(response)} />,
+      ),
     ).toContain(
       `<details class="sec-quarterly-row-details sec-annual-liquidity-source"><summary>Liquidity sources and calculation inputs</summary>${body}</details>`,
     );
@@ -101,6 +109,7 @@ describe("Annual liquidity presentation", () => {
     const managed = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={wire}
+        view={viewOf(wire)}
         appearance="financial"
         liquidityAction={action}
       />,
@@ -114,7 +123,11 @@ describe("Annual liquidity presentation", () => {
     expect(managed.match(/Add liquidity to note draft/gu)).toHaveLength(1);
     expect(
       renderToStaticMarkup(
-        <SecAnnualEvidenceResult response={wire} liquidityAction={action} />,
+        <SecAnnualEvidenceResult
+          response={wire}
+          view={viewOf(wire)}
+          liquidityAction={action}
+        />,
       ),
     ).not.toContain("Add liquidity to note draft");
   });
@@ -125,7 +138,9 @@ describe("Annual liquidity presentation", () => {
       liquidityRow("current_liabilities", "20.025"),
     ]);
     const before = JSON.stringify(wire);
-    const html = renderToStaticMarkup(<SecAnnualLiquidity response={wire} />);
+    const html = renderToStaticMarkup(
+      <SecAnnualLiquidity response={wire} view={viewOf(wire)} />,
+    );
     expect(html).toContain("<caption>Balances at 2025-12-31</caption>");
     expect(html).toContain(
       'aria-label="Annual liquidity results" tabindex="0"',
@@ -153,7 +168,9 @@ describe("Annual liquidity presentation", () => {
       liquidityRow("current_assets", "150"),
       liquidityRow("current_liabilities", "100"),
     ]);
-    const html = renderToStaticMarkup(<SecAnnualLiquidity response={wire} />);
+    const html = renderToStaticMarkup(
+      <SecAnnualLiquidity response={wire} view={viewOf(wire)} />,
+    );
     expect(html).not.toContain("<details open");
     expect(html).toContain(
       "<summary>Liquidity sources and calculation inputs</summary>",
@@ -166,7 +183,10 @@ describe("Annual liquidity presentation", () => {
       "Not supplied; an instant balance requires no duration.",
     );
     expect(html).toContain("Filing focus, not balance year");
-    const balances = wire.evidence.liquidity;
+    const balances = derivePersonalSecAnnualFinancialInputs(
+      wire.evidence,
+    ).liquidity;
+    const { resolution } = viewOf(wire).liquidity;
     for (const metric of [
       balances.currentAssets,
       balances.currentLiabilities,
@@ -186,10 +206,10 @@ describe("Annual liquidity presentation", () => {
       }
     }
     expect(html).toContain(
-      `Working capital references: ${balances.resolution.workingCapital.observationIds.join(" · ")}`,
+      `Working capital references: ${resolution.workingCapital.observationIds.join(" · ")}`,
     );
     expect(html).toContain(
-      `Current ratio references: ${balances.resolution.currentRatio.observationIds.join(" · ")}`,
+      `Current ratio references: ${resolution.currentRatio.observationIds.join(" · ")}`,
     );
   });
 
@@ -225,7 +245,9 @@ describe("Annual liquidity presentation", () => {
         liquidityRow("current_assets", assets),
         liquidityRow("current_liabilities", liabilities),
       ]);
-      const html = renderToStaticMarkup(<SecAnnualLiquidity response={wire} />);
+      const html = renderToStaticMarkup(
+        <SecAnnualLiquidity response={wire} view={viewOf(wire)} />,
+      );
       for (const value of values)
         expect(html).toContain(`class="sec-annual-liquidity-amount">${value}<`);
       if (refusal) expect(html).toContain(`Unavailable. ${refusal}`);
@@ -237,7 +259,9 @@ describe("Annual liquidity presentation", () => {
     const wire = await liquidityResponse([
       liquidityRow("current_assets", "75"),
     ]);
-    const html = renderToStaticMarkup(<SecAnnualLiquidity response={wire} />);
+    const html = renderToStaticMarkup(
+      <SecAnnualLiquidity response={wire} view={viewOf(wire)} />,
+    );
     expect(html).toContain('class="sec-annual-liquidity-amount">75<');
     expect(html).toContain(
       "Unavailable. This reported balance concept is absent from the source.",
@@ -254,7 +278,9 @@ describe("Annual liquidity presentation", () => {
       }),
       liquidityRow("current_liabilities", "25"),
     ]);
-    const html = renderToStaticMarkup(<SecAnnualLiquidity response={wire} />);
+    const html = renderToStaticMarkup(
+      <SecAnnualLiquidity response={wire} view={viewOf(wire)} />,
+    );
     expect(html).toContain(
       "Unavailable. The source observation has a period rather than a balance at one date.",
     );
@@ -273,8 +299,10 @@ describe("Annual liquidity presentation", () => {
       ],
       "2028-09-20T00:00:00.000Z",
     );
-    const html = renderToStaticMarkup(<SecAnnualLiquidity response={wire} />);
-    const { workingCapital, currentRatio } = wire.evidence.liquidity.resolution;
+    const html = renderToStaticMarkup(
+      <SecAnnualLiquidity response={wire} view={viewOf(wire)} />,
+    );
+    const { workingCapital, currentRatio } = viewOf(wire).liquidity.resolution;
     expect(workingCapital.status).toBe("available");
     expect(currentRatio.status).toBe("available");
     if (
@@ -302,12 +330,14 @@ describe("Annual liquidity presentation", () => {
       liquidityRow("current_liabilities", "9".repeat(64)),
     ]);
     const negativeCapital =
-      negative.evidence.liquidity.resolution.workingCapital;
+      viewOf(negative).liquidity.resolution.workingCapital;
     if (negativeCapital.status !== "available")
       throw new Error("Expected negative working capital");
     expect(negativeCapital.value).toHaveLength(128);
     expect(
-      renderToStaticMarkup(<SecAnnualLiquidity response={negative} />),
+      renderToStaticMarkup(
+        <SecAnnualLiquidity response={negative} view={viewOf(negative)} />,
+      ),
     ).toContain(
       `class="sec-annual-liquidity-amount">${negativeCapital.value}<`,
     );
@@ -318,25 +348,44 @@ describe("Annual liquidity presentation", () => {
       liquidityRow("current_assets", "150"),
       liquidityRow("current_liabilities", "100"),
     ]);
-    const evidence = {
-      ...wire.evidence,
-      incomeScanStatus: "invalid_response" as const,
-      coverage: null,
-      observations: [],
-      completeness: {
-        status: "refused" as const,
-        reason: "source_unavailable" as const,
-      },
-    };
-    const packet = {
-      ...wire,
-      evidence: {
-        ...evidence,
-        resolution: resolvePersonalSecAnnualEvidence(evidence),
-      },
-    };
+    const incomeConcepts = new Set([
+      "Revenues",
+      "SalesRevenueNet",
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "NetIncomeLoss",
+    ]);
+    const packet = await admitUiPacket(
+      await withCanonicalAnnualGeneration({
+        ...wire,
+        evidence: {
+          ...wire.evidence,
+          facts: {
+            ...wire.evidence.facts,
+            observations: wire.evidence.facts.observations.filter(
+              (row) => !incomeConcepts.has(row.concept),
+            ),
+            scans: wire.evidence.facts.scans.map((item) =>
+              incomeConcepts.has(item.concept)
+                ? {
+                    concept: item.concept,
+                    scan: {
+                      status: "invalid_response",
+                      absence: null,
+                      coverage: null,
+                    } as const,
+                  }
+                : item,
+            ),
+          },
+        },
+      }),
+    );
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={packet} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={packet}
+        view={viewOf(packet)}
+        appearance="financial"
+      />,
     );
     expect(html).toContain("Revenue and net income withheld");
     expect(html.indexOf("Liquidity at fiscal year-end")).toBeGreaterThan(
@@ -344,7 +393,7 @@ describe("Annual liquidity presentation", () => {
     );
     expect(html).toContain('class="sec-annual-liquidity-amount">1.50×<');
     const local = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={packet} />,
+      <SecAnnualEvidenceResult response={packet} view={viewOf(packet)} />,
     );
     expect(local).not.toContain("Liquidity at fiscal year-end");
     expect(local).toContain("Cash sources and calculation inputs");

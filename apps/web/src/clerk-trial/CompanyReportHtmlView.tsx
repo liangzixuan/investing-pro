@@ -1,8 +1,6 @@
-import {
-  derivePersonalSecAnnualFinancialReview,
-  type PersonalSecAnnualFinancialReviewRow,
-} from "@research-cockpit/personal-financial-analytics";
-import type { PreparedCompanyReport } from "./managed-company-report";
+import { type PersonalSecAnnualFinancialReviewRow } from "@research-cockpit/personal-financial-analytics";
+import { AnnualStatementsReportView } from "./AnnualStatementsReportView";
+import { type PreparedCompanyReport } from "./managed-company-report";
 import { ManagedValuationResults } from "./ManagedValuationResults";
 
 type Value = PersonalSecAnnualFinancialReviewRow["value"];
@@ -127,6 +125,14 @@ function Annual({ report }: { readonly report: PreparedCompanyReport }) {
         <p>No Annual facts are inferred from another source.</p>
       </section>
     );
+  if (!source?.view || source.view.canonical !== packet.evidence)
+    return (
+      <section>
+        <h2>Annual financial facts</h2>
+        <p>Annual results no longer match their admitted source.</p>
+      </section>
+    );
+  const view = source.view;
   const { target, generation } = packet.evidence;
   return (
     <section>
@@ -137,9 +143,13 @@ function Annual({ report }: { readonly report: PreparedCompanyReport }) {
         amounts and do not rate the company. Flows and balances keep their own
         dates. Parent equity excludes noncontrolling interests.
       </p>
-      {derivePersonalSecAnnualFinancialReview(packet.evidence).map((row) => (
+      {view.financialReview.map((row) => (
         <Fact key={row.key} row={row} />
       ))}
+      <AnnualStatementsReportView
+        evidence={packet.evidence}
+        statements={view.statements}
+      />
       <h3>Original Annual filing and source dates</h3>
       {target.status === "target" ? (
         <dl>

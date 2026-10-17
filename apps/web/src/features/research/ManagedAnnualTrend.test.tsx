@@ -4,8 +4,9 @@ import {
   annualHistoryRows,
   annualComparativeRows,
   response,
+  viewOf,
   row,
-} from "./sec-annual-evidence-fixture";
+} from "./test-canonical-annual-ui-fixture";
 
 const hooks = vi.hoisted(() => ({
   values: [] as unknown[],
@@ -68,7 +69,7 @@ function text(node: React.ReactNode): string {
 }
 function render(wire: Wire) {
   hooks.begin();
-  return expand(ManagedAnnualTrend({ response: wire }));
+  return expand(ManagedAnnualTrend({ response: wire, view: viewOf(wire) }));
 }
 function select(tree: React.ReactNode, index: number) {
   return elements(tree).filter((e) => e.type === "select")[index]!;

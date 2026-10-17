@@ -8,7 +8,7 @@ import {
 import {
   cashResponse,
   cashRow,
-} from "../features/research/sec-annual-cash-fixture";
+} from "../features/research/test-canonical-annual-cash-ui-fixture";
 
 const hooks = vi.hoisted<{ state: unknown }>(() => ({ state: undefined }));
 vi.mock("react", async (original) => {

@@ -1,4 +1,4 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import type { PersonalSecAnnualFinancialReviewKey } from "@research-cockpit/personal-financial-analytics";
 import { proposeFinancialReviewNote } from "./managed-financial-review-note";
 
@@ -15,7 +15,7 @@ export interface FinancialReviewPreparation {
 /** One exact visit's inputs and lifetime, captured together by its workspace. */
 export interface FinancialReviewCapture {
   readonly note: string;
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
   readonly keys: readonly PersonalSecAnnualFinancialReviewKey[];
   readonly showingPrevious: boolean;
   readonly isCurrent: () => boolean;
@@ -24,7 +24,7 @@ export interface FinancialReviewCapture {
 
 export interface ManagedFinancialReviewActions {
   prepare: (
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     keys: readonly PersonalSecAnnualFinancialReviewKey[],
   ) => FinancialReviewPreparation;
   isCurrent: (preview: PreparedFinancialReview) => boolean;

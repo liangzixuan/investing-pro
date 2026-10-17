@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   balanceSheetResponse,
   balanceSheetRow,
-} from "./sec-annual-balance-sheet-fixture";
+  viewOf,
+} from "./test-canonical-annual-balance-ui-fixture";
 import {
   SecAnnualBalanceSheet,
   SecAnnualBalanceSheetSourceBody,
@@ -26,7 +27,7 @@ describe("Annual reported balance-sheet presentation", () => {
       const response = await balanceSheetResponse(rows(), cutoff),
         before = JSON.stringify(response);
       const html = renderToStaticMarkup(
-        <SecAnnualBalanceSheet response={response} />,
+        <SecAnnualBalanceSheet response={response} view={viewOf(response)} />,
       );
       expect(html).toContain(
         "Parent equity excludes noncontrolling interests.",
@@ -36,7 +37,7 @@ describe("Annual reported balance-sheet presentation", () => {
         "totalLiabilities",
         "shareholdersEquity",
       ] as const) {
-        const value = response.evidence.balanceSheet.resolution[key];
+        const value = viewOf(response).balanceSheet.resolution[key];
         expect(value.status).toBe("available");
         const body = renderToStaticMarkup(
           <SecAnnualBalanceSheetValueContent value={value} />,
@@ -58,7 +59,7 @@ describe("Annual reported balance-sheet presentation", () => {
       balanceSheetRow("shareholders_equity", "-1"),
     ]);
     const html = renderToStaticMarkup(
-      <SecAnnualBalanceSheet response={response} />,
+      <SecAnnualBalanceSheet response={response} view={viewOf(response)} />,
     );
     expect(html).toContain(
       "Unavailable. This reported balance concept is absent from the source.",
@@ -68,11 +69,16 @@ describe("Annual reported balance-sheet presentation", () => {
       "Missing totals are not inferred from an accounting equation",
     );
     const body = renderToStaticMarkup(
-      <SecAnnualBalanceSheetSourceBody response={response} />,
+      <SecAnnualBalanceSheetSourceBody
+        response={response}
+        view={viewOf(response)}
+      />,
     );
     expect(body).toContain("StockholdersEquity");
     expect(body).toContain(
-      response.evidence.balanceSheet.shareholdersEquity.observations[0]!.id,
+      response.evidence.facts.observations.find(
+        (row) => row.concept === "StockholdersEquity",
+      )!.id,
     );
     expect(body).toContain("/facts/us-gaap/StockholdersEquity/units/USD/0");
     expect(body).toContain("2026-09-20T00:00:01.000Z");
@@ -97,6 +103,7 @@ describe("Annual reported balance-sheet presentation", () => {
       const annual = renderToStaticMarkup(
         <SecAnnualEvidenceResult
           response={admitted!}
+          view={viewOf(admitted!)}
           appearance={appearance}
         />,
       );
@@ -107,7 +114,7 @@ describe("Annual reported balance-sheet presentation", () => {
       ] as const) {
         const body = renderToStaticMarkup(
           <SecAnnualBalanceSheetValueContent
-            value={admitted!.evidence.balanceSheet.resolution[key]}
+            value={viewOf(admitted!).balanceSheet.resolution[key]}
           />,
         );
         expect(annual).toContain(body);

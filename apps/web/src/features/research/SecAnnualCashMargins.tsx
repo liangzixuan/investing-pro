@@ -1,13 +1,10 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type {
-  PersonalSecAnnualCashObservationDto,
-  PersonalSecAnnualEvidenceDto,
-  PersonalSecAnnualEvidenceResponseDto,
-  PersonalSecQuarterlyObservationDto,
+  PersonalSecAnnualCanonicalEvidenceDto,
+  PersonalSecAnnualCanonicalResponseDto,
+  PersonalSecAnnualStatementObservationDto,
 } from "@research-cockpit/contracts";
-import {
-  derivePersonalSecAnnualCashMargins,
-  type PersonalSecAnnualCashMargin,
-} from "@research-cockpit/personal-financial-analytics";
+import { type PersonalSecAnnualCashMargin } from "@research-cockpit/personal-financial-analytics";
 import {
   annualCashUnavailableReasonText,
   SecAnnualCashValueContent,
@@ -21,8 +18,10 @@ import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
 
 export function SecAnnualCashMargins({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
   const { evidence } = response;
   return (
@@ -36,7 +35,7 @@ export function SecAnnualCashMargins({
         revenue concept is a separate basis. The app uses the same filing and
         period, then rounds the percentage once to two decimal places.
       </p>
-      {derivePersonalSecAnnualCashMargins(evidence).map((basis) => (
+      {view.cashMargins.map((basis) => (
         <CashMarginBasis
           key={basis.concept}
           basis={basis}
@@ -49,7 +48,7 @@ export function SecAnnualCashMargins({
 
 type BasisProps = {
   readonly basis: PersonalSecAnnualCashMargin;
-  readonly evidence: PersonalSecAnnualEvidenceDto;
+  readonly evidence: PersonalSecAnnualCanonicalEvidenceDto;
 };
 
 function CashMarginBasis({ basis, evidence }: BasisProps) {
@@ -142,17 +141,17 @@ export function SecAnnualCashMarginInputs({ basis, evidence }: BasisProps) {
       <InputReferences
         label="Operating cash flow"
         ids={basis.operands.operatingCashFlow.observationIds}
-        rows={evidence.cashGeneration.operatingCashFlow.observations}
+        rows={evidence.facts.observations}
       />
       <InputReferences
         label="PP&E purchases"
         ids={basis.operands.ppePurchases.observationIds}
-        rows={evidence.cashGeneration.ppePurchases.observations}
+        rows={evidence.facts.observations}
       />
       <InputReferences
         label={basis.concept}
         ids={basis.operands.revenue.observationIds}
-        rows={evidence.observations}
+        rows={evidence.facts.observations}
       />
       <p>
         Calculation references:{" "}
@@ -192,9 +191,7 @@ function InputReferences({
 }: {
   readonly label: string;
   readonly ids: readonly string[];
-  readonly rows: readonly (
-    PersonalSecQuarterlyObservationDto | PersonalSecAnnualCashObservationDto
-  )[];
+  readonly rows: readonly PersonalSecAnnualStatementObservationDto[];
 }) {
   return (
     <section aria-label={`${label} cash margin references`}>

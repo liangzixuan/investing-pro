@@ -1,6 +1,6 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import {
-  resolvePersonalSecAnnualCashHistory,
   type PersonalSecAnnualCashHistoryPeriod,
   type PersonalSecAnnualCashHistoryReason,
 } from "@research-cockpit/personal-financial-analytics";
@@ -40,9 +40,16 @@ export type ManagedAnnualCashTrendProjection =
 
 /** Uses only the already admitted same-filing cash history. */
 export function projectManagedAnnualCashTrend(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
+  view: PersonalSecAnnualCanonicalView,
 ): ManagedAnnualCashTrendProjection {
-  const history = resolvePersonalSecAnnualCashHistory(response.evidence);
+  if (view.canonical !== response.evidence)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "invalid_response",
+      stoppedReason: null,
+    });
+  const history = view.cashGeneration.history;
   if (history.status === "unavailable")
     return Object.freeze({
       status: "unavailable",

@@ -1,46 +1,74 @@
+import {
+  admitUiPacket,
+  viewOf,
+} from "../../src/features/research/test-canonical-annual-ui-fixture";
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   comparePersonalSecAnnualBalanceSheetHistory,
-  resolvePersonalSecAnnualBalanceSheetHistory,
+  resolvePersonalSecAnnualCanonicalBalanceSheetHistory,
 } from "@research-cockpit/personal-financial-analytics";
 import { SecAnnualBalanceSheetHistory } from "../../src/features/research/SecAnnualBalanceSheetHistory";
 import { SecAnnualBalanceSheetChange } from "../../src/features/research/SecAnnualBalanceSheetChange";
 import type { ManagedApi } from "../../src/clerk-trial/managed-api";
 import { createFixture } from "./fixture";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
-import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
+import { parseSecAnnualCanonicalResponse } from "../../src/lib/sec-annual-canonical-response";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { companySnapshotEvidence } from "../../src/clerk-trial/managed-company-snapshot";
 import { prepareCompanyReport } from "../../src/clerk-trial/managed-company-report";
 import { formatCompanyReportDocument } from "../../src/clerk-trial/managed-company-report-document";
 
 const request = {
-  schemaVersion: "5.0.0" as const,
+  schemaVersion: "6.0.0" as const,
   catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
   listingId: "listing-zero",
   symbol: "ZERO",
 };
 const keys = ["totalAssets", "totalLiabilities", "shareholdersEquity"] as const;
 const amounts = ["1000.125", "1200.25", "-200.125"];
+const concepts = {
+  totalAssets: "Assets",
+  totalLiabilities: "Liabilities",
+  shareholdersEquity: "StockholdersEquity",
+} as const;
+function sourceRows(
+  response: Awaited<ReturnType<typeof balanceSheetPacket>>,
+  key: (typeof keys)[number],
+) {
+  return response.evidence.facts.observations.filter(
+    (row) => row.concept === concepts[key],
+  );
+}
 
 describe("invented balance-sheet acceptance", () => {
   it("admits three independent instant totals with original filing coordinates and absent income", async () => {
     const packet = await balanceSheetPacket();
-    const decoded = await parseSecAnnualEvidenceResponse(
+    const decoded = await parseSecAnnualCanonicalResponse(
       packet,
       request,
       new AbortController().signal,
     );
     expect(decoded).toEqual(packet);
     if (!decoded) throw new Error("Expected admitted balance-sheet packet");
-    expect(decoded.evidence.observations).toEqual([]);
-    expect(decoded.evidence.resolution.pairs).toEqual([]);
+    expect(decoded.schemaVersion).toBe("6.0.0");
+    expect(decoded.evidence.facts.scans).toHaveLength(32);
+    expect(
+      decoded.evidence.facts.observations.filter((row) =>
+        [
+          "Revenues",
+          "SalesRevenueNet",
+          "RevenueFromContractWithCustomerExcludingAssessedTax",
+          "NetIncomeLoss",
+        ].includes(row.concept),
+      ),
+    ).toEqual([]);
+    expect(viewOf(decoded).income.resolution.pairs).toEqual([]);
     for (const [index, key] of keys.entries()) {
-      const metric = decoded.evidence.balanceSheet[key];
-      expect(metric.observations).toHaveLength([3, 2, 3][index]!);
-      expect(metric.observations[0]).toMatchObject({
+      const observations = sourceRows(decoded, key);
+      expect(observations).toHaveLength([3, 2, 3][index]!);
+      expect(observations[0]).toMatchObject({
         value: amounts[index],
         unit: "USD",
         startDate: null,
@@ -49,17 +77,17 @@ describe("invented balance-sheet acceptance", () => {
         accessionNumber: "0000000001-26-000001",
         filing: { status: "matched", reportDate: "2025-12-31" },
       });
-      expect(metric.observations[0]!.sourceLocator).toBe(
+      expect(observations[0]!.sourceLocator).toBe(
         `/facts/us-gaap/${["Assets", "Liabilities", "StockholdersEquity"][index]}/units/USD/0`,
       );
-      expect(decoded.evidence.balanceSheet.resolution[key]).toEqual({
+      expect(viewOf(decoded).balanceSheet.resolution[key]).toEqual({
         status: "available",
         unit: "USD",
         value: amounts[index],
         asOfDate: "2025-12-31",
         accessionNumber: "0000000001-26-000001",
         currentUseEligible: true,
-        observationIds: [metric.observations[0]!.id],
+        observationIds: [observations[0]!.id],
       });
     }
     const history = historyFor(decoded);
@@ -96,7 +124,7 @@ describe("invented balance-sheet acceptance", () => {
         difference: "99.625",
         current: history.balances[0]!.totalAssets,
         prior: history.balances[1]!.totalAssets,
-        observationIds: decoded.evidence.balanceSheet.totalAssets.observations
+        observationIds: sourceRows(decoded, "totalAssets")
           .slice(0, 2)
           .map((row) => row.id),
       },
@@ -123,7 +151,7 @@ describe("invented balance-sheet acceptance", () => {
     expect(calculated).not.toContain("300.25");
     expect(calculated).not.toContain("2023-09-30");
     for (const key of keys)
-      for (const row of decoded.evidence.balanceSheet[key].observations) {
+      for (const row of sourceRows(decoded, key)) {
         expect(row.accessionNumber).toBe("0000000001-26-000001");
         expect(row.filing.reportDate).toBe("2025-12-31");
         expect(row.filing.acceptedAt).toBe("2026-02-01T00:00:00.000Z");
@@ -197,7 +225,7 @@ describe("invented balance-sheet acceptance", () => {
     expect(JSON.stringify(JSON.parse(document.text))).toContain(
       JSON.stringify(initial),
     );
-    const captured = await parseSecAnnualEvidenceResponse(
+    const captured = await parseSecAnnualCanonicalResponse(
       (
         JSON.parse(document.text) as {
           sources: { annual: { response: unknown } };
@@ -212,15 +240,19 @@ describe("invented balance-sheet acceptance", () => {
     expect(changeMarkup(captured)).toBe(calculatedBefore);
     expect(fixture.getSnapshot().save).toBe(0);
     expect(
-      initial.evidence.balanceSheet.totalAssets.observations.map(
-        (row) => row.endDate,
-      ),
+      sourceRows(initial, "totalAssets").map((row) => row.endDate),
     ).toEqual(["2025-12-31", "2024-12-31", "2023-09-30"]);
-    expect(Object.keys(initial.evidence.balanceSheet)).toEqual([
-      "totalAssets",
-      "totalLiabilities",
-      "shareholdersEquity",
+    expect(
+      initial.evidence.facts.scans
+        .filter((item) =>
+          Object.values(concepts).some((concept) => concept === item.concept),
+        )
+        .map((item) => item.concept),
+    ).toEqual(["Assets", "Liabilities", "StockholdersEquity"]);
+    expect(Object.keys(viewOf(initial).balanceSheet)).toEqual([
       "resolution",
+      "history",
+      "change",
     ]);
     expect(fixture.getSnapshot().annual).toBe(1);
     await workspace.annual.load();
@@ -301,6 +333,7 @@ describe("invented balance-sheet acceptance", () => {
         catalogSnapshotSha256: `sha256:${"b".repeat(64)}` as const,
       },
       { ...request, schemaVersion: "4.0.0" },
+      { ...request, schemaVersion: "5.0.0" },
     ])
       expect(() =>
         fixture.api.annualReport(wrong as typeof request, signal),
@@ -320,8 +353,8 @@ describe("invented balance-sheet acceptance", () => {
     });
     controller.abort();
     fixture.settleCancelledRead();
-    const late = await held;
-    expect(late.evidence.balanceSheet.resolution.totalAssets).toMatchObject({
+    const late = await admitUiPacket(await held);
+    expect(viewOf(late).balanceSheet.resolution.totalAssets).toMatchObject({
       value: "999.875",
     });
     expect(() => fixture.api.annualReport(request, signal)).toThrow(
@@ -353,21 +386,16 @@ describe("invented balance-sheet acceptance", () => {
 });
 
 function historyFor(response: Awaited<ReturnType<typeof balanceSheetPacket>>) {
-  const { cik, generation, target, balanceSheet } = response.evidence;
-  return resolvePersonalSecAnnualBalanceSheetHistory({
-    cik,
-    generation,
-    target,
-    balanceSheet: {
-      totalAssets: balanceSheet.totalAssets,
-      totalLiabilities: balanceSheet.totalLiabilities,
-      shareholdersEquity: balanceSheet.shareholdersEquity,
-    },
-  });
+  return resolvePersonalSecAnnualCanonicalBalanceSheetHistory(
+    response.evidence,
+  );
 }
 function markup(response: Awaited<ReturnType<typeof balanceSheetPacket>>) {
   return renderToStaticMarkup(
-    createElement(SecAnnualBalanceSheetHistory, { response }),
+    createElement(SecAnnualBalanceSheetHistory, {
+      response,
+      view: viewOf(response),
+    }),
   );
 }
 function changeFor(response: Awaited<ReturnType<typeof balanceSheetPacket>>) {
@@ -378,19 +406,19 @@ function changeMarkup(
 ) {
   return renderToStaticMarkup(
     createElement(SecAnnualBalanceSheetChange, {
-      history: historyFor(response),
+      change: changeFor(response),
     }),
   );
 }
 
 describe("balance-sheet history cancellation and replacement", () => {
   it("retains dated history on Cancel, ignores a changed late packet and replaces only after a new explicit read", async () => {
-    const first = await parseSecAnnualEvidenceResponse(
+    const first = await parseSecAnnualCanonicalResponse(
         await balanceSheetPacket(),
         request,
         new AbortController().signal,
       ),
-      replacement = await parseSecAnnualEvidenceResponse(
+      replacement = await parseSecAnnualCanonicalResponse(
         await balanceSheetPacket(true),
         request,
         new AbortController().signal,

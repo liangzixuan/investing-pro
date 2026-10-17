@@ -3,6 +3,7 @@ import { isValidElement, type ReactNode, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MainWatchlistPayload } from "@research-cockpit/contracts";
+import { derivePersonalSecAnnualFinancialInputs } from "@research-cockpit/personal-financial-analytics";
 import type { ComponentProps } from "react";
 import type { ManagedWatchlistAnnualComparisonNoteAction } from "./ManagedWatchlistAnnualComparisonNoteAction";
 import { TrialApiError } from "./api";
@@ -19,7 +20,8 @@ import {
   annualComparisonBalanceRows as reportedRows,
   annualComparisonRows as incomeRows,
   annualComparisonResponse as packet,
-} from "./annual-comparison-fixture";
+  viewOf,
+} from "./test-canonical-annual-comparison-fixture";
 
 const noteAction = vi.hoisted(() => ({
   props: null as ComponentProps<
@@ -529,7 +531,7 @@ describe("watchlist annual comparison controls and presentation", () => {
     for (const wire of [left, right]) {
       expect(html).toContain(wire.evidence.generation.completedAt);
       expect(html).toContain(wire.evidence.generation.sha256);
-      for (const item of wire.evidence.observations)
+      for (const item of wire.evidence.facts.observations)
         expect(html).toContain(item.id);
     }
     expect(html).toContain("<details><summary>First company source");
@@ -796,7 +798,9 @@ describe("cash in the existing annual comparison", () => {
       );
       expect(source).toBeDefined();
       const section = renderToStaticMarkup(source);
-      const cash = wire.evidence.cashGeneration;
+      const cash = derivePersonalSecAnnualFinancialInputs(
+        wire.evidence,
+      ).cashGeneration;
       for (const metric of [cash.operatingCashFlow, cash.ppePurchases]) {
         for (const row of metric.observations) {
           for (const text of [
@@ -1138,7 +1142,10 @@ describe("liquidity in the existing annual comparison", () => {
       );
       expect(source).toBeDefined();
       const section = renderToStaticMarkup(source);
-      const { liquidity, generation } = wire.evidence;
+      const { generation } = wire.evidence;
+      const { liquidity } = derivePersonalSecAnnualFinancialInputs(
+        wire.evidence,
+      );
       for (const metric of [
         liquidity.currentAssets,
         liquidity.currentLiabilities,
@@ -1516,12 +1523,15 @@ describe("operating results in the existing annual comparison", () => {
       expect(source).toBeDefined();
       expect(renderToStaticMarkup(source)).toContain(
         renderToStaticMarkup(
-          <SecAnnualOperatingSourceBody response={response} />,
+          <SecAnnualOperatingSourceBody
+            response={response}
+            view={viewOf(response)}
+          />,
         ),
       );
-      for (const id of response.evidence.operatingResults.operatingIncome.observations.map(
-        (row) => row.id,
-      ))
+      for (const id of response.evidence.facts.observations
+        .filter((row) => row.concept === "OperatingIncomeLoss")
+        .map((row) => row.id))
         expect(renderToStaticMarkup(source)).toContain(id);
     }
     expect(html).not.toContain("<details open");
@@ -1812,8 +1822,9 @@ describe("reported balance sheet totals in the existing annual comparison", () =
       expect(source).toContain(wire.evidence.generation.completedAt);
       expect(source).toContain(wire.evidence.generation.cutoffAt);
       for (const metric of reportedMetrics)
-        for (const observation of wire.evidence.balanceSheet[metric]
-          .observations) {
+        for (const observation of derivePersonalSecAnnualFinancialInputs(
+          wire.evidence,
+        ).balanceSheet[metric].observations) {
           for (const value of [
             observation.id,
             observation.sourceLocator,
@@ -1973,7 +1984,7 @@ describe("cash margins in the existing Annual comparison", () => {
         (node) => node.props["data-annual-comparison-cash-source"] === side,
       )!;
       expect(renderToStaticMarkup(source)).toBe(
-        `<div class="managed-annual-comparison-cash-source" data-annual-comparison-cash-source="${side}"><h4>Cash sources and calculation inputs</h4>${renderToStaticMarkup(<SecAnnualCashSourceBody response={response} />)}</div>`,
+        `<div class="managed-annual-comparison-cash-source" data-annual-comparison-cash-source="${side}"><h4>Cash sources and calculation inputs</h4>${renderToStaticMarkup(<SecAnnualCashSourceBody response={response} view={viewOf(response)} />)}</div>`,
       );
       const marginSource = walk(tree).find(
         (node) =>

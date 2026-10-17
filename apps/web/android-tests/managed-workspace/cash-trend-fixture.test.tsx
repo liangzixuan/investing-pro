@@ -2,16 +2,24 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type {
   PersonalSecAnnualCashObservationDto,
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualCashHistory } from "@research-cockpit/personal-financial-analytics";
+
 import { createFixture } from "./fixture";
 import {
   annualCashHistoryRows,
   cashResponse,
-} from "../../src/features/research/sec-annual-cash-fixture";
-import { request } from "../../src/features/research/sec-annual-evidence-fixture";
-import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
+} from "../../src/features/research/test-canonical-annual-cash-ui-fixture";
+import { viewOf } from "../../src/features/research/test-canonical-annual-ui-fixture";
+function request() {
+  return {
+    schemaVersion: "6.0.0" as const,
+    catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
+    listingId: "listing-zero",
+    symbol: "ZERO",
+  };
+}
+import { parseSecAnnualCanonicalResponse } from "../../src/lib/sec-annual-canonical-response";
 import { projectManagedAnnualCashTrend } from "../../src/features/research/managed-annual-cash-trend-input";
 import { SecAnnualCashHistory } from "../../src/features/research/SecAnnualCashHistory";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
@@ -29,7 +37,7 @@ async function admittedCash(
   cutoffAt?: string,
 ) {
   const candidate = await cashResponse(rows, cutoffAt);
-  const admitted = await parseSecAnnualEvidenceResponse(
+  const admitted = await parseSecAnnualCanonicalResponse(
     candidate,
     request(),
     new AbortController().signal,
@@ -40,8 +48,8 @@ async function admittedCash(
 }
 
 function heldRead() {
-  let finish!: (packet: PersonalSecAnnualEvidenceResponseDto) => void;
-  const promise = new Promise<PersonalSecAnnualEvidenceResponseDto>(
+  let finish!: (packet: PersonalSecAnnualCanonicalResponseDto) => void;
+  const promise = new Promise<PersonalSecAnnualCanonicalResponseDto>(
     (resolve) => {
       finish = resolve;
     },
@@ -146,17 +154,17 @@ function expectDraftsAndReads(journey: Journey, annualReads: number) {
 
 function inspectCash(
   journey: Journey,
-  packet: PersonalSecAnnualEvidenceResponseDto,
+  packet: PersonalSecAnnualCanonicalResponseDto,
 ) {
   const before = journey.fixture.getSnapshot(),
     reads = journey.annual.mock.calls.length;
   const exactPacket = JSON.stringify(packet);
-  const projection = projectManagedAnnualCashTrend(packet);
-  const history = resolvePersonalSecAnnualCashHistory(packet.evidence);
+  const projection = projectManagedAnnualCashTrend(packet, viewOf(packet));
+  const history = viewOf(packet).cashGeneration.history;
   if (projection.status !== "ready" || history.status !== "available")
     throw new Error("Expected comparative cash history");
   const markup = renderToStaticMarkup(
-    <SecAnnualCashHistory response={packet} />,
+    <SecAnnualCashHistory response={packet} view={viewOf(packet)} />,
   );
   expect(projection.periods).toEqual([...history.periods].reverse());
   expect(projection.completedAt).toBe(packet.evidence.generation.completedAt);

@@ -1,3 +1,4 @@
+import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,16 +24,16 @@ import type { AndroidBackAdapter } from "../mobile/android-back";
 import {
   response as annualResponse,
   annualComparativeRows,
-} from "../features/research/sec-annual-evidence-fixture";
+} from "../features/research/test-canonical-annual-ui-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import {
   cashResponse,
   cashRow,
-} from "../features/research/sec-annual-cash-fixture";
+} from "../features/research/test-canonical-annual-cash-ui-fixture";
 import {
   liquidityResponse,
   liquidityRow,
-} from "../features/research/sec-annual-liquidity-fixture";
+} from "../features/research/test-canonical-annual-liquidity-ui-fixture";
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
@@ -52,7 +53,7 @@ import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualCompar
 import {
   annualComparisonMemberships,
   annualComparisonResponse,
-} from "./annual-comparison-fixture";
+} from "./test-canonical-annual-comparison-fixture";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
 import {
   getAnnualComparisonNoteEvidence,
@@ -98,15 +99,68 @@ const mounted = vi.hoisted(() => ({
   editorRefs: [] as Array<{ current: unknown }>,
   editorRefIndex: 0,
   editorEffects: [] as Array<() => void>,
+  trackEffectDependencies: false,
+  effectIndex: 0,
+  effectSlots: [] as Array<{
+    dependencies: React.DependencyList | undefined;
+    cleanup: (() => void) | undefined;
+  }>,
+  effectEventIndex: 0,
+  effectEvents: [] as Array<{
+    callback: (...args: never[]) => unknown;
+    invoke: (...args: never[]) => unknown;
+  }>,
+  effectEventCommits: [] as Array<() => void>,
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
   return {
     ...actual,
-    useEffect: (effect: () => (() => void) | void) =>
-      mounted.editorDirect
-        ? mounted.editorEffects.push(effect)
-        : mounted.effects.push(effect),
+    useEffect: (
+      effect: () => (() => void) | void,
+      dependencies?: React.DependencyList,
+    ) => {
+      if (mounted.editorDirect) return mounted.editorEffects.push(effect);
+      if (!mounted.trackEffectDependencies) return mounted.effects.push(effect);
+      const index = mounted.effectIndex++;
+      const prior = mounted.effectSlots[index];
+      if (
+        prior &&
+        dependencies &&
+        prior.dependencies &&
+        dependencies.length === prior.dependencies.length &&
+        dependencies.every((value, at) =>
+          Object.is(value, prior.dependencies![at]),
+        )
+      )
+        return;
+      mounted.effects.push(() => {
+        prior?.cleanup?.();
+        const cleanup = effect();
+        mounted.effectSlots[index] = {
+          dependencies,
+          cleanup: cleanup || undefined,
+        };
+        return cleanup;
+      });
+    },
+    useEffectEvent: <T extends (...args: never[]) => unknown>(
+      callback: T,
+    ): T => {
+      // Existing SSR tests also mount their queued effects manually after rendering.
+      if (!mounted.trackEffectDependencies) return callback;
+      const index = mounted.effectEventIndex++;
+      const slot = (mounted.effectEvents[index] ??= {
+        callback,
+        invoke: (...args: never[]) =>
+          mounted.effectEvents[index]!.callback(...args),
+      });
+      // React updates Effect Events at commit, not during an abandoned render.
+      mounted.effectEventCommits.push(() => {
+        slot.callback = callback;
+      });
+      return slot.invoke as T;
+    },
     useLayoutEffect: (
       effect: () => (() => void) | void,
       dependencies: React.DependencyList,
@@ -196,6 +250,12 @@ beforeEach(() => {
   mounted.editorState = [];
   mounted.editorRefs = [];
   mounted.editorEffects = [];
+  mounted.trackEffectDependencies = false;
+  mounted.effectIndex = 0;
+  mounted.effectSlots = [];
+  mounted.effectEventIndex = 0;
+  mounted.effectEvents = [];
+  mounted.effectEventCommits = [];
 });
 afterEach(() => {
   for (const cleanup of mounted.cleanups) cleanup();
@@ -236,6 +296,35 @@ function mountEffects() {
     const cleanup = effect();
     if (cleanup) mounted.cleanups.push(cleanup);
   }
+}
+function committedNativeScreen(workspace: ManagedWorkspace) {
+  mounted.direct = true;
+  mounted.trackEffectDependencies = true;
+  return {
+    render(adapter: AndroidBackAdapter, navigation: ManagedCompanyNavigation) {
+      mounted.refIndex = 0;
+      mounted.effectIndex = 0;
+      mounted.effectEventIndex = 0;
+      return ManagedWorkspaceScreen({
+        workspace,
+        androidBack: adapter,
+        navigation,
+      });
+    },
+    commit() {
+      for (const event of mounted.effectEventCommits.splice(0)) event();
+      for (const layout of mounted.layoutEffects.splice(0)) layout();
+      for (const effect of mounted.effects.splice(0)) {
+        const cleanup = effect();
+        if (cleanup) mounted.cleanups.push(cleanup);
+      }
+    },
+    discard() {
+      mounted.effectEventCommits.length = 0;
+      mounted.layoutEffects.length = 0;
+      mounted.effects.length = 0;
+    },
+  };
 }
 
 const payload: MainWatchlistPayload = {
@@ -565,15 +654,23 @@ async function comparisonNoteReviewFixture(
     left: {
       member: state.left.selected!,
       response: state.left.report.response!,
-      selectedBasis: projectAnnualComparison(state.left.report.response)
-        .selectedBasis,
+      selectedBasis: projectAnnualComparison(
+        state.left.report.response,
+        state.left.report.response === null
+          ? null
+          : viewOf(state.left.report.response),
+      ).selectedBasis,
       showingPrevious: false,
     },
     right: {
       member: state.right.selected!,
       response: state.right.report.response!,
-      selectedBasis: projectAnnualComparison(state.right.report.response)
-        .selectedBasis,
+      selectedBasis: projectAnnualComparison(
+        state.right.report.response,
+        state.right.report.response === null
+          ? null
+          : viewOf(state.right.report.response),
+      ).selectedBasis,
       showingPrevious: false,
     },
   };
@@ -2547,7 +2644,7 @@ describe("managed workspace screen", () => {
         React.ComponentProps<typeof ManagedCompanyResearch>
       >;
     };
-    const pair = report.evidence.resolution.bases.flatMap(
+    const pair = viewOf(report).income.resolution.bases.flatMap(
       (basis) => basis.pairs,
     )[0]!;
     const captured = company().props.annualNoteActions;
@@ -2619,7 +2716,7 @@ describe("managed workspace screen", () => {
       React.ComponentProps<typeof ManagedCompanyResearch>
     >;
     const actions = company.props.annualNoteActions;
-    const pair = report.evidence.resolution.bases.flatMap(
+    const pair = viewOf(report).income.resolution.bases.flatMap(
       (basis) => basis.pairs,
     )[0]!;
     const draft = workspace.coordinator.getSnapshot().draft;
@@ -2628,7 +2725,7 @@ describe("managed workspace screen", () => {
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     workspace.closeResearch();
     workspace.openWatchlistAnnual(draft!.memberships[0]!);
-    const nextPair = next.evidence.resolution.bases.flatMap(
+    const nextPair = viewOf(next).income.resolution.bases.flatMap(
       (basis) => basis.pairs,
     )[0]!;
     expect(actions.append(next, nextPair).appended).toBe(false);
@@ -3785,8 +3882,12 @@ describe("managed workspace screen", () => {
       const side = (key: "left" | "right") => ({
         member: current[key].selected!,
         response: current[key].report.response!,
-        selectedBasis: projectAnnualComparison(current[key].report.response)
-          .selectedBasis,
+        selectedBasis: projectAnnualComparison(
+          current[key].report.response,
+          current[key].report.response === null
+            ? null
+            : viewOf(current[key].report.response),
+        ).selectedBasis,
         showingPrevious: current[key].report.showingPrevious,
       });
       const capture: AnnualComparisonNoteCapture = {
@@ -4992,6 +5093,141 @@ describe("managed workspace screen", () => {
     fixture().html();
     mountEffects();
     expect(native.addListener).not.toHaveBeenCalled();
+  });
+  it("delivers Back to the committed company policy during delayed registration without a route-change subscription gap", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note(
+      "listing-one",
+      "Exact draft retained through one native Back",
+    );
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    const registration = deferred<{ remove: () => Promise<void> }>();
+    const removal = deferred<void>();
+    const remove = vi.fn(() => removal.promise);
+    let nativeEvent!: (event: { canGoBack: boolean }) => void;
+    const addListener = vi.fn<AndroidBackAdapter["addListener"]>(
+      (_event, callback) => {
+        nativeEvent = callback;
+        return registration.promise;
+      },
+    );
+    const adapter: AndroidBackAdapter = { addListener };
+    const rootBack = vi.fn();
+    const companyBack = vi.fn(() => workspace.closeResearch());
+    const discardedBack = vi.fn();
+    const root: ManagedCompanyNavigation = {
+      invalid: false,
+      pending: false,
+      isPending: () => false,
+      returnFocus: 0,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn(() => true),
+      back: rootBack,
+      hasCompanyRoute: () => false,
+    };
+    const screen = committedNativeScreen(workspace);
+    screen.render(adapter, root);
+    screen.commit();
+    const registeredEvent = nativeEvent;
+    workspace.openWatchlistAnnual(draft.memberships[0]!);
+    const company = { ...root, back: companyBack, hasCompanyRoute: () => true };
+    screen.render(adapter, company);
+    screen.commit();
+    // A pending render must not publish its handler to the native subscription.
+    screen.render(adapter, { ...company, back: discardedBack });
+    registeredEvent({ canGoBack: true });
+    expect(companyBack).toHaveBeenCalledOnce();
+    expect(rootBack).not.toHaveBeenCalled();
+    expect(discardedBack).not.toHaveBeenCalled();
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(addListener).toHaveBeenCalledOnce();
+    expect(remove).not.toHaveBeenCalled();
+    for (const request of [
+      api.annualReport,
+      api.eodHistory,
+      api.recentFilings,
+      api.save,
+    ])
+      expect(request).not.toHaveBeenCalled();
+    screen.discard();
+    workspace.coordinator.retire();
+    registeredEvent({ canGoBack: false });
+    expect(companyBack).toHaveBeenCalledOnce();
+    registration.resolve({ remove });
+    await Promise.resolve();
+    expect(remove).toHaveBeenCalledOnce();
+    removal.resolve();
+  });
+  it("keeps pending navigation guarded and fences a replaced adapter while its native removal is delayed", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    workspace.openWatchlistAnnual(draft.memberships[0]!);
+    const visit = workspace.getSnapshot().research;
+    const first = nativeBackFixture();
+    const second = nativeBackFixture();
+    const oldRemoval = deferred<void>();
+    first.remove.mockImplementation(() => oldRemoval.promise);
+    const pendingBack = vi.fn();
+    const settledBack = vi.fn(() => workspace.closeResearch());
+    const pending: ManagedCompanyNavigation = {
+      invalid: false,
+      pending: true,
+      isPending: () => true,
+      returnFocus: 0,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn(() => true),
+      // The router's pending Back policy deliberately does not navigate.
+      back: pendingBack,
+      hasCompanyRoute: () => true,
+    };
+    const screen = committedNativeScreen(workspace);
+    screen.render(first.adapter, pending);
+    screen.commit();
+    first.press(true);
+    expect(pendingBack).toHaveBeenCalledOnce();
+    expect(workspace.getSnapshot().research).toBe(visit);
+    const settled = {
+      ...pending,
+      pending: false,
+      isPending: () => false,
+      back: settledBack,
+    };
+    screen.render(second.adapter, settled);
+    screen.commit();
+    first.press(true);
+    expect(pendingBack).toHaveBeenCalledOnce();
+    expect(settledBack).not.toHaveBeenCalled();
+    first.ready();
+    await Promise.resolve();
+    expect(first.remove).toHaveBeenCalledOnce();
+    // The replacement remains usable while the old removal promise is unresolved.
+    second.press(true);
+    expect(settledBack).toHaveBeenCalledOnce();
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(first.addListener).toHaveBeenCalledOnce();
+    expect(second.addListener).toHaveBeenCalledOnce();
+    workspace.coordinator.retire();
+    second.press(true);
+    second.ready();
+    await Promise.resolve();
+    expect(settledBack).toHaveBeenCalledOnce();
+    expect(second.remove).toHaveBeenCalledOnce();
+    oldRemoval.resolve();
+    for (const request of [
+      api.annualReport,
+      api.eodHistory,
+      api.recentFilings,
+      api.save,
+    ])
+      expect(request).not.toHaveBeenCalled();
   });
   it.each([false, true])(
     "consumes Annual Back before native history (%s), restores focus and preserves the draft",

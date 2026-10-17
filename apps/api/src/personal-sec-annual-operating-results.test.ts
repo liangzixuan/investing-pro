@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 
-import { PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS } from "@research-cockpit/contracts";
+import {
+  PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
+  type PersonalSecAnnualCanonicalEvidenceDto,
+} from "@research-cockpit/contracts";
+import {
+  derivePersonalSecAnnualCanonicalView,
+  derivePersonalSecAnnualFinancialInputs,
+} from "@research-cockpit/personal-financial-analytics";
 import { describe, expect, it, vi } from "vitest";
 
 import { normalizePersonalSecAnnualCompanyFacts } from "./personal-sec-annual-company-facts";
@@ -283,6 +290,31 @@ describe("fixed Annual operating-income CompanyFacts scan", () => {
   });
 });
 
+const sourceCache = new WeakMap<
+  PersonalSecAnnualCanonicalEvidenceDto,
+  ReturnType<typeof derivePersonalSecAnnualFinancialInputs>
+>();
+const viewCache = new WeakMap<
+  PersonalSecAnnualCanonicalEvidenceDto,
+  ReturnType<typeof derivePersonalSecAnnualCanonicalView>
+>();
+function source(value: PersonalSecAnnualCanonicalEvidenceDto) {
+  let result = sourceCache.get(value);
+  if (result === undefined) {
+    result = derivePersonalSecAnnualFinancialInputs(value);
+    sourceCache.set(value, result);
+  }
+  return result;
+}
+function view(value: PersonalSecAnnualCanonicalEvidenceDto) {
+  let result = viewCache.get(value);
+  if (result === undefined) {
+    result = derivePersonalSecAnnualCanonicalView(value);
+    viewCache.set(value, result);
+  }
+  return result;
+}
+
 describe("Annual operating evidence from the existing two sources", () => {
   it("preserves three same-filing operating and revenue periods without net income or another request", async () => {
     const periods = [2025, 2024, 2023].map((year) => ({
@@ -308,14 +340,20 @@ describe("Annual operating evidence from the existing two sources", () => {
       ),
     );
     const result = await fixture.load();
-    expect(result.observations).toHaveLength(3);
-    expect(result.operatingResults.operatingIncome.observations).toHaveLength(
-      3,
-    );
+    expect(result.generation.definitionVersion).toBe("6.0.0");
+    expect(result.facts.scans).toHaveLength(32);
+    expect(source(result).income.observations).toHaveLength(3);
+    expect(
+      source(result).operatingResults.operatingIncome.observations,
+    ).toHaveLength(3);
     for (const rows of [
-      result.observations,
-      result.operatingResults.operatingIncome.observations,
+      source(result).income.observations,
+      source(result).operatingResults.operatingIncome.observations,
     ]) {
+      for (const row of rows) {
+        expect(result.facts.observations).toContain(row);
+        expect(Object.hasOwn(row, "metric")).toBe(false);
+      }
       expect(rows.map((row) => row.endDate)).toEqual(
         periods.map((period) => period.end),
       );
@@ -329,10 +367,43 @@ describe("Annual operating evidence from the existing two sources", () => {
         ),
       ).toBe(true);
     }
-    expect(result.resolution.selectedReportPairEligible).toBe(false);
-    expect(result.operatingResults.resolution.margins[1]).toMatchObject({
+    expect(view(result).income.resolution.selectedReportPairEligible).toBe(
+      false,
+    );
+    expect(view(result).operatingResults.resolution.margins[1]).toMatchObject({
       revenue: { status: "available", value: "1000" },
       operatingMargin: { status: "available", value: "-2.51" },
+    });
+    expect(
+      view(result).operatingResults.bases.find(
+        (basis) => basis.concept === "Revenues",
+      )!.history,
+    ).toMatchObject({
+      status: "available",
+      stoppedReason: null,
+      periods: [
+        {
+          startDate: "2025-01-01",
+          endDate: "2025-12-31",
+          operatingIncome: "-25.125",
+          revenue: "1000",
+          operatingMarginPercent: "-2.51",
+        },
+        {
+          startDate: "2024-01-01",
+          endDate: "2024-12-31",
+          operatingIncome: "0",
+          revenue: "800",
+          operatingMarginPercent: "0",
+        },
+        {
+          startDate: "2023-01-01",
+          endDate: "2023-12-31",
+          operatingIncome: "60",
+          revenue: "600",
+          operatingMarginPercent: "10",
+        },
+      ],
     });
     expect(result.generation.cutoffAt).toBe(NOW);
     expect(fixture.fetch.mock.calls.map(([url]) => url)).toEqual(URLS);
@@ -353,12 +424,18 @@ describe("Annual operating evidence from the existing two sources", () => {
     expect(fixture.fetch).not.toHaveBeenCalled();
     const result = await fixture.load();
     expect(fixture.fetch.mock.calls.map(([url]) => url)).toEqual(URLS);
-    expect(result.generation.definitionVersion).toBe("5.0.0");
-    expect(result.resolution.selectedReportPairEligible).toBe(false);
+    expect(result.generation.definitionVersion).toBe("6.0.0");
+    expect(view(result).income.resolution.selectedReportPairEligible).toBe(
+      false,
+    );
     expect(
-      result.resolution.pairs.every((pair) => pair.status !== "eligible"),
+      view(result).income.resolution.pairs.every(
+        (pair) => pair.status !== "eligible",
+      ),
     ).toBe(true);
-    expect(result.operatingResults.resolution.operatingIncome).toMatchObject({
+    expect(
+      view(result).operatingResults.resolution.operatingIncome,
+    ).toMatchObject({
       status: "available",
       unit: "USD",
       value: "42",
@@ -368,10 +445,12 @@ describe("Annual operating evidence from the existing two sources", () => {
       currentUseEligible: true,
     });
     expect(
-      result.operatingResults.resolution.margins.map((basis) => basis.concept),
+      view(result).operatingResults.resolution.margins.map(
+        (basis) => basis.concept,
+      ),
     ).toEqual(PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS);
     expect(
-      result.operatingResults.resolution.margins.map(
+      view(result).operatingResults.resolution.margins.map(
         (basis) => basis.operatingMargin,
       ),
     ).toMatchObject(
@@ -381,7 +460,8 @@ describe("Annual operating evidence from the existing two sources", () => {
         value,
       })),
     );
-    const row = result.operatingResults.operatingIncome.observations[0]!;
+    const row =
+      source(result).operatingResults.operatingIncome.observations[0]!;
     expect(row.filing).toMatchObject({
       status: "matched",
       reportDate: "2025-12-31",
@@ -389,15 +469,15 @@ describe("Annual operating evidence from the existing two sources", () => {
       sourceUrl:
         "https://www.sec.gov/Archives/edgar/data/42/0000999999-26-000001-index.htm",
     });
-    for (const basis of result.operatingResults.resolution.margins)
+    for (const basis of view(result).operatingResults.resolution.margins)
       expect(basis.operatingMargin.observationIds).toEqual([
         row.id,
         ...basis.revenue.observationIds,
       ]);
     expect(
-      result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+      view(result).cashGeneration.resolution.operatingCashFlowLessPpePurchases,
     ).toMatchObject({ status: "available", value: "70" });
-    expect(result.liquidity.resolution.workingCapital).toMatchObject({
+    expect(view(result).liquidity.resolution.workingCapital).toMatchObject({
       status: "available",
       value: "150",
     });
@@ -410,12 +490,14 @@ describe("Annual operating evidence from the existing two sources", () => {
         JSON.stringify(facts({ [CONCEPT]: usd([fact({ val: value })]) })),
       );
       const result = await fixture.load();
-      expect(result.operatingResults.resolution.operatingIncome).toMatchObject({
+      expect(
+        view(result).operatingResults.resolution.operatingIncome,
+      ).toMatchObject({
         status: "available",
         value: String(value),
       });
       expect(
-        result.operatingResults.resolution.margins[1]!.operatingMargin,
+        view(result).operatingResults.resolution.margins[1]!.operatingMargin,
       ).toMatchObject({ status: "available", value: String(value / 1.2) });
       expect(fixture.fetch).toHaveBeenCalledTimes(2);
     },
@@ -428,16 +510,18 @@ describe("Annual operating evidence from the existing two sources", () => {
         JSON.stringify(facts({ Revenues: usd([fact({ val: value })]) })),
       );
       const result = await fixture.load();
-      expect(result.operatingResults.resolution.operatingIncome.status).toBe(
-        "available",
-      );
-      expect(result.operatingResults.resolution.margins[1]).toMatchObject({
-        revenue: { status: "available", value: String(value) },
-        operatingMargin: {
-          status: "unavailable",
-          reason: "nonpositive_revenue",
+      expect(
+        view(result).operatingResults.resolution.operatingIncome.status,
+      ).toBe("available");
+      expect(view(result).operatingResults.resolution.margins[1]).toMatchObject(
+        {
+          revenue: { status: "available", value: String(value) },
+          operatingMargin: {
+            status: "unavailable",
+            reason: "nonpositive_revenue",
+          },
         },
-      });
+      );
     },
   );
 
@@ -456,19 +540,24 @@ describe("Annual operating evidence from the existing two sources", () => {
         JSON.stringify(facts({ [CONCEPT]: entry })),
       );
       const result = await fixture.load();
-      expect(result.operatingResults.resolution.operatingIncome).toMatchObject({
+      expect(
+        view(result).operatingResults.resolution.operatingIncome,
+      ).toMatchObject({
         status: "unavailable",
         reason,
       });
-      expect(result.operatingResults.resolution.margins[1]).toMatchObject({
-        revenue: { status: "available", value: "120" },
-        operatingMargin: { status: "unavailable", reason },
-      });
-      expect(result.resolution.currentTargetEligible).toBe(true);
+      expect(view(result).operatingResults.resolution.margins[1]).toMatchObject(
+        {
+          revenue: { status: "available", value: "120" },
+          operatingMargin: { status: "unavailable", reason },
+        },
+      );
+      expect(view(result).income.resolution.currentTargetEligible).toBe(true);
       expect(
-        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+        view(result).cashGeneration.resolution
+          .operatingCashFlowLessPpePurchases,
       ).toMatchObject({ status: "available", value: "70" });
-      expect(result.liquidity.resolution.currentRatio).toMatchObject({
+      expect(view(result).liquidity.resolution.currentRatio).toMatchObject({
         status: "available",
         value: "4.00",
       });
@@ -482,13 +571,15 @@ describe("Annual operating evidence from the existing two sources", () => {
       const result = await providerFixture(
         JSON.stringify(facts({ Revenues: revenue })),
       ).load();
-      expect(result.incomeScanStatus).not.toBe("available");
-      expect(result.operatingResults.resolution.operatingIncome).toMatchObject({
+      expect(view(result).income.scanStatus).not.toBe("available");
+      expect(
+        view(result).operatingResults.resolution.operatingIncome,
+      ).toMatchObject({
         status: "available",
         value: "42",
       });
       expect(
-        result.operatingResults.resolution.margins.every(
+        view(result).operatingResults.resolution.margins.every(
           (basis) => basis.operatingMargin.status === "unavailable",
         ),
       ).toBe(true);
@@ -511,16 +602,17 @@ describe("Annual operating evidence from the existing two sources", () => {
       const result = await providerFixture(
         JSON.stringify(facts({ [CONCEPT]: usd(rows) })),
       ).load();
-      expect(result.operatingResults.resolution.operatingIncome).toMatchObject({
+      expect(
+        view(result).operatingResults.resolution.operatingIncome,
+      ).toMatchObject({
         status: "unavailable",
         reason,
-        observationIds:
-          result.operatingResults.operatingIncome.observations.map(
-            (row) => row.id,
-          ),
+        observationIds: source(
+          result,
+        ).operatingResults.operatingIncome.observations.map((row) => row.id),
       });
       expect(
-        result.operatingResults.resolution.margins[1]!.revenue.status,
+        view(result).operatingResults.resolution.margins[1]!.revenue.status,
       ).toBe("available");
     },
   );
@@ -537,9 +629,11 @@ describe("Annual operating evidence from the existing two sources", () => {
         }),
       ),
     ).load();
-    const operating = result.operatingResults;
+    const operating = source(result).operatingResults;
     expect(operating.operatingIncome.observations).toHaveLength(2);
-    expect(operating.resolution.operatingIncome).toMatchObject({
+    expect(
+      view(result).operatingResults.resolution.operatingIncome,
+    ).toMatchObject({
       status: "available",
       value: "42",
       observationIds: operating.operatingIncome.observations.map(
@@ -554,11 +648,13 @@ describe("Annual operating evidence from the existing two sources", () => {
         facts({ [CONCEPT]: usd([fact({ val: 42, accn: OLDER })]) }),
       ),
     ).load();
-    expect(result.operatingResults.operatingIncome).toMatchObject({
+    expect(source(result).operatingResults.operatingIncome).toMatchObject({
       scan: { coverage: { selected: 0, otherAccessions: 1, returned: 0 } },
       observations: [],
     });
-    expect(result.operatingResults.resolution.operatingIncome).toMatchObject({
+    expect(
+      view(result).operatingResults.resolution.operatingIncome,
+    ).toMatchObject({
       status: "unavailable",
       reason: "no_report_period",
     });
@@ -569,17 +665,19 @@ describe("Annual operating evidence from the existing two sources", () => {
       JSON.stringify(facts()),
       () => new Date("2028-09-20T12:00:00.000Z"),
     ).load();
-    expect(result.operatingResults.resolution.operatingIncome).toMatchObject({
+    expect(
+      view(result).operatingResults.resolution.operatingIncome,
+    ).toMatchObject({
       status: "available",
       value: "42",
       currentUseEligible: false,
     });
     expect(
-      result.operatingResults.resolution.margins[1]!.operatingMargin,
+      view(result).operatingResults.resolution.margins[1]!.operatingMargin,
     ).toMatchObject({ status: "available", currentUseEligible: false });
-    expect(result.operatingResults.resolution.utilityAge?.withinWindow).toBe(
-      false,
-    );
+    expect(
+      view(result).operatingResults.resolution.utilityAge?.withinWindow,
+    ).toBe(false);
   });
 
   it.each(["{", JSON.stringify({ cik: 7, facts: {} })])(
@@ -590,11 +688,13 @@ describe("Annual operating evidence from the existing two sources", () => {
       expect(result.generation.sources.companyFacts.status).toBe(
         "invalid_response",
       );
-      expect(result.operatingResults.operatingIncome).toEqual({
+      expect(source(result).operatingResults.operatingIncome).toEqual({
         scan: { status: "source_unavailable", absence: null, coverage: null },
         observations: [],
       });
-      expect(result.operatingResults.resolution.operatingIncome).toMatchObject({
+      expect(
+        view(result).operatingResults.resolution.operatingIncome,
+      ).toMatchObject({
         status: "unavailable",
         reason: "source_unavailable",
       });
@@ -608,15 +708,15 @@ describe("Annual operating evidence from the existing two sources", () => {
       undefined,
       () => new Response("", { status: 503 }),
     ).load();
-    expect(result.operatingResults.operatingIncome).toMatchObject({
+    expect(source(result).operatingResults.operatingIncome).toMatchObject({
       scan: {
         status: "available",
         coverage: { full: { candidateRows: 1 }, selected: null, returned: 0 },
       },
       observations: [],
     });
-    expect(result.operatingResults.resolution.operatingIncome.status).toBe(
-      "unavailable",
-    );
+    expect(
+      view(result).operatingResults.resolution.operatingIncome.status,
+    ).toBe("unavailable");
   });
 });

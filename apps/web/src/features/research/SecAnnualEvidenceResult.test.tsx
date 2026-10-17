@@ -6,14 +6,15 @@ import {
   annualComparativeRows,
   annualHistoryRows,
   response,
+  viewOf,
   row,
-} from "./sec-annual-evidence-fixture";
+} from "./test-canonical-annual-ui-fixture";
 
 describe("shared annual result", () => {
   it("shows three dated same-filing periods in a plain-text disclosure with inspectable inputs", async () => {
     const wire = await response(annualHistoryRows());
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain('aria-label="Reported annual history Revenues"');
     expect(html).toContain("Read reported annual history · 3 periods");
@@ -38,7 +39,7 @@ describe("shared annual result", () => {
   it("keeps available dates and amounts when the next earlier pair is missing", async () => {
     const wire = await response(annualComparativeRows());
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain("Read reported annual history · 2 periods");
     expect(html).toContain("The next earlier period is unavailable.");
@@ -48,7 +49,7 @@ describe("shared annual result", () => {
   it("shows exact adjacent annual amounts, reported changes and all four operand references", async () => {
     const wire = await response(annualComparativeRows());
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain('aria-label="Reported annual comparison Revenues"');
     expect(html).toContain(
@@ -66,7 +67,7 @@ describe("shared annual result", () => {
     expect(html).toContain(
       "No adjustment for period length, accounting changes or restatements",
     );
-    for (const row of wire.evidence.observations)
+    for (const row of wire.evidence.facts.observations)
       expect(html).toContain(row.id);
     expect(html).toContain("Inspect annual comparison inputs · Revenues");
   });
@@ -86,7 +87,7 @@ describe("shared annual result", () => {
         row("NetIncomeLoss", "-10", prior),
       ]);
       const html = renderToStaticMarkup(
-        <SecAnnualEvidenceResult response={wire} />,
+        <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
       );
       expect(html).toContain(
         `Revenue prior · USD</dt><dd>${priorRevenue}</dd>`,
@@ -118,7 +119,7 @@ describe("shared annual result", () => {
         row("NetIncomeLoss", priorIncome, prior),
       ]);
       const html = renderToStaticMarkup(
-        <SecAnnualEvidenceResult response={wire} />,
+        <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
       );
       expect(html).toContain(`Less than 0.01 percentage points ${direction}`);
     },
@@ -130,7 +131,7 @@ describe("shared annual result", () => {
       "2027-09-20T00:00:00.000Z",
     );
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain("Reported annual comparison unavailable.");
     expect(html).toContain(
@@ -153,7 +154,7 @@ describe("shared annual result", () => {
       row("NetIncomeLoss", "0", prior),
     ]);
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain("Less than 0.01% higher");
     expect(html).toContain("Unavailable: prior value is zero");
@@ -166,7 +167,7 @@ describe("shared annual result", () => {
       row("NetIncomeLoss", "-25"),
     ]);
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain("Net income · USD");
     expect(html).toContain(">-25</dd>");
@@ -174,9 +175,14 @@ describe("shared annual result", () => {
     expect(html).toContain('aria-label="Annual revenue basis SalesRevenueNet"');
     expect(html).toContain('aria-label="Annual revenue basis Revenues"');
     expect(html).toContain(
-      "Inspect selected-report income evidence (3 observations)",
+      "Inspect selected-report statement evidence (3 observations)",
     );
     expect(html).toContain(wire.evidence.generation.sha256);
+    expect(wire.evidence.facts.scans).toHaveLength(32);
+    expect(viewOf(wire).income.summaryReturned.observations).toBe(3);
+    expect(html).toContain(
+      "No all-accessions observation history is retained.",
+    );
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).not.toContain("Load observed annual report");
   });
@@ -184,7 +190,7 @@ describe("shared annual result", () => {
   it("keeps complete coverage distinct from a missing pair and current-use refusal", async () => {
     const wire = await response([row()]);
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} />,
+      <SecAnnualEvidenceResult response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain("Complete for the four requested USD concepts");
     expect(html).toContain("No valid annual pair");
@@ -209,11 +215,12 @@ describe("shared annual result", () => {
     const html = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={wire}
+        view={viewOf(wire)}
         renderPairAction={renderPairAction}
       />,
     );
     expect(renderPairAction.mock.calls.map(([pair]) => pair)).toEqual(
-      wire.evidence.resolution.bases.flatMap((basis) =>
+      viewOf(wire).income.resolution.bases.flatMap((basis) =>
         basis.pairs.filter((pair) => pair.status === "eligible"),
       ),
     );
@@ -233,6 +240,7 @@ describe("shared annual result", () => {
     const html = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={wire}
+        view={viewOf(wire)}
         renderPairAction={renderPairAction}
       />,
     );

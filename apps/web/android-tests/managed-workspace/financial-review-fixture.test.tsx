@@ -1,6 +1,6 @@
+import { viewOf } from "../../src/features/research/test-canonical-annual-ui-fixture";
 import { describe, expect, it, vi } from "vitest";
 import { createFinancialReviewNativeFixture } from "./financial-review-native-fixture";
-import { derivePersonalSecAnnualFinancialReview } from "@research-cockpit/personal-financial-analytics";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { createFixture } from "./fixture";
 
@@ -79,9 +79,18 @@ describe("invented native Financial review journey", () => {
     expect(fixture.getSnapshot().annual).toBe(0);
     await workspace.annual.load();
     const packet = workspace.annual.getSnapshot().response!;
-    expect(packet.evidence.observations).toEqual([]);
     expect(
-      derivePersonalSecAnnualFinancialReview(packet.evidence).map((row) =>
+      packet.evidence.facts.observations.filter((row) =>
+        [
+          "Revenues",
+          "SalesRevenueNet",
+          "RevenueFromContractWithCustomerExcludingAssessedTax",
+          "NetIncomeLoss",
+        ].includes(row.concept),
+      ),
+    ).toEqual([]);
+    expect(
+      viewOf(packet).financialReview.map((row) =>
         row.value.status === "available" ? row.value.value : row.value.reason,
       ),
     ).toEqual(["250.125", "120.125", "-80.125", "0", "-7.5"]);

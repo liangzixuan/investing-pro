@@ -229,7 +229,7 @@ describe("composed authored valuation workflow", () => {
     const doc = formatCompanyReportDocument(report)!;
     expect(isCompanyReportDocument(doc)).toBe(true);
     const parsed: unknown = JSON.parse(doc.text);
-    expect(parsed).toHaveProperty("schemaVersion", "2.0.0");
+    expect(parsed).toHaveProperty("schemaVersion", "3.0.0");
     expect(parsed).toHaveProperty("authoredResearch.note", preview.note);
     expect(parsed).toHaveProperty("valuation", capture);
     expect(parsed).toHaveProperty(

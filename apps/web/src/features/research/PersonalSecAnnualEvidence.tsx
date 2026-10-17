@@ -1,11 +1,13 @@
 "use client";
 
 import {
-  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-  type PersonalSecAnnualEvidenceResponseDto,
+  PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import { useEffect, useRef, useState } from "react";
 
+import { getManagedAnnualView } from "../../clerk-trial/managed-annual-view";
 import { fetchPersonalSecAnnualEvidence } from "../../lib/personal-sec-annual-evidence-api";
 import { PersonalWorkspaceApiError } from "../../lib/personal-workspace-api";
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
@@ -35,13 +37,15 @@ export function PersonalSecAnnualEvidence({
   const version = context.current.version;
   const [state, setState] = useState<{
     version: number;
-    response: PersonalSecAnnualEvidenceResponseDto | null;
+    response: PersonalSecAnnualCanonicalResponseDto | null;
+    view: PersonalSecAnnualCanonicalView | null;
     running: boolean;
     message: string;
     error: boolean;
   }>({
     version,
     response: null,
+    view: null,
     running: false,
     message: initialMessage,
     error: false,
@@ -67,6 +71,7 @@ export function PersonalSecAnnualEvidence({
     setState({
       version,
       response: null,
+      view: null,
       running: false,
       message: initialMessage,
       error: false,
@@ -103,6 +108,7 @@ export function PersonalSecAnnualEvidence({
   const currentContext =
     enabled && selection !== null && state.version === version;
   const current = currentContext ? state.response : null;
+  const currentView = currentContext ? state.view : null;
   const running = currentContext && state.running;
   const renderEpoch = epoch.current;
   const isCurrentRender = () =>
@@ -127,6 +133,7 @@ export function PersonalSecAnnualEvidence({
     setState({
       version,
       response: null,
+      view: null,
       running: true,
       message: `Loading the observed annual report for ${selection.symbol}…`,
       error: false,
@@ -139,7 +146,7 @@ export function PersonalSecAnnualEvidence({
     try {
       const response = await fetchPersonalSecAnnualEvidence(
         {
-          schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+          schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
           catalogSnapshotSha256,
           listingId: selection.listingId,
           symbol: selection.symbol,
@@ -152,9 +159,14 @@ export function PersonalSecAnnualEvidence({
         !sameSelection(response.security, selection)
       )
         throw new PersonalWorkspaceApiError("invalid_response");
+      const view = getManagedAnnualView(response);
+      if (view === null)
+        throw new PersonalWorkspaceApiError("invalid_response");
+      if (!valid()) return;
       setState({
         version,
         response,
+        view,
         running: false,
         message: `Annual SEC response loaded for ${selection.symbol}. Refresh explicitly to check again.`,
         error: false,
@@ -168,6 +180,7 @@ export function PersonalSecAnnualEvidence({
       setState({
         version,
         response: null,
+        view: null,
         running: false,
         error: true,
         message: errorMessage(code),
@@ -190,6 +203,7 @@ export function PersonalSecAnnualEvidence({
     setState({
       version,
       response: null,
+      view: null,
       running: false,
       message: "Annual report load cancelled. Load again when ready.",
       error: false,
@@ -259,10 +273,11 @@ export function PersonalSecAnnualEvidence({
           </p>
         </>
       )}
-      {current === null ? null : (
+      {current === null || currentView === null ? null : (
         <SecAnnualEvidenceResult
           key={current.evidence.generation.sha256}
           response={current}
+          view={currentView}
         />
       )}
     </section>
@@ -270,7 +285,7 @@ export function PersonalSecAnnualEvidence({
 }
 
 function sameSelection(
-  security: PersonalSecAnnualEvidenceResponseDto["security"],
+  security: PersonalSecAnnualCanonicalResponseDto["security"],
   selection: PersonalMarketSelection,
 ) {
   return (

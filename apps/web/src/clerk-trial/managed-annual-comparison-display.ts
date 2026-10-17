@@ -1,17 +1,16 @@
 import type {
   PersonalSecAnnualBasisDto,
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualPairDto,
   PersonalSecAnnualResolutionDto,
 } from "@research-cockpit/contracts";
 import {
-  comparePersonalSecAnnualEvidence,
-  resolvePersonalSecAnnualEvidence,
   type PersonalSecAnnualComparison,
+  type PersonalSecAnnualCanonicalView,
 } from "@research-cockpit/personal-financial-analytics";
 import { annualComparisonPercentText } from "../lib/sec-annual-comparison-display";
 
-type Response = PersonalSecAnnualEvidenceResponseDto;
+type Response = PersonalSecAnnualCanonicalResponseDto;
 type UnavailableComparison = Extract<
   PersonalSecAnnualComparison,
   { status: "unavailable" }
@@ -76,9 +75,14 @@ const comparisonReasons: Readonly<
 /** Presentation of one validated packet; basis selection never joins companies or filings. */
 export function projectAnnualComparison(
   response: Response | null,
+  view: PersonalSecAnnualCanonicalView | null,
   requestedBasis?: string,
 ): ManagedAnnualComparisonDisplay {
-  if (response === null)
+  if (
+    response === null ||
+    view === null ||
+    view.canonical !== response.evidence
+  )
     return Object.freeze({
       basisChoices: Object.freeze([]),
       selectedBasis: requestedBasis ?? null,
@@ -90,7 +94,7 @@ export function projectAnnualComparison(
       source: null,
     });
 
-  const resolution = resolvePersonalSecAnnualEvidence(response.evidence);
+  const resolution = view.income.resolution;
   const selectedBasis =
     requestedBasis ??
     resolution.bases.find((basis) => basis.status === "eligible")?.concept ??
@@ -115,7 +119,7 @@ export function projectAnnualComparison(
         : "Revenue and net income are unavailable under the current-use policy at this load. Any valid reported revenue and net-income amounts remain historical; reported revenue change is unavailable.",
       utilityAge: resolution.utilityAge,
     }),
-    ...revenueChange(response, basis, currentReason),
+    ...revenueChange(view, basis, currentReason),
     source: sourceCoordinates(response),
   });
 }
@@ -157,7 +161,7 @@ function basisReason(basis: PersonalSecAnnualBasisDto | undefined): string {
 }
 
 function revenueChange(
-  response: Response,
+  view: PersonalSecAnnualCanonicalView,
   basis: PersonalSecAnnualBasisDto | undefined,
   currentReason: string | null,
 ): Pick<
@@ -166,10 +170,9 @@ function revenueChange(
 > {
   if (!basis || currentReason !== null)
     return { revenueChange: null, revenueChangeReason: currentReason };
-  const change = comparePersonalSecAnnualEvidence(
-    response.evidence,
-    basis.concept,
-  );
+  const change = view.income.bases.find(
+    (entry) => entry.concept === basis.concept,
+  )!.comparison;
   if (change.status === "unavailable")
     return {
       revenueChange: null,

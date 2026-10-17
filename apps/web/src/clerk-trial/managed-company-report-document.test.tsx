@@ -1,31 +1,16 @@
-import { comparePersonalSecAnnualOperatingEvidence } from "@research-cockpit/personal-financial-analytics";
-import {
-  operatingResults,
-  operatingRow,
-} from "../features/research/sec-annual-operating-fixture";
+import { reportAnnualPacket } from "./managed-annual-statements-report-fixture";
+import { comparePersonalSecAnnualCanonicalOperatingEvidence } from "@research-cockpit/personal-financial-analytics";
 import type {
   ManagedEodHistoryResponseDto,
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualOperatingHistory } from "@research-cockpit/personal-financial-analytics";
+import { resolvePersonalSecAnnualCanonicalOperatingHistory } from "@research-cockpit/personal-financial-analytics";
 import { calculatePersonalRawCloseExtrema } from "@research-cockpit/personal-market-analytics";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { eodSelection, eodResponse } from "./eod-history-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
-import {
-  response,
-  row,
-} from "../features/research/sec-annual-evidence-fixture";
-import {
-  cashGeneration,
-  cashRow,
-} from "../features/research/sec-annual-cash-fixture";
-import {
-  liquidity,
-  liquidityRow,
-} from "../features/research/sec-annual-liquidity-fixture";
 import { ManagedEodHistory } from "./managed-eod-history";
 import { ManagedAnnualReport } from "./managed-annual-report";
 import { ManagedCompanyFilings } from "./managed-company-filings";
@@ -61,28 +46,7 @@ function decode(text: string) {
 }
 
 async function fixture(range: "1m" | "1y" = "1m") {
-  const annualPacket = await response([
-    row(),
-    row("SalesRevenueNet", "900"),
-    row("NetIncomeLoss", "100"),
-  ]);
-  const packet = {
-    ...annualPacket,
-    evidence: {
-      ...annualPacket.evidence,
-      operatingResults: await operatingResults(annualPacket.evidence, [
-        operatingRow("-25.125"),
-      ]),
-      cashGeneration: await cashGeneration(annualPacket.evidence, [
-        cashRow("operating_cash_flow", "250"),
-        cashRow("ppe_purchases", "75"),
-      ]),
-      liquidity: await liquidity(annualPacket.evidence, [
-        liquidityRow("current_assets", "800"),
-        liquidityRow("current_liabilities", "400"),
-      ]),
-    },
-  };
+  const packet = await reportAnnualPacket();
   const priceRead = vi.fn().mockResolvedValue(eodResponse(range));
   const annualRead = vi.fn().mockResolvedValue(packet);
   const filingsRead = vi
@@ -126,29 +90,19 @@ describe("company research document inspection", () => {
       durationDays: year === 2024 ? 366 : 365,
       frame: `CY${year}`,
     }));
-    const base = await response(
-      periods.map((period, index) =>
-        row("Revenues", ["1000", "800", "600"][index], {
+    const packet = await reportAnnualPacket({
+      includeIncome: false,
+      conceptRows: {
+        Revenues: periods.map((period, index) => ({
           ...period,
-          sourceLocator: `/facts/us-gaap/Revenues/units/USD/${index}`,
-        }),
-      ),
-    );
-    const packet = {
-      ...base,
-      evidence: {
-        ...base.evidence,
-        operatingResults: await operatingResults(
-          base.evidence,
-          periods.map((period, index) =>
-            operatingRow(["-25.125", "0", "60"][index], {
-              ...period,
-              sourceLocator: `/facts/us-gaap/OperatingIncomeLoss/units/USD/${index}`,
-            }),
-          ),
-        ),
+          value: ["1000", "800", "600"][index]!,
+        })),
+        OperatingIncomeLoss: periods.map((period, index) => ({
+          ...period,
+          value: ["-25.125", "0", "60"][index]!,
+        })),
       },
-    };
+    });
     const read = vi.fn().mockResolvedValue(packet);
     const annual = new ManagedAnnualReport(read, vi.fn());
     annual.open(eodSelection);
@@ -168,18 +122,21 @@ describe("company research document inspection", () => {
     const document = formatCompanyReportDocument(report)!;
     const captured = (
       decode(document.text).sources.annual as {
-        response: PersonalSecAnnualEvidenceResponseDto;
+        response: PersonalSecAnnualCanonicalResponseDto;
       }
     ).response.evidence;
     expect(captured).toEqual(packet.evidence);
-    expect(captured.generation).toEqual(base.evidence.generation);
-    expect(captured.target).toEqual(base.evidence.target);
-    const history = resolvePersonalSecAnnualOperatingHistory(
+    expect(captured.generation).toEqual(packet.evidence.generation);
+    expect(captured.target).toEqual(packet.evidence.target);
+    const history = resolvePersonalSecAnnualCanonicalOperatingHistory(
       captured,
       "Revenues",
     );
     expect(history).toEqual(
-      resolvePersonalSecAnnualOperatingHistory(packet.evidence, "Revenues"),
+      resolvePersonalSecAnnualCanonicalOperatingHistory(
+        packet.evidence,
+        "Revenues",
+      ),
     );
     expect(history).toMatchObject({
       status: "available",
@@ -193,7 +150,7 @@ describe("company research document inspection", () => {
         { operatingIncome: "60", revenue: "600", operatingMarginPercent: "10" },
       ],
     });
-    const operatingChange = comparePersonalSecAnnualOperatingEvidence(
+    const operatingChange = comparePersonalSecAnnualCanonicalOperatingEvidence(
       captured,
       "Revenues",
     );
@@ -208,10 +165,13 @@ describe("company research document inspection", () => {
       },
     });
     expect(operatingChange).toEqual(
-      comparePersonalSecAnnualOperatingEvidence(packet.evidence, "Revenues"),
+      comparePersonalSecAnnualCanonicalOperatingEvidence(
+        packet.evidence,
+        "Revenues",
+      ),
     );
     expect(isCompanyReportDocument(document)).toBe(true);
-    expect(decode(document.text).schemaVersion).toBe("2.0.0");
+    expect(decode(document.text).schemaVersion).toBe("3.0.0");
     expect(
       companyReportIsCurrent(report, eodSelection, evidence(), draft),
     ).toBe(true);
@@ -220,7 +180,7 @@ describe("company research document inspection", () => {
       companyReportIsCurrent(report, eodSelection, evidence(), draft),
     ).toBe(false);
     expect(
-      resolvePersonalSecAnnualOperatingHistory(captured, "Revenues"),
+      resolvePersonalSecAnnualCanonicalOperatingHistory(captured, "Revenues"),
     ).toEqual(history);
     expect(read).toHaveBeenCalledTimes(2);
     expect(document.byteLength).toBeLessThanOrEqual(
@@ -269,7 +229,7 @@ describe("company research document inspection", () => {
     expect(isCompanyReportDocument(document)).toBe(true);
     const parsed = decode(document.text);
     expect(parsed.purpose).toBe("investment.company-research");
-    expect(parsed.schemaVersion).toBe("2.0.0");
+    expect(parsed.schemaVersion).toBe("3.0.0");
     expect(parsed.preparedAt).toBe(now().toISOString());
     expect(parsed.catalogSnapshotSha256).toBe(
       eodSelection.catalogSnapshotSha256,
@@ -279,7 +239,7 @@ describe("company research document inspection", () => {
       status: "watchlist_draft",
       note,
     });
-    for (const key of ["price", "annual", "filings"] as const) {
+    for (const key of ["price", "filings"] as const) {
       const state = f.report.evidence[key]!;
       expect(state.response).not.toBeNull();
       expect(parsed.sources[key]).toEqual({
@@ -291,17 +251,16 @@ describe("company research document inspection", () => {
       });
     }
     expect(parsed.sources.annual).toMatchObject({
-      response: {
-        evidence: {
-          cashGeneration:
-            f.report.evidence.annual!.response!.evidence.cashGeneration,
-          liquidity: f.report.evidence.annual!.response!.evidence.liquidity,
-          operatingResults:
-            f.report.evidence.annual!.response!.evidence.operatingResults,
-        },
+      response: f.report.evidence.annual!.response,
+      statements: f.report.evidence.annual!.view!.statements,
+      financials: {
+        cashGeneration: f.report.evidence.annual!.view!.cashGeneration,
+        liquidity: f.report.evidence.annual!.view!.liquidity,
+        operatingResults: f.report.evidence.annual!.view!.operatingResults,
+        financialReview: f.report.evidence.annual!.view!.financialReview,
       },
     });
-    expect(document.text).toContain('"operating_income"');
+    expect(document.text).not.toContain('"metric":');
     expect(document.text).toContain('"OperatingIncomeLoss"');
     expect(document.text).toContain('"-2.51"');
     expect(document.byteLength).toBe(

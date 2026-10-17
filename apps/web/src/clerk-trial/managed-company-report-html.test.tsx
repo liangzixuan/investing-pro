@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import {
-  derivePersonalSecAnnualFinancialReview,
-  type PersonalSecAnnualFinancialReviewRow,
-} from "@research-cockpit/personal-financial-analytics";
+import { type PersonalSecAnnualFinancialReviewRow } from "@research-cockpit/personal-financial-analytics";
 import { TrialApiError } from "./api";
 import { CompanyReportHtmlView } from "./CompanyReportHtmlView";
 import {
@@ -29,22 +26,22 @@ import { ManagedCompanyFilings } from "./managed-company-filings";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
 import {
-  financialReviewResponse,
-  type FinancialReviewFixtureOptions,
-} from "./financial-review-fixture";
+  reportFinancialReviewPacket,
+  type ReportAnnualFixtureOptions,
+} from "./managed-annual-statements-report-fixture";
 
 const note =
   'Cafe\u0301 \u6771\u4eac \ud83d\udcc8\n</pre></style><script src="https://invalid.example/x">& exact  ';
 const clock = () => new Date("2026-10-15T00:00:00.000Z");
 
 async function fixture(
-  options: FinancialReviewFixtureOptions = {},
+  options: ReportAnnualFixtureOptions = {},
   loaded: "all" | "price" | "filings" = "all",
 ) {
   const priceRead = vi.fn().mockResolvedValue(eodResponse());
   const annualRead = vi
     .fn()
-    .mockResolvedValue(await financialReviewResponse(options));
+    .mockResolvedValue(await reportFinancialReviewPacket(options));
   const filingsRead = vi
     .fn()
     .mockResolvedValue(filingsResponse(2, "available", eodSelection));
@@ -142,9 +139,7 @@ describe("passive readable company report", () => {
     const before = JSON.stringify(f.report);
     const { markup } = render(f.report);
     const expected = ["250.125", "120.125", "-80.125", "0", "-7.5"];
-    const rows = derivePersonalSecAnnualFinancialReview(
-      f.report.evidence.annual!.response!.evidence,
-    );
+    const rows = f.report.evidence.annual!.view!.financialReview;
     expect(markup.match(/class="fact"/gu)).toHaveLength(5);
     rows.forEach((row, index) => {
       const section = fact(markup, row.label);
@@ -172,9 +167,7 @@ describe("passive readable company report", () => {
   it("keeps both exact calculation operands and all their references in closed details", async () => {
     const { report } = await fixture();
     const { markup } = render(report);
-    const rows = derivePersonalSecAnnualFinancialReview(
-      report.evidence.annual!.response!.evidence,
-    );
+    const rows = report.evidence.annual!.view!.financialReview;
     for (const row of rows) expectCalculationInputs(markup, row);
     expect(fact(markup, rows[2]!.label)).toContain("Less PP&amp;E purchases");
     expect(fact(markup, rows[3]!.label)).toContain("Less current liabilities");
@@ -207,9 +200,7 @@ describe("passive readable company report", () => {
     async (options) => {
       const { report } = await fixture(options);
       const { markup } = render(report);
-      const rows = derivePersonalSecAnnualFinancialReview(
-        report.evidence.annual!.response!.evidence,
-      );
+      const rows = report.evidence.annual!.view!.financialReview;
       expect(markup.match(/class="fact"/gu)).toHaveLength(5);
       for (const row of rows) {
         const section = fact(markup, row.label);

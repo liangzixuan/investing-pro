@@ -1,6 +1,7 @@
+import { viewOf } from "../../src/features/research/test-canonical-annual-ui-fixture";
 import { describe, expect, it } from "vitest";
 import { createFixture } from "./fixture";
-import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
+import { parseSecAnnualCanonicalResponse } from "../../src/lib/sec-annual-canonical-response";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { companySnapshotEvidence } from "../../src/clerk-trial/managed-company-snapshot";
 import {
@@ -10,7 +11,7 @@ import {
 import { formatCompanyReportDocument } from "../../src/clerk-trial/managed-company-report-document";
 
 const request = {
-  schemaVersion: "5.0.0" as const,
+  schemaVersion: "6.0.0" as const,
   catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
   listingId: "listing-zero",
   symbol: "ZERO",
@@ -22,7 +23,7 @@ describe("invented operating-results acceptance", () => {
     const signal = new AbortController().signal;
     await fixture.api.status(signal);
     const packet = await fixture.api.annualReport(request, signal);
-    const decoded = await parseSecAnnualEvidenceResponse(
+    const decoded = await parseSecAnnualCanonicalResponse(
       packet,
       request,
       signal,
@@ -30,18 +31,20 @@ describe("invented operating-results acceptance", () => {
     expect(decoded).toEqual(packet);
     if (!decoded) throw new Error("Expected admitted operating packet");
     expect(
-      decoded.evidence.observations.every((row) => row.metric === "revenue"),
+      decoded.evidence.facts.observations.every(
+        (row) => row.concept !== "NetIncomeLoss",
+      ),
     ).toBe(true);
-    expect(decoded.evidence.resolution.pairs).toHaveLength(3);
+    expect(viewOf(decoded).income.resolution.pairs).toHaveLength(3);
     expect(
-      decoded.evidence.resolution.pairs.every(
+      viewOf(decoded).income.resolution.pairs.every(
         (pair) =>
           pair.status !== "eligible" &&
           pair.netIncome === null &&
           pair.netMarginPercent === null,
       ),
     ).toBe(true);
-    const operating = decoded.evidence.operatingResults;
+    const operating = viewOf(decoded).operatingResults;
     expect(operating.resolution.operatingIncome).toMatchObject({
       status: "available",
       value: "-250.125",
@@ -75,8 +78,10 @@ describe("invented operating-results acceptance", () => {
     for (const basis of operating.resolution.margins) {
       expect(basis.operatingMargin.observationIds).toEqual(
         expect.arrayContaining([
-          operating.operatingIncome.observations[0]!.id,
-          decoded.evidence.observations.find(
+          decoded.evidence.facts.observations.find(
+            (row) => row.concept === "OperatingIncomeLoss",
+          )!.id,
+          decoded.evidence.facts.observations.find(
             (row) => row.concept === basis.concept,
           )!.id,
         ]),
@@ -151,7 +156,7 @@ describe("invented operating-results acceptance", () => {
     await held;
     await Promise.resolve();
     expect(workspace.annual.getSnapshot().response).toBe(initial);
-    const basis = initial.evidence.operatingResults.resolution.margins.find(
+    const basis = viewOf(initial).operatingResults.resolution.margins.find(
       (basis) => basis.concept === "Revenues",
     )!;
     expect(

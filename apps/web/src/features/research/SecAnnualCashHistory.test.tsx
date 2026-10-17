@@ -1,3 +1,4 @@
+import { viewOf } from "./test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
@@ -5,10 +6,8 @@ import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import {
   annualCashHistoryRows,
   cashResponse,
-  cashGeneration,
-} from "./sec-annual-cash-fixture";
-import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
-import { response as annualResponse } from "./sec-annual-evidence-fixture";
+} from "./test-canonical-annual-cash-ui-fixture";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 import { ManagedAnnualReport } from "../../clerk-trial/managed-annual-report";
 import { eodSelection } from "../../clerk-trial/eod-history-fixture";
 import { TrialApiError } from "../../clerk-trial/api";
@@ -17,10 +16,10 @@ import type { ManagedApi } from "../../clerk-trial/managed-api";
 describe("reported cash history", () => {
   it("renders three decoded same-filing periods and all references inside an initially closed disclosure", async () => {
     const raw = await cashResponse(annualCashHistoryRows());
-    const response = await parseSecAnnualEvidenceResponse(
+    const response = await parseSecAnnualCanonicalResponse(
       raw,
       {
-        schemaVersion: "5.0.0",
+        schemaVersion: "6.0.0",
         catalogSnapshotSha256: raw.catalogSnapshotSha256,
         listingId: raw.security.listingId,
         symbol: raw.security.symbol,
@@ -31,7 +30,7 @@ describe("reported cash history", () => {
       throw new Error("Invented cash history packet was refused");
     const before = JSON.stringify(response);
     const html = renderToStaticMarkup(
-      <SecAnnualCashHistory response={response} />,
+      <SecAnnualCashHistory response={response} view={viewOf(response)} />,
     );
     expect(html).toContain(
       '<details class="managed-annual-cash-history"><summary>Reported cash history</summary>',
@@ -48,11 +47,12 @@ describe("reported cash history", () => {
     expect(html).toContain("2026-09-20T00:00:02.000Z");
     expect(html).toContain("filing 0000000001-26-000001");
     expect(html).toContain("Earlier periods are historical comparatives");
-    for (const metric of [
-      response.evidence.cashGeneration.operatingCashFlow,
-      response.evidence.cashGeneration.ppePurchases,
-    ])
-      for (const row of metric.observations) expect(html).toContain(row.id);
+    for (const row of response.evidence.facts.observations.filter(
+      (row) =>
+        row.concept === "NetCashProvidedByUsedInOperatingActivities" ||
+        row.concept === "PaymentsToAcquirePropertyPlantAndEquipment",
+    ))
+      expect(html).toContain(row.id);
     expect(html).not.toContain("Within current-use limits");
     expect(html).not.toContain("next earlier period is unavailable");
     expect(JSON.stringify(response)).toBe(before);
@@ -63,7 +63,7 @@ describe("reported cash history", () => {
       annualCashHistoryRows().filter((row) => row.endDate !== "2024-12-31"),
     );
     const html = renderToStaticMarkup(
-      <SecAnnualCashHistory response={response} />,
+      <SecAnnualCashHistory response={response} view={viewOf(response)} />,
     );
     expect(html).toContain("Annual cash amounts · 1 period · newest first");
     expect(html).toContain("The next earlier period is unavailable.");
@@ -73,19 +73,53 @@ describe("reported cash history", () => {
   });
 
   it("explains a prior observation's filing-date mismatch without rejecting valid comparative dates", async () => {
+    const raw = await cashResponse(annualCashHistoryRows());
+    const mismatched = {
+      ...raw,
+      evidence: {
+        ...raw.evidence,
+        facts: {
+          ...raw.evidence.facts,
+          observations: raw.evidence.facts.observations.map((row) =>
+            row.endDate === "2024-12-31"
+              ? { ...row, filing: { ...row.filing, reportDate: "2024-12-31" } }
+              : row,
+          ),
+        },
+      },
+    };
+    expect(
+      await parseSecAnnualCanonicalResponse(
+        mismatched,
+        {
+          schemaVersion: "6.0.0",
+          catalogSnapshotSha256: raw.catalogSnapshotSha256,
+          listingId: raw.security.listingId,
+          symbol: raw.security.symbol,
+        },
+        new AbortController().signal,
+      ),
+    ).toBeNull();
     const response = await cashResponse(
       annualCashHistoryRows().map((row) =>
         row.endDate === "2024-12-31"
-          ? { ...row, filing: { ...row.filing, reportDate: "2024-12-31" } }
+          ? {
+              ...row,
+              filing: {
+                ...row.filing,
+                status: "metadata_conflict",
+                reportDate: "2024-12-31",
+              },
+            }
           : row,
       ),
     );
     const html = renderToStaticMarkup(
-      <SecAnnualCashHistory response={response} />,
+      <SecAnnualCashHistory response={response} view={viewOf(response)} />,
     );
     expect(html).toContain("Annual cash amounts · 1 period");
     expect(html).toContain(
-      "The observation’s filing report date does not match the selected filing.",
+      "The observation&#x27;s filing metadata does not match submissions.",
     );
     expect(html).not.toContain("The observation ends outside");
   });
@@ -96,7 +130,11 @@ describe("reported cash history", () => {
       "2028-09-20T00:00:00.000Z",
     );
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={response} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={response}
+        view={viewOf(response)}
+        appearance="financial"
+      />,
     );
     expect(html).toContain("Cash history unavailable.");
     expect(html).toContain("outside the current-use limits");
@@ -110,36 +148,34 @@ describe("reported cash history", () => {
   it("adds managed history without changing evidence appearance or independent current cash", async () => {
     const response = await cashResponse(annualCashHistoryRows());
     const currentBefore = JSON.stringify(
-      response.evidence.cashGeneration.resolution,
+      viewOf(response).cashGeneration.resolution,
     );
     const managed = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={response} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={response}
+        view={viewOf(response)}
+        appearance="financial"
+      />,
     );
     const evidence = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={response} />,
+      <SecAnnualEvidenceResult response={response} view={viewOf(response)} />,
     );
     expect(managed).toContain("Reported cash history");
     expect(evidence).not.toContain("Reported cash history");
     expect(managed).toContain("Cash sources and calculation inputs");
     expect(evidence).toContain("Cash sources and calculation inputs");
-    expect(JSON.stringify(response.evidence.cashGeneration.resolution)).toBe(
+    expect(JSON.stringify(viewOf(response).cashGeneration.resolution)).toBe(
       currentBefore,
     );
   });
   it("shows cash history independently of missing income", async () => {
-    const base = await annualResponse([]);
-    const response = {
-      ...base,
-      evidence: {
-        ...base.evidence,
-        cashGeneration: await cashGeneration(
-          base.evidence,
-          annualCashHistoryRows(),
-        ),
-      },
-    };
+    const response = await cashResponse(annualCashHistoryRows(), undefined, []);
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={response} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={response}
+        view={viewOf(response)}
+        appearance="financial"
+      />,
     );
     expect(html).toContain("Annual cash amounts · 3 periods");
     expect(html).toContain(
@@ -161,9 +197,11 @@ describe("reported cash history", () => {
     const model = new ManagedAnnualReport(read, vi.fn());
     model.open({ ...eodSelection, origin: "watchlist", cik: null });
     const html = () => {
-      const response = model.getSnapshot().response;
-      return response
-        ? renderToStaticMarkup(<SecAnnualCashHistory response={response} />)
+      const { response, view } = model.getSnapshot();
+      return response && view
+        ? renderToStaticMarkup(
+            <SecAnnualCashHistory response={response} view={view} />,
+          )
         : "";
     };
     await model.load();

@@ -1,16 +1,17 @@
+import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { describe, expect, it, vi } from "vitest";
 import {
   normalizeWatchlistNote,
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
   type ManagedResearchFollowupsDto,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import type { PersonalSecAnnualFinancialReviewKey } from "@research-cockpit/personal-financial-analytics";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
 import { ManagedWorkspace } from "./managed-workspace";
-import { financialReviewResponse } from "./financial-review-fixture";
+import { financialReviewResponse } from "./test-canonical-financial-review-fixture";
 import { eodSelection } from "./eod-history-fixture";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import { prepareCompanyReport } from "./managed-company-report";
@@ -70,7 +71,7 @@ function deferred<T>() {
 }
 
 async function fixture(
-  packet?: PersonalSecAnnualEvidenceResponseDto,
+  packet?: PersonalSecAnnualCanonicalResponseDto,
   loadAnnual = true,
 ) {
   const response = packet ?? (await financialReviewResponse());
@@ -274,26 +275,42 @@ describe("composed explicit company financial review", () => {
   it("admits independent mixed facts even without any income/revenue pair", async () => {
     const response = await financialReviewResponse();
     const { evidence } = response;
-    expect(evidence.observations).toEqual([]);
-    expect(evidence.operatingResults.resolution.operatingIncome).toMatchObject({
+    expect(
+      evidence.facts.observations.filter((row) =>
+        [
+          "Revenues",
+          "SalesRevenueNet",
+          "RevenueFromContractWithCustomerExcludingAssessedTax",
+          "NetIncomeLoss",
+        ].includes(row.concept),
+      ),
+    ).toEqual([]);
+    expect(
+      viewOf(response).operatingResults.resolution.operatingIncome,
+    ).toMatchObject({
       status: "available",
       value: "250.125",
       startDate: "2025-01-01",
       endDate: "2025-12-31",
     });
-    expect(evidence.cashGeneration.resolution.operatingCashFlow).toMatchObject({
+    expect(
+      viewOf(response).cashGeneration.resolution.operatingCashFlow,
+    ).toMatchObject({
       status: "available",
       value: "120.125",
     });
     expect(
-      evidence.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+      viewOf(response).cashGeneration.resolution
+        .operatingCashFlowLessPpePurchases,
     ).toMatchObject({ status: "available", value: "-80.125" });
-    expect(evidence.liquidity.resolution.workingCapital).toMatchObject({
+    expect(viewOf(response).liquidity.resolution.workingCapital).toMatchObject({
       status: "available",
       value: "0",
       asOfDate: "2025-12-31",
     });
-    expect(evidence.balanceSheet.resolution.shareholdersEquity).toMatchObject({
+    expect(
+      viewOf(response).balanceSheet.resolution.shareholdersEquity,
+    ).toMatchObject({
       status: "available",
       value: "-7.5",
       asOfDate: "2025-12-31",
@@ -324,10 +341,14 @@ describe("composed explicit company financial review", () => {
       f.response.evidence.generation.sources.submissions.fetchedAt!,
     );
     expect(preview.note).toContain(
-      f.response.evidence.operatingResults.operatingIncome.observations[0]!.id,
+      f.response.evidence.facts.observations.find(
+        (row) => row.concept === "OperatingIncomeLoss",
+      )!.id,
     );
     expect(preview.note).toContain(
-      f.response.evidence.balanceSheet.shareholdersEquity.observations[0]!.id,
+      f.response.evidence.facts.observations.find(
+        (row) => row.concept === "StockholdersEquity",
+      )!.id,
     );
     expect(preview.note).toContain("2025-01-01 to 2025-12-31");
     expect(preview.note).toContain("as of 2025-12-31");
@@ -447,7 +468,7 @@ describe("composed explicit company financial review", () => {
     expect(preview.note).toMatch(/unavailable|missing/iu);
     expect(preview.note).not.toContain("-7.5");
     expect(
-      f.currentResponse().evidence.operatingResults.resolution.operatingIncome,
+      viewOf(f.currentResponse()).operatingResults.resolution.operatingIncome,
     ).toMatchObject({ status: "available", value: "250.125" });
     expect(f.workspace.coordinator.getSnapshot().draft).toBe(before);
     noOtherRequests(f.api);
@@ -471,7 +492,7 @@ describe("composed explicit company financial review", () => {
     );
     const preview = f.preview();
     expect(
-      f.currentResponse().evidence.operatingResults.resolution.operatingIncome,
+      viewOf(f.currentResponse()).operatingResults.resolution.operatingIncome,
     ).toMatchObject({ status: "available", currentUseEligible: false });
     expect(preview.note).toContain("historical; current use ineligible");
     expect(preview.note).toContain("2028-09-20T00:00:00.000Z");
@@ -526,7 +547,7 @@ describe("composed explicit company financial review", () => {
       const preview = f.preview();
       const original = f.currentResponse();
       const independent = f.workspace.followups.coordinator.getSnapshot().draft;
-      const held = deferred<PersonalSecAnnualEvidenceResponseDto>();
+      const held = deferred<PersonalSecAnnualCanonicalResponseDto>();
       vi.mocked(f.api.annualReport).mockReturnValueOnce(held.promise);
       const pending = f.workspace.annual.load();
       expect(f.prepare().preview).toBeNull();
@@ -638,7 +659,7 @@ describe("composed explicit company financial review", () => {
     const preview = f.preview();
     const originalStored = f.stored();
     const independentStored = f.storedFollowups();
-    const held = deferred<PersonalSecAnnualEvidenceResponseDto>();
+    const held = deferred<PersonalSecAnnualCanonicalResponseDto>();
     vi.mocked(f.api.annualReport).mockReturnValueOnce(held.promise);
     const pending = f.workspace.annual.load();
     f.workspace.coordinator.retire();

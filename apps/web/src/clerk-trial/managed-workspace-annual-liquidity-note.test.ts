@@ -1,17 +1,18 @@
+import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { describe, expect, it, vi } from "vitest";
 import {
   normalizeWatchlistNote,
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
   type PersonalSecurityMasterSearchResultDto,
 } from "@research-cockpit/contracts";
 import {
   liquidityResponse,
   liquidityRow,
-} from "../features/research/sec-annual-liquidity-fixture";
-import { request } from "../features/research/sec-annual-evidence-fixture";
-import { parseSecAnnualEvidenceResponse } from "../lib/sec-annual-evidence-response";
+} from "../features/research/test-canonical-annual-liquidity-ui-fixture";
+import { request } from "../features/research/test-canonical-annual-read-fixture";
+import { parseSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
 import { ManagedWorkspace } from "./managed-workspace";
@@ -20,11 +21,11 @@ import { annualOperatingNoteExcerpt } from "./managed-annual-operating-note";
 import {
   operatingResponse,
   operatingRow,
-} from "../features/research/sec-annual-operating-fixture";
+} from "../features/research/test-canonical-annual-operating-ui-fixture";
 import { eodSelection } from "./eod-history-fixture";
 import type { TrialSession } from "./session";
 
-type Report = PersonalSecAnnualEvidenceResponseDto;
+type Report = PersonalSecAnnualCanonicalResponseDto;
 const digest = eodSelection.catalogSnapshotSha256;
 const nextDigest = `sha256:${"b".repeat(64)}` as const;
 const snapshot: ManagedCatalogSnapshotDto = {
@@ -74,7 +75,7 @@ async function report(
   liabilities = "80.025",
   cutoff?: string,
 ) {
-  const parsed = await parseSecAnnualEvidenceResponse(
+  const parsed = await parseSecAnnualCanonicalResponse(
     await liquidityResponse(
       [
         liquidityRow("current_assets", assets),
@@ -211,7 +212,7 @@ describe("workspace Annual operating note action", () => {
     const { workspace, api, selection, response } = await fixture(
       await operatingResponse(),
     );
-    const basis = response.evidence.operatingResults.resolution.margins[1]!;
+    const basis = viewOf(response).operatingResults.resolution.margins[1]!;
     const replacement = await operatingResponse([operatingRow("300")]);
     vi.mocked(api.annualReport).mockResolvedValueOnce(replacement);
     await workspace.annual.load();
@@ -220,7 +221,7 @@ describe("workspace Annual operating note action", () => {
         .appended,
     ).toBe(false);
     const current = workspace.annual.getSnapshot().response!;
-    const chosen = current.evidence.operatingResults.resolution.margins[1]!;
+    const chosen = viewOf(current).operatingResults.resolution.margins[1]!;
     expect(
       workspace.getAnnualOperatingNoteAction(selection, current, chosen)
         .canAppend,
@@ -238,7 +239,7 @@ describe("workspace Annual operating note action", () => {
     const { workspace, api, selection, response } = await fixture(
       await operatingResponse(),
     );
-    const basis = response.evidence.operatingResults.resolution.margins[1]!;
+    const basis = viewOf(response).operatingResults.resolution.margins[1]!;
     const excerpt = annualOperatingNoteExcerpt(response, basis, false)!;
     const room = 2000 - [...excerpt].length - 1;
     workspace.noteResearch(selection, "😀".repeat(room + 1));
@@ -263,7 +264,7 @@ describe("workspace Annual operating note action", () => {
   });
   it("uses latest Unicode prose and one exact basis, then saves the whole draft explicitly", async () => {
     const raw = await operatingResponse([operatingRow("-25.125")]);
-    const packet = await parseSecAnnualEvidenceResponse(
+    const packet = await parseSecAnnualCanonicalResponse(
       raw,
       request(),
       new AbortController().signal,
@@ -272,7 +273,7 @@ describe("workspace Annual operating note action", () => {
     const { workspace, api, selection, response, saved } = await fixture(
       packet!,
     );
-    const basis = response.evidence.operatingResults.resolution.margins.find(
+    const basis = viewOf(response).operatingResults.resolution.margins.find(
       (b) => b.concept === "Revenues",
     )!;
     const prose = "  Café thesis 😀  keep whitespace  ";
@@ -310,7 +311,7 @@ describe("workspace Annual operating note action", () => {
     const { workspace, api, selection, response } = await fixture(
       await operatingResponse(),
     );
-    const basis = response.evidence.operatingResults.resolution.margins.find(
+    const basis = viewOf(response).operatingResults.resolution.margins.find(
       (b) => b.concept === "Revenues",
     )!;
     expect(
@@ -350,7 +351,7 @@ describe("workspace Annual operating note action", () => {
     const { workspace, api, selection, response } = await fixture(
       await operatingResponse(),
     );
-    const basis = response.evidence.operatingResults.resolution.margins.find(
+    const basis = viewOf(response).operatingResults.resolution.margins.find(
       (b) => b.concept === "Revenues",
     )!;
     workspace.noteResearch(selection, "x".repeat(2000));

@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   annualComparisonBalanceRows,
   annualComparisonResponse,
-} from "./annual-comparison-fixture";
+  viewOf,
+} from "./test-canonical-annual-comparison-fixture";
 import { ManagedAnnualBalanceSheetComparisonRows } from "./ManagedAnnualBalanceSheetComparisonRows";
 
 const render = (
@@ -13,7 +14,13 @@ const render = (
   renderToStaticMarkup(
     <table>
       <tbody>
-        <ManagedAnnualBalanceSheetComparisonRows responses={{ left, right }} />
+        <ManagedAnnualBalanceSheetComparisonRows
+          responses={{ left, right }}
+          views={{
+            left: left ? viewOf(left) : null,
+            right: right ? viewOf(right) : null,
+          }}
+        />
       </tbody>
     </table>,
   );
@@ -66,7 +73,7 @@ describe("independent reported balance sheet comparison rows", () => {
         },
       ],
     });
-    expect(left.evidence.balanceSheet.resolution.totalAssets).toMatchObject({
+    expect(viewOf(left).balanceSheet.resolution.totalAssets).toMatchObject({
       status: "unavailable",
       reason: "ambiguous_value",
     });

@@ -1,5 +1,6 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualPairDto,
 } from "@research-cockpit/contracts";
 import type {
@@ -19,14 +20,17 @@ type AvailableComparison = Extract<
 /** Presentation only: all values and eligibility come from the annual resolver. */
 export function AnnualOverviewSummary({
   response,
+  view,
   targetMessage,
   completenessMessage,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly targetMessage: string | null;
   readonly completenessMessage: string | null;
 }) {
-  const { target, resolution, generation } = response.evidence;
+  const { target, generation } = response.evidence;
+  const { resolution } = view.income;
   return (
     <header className="managed-annual-summary">
       <p>

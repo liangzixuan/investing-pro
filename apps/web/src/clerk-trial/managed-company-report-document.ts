@@ -3,10 +3,13 @@ import {
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   MANAGED_SEC_FILINGS_LIMITS,
 } from "@research-cockpit/contracts";
-import type { PreparedCompanyReport } from "./managed-company-report";
+import {
+  companyReportAnnualEvidenceIsOwned,
+  type PreparedCompanyReport,
+} from "./managed-company-report";
 
-// Compact source JSON stays within each admitted response bound. The extra
-// allowance covers selection, a bounded authored note and document framing.
+// Fixed whole-document ceiling: canonical sources, explicit resolved references,
+// authored inputs and document framing must fit together or the whole output fails.
 export const COMPANY_REPORT_VALUATION_MAX_BYTES = 131_072;
 export const COMPANY_REPORT_DOCUMENT_MAX_BYTES =
   MANAGED_EOD_HISTORY_LIMITS.responseBytes +
@@ -81,7 +84,7 @@ export function isCompanyReportDocument(
     const data = parsed as Record<string, unknown>;
     if (
       data.purpose !== fields.purpose ||
-      data.schemaVersion !== "2.0.0" ||
+      data.schemaVersion !== "3.0.0" ||
       !data.listing ||
       typeof data.listing !== "object" ||
       Array.isArray(data.listing)
@@ -118,11 +121,51 @@ function sourceDocument(state: EvidenceState | null) {
   };
 }
 
+function annualDocument(state: PreparedCompanyReport["evidence"]["annual"]) {
+  const source = sourceDocument(state);
+  if (!state?.response || !state.view) return source;
+  const view = state.view;
+  return {
+    ...source,
+    statements: view.statements,
+    financials: {
+      income: {
+        resolution: view.income.resolution,
+        reason: view.income.reason,
+        bases: view.income.bases,
+      },
+      cashGeneration: {
+        resolution: view.cashGeneration.resolution,
+        history: view.cashGeneration.history,
+      },
+      liquidity: {
+        resolution: view.liquidity.resolution,
+        history: view.liquidity.history,
+      },
+      operatingResults: {
+        resolution: view.operatingResults.resolution,
+        bases: view.operatingResults.bases,
+      },
+      balanceSheet: {
+        resolution: view.balanceSheet.resolution,
+        history: view.balanceSheet.history,
+        change: view.balanceSheet.change,
+      },
+      cashMargins: view.cashMargins,
+      financialReview: view.financialReview,
+    },
+  };
+}
+
 /** Only a current model-admitted preview may supply this document. No I/O. */
 export function formatCompanyReportDocument(
   report: PreparedCompanyReport,
 ): CompanyReportDocument | null {
-  if (report.kind !== "loaded_company_research") return null;
+  if (
+    report.kind !== "loaded_company_research" ||
+    !companyReportAnnualEvidenceIsOwned(report.evidence.annual)
+  )
+    return null;
   const noteJson = JSON.stringify(report.note);
   const valuation = report.valuation ?? null;
   if (
@@ -140,7 +183,7 @@ export function formatCompanyReportDocument(
   if (!name) return null;
   const document = {
     purpose: "investment.company-research",
-    schemaVersion: "2.0.0",
+    schemaVersion: "3.0.0",
     preparedAt: report.preparedAt,
     scope: {
       sourceEvidence:
@@ -181,7 +224,7 @@ export function formatCompanyReportDocument(
     valuation,
     sources: {
       price: sourceDocument(report.evidence.price),
-      annual: sourceDocument(report.evidence.annual),
+      annual: annualDocument(report.evidence.annual),
       filings: sourceDocument(report.evidence.filings),
     },
   };

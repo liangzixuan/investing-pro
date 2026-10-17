@@ -1,19 +1,19 @@
 import { useId, useState } from "react";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualOperatingMarginDto,
 } from "@research-cockpit/contracts";
 
 export interface ManagedAnnualOperatingNoteActions {
   getAction: (
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     basis: PersonalSecAnnualOperatingMarginDto,
   ) => {
     canAppend: boolean;
     reason: string | null;
   };
   append: (
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     basis: PersonalSecAnnualOperatingMarginDto,
   ) => {
     appended: boolean;
@@ -22,7 +22,7 @@ export interface ManagedAnnualOperatingNoteActions {
 }
 
 interface OperatingNoteFeedback {
-  response: PersonalSecAnnualEvidenceResponseDto;
+  response: PersonalSecAnnualCanonicalResponseDto;
   basis: PersonalSecAnnualOperatingMarginDto;
   message: string;
   refusal: ReturnType<ManagedAnnualOperatingNoteActions["getAction"]> | null;
@@ -33,7 +33,7 @@ export function ManagedAnnualOperatingNoteAction({
   basis,
   actions,
 }: {
-  response: PersonalSecAnnualEvidenceResponseDto;
+  response: PersonalSecAnnualCanonicalResponseDto;
   basis: PersonalSecAnnualOperatingMarginDto;
   actions: ManagedAnnualOperatingNoteActions;
 }) {

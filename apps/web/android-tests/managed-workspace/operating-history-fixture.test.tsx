@@ -4,8 +4,8 @@ import { createFixture } from "./fixture";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { SecAnnualEvidenceResult } from "../../src/features/research/SecAnnualEvidenceResult";
 import {
-  comparePersonalSecAnnualOperatingEvidence,
-  resolvePersonalSecAnnualOperatingHistory,
+  comparePersonalSecAnnualCanonicalOperatingEvidence,
+  resolvePersonalSecAnnualCanonicalOperatingHistory,
 } from "@research-cockpit/personal-financial-analytics";
 import { companySnapshotEvidence } from "../../src/clerk-trial/managed-company-snapshot";
 import {
@@ -40,12 +40,12 @@ describe("invented operating history lifetime", () => {
         workspace.filings.getSnapshot(),
       );
     const history = () =>
-      resolvePersonalSecAnnualOperatingHistory(
+      resolvePersonalSecAnnualCanonicalOperatingHistory(
         workspace.annual.getSnapshot().response!.evidence,
         "Revenues",
       );
     const comparison = () =>
-      comparePersonalSecAnnualOperatingEvidence(
+      comparePersonalSecAnnualCanonicalOperatingEvidence(
         workspace.annual.getSnapshot().response!.evidence,
         "Revenues",
       );
@@ -53,6 +53,7 @@ describe("invented operating history lifetime", () => {
       renderToStaticMarkup(
         <SecAnnualEvidenceResult
           response={workspace.annual.getSnapshot().response!}
+          view={workspace.annual.getSnapshot().view!}
           appearance="financial"
         />,
       );
@@ -100,10 +101,16 @@ describe("invented operating history lifetime", () => {
     ).sources.annual.response;
     expect(captured).toEqual(initial);
     expect(
-      resolvePersonalSecAnnualOperatingHistory(captured.evidence, "Revenues"),
+      resolvePersonalSecAnnualCanonicalOperatingHistory(
+        captured.evidence,
+        "Revenues",
+      ),
     ).toEqual(history());
     expect(
-      comparePersonalSecAnnualOperatingEvidence(captured.evidence, "Revenues"),
+      comparePersonalSecAnnualCanonicalOperatingEvidence(
+        captured.evidence,
+        "Revenues",
+      ),
     ).toEqual(initialComparison);
     await workspace.annual.load();
     expect(comparison()).toEqual(initialComparison);
@@ -158,7 +165,10 @@ describe("invented operating history lifetime", () => {
       },
     });
     expect(
-      comparePersonalSecAnnualOperatingEvidence(captured.evidence, "Revenues"),
+      comparePersonalSecAnnualCanonicalOperatingEvidence(
+        captured.evidence,
+        "Revenues",
+      ),
     ).toEqual(initialComparison);
     expect(html()).toContain("Revenue · 2 periods");
     expect(

@@ -1,7 +1,11 @@
+import { viewOf } from "./test-canonical-annual-ui-fixture";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { annualCashHistoryRows, cashResponse } from "./sec-annual-cash-fixture";
-import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
+import {
+  annualCashHistoryRows,
+  cashResponse,
+} from "./test-canonical-annual-cash-ui-fixture";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 
 const hooks = vi.hoisted(() => ({ values: [] as unknown[], index: 0 }));
 vi.mock("react", async (original) => ({
@@ -55,10 +59,10 @@ function text(node: React.ReactNode): string {
 }
 async function packet(rows = annualCashHistoryRows(), cutoff?: string) {
   const raw = await cashResponse(rows, cutoff);
-  const value = await parseSecAnnualEvidenceResponse(
+  const value = await parseSecAnnualCanonicalResponse(
     raw,
     {
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       catalogSnapshotSha256: raw.catalogSnapshotSha256,
       listingId: raw.security.listingId,
       symbol: raw.security.symbol,
@@ -70,7 +74,7 @@ async function packet(rows = annualCashHistoryRows(), cutoff?: string) {
 }
 function render(response: Awaited<ReturnType<typeof packet>>) {
   hooks.index = 0;
-  return expand(SecAnnualCashHistory({ response }));
+  return expand(SecAnnualCashHistory({ response, view: viewOf(response) }));
 }
 function select(tree: React.ReactNode) {
   return elements(tree).find((e) => e.type === "select")!;

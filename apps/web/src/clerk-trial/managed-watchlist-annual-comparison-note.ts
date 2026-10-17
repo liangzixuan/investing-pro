@@ -1,11 +1,11 @@
 import {
   isMainWatchlistPayload,
-  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-  type PersonalSecAnnualEvidenceResponseDto,
+  PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
-import { getPersonalSecAnnualSourceReason } from "@research-cockpit/personal-financial-analytics";
-import { annualCashGeneration } from "../lib/sec-annual-cash-response";
-import { annualOperatingResults } from "../lib/sec-annual-operating-response";
+import { getPersonalSecAnnualSourceClockReason } from "@research-cockpit/personal-financial-analytics";
+import { getManagedAnnualView } from "./managed-annual-view";
+import { isOwnedSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import type { ManagedWatchlistAnnualComparisonMember } from "./managed-watchlist-annual-comparison";
@@ -16,7 +16,7 @@ export interface AnnualComparisonNoteCapture {
   readonly group: AnnualComparisonNoteGroup;
   readonly left: {
     readonly member: ManagedWatchlistAnnualComparisonMember;
-    readonly response: PersonalSecAnnualEvidenceResponseDto;
+    readonly response: PersonalSecAnnualCanonicalResponseDto;
     readonly selectedBasis: string | null;
     readonly showingPrevious: boolean;
   };
@@ -37,6 +37,7 @@ const identityFields = [
 
 function validPair({ left, right }: AnnualComparisonNoteCapture): boolean {
   return (
+    [left, right].every(validIdentity) &&
     left.member.handle !== right.member.handle &&
     left.member.listing.issuerId !== right.member.listing.issuerId &&
     left.response.security.cik !== right.response.security.cik &&
@@ -50,15 +51,15 @@ function validPair({ left, right }: AnnualComparisonNoteCapture): boolean {
         ...member.listing,
         note: "",
       })),
-    }) &&
-    [left, right].every(validIdentity)
+    })
   );
 }
 
 function validIdentity({ member, response }: Column): boolean {
   return (
     typeof member.handle === "symbol" &&
-    response.schemaVersion === PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION &&
+    isOwnedSecAnnualCanonicalResponse(response) &&
+    response.schemaVersion === PERSONAL_SEC_ANNUAL_CANONICAL_VERSION &&
     response.security.cik === response.evidence.cik &&
     identityFields.every(
       (key) => member.listing[key] === response.security[key],
@@ -69,7 +70,7 @@ function validIdentity({ member, response }: Column): boolean {
 function sourceAvailable({ evidence }: Column["response"]): boolean {
   return (
     evidence.target.status === "target" &&
-    getPersonalSecAnnualSourceReason(evidence.generation) === null &&
+    getPersonalSecAnnualSourceClockReason(evidence.generation) === null &&
     evidence.generation.sources.companyFacts.sourceUrl ===
       `https://data.sec.gov/api/xbrl/companyfacts/CIK${evidence.cik}.json` &&
     evidence.generation.sources.submissions.sourceUrl ===
@@ -101,6 +102,7 @@ function incomeEvidence(column: Column): Evidence {
     return { excerpt: null, reason: "Choose a revenue basis explicitly." };
   const display = projectAnnualComparison(
     column.response,
+    getManagedAnnualView(column.response),
     column.selectedBasis,
   );
   if (!display.current || !display.currentUse)
@@ -124,16 +126,10 @@ function incomeEvidence(column: Column): Evidence {
 }
 
 function cashEvidence(column: Column): Evidence {
-  const { evidence } = column.response;
-  const cash = evidence.cashGeneration;
-  if (
-    !annualCashGeneration(
-      cash,
-      evidence,
-      new Set(evidence.observations.map((row) => row.id)),
-    )
-  )
+  const view = getManagedAnnualView(column.response);
+  if (view === null)
     return { excerpt: null, reason: "Cash evidence could not be validated." };
+  const cash = view.cashGeneration;
   const {
     operatingCashFlow: operating,
     ppePurchases: purchases,
@@ -176,21 +172,13 @@ function operatingEvidence(column: Column): Evidence {
   if (column.selectedBasis === null)
     return { excerpt: null, reason: "Choose a revenue basis explicitly." };
   const { evidence } = column.response;
-  const { operatingResults, cashGeneration, liquidity } = evidence;
-  const ids = new Set(
-    [
-      ...evidence.observations,
-      ...cashGeneration.operatingCashFlow.observations,
-      ...cashGeneration.ppePurchases.observations,
-      ...liquidity.currentAssets.observations,
-      ...liquidity.currentLiabilities.observations,
-    ].map((row) => row.id),
-  );
-  if (!annualOperatingResults(operatingResults, evidence, ids))
+  const view = getManagedAnnualView(column.response);
+  if (view === null)
     return {
       excerpt: null,
       reason: "Operating evidence could not be validated.",
     };
+  const { operatingResults } = view;
   const basis = operatingResults.resolution.margins.find(
     (item) => item.concept === column.selectedBasis,
   );
