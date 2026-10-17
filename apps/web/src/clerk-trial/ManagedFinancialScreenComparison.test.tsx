@@ -1,5 +1,6 @@
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ManagedEodIdentity } from "@research-cockpit/contracts";
 import { ManagedFinancialScreenComparison } from "./ManagedFinancialScreenComparison";
@@ -166,6 +167,22 @@ describe("screen-owned annual statement comparison", () => {
     );
     expect(markup).toContain("Compare left ZERO");
     expect(markup).toContain("Compare right ONE");
+    const $ = load(markup);
+    const selector = $(".managed-screen-comparison > label select");
+    const selectorId = selector.attr("id");
+    expect(selector).toHaveLength(1);
+    expect(selectorId).toBeTruthy();
+    expect(selector.parent().attr("for")).toBe(selectorId);
+    expect(selector.attr("disabled")).toBeUndefined();
+    expect(
+      $("[id]").filter((_, element) => $(element).attr("id") === selectorId),
+    ).toHaveLength(1);
+    expect(
+      selector
+        .find("option")
+        .map((_, option) => $(option).attr("value"))
+        .get(),
+    ).toEqual(["income_statement", "balance_sheet", "cash_flow"]);
     f.choose();
     expect(f.model.getSnapshot().shortlist).toEqual([]);
     expect(f.html()).toContain("Left company: ZERO · Zero Company");

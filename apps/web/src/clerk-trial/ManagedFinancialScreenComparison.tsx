@@ -41,9 +41,13 @@ export function ManagedFinancialScreenComparison({
         source times. The dates are not aligned. Your choices do not establish a
         peer group or change the shortlist.
       </p>
-      <label className="managed-annual-statement-selector">
+      <label
+        className="managed-annual-statement-selector"
+        htmlFor={`${id}-statement`}
+      >
         Comparison statement
         <select
+          id={`${id}-statement`}
           value={group}
           onChange={(event) => {
             const next = event.currentTarget
