@@ -1,4 +1,8 @@
 import {
+  ManagedAnnualStatementsReview,
+  type ManagedAnnualStatementsReviewActions,
+} from "./ManagedAnnualStatementsReview";
+import {
   ManagedAnnualOperatingNoteAction,
   type ManagedAnnualOperatingNoteActions,
 } from "./ManagedAnnualOperatingNoteAction";
@@ -29,6 +33,7 @@ export function ManagedAnnualReport({
   liquidityNoteActions,
   operatingNoteActions,
   financialReviewActions,
+  statementActions,
   watchlist,
 }: {
   model: AnnualReportModel;
@@ -37,6 +42,7 @@ export function ManagedAnnualReport({
   liquidityNoteActions?: ManagedAnnualLiquidityNoteActions;
   operatingNoteActions?: ManagedAnnualOperatingNoteActions;
   financialReviewActions?: ManagedFinancialReviewActions;
+  statementActions?: ManagedAnnualStatementsReviewActions;
   watchlist?: ResearchWatchlistState;
 }) {
   const state = useSyncExternalStore(
@@ -94,8 +100,8 @@ export function ManagedAnnualReport({
         </div>
       </div>
       <p className="managed-annual-scope">
-        Reported revenue, net income, operating results, cash generation,
-        liquidity and balance sheet totals from SEC Company Facts.
+        Standardized Income, Balance sheet and Cash flow with exact reported
+        concepts and source details from SEC Company Facts.
       </p>
       <p
         className="managed-annual-status"
@@ -117,14 +123,35 @@ export function ManagedAnnualReport({
           confirmed newer evidence. Source and observation times are unchanged.
         </p>
       )}
-      {state.response && (
+      {state.response && state.view && statementActions && (
+        <ManagedAnnualStatementsReview
+          response={state.response}
+          actions={statementActions}
+          blockedReason={
+            state.running || state.checkingSeed
+              ? "Wait for the Annual request to finish or cancel it."
+              : state.catalogChanged
+                ? "Refresh the catalog and choose the company again."
+                : !watchlist?.canEdit
+                  ? (watchlist?.reason ??
+                    "Add this company to the watchlist draft before selecting statement cells.")
+                  : null
+          }
+        />
+      )}
+      {state.response && state.view && (
         <SecAnnualEvidenceResult
           response={state.response}
+          view={state.view}
           appearance="financial"
           renderFinancialReview={(onInspect) =>
-            financialReviewActions && watchlist && state.response ? (
+            financialReviewActions &&
+            watchlist &&
+            state.response &&
+            state.view ? (
               <ManagedCompanyFinancialReview
                 response={state.response}
+                view={state.view}
                 actions={financialReviewActions}
                 watchlist={watchlist}
                 running={state.running}

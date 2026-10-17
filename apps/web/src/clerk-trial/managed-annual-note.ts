@@ -1,11 +1,8 @@
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualPairDto,
 } from "@research-cockpit/contracts";
-import {
-  comparePersonalSecAnnualEvidence,
-  resolvePersonalSecAnnualHistory,
-} from "@research-cockpit/personal-financial-analytics";
+import { getManagedAnnualView } from "./managed-annual-view";
 import {
   annualComparisonPercentText,
   annualMarginChangeText,
@@ -13,15 +10,17 @@ import {
 
 /** Formats one pair from the already admitted report; never loads or saves data. */
 export function annualNoteExcerpt(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   pair: PersonalSecAnnualPairDto,
   showingPrevious: boolean,
 ): string | null {
-  const { target, completeness, resolution, generation, cik } =
-    response.evidence;
+  const view = getManagedAnnualView(response);
+  if (view === null) return null;
+  const { target, generation, cik } = response.evidence;
+  const { resolution } = view.income;
   if (
     target.status !== "target" ||
-    completeness.status !== "complete" ||
+    view.income.reason !== null ||
     !resolution.selectedReportPairEligible ||
     !resolution.bases.some(
       (basis) =>
@@ -44,20 +43,18 @@ export function annualNoteExcerpt(
     return null;
 
   const filing = `https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/u, "")}/${target.accessionNumber}-index.htm`;
-  const comparison = comparePersonalSecAnnualEvidence(
-    response.evidence,
-    pair.concept,
+  const selected = view.income.bases.find(
+    (basis) => basis.concept === pair.concept,
   );
+  if (!selected) return null;
+  const comparison = selected.comparison;
   const marginExcerpt =
     comparison.status !== "available"
       ? ""
       : comparison.netMargin.status === "available"
         ? `Reported net margin ${comparison.netMargin.prior}% to ${comparison.netMargin.current}%, change ${annualMarginChangeText(comparison.netMargin)}.`
         : `Reported net-margin comparison ${annualMarginChangeText(comparison.netMargin).toLowerCase()}.`;
-  const history = resolvePersonalSecAnnualHistory(
-    response.evidence,
-    pair.concept,
-  );
+  const history = selected.history;
   const earlier =
     history.status === "available" ? history.periods[2] : undefined;
   const earlierExcerpt =

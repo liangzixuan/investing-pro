@@ -48,6 +48,27 @@ does not establish authenticated production journeys, provider health or physica
 Android use. The earlier fixed Follow-ups storage proof failed in its recorded
 scope; full live-storage qualification and backup/restore acceptance remain open.
 
+## Annual statement explorer in progress
+
+The next complete M2 outcome is the [standardized annual statement explorer](MANAGED_ANNUAL_STATEMENTS.md):
+Income, Balance sheet and Cash flow, selected-filing comparative dates, exact
+source inspection, selected-cell note actions and captured JSON/HTML reports.
+The canonical version 6 provider, routes, clients and paired response/view models
+are integrated in the active source. All three statement views retain exact
+reported amounts, dates, independent refusals and source references. The statement
+explorer appears before the existing financial summaries. The actual workspace
+flow from explicit load through selected-cell Preview, single-use Append, Review,
+Save and fresh read passes, including conflict and uncertain-save recovery.
+
+Captured schema 3 JSON preserves the canonical graph once, with separate statement
+cells and financial results that refer to its observation identifiers. Complete
+passive HTML keeps all three statements. Actual escaped capacity cases fit the
+unchanged wire and report limits; a document over the HTML limit is refused whole.
+All workspace types pass. Screen and existing native fixture tests are migrated
+to the same contract. The dedicated Android statement journey, current full checks,
+source review and publication remain separate acceptance steps. No new provider,
+automatic load or larger financial response limit is introduced.
+
 ## Authored valuation in progress
 
 The next independent M4 outcome is the [authored valuation workbench](MANAGED_VALUATION_WORKBENCH.md):
@@ -58,9 +79,14 @@ capture. It reuses exact decimal calculators without new source requests or
 invented financial operands. The composed Calculate/Preview/Append/Save/fresh-read
 and report cases pass, including uncertainty recovery, independent source
 refusals, draft retention and retirement. The complete web suite and workspace
-types pass. A fixed native journey is authored with fixture and syntax checks;
-Android compilation and execution remain separate. Browser geometry, packaged
-execution and publication are not accepted.
+types pass. The prior native archive passed 45 tests, but screenshot review found
+mobile navigation covering the sign-out actions. The reviewed layout fix moves
+navigation into page flow while the review is open. Stronger hit checks and
+affected source tests pass. Current native CI passes all 45 cases; direct review
+of its sign-out and results screenshots confirms visible actions and whole
+scenario headings. All six current workflows and seven jobs pass. CodeScene
+maintenance advisories remain failed and unaccepted; source integration is open.
+Desktop browser geometry, publication and physical installation are not accepted.
 The Portfolio storage and source integration decisions remain separate.
 
 ## Managed portfolio in progress

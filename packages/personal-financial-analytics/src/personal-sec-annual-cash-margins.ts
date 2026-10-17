@@ -2,12 +2,12 @@ import {
   PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
   type PersonalSecAnnualCashUnavailableReason,
   type PersonalSecAnnualCashValueDto,
-  type PersonalSecAnnualEvidenceDto,
   type PersonalSecAnnualOperatingUnavailableReason,
   type PersonalSecAnnualOperatingValueDto,
   type PersonalSecAnnualRevenueConcept,
 } from "@research-cockpit/contracts";
 import { calculatePersonalOperatingCashFlowLessPpePurchasesMargin } from "./personal-cash-generation";
+import type { PersonalSecAnnualResolvedFinancials } from "./personal-sec-annual-resolved-financials";
 
 export type PersonalSecAnnualCashMarginReason =
   | PersonalSecAnnualCashUnavailableReason
@@ -119,9 +119,12 @@ function margin(
   });
 }
 
-/** Already resolved Annual v5 cells only; no raw admission, clock or income gate. */
+/** Already resolved cells only; no raw admission, clock or income gate. */
 export function derivePersonalSecAnnualCashMargins(
-  evidence: PersonalSecAnnualEvidenceDto,
+  evidence: Pick<
+    PersonalSecAnnualResolvedFinancials,
+    "cashGeneration" | "operatingResults"
+  >,
 ): readonly PersonalSecAnnualCashMargin[] {
   const cash = evidence.cashGeneration.resolution;
   return Object.freeze(

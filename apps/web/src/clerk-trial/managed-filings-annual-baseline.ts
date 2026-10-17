@@ -1,6 +1,6 @@
 import {
   membershipMatchesResult,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
   type PersonalSecAnnualTargetDto,
 } from "@research-cockpit/contracts";
 import type { ManagedAnnualReportState } from "./managed-annual-report";
@@ -8,12 +8,12 @@ import type { ManagedCompanyFilingsState } from "./managed-company-filings";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 
 export interface ManagedFilingsAnnualBaseline {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
   readonly target: Extract<PersonalSecAnnualTargetDto, { status: "target" }>;
 }
 
 function annualMatchesSelection(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   selection: ManagedResearchSelection,
 ) {
   const fields = [
@@ -63,7 +63,7 @@ export function getManagedFilingsAnnualBaseline(
 }
 
 function responsesMatch(
-  annual: PersonalSecAnnualEvidenceResponseDto,
+  annual: PersonalSecAnnualCanonicalResponseDto,
   filings: NonNullable<ManagedCompanyFilingsState["response"]>,
   selection: ManagedResearchSelection,
   filingSelection: ManagedResearchSelection,

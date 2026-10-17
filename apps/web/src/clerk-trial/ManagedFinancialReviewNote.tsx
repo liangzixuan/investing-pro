@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import type {
   PersonalSecAnnualFinancialReviewKey,
   PersonalSecAnnualFinancialReviewRow,
@@ -23,7 +23,7 @@ function noteBlock(watchlist: ResearchWatchlistState, running: boolean) {
 
 /** Own only unadded choices and presentation. The workspace owns preview authority. */
 function useFinancialReviewDraft(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   actions: ManagedFinancialReviewActions,
   blocked: boolean,
 ) {
@@ -147,7 +147,7 @@ export function ManagedFinancialReviewNote({
   watchlist,
   running,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
   readonly rows: readonly PersonalSecAnnualFinancialReviewRow[];
   readonly actions: ManagedFinancialReviewActions;
   readonly watchlist: ResearchWatchlistState;

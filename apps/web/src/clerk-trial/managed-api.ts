@@ -48,7 +48,7 @@ import {
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
-  parseManagedSecAnnualEvidenceRequest,
+  parseManagedSecAnnualCanonicalRequest,
   parseManagedCatalogResolveRequest,
   parseManagedCatalogResolveResponse,
   parseManagedCatalogSearch,
@@ -63,10 +63,10 @@ import {
   type ManagedWatchlistCommand,
   type ManagedWatchlistDto,
   type ManagedWatchlistReceiptDto,
-  type PersonalSecAnnualEvidenceRequestDto,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalRequestDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
-import { parseSecAnnualEvidenceResponse } from "../lib/sec-annual-evidence-response";
+import { parseSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
 import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
@@ -96,9 +96,9 @@ export interface ManagedApi {
     signal: AbortSignal,
   ) => Promise<ManagedEodHistoryResponseDto>;
   annualReport: (
-    request: PersonalSecAnnualEvidenceRequestDto,
+    request: PersonalSecAnnualCanonicalRequestDto,
     signal: AbortSignal,
-  ) => Promise<PersonalSecAnnualEvidenceResponseDto>;
+  ) => Promise<PersonalSecAnnualCanonicalResponseDto>;
   status: (signal: AbortSignal) => Promise<ManagedCatalogStatusDto>;
   search: (
     query: string,
@@ -486,14 +486,14 @@ export function createManagedApi(
       );
     },
     annualReport: async (input, signal) => {
-      const captured = parseManagedSecAnnualEvidenceRequest(input);
+      const captured = parseManagedSecAnnualCanonicalRequest(input);
       if (!captured) throw new TrialApiError("invalid_request");
       return request(
         MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
         signal,
         MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes,
         (value, lifetime) =>
-          parseSecAnnualEvidenceResponse(value, captured, lifetime),
+          parseSecAnnualCanonicalResponse(value, captured, lifetime),
         requestBody(captured, MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes),
         "annual",
       );

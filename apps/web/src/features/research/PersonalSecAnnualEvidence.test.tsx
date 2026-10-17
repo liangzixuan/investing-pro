@@ -1,22 +1,22 @@
-import type {
-  PersonalSecAnnualEvidenceResponseDto,
-  PersonalSecAnnualResolutionInput,
+import {
+  PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY,
+  serializePersonalSecAnnualStatementObservation,
+  type PersonalSecAnnualCanonicalRequestDto,
+  type PersonalSecAnnualCanonicalResponseDto,
+  type PersonalSecAnnualStatementObservationDto,
 } from "@research-cockpit/contracts";
 import {
-  resolvePersonalSecAnnualEvidence,
-  serializePersonalSecAnnualGeneration,
-} from "@research-cockpit/personal-financial-analytics";
+  canonicalAnnualPacket,
+  canonicalFixtureHash,
+  withCanonicalAnnualGeneration,
+} from "./sec-annual-canonical-fixture";
 import React from "react";
-import { request, row, response } from "./sec-annual-evidence-fixture";
-import { cashGeneration } from "./sec-annual-cash-fixture";
-import { liquidity } from "./sec-annual-liquidity-fixture";
-import { operatingResults } from "./sec-annual-operating-fixture";
-import { balanceSheet } from "./sec-annual-balance-sheet-fixture";
-import { hash } from "../../lib/sec-annual-response-validation";
-import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PersonalWorkspaceApiError } from "../../lib/personal-workspace-api";
+import { getManagedAnnualView } from "../../clerk-trial/managed-annual-view";
+import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import {
   PersonalSecAnnualEvidence,
   type PersonalSecAnnualEvidenceProps,
@@ -96,7 +96,7 @@ describe("PersonalSecAnnualEvidence", () => {
       ),
     ).toHaveLength(3);
     expect(text(view)).toMatch(
-      /Inspect selected-report income evidence \(\s*4 observations\)/u,
+      /Inspect selected-report statement evidence \(\s*4 observations\)/u,
     );
     expect(text(view)).toContain("Filing focus, not observation year");
     expect(
@@ -118,6 +118,42 @@ describe("PersonalSecAnnualEvidence", () => {
     },
   );
 
+  it("retains the owned canonical packet and its cached view as one result", async () => {
+    const packet = await response();
+    api.fetchPersonalSecAnnualEvidence.mockResolvedValue(packet);
+    await load();
+    const result = elements(render()).find(
+      (element) => element.type === SecAnnualEvidenceResult,
+    );
+    expect(result?.props.response).toBe(packet);
+    expect(result?.props.view).toBe(getManagedAnnualView(packet));
+    expect(result?.props.view).not.toBeNull();
+    expect(packet.schemaVersion).toBe("6.0.0");
+    expect(Object.isFrozen(packet.evidence.facts.observations)).toBe(true);
+  });
+
+  it.each(["unowned clone", "version five"])(
+    "refuses a %s without retaining values or deriving a view",
+    async (kind) => {
+      const packet = await response();
+      api.fetchPersonalSecAnnualEvidence.mockResolvedValue(
+        kind === "unowned clone"
+          ? structuredClone(packet)
+          : { ...packet, schemaVersion: "5.0.0" },
+      );
+      await load();
+      expect(text(render())).toContain("could not be validated");
+      expect(text(render())).not.toContain(
+        "Inspect selected-report statement evidence",
+      );
+      expect(
+        elements(render()).some(
+          (element) => element.type === SecAnnualEvidenceResult,
+        ),
+      ).toBe(false);
+    },
+  );
+
   it("does not mistake complete evidence with missing income for a valid or current pair", async () => {
     api.fetchPersonalSecAnnualEvidence.mockResolvedValue(
       await response([row()]),
@@ -135,7 +171,7 @@ describe("PersonalSecAnnualEvidence", () => {
 
   it("identifies each asymmetric source status when annual evidence is refused", async () => {
     const wire = await response();
-    const evidence: PersonalSecAnnualResolutionInput = {
+    const evidence: Wire["evidence"] = {
       ...wire.evidence,
       generation: {
         ...wire.evidence.generation,
@@ -150,34 +186,24 @@ describe("PersonalSecAnnualEvidence", () => {
           },
         },
       },
-      completeness: { status: "refused", reason: "source_unavailable" },
-      incomeScanStatus: "source_unavailable",
-      coverage: null,
-      observations: [],
-    };
-    const refused = {
-      ...evidence,
-      generation: {
-        ...evidence.generation,
-        sha256: await hash(serializePersonalSecAnnualGeneration(evidence)),
+      facts: {
+        ...wire.evidence.facts,
+        scans: wire.evidence.facts.scans.map(({ concept }) => ({
+          concept,
+          scan: {
+            status: "source_unavailable",
+            absence: null,
+            coverage: null,
+          } as const,
+        })),
+        observations: [],
       },
     };
-    const packet: PersonalSecAnnualEvidenceResponseDto = {
+    const packet = await withCanonicalAnnualGeneration({
       ...wire,
-      evidence: {
-        ...refused,
-        resolution: resolvePersonalSecAnnualEvidence(refused),
-        cashGeneration: await cashGeneration(refused),
-        liquidity: await liquidity(refused),
-        operatingResults: await operatingResults(refused),
-        balanceSheet: await balanceSheet(refused),
-      },
-    };
-    const admitted = await parseSecAnnualEvidenceResponse(
-      packet,
-      request(),
-      new AbortController().signal,
-    );
+      evidence,
+    });
+    const admitted = await own(packet);
     expect(admitted).toEqual(packet);
     expect(admitted).not.toBeNull();
     api.fetchPersonalSecAnnualEvidence.mockResolvedValue(admitted);
@@ -236,10 +262,12 @@ describe("PersonalSecAnnualEvidence", () => {
         durationDays: 366,
       }),
     ]);
-    api.fetchPersonalSecAnnualEvidence.mockResolvedValue({
-      ...wire,
-      security: { ...wire.security, issuerName: selection.issuerName },
-    });
+    api.fetchPersonalSecAnnualEvidence.mockResolvedValue(
+      await own({
+        ...wire,
+        security: { ...wire.security, issuerName: selection.issuerName },
+      }),
+    );
     await load();
     const view = render();
     expect(text(view)).toContain("2024-01-01 to 2024-12-31");
@@ -262,7 +290,7 @@ describe("PersonalSecAnnualEvidence", () => {
     click(previous, "Refresh annual report");
     const pending = render();
     expect(text(pending)).not.toContain(
-      "Inspect selected-report income evidence",
+      "Inspect selected-report statement evidence",
     );
     expect(text(pending)).not.toContain("Net margin · %");
     const abort = api.fetchPersonalSecAnnualEvidence.mock
@@ -273,7 +301,7 @@ describe("PersonalSecAnnualEvidence", () => {
     await flush();
     expect(text(render())).toContain("Annual report load cancelled");
     expect(text(render())).not.toContain(
-      "Inspect selected-report income evidence",
+      "Inspect selected-report statement evidence",
     );
   });
 
@@ -352,7 +380,7 @@ describe("PersonalSecAnnualEvidence", () => {
       held.resolve(await response());
       await flush();
       expect(text(render(false))).not.toContain(
-        "Inspect selected-report income evidence",
+        "Inspect selected-report statement evidence",
       );
       expect(api.fetchPersonalSecAnnualEvidence).toHaveBeenCalledOnce();
       harness.effects();
@@ -378,7 +406,7 @@ describe("PersonalSecAnnualEvidence", () => {
     held.resolve(await response());
     await flush();
     expect(text(render())).not.toContain(
-      "Inspect selected-report income evidence",
+      "Inspect selected-report statement evidence",
     );
     const next = deferred<Wire>();
     api.fetchPersonalSecAnnualEvidence.mockReturnValueOnce(next.promise);
@@ -405,7 +433,9 @@ describe("PersonalSecAnnualEvidence", () => {
     render();
     click(render(), "Load observed annual report");
     await flush();
-    expect(text(render())).toContain("Inspect selected-report income evidence");
+    expect(text(render())).toContain(
+      "Inspect selected-report statement evidence",
+    );
     const held = deferred<Wire>();
     api.fetchPersonalSecAnnualEvidence.mockReturnValueOnce(held.promise);
     click(render(), "Refresh annual report");
@@ -417,7 +447,7 @@ describe("PersonalSecAnnualEvidence", () => {
         .aborted,
     ).toBe(true);
     expect(text(render(false))).not.toContain(
-      "Inspect selected-report income evidence",
+      "Inspect selected-report statement evidence",
     );
   });
 
@@ -438,7 +468,7 @@ describe("PersonalSecAnnualEvidence", () => {
     await load();
     expect(text(render())).toContain("could not be validated");
     expect(text(render())).not.toContain(
-      "Inspect selected-report income evidence",
+      "Inspect selected-report statement evidence",
     );
   });
 
@@ -470,7 +500,125 @@ function cancel(view: unknown, focused = false) {
   });
 }
 
-type Wire = PersonalSecAnnualEvidenceResponseDto;
+type Wire = PersonalSecAnnualCanonicalResponseDto;
+type Row = PersonalSecAnnualStatementObservationDto;
+function request(): PersonalSecAnnualCanonicalRequestDto {
+  return {
+    schemaVersion: "6.0.0",
+    catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
+    listingId: "listing-zero",
+    symbol: "ZERO",
+  };
+}
+function row(
+  concept: Row["concept"] = "Revenues",
+  value = "1000",
+  changes: Partial<Row> = {},
+): Row {
+  return {
+    id: `sec-fact:${"0".repeat(64)}`,
+    taxonomy: "us-gaap",
+    concept,
+    unit: "USD",
+    value,
+    startDate: "2025-01-01",
+    endDate: "2025-12-31",
+    durationDays: 365,
+    periodBasis: "unresolved",
+    filingFocusYear: 2025,
+    filingFocusPeriod: "FY",
+    frame: "CY2025",
+    accessionNumber: "0000999999-26-000001",
+    form: "10-K",
+    filedDate: "2026-02-01",
+    sourceLocator: `/facts/us-gaap/${concept}/units/USD/0`,
+    filing: {
+      status: "matched",
+      form: "10-K",
+      filedDate: "2026-02-01",
+      reportDate: "2025-12-31",
+      acceptedAt: "2026-02-01T00:00:00.000Z",
+      sourceUrl:
+        "https://www.sec.gov/Archives/edgar/data/42/0000999999-26-000001-index.htm",
+    },
+    ...changes,
+  };
+}
+async function response(rows = [row(), row("NetIncomeLoss", "100")]) {
+  const base = await canonicalAnnualPacket({ rowsPerConcept: 0 });
+  const observations: Row[] = [];
+  const scans = [];
+  for (const { concept } of PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY) {
+    const selected = await Promise.all(
+      rows
+        .filter((item) => item.concept === concept)
+        .map(async (item, index) => ({
+          ...item,
+          id: `sec-fact:${await canonicalFixtureHash(serializePersonalSecAnnualStatementObservation(item))}` as const,
+          sourceLocator: `/facts/us-gaap/${concept}/units/USD/${index}`,
+        })),
+    );
+    selected.sort(
+      (left, right) =>
+        right.endDate.localeCompare(left.endDate) ||
+        (right.startDate ?? "").localeCompare(left.startDate ?? "") ||
+        right.filedDate.localeCompare(left.filedDate) ||
+        left.accessionNumber.localeCompare(right.accessionNumber) ||
+        left.id.localeCompare(right.id),
+    );
+    observations.push(...selected);
+    scans.push({
+      concept,
+      scan: {
+        status: "available" as const,
+        absence: selected.length === 0 ? ("empty_usd" as const) : null,
+        coverage: {
+          full: {
+            candidateRows: selected.length,
+            inspectedRows: selected.length,
+            invalidRows: 0,
+            duplicateRows: 0,
+            uniqueObservations: selected.length,
+          },
+          selected: selected.length,
+          otherAccessions: 0,
+          returned: selected.length,
+          omittedSelected: 0,
+        },
+      },
+    });
+  }
+  return own(
+    await withCanonicalAnnualGeneration({
+      ...base,
+      catalogSnapshotSha256: request().catalogSnapshotSha256,
+      security: {
+        country: "US",
+        exchangeMic: "XNAS",
+        issuerId: "issuer-zero",
+        issuerName: "Zero Company",
+        listingId: "listing-zero",
+        securityName: "Zero Class A",
+        symbol: "ZERO",
+        cik: base.evidence.cik,
+      },
+      evidence: {
+        ...base.evidence,
+        facts: { ...base.evidence.facts, observations, scans },
+      },
+    }),
+  );
+}
+async function own(packet: Wire): Promise<Wire> {
+  const owned = await parseSecAnnualCanonicalResponse(
+    packet,
+    request(),
+    new AbortController().signal,
+  );
+  if (owned === null)
+    throw new Error("Invented canonical fixture was refused.");
+  return owned;
+}
 const harness = vi.hoisted(() => {
   const states: unknown[] = [];
   const refs: Array<{ current: unknown }> = [];

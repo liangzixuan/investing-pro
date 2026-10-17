@@ -4,7 +4,7 @@ import type {
   ManagedEodIdentity,
   WatchlistMembership,
 } from "@research-cockpit/contracts";
-import { annualComparisonResponse } from "./annual-comparison-fixture";
+import { annualComparisonResponse } from "./test-canonical-annual-comparison-fixture";
 import { TrialApiError } from "./api";
 import {
   ManagedAnnualReportError,
@@ -429,7 +429,7 @@ describe("watchlist Annual explicit read lifetime", () => {
     await model.load("left", left);
     expect(read).toHaveBeenCalledOnce();
     expect(read.mock.calls[0]![0]).toEqual({
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       catalogSnapshotSha256: digest,
       listingId: first.listingId,
       symbol: first.symbol,
@@ -441,6 +441,9 @@ describe("watchlist Annual explicit read lifetime", () => {
     expect(read).toHaveBeenCalledTimes(2);
     expect(read.mock.calls[1]![0].listingId).toBe(second.listingId);
     expect(model.getSnapshot().left.report.response).toBe(packet);
+    expect(model.getSnapshot().left.report.view?.canonical).toBe(
+      packet.evidence,
+    );
     expect(model.getSnapshot().right.report.response?.security.issuerId).toBe(
       second.issuerId,
     );

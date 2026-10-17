@@ -1,39 +1,30 @@
 import { describe, expect, it } from "vitest";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualPairDto,
 } from "@research-cockpit/contracts";
 import {
+  admitUiPacket,
   annualComparativeRows,
   annualHistoryRows,
+  row,
   response,
-} from "../features/research/sec-annual-evidence-fixture";
+  viewOf as view,
+} from "../features/research/test-canonical-annual-ui-fixture";
 import { annualNoteExcerpt } from "./managed-annual-note";
 
 const expected =
   "Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
 
 function replacePair(
-  report: PersonalSecAnnualEvidenceResponseDto,
+  report: PersonalSecAnnualCanonicalResponseDto,
   changes: Partial<PersonalSecAnnualPairDto>,
 ) {
-  const basis = report.evidence.resolution.bases.find(
+  const basis = view(report).income.resolution.bases.find(
     (item) => item.status === "eligible",
   )!;
   const pair = { ...basis.pairs[0]!, ...changes };
-  return {
-    pair,
-    report: {
-      ...report,
-      evidence: {
-        ...report.evidence,
-        resolution: {
-          ...report.evidence.resolution,
-          bases: [{ ...basis, pairs: [pair] }],
-        },
-      },
-    },
-  };
+  return { pair, report };
 }
 
 describe("managed Annual note excerpt", () => {
@@ -47,7 +38,7 @@ describe("managed Annual note excerpt", () => {
             : r,
         ),
       );
-      const pair = report.evidence.resolution.bases.find(
+      const pair = view(report).income.resolution.bases.find(
         (b) => b.status === "eligible",
       )!.pairs[0]!;
       const text = annualNoteExcerpt(report, pair, false)!;
@@ -65,7 +56,7 @@ describe("managed Annual note excerpt", () => {
   );
   it("adds the admitted third period to the same explicit draft excerpt with original provenance", async () => {
     const report = await response(annualHistoryRows());
-    const pair = report.evidence.resolution.bases.find(
+    const pair = view(report).income.resolution.bases.find(
       (b) => b.status === "eligible",
     )!.pairs[0]!;
     const text = annualNoteExcerpt(report, pair, false)!;
@@ -84,7 +75,7 @@ describe("managed Annual note excerpt", () => {
   });
   it("adds available same-filing comparison to the same dated excerpt without changing original-load provenance", async () => {
     const report = await response(annualComparativeRows());
-    const pair = report.evidence.resolution.bases.find(
+    const pair = view(report).income.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
     const text = annualNoteExcerpt(report, pair, true)!;
@@ -104,7 +95,7 @@ describe("managed Annual note excerpt", () => {
       annualComparativeRows(),
       "2027-09-20T00:00:00.000Z",
     );
-    const oldPair = historical.evidence.resolution.bases.find(
+    const oldPair = view(historical).income.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
     expect(annualNoteExcerpt(historical, oldPair, false)).not.toContain(
@@ -119,7 +110,7 @@ describe("managed Annual note excerpt", () => {
         : r,
     );
     const report = await response(input);
-    const pair = report.evidence.resolution.bases.find(
+    const pair = view(report).income.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
     const text = annualNoteExcerpt(report, pair, false)!;
@@ -140,7 +131,7 @@ describe("managed Annual note excerpt", () => {
           : r,
       );
       const report = await response(input);
-      const pair = report.evidence.resolution.bases.find(
+      const pair = view(report).income.resolution.bases.find(
         (basis) => basis.status === "eligible",
       )!.pairs[0]!;
       const text = annualNoteExcerpt(report, pair, false)!;
@@ -153,7 +144,7 @@ describe("managed Annual note excerpt", () => {
   );
   it("retains exact values, named basis, filing and original source times in one paragraph", async () => {
     const report = await response();
-    const pair = report.evidence.resolution.bases.find(
+    const pair = view(report).income.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
     expect(annualNoteExcerpt(report, pair, false)).toBe(expected);
@@ -167,25 +158,30 @@ describe("managed Annual note excerpt", () => {
   });
 
   it("copies decimal strings without Number conversion or scaling", async () => {
-    const { report, pair } = replacePair(await response(), {
-      revenue: "9007199254740993123.0000000001",
-      netIncome: "-0.000000001",
-      netMarginPercent: "-0.01",
-    });
+    const report = await response([
+      row("Revenues", "9007199254740993123.0000000001"),
+      row("NetIncomeLoss", "-0.000000001"),
+    ]);
+    const pair = view(report).income.resolution.bases.find(
+      (basis) => basis.status === "eligible",
+    )!.pairs[0]!;
     const text = annualNoteExcerpt(report, pair, false)!;
     expect(text).toContain(
       "Revenues revenue USD 9007199254740993123.0000000001",
     );
-    expect(text).toContain("NetIncomeLoss USD -0.000000001; net margin -0.01%");
+    expect(text).toContain("NetIncomeLoss USD -0.000000001; net margin 0%");
     expect(text).not.toMatch(/[\r\n]/u);
+    expect(
+      annualNoteExcerpt(report, { ...pair, netMarginPercent: "-0.01" }, false),
+    ).toBeNull();
   });
 
   it("qualifies historical evidence against the original load rather than the current clock", async () => {
     const report = await response(undefined, "2027-09-20T00:00:00.000Z");
-    const pair = report.evidence.resolution.bases.find(
+    const pair = view(report).income.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
-    expect(report.evidence.resolution.currentTargetEligible).toBe(false);
+    expect(view(report).income.resolution.currentTargetEligible).toBe(false);
     const text = annualNoteExcerpt(report, pair, true)!;
     expect(text).toContain(
       "Historical evidence; current-use policy at original load: unavailable. Retained previous report.",
@@ -207,7 +203,7 @@ describe("managed Annual note excerpt", () => {
   });
 
   it.each(["missing", "rejected", "withheld"] as const)(
-    "rejects a pair inside a %s basis even when the pair says eligible",
+    "rejects an opaque response carrying a forged %s basis even when the pair says eligible",
     async (status) => {
       const { report, pair } = replacePair(await response(), {});
       const refused = {
@@ -215,8 +211,8 @@ describe("managed Annual note excerpt", () => {
         evidence: {
           ...report.evidence,
           resolution: {
-            ...report.evidence.resolution,
-            bases: report.evidence.resolution.bases.map((basis) => ({
+            ...view(report).income.resolution,
+            bases: view(report).income.resolution.bases.map((basis) => ({
               ...basis,
               status,
             })),
@@ -224,61 +220,54 @@ describe("managed Annual note excerpt", () => {
         },
       };
       expect(annualNoteExcerpt(refused, pair, false)).toBeNull();
+      await expect(admitUiPacket(refused)).rejects.toThrow(
+        "Invented canonical UI evidence was refused",
+      );
     },
   );
 
-  it("rejects refused completeness, an unresolved target and missing source capture", async () => {
+  it("rejects opaque legacy completeness, an unresolved target and missing source capture", async () => {
     const { report, pair } = replacePair(await response(), {});
-    expect(
-      annualNoteExcerpt(
-        {
-          ...report,
-          evidence: {
-            ...report.evidence,
-            completeness: { status: "refused", reason: "source_unavailable" },
+    const refused = [
+      {
+        ...report,
+        evidence: {
+          ...report.evidence,
+          completeness: { status: "refused", reason: "source_unavailable" },
+        },
+      },
+      {
+        ...report,
+        evidence: {
+          ...report.evidence,
+          target: {
+            status: "unresolved" as const,
+            reason: "no_observed_annual_target" as const,
           },
         },
-        pair,
-        false,
-      ),
-    ).toBeNull();
-    expect(
-      annualNoteExcerpt(
-        {
-          ...report,
-          evidence: {
-            ...report.evidence,
-            target: {
-              status: "unresolved",
-              reason: "no_observed_annual_target",
-            },
-          },
-        },
-        pair,
-        false,
-      ),
-    ).toBeNull();
-    expect(
-      annualNoteExcerpt(
-        {
-          ...report,
-          evidence: {
-            ...report.evidence,
-            generation: {
-              ...report.evidence.generation,
-              sources: {
-                ...report.evidence.generation.sources,
-                companyFacts: {
-                  ...report.evidence.generation.sources.companyFacts,
-                  fetchedAt: null,
-                },
+      },
+      {
+        ...report,
+        evidence: {
+          ...report.evidence,
+          generation: {
+            ...report.evidence.generation,
+            sources: {
+              ...report.evidence.generation.sources,
+              companyFacts: {
+                ...report.evidence.generation.sources.companyFacts,
+                fetchedAt: null,
               },
             },
           },
         },
-        pair,
-        false,
-      ),
-    ).toBeNull();
+      },
+    ];
+    for (const unowned of refused) {
+      expect(annualNoteExcerpt(unowned, pair, false)).toBeNull();
+      await expect(admitUiPacket(unowned)).rejects.toThrow(
+        "Invented canonical UI evidence was refused",
+      );
+    }
   });
 });

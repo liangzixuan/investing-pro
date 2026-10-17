@@ -1,5 +1,5 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualBalanceSheetHistory } from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { SecAnnualBalanceSheetChange } from "./SecAnnualBalanceSheetChange";
 import { balanceSheetHistoryReason } from "./sec-annual-balance-sheet-history-display";
 
@@ -11,20 +11,13 @@ const metrics = [
 
 export function SecAnnualBalanceSheetHistory({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
-  const { cik, generation, target, balanceSheet } = response.evidence;
-  const history = resolvePersonalSecAnnualBalanceSheetHistory({
-    cik,
-    generation,
-    target,
-    balanceSheet: {
-      totalAssets: balanceSheet.totalAssets,
-      totalLiabilities: balanceSheet.totalLiabilities,
-      shareholdersEquity: balanceSheet.shareholdersEquity,
-    },
-  });
+  const { generation, target } = response.evidence;
+  const history = view.balanceSheet.history;
   return (
     <details className="managed-annual-balance-sheet-history">
       <summary>Reported balance sheet history</summary>
@@ -88,7 +81,7 @@ export function SecAnnualBalanceSheetHistory({
               </tbody>
             </table>
           </div>
-          <SecAnnualBalanceSheetChange history={history} />
+          <SecAnnualBalanceSheetChange change={view.balanceSheet.change} />
           <p className="managed-annual-basis-help">
             Up to three reported dates from filing {history.accessionNumber}.
             Selected filing report date{" "}

@@ -26,11 +26,24 @@ pre { padding: 12px; border: 1px solid #d8dde1; font-size: .85rem; }
 .managed-valuation-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .managed-valuation-facts > div { min-width: 0; }
 .managed-valuation-facts dd { margin-top: 4px; }
+.managed-annual-statement-report { min-width: 0; }
+.managed-annual-statement-report :is(h4, h5, strong, span, th, td) { overflow-wrap: anywhere; }
+.managed-annual-statement-report .managed-annual-statement-table { max-width: 100%; overflow-x: auto; margin-block: 20px; }
+.managed-annual-statement-report table { width: 100%; min-width: 36rem; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.managed-annual-statement-report :is(th, td) { padding: 10px; vertical-align: top; border: 1px solid #d8dde1; text-align: left; white-space: normal; }
+.managed-annual-statement-report caption { text-align: left; font-weight: 650; padding-block: 8px; }
+.managed-annual-statement-report th:first-child { width: 42%; }
+.managed-annual-statement-report small { margin-block: 6px; font-weight: 400; }
+.managed-annual-statement-report .managed-annual-statement-amount { display: block; white-space: normal; }
+.managed-annual-statement-report details { margin-block: 12px; padding: 8px; border: 1px solid #d8dde1; }
+.managed-annual-statement-report dl { display: block; }
+.managed-annual-statement-report dl > div { display: grid; grid-template-columns: minmax(0, 10rem) minmax(0, 1fr); gap: 4px 12px; padding-block: 4px; }
+.managed-annual-statement-report .managed-annual-statement-observation { border-top: 1px solid #d8dde1; margin-block: 12px; }
 @media (max-width: 520px) { dl { grid-template-columns: minmax(0, 1fr); gap: 4px; } dd { margin-bottom: 12px; } }
 @media print { html { background: #fff; } body, main { padding: 0; border: 0; } h2, h3 { break-after: avoid; } .fact { break-inside: avoid; } }
 `;
 export const COMPANY_REPORT_HTML_STYLE_HASH =
-  "sha256-rt+H76JcbbZE1LoQgEWWe0N81UMQRnMELezPzveOWGg=";
+  "sha256-8+LGJbYZC9u5y4gOTj4VCeCJ5UJ5eXPMvI/k/+nIGdM=";
 export const COMPANY_REPORT_HTML_CSP =
   "default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; style-src '" +
   COMPANY_REPORT_HTML_STYLE_HASH +

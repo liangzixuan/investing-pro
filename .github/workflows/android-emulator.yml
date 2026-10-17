@@ -121,6 +121,7 @@ jobs:
                   "annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh",
                   "annualOperatingResultsRetainFactsDraftAndRetireWithSession",
                   "annualFinancialReviewRequiresPreviewAndExplicitSave",
+                  "annualStatementsPreviewAppendSaveAndCapturePreserveSources",
                   "authoredValuationPreviewSaveReportAndRetirementPreserveBoundaries",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",

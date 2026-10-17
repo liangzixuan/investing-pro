@@ -1,8 +1,15 @@
+import { viewOf } from "./test-canonical-annual-ui-fixture";
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { annualHistoryRows, response } from "./sec-annual-evidence-fixture";
+import {
+  annualHistoryRows,
+  response,
+} from "./test-canonical-annual-read-fixture";
 import { projectManagedAnnualTrend } from "./managed-annual-trend-input";
-import { annualCashHistoryRows, cashResponse } from "./sec-annual-cash-fixture";
+import {
+  annualCashHistoryRows,
+  cashResponse,
+} from "./test-canonical-annual-cash-ui-fixture";
 import {
   cashTrendChartInput,
   projectManagedAnnualCashTrend,
@@ -104,10 +111,8 @@ beforeEach(async () => {
       }
     },
   );
-  const value = projectManagedAnnualTrend(
-    await response(annualHistoryRows()),
-    "Revenues",
-  );
+  const packet = await response(annualHistoryRows());
+  const value = projectManagedAnnualTrend(packet, viewOf(packet), "Revenues");
   if (value.status !== "ready") throw new Error("Invented trend unavailable");
   projection = value;
 });
@@ -129,9 +134,8 @@ function renderInput(input: ManagedAnnualAmountChartInput) {
 
 describe("managed annual trend chart", () => {
   it("uses the same renderer for signed cash amounts and keeps exact cash tooltip values", async () => {
-    const cash = projectManagedAnnualCashTrend(
-      await cashResponse(annualCashHistoryRows()),
-    );
+    const packet = await cashResponse(annualCashHistoryRows());
+    const cash = projectManagedAnnualCashTrend(packet, viewOf(packet));
     if (cash.status !== "ready")
       throw new Error("Invented cash trend unavailable");
     const first = cashTrendChartInput(cash, "operatingCashFlow");

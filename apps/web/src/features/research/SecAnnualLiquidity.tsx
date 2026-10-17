@@ -1,6 +1,8 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
-  PersonalSecAnnualLiquidityMetricEvidenceDto,
+  PersonalSecAnnualCanonicalResponseDto,
+  PersonalSecAnnualStatementScanDto,
+  PersonalSecAnnualStatementObservationDto,
   PersonalSecAnnualLiquidityObservationDto,
   PersonalSecAnnualLiquidityUnavailableReason,
   PersonalSecAnnualLiquidityValueDto,
@@ -54,11 +56,13 @@ export function annualLiquidityUnavailableReasonText(
 
 export function SecAnnualLiquidity({
   response,
+  view,
   liquidityAction,
   history,
   headingTarget,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly liquidityAction?: ReactNode;
   readonly history?: ReactNode;
   readonly headingTarget?: {
@@ -66,7 +70,8 @@ export function SecAnnualLiquidity({
     readonly ref: Ref<HTMLHeadingElement>;
   };
 }) {
-  const { liquidity, target } = response.evidence;
+  const { target } = response.evidence;
+  const liquidity = view.liquidity;
   const values = liquidity.resolution;
   return (
     <section className="sec-annual-liquidity" aria-label="Annual liquidity">
@@ -131,7 +136,7 @@ export function SecAnnualLiquidity({
       {history}
       <details className="sec-quarterly-row-details sec-annual-liquidity-source">
         <summary>Liquidity sources and calculation inputs</summary>
-        <SecAnnualLiquiditySourceBody response={response} />
+        <SecAnnualLiquiditySourceBody response={response} view={view} />
       </details>
     </section>
   );
@@ -190,10 +195,13 @@ export function SecAnnualLiquidityValueContent({
 
 export function SecAnnualLiquiditySourceBody({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
-  const { generation, liquidity } = response.evidence;
+  const { generation, facts } = response.evidence;
+  const liquidity = view.liquidity;
   return (
     <>
       <p>
@@ -218,11 +226,22 @@ export function SecAnnualLiquiditySourceBody({
       </p>
       <LiquidityInputs
         label="Current assets"
-        evidence={liquidity.currentAssets}
+        scan={
+          facts.scans.find((entry) => entry.concept === "AssetsCurrent")!.scan
+        }
+        observations={facts.observations.filter(
+          (row) => row.concept === "AssetsCurrent",
+        )}
       />
       <LiquidityInputs
         label="Current liabilities"
-        evidence={liquidity.currentLiabilities}
+        scan={
+          facts.scans.find((entry) => entry.concept === "LiabilitiesCurrent")!
+            .scan
+        }
+        observations={facts.observations.filter(
+          (row) => row.concept === "LiabilitiesCurrent",
+        )}
       />
       <p>
         Working capital references:{" "}
@@ -239,12 +258,13 @@ export function SecAnnualLiquiditySourceBody({
 
 function LiquidityInputs({
   label,
-  evidence,
+  scan,
+  observations,
 }: {
   readonly label: string;
-  readonly evidence: PersonalSecAnnualLiquidityMetricEvidenceDto;
+  readonly scan: PersonalSecAnnualStatementScanDto;
+  readonly observations: readonly PersonalSecAnnualStatementObservationDto[];
 }) {
-  const { scan } = evidence;
   return (
     <section aria-label={`${label} source inputs`}>
       <h5>{label}</h5>
@@ -262,7 +282,7 @@ function LiquidityInputs({
         <p>{reasons[scan.status]}</p>
       )}
       <ol>
-        {evidence.observations.map((row) => (
+        {observations.map((row) => (
           <li key={row.id}>
             <SecAnnualBalanceObservation row={row} />
           </li>
@@ -277,7 +297,8 @@ export function SecAnnualBalanceObservation({
 }: {
   readonly row:
     | PersonalSecAnnualLiquidityObservationDto
-    | PersonalSecAnnualBalanceSheetObservationDto;
+    | PersonalSecAnnualBalanceSheetObservationDto
+    | PersonalSecAnnualStatementObservationDto;
 }) {
   return (
     <details className="sec-quarterly-row-details">

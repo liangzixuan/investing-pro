@@ -1,5 +1,6 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import { useId, useState } from "react";
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import {
   MANAGED_ANNUAL_CASH_TREND_METRICS,
   cashTrendChartInput,
@@ -11,15 +12,17 @@ import { ManagedAnnualTrendChart } from "./ManagedAnnualTrendChart";
 
 export function ManagedAnnualCashTrend({
   response,
+  view,
   open,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly open: boolean;
 }) {
   const id = useId();
   const [metric, setMetric] =
     useState<ManagedAnnualCashTrendMetric>("operatingCashFlow");
-  const projection = projectManagedAnnualCashTrend(response);
+  const projection = projectManagedAnnualCashTrend(response, view);
   return (
     <div className="managed-annual-cash-trend">
       <label className="managed-annual-cash-trend-control">

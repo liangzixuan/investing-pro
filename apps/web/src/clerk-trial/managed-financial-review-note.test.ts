@@ -1,8 +1,6 @@
+import { getManagedAnnualView } from "./managed-annual-view";
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
-import {
-  derivePersonalSecAnnualFinancialReview,
-  type PersonalSecAnnualFinancialReviewKey,
-} from "@research-cockpit/personal-financial-analytics";
+import { type PersonalSecAnnualFinancialReviewKey } from "@research-cockpit/personal-financial-analytics";
 import { describe, expect, it, vi } from "vitest";
 import { balanceSheetRow } from "../features/research/sec-annual-balance-sheet-fixture";
 import { cashRow } from "../features/research/sec-annual-cash-fixture";
@@ -11,10 +9,15 @@ import { operatingRow } from "../features/research/sec-annual-operating-fixture"
 import {
   annualComparisonResponse,
   parseAnnualComparisonFixture,
-} from "./annual-comparison-fixture";
+} from "./test-canonical-annual-comparison-fixture";
 import { proposeFinancialReviewNote } from "./managed-financial-review-note";
 
 type Options = Parameters<typeof annualComparisonResponse>[1];
+function view(packet: Parameters<typeof getManagedAnnualView>[0]) {
+  const value = getManagedAnnualView(packet);
+  expect(value).not.toBeNull();
+  return value!;
+}
 const allKeys = [
   "operatingIncome",
   "operatingCashFlow",
@@ -46,7 +49,7 @@ describe("financial review note proposal", () => {
     const packet = await admitted();
     const before = JSON.stringify(packet);
     expect(Object.isFrozen(packet)).toBe(true);
-    expect(packet.evidence.resolution.currentTargetEligible).toBe(false);
+    expect(view(packet).income.resolution.currentTargetEligible).toBe(false);
     const proposal = proposeFinancialReviewNote(
       "Café 😀 thesis",
       packet,
@@ -70,8 +73,8 @@ describe("financial review note proposal", () => {
       excerpt.indexOf("Reported parent equity"),
     );
     for (const value of [
-      packet.evidence.operatingResults.resolution.operatingIncome,
-      packet.evidence.balanceSheet.resolution.shareholdersEquity,
+      view(packet).operatingResults.resolution.operatingIncome,
+      view(packet).balanceSheet.resolution.shareholdersEquity,
     ]) {
       for (const id of value.observationIds) expect(excerpt).toContain(id);
     }
@@ -117,7 +120,7 @@ describe("financial review note proposal", () => {
     expect(text).toContain(
       "less PP&E purchases {USD 9007199254740993123.0000000002; period 2025-01-01 to 2025-12-31; accession 0000000001-26-000001;",
     );
-    const cash = packet.evidence.cashGeneration.resolution;
+    const cash = view(packet).cashGeneration.resolution;
     for (const value of [cash.operatingCashFlow, cash.ppePurchases]) {
       for (const id of value.observationIds)
         expect(text.split(id)).toHaveLength(3);
@@ -143,8 +146,8 @@ describe("financial review note proposal", () => {
         `${label} {USD 80.5; as of 2025-12-31; accession 0000000001-26-000001;`,
       );
     for (const value of [
-      packet.evidence.liquidity.resolution.currentAssets,
-      packet.evidence.liquidity.resolution.currentLiabilities,
+      view(packet).liquidity.resolution.currentAssets,
+      view(packet).liquidity.resolution.currentLiabilities,
     ]) {
       for (const id of value.observationIds)
         expect(proposal.note!.split(id)).toHaveLength(3);
@@ -183,7 +186,7 @@ describe("financial review note proposal", () => {
     expect(calculated.note).toContain("period 2025-01-02 to 2025-12-31");
     expect(calculated.note).toContain("period 2025-01-01 to 2025-12-31");
     expect(calculated.note).not.toContain("USD -100.125");
-    for (const id of packet.evidence.cashGeneration.resolution
+    for (const id of view(packet).cashGeneration.resolution
       .operatingCashFlowLessPpePurchases.observationIds)
       expect(calculated.note!.split(id)).toHaveLength(3);
   });
@@ -198,7 +201,7 @@ describe("financial review note proposal", () => {
         }),
       ],
     });
-    const value = packet.evidence.operatingResults.resolution.operatingIncome;
+    const value = view(packet).operatingResults.resolution.operatingIncome;
     expect(value.status).toBe("available");
     expect(value.observationIds).toHaveLength(2);
     const proposal = proposeFinancialReviewNote(
@@ -268,12 +271,25 @@ describe("financial review note proposal", () => {
           annualFilings: 0,
           olderHistoryAvailable: false,
         },
-        completeness: { status: "refused", reason: "target_unresolved" },
-        coverage: {
-          ...raw.evidence.coverage!,
-          selected: null,
-          otherAccessions: null,
-          omittedSelected: null,
+        facts: {
+          ...raw.evidence.facts,
+          observations: [],
+          scans: raw.evidence.facts.scans.map((item) => ({
+            ...item,
+            scan:
+              item.scan.status === "available"
+                ? {
+                    ...item.scan,
+                    coverage: {
+                      ...item.scan.coverage,
+                      selected: null,
+                      otherAccessions: null,
+                      returned: 0,
+                      omittedSelected: null,
+                    },
+                  }
+                : item.scan,
+          })),
         },
       },
     });
@@ -415,7 +431,7 @@ describe("financial review note proposal", () => {
     expect(proposal.note).toBeNull();
     expect(proposal.reason).toContain("2,000-character limit");
     expect([...proposal.excerpt!].length).toBeGreaterThan(2000);
-    for (const row of derivePersonalSecAnnualFinancialReview(packet.evidence))
+    for (const row of view(packet).financialReview)
       expect(proposal.excerpt).toContain(row.label);
     expect(proposal.excerpt).toContain("generation ");
     expect(proposal.excerpt).toContain("No source refresh.");

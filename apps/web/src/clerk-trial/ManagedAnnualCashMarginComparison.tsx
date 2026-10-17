@@ -1,8 +1,8 @@
 import {
   PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
-import { derivePersonalSecAnnualCashMargins } from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import {
   SecAnnualCashMarginInputs,
   SecAnnualCashMarginValueContent,
@@ -10,21 +10,27 @@ import {
 import { SecAnnualOperatingValueContent } from "../features/research/SecAnnualOperatingResults";
 import { managedAnnualBasisLabel } from "../features/research/managed-annual-basis-label";
 
-type Response = PersonalSecAnnualEvidenceResponseDto;
+type Response = PersonalSecAnnualCanonicalResponseDto;
 const sides = ["left", "right"] as const;
 
 export function ManagedAnnualCashMarginComparisonRows({
   responses,
+  views,
 }: {
   readonly responses: Readonly<Record<(typeof sides)[number], Response | null>>;
+  readonly views: Readonly<
+    Record<(typeof sides)[number], PersonalSecAnnualCanonicalView | null>
+  >;
 }) {
   const bases = {
-    left: responses.left
-      ? derivePersonalSecAnnualCashMargins(responses.left.evidence)
-      : null,
-    right: responses.right
-      ? derivePersonalSecAnnualCashMargins(responses.right.evidence)
-      : null,
+    left:
+      responses.left && views.left?.canonical === responses.left.evidence
+        ? views.left.cashMargins
+        : null,
+    right:
+      responses.right && views.right?.canonical === responses.right.evidence
+        ? views.right.cashMargins
+        : null,
   };
   return PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((concept, index) => (
     <tr key={concept} data-annual-comparison-cash-margin={concept}>
@@ -53,6 +59,8 @@ export function ManagedAnnualCashMarginComparisonRows({
                   <SecAnnualCashMarginValueContent basis={basis} />
                 </p>
               </>
+            ) : responses[side] ? (
+              "Unavailable. The source and financial results do not match."
             ) : (
               "Not loaded"
             )}
@@ -65,10 +73,13 @@ export function ManagedAnnualCashMarginComparisonRows({
 
 export function ManagedAnnualCashMarginComparisonSources({
   response,
+  view,
 }: {
   readonly response: Response;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
-  return derivePersonalSecAnnualCashMargins(response.evidence).map((basis) => (
+  if (view.canonical !== response.evidence) return null;
+  return view.cashMargins.map((basis) => (
     <SecAnnualCashMarginInputs
       key={basis.concept}
       basis={basis}

@@ -7,9 +7,9 @@ import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import {
   operatingResponse,
   operatingRow,
-} from "./sec-annual-operating-fixture";
-import { row } from "./sec-annual-evidence-fixture";
-import { operatingHistoryPacket } from "../../../android-tests/managed-workspace/operating-history-fixture";
+} from "./test-canonical-annual-operating-ui-fixture";
+import { row, viewOf } from "./test-canonical-annual-ui-fixture";
+import { operatingHistoryPacket } from "./test-canonical-annual-operating-ui-fixture";
 
 async function pair(
   currentIncome: string,
@@ -53,7 +53,11 @@ describe("reported operating change presentation", () => {
       const response = await pair(current, prior);
       const before = JSON.stringify(response);
       const html = renderToStaticMarkup(
-        <SecAnnualOperatingChange response={response} concept="Revenues" />,
+        <SecAnnualOperatingChange
+          response={response}
+          view={viewOf(response)}
+          concept="Revenues"
+        />,
       );
       expect(html).toContain('aria-label="Reported operating change Revenues"');
       expect(html).toContain(
@@ -95,7 +99,11 @@ describe("reported operating change presentation", () => {
     async (current, prior, difference, points) => {
       const response = await pair(current, prior);
       const html = renderToStaticMarkup(
-        <SecAnnualOperatingChange response={response} concept="Revenues" />,
+        <SecAnnualOperatingChange
+          response={response}
+          view={viewOf(response)}
+          concept="Revenues"
+        />,
       );
       expect(html).toContain(`<dd>${difference}</dd>`);
       expect(html).toContain(`<dd>${points}</dd>`);
@@ -106,7 +114,11 @@ describe("reported operating change presentation", () => {
     const response = await operatingHistoryPacket();
     const before = JSON.stringify(response);
     const html = renderToStaticMarkup(
-      <SecAnnualOperatingHistory response={response} concept="Revenues" />,
+      <SecAnnualOperatingHistory
+        response={response}
+        view={viewOf(response)}
+        concept="Revenues"
+      />,
     );
     expect(html).toMatch(
       /^<details class="managed-annual-operating-history" aria-label="Reported operating history Revenues"><summary>Reported operating history<\/summary>/u,
@@ -126,9 +138,9 @@ describe("reported operating change presentation", () => {
       html.indexOf("History calculation references</summary>"),
     );
     for (const item of [
-      ...response.evidence.operatingResults.operatingIncome.observations,
-      ...response.evidence.observations.filter(
-        (item) => item.concept === "Revenues",
+      ...response.evidence.facts.observations.filter(
+        (item) =>
+          item.concept === "OperatingIncomeLoss" || item.concept === "Revenues",
       ),
     ])
       expect(html).toContain(item.id);
@@ -140,12 +152,14 @@ describe("reported operating change presentation", () => {
     const sales = renderToStaticMarkup(
       <SecAnnualOperatingChange
         response={response}
+        view={viewOf(response)}
         concept="SalesRevenueNet"
       />,
     );
     const contract = renderToStaticMarkup(
       <SecAnnualOperatingChange
         response={response}
+        view={viewOf(response)}
         concept="RevenueFromContractWithCustomerExcludingAssessedTax"
       />,
     );
@@ -159,6 +173,7 @@ describe("reported operating change presentation", () => {
     const html = renderToStaticMarkup(
       <SecAnnualOperatingHistory
         response={nonpositivePrior}
+        view={viewOf(nonpositivePrior)}
         concept="Revenues"
       />,
     );
@@ -179,7 +194,11 @@ describe("reported operating change presentation", () => {
       [row("Revenues", "0")],
     );
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={response} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={response}
+        view={viewOf(response)}
+        appearance="financial"
+      />,
     );
     expect(html).toContain(
       "The current operating-income and selected-revenue pair is unavailable.",
@@ -195,7 +214,11 @@ describe("reported operating change presentation", () => {
     );
     expect(
       renderToStaticMarkup(
-        <SecAnnualOperatingChange response={stale} concept="Revenues" />,
+        <SecAnnualOperatingChange
+          response={stale}
+          view={viewOf(stale)}
+          concept="Revenues"
+        />,
       ),
     ).toContain("outside the current-use limits at this load");
   });
@@ -210,14 +233,18 @@ describe("reported operating change presentation", () => {
     const base = await pair("10", "5");
     const response = await operatingResponse(
       [
-        ...base.evidence.operatingResults.operatingIncome.observations,
+        ...base.evidence.facts.observations.filter(
+          (item) => item.concept === "OperatingIncomeLoss",
+        ),
         operatingRow("999", {
           ...third,
           sourceLocator: "/facts/us-gaap/OperatingIncomeLoss/units/USD/2",
         }),
       ],
       [
-        ...base.evidence.observations,
+        ...base.evidence.facts.observations.filter(
+          (item) => item.concept !== "OperatingIncomeLoss",
+        ),
         row("Revenues", "999", {
           ...third,
           sourceLocator: "/facts/us-gaap/Revenues/units/USD/2",
@@ -225,7 +252,11 @@ describe("reported operating change presentation", () => {
       ],
     );
     const html = renderToStaticMarkup(
-      <SecAnnualOperatingHistory response={response} concept="Revenues" />,
+      <SecAnnualOperatingHistory
+        response={response}
+        view={viewOf(response)}
+        concept="Revenues"
+      />,
     );
     expect(html).toContain("Revenue · 2 periods · newest first");
     expect(html).toContain("The next earlier period is unavailable.");
@@ -241,7 +272,11 @@ describe("reported operating change presentation", () => {
     const amount = await pair(tiny, large);
     expect(
       renderToStaticMarkup(
-        <SecAnnualOperatingChange response={amount} concept="Revenues" />,
+        <SecAnnualOperatingChange
+          response={amount}
+          view={viewOf(amount)}
+          concept="Revenues"
+        />,
       ),
     ).toContain(`<dd>${difference}</dd>`);
     const signed = `-${"9".repeat(62)}8`;
@@ -250,7 +285,11 @@ describe("reported operating change presentation", () => {
     expect(expected).toHaveLength(133);
     const points = await pair(signed, large, `0.${"0".repeat(61)}3`, tiny);
     const html = renderToStaticMarkup(
-      <SecAnnualOperatingChange response={points} concept="Revenues" />,
+      <SecAnnualOperatingChange
+        response={points}
+        view={viewOf(points)}
+        concept="Revenues"
+      />,
     );
     expect(html).toContain(`<dd>${expected} percentage points</dd>`);
     expect(html).not.toContain("…");

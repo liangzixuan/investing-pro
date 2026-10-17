@@ -1,3 +1,4 @@
+import { viewOf } from "./test-canonical-annual-ui-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,8 +9,8 @@ import {
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
-import { annualComparisonResponse } from "../../clerk-trial/annual-comparison-fixture";
-import { annualHistoryRows } from "./sec-annual-evidence-fixture";
+import { navigationResponse } from "./test-canonical-annual-read-fixture";
+import { annualHistoryRows } from "./test-canonical-annual-read-fixture";
 
 const hooks = vi.hoisted(() => ({
   direct: false,
@@ -94,7 +95,7 @@ async function harness() {
   const sourceDetails = {
     current: details as unknown as HTMLDetailsElement,
   };
-  const response = await annualComparisonResponse();
+  const response = await navigationResponse();
   function commit() {
     hooks.cleanup?.();
     hooks.cleanup = hooks.pending?.() ?? undefined;
@@ -176,7 +177,7 @@ describe("managed Annual in-report navigation", () => {
     h.activate(old, "cash");
     expect(h.nodes.cash.focus).not.toHaveBeenCalled();
     h.commit();
-    const replacement = await annualComparisonResponse();
+    const replacement = await navigationResponse();
     expect(replacement).toEqual(h.response);
     expect(replacement).not.toBe(h.response);
     const next = h.render(replacement, false);
@@ -193,7 +194,7 @@ describe("managed Annual in-report navigation", () => {
   it("does not focus, scroll or open disclosures when a report is replaced", async () => {
     const h = await harness();
     h.render();
-    h.render(await annualComparisonResponse("right"));
+    h.render(await navigationResponse("right"));
     for (const node of Object.values(h.nodes)) {
       expect(node.focus).not.toHaveBeenCalled();
       expect(node.scrollIntoView).not.toHaveBeenCalled();
@@ -262,11 +263,12 @@ describe("managed Annual destination markup", () => {
   it.each(["default", "income-invalid"] as const)(
     "keeps six linked destinations and original independent evidence for %s income",
     async (mode) => {
-      const response = await annualComparisonResponse("left", { mode });
+      const response = await navigationResponse("left", { mode });
       const before = JSON.stringify(response);
       const html = renderToStaticMarkup(
         <SecAnnualEvidenceResult
           response={response}
+          view={viewOf(response)}
           appearance="financial"
           cashAction={<button>Existing cash action</button>}
           liquidityAction={<button>Existing liquidity action</button>}
@@ -316,13 +318,21 @@ describe("managed Annual destination markup", () => {
   );
 
   it("keeps the income destination ahead of the full three-period table and unique per rendered report", async () => {
-    const response = await annualComparisonResponse("left", {
+    const response = await navigationResponse("left", {
       rows: annualHistoryRows(),
     });
     const html = renderToStaticMarkup(
       <>
-        <SecAnnualEvidenceResult response={response} appearance="financial" />
-        <SecAnnualEvidenceResult response={response} appearance="financial" />
+        <SecAnnualEvidenceResult
+          response={response}
+          view={viewOf(response)}
+          appearance="financial"
+        />
+        <SecAnnualEvidenceResult
+          response={response}
+          view={viewOf(response)}
+          appearance="financial"
+        />
       </>,
     );
     expect(html).toContain("Reported annual amounts · 3 periods");
@@ -337,12 +347,12 @@ describe("managed Annual destination markup", () => {
   });
 
   it("leaves the evidence profile and standalone shared headings outside managed navigation", async () => {
-    const response = await annualComparisonResponse();
+    const response = await navigationResponse();
     const html = renderToStaticMarkup(
       <>
-        <SecAnnualEvidenceResult response={response} />
-        <SecAnnualCashGeneration response={response} />
-        <SecAnnualLiquidity response={response} />
+        <SecAnnualEvidenceResult response={response} view={viewOf(response)} />
+        <SecAnnualCashGeneration response={response} view={viewOf(response)} />
+        <SecAnnualLiquidity response={response} view={viewOf(response)} />
       </>,
     );
     expect(html).not.toContain("managed-annual-report-navigation");

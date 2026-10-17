@@ -201,12 +201,14 @@ describe("explicit company report download in the real workspace", () => {
       sources: {
         price: { response: { completedAt: unknown } };
         annual: {
+          financials: {
+            cashGeneration: { resolution: unknown };
+            liquidity: { resolution: unknown };
+          };
           response: {
             evidence: {
               generation: { completedAt: unknown };
-              cashGeneration: { resolution: unknown };
-              liquidity: { resolution: unknown };
-              observations: unknown;
+              facts: { observations: unknown };
             };
           };
         };
@@ -229,13 +231,11 @@ describe("explicit company report download in the real workspace", () => {
       "2026-09-20T00:00:02.000Z",
     );
     expect(
-      parsed.sources.annual.response.evidence.cashGeneration.resolution,
+      parsed.sources.annual.financials.cashGeneration.resolution,
     ).toBeDefined();
+    expect(parsed.sources.annual.financials.liquidity.resolution).toBeDefined();
     expect(
-      parsed.sources.annual.response.evidence.liquidity.resolution,
-    ).toBeDefined();
-    expect(
-      Array.isArray(parsed.sources.annual.response.evidence.observations),
+      Array.isArray(parsed.sources.annual.response.evidence.facts.observations),
     ).toBe(true);
     expect(Array.isArray(parsed.sources.filings.response.issuer.filings)).toBe(
       true,

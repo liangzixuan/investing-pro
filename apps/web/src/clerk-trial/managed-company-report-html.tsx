@@ -74,9 +74,8 @@ export function formatCompanyReportHtml(
     }
   }
   if (failed || !text) return null;
-  if (/\p{Cs}/u.test(text)) return null;
-  const byteLength = encoder.encode(text).byteLength;
-  if (byteLength > COMPANY_REPORT_HTML_MAX_BYTES) return null;
+  const byteLength = companyReportHtmlByteLength(text);
+  if (byteLength === null) return null;
   const result: CompanyReportHtmlDocument = Object.freeze({
     purpose: "investment.company-research-html",
     filename: json.filename.replace(/\.json$/u, ".html"),
@@ -85,4 +84,16 @@ export function formatCompanyReportHtml(
   });
   owned.add(result);
   return result;
+}
+
+/** Whole-output UTF-8 bound shared by detached-DOM formatting and serialization tests. */
+export function companyReportHtmlByteLength(text: string): number | null {
+  if (
+    text.length === 0 ||
+    text.length > COMPANY_REPORT_HTML_MAX_BYTES ||
+    /\p{Cs}/u.test(text)
+  )
+    return null;
+  const bytes = encoder.encode(text).byteLength;
+  return bytes > COMPANY_REPORT_HTML_MAX_BYTES ? null : bytes;
 }

@@ -1,15 +1,16 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   parseManagedSecFilingsResponse,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
-import { annualComparisonResponse } from "./annual-comparison-fixture";
+import { annualReportPacket as annualComparisonResponse } from "./test-annual-report-fixture";
+import { getManagedAnnualView } from "./managed-annual-view";
 import type { ManagedAnnualReportState } from "./managed-annual-report";
 import type { ManagedCompanyFilingsState } from "./managed-company-filings";
 import { getManagedFilingsAnnualBaseline } from "./managed-filings-annual-baseline";
 import { filingsResponse, filingsSelection } from "./sec-filings-fixture";
 
-let response: PersonalSecAnnualEvidenceResponseDto;
+let response: PersonalSecAnnualCanonicalResponseDto;
 beforeAll(async () => {
   response = await annualComparisonResponse();
 });
@@ -29,6 +30,7 @@ function snapshots(annualResponse = response) {
       listing: { ...filingsSelection.listing },
     },
     response: annualResponse,
+    view: getManagedAnnualView(annualResponse),
     responseOrigin: "request",
     showingPrevious: false,
     running: false,
@@ -55,12 +57,24 @@ function snapshots(annualResponse = response) {
 describe("current Annual filing baseline", () => {
   it("joins distinct schemas and keeps the exact admitted response and target", () => {
     const { annual, filings } = snapshots();
-    expect(annual.response?.schemaVersion).toBe("5.0.0");
+    expect(annual.response?.schemaVersion).toBe("6.0.0");
     expect(filings.response?.schemaVersion).toBe("1.0.0");
     const baseline = getManagedFilingsAnnualBaseline(annual, filings);
     expect(baseline?.response).toBe(response);
     expect(baseline?.target).toBe(response.evidence.target);
     expect(baseline?.target.filedDate).toBe("2026-02-01");
+  });
+
+  it("reads resolved filing metadata without requiring a financial view", () => {
+    const { annual, filings } = snapshots();
+    expect(
+      getManagedFilingsAnnualBaseline({ ...annual, view: null }, filings)
+        ?.response,
+    ).toBe(response);
+    expect(
+      getManagedFilingsAnnualBaseline({ ...annual, view: null }, filings)
+        ?.target,
+    ).toBe(response.evidence.target);
   });
 
   it.each([

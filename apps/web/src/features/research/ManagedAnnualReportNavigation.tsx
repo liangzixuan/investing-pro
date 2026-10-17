@@ -1,4 +1,4 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { useLayoutEffect, useRef, type RefObject } from "react";
 
 const sections = {
@@ -20,13 +20,12 @@ export function ManagedAnnualReportNavigation({
   targets,
   sourceDetails,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
   readonly targets: AnnualReportTargets;
   readonly sourceDetails: RefObject<HTMLDetailsElement | null>;
 }) {
-  const committedResponse = useRef<PersonalSecAnnualEvidenceResponseDto | null>(
-    null,
-  );
+  const committedResponse =
+    useRef<PersonalSecAnnualCanonicalResponseDto | null>(null);
   useLayoutEffect(() => {
     committedResponse.current = response;
     return () => {

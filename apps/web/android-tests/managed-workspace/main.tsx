@@ -39,6 +39,7 @@ if (
   scenario !== "annual-operating-history" &&
   scenario !== "annual-liquidity-history" &&
   scenario !== "annual-financial-review" &&
+  scenario !== "annual-statements" &&
   scenario !== "authored-valuation" &&
   scenario !== "annual-balance-sheet" &&
   scenario !== "annual-operating-comparison" &&
@@ -70,7 +71,9 @@ if (scenario === "company-direct-entry")
   history.replaceState(null, "", "/?company=listing-zero&section=annual");
 const fixture = await createFixture(scenario ?? "default");
 const nativeReport =
-  scenario === "company-snapshot" ? createNativeReportFixture() : null;
+  scenario === "company-snapshot" || scenario === "annual-statements"
+    ? createNativeReportFixture()
+    : null;
 const nativeExport =
   scenario === "watchlist-export" ? createNativeExportFixture() : null;
 
@@ -560,6 +563,11 @@ function Fixture() {
         >
           {JSON.stringify(fixture.generations)}
         </pre>
+        {fixture.annualStatements && (
+          <pre id="fixture-annual-statements" hidden>
+            {JSON.stringify(fixture.annualStatements)}
+          </pre>
+        )}
         {fixture.financialReview && (
           <pre id="fixture-financial-review" hidden>
             {JSON.stringify(fixture.financialReview)}

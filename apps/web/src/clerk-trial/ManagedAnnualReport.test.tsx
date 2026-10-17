@@ -1,7 +1,8 @@
-import { operatingResults } from "../features/research/sec-annual-operating-fixture";
-import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
-import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
-import { balanceSheet } from "../features/research/sec-annual-balance-sheet-fixture";
+import {
+  viewOf,
+  admitUiPacket,
+} from "../features/research/test-canonical-annual-ui-fixture";
+
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
@@ -11,14 +12,9 @@ import {
   request,
   response,
   row,
-} from "../features/research/sec-annual-evidence-fixture";
-import {
-  getPersonalSecAnnualRefusalReason,
-  resolvePersonalSecAnnualEvidence,
-  serializePersonalSecAnnualGeneration,
-} from "@research-cockpit/personal-financial-analytics";
-import type { PersonalSecAnnualResolutionInput } from "@research-cockpit/contracts";
-import { parseSecAnnualEvidenceResponse } from "../lib/sec-annual-evidence-response";
+} from "../features/research/test-canonical-annual-read-fixture";
+import { unavailableReadResponse } from "../features/research/test-canonical-annual-read-fixture";
+
 import { ManagedAnnualReport as Panel } from "./ManagedAnnualReport";
 import { ManagedAnnualReport } from "./managed-annual-report";
 import {
@@ -270,7 +266,7 @@ describe("managed annual refresh", () => {
   it("passes only the displayed response to an optional cash action and removes it with the report", async () => {
     const { model, load } = fixture();
     const old = await response();
-    const next = structuredClone(old);
+    const next = await admitUiPacket(structuredClone(old));
     load.mockResolvedValueOnce(old).mockResolvedValueOnce(next);
     model.open(selection);
     await model.load();
@@ -324,7 +320,7 @@ describe("managed annual refresh", () => {
   it("passes only the displayed response to an optional liquidity action and removes it with the report", async () => {
     const { model, load } = fixture();
     const old = await response();
-    const next = structuredClone(old);
+    const next = await admitUiPacket(structuredClone(old));
     load.mockResolvedValueOnce(old).mockResolvedValueOnce(next);
     model.open(selection);
     await model.load();
@@ -409,7 +405,7 @@ describe("managed annual refresh", () => {
         report.evidence.generation.sha256.slice(7),
       );
       expect(result.props.appearance).toBe("financial");
-      const pair = report.evidence.resolution.bases.flatMap(
+      const pair = viewOf(report).income.resolution.bases.flatMap(
         (basis) => basis.pairs,
       )[0]!;
       const action = result.props.renderPairAction!(pair) as React.ReactElement<
@@ -721,58 +717,7 @@ describe("managed annual refresh", () => {
   it("replaces previous good metrics with a validated newer source-unavailable response", async () => {
     const { model, load, html } = fixture();
     const old = await response();
-    const next = await laterResponse();
-    let input: PersonalSecAnnualResolutionInput = {
-      ...next.evidence,
-      incomeScanStatus: "source_unavailable",
-      observations: [],
-      coverage: null,
-      generation: {
-        ...next.evidence.generation,
-        sources: {
-          ...next.evidence.generation.sources,
-          companyFacts: {
-            ...next.evidence.generation.sources.companyFacts,
-            status: "upstream_unavailable",
-            fetchedAt: null,
-            bytes: null,
-            sha256: null,
-          },
-        },
-      },
-    };
-    const reason = getPersonalSecAnnualRefusalReason(input);
-    if (reason === null) throw new Error("Expected unavailable evidence");
-    input = { ...input, completeness: { status: "refused", reason } };
-    const hash = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(serializePersonalSecAnnualGeneration(input)),
-    );
-    input = {
-      ...input,
-      generation: {
-        ...input.generation,
-        sha256: `sha256:${Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("")}`,
-      },
-    };
-    const wire = {
-      ...next,
-      evidence: {
-        ...input,
-        resolution: resolvePersonalSecAnnualEvidence(input),
-        cashGeneration: await cashGeneration(input),
-        liquidity: await liquidity(input),
-        operatingResults: await operatingResults(input),
-        balanceSheet: await balanceSheet(input),
-      },
-    };
-    const admitted = await parseSecAnnualEvidenceResponse(
-      wire,
-      request(),
-      new AbortController().signal,
-    );
-    expect(admitted).not.toBeNull();
-    if (!admitted) throw new Error("Expected admitted unavailable evidence");
+    const admitted = await unavailableReadResponse();
     load.mockResolvedValueOnce(old).mockResolvedValueOnce(admitted);
     model.open(selection);
     await model.load();
@@ -806,7 +751,7 @@ describe("managed annual read", () => {
       expect.any(AbortSignal),
     );
     expect(html()).toContain("Refresh annual report");
-    expect(html()).toContain("Inspect selected-report income evidence");
+    expect(html()).toContain("Inspect selected-report statement evidence");
     expect(html()).toContain("Liquidity at fiscal year-end");
     expectReportNavigation(html());
   });

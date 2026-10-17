@@ -1,25 +1,24 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualRevenueConcept,
 } from "@research-cockpit/contracts";
-import {
-  comparePersonalSecAnnualOperatingEvidence,
-  type PersonalSecAnnualOperatingHistoryReason,
-} from "@research-cockpit/personal-financial-analytics";
+import { type PersonalSecAnnualOperatingHistoryReason } from "@research-cockpit/personal-financial-analytics";
 import { annualMarginChangeText } from "../../lib/sec-annual-comparison-display";
 import { annualOperatingUnavailableReasonText } from "./SecAnnualOperatingResults";
 
 export function SecAnnualOperatingChange({
   response,
+  view,
   concept,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly concept: PersonalSecAnnualRevenueConcept;
 }) {
-  const comparison = comparePersonalSecAnnualOperatingEvidence(
-    response.evidence,
-    concept,
-  );
+  const comparison = view.operatingResults.bases.find(
+    (basis) => basis.concept === concept,
+  )!.comparison;
   return (
     <section
       className="managed-annual-operating-change"

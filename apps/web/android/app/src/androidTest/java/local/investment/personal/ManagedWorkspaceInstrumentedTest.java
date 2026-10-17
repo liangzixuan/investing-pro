@@ -259,6 +259,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
+        if (testName.getMethodName().equals("annualStatementsPreviewAppendSaveAndCapturePreserveSources"))
+            selectFixtureScenario("annual-statements");
         if (testName.getMethodName().equals("annualFinancialReviewRequiresPreviewAndExplicitSave"))
             selectFixtureScenario("annual-financial-review");
         if (testName.getMethodName().equals("authoredValuationPreviewSaveReportAndRetirementPreserveBoundaries"))
@@ -403,7 +405,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("schema two report keeps exact authored assumptions, complete results and both sensitivity grids without sources",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), v = d.valuation;" +
-            " return d.schemaVersion === '2.0.0' && d.authoredResearch.note === " + JSONObject.quote(prefix) +
+            " return d.schemaVersion === '3.0.0' && d.authoredResearch.note === " + JSONObject.quote(prefix) +
             " && d.listing.listingId === 'listing-zero' && v.dcfDraft.startingUnleveredCashFlowUsd === '100' && v.exitDraft.cash === '100'" +
             " && v.dcfInput.forecastYears === 5 && v.exitInput.horizonYears === 5" +
             " && v.dcfResult.scenarios.base.valuePerShareUsd === '140.00' && v.exitResult.scenarios.base.valuePerShare === '19.00'" +
@@ -450,7 +452,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-company-report > summary");
         click(".managed-company-report .trial-actions button:first-child");
         click(".managed-report-document > summary");
-        awaitPage("new report captures the saved note together with the retained raw valuation", "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value); return d.schemaVersion === '2.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
+        awaitPage("new report captures the saved note together with the retained raw valuation", "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value); return d.schemaVersion === '3.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
             " && d.valuation.dcfDraft.waccPercent === '10' && d.valuation.exitDraft.cash === '100' && d.valuation.dcfResult.sensitivity.cells.length === 25 && d.valuation.exitResult.sensitivity.cells.length === 25; })()");
         retainAnnualNoteFrame("authoredValuationReport", "#managed-prepared-report-heading", "#managed-prepared-report-heading", 1);
         click("#managed-signout-open");
@@ -1357,9 +1359,9 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("full-report handoff retains the complete operating packet without loading net income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value);" +
-            " const report = doc.sources.annual.response; return report.security.symbol === 'ONE' && report.schemaVersion === '5.0.0'" +
-            " && report.evidence.observations.every(row => row.metric === 'revenue')" +
-            " && report.evidence.operatingResults.resolution.operatingIncome.value === '125.25'" +
+            " const report = doc.sources.annual.response; return report.security.symbol === 'ONE' && report.schemaVersion === '6.0.0'" +
+            " && report.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').every(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax'].includes(row.concept))" +
+            " && doc.sources.annual.financials.operatingResults.resolution.operatingIncome.value === '125.25'" +
             " && report.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
             " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded'; })()");
         pressBack();
@@ -2837,7 +2839,7 @@ public class ManagedWorkspaceInstrumentedTest {
             awaitPage("the complete prepared JSON contains the exact unsaved Unicode draft and loaded source",
                 "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly || !field.value) return false;" +
                 " const report = JSON.parse(field.value); return report.authoredResearch.note === " + JSONObject.quote(note) +
-                " && report.purpose === 'investment.company-research' && report.schemaVersion === '2.0.0'" +
+                " && report.purpose === 'investment.company-research' && report.schemaVersion === '3.0.0'" +
                 " && report.listing.listingId === 'listing-zero' && report.listing.symbol === 'ZERO' && report.listing.exchangeMic === 'XNAS'" +
                 " && report.sources.annual.response.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
                 " && report.sources.price.status === 'not_loaded' && report.sources.filings.status === 'not_loaded'; })()");
@@ -3249,7 +3251,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("report JSON retains the exact draft, complete admitted packets and source clocks",
             "(() => { const field = document.querySelector('#managed-report-document'); " +
             "if (!field?.readOnly || !field.value) return false; const value = JSON.parse(field.value); " +
-            "return value.purpose === 'investment.company-research' && value.schemaVersion === '2.0.0' && " +
+            "return value.purpose === 'investment.company-research' && value.schemaVersion === '3.0.0' && " +
             "value.authoredResearch.status === 'watchlist_draft' && value.authoredResearch.note === " + JSONObject.quote(NOTE) + " && " +
             "value.listing.listingId === 'listing-zero' && value.listing.symbol === 'ZERO' && " +
             "value.sources.price.response.completedAt === '2026-09-20T00:00:01.000Z' && " +
@@ -3257,9 +3259,9 @@ public class ManagedWorkspaceInstrumentedTest {
             "value.sources.filings.response.completedAt === '2026-09-20T00:00:02.000Z' && " +
             "document.querySelector('.managed-report-delivery button')?.textContent === 'Save report (JSON)' && " +
             "document.querySelector('.managed-report-delivery button')?.disabled === false && " +
-            "value.sources.annual.response.evidence.cashGeneration.resolution !== undefined && " +
-            "value.sources.annual.response.evidence.liquidity.resolution !== undefined && " +
-            "Array.isArray(value.sources.annual.response.evidence.observations) && " +
+            "value.sources.annual.financials.cashGeneration.resolution !== undefined && " +
+            "value.sources.annual.financials.liquidity.resolution !== undefined && " +
+            "Array.isArray(value.sources.annual.response.evidence.facts.observations) && value.sources.annual.response.evidence.facts.scans.length === 32 && " +
             "Array.isArray(value.sources.filings.response.issuer.filings) && " +
             "value.sources.filings.response.window.fromDate === '2026-06-23' && " +
             DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0; })()");
@@ -5521,10 +5523,10 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("complete report retains the operating graph, raw revenue and missing net income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
             " const doc = JSON.parse(field.value), annual = doc.sources.annual.response;" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '2.0.0' && annual.schemaVersion === '5.0.0'" +
-            " && annual.evidence.operatingResults.operatingIncome.observations[0].value === '-250.125'" +
-            " && annual.evidence.operatingResults.resolution.margins.length === 3" +
-            " && annual.evidence.observations.length === 3 && annual.evidence.observations.every(row => row.metric === 'revenue')" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '3.0.0' && annual.schemaVersion === '6.0.0'" +
+            " && annual.evidence.facts.observations.find(row => row.concept === 'OperatingIncomeLoss').value === '-250.125'" +
+            " && doc.sources.annual.financials.operatingResults.resolution.margins.length === 3" +
+            " && annual.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').length === 3 && annual.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').every(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax'].includes(row.concept))" +
             " && annual.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
             " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded'" +
             " && doc.authoredResearch.note === " + JSONObject.quote(NOTE) + "; })()");
@@ -5606,6 +5608,137 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void annualStatementsPreviewAppendSaveAndCapturePreserveSources() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String metadata = "JSON.parse(document.querySelector('#fixture-annual-statements').textContent)";
+        String prefix = readFixtureString(metadata + ".prefix");
+        String expected = readFixtureString(metadata + ".expectedNote");
+        String reader = ".managed-annual-statements";
+        String selector = reader + " .managed-annual-statement-selector select";
+        String tools = ".managed-annual-statements-note";
+        String preview = ".managed-annual-statements-note-preview";
+        String incomeChoice = reader + " input[aria-label^='Include Net income or loss attributable to parent, '][aria-label*='through 2025-12-31,']";
+        String assetsChoice = reader + " input[aria-label^='Include Total assets, at 2024-12-31,']";
+        awaitPage("statement fixture starts without financial requests", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        typeIntoInput("managed-note-1", NOTE);
+        click(ANNUAL);
+        awaitPage("explicit Annual visit keeps the authored draft before a source read",
+            "document.querySelector('.managed-annual-report .trial-actions button:first-child')?.disabled === false && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(NOTE));
+        replaceReportNoteWithNativeIme(NOTE, prefix);
+        assertFinancialReviewCounts(0, 0, 0, 0, 1, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("Income is the first loaded Annual reading surface with three actual dates and an exact signed unsafe amount",
+            statementTableExact("Income statement") + " && document.querySelector(" + JSONObject.quote(reader) + ")?.textContent.includes('-9007199254740993.123456789012345678')" +
+            " && document.querySelector(" + JSONObject.quote(tools) + ")?.open === false && document.querySelector(" + JSONObject.quote(preview) + ") === null");
+        assertFinancialReviewCounts(1, 0, 0, 0, 1, 1);
+        retainAnnualNoteFrame("annualStatementsIncome", reader + " h3", reader + " h3, " + selector, 2);
+        click(incomeChoice);
+        chooseNativeSelectOption(selector, "balance_sheet", "Balance sheet");
+        awaitPage("Balance sheet retains instant dates and exact comparative assets", statementTableExact("Balance sheet") +
+            " && document.querySelector(" + JSONObject.quote(assetsChoice) + ")?.checked === false");
+        click(assetsChoice);
+        chooseNativeSelectOption(selector, "cash_flow", "Cash flow");
+        awaitPage("Cash flow keeps independently reported signed comparatives", statementTableExact("Cash flow") +
+            " && document.querySelector(" + JSONObject.quote(reader) + ")?.textContent.includes('USD -80.0625')");
+        retainAnnualNoteFrame("annualStatementsCash", reader + " h3", reader + " h3, " + selector, 2);
+        chooseNativeSelectOption(selector, "balance_sheet", "Balance sheet");
+        click(tools + " > summary");
+        click(tools + " > button");
+        awaitPage("complete source-linked Unicode note is previewed without append or Save", statementPreviewExact(expected) +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(prefix));
+        click(assetsChoice);
+        click(assetsChoice);
+        awaitPage("editing and restoring a selected cell cannot revive the previous preview",
+            "document.querySelector(" + JSONObject.quote(preview) + ") === null && document.querySelector(" + JSONObject.quote(assetsChoice) + ")?.checked === true" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(prefix));
+        click(tools + " > button");
+        awaitPage("a new explicit preview owns the restored selection", statementPreviewExact(expected));
+        retainStatementPreviewTextFrame("annualStatementsPreviewFirst", expected, false);
+        retainStatementPreviewTextFrame("annualStatementsPreviewLast", expected, true);
+        retainAnnualNoteFrame("annualStatementsAppend", preview + " > button", preview + " > button", 1);
+        click(preview + " > button");
+        awaitPage("one Append changes only the full current note draft", "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expected) +
+            " && document.querySelector(" + JSONObject.quote(preview) + ") === null && " + DRAFT + ".dirty === true");
+        assertFinancialReviewCounts(1, 0, 0, 0, 1, 1);
+        click(".managed-company-report > summary");
+        click(".managed-company-report .trial-actions button:first-child");
+        click(".managed-report-document > summary");
+        awaitPage("schema3 captures all32 scans and95 original observations once with exact selected-cell references",
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), a = d.sources.annual, e = a.response.evidence;" +
+            " const rows = e.facts.observations, ids = new Set(rows.map(row => row.id));" +
+            " return d.schemaVersion === '3.0.0' && a.response.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
+            " && e.facts.scans.length === 32 && rows.length === 95 && ids.size === 95 && rows.every(row => !('metric' in row))" +
+            " && field.value.split(String.fromCharCode(34) + 'observations' + String.fromCharCode(34) + ':').length === 2 && a.statements.statements.reduce((count,s) => count+s.rows.length,0) === 32" +
+            " && a.statements.statements.length === 3 && a.statements.statements.every(s => s.columns.map(c => c.endDate).join('|') === '2025-12-31|2024-12-31|2023-12-31')" +
+            " && a.statements.statements.flatMap(s => s.rows.flatMap(r => r.cells)).every(c => c.status !== 'available' || (c.observationIds.length > 0 && c.observationIds.every(id => ids.has(id))))" +
+            " && rows.find(row => row.concept === 'NetIncomeLoss' && row.endDate === '2025-12-31').value === '-9007199254740993.123456789012345678'" +
+            " && rows.find(row => row.concept === 'Assets' && row.endDate === '2024-12-31').value === '900.5' && !rows.some(row => row.concept === 'IncomeTaxExpenseBenefit' && row.endDate === '2024-12-31')" +
+            " && e.generation.sha256 === " + metadata + ".generation.sha256 && d.sources.price.status === 'not_loaded' && d.sources.filings.status === 'not_loaded'; })()");
+        String document = readFixtureString("document.querySelector('#managed-report-document').value");
+        android.content.Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        WatchlistTestDocuments.clear(appContext);
+        WatchlistSystemPicker picker = new WatchlistSystemPicker();
+        try {
+            click(".managed-report-delivery button");
+            picker.saveToInventedRoot();
+            awaitPage("the real native writer confirms the chosen complete statement JSON", "document.querySelector('.managed-report-delivery [role=status]')?.textContent.startsWith('Saved report ')");
+            WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(appContext);
+            assertEquals(1, outputs.length);
+            assertArrayEquals(document.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.readReport(appContext, outputs[0]));
+        } finally { WatchlistTestDocuments.clear(appContext); }
+        click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
+        assertFullNoteReading("managed-note-1", expected, true);
+        onWebView().withElement(findElement(Locator.XPATH, "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
+        awaitPage("explicit Review then Save acknowledges the exact full note", DIAGNOSTICS + ".save === 1 && " + DRAFT + ".baseVersion === 2 && " + DRAFT + ".dirty === false");
+        onWebView().withElement(findElement(Locator.XPATH, "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
+        awaitPage("fresh read preserves order, both identities and the complete saved note", DIAGNOSTICS + ".load === 2 && " + DRAFT + ".memberships?.map(m => m.symbol).join('|') === 'ONE|ZERO' && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note' && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(expected));
+        click(ANNUAL);
+        awaitPage("new visit cannot restore old statement selections or evidence", "document.querySelector(" + JSONObject.quote(reader) + ") === null && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expected));
+        click(CATALOG_REFRESH);
+        awaitPage("retirement clears both saved-draft view and statement preview", DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && document.querySelector('.managed-company-visit') === null && document.querySelector(" + JSONObject.quote(preview) + ") === null");
+        assertFinancialReviewCounts(1, 0, 0, 1, 2, 2);
+        assertEquals("Statement workflow never reloads the document", origin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(0, 1);
+    }
+
+    private void retainStatementPreviewTextFrame(String name, String expected, boolean last) throws Exception {
+        String range = "const text = document.querySelector('.managed-annual-statements-note-preview > p');" +
+            " if (text?.textContent !== " + JSONObject.quote(expected) + " || text.children.length !== 0 || !text.closest('details')?.open) return false;" +
+            " const node = text.firstChild; if (!node || node.nodeType !== Node.TEXT_NODE || node.length < 80) return false;" +
+            " const range = document.createRange(); range.setStart(node," + (last ? "node.length - 80" : "0") + "); range.setEnd(node," + (last ? "node.length" : "80") + ");";
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { " + range + " const r = range.getBoundingClientRect(), v = visualViewport; if (!v) return false; window.scrollBy({top:r.top-v.offsetTop-24,behavior:'instant'}); return true; })()",
+            ignored -> scrolled.countDown()));
+        assertTrue("Statement preview text range did not scroll", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { " + range + " const v = visualViewport, rects = [...range.getClientRects()]; return v && rects.length > 0 && rects.every(r => {" +
+            " if (!(r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height)) return false;" +
+            " const hit = document.elementFromPoint(r.left + r.width/2, r.top + r.height/2); return hit === text || text.contains(hit); }); })()";
+        awaitPage("Complete statement preview range is visible and uncovered: " + name, visible);
+        retainScreenshot(name);
+        awaitPage("Complete statement preview range remains visible and uncovered: " + name, visible);
+    }
+
+    private String statementTableExact(String label) {
+        return "(() => { const table = document.querySelector('.managed-annual-statements .managed-annual-statement-table');" +
+            " return table?.getAttribute('aria-label') === " + JSONObject.quote(label + " reported USD table") +
+            " && table.querySelector('caption')?.textContent === " + JSONObject.quote(label + " · exact reported USD") +
+            " && [...table.querySelectorAll('thead th[scope=col]')].slice(1).map(c => c.childNodes[0].textContent).join('|') === '2025-12-31|2024-12-31|2023-12-31'" +
+            " && getComputedStyle(table).overflowX === 'auto' && document.documentElement.scrollWidth <= document.documentElement.clientWidth" +
+            " && document.querySelector('.managed-annual-statement-selector select')?.getBoundingClientRect().height >= 44; })()";
+    }
+
+    private String statementPreviewExact(String expected) {
+        return "(() => { const root = document.querySelector('.managed-annual-statements-note-preview'), note = root?.querySelector('p');" +
+            " return note?.textContent === " + JSONObject.quote(expected) + " && note.children.length === 0 && [...note.textContent.normalize('NFC')].length <= 2000" +
+            " && root.querySelector('h4')?.textContent === 'Complete note preview' && root.querySelector('button')?.disabled === false" +
+            " && note.textContent.includes('-9007199254740993.123456789012345678') && note.textContent.includes('900.5')" +
+            " && (note.textContent.match(/sec-fact:[a-f0-9]{64}/g) || []).length === 2; })()";
+    }
+
+    @Test
     public void annualFinancialReviewRequiresPreviewAndExplicitSave() throws Exception {
         double origin = readDocumentTimeOrigin();
         String metadata = "JSON.parse(document.querySelector('#fixture-financial-review').textContent)";
@@ -5660,13 +5793,13 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-company-report .trial-actions button:first-child");
         click(".managed-report-document > summary");
         awaitPage("captured report retains the complete note and all independent Annual inputs",
-            "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), a = d.sources.annual.response, e = a.evidence;" +
-            " return JSON.stringify(d).includes(" + JSONObject.quote(expected) + ") && a.schemaVersion === '5.0.0' && e.observations.length === 0" +
-            " && e.operatingResults.resolution.operatingIncome.value === '250.125' && e.cashGeneration.resolution.operatingCashFlow.value === '120.125'" +
-            " && e.cashGeneration.resolution.operatingCashFlowLessPpePurchases.value === '-80.125' && e.liquidity.resolution.workingCapital.value === '0'" +
-            " && e.balanceSheet.resolution.shareholdersEquity.value === '-7.5' && e.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
-            " && e.generation.sha256 === " + metadata + ".generation.sha256 && " + JSONObject.quote(expected) + ".includes(e.operatingResults.resolution.operatingIncome.observationIds[0])" +
-            " && " + JSONObject.quote(expected) + ".includes(e.balanceSheet.resolution.shareholdersEquity.observationIds[0]); })()");
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), a = d.sources.annual.response, e = a.evidence, f = d.sources.annual.financials;" +
+            " return JSON.stringify(d).includes(" + JSONObject.quote(expected) + ") && a.schemaVersion === '6.0.0' && e.facts.observations.filter(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax','NetIncomeLoss'].includes(row.concept)).length === 0" +
+            " && f.operatingResults.resolution.operatingIncome.value === '250.125' && f.cashGeneration.resolution.operatingCashFlow.value === '120.125'" +
+            " && f.cashGeneration.resolution.operatingCashFlowLessPpePurchases.value === '-80.125' && f.liquidity.resolution.workingCapital.value === '0'" +
+            " && f.balanceSheet.resolution.shareholdersEquity.value === '-7.5' && e.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
+            " && e.generation.sha256 === " + metadata + ".generation.sha256 && " + JSONObject.quote(expected) + ".includes(f.operatingResults.resolution.operatingIncome.observationIds[0])" +
+            " && " + JSONObject.quote(expected) + ".includes(f.balanceSheet.resolution.shareholdersEquity.observationIds[0]); })()");
         click(".managed-company-report > summary");
         click(".managed-annual-report .trial-actions button:first-child");
         awaitPage("failed refresh retains exact facts and the appended draft",
@@ -5817,17 +5950,17 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("the captured read-only report retains complete exact totals, sources and missing income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
-            " const doc = JSON.parse(field.value), annual = doc.sources.annual.response, e = annual.evidence, b = e.balanceSheet;" +
+            " const doc = JSON.parse(field.value), annual = doc.sources.annual.response, e = annual.evidence, b = doc.sources.annual.financials.balanceSheet;" +
             " const keys = ['totalAssets','totalLiabilities','shareholdersEquity'], concepts = ['Assets','Liabilities','StockholdersEquity'], amounts = ['1000.125','1200.25','-200.125'];" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '2.0.0' && annual.schemaVersion === '5.0.0'" +
-            " && annual.security.symbol === 'ZERO' && annual.security.listingId === 'listing-zero' && e.observations.length === 0 && e.resolution.pairs.length === 0" +
-            " && keys.every((key,i) => { const metric = b[key], value = b.resolution[key], row = metric.observations[0];" +
-            " return metric.observations.length === [3,2,3][i] && row.value === amounts[i] && row.concept === concepts[i] && row.unit === 'USD' && row.startDate === null && row.durationDays === null" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '3.0.0' && annual.schemaVersion === '6.0.0'" +
+            " && annual.security.symbol === 'ZERO' && annual.security.listingId === 'listing-zero' && e.facts.observations.filter(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax','NetIncomeLoss'].includes(row.concept)).length === 0 && doc.sources.annual.financials.income.resolution.pairs.length === 0" +
+            " && keys.every((key,i) => { const observations = e.facts.observations.filter(row => row.concept === concepts[i]), value = b.resolution[key], row = observations[0];" +
+            " return observations.length === [3,2,3][i] && row.value === amounts[i] && row.concept === concepts[i] && row.unit === 'USD' && row.startDate === null && row.durationDays === null" +
             " && row.endDate === '2025-12-31' && row.accessionNumber === '0000000001-26-000001' && row.filing.reportDate === '2025-12-31'" +
             " && row.sourceLocator === '/facts/us-gaap/' + concepts[i] + '/units/USD/0' && /^sec-fact:[a-f0-9]{64}$/.test(row.id)" +
             " && value.status === 'available' && value.value === amounts[i] && value.unit === 'USD' && value.asOfDate === '2025-12-31' && value.currentUseEligible === true" +
             " && value.observationIds.length === 1 && value.observationIds[0] === row.id" +
-            " && metric.observations.every((item,j) => item.endDate === [['2025-12-31','2024-12-31','2023-09-30'],['2025-12-31','2023-09-30'],['2025-12-31','2024-12-31','2023-09-30']][i][j]" +
+            " && observations.every((item,j) => item.endDate === [['2025-12-31','2024-12-31','2023-09-30'],['2025-12-31','2023-09-30'],['2025-12-31','2024-12-31','2023-09-30']][i][j]" +
             " && item.value === [['1000.125','900.5','800.875'],['1200.25','900'],['-200.125','0','-98.625']][i][j] && item.filing.reportDate === '2025-12-31'" +
             " && item.accessionNumber === '0000000001-26-000001' && item.unit === 'USD' && item.startDate === null && item.durationDays === null" +
             " && item.sourceLocator === '/facts/us-gaap/' + concepts[i] + '/units/USD/' + j && /^sec-fact:[a-f0-9]{64}$/.test(item.id)); })" +
@@ -5988,8 +6121,8 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-company-report .trial-actions button:first-child");
         click(".managed-report-document > summary");
         awaitPage("full report captures every liquidity comparative row and original metadata without another load",
-            "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value), e = doc.sources.annual.response.evidence; const assets = e.liquidity.currentAssets.observations, liabilities = e.liquidity.currentLiabilities.observations;" +
-            " return doc.authoredResearch.note === " + JSONObject.quote(note) + " && e.observations.length === 0" +
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value), e = doc.sources.annual.response.evidence; const assets = e.facts.observations.filter(row => row.concept === 'AssetsCurrent'), liabilities = e.facts.observations.filter(row => row.concept === 'LiabilitiesCurrent');" +
+            " return doc.authoredResearch.note === " + JSONObject.quote(note) + " && e.facts.observations.filter(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax','NetIncomeLoss'].includes(row.concept)).length === 0" +
             " && assets.map(row => row.endDate + '|' + row.value).join(';') === '2025-12-31|120.125;2024-12-28|-5;2023-12-30|0'" +
             " && liabilities.map(row => row.endDate + '|' + row.value).join(';') === '2025-12-31|180.025;2024-12-28|2;2023-12-30|0'" +
             " && [...assets,...liabilities].every(row => row.filing.reportDate === '2025-12-31' && row.accessionNumber === '0000000001-26-000001')" +
@@ -6102,8 +6235,8 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("prepared report serializes every comparative row and original clock without reading",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value), evidence = doc.sources.annual.response.evidence;" +
-            " return evidence.operatingResults.operatingIncome.observations.length === 3 && evidence.observations.length === 6 && evidence.observations.every(row => row.metric === 'revenue')" +
-            " && evidence.operatingResults.operatingIncome.observations.map(row => row.endDate).join('|') === '2025-12-31|2024-12-31|2023-12-31'" +
+            " return evidence.facts.observations.filter(row => row.concept === 'OperatingIncomeLoss').length === 3 && evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').length === 6 && evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').every(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax'].includes(row.concept))" +
+            " && evidence.facts.observations.filter(row => row.concept === 'OperatingIncomeLoss').map(row => row.endDate).join('|') === '2025-12-31|2024-12-31|2023-12-31'" +
             " && evidence.generation.completedAt === '2026-09-20T00:00:02.000Z' && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded'; })()");
         click(".managed-company-report > summary");
         click(".managed-annual-report .trial-actions button:first-child");

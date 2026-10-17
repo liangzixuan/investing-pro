@@ -9,7 +9,7 @@ import { ManagedSecCooldownError, type ManagedApi } from "./managed-api";
 import { ManagedWorkspace, listingMembership } from "./managed-workspace";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
-import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import { response as annualResponse } from "../features/research/test-canonical-annual-ui-fixture";
 const digest = eodSelection.catalogSnapshotSha256;
 const zero: PersonalSecurityMasterSearchResultDto = {
   ...eodSelection.listing,

@@ -1,7 +1,5 @@
 import {
-  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-  type PersonalSecAnnualEvidenceRequestDto,
-  type PersonalSecAnnualEvidenceResponseDto,
+  parseManagedSecAnnualCanonicalRequest,
   type ProblemDetailsDto,
 } from "@research-cockpit/contracts";
 import {
@@ -21,6 +19,7 @@ import {
   PersonalSecAnnualEvidenceProviderError,
   type PersonalSecAnnualEvidenceProvider,
 } from "./personal-sec-annual-evidence-provider";
+import { encodePersonalSecAnnualCanonicalResponse } from "./personal-sec-annual-canonical-response";
 
 export const PERSONAL_SEC_ANNUAL_EVIDENCE_PATH =
   "/v1/personal-filing/workspace/sec-annual-evidence" as const;
@@ -52,10 +51,10 @@ export function registerPersonalWorkspaceSecAnnualEvidenceRoutes(
       },
     },
     async (request, reply) => {
-      if (!isRequest(request.body)) {
+      const body = parseManagedSecAnnualCanonicalRequest(request.body);
+      if (body === null) {
         return sendProblem(reply, request, 400, "invalid_request");
       }
-      const body = request.body;
       if (body.catalogSnapshotSha256 !== catalog.snapshotSha256) {
         return sendProblem(reply, request, 409, "conflict");
       }
@@ -84,29 +83,19 @@ export function registerPersonalWorkspaceSecAnnualEvidenceRoutes(
         if (!authorized(request)) {
           return sendPersonalOwnerSessionProblem(reply, request);
         }
-        if (
-          evidence === null ||
-          typeof evidence !== "object" ||
-          evidence.cik !== listing.cik
-        ) {
-          return sendProblem(reply, request, 502, "provider_unavailable");
-        }
-        const response: PersonalSecAnnualEvidenceResponseDto = {
-          schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-          catalogSnapshotSha256: catalog.snapshotSha256,
-          security: {
-            country: listing.country,
-            exchangeMic: listing.exchangeMic,
-            issuerId: listing.issuerId,
-            issuerName: listing.issuerName,
-            listingId: listing.listingId,
-            securityName: listing.securityName,
-            symbol: listing.symbol,
-            cik: listing.cik,
-          },
+        const prepared = encodePersonalSecAnnualCanonicalResponse(
+          body,
+          catalog.snapshotSha256,
+          listing,
           evidence,
-        };
-        return reply.type("application/json; charset=utf-8").send(response);
+        );
+        if (controller.signal.aborted) return;
+        if (!authorized(request)) {
+          return sendPersonalOwnerSessionProblem(reply, request);
+        }
+        return reply
+          .type("application/json; charset=utf-8")
+          .send(prepared.body);
       } catch (error) {
         if (controller.signal.aborted) return;
         if (!authorized(request)) {
@@ -130,25 +119,6 @@ export function registerPersonalWorkspaceSecAnnualEvidenceRoutes(
         reply.raw.off("close", abort);
       }
     },
-  );
-}
-
-function isRequest(
-  value: unknown,
-): value is PersonalSecAnnualEvidenceRequestDto {
-  if (value === null || typeof value !== "object" || Array.isArray(value))
-    return false;
-  const row = value as Record<string, unknown>;
-  return (
-    Object.keys(row).sort().join(",") ===
-      "catalogSnapshotSha256,listingId,schemaVersion,symbol" &&
-    row.schemaVersion === PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION &&
-    typeof row.catalogSnapshotSha256 === "string" &&
-    /^sha256:[0-9a-f]{64}$/u.test(row.catalogSnapshotSha256) &&
-    typeof row.listingId === "string" &&
-    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(row.listingId) &&
-    typeof row.symbol === "string" &&
-    /^[A-Z0-9][A-Z0-9.-]{0,31}$/u.test(row.symbol)
   );
 }
 

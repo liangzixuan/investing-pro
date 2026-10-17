@@ -1,13 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { derivePersonalSecAnnualFinancialInputs } from "@research-cockpit/personal-financial-analytics";
 import { SecAnnualLiquidityHistory } from "./SecAnnualLiquidityHistory";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import {
   liquidityResponse,
   liquidityRow,
-} from "./sec-annual-liquidity-fixture";
-import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
+  viewOf,
+} from "./test-canonical-annual-liquidity-ui-fixture";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 
 function reportedDates() {
   return (
@@ -37,10 +39,10 @@ describe("reported liquidity history presentation", () => {
         sourceLocator: "/facts/us-gaap/AssetsCurrent/units/USD/3",
       }),
     ]);
-    const response = await parseSecAnnualEvidenceResponse(
+    const response = await parseSecAnnualCanonicalResponse(
       raw,
       {
-        schemaVersion: "5.0.0",
+        schemaVersion: "6.0.0",
         catalogSnapshotSha256: raw.catalogSnapshotSha256,
         listingId: raw.security.listingId,
         symbol: raw.security.symbol,
@@ -52,7 +54,7 @@ describe("reported liquidity history presentation", () => {
       throw new Error("Invented reported liquidity dates were refused");
     const before = JSON.stringify(response);
     const html = renderToStaticMarkup(
-      <SecAnnualLiquidityHistory response={response} />,
+      <SecAnnualLiquidityHistory response={response} view={viewOf(response)} />,
     );
     expect(html).toContain(
       '<details class="managed-annual-liquidity-history"><summary>Reported liquidity history</summary>',
@@ -96,10 +98,10 @@ describe("reported liquidity history presentation", () => {
     expect(html).toContain("Submissions captured 2026-09-20T00:00:02.000Z");
     expect(html).toContain("Original load completed 2026-09-20T00:00:02.000Z");
     expect(html).toContain("Liquidity sources and calculation inputs");
-    for (const metric of [
-      response.evidence.liquidity.currentAssets,
-      response.evidence.liquidity.currentLiabilities,
-    ])
+    const inputs = derivePersonalSecAnnualFinancialInputs(
+      response.evidence,
+    ).liquidity;
+    for (const metric of [inputs.currentAssets, inputs.currentLiabilities])
       for (const observation of metric.observations)
         expect(html).toContain(observation.id);
     expect(html).not.toContain("Within current-use limits");
@@ -128,7 +130,7 @@ describe("reported liquidity history presentation", () => {
         ),
     );
     const html = renderToStaticMarkup(
-      <SecAnnualLiquidityHistory response={response} />,
+      <SecAnnualLiquidityHistory response={response} view={viewOf(response)} />,
     );
     expect(html).toContain("Reported balances · 1 date · newest first");
     expect(html).toContain(
@@ -147,7 +149,7 @@ describe("reported liquidity history presentation", () => {
       reportedDates().filter((row) => row.endDate === "2025-12-31"),
     );
     const html = renderToStaticMarkup(
-      <SecAnnualLiquidityHistory response={response} />,
+      <SecAnnualLiquidityHistory response={response} view={viewOf(response)} />,
     );
     expect(html).toContain("Reported balances · 1 date · newest first");
     expect(html).not.toContain("History stops at");
@@ -173,10 +175,10 @@ describe("reported liquidity history presentation", () => {
       liquidityRow("current_liabilities", tiny),
     ]);
     const negativeHtml = renderToStaticMarkup(
-      <SecAnnualLiquidityHistory response={negative} />,
+      <SecAnnualLiquidityHistory response={negative} view={viewOf(negative)} />,
     );
     const ratioHtml = renderToStaticMarkup(
-      <SecAnnualLiquidityHistory response={ratio} />,
+      <SecAnnualLiquidityHistory response={ratio} view={viewOf(ratio)} />,
     );
     expect(negativeHtml).toContain(`<td>${tiny}</td>`);
     expect(negativeHtml).toContain(`<td>${large}</td>`);
@@ -186,23 +188,25 @@ describe("reported liquidity history presentation", () => {
 
   it("adds only the managed history slot while preserving current results, note action and complete source body", async () => {
     const response = await liquidityResponse(reportedDates());
-    const before = JSON.stringify(response.evidence.liquidity.resolution);
+    const before = JSON.stringify(viewOf(response).liquidity.resolution);
     const managed = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={response}
+        view={viewOf(response)}
         appearance="financial"
         liquidityAction={<button>Keep current liquidity note</button>}
       />,
     );
     const evidence = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={response} />,
+      <SecAnnualEvidenceResult response={response} view={viewOf(response)} />,
     );
     const plain = renderToStaticMarkup(
-      <SecAnnualLiquidity response={response} />,
+      <SecAnnualLiquidity response={response} view={viewOf(response)} />,
     );
     const explicit = renderToStaticMarkup(
       <SecAnnualLiquidity
         response={response}
+        view={viewOf(response)}
         history={<p>Explicit history slot</p>}
       />,
     );
@@ -220,7 +224,7 @@ describe("reported liquidity history presentation", () => {
     );
     for (const html of [managed, plain])
       expect(html).toContain("Liquidity sources and calculation inputs");
-    expect(JSON.stringify(response.evidence.liquidity.resolution)).toBe(before);
+    expect(JSON.stringify(viewOf(response).liquidity.resolution)).toBe(before);
   });
 
   it("explains unavailable history without hiding historical or independently available current balances", async () => {
@@ -232,10 +236,18 @@ describe("reported liquidity history presentation", () => {
       reportedDates().filter((row) => row.metric === "current_assets"),
     );
     const staleHtml = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={stale} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={stale}
+        view={viewOf(stale)}
+        appearance="financial"
+      />,
     );
     const missingHtml = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={missing} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={missing}
+        view={viewOf(missing)}
+        appearance="financial"
+      />,
     );
     expect(staleHtml).toContain("Liquidity history unavailable.");
     expect(staleHtml).toContain(

@@ -1,40 +1,16 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
-import { annualLiquidity } from "../lib/sec-annual-liquidity-response";
-
-function hasConsistentLiquidity(
-  response: PersonalSecAnnualEvidenceResponseDto,
-): boolean {
-  const { evidence, security } = response;
-  const { generation, cashGeneration } = evidence;
-  if (
-    security.cik !== evidence.cik ||
-    generation.sources.companyFacts.status !== "available" ||
-    generation.sources.submissions.status !== "available" ||
-    generation.sources.companyFacts.fetchedAt === null ||
-    generation.sources.submissions.fetchedAt === null
-  )
-    return false;
-  try {
-    const otherIds = new Set([
-      ...evidence.observations.map((row) => row.id),
-      ...cashGeneration.operatingCashFlow.observations.map((row) => row.id),
-      ...cashGeneration.ppePurchases.observations.map((row) => row.id),
-    ]);
-    return annualLiquidity(evidence.liquidity, evidence, otherIds);
-  } catch {
-    return false;
-  }
-}
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
+import { getManagedAnnualView } from "./managed-annual-view";
 
 /** Formats admitted liquidity; the caller owns current-response and draft guards. */
 export function annualLiquidityNoteExcerpt(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   showingPrevious: boolean,
 ): string | null {
-  if (!hasConsistentLiquidity(response)) return null;
-  const { target, generation, cik, liquidity } = response.evidence;
+  const view = getManagedAnnualView(response);
+  if (view === null) return null;
+  const { target, generation, cik } = response.evidence;
   const { currentAssets, currentLiabilities, workingCapital, currentRatio } =
-    liquidity.resolution;
+    view.liquidity.resolution;
   if (
     target.status !== "target" ||
     currentAssets.status !== "available" ||

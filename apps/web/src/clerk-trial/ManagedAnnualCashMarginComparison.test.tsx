@@ -2,9 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS as concepts,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
-import { derivePersonalSecAnnualCashMargins } from "@research-cockpit/personal-financial-analytics";
+import {
+  derivePersonalSecAnnualCashMargins,
+  type PersonalSecAnnualCanonicalView,
+} from "@research-cockpit/personal-financial-analytics";
 import {
   ManagedAnnualCashMarginComparisonRows,
   ManagedAnnualCashMarginComparisonSources,
@@ -13,13 +16,14 @@ import {
   annualComparisonCashRows,
   annualComparisonResponse,
   annualComparisonRows,
-} from "./annual-comparison-fixture";
+  viewOf,
+} from "./test-canonical-annual-comparison-fixture";
 import {
   SecAnnualCashMarginInputs,
   SecAnnualCashMarginValueContent,
 } from "../features/research/SecAnnualCashMargins";
 
-type Response = PersonalSecAnnualEvidenceResponseDto;
+type Response = PersonalSecAnnualCanonicalResponseDto;
 type Side = "left" | "right";
 function revenueRows(side: Side) {
   const current = annualComparisonRows(side).find(
@@ -51,11 +55,19 @@ async function packet(
     ...overrides,
   });
 }
-function rows(left: Response | null, right: Response | null) {
+function rows(
+  left: Response | null,
+  right: Response | null,
+  leftView = left ? viewOf(left) : null,
+  rightView = right ? viewOf(right) : null,
+) {
   return renderToStaticMarkup(
     <table>
       <tbody>
-        <ManagedAnnualCashMarginComparisonRows responses={{ left, right }} />
+        <ManagedAnnualCashMarginComparisonRows
+          responses={{ left, right }}
+          views={{ left: leftView, right: rightView }}
+        />
       </tbody>
     </table>,
   );
@@ -66,9 +78,12 @@ function cells(html: string, concept: string) {
     .split("</tr>")[0]!;
   return [...row.matchAll(/<td>(.*?)<\/td>/gu)].map((match) => match[1]!);
 }
-function sources(response: Response) {
+function sources(response: Response, view = viewOf(response)) {
   return renderToStaticMarkup(
-    <ManagedAnnualCashMarginComparisonSources response={response} />,
+    <ManagedAnnualCashMarginComparisonSources
+      response={response}
+      view={view}
+    />,
   );
 }
 
@@ -87,9 +102,13 @@ function expectMarginValuesAndReferences(
 }
 function expectOriginalSourceCoordinates(inputs: string, response: Response) {
   for (const observation of [
-    ...response.evidence.observations,
-    ...response.evidence.cashGeneration.operatingCashFlow.observations,
-    ...response.evidence.cashGeneration.ppePurchases.observations,
+    ...response.evidence.facts.observations.filter(
+      (row) =>
+        concepts.some((concept) => concept === row.concept) ||
+        row.concept === "NetIncomeLoss" ||
+        row.concept === "NetCashProvidedByUsedInOperatingActivities" ||
+        row.concept === "PaymentsToAcquirePropertyPlantAndEquipment",
+    ),
   ]) {
     for (const value of [
       observation.sourceLocator,
@@ -124,11 +143,11 @@ describe("cash margin comparison presentation", () => {
     const before = JSON.stringify({ left, right });
     const html = rows(left, right);
     for (const response of [left, right]) {
-      expect(response.evidence.resolution.selectedReportPairEligible).toBe(
-        false,
-      );
       expect(
-        response.evidence.operatingResults.resolution.operatingIncome.status,
+        viewOf(response).income.resolution.selectedReportPairEligible,
+      ).toBe(false);
+      expect(
+        viewOf(response).operatingResults.resolution.operatingIncome.status,
       ).toBe("unavailable");
     }
     concepts.forEach((concept, index) => {
@@ -158,7 +177,7 @@ describe("cash margin comparison presentation", () => {
         side === "right" ? response : null,
       );
       const inputs = sources(response);
-      const basisInputs = derivePersonalSecAnnualCashMargins(response.evidence);
+      const basisInputs = viewOf(response).cashMargins;
       const expectedInputs = basisInputs
         .map((basis) =>
           renderToStaticMarkup(
@@ -254,8 +273,11 @@ describe("cash margin comparison presentation", () => {
         expect(cells(html, concept)[1]).not.toContain("Unavailable");
       }
       for (const observation of [
-        ...left.evidence.cashGeneration.operatingCashFlow.observations,
-        ...left.evidence.cashGeneration.ppePurchases.observations,
+        ...left.evidence.facts.observations.filter(
+          (row) =>
+            row.concept === "NetCashProvidedByUsedInOperatingActivities" ||
+            row.concept === "PaymentsToAcquirePropertyPlantAndEquipment",
+        ),
       ])
         expect(sources(left)).toContain(observation.id);
     },
@@ -299,32 +321,35 @@ describe("cash margin comparison presentation", () => {
 
   it("labels a non-wire typed filing-mismatch probe without mixing either company's references", async () => {
     const response = await packet("left");
-    const cash = response.evidence.cashGeneration;
+    const view = viewOf(response);
+    const cash = view.cashGeneration;
     if (cash.resolution.ppePurchases.status !== "available")
       throw new Error("Expected admitted purchases");
-    // Deliberate derived-model probe; this altered packet is not wire-admitted.
-    const changed: Response = {
-      ...response,
-      evidence: {
-        ...response.evidence,
-        cashGeneration: {
-          ...cash,
-          resolution: {
-            ...cash.resolution,
-            ppePurchases: {
-              ...cash.resolution.ppePurchases,
-              accessionNumber: "0000000001-26-000002",
-            },
+    // Deliberate derived-model probe; canonical source facts remain unchanged.
+    const changedResolved = {
+      cashGeneration: {
+        ...cash,
+        resolution: {
+          ...cash.resolution,
+          ppePurchases: {
+            ...cash.resolution.ppePurchases,
+            accessionNumber: "0000000001-26-000002",
           },
         },
       },
+      operatingResults: view.operatingResults,
     };
-    const html = rows(changed, await packet("right"));
+    const changedView: PersonalSecAnnualCanonicalView = {
+      ...view,
+      ...changedResolved,
+      cashMargins: derivePersonalSecAnnualCashMargins(changedResolved),
+    };
+    const html = rows(response, await packet("right"), changedView);
     for (const concept of concepts)
       expect(cells(html, concept)[0]).toContain(
         "The cash amounts and revenue come from different filings.",
       );
-    expect(sources(changed)).toContain(
+    expect(sources(response, changedView)).toContain(
       cash.resolution.ppePurchases.observationIds[0]!,
     );
   });

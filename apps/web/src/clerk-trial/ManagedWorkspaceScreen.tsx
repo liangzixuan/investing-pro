@@ -1177,6 +1177,19 @@ export function ManagedWorkspaceScreen({
                         basis,
                       ),
                   }}
+                  annualStatementsActions={{
+                    prepare: (response, cells, selectionIsCurrent) =>
+                      workspace.prepareAnnualStatementsNote(
+                        discovery.research!.selection,
+                        response,
+                        cells,
+                        selectionIsCurrent,
+                      ),
+                    isCurrent: (preview) =>
+                      workspace.annualStatementsPreviewIsCurrent(preview),
+                    append: (preview) =>
+                      workspace.appendAnnualStatementsNote(preview),
+                  }}
                   financialReviewActions={{
                     prepare: (response, keys) =>
                       workspace.prepareFinancialReview(

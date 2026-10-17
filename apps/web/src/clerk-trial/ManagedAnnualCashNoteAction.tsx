@@ -1,19 +1,19 @@
 import { useId, useState } from "react";
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 
 export interface ManagedAnnualCashNoteActions {
-  getAction: (response: PersonalSecAnnualEvidenceResponseDto) => {
+  getAction: (response: PersonalSecAnnualCanonicalResponseDto) => {
     canAppend: boolean;
     reason: string | null;
   };
-  append: (response: PersonalSecAnnualEvidenceResponseDto) => {
+  append: (response: PersonalSecAnnualCanonicalResponseDto) => {
     appended: boolean;
     message: string;
   };
 }
 
 interface CashNoteFeedback {
-  response: PersonalSecAnnualEvidenceResponseDto;
+  response: PersonalSecAnnualCanonicalResponseDto;
   message: string;
   refusal: ReturnType<ManagedAnnualCashNoteActions["getAction"]> | null;
 }
@@ -22,7 +22,7 @@ export function ManagedAnnualCashNoteAction({
   response,
   actions,
 }: {
-  response: PersonalSecAnnualEvidenceResponseDto;
+  response: PersonalSecAnnualCanonicalResponseDto;
   actions: ManagedAnnualCashNoteActions;
 }) {
   const helpId = useId();

@@ -1,3 +1,5 @@
+import { PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import { ObservationDetails } from "./SecAnnualObservation";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
@@ -8,10 +10,11 @@ import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
 import { SecAnnualBalanceSheet } from "./SecAnnualBalanceSheet";
 import { SecAnnualLiquidityHistory } from "./SecAnnualLiquidityHistory";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
+  PersonalSecAnnualCanonicalEvidenceDto,
+  PersonalSecAnnualStatementObservationDto,
   PersonalSecAnnualPairDto,
   PersonalSecAnnualOperatingMarginDto,
-  PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { ManagedAnnualReportNavigation } from "./ManagedAnnualReportNavigation";
@@ -21,8 +24,6 @@ import {
   AnnualOverviewSummary,
 } from "./SecAnnualFinancials";
 import {
-  comparePersonalSecAnnualEvidence,
-  resolvePersonalSecAnnualHistory,
   type PersonalSecAnnualComparison,
   type PersonalSecAnnualHistory,
 } from "@research-cockpit/personal-financial-analytics";
@@ -33,7 +34,7 @@ import {
 import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
 
 type AnnualBasis =
-  PersonalSecAnnualEvidenceResponseDto["evidence"]["resolution"]["bases"][number];
+  PersonalSecAnnualCanonicalView["income"]["resolution"]["bases"][number];
 
 type FinancialReviewSlot = (
   inspect: (
@@ -53,6 +54,8 @@ const sourceStatuses = {
 
 const reasons: Readonly<Record<string, string>> = {
   source_unavailable: "A required SEC source is unavailable.",
+  invalid_response: "Revenue and income could not be validated.",
+  candidate_limit: "The revenue and income scan exceeds its source limit.",
   invalid_source_rows:
     "The income scan contains invalid observations; revenue and net income are withheld.",
   target_unresolved: "The observed annual report could not be resolved.",
@@ -98,6 +101,7 @@ const reasons: Readonly<Record<string, string>> = {
 
 export function SecAnnualEvidenceResult({
   response,
+  view,
   renderPairAction,
   cashAction,
   liquidityAction,
@@ -105,7 +109,8 @@ export function SecAnnualEvidenceResult({
   renderFinancialReview,
   appearance = "evidence",
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly renderPairAction?: (pair: PersonalSecAnnualPairDto) => ReactNode;
   readonly cashAction?: ReactNode;
   readonly liquidityAction?: ReactNode;
@@ -119,6 +124,7 @@ export function SecAnnualEvidenceResult({
     return (
       <ManagedAnnualFinancialResult
         response={response}
+        view={view}
         renderPairAction={renderPairAction}
         cashAction={cashAction}
         liquidityAction={liquidityAction}
@@ -128,11 +134,15 @@ export function SecAnnualEvidenceResult({
     );
   return (
     <div className="sec-quarterly-comparison">
-      <AnnualEvidenceContext response={response} />
-      <AnnualBases response={response} renderPairAction={renderPairAction} />
-      <SecAnnualOperatingResults response={response} />
-      <SecAnnualCashGeneration response={response} />
-      <SecAnnualBalanceSheet response={response} />
+      <AnnualEvidenceContext response={response} view={view} />
+      <AnnualBases
+        response={response}
+        view={view}
+        renderPairAction={renderPairAction}
+      />
+      <SecAnnualOperatingResults response={response} view={view} />
+      <SecAnnualCashGeneration response={response} view={view} />
+      <SecAnnualBalanceSheet response={response} view={view} />
       <AnnualEvidenceSources response={response} />
     </div>
   );
@@ -140,13 +150,15 @@ export function SecAnnualEvidenceResult({
 
 function ManagedAnnualFinancialResult({
   response,
+  view,
   renderPairAction,
   cashAction,
   liquidityAction,
   renderOperatingAction,
   renderFinancialReview,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly renderPairAction:
     ((pair: PersonalSecAnnualPairDto) => ReactNode) | undefined;
   readonly cashAction: ReactNode;
@@ -163,9 +175,8 @@ function ManagedAnnualFinancialResult({
   const balanceSheet = useRef<HTMLHeadingElement>(null);
   const sources = useRef<HTMLElement>(null);
   const sourceDetails = useRef<HTMLDetailsElement>(null);
-  const committedResponse = useRef<PersonalSecAnnualEvidenceResponseDto | null>(
-    null,
-  );
+  const committedResponse =
+    useRef<PersonalSecAnnualCanonicalResponseDto | null>(null);
   useLayoutEffect(() => {
     committedResponse.current = response;
     return () => {
@@ -184,12 +195,13 @@ function ManagedAnnualFinancialResult({
     <div className="sec-quarterly-comparison managed-annual-overview">
       <AnnualOverviewSummary
         response={response}
+        view={view}
         targetMessage={
           response.evidence.target.status === "unresolved"
             ? reason(response.evidence.target.reason)
             : null
         }
-        completenessMessage={incomeCompletenessMessage(response.evidence)}
+        completenessMessage={incomeCompletenessMessage(view.income)}
       />
       <ManagedAnnualReportNavigation
         response={response}
@@ -212,7 +224,7 @@ function ManagedAnnualFinancialResult({
         )
           target.scrollIntoView({ block: "start", behavior: "instant" });
       })}
-      <ManagedAnnualTrend response={response} />
+      <ManagedAnnualTrend response={response} view={view} />
       <div
         className="managed-annual-financial-region"
         role="region"
@@ -224,16 +236,19 @@ function ManagedAnnualFinancialResult({
       >
         <AnnualBases
           response={response}
+          view={view}
           renderPairAction={renderPairAction}
           financial
         />
       </div>
       <SecAnnualOperatingResults
         response={response}
+        view={view}
         headingTarget={targets.operating}
         renderHistory={(basis) => (
           <SecAnnualOperatingHistory
             response={response}
+            view={view}
             concept={basis.concept}
           />
         )}
@@ -241,19 +256,22 @@ function ManagedAnnualFinancialResult({
       />
       <SecAnnualCashGeneration
         response={response}
+        view={view}
         cashAction={cashAction}
         headingTarget={targets.cash}
-        margins={<SecAnnualCashMargins response={response} />}
-        history={<SecAnnualCashHistory response={response} />}
+        margins={<SecAnnualCashMargins response={response} view={view} />}
+        history={<SecAnnualCashHistory response={response} view={view} />}
       />
       <SecAnnualLiquidity
         response={response}
+        view={view}
         liquidityAction={liquidityAction}
         headingTarget={targets.liquidity}
-        history={<SecAnnualLiquidityHistory response={response} />}
+        history={<SecAnnualLiquidityHistory response={response} view={view} />}
       />
       <SecAnnualBalanceSheet
         response={response}
+        view={view}
         headingTarget={targets.balanceSheet}
       />
       <details className="managed-annual-provenance" ref={sourceDetails}>
@@ -271,8 +289,8 @@ function ManagedAnnualFinancialResult({
           in current submissions; it does not provide complete filing history or
           prices.
         </p>
-        <AnnualBasisSources bases={response.evidence.resolution.bases} />
-        <SecAnnualSourceDetails response={response} />
+        <AnnualBasisSources bases={view.income.resolution.bases} />
+        <SecAnnualSourceDetails response={response} view={view} />
       </details>
     </div>
   );
@@ -280,12 +298,14 @@ function ManagedAnnualFinancialResult({
 
 export function SecAnnualSourceDetails({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
   return (
     <>
-      <AnnualEvidenceContext response={response} />
+      <AnnualEvidenceContext response={response} view={view} />
       <AnnualComparisonMethodology />
       <AnnualEvidenceSources response={response} />
     </>
@@ -294,11 +314,14 @@ export function SecAnnualSourceDetails({
 
 function AnnualEvidenceContext({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
   const evidence = response.evidence;
-  const { target, coverage, resolution } = evidence;
+  const { target } = evidence;
+  const { coverage, resolution } = view.income;
   return (
     <>
       <h3>{response.security.symbol} · Observed annual report</h3>
@@ -306,7 +329,7 @@ function AnnualEvidenceContext({
         {response.security.issuerName} · {response.security.exchangeMic} ·{" "}
         {response.security.securityName} · CIK {evidence.cik}
       </p>
-      <AnnualReportCoordinates response={response} />
+      <AnnualReportCoordinates response={response} view={view} />
       {target.status === "target" ? (
         <p className="sec-quarterly-message">
           Filed {target.filedDate} · Accepted{" "}
@@ -348,11 +371,10 @@ function AnnualEvidenceContext({
           {coverage.selected === null
             ? " (target unresolved)"
             : ` of ${coverage.selected.observations}`}
-          . Original history view: {coverage.history.returned.observations} of{" "}
-          {coverage.full.observations}
-          {coverage.history.truncated
-            ? "; history remains truncated."
-            : "; no history observations omitted."}
+          . Other-accession observations counted:{" "}
+          {coverage.otherAccessions?.observations ?? "unresolved"}. Summary
+          references admitted: {view.income.summaryReturned.observations}. No
+          all-accessions observation history is retained.
         </p>
       )}
       {evidence.targetScan?.olderHistoryAvailable ? (
@@ -367,10 +389,13 @@ function AnnualEvidenceContext({
 
 function AnnualReportCoordinates({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
-  const { target, completeness, resolution, generation } = response.evidence;
+  const { target, generation } = response.evidence;
+  const { resolution } = view.income;
   return (
     <dl className="sec-quarterly-comparison-coordinates">
       <div>
@@ -383,14 +408,14 @@ function AnnualReportCoordinates({
       </div>
       <div>
         <dt>Revenue and income scan</dt>
-        <dd>{evidenceIncomeScanStatus(response.evidence.incomeScanStatus)}</dd>
+        <dd>{evidenceIncomeScanStatus(view.income.scanStatus)}</dd>
       </div>
       <div>
         <dt>Revenue and income evidence</dt>
         <dd>
-          {completeness.status === "complete"
+          {view.income.reason === null
             ? "Complete for the four requested USD concepts"
-            : `Unavailable. ${incomeCompletenessMessage(response.evidence)}`}
+            : `Unavailable. ${incomeCompletenessMessage(view.income)}`}
         </dd>
       </div>
       <div>
@@ -423,16 +448,18 @@ function AnnualReportCoordinates({
 
 function AnnualBases({
   response,
+  view,
   renderPairAction,
   financial = false,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly renderPairAction:
     ((pair: PersonalSecAnnualPairDto) => ReactNode) | undefined;
   readonly financial?: boolean;
 }) {
   const evidence = response.evidence;
-  const { resolution } = evidence;
+  const { resolution } = view.income;
   const missing = financial ? resolution.bases.filter(isMissingBasis) : [];
   const bases = financial
     ? resolution.bases
@@ -457,7 +484,13 @@ function AnnualBases({
           {(!financial || basis.status !== "eligible") && (
             <AnnualBasisStatus status={basis.status} />
           )}
-          {renderPairs(basis.pairs, evidence, renderPairAction, financial)}
+          {renderPairs(
+            basis.pairs,
+            evidence,
+            view,
+            renderPairAction,
+            financial,
+          )}
         </section>
       ))}
       {missing.length > 0 && (
@@ -522,7 +555,7 @@ function AnnualBasisSources({
 function AnnualBasisStatus({
   status,
 }: {
-  readonly status: PersonalSecAnnualEvidenceResponseDto["evidence"]["resolution"]["bases"][number]["status"];
+  readonly status: AnnualBasis["status"];
 }) {
   return (
     <p className="sec-quarterly-message">
@@ -539,7 +572,8 @@ function AnnualBasisStatus({
 
 function renderPairs(
   pairs: readonly PersonalSecAnnualPairDto[],
-  evidence: PersonalSecAnnualEvidenceResponseDto["evidence"],
+  evidence: PersonalSecAnnualCanonicalEvidenceDto,
+  view: PersonalSecAnnualCanonicalView,
   renderPairAction: ((pair: PersonalSecAnnualPairDto) => ReactNode) | undefined,
   financial: boolean,
 ) {
@@ -548,15 +582,17 @@ function renderPairs(
       key={JSON.stringify([pair.startDate, pair.endDate])}
       pair={pair}
       financial={financial}
-      observations={evidence.observations}
+      observations={evidence.facts.observations}
       comparison={
         pair.status === "eligible"
-          ? comparePersonalSecAnnualEvidence(evidence, pair.concept)
+          ? view.income.bases.find((basis) => basis.concept === pair.concept)!
+              .comparison
           : null
       }
       history={
         pair.status === "eligible"
-          ? resolvePersonalSecAnnualHistory(evidence, pair.concept)
+          ? view.income.bases.find((basis) => basis.concept === pair.concept)!
+              .history
           : null
       }
       action={pair.status === "eligible" ? renderPairAction?.(pair) : null}
@@ -567,15 +603,15 @@ function renderPairs(
 function AnnualEvidenceSources({
   response,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
 }) {
   const evidence = response.evidence;
   const { generation } = evidence;
   return (
     <details className="sec-quarterly-row-details sec-filing-context">
       <summary>
-        Inspect selected-report income evidence ({evidence.observations.length}{" "}
-        observations)
+        Inspect selected-report statement evidence (
+        {evidence.facts.observations.length} observations)
       </summary>
       <p className="sec-quarterly-message">
         All returned observations for this accession, including comparative
@@ -583,13 +619,62 @@ function AnnualEvidenceSources({
         labels are not the observation's fiscal year. Exact USD values are
         unscaled.
       </p>
-      <ol>
-        {evidence.observations.map((row) => (
-          <li key={row.id}>
-            <ObservationDetails row={row} />
-          </li>
-        ))}
-      </ol>
+      {PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.map((entry) => {
+        const scan = evidence.facts.scans.find(
+          (item) => item.concept === entry.concept,
+        )!.scan;
+        const observations = evidence.facts.observations.filter(
+          (row) => row.concept === entry.concept,
+        );
+        return (
+          <details key={entry.concept} className="sec-quarterly-row-details">
+            <summary>
+              {entry.label} · {entry.concept} · {observations.length}{" "}
+              observations
+            </summary>
+            <p>{entry.qualification}</p>
+            <p>
+              {entry.periodType === "instant"
+                ? "Balance at a date"
+                : "Reported period flow"}{" "}
+              · USD.{" "}
+              {entry.taxonomyStatus === "legacy_deprecated"
+                ? "Legacy concept; not active in the 2026 taxonomy."
+                : "Active in the 2026 taxonomy."}
+            </p>
+            {scan.status === "available" ? (
+              <p>
+                Scanned {scan.coverage.full.inspectedRows} of{" "}
+                {scan.coverage.full.candidateRows} candidate rows;{" "}
+                {scan.coverage.full.invalidRows} invalid;{" "}
+                {scan.coverage.full.duplicateRows} identical duplicates;{" "}
+                {scan.coverage.full.uniqueObservations} unique observations.
+                Selected {scan.coverage.selected ?? "unresolved"}; other
+                accessions {scan.coverage.otherAccessions ?? "unresolved"};
+                returned {scan.coverage.returned}; omitted selected{" "}
+                {scan.coverage.omittedSelected ?? "unknown"}.{" "}
+                {scan.absence === null
+                  ? null
+                  : {
+                      concept_missing: "The concept is absent.",
+                      usd_missing: "The concept has no USD observations.",
+                      empty_usd:
+                        "The concept has an empty USD observation set.",
+                    }[scan.absence]}
+              </p>
+            ) : (
+              <p>{evidenceIncomeScanStatus(scan.status)}</p>
+            )}
+            <ol>
+              {observations.map((row) => (
+                <li key={row.id}>
+                  <ObservationDetails row={row} />
+                </li>
+              ))}
+            </ol>
+          </details>
+        );
+      })}
       <dl className="sec-quarterly-comparison-coordinates">
         <div>
           <dt>Definition version</dt>
@@ -629,7 +714,7 @@ function AnnualEvidenceSources({
 interface AnnualPairProps {
   readonly financial?: boolean;
   readonly pair: PersonalSecAnnualPairDto;
-  readonly observations: readonly PersonalSecQuarterlyObservationDto[];
+  readonly observations: readonly PersonalSecAnnualStatementObservationDto[];
   readonly action: ReactNode;
   readonly comparison: PersonalSecAnnualComparison | null;
   readonly history: PersonalSecAnnualHistory | null;
@@ -795,7 +880,7 @@ function AnnualHistory({
   observations,
 }: {
   readonly history: Extract<PersonalSecAnnualHistory, { status: "available" }>;
-  readonly observations: readonly PersonalSecQuarterlyObservationDto[];
+  readonly observations: readonly PersonalSecAnnualStatementObservationDto[];
 }) {
   const earlier = history.comparisons[1];
   return (
@@ -935,7 +1020,7 @@ function AnnualComparison({
   observations,
 }: {
   readonly comparison: PersonalSecAnnualComparison;
-  readonly observations: readonly PersonalSecQuarterlyObservationDto[];
+  readonly observations: readonly PersonalSecAnnualStatementObservationDto[];
 }) {
   if (comparison.status === "unavailable") {
     return (
@@ -1022,7 +1107,7 @@ function reason(value: string | null): string {
 }
 
 function evidenceIncomeScanStatus(
-  status: PersonalSecAnnualEvidenceResponseDto["evidence"]["incomeScanStatus"],
+  status: PersonalSecAnnualCanonicalView["income"]["scanStatus"],
 ) {
   return {
     available: "Complete source scan",
@@ -1031,16 +1116,8 @@ function evidenceIncomeScanStatus(
     candidate_limit: "Income concepts exceed the bounded scan limit",
   }[status];
 }
-
 function incomeCompletenessMessage(
-  evidence: PersonalSecAnnualEvidenceResponseDto["evidence"],
+  income: PersonalSecAnnualCanonicalView["income"],
 ): string | null {
-  if (evidence.completeness.status === "complete") return null;
-  if (evidence.completeness.reason === "source_unavailable") {
-    if (evidence.incomeScanStatus === "invalid_response")
-      return "Revenue and income could not be validated.";
-    if (evidence.incomeScanStatus === "candidate_limit")
-      return "The revenue and income scan exceeds its source limit.";
-  }
-  return reason(evidence.completeness.reason);
+  return income.reason === null ? null : reason(income.reason);
 }

@@ -1,8 +1,8 @@
-import { row } from "../../src/features/research/sec-annual-evidence-fixture";
+import { row } from "../../src/features/research/test-canonical-annual-ui-fixture";
 import {
   operatingResponse,
   operatingRow,
-} from "../../src/features/research/sec-annual-operating-fixture";
+} from "../../src/features/research/test-canonical-annual-operating-ui-fixture";
 
 /** Invented adjacent comparatives in one filing; net income is absent. */
 export function operatingHistoryPacket(replacement = false, late = false) {

@@ -127,6 +127,35 @@ function input(operating = [row(1)], purchases = [row(2, true)]) {
 }
 
 describe("Annual cash generation", () => {
+  it("keeps v5 version admission outside the shared cash kernel", () => {
+    const packet = input();
+    Object.assign(packet.generation, { definitionVersion: "6.0.0" });
+    const result = resolvePersonalSecAnnualCashGeneration(packet);
+    expect(result.operatingCashFlow).toMatchObject({
+      status: "unavailable",
+      reason: "invalid_clock",
+    });
+    expect(result.utilityAge).toBeNull();
+    expect(resolvePersonalSecAnnualCashHistory(packet)).toEqual({
+      status: "unavailable",
+      reason: "invalid_clock",
+    });
+  });
+  it.each(["operatingCashFlow", "ppePurchases"] as const)(
+    "keeps the existing %s metric-tag admission",
+    (key) => {
+      const packet = input();
+      Object.assign(packet.cashGeneration[key].observations[0]!, {
+        metric: "net_income",
+      });
+      expect(() => resolvePersonalSecAnnualCashGeneration(packet)).toThrow(
+        TypeError,
+      );
+      expect(() => resolvePersonalSecAnnualCashHistory(packet)).toThrow(
+        TypeError,
+      );
+    },
+  );
   it("returns independent exact amounts and both input references without a revenue basis", () => {
     const packet = input();
     const before = structuredClone(packet);

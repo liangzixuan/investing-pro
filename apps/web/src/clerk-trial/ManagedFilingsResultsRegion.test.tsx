@@ -2,7 +2,7 @@ import type { ReactElement, RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ManagedFilingsResultsRegion } from "./ManagedFilingsResultsRegion";
 import { filingsResponse } from "./sec-filings-fixture";
-import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import { response as annualResponse } from "../features/research/test-canonical-annual-ui-fixture";
 import { compareManagedFilingsResponses } from "./managed-filings-refresh-comparison";
 import {
   bindManagedFilingsFilter,

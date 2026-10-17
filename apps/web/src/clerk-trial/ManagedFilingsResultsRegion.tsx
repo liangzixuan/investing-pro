@@ -1,14 +1,14 @@
 import { Component, createRef, type ReactNode } from "react";
 import type {
   ManagedSecFilingsResponseDto,
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import type { ManagedFilingsRefreshComparison } from "./managed-filings-refresh-comparison";
 
 interface RegionProps {
   children: ReactNode;
   response: ManagedSecFilingsResponseDto;
-  baselineResponse?: PersonalSecAnnualEvidenceResponseDto | null;
+  baselineResponse?: PersonalSecAnnualCanonicalResponseDto | null;
   refreshComparison?: ManagedFilingsRefreshComparison | null;
 }
 

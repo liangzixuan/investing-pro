@@ -1,4 +1,5 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { SecAnnualBalanceSheetValueContent } from "../features/research/SecAnnualBalanceSheet";
 
 const metrics = [
@@ -9,9 +10,13 @@ const metrics = [
 
 export function ManagedAnnualBalanceSheetComparisonRows({
   responses,
+  views,
 }: {
   readonly responses: Readonly<
-    Record<"left" | "right", PersonalSecAnnualEvidenceResponseDto | null>
+    Record<"left" | "right", PersonalSecAnnualCanonicalResponseDto | null>
+  >;
+  readonly views: Readonly<
+    Record<"left" | "right", PersonalSecAnnualCanonicalView | null>
   >;
 }) {
   return (
@@ -24,12 +29,17 @@ export function ManagedAnnualBalanceSheetComparisonRows({
           </th>
           {(["left", "right"] as const).map((side) => {
             const response = responses[side];
+            const view = views[side];
+            const pairedView =
+              response && view?.canonical === response.evidence ? view : null;
             return (
               <td key={side}>
-                {response ? (
+                {pairedView ? (
                   <SecAnnualBalanceSheetValueContent
-                    value={response.evidence.balanceSheet.resolution[metric]}
+                    value={pairedView.balanceSheet.resolution[metric]}
                   />
+                ) : response ? (
+                  "Unavailable. The source and financial results do not match."
                 ) : (
                   "Not loaded"
                 )}

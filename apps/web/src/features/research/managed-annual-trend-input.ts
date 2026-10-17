@@ -1,13 +1,13 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import {
   projectManagedAnnualAmountPlot,
   type ManagedAnnualAmountPlot,
 } from "./managed-annual-amount-plot";
 import type {
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalSecAnnualRevenueConcept,
 } from "@research-cockpit/contracts";
 import {
-  resolvePersonalSecAnnualHistory,
   type PersonalSecAnnualHistory,
   type PersonalSecAnnualPeriod,
 } from "@research-cockpit/personal-financial-analytics";
@@ -50,10 +50,19 @@ export type ManagedAnnualTrendProjection =
 
 /** Projects an already validated response; admission remains with the history resolver. */
 export function projectManagedAnnualTrend(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
+  view: PersonalSecAnnualCanonicalView,
   concept: PersonalSecAnnualRevenueConcept,
 ): ManagedAnnualTrendProjection {
-  const history = resolvePersonalSecAnnualHistory(response.evidence, concept);
+  if (view.canonical !== response.evidence)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "current_report_unavailable",
+      stoppedReason: null,
+    });
+  const history = view.income.bases.find(
+    (basis) => basis.concept === concept,
+  )!.history;
   if (history.status === "unavailable")
     return Object.freeze({
       status: "unavailable",
@@ -89,7 +98,7 @@ export function projectManagedAnnualTrend(
 }
 
 function contentKey(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   history: AvailableHistory,
   periods: readonly PersonalSecAnnualPeriod[],
 ): string {

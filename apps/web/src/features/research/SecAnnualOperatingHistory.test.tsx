@@ -2,21 +2,21 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SecAnnualOperatingHistory } from "./SecAnnualOperatingHistory";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
-import { operatingHistoryPacket } from "../../../android-tests/managed-workspace/operating-history-fixture";
+import { operatingHistoryPacket } from "./test-canonical-annual-operating-ui-fixture";
 import {
   operatingResponse,
   operatingRow,
-} from "./sec-annual-operating-fixture";
-import { row } from "./sec-annual-evidence-fixture";
-import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
+} from "./test-canonical-annual-operating-ui-fixture";
+import { row, viewOf } from "./test-canonical-annual-ui-fixture";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 
 describe("reported operating history disclosure", () => {
   it("renders decoded same-filing adjacent periods, negative/zero income and complete references while initially closed", async () => {
     const raw = await operatingHistoryPacket();
-    const response = await parseSecAnnualEvidenceResponse(
+    const response = await parseSecAnnualCanonicalResponse(
       raw,
       {
-        schemaVersion: "5.0.0",
+        schemaVersion: "6.0.0",
         catalogSnapshotSha256: raw.catalogSnapshotSha256,
         listingId: raw.security.listingId,
         symbol: raw.security.symbol,
@@ -27,7 +27,11 @@ describe("reported operating history disclosure", () => {
     if (!response) throw new Error("Invented operating history was refused");
     const before = JSON.stringify(response);
     const html = renderToStaticMarkup(
-      <SecAnnualOperatingHistory response={response} concept="Revenues" />,
+      <SecAnnualOperatingHistory
+        response={response}
+        view={viewOf(response)}
+        concept="Revenues"
+      />,
     );
     expect(html).toContain(
       '<details class="managed-annual-operating-history" aria-label="Reported operating history Revenues"><summary>Reported operating history</summary>',
@@ -44,9 +48,9 @@ describe("reported operating history disclosure", () => {
     expect(html).toContain("Original load completed 2026-09-20T00:00:02.000Z");
     expect(html).toContain("Earlier periods are historical comparatives");
     for (const observation of [
-      ...response.evidence.operatingResults.operatingIncome.observations,
-      ...response.evidence.observations.filter(
-        (item) => item.concept === "Revenues",
+      ...response.evidence.facts.observations.filter(
+        (item) =>
+          item.concept === "OperatingIncomeLoss" || item.concept === "Revenues",
       ),
     ])
       expect(html).toContain(observation.id);
@@ -63,7 +67,11 @@ describe("reported operating history disclosure", () => {
         | "RevenueFromContractWithCustomerExcludingAssessedTax",
     ) =>
       renderToStaticMarkup(
-        <SecAnnualOperatingHistory response={response} concept={concept} />,
+        <SecAnnualOperatingHistory
+          response={response}
+          view={viewOf(response)}
+          concept={concept}
+        />,
       );
     expect(render("SalesRevenueNet")).toContain(
       "Net sales revenue · 2 periods",
@@ -82,14 +90,16 @@ describe("reported operating history disclosure", () => {
 
   it("adds histories only in managed composition without changing independent current resolution", async () => {
     const response = await operatingHistoryPacket();
-    const before = JSON.stringify(
-      response.evidence.operatingResults.resolution,
-    );
+    const before = JSON.stringify(viewOf(response).operatingResults.resolution);
     const managed = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={response} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={response}
+        view={viewOf(response)}
+        appearance="financial"
+      />,
     );
     const evidence = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={response} />,
+      <SecAnnualEvidenceResult response={response} view={viewOf(response)} />,
     );
     expect(
       managed.match(/class="managed-annual-operating-history"/g),
@@ -99,7 +109,7 @@ describe("reported operating history disclosure", () => {
       "Revenue and net income do not form a current-use pair",
     );
     expect(managed).toContain("Operating sources and calculation inputs");
-    expect(JSON.stringify(response.evidence.operatingResults.resolution)).toBe(
+    expect(JSON.stringify(viewOf(response).operatingResults.resolution)).toBe(
       before,
     );
   });
@@ -112,7 +122,11 @@ describe("reported operating history disclosure", () => {
     );
     expect(
       renderToStaticMarkup(
-        <SecAnnualOperatingHistory response={response} concept="Revenues" />,
+        <SecAnnualOperatingHistory
+          response={response}
+          view={viewOf(response)}
+          concept="Revenues"
+        />,
       ),
     ).toContain(`<td>${exact}</td>`);
     const stale = await operatingResponse(
@@ -121,7 +135,11 @@ describe("reported operating history disclosure", () => {
       "2028-09-20T00:00:00.000Z",
     );
     const html = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={stale} appearance="financial" />,
+      <SecAnnualEvidenceResult
+        response={stale}
+        view={viewOf(stale)}
+        appearance="financial"
+      />,
     );
     expect(html).toContain("outside the current-use limits");
     expect(html).toContain("Historical value; outside current-use limits");

@@ -5719,8 +5719,10 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/personal-owner-account.ts",
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/personal-owner-session.ts",
-    "apps/api/src/personal-sec-annual-company-facts.ts",
+    "apps/api/src/personal-sec-annual-canonical-evidence.ts",
+    "apps/api/src/personal-sec-annual-canonical-response.ts",
     "apps/api/src/personal-sec-annual-evidence-provider.ts",
+    "apps/api/src/personal-sec-annual-statement-company-facts.ts",
     "apps/api/src/personal-sec-filing-context-parser.ts",
     "apps/api/src/personal-sec-filing-context-provider.ts",
     "apps/api/src/personal-sec-filings-provider.ts",
@@ -5730,6 +5732,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/personal-sec-quarter-operation.ts",
     "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
     "apps/api/src/personal-sec-request-scheduler.ts",
+    "apps/api/src/personal-sec-source-filing.ts",
     "apps/api/src/personal-sec-source-json.ts",
     secProviderPath,
     "apps/api/src/personal-security-master-routes.ts",
@@ -5966,6 +5969,15 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     ) === null,
     provider.length === 0,
     routes.length === 0,
+    personalMarketDataIsProductionApiSource(
+      "apps/api/src/test-personal-sec-annual-canonical-builder.ts",
+    ),
+    !personalMarketDataIsProductionApiSource(
+      "apps/api/src/personal-sec-annual-canonical-builder.ts",
+    ),
+    !personalMarketDataIsProductionApiSource(
+      "apps/api/src/personal-sec-annual-canonical.fixture.ts",
+    ),
   ];
   const regressedClassifier = classifierRegressions.indexOf(true);
   if (regressedClassifier !== -1) {
@@ -6342,12 +6354,12 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "scheduler: unreviewedScheduler,",
     ),
     annualProvider.replace(
-      `normalizePersonalSecAnnualCompanyFacts(
+      `normalizePersonalSecAnnualStatementCompanyFacts(
             value,
             cik,
             targetAccession(target),
           )`,
-      `normalizePersonalSecAnnualCompanyFacts(
+      `normalizePersonalSecAnnualStatementCompanyFacts(
             value,
             unreviewedCik,
             targetAccession(target),
@@ -6359,17 +6371,17 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     ),
     annualProvider.replace("this.#active?.abort()", "void this.#active"),
     annualProvider.replace(
-      "resolvePersonalSecAnnualCashGeneration({",
-      "unreviewedCashResolution({",
+      "createPersonalSecAnnualCanonicalEvidence({",
+      "unreviewedCanonicalEvidence({",
     ),
     annualProvider.replace(
-      "        incomeScanStatus,",
-      "        incomeScanStatus: unreviewedStatus,",
+      "            companyFacts: facts.source,",
+      "            companyFacts: unreviewedSource,",
     ),
     annualProvider.replace('if (this.#active !== undefined) fail("busy");', ""),
     annualProvider.replace(
-      "getPersonalSecAnnualRefusalReason({",
-      "unreviewedRefusalReason({",
+      "unavailablePersonalSecAnnualStatementCompanyFacts(",
+      "unreviewedUnavailableFacts(",
     ),
     annualProvider.replace(
       "const bytes = await fetchPersonalSecSourceBytes({",
@@ -6377,6 +6389,11 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     ),
     `${annualProvider}\nvoid globalThis.fetch(unreviewedUrl);`,
     `${annualProvider}\nvoid this.#load(unreviewedUrl, signal, normalize, capture);`,
+    `${annualProvider}\nimport "node:https";`,
+    annualProvider.replace(
+      '"./personal-sec-annual-canonical-evidence"',
+      '"./unreviewed-sec-annual-canonical-evidence"',
+    ),
   ];
   if (
     personalSecAnnualEvidenceProviderViolation(annualProvider) !== null ||
@@ -6389,6 +6406,147 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     found.push(
       "scripts/verify-boundaries.ts: SEC annual evidence provider boundary classifier regressed",
     );
+  const canonicalCases: readonly (readonly [string, string, string])[] = [
+    [
+      "personal-sec-annual-statement-company-facts",
+      "normalizePersonalSecSourceCik(value.cik) !== cik",
+      "false",
+    ],
+    [
+      "personal-sec-annual-statement-company-facts",
+      "rows.length > LIMITS.candidateRowsPerConcept",
+      "false",
+    ],
+    [
+      "personal-sec-annual-statement-company-facts",
+      "normalizePersonalSecSourceFactFields(raw)",
+      "unreviewedFactFields(raw)",
+    ],
+    [
+      "personal-sec-annual-statement-company-facts",
+      "serializePersonalSecAnnualStatementObservation(fields)",
+      "JSON.stringify(fields)",
+    ],
+    [
+      "personal-sec-annual-statement-company-facts",
+      "row.accessionNumber === accession",
+      "true",
+    ],
+    [
+      "personal-sec-annual-statement-company-facts",
+      "selected.length <= LIMITS.observationsPerConcept",
+      "true",
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      '"./personal-sec-source-filing"',
+      '"./unreviewed-sec-source-filing"',
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      "joinPersonalSecSourceFiling(row, input.submissions)",
+      "unreviewedFiling(row, input.submissions)",
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      "assertRows(input.facts.observations);",
+      "",
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      "assertPersonalSecAnnualCanonicalEvidence(candidate);",
+      "",
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      "structuredClone(candidate)",
+      "candidate",
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      "if (row.id !== expected)",
+      "if (false)",
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      "digest(serializePersonalSecAnnualCanonicalGeneration(owned))",
+      'digest("unbound")',
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      "return freeze({ ...owned, generation });",
+      "return { ...owned, generation };",
+    ],
+    [
+      "personal-sec-annual-canonical-response",
+      "parseManagedSecAnnualCanonicalRequest(input)",
+      "parseManagedSecAnnualEvidenceRequest(input)",
+    ],
+    [
+      "personal-sec-annual-canonical-response",
+      "evidence.cik !== security.cik || !frozen(evidence)",
+      "false",
+    ],
+    [
+      "personal-sec-annual-canonical-response",
+      "digest(serializePersonalSecAnnualCanonicalGeneration(evidence))",
+      "evidence.generation.sha256",
+    ],
+    [
+      "personal-sec-annual-canonical-response",
+      'Buffer.byteLength(body, "utf8")',
+      "body.length",
+    ],
+    [
+      "personal-sec-annual-canonical-response",
+      "byteLength > MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes",
+      "false",
+    ],
+    [
+      "personal-sec-annual-canonical-response",
+      "country: value.country,",
+      "...value,",
+    ],
+    [
+      "workspace-sec-annual-evidence-routes",
+      "parseManagedSecAnnualCanonicalRequest(request.body)",
+      "parseManagedSecAnnualEvidenceRequest(request.body)",
+    ],
+    [
+      "workspace-sec-annual-evidence-routes",
+      "provider.loadEvidence(\n          listing.cik,",
+      "provider.loadEvidence(\n          unreviewedCik,",
+    ],
+    [
+      "workspace-sec-annual-evidence-routes",
+      "encodePersonalSecAnnualCanonicalResponse(",
+      "unreviewedEncode(",
+    ],
+    [
+      "workspace-sec-annual-evidence-routes",
+      "        if (controller.signal.aborted) return;\n        if (!authorized(request)) {",
+      "        if (controller.signal.aborted) return;\n        if (false) {",
+    ],
+    [
+      "workspace-sec-annual-evidence-routes",
+      ".send(prepared.body)",
+      ".send(prepared.response)",
+    ],
+  ];
+  for (const [index, [name, before, after]] of canonicalCases.entries()) {
+    const path = `apps/api/src/${name}.ts`;
+    const original = (runtimeSources.get(path) ?? "").replaceAll("\r\n", "\n");
+    const changed = original.replace(before, after);
+    const altered = new Map(runtimeSources);
+    altered.set(path, changed);
+    if (
+      changed === original ||
+      personalSecAnnualCanonicalBoundaryViolation(altered) === null
+    )
+      found.push(
+        `scripts/verify-boundaries.ts: canonical annual source case ${String(index + 1)} regressed`,
+      );
+  }
   const contextParser =
     runtimeSources.get("apps/api/src/personal-sec-filing-context-parser.ts") ??
     "";
@@ -6843,6 +7001,10 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "personal-sec-primary-document.ts",
     "personal-sec-source-json.ts",
     "personal-sec-quarter-operation.ts",
+    "personal-sec-annual-statement-company-facts.ts",
+    "personal-sec-annual-canonical-evidence.ts",
+    "personal-sec-annual-canonical-response.ts",
+    "personal-sec-source-filing.ts",
   ]) {
     if (
       personalMarketDataRuntimeBoundaryViolation(
@@ -6867,6 +7029,10 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "managed-sec-annual-service",
     "managed-sec-filings-service",
     "personal-sec-quarter-assessment-company-facts",
+    "personal-sec-annual-statement-company-facts",
+    "personal-sec-annual-canonical-evidence",
+    "personal-sec-annual-canonical-response",
+    "personal-sec-source-filing",
   ]) {
     if (
       !personalMarketDataWebViolation(
@@ -7004,6 +7170,29 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     `${managedAnnual}\nconst extra = "https://unreviewed.example/source";`,
     `${managedAnnual}\nvoid globalThis.fetch(unreviewedUrl);`,
     managedAnnual.replace("fetch(input, init)", "fetch(unreviewedUrl, init)"),
+    managedAnnual.replace(
+      "parseManagedSecAnnualCanonicalRequest(input)",
+      "parseManagedSecAnnualEvidenceRequest(input)",
+    ),
+    managedAnnual.replace("operation.admission.reserve(", "unreviewedReserve("),
+    managedAnnual.replace(
+      "encodePersonalSecAnnualCanonicalResponse(",
+      "unreviewedEncode(",
+    ),
+    managedAnnual.replace(
+      "        guard();\n        return prepared.response;",
+      "        return prepared.response;",
+    ),
+    managedAnnual.replace("count >= 2", "count >= 3"),
+    managedAnnual.replace(
+      "  const stop = (): never => {\n    controller.abort();",
+      "  const stop = (): never => {\n    void controller;",
+    ),
+    managedAnnual.replace(
+      "options.startedAt + 9_500",
+      "options.startedAt + 95_000",
+    ),
+    `${managedAnnual}\nimport "node:https";`,
   ];
   if (
     managedSecAnnualServiceCapabilityViolation(managedAnnual) !== null ||
@@ -8292,6 +8481,9 @@ function personalMarketDataRuntimeBoundaryViolation(
     sources.get("apps/api/src/personal-sec-annual-evidence-provider.ts") ?? "",
   );
   if (annualViolation !== null) return annualViolation;
+  const canonicalViolation =
+    personalSecAnnualCanonicalBoundaryViolation(sources);
+  if (canonicalViolation !== null) return canonicalViolation;
   const parserViolation = personalSecFilingContextParserViolation(
     sources.get("apps/api/src/personal-sec-filing-context-parser.ts") ?? "",
   );
@@ -9200,7 +9392,8 @@ function personalSecAnnualEvidenceProviderViolation(
       "node:crypto",
       "@research-cockpit/contracts",
       "@research-cockpit/personal-financial-analytics",
-      "./personal-sec-annual-company-facts",
+      "./personal-sec-annual-canonical-evidence",
+      "./personal-sec-annual-statement-company-facts",
       "./personal-sec-quarterly-evidence-provider",
       "./personal-sec-request-scheduler",
     ])
@@ -9210,12 +9403,11 @@ function personalSecAnnualEvidenceProviderViolation(
   const required = [
     'fetchPersonalSecSourceBytes({sourceUrl,fetch:this.#fetch,scheduler:this.#scheduler,userAgent:this.#userAgent!,signal,maximumBytes:LIMITS.responseBytes,accept:"application/json"})',
     "normalize(parsePersonalSecSourceJson(decodePersonalSecSourceUtf8(bytes)))",
-    "normalizePersonalSecAnnualCompanyFacts(value,cik,targetAccession(target))",
+    "normalizePersonalSecAnnualStatementCompanyFacts(value,cik,targetAccession(target))",
     "normalizePersonalSecSubmissions(value,cik)",
     "selectPersonalSecAnnualTarget(filings,cutoffAt,submissions.source.fetchedAt!)",
-    "getPersonalSecAnnualRefusalReason({generation:boundGeneration,target,incomeScanStatus,coverage:preliminaryCoverage})",
-    "resolution:resolvePersonalSecAnnualEvidence(input)",
-    "resolution:resolvePersonalSecAnnualCashGeneration({cik,generation:boundGeneration,target,cashGeneration})",
+    'returncreatePersonalSecAnnualCanonicalEvidence({cik,generation:{definitionVersion:PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,cutoffAt,completedAt,sources:{companyFacts:facts.source,submissions:submissions.source}},target,targetScan,facts:facts.value??unavailablePersonalSecAnnualStatementCompanyFacts("source_unavailable"),submissions:submissions.value})',
+    "metadata={fetchedAt:capture(),sha256:sha256(bytes),bytes:bytes.byteLength}",
     "this.#active?.abort()",
     'if(this.#active!==undefined)fail("busy");',
     'if(controller.signal.aborted||this.#closed)fail("aborted");',
@@ -9267,6 +9459,117 @@ function personalSecAnnualEvidenceProviderViolation(
   return invalid || transports !== 1 || loads !== 2 || urls.size !== 0
     ? message
     : null;
+}
+
+/** The canonical graph layers are pure, closed and bounded before either route delivers it. */
+function personalSecAnnualCanonicalBoundaryViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const definitions: readonly (readonly [
+    string,
+    readonly string[],
+    readonly string[],
+  ])[] = [
+    [
+      "personal-sec-annual-statement-company-facts",
+      [
+        "node:crypto",
+        "@research-cockpit/contracts",
+        "./personal-sec-quarterly-evidence-provider",
+      ],
+      [
+        "normalizePersonalSecSourceCik(value.cik)!==cik",
+        "for(const{concept}ofPERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY)",
+        "rows.length>LIMITS.candidateRowsPerConcept",
+        "constsource=normalizePersonalSecSourceFactFields(raw)",
+        'createHash("sha256").update(serializePersonalSecAnnualStatementObservation(fields)).digest("hex")',
+        "if(unique.has(id)){duplicateRows++;continue;}",
+        ".filter((row)=>row.accessionNumber===accession).sort(compareRows)",
+        "selected!==null&&selected.length<=LIMITS.observationsPerConcept?selected:[]",
+        "omittedSelected:selected===null?null:selected.length-observations.length",
+        "observations:Object.freeze(observations)",
+      ],
+    ],
+    [
+      "personal-sec-annual-canonical-evidence",
+      [
+        "node:crypto",
+        "@research-cockpit/contracts",
+        "@research-cockpit/personal-financial-analytics",
+        "./personal-sec-annual-statement-company-facts",
+        "./personal-sec-source-filing",
+      ],
+      [
+        'assertRecord(input,["cik","generation","target","targetScan","facts","submissions"])',
+        "assertRows(input.facts.observations)",
+        "filing:joinPersonalSecSourceFiling(row,input.submissions)",
+        "assertPersonalSecAnnualCanonicalEvidence(candidate)",
+        "constowned=structuredClone(candidate)",
+        'constexpected=digest(serializePersonalSecAnnualStatementObservation(row)).replace(/^sha256:/u,"sec-fact:")',
+        "if(row.id!==expected)",
+        "sha256:digest(serializePersonalSecAnnualCanonicalGeneration(owned))",
+        "returnfreeze({...owned,generation})",
+        "length.value>PERSONAL_SEC_ANNUAL_STATEMENT_FACT_LIMITS.observations",
+      ],
+    ],
+    [
+      "personal-sec-annual-canonical-response",
+      [
+        "node:crypto",
+        "@research-cockpit/contracts",
+        "@research-cockpit/personal-financial-analytics",
+      ],
+      [
+        "constrequest=parseManagedSecAnnualCanonicalRequest(input)",
+        "request.catalogSnapshotSha256!==catalogSnapshotSha256",
+        "request.listingId!==security.listingId||request.symbol!==security.symbol",
+        "assertPersonalSecAnnualCanonicalEvidence(evidence)",
+        "evidence.cik!==security.cik||!frozen(evidence)",
+        'row.id!==digest(serializePersonalSecAnnualStatementObservation(row)).replace(/^sha256:/u,"sec-fact:")',
+        "evidence.generation.sha256!==digest(serializePersonalSecAnnualCanonicalGeneration(evidence))",
+        "constbody=JSON.stringify(response)",
+        'constbyteLength=Buffer.byteLength(body,"utf8")',
+        "if(byteLength>MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes)",
+        'thrownewPersonalSecAnnualCanonicalResponseError("response_too_large")',
+        "returnObject.freeze({country:value.country,exchangeMic:value.exchangeMic,issuerId:value.issuerId,issuerName:value.issuerName,listingId:value.listingId,securityName:value.securityName,symbol:value.symbol,cik:value.cik})",
+      ],
+    ],
+    [
+      "workspace-sec-annual-evidence-routes",
+      [
+        "@research-cockpit/contracts",
+        "@research-cockpit/personal-security-master",
+        "fastify",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+        "./personal-sec-annual-evidence-provider",
+        "./personal-sec-annual-canonical-response",
+      ],
+      [
+        "authorizePersonalJsonRouteRequest(request,ownerSession,listenOptions,PERSONAL_SEC_ANNUAL_EVIDENCE_PATH)",
+        "constbody=parseManagedSecAnnualCanonicalRequest(request.body)",
+        "body.catalogSnapshotSha256!==catalog.snapshotSha256",
+        "candidate.listingId===body.listingId&&candidate.symbol===body.symbol",
+        "awaitprovider.loadEvidence(listing.cik,controller.signal)",
+        "constprepared=encodePersonalSecAnnualCanonicalResponse(body,catalog.snapshotSha256,listing,evidence);if(controller.signal.aborted)return;if(!authorized(request)){returnsendPersonalOwnerSessionProblem(reply,request);}",
+        '.type("application/json;charset=utf-8").send(prepared.body)',
+        'request.raw.off("aborted",abort);reply.raw.off("close",abort)',
+      ],
+    ],
+  ];
+  for (const [name, imports, anchors] of definitions) {
+    const path = `apps/api/src/${name}.ts`;
+    const content = sources.get(path) ?? "";
+    const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+    if (
+      JSON.stringify(collectModuleSpecifiers(content)) !==
+        JSON.stringify(imports) ||
+      anchors.some((anchor) => !compact.includes(anchor))
+    )
+      return `${path}: canonical annual evidence must retain its exact registry, identity, hash, output-bound and delivery guards`;
+  }
+  return null;
 }
 
 function managedEodServiceCapabilityViolation(content: string): string | null {
@@ -9438,6 +9741,36 @@ function managedEodTokenLocationAllowed(path: string): boolean {
 function managedSecAnnualServiceCapabilityViolation(
   content: string,
 ): string | null {
+  const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+  const required = [
+    "constrequest=parseManagedSecAnnualCanonicalRequest(input)",
+    "request.catalogSnapshotSha256!==options.catalog.snapshotSha256",
+    "lookupPersonalSecurityMasterListing(options.catalog,request.listingId)",
+    "listing.symbol!==request.symbol||!MANAGED_SEC_ISSUERS.includes(listing.cik)",
+    "operation.admission.reserve(principal,options.enteredAt,admissionSignal)",
+    "constproviderDeadline=Math.min(monotonic()+7_500,options.startedAt+9_500)",
+    "provider.loadEvidence(listing.cik,providerSignal)",
+    "guard();constprepared=encodePersonalSecAnnualCanonicalResponse(request,options.catalog.snapshotSha256,listing,evidence);guard();returnprepared.response",
+    'count>=2||url!==urls[count]||init?.method!=="GET"||init.redirect!=="error"||init.credentials!=="omit"||init.cache!=="no-store"',
+    'conststop=():never=>{controller.abort();thrownewManagedSecAnnualServiceError("unavailable");}',
+    "provider.close();controller.abort()",
+  ];
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+      JSON.stringify([
+        "@research-cockpit/contracts",
+        "@research-cockpit/personal-security-master",
+        "./managed-sec-admission",
+        "./managed-sec-issuers",
+        "./managed-sec-config",
+        "./personal-sec-annual-evidence-provider",
+        "./personal-sec-annual-canonical-response",
+        "./personal-sec-request-scheduler",
+        "./watchlist-repository",
+      ]) ||
+    required.some((anchor) => !compact.includes(anchor))
+  )
+    return "managed annual service must retain canonical identity, admission, bounded encoding, deadline and retirement guards";
   const source = ts.createSourceFile(
     "managed-annual.ts",
     content,
@@ -10627,8 +10960,16 @@ function personalMarketDataWebViolation(content: string): boolean {
 }
 
 function personalSecPrivateRuntimeImport(specifier: string): boolean {
-  return /personal-sec-(?:(?:financial|filings|quarterly-evidence|annual-evidence|filing-context|quarter-assessment)-provider|filing-context-parser|quarter-operation|primary-document|source-json|quarter-assessment-company-facts)/u.test(
-    specifier,
+  return (
+    /personal-sec-(?:(?:financial|filings|quarterly-evidence|annual-evidence|filing-context|quarter-assessment)-provider|filing-context-parser|quarter-operation|primary-document|source-json|quarter-assessment-company-facts)/u.test(
+      specifier,
+    ) ||
+    [
+      "personal-sec-annual-statement-company-facts",
+      "personal-sec-annual-canonical-evidence",
+      "personal-sec-annual-canonical-response",
+      "personal-sec-source-filing",
+    ].some((module) => specifier.includes(module))
   );
 }
 

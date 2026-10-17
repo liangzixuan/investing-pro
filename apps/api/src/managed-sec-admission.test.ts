@@ -1,5 +1,5 @@
 import { AppwriteException } from "node-appwrite";
-import { PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION } from "@research-cockpit/contracts";
+import { PERSONAL_SEC_ANNUAL_CANONICAL_VERSION } from "@research-cockpit/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -160,7 +160,7 @@ function serviceContenders(f: ReturnType<typeof fixture>) {
       createManagedSecAnnualService({ ...options, fetch: annualFetch }).load(
         {
           ...request,
-          schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+          schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
         },
         principal,
         signal(),

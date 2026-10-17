@@ -6,7 +6,7 @@ import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { useManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { TrialApiError } from "./api";
-import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import { response as annualResponse } from "../features/research/test-canonical-annual-ui-fixture";
 
 // Exercise the hook's actual transitions against a real workspace. The router
 // harness supplies PUSH/REPLACE/POP and preserves the same hook slots per mount.

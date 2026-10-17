@@ -1,29 +1,20 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualBalanceSheetHistory } from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { balanceSheetPacket } from "../../../android-tests/managed-workspace/balance-sheet-fixture";
+import { balanceSheetPacket } from "./test-canonical-annual-balance-ui-fixture";
 import { SecAnnualBalanceSheetChange } from "./SecAnnualBalanceSheetChange";
 import {
   balanceSheetResponse,
   balanceSheetRow,
-} from "./sec-annual-balance-sheet-fixture";
+  viewOf,
+} from "./test-canonical-annual-balance-ui-fixture";
 
 const text = (html: string) => html.replace(/<[^>]*>/gu, "");
-function render(response: PersonalSecAnnualEvidenceResponseDto) {
-  const { cik, generation, target, balanceSheet } = response.evidence;
-  const history = resolvePersonalSecAnnualBalanceSheetHistory({
-    cik,
-    generation,
-    target,
-    balanceSheet: {
-      totalAssets: balanceSheet.totalAssets,
-      totalLiabilities: balanceSheet.totalLiabilities,
-      shareholdersEquity: balanceSheet.shareholdersEquity,
-    },
-  });
+function render(response: PersonalSecAnnualCanonicalResponseDto) {
   return renderToStaticMarkup(
-    <SecAnnualBalanceSheetChange history={history} />,
+    <SecAnnualBalanceSheetChange
+      change={viewOf(response).balanceSheet.change}
+    />,
   );
 }
 async function pair(current: string, prior: string) {

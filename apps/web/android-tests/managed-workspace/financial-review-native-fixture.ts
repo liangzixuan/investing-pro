@@ -3,11 +3,11 @@ import {
   parseManagedWatchlistCommand,
   type ManagedWatchlistDto,
   type MainWatchlistPayload,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "../../src/clerk-trial/api";
 import type { ManagedApi } from "../../src/clerk-trial/managed-api";
-import { financialReviewResponse } from "../../src/clerk-trial/financial-review-fixture";
+import { financialReviewResponse } from "../../src/features/research/test-canonical-annual-read-fixture";
 import { proposeFinancialReviewNote } from "../../src/clerk-trial/managed-financial-review-note";
 import type { SharedNativeFixture, ManagedNativeFixture } from "./fixture";
 
@@ -62,7 +62,7 @@ export async function createFinancialReviewNativeFixture(
   };
   let saved: ManagedWatchlistDto | null = null;
   let original: MainWatchlistPayload | null = null;
-  let pending: ((value: PersonalSecAnnualEvidenceResponseDto) => void) | null =
+  let pending: ((value: PersonalSecAnnualCanonicalResponseDto) => void) | null =
     null;
   const unrelatedReads = () =>
     snapshot.eod !== 0 ||
@@ -144,7 +144,7 @@ export async function createFinancialReviewNativeFixture(
       if (
         signal.aborted ||
         pending ||
-        request.schemaVersion !== "5.0.0" ||
+        request.schemaVersion !== "6.0.0" ||
         request.catalogSnapshotSha256 !== original?.snapshotSha256 ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO" ||

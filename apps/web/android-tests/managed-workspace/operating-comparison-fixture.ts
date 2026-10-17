@@ -2,7 +2,7 @@ import {
   annualComparisonOperatingRows,
   annualComparisonResponse,
   annualComparisonRows,
-} from "../../src/clerk-trial/annual-comparison-fixture";
+} from "../../src/clerk-trial/test-canonical-annual-comparison-fixture";
 
 export const operatingComparisonPrefix = "Café 東京📈";
 export const operatingComparisonNoteDraft = [

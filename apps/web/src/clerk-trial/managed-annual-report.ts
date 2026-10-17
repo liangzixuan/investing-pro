@@ -1,9 +1,14 @@
 import {
-  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
-  type PersonalSecAnnualEvidenceResponseDto,
+  PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
+import { getManagedAnnualView } from "./managed-annual-view";
 import { TrialApiError } from "./api";
-import { parseSecAnnualEvidenceResponse } from "../lib/sec-annual-evidence-response";
+import {
+  isOwnedSecAnnualCanonicalResponse,
+  parseSecAnnualCanonicalResponse,
+} from "../lib/sec-annual-canonical-response";
 import {
   ManagedSecCooldownError,
   ManagedAnnualReportError,
@@ -18,13 +23,14 @@ import {
 } from "./managed-sec-access";
 
 export interface ManagedAnnualReportSeed {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
   readonly showingPrevious: boolean;
 }
 
 export interface ManagedAnnualReportState {
   readonly selection: ManagedResearchSelection | null;
-  readonly response: PersonalSecAnnualEvidenceResponseDto | null;
+  readonly response: PersonalSecAnnualCanonicalResponseDto | null;
+  readonly view: PersonalSecAnnualCanonicalView | null;
   readonly responseOrigin: "request" | "watchlist-comparison" | null;
   readonly showingPrevious: boolean;
   readonly running: boolean;
@@ -36,6 +42,7 @@ export interface ManagedAnnualReportState {
 const empty = (): ManagedAnnualReportState => ({
   selection: null,
   response: null,
+  view: null,
   responseOrigin: null,
   showingPrevious: false,
   running: false,
@@ -46,7 +53,7 @@ const empty = (): ManagedAnnualReportState => ({
 });
 
 function matchesSelection(
-  response: PersonalSecAnnualEvidenceResponseDto,
+  response: PersonalSecAnnualCanonicalResponseDto,
   selected: ManagedResearchSelection,
 ) {
   const security = response.security;
@@ -76,10 +83,10 @@ async function parseReportSeed(
   )
     throw new TrialApiError("invalid_response");
   const showingPrevious = seed.showingPrevious;
-  const response = await parseSecAnnualEvidenceResponse(
+  const response = await parseSecAnnualCanonicalResponse(
     seed.response,
     {
-      schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+      schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
       catalogSnapshotSha256: selection.catalogSnapshotSha256,
       listingId: selection.listing.listingId,
       symbol: selection.listing.symbol,
@@ -89,6 +96,16 @@ async function parseReportSeed(
   if (!response || !matchesSelection(response, selection))
     throw new TrialApiError("invalid_response");
   return Object.freeze({ response, showingPrevious });
+}
+
+function deriveReportView(response: PersonalSecAnnualCanonicalResponseDto) {
+  try {
+    const view = getManagedAnnualView(response);
+    if (view === null) throw new TrialApiError("invalid_response");
+    return view;
+  } catch {
+    throw new TrialApiError("invalid_response");
+  }
 }
 
 function errorMessage(error: unknown, showingPrevious: boolean): string {
@@ -164,8 +181,11 @@ export class ManagedAnnualReport {
       if (!current()) return;
       const accepted = await parseReportSeed(selection, seed, operation.signal);
       if (!current()) return;
+      const view = deriveReportView(accepted.response);
+      if (!current()) return;
       this.update({
         ...accepted,
+        view,
         responseOrigin: "watchlist-comparison",
         message:
           "The loaded watchlist comparison report is available in this company visit. Refresh explicitly to check again.",
@@ -203,10 +223,14 @@ export class ManagedAnnualReport {
     this.close();
   }
   cancel() {
-    if (!this.operation) return;
+    const operation = this.operation;
+    if (!operation) return;
+    const lifetime = this.lifetime;
     const checkingSeed = this.state.checkingSeed;
-    this.operation.abort();
     this.operation = null;
+    operation.abort();
+    if (this.retired || this.lifetime !== lifetime || this.operation !== null)
+      return;
     this.update({
       running: false,
       checkingSeed: false,
@@ -256,9 +280,10 @@ export class ManagedAnnualReport {
         : `Loading the observed annual report for ${selection.listing.symbol}…`,
     });
     try {
-      const response = await this.loadReport(
+      if (!current()) return;
+      const candidate = await this.loadReport(
         {
-          schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+          schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
           catalogSnapshotSha256: selection.catalogSnapshotSha256,
           listingId: selection.listing.listingId,
           symbol: selection.listing.symbol,
@@ -266,10 +291,28 @@ export class ManagedAnnualReport {
         operation.signal,
       );
       if (!current()) return;
-      if (!matchesSelection(response, selection))
+      // The production API admits and freezes within its existing request lifetime.
+      // Unowned adapters still need complete closed-shape and hash admission.
+      const response = isOwnedSecAnnualCanonicalResponse(candidate)
+        ? candidate
+        : await parseSecAnnualCanonicalResponse(
+            candidate,
+            {
+              schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
+              catalogSnapshotSha256: selection.catalogSnapshotSha256,
+              listingId: selection.listing.listingId,
+              symbol: selection.listing.symbol,
+            },
+            operation.signal,
+          );
+      if (!current()) return;
+      if (!response || !matchesSelection(response, selection))
         throw new TrialApiError("invalid_response");
+      const view = deriveReportView(response);
+      if (!current()) return;
       this.update({
         response,
+        view,
         responseOrigin: "request",
         showingPrevious: false,
         message: `Annual report loaded for ${selection.listing.symbol}. Refresh explicitly to check again.`,
@@ -297,6 +340,7 @@ export class ManagedAnnualReport {
         } catch {
           this.update({
             response: null,
+            view: null,
             responseOrigin: null,
             showingPrevious: false,
             error: true,
@@ -312,9 +356,10 @@ export class ManagedAnnualReport {
         const retained = showingPrevious
           ? {
               response: this.state.response,
+              view: this.state.view,
               responseOrigin: this.state.responseOrigin,
             }
-          : { response: null, responseOrigin: null };
+          : { response: null, view: null, responseOrigin: null };
         this.update({
           ...retained,
           showingPrevious,

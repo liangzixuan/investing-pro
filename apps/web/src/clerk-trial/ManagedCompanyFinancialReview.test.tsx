@@ -1,10 +1,11 @@
+import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ManagedCompanyFinancialReview } from "./ManagedCompanyFinancialReview";
 import { ManagedAnnualReport as AnnualPanel } from "./ManagedAnnualReport";
 import { ManagedAnnualReport } from "./managed-annual-report";
-import { financialReviewResponse } from "./financial-review-fixture";
+import { financialReviewResponse } from "../features/research/test-canonical-annual-read-fixture";
 import { eodSelection } from "./eod-history-fixture";
 import type { ManagedFinancialReviewActions } from "./managed-financial-review";
 
@@ -22,6 +23,7 @@ describe("Company Financial review rendering", () => {
     const html = renderToStaticMarkup(
       <ManagedCompanyFinancialReview
         response={response}
+        view={viewOf(response)}
         actions={action}
         watchlist={{
           member: { ...eodSelection.listing, note: "My thesis" },
@@ -57,6 +59,7 @@ describe("Company Financial review rendering", () => {
     const html = renderToStaticMarkup(
       <ManagedCompanyFinancialReview
         response={response}
+        view={viewOf(response)}
         actions={actions()}
         watchlist={{
           member: null,

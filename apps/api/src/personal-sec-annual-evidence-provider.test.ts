@@ -2,15 +2,16 @@ import { createHash } from "node:crypto";
 
 import {
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS as LIMITS,
-  type PersonalSecAnnualCashConcept,
-  type PersonalSecAnnualLiquidityConcept,
-  type PersonalSecAnnualBalanceSheetConcept,
-  type PersonalSecQuarterlyConcept,
+  PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY,
+  serializePersonalSecAnnualStatementObservation,
+  type PersonalSecAnnualCanonicalEvidenceDto,
+  type PersonalSecAnnualStatementConcept,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  resolvePersonalSecAnnualLiquidityHistory,
-  serializePersonalSecAnnualGeneration,
+  derivePersonalSecAnnualCanonicalView,
+  derivePersonalSecAnnualFinancialInputs,
+  serializePersonalSecAnnualCanonicalGeneration,
 } from "@research-cockpit/personal-financial-analytics";
 
 import {
@@ -23,6 +24,30 @@ import {
   type PersonalSecRequestScheduler,
 } from "./personal-sec-request-scheduler";
 
+const sourceCache = new WeakMap<
+  PersonalSecAnnualCanonicalEvidenceDto,
+  ReturnType<typeof derivePersonalSecAnnualFinancialInputs>
+>();
+const viewCache = new WeakMap<
+  PersonalSecAnnualCanonicalEvidenceDto,
+  ReturnType<typeof derivePersonalSecAnnualCanonicalView>
+>();
+function source(value: PersonalSecAnnualCanonicalEvidenceDto) {
+  let result = sourceCache.get(value);
+  if (result === undefined) {
+    result = derivePersonalSecAnnualFinancialInputs(value);
+    sourceCache.set(value, result);
+  }
+  return result;
+}
+function view(value: PersonalSecAnnualCanonicalEvidenceDto) {
+  let result = viewCache.get(value);
+  if (result === undefined) {
+    result = derivePersonalSecAnnualCanonicalView(value);
+    viewCache.set(value, result);
+  }
+  return result;
+}
 const NOW = new Date("2026-09-20T12:00:00.000Z");
 const USER_AGENT = "Research/1.0 owner@example.test";
 const CIK = "0000000042";
@@ -50,15 +75,7 @@ function fact(
 function companyFacts(
   revenue: readonly unknown[] = [fact()],
   income: readonly unknown[] = [fact({ val: -30 })],
-  extras: Partial<
-    Record<
-      | PersonalSecQuarterlyConcept
-      | PersonalSecAnnualCashConcept
-      | PersonalSecAnnualLiquidityConcept
-      | PersonalSecAnnualBalanceSheetConcept,
-      unknown
-    >
-  > = {},
+  extras: Partial<Record<PersonalSecAnnualStatementConcept, unknown>> = {},
 ): Record<string, unknown> {
   return {
     cik: 42,
@@ -162,14 +179,15 @@ describe("independent reported Annual balance-sheet totals", () => {
       Response.json(balanceSheetFacts({ Revenues: null, NetIncomeLoss: null })),
     );
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.incomeScanStatus).toBe("invalid_response");
-    expect(result.resolution.currentTargetEligible).toBe(false);
-    expect(result.generation.definitionVersion).toBe("5.0.0");
-    for (const [index, [concept, key, metric]] of identities.entries()) {
-      const row = result.balanceSheet[key].observations[0]!;
+    expect(view(result).income.scanStatus).toBe("invalid_response");
+    expect(view(result).income.resolution.currentTargetEligible).toBe(false);
+    expect(result.generation.definitionVersion).toBe("6.0.0");
+    for (const [index, [concept, key]] of identities.entries()) {
+      const row = source(result).balanceSheet[key].observations[0]!;
+      expect(Object.hasOwn(row, "metric")).toBe(false);
+      expect(result.facts.observations).toContain(row);
       expect(row).toMatchObject({
         concept,
-        metric,
         taxonomy: "us-gaap",
         unit: "USD",
         startDate: null,
@@ -187,7 +205,7 @@ describe("independent reported Annual balance-sheet totals", () => {
           sourceUrl: `https://www.sec.gov/Archives/edgar/data/42/${ACCESSION}-index.htm`,
         },
       });
-      expect(result.balanceSheet.resolution[key]).toEqual({
+      expect(view(result).balanceSheet.resolution[key]).toEqual({
         status: "available",
         unit: "USD",
         value: ["500", "0", "-100"][index],
@@ -196,17 +214,19 @@ describe("independent reported Annual balance-sheet totals", () => {
         observationIds: [row.id],
         currentUseEligible: true,
       });
-      expect(Object.isFrozen(result.balanceSheet[key])).toBe(true);
-      expect(Object.isFrozen(result.balanceSheet[key].observations)).toBe(true);
+      expect(Object.isFrozen(source(result).balanceSheet[key])).toBe(true);
+      expect(
+        Object.isFrozen(source(result).balanceSheet[key].observations),
+      ).toBe(true);
       expect(Object.isFrozen(row.filing)).toBe(true);
     }
-    expect(Object.keys(result.balanceSheet.resolution).sort()).toEqual([
+    expect(Object.keys(view(result).balanceSheet.resolution).sort()).toEqual([
       "shareholdersEquity",
       "totalAssets",
       "totalLiabilities",
       "utilityAge",
     ]);
-    expect(Object.isFrozen(result.balanceSheet.resolution)).toBe(true);
+    expect(Object.isFrozen(view(result).balanceSheet.resolution)).toBe(true);
     expect(fetch.mock.calls.map(([input]) => url(input))).toEqual([
       SUBMISSIONS_URL,
       FACTS_URL,
@@ -259,18 +279,18 @@ describe("independent reported Annual balance-sheet totals", () => {
           Response.json(balanceSheetFacts({ [concept]: entry })),
         );
         const result = await finish(provider.loadEvidence(CIK));
-        expect(result.balanceSheet.resolution[key]).toMatchObject({
+        expect(view(result).balanceSheet.resolution[key]).toMatchObject({
           status: "unavailable",
           unit: "USD",
           reason,
         });
         for (const [, sibling] of identities)
           if (sibling !== key)
-            expect(result.balanceSheet.resolution[sibling].status).toBe(
+            expect(view(result).balanceSheet.resolution[sibling].status).toBe(
               "available",
             );
         expect(result.generation.sources.companyFacts.status).toBe("available");
-        expect(result.resolution.currentTargetEligible).toBe(true);
+        expect(view(result).income.resolution.currentTargetEligible).toBe(true);
         expect(fetch).toHaveBeenCalledTimes(2);
       },
     );
@@ -290,7 +310,7 @@ describe("independent reported Annual balance-sheet totals", () => {
       ).replaceAll('"val":42', `"val":${decimal}`);
       const { provider } = setup(() => new Response(text));
       const result = await finish(provider.loadEvidence(CIK));
-      const metric = result.balanceSheet[key];
+      const metric = source(result).balanceSheet[key];
       expect(metric.scan).toMatchObject({
         coverage: {
           full: {
@@ -306,7 +326,7 @@ describe("independent reported Annual balance-sheet totals", () => {
         },
       });
       expect(metric.observations).toHaveLength(3);
-      expect(result.balanceSheet.resolution[key]).toMatchObject({
+      expect(view(result).balanceSheet.resolution[key]).toMatchObject({
         status: "available",
         value: decimal,
         observationIds: metric.observations
@@ -337,7 +357,7 @@ describe("independent reported Annual balance-sheet totals", () => {
     const { provider, fetch } = setup(() => Response.json(packet));
     const result = await finish(provider.loadEvidence(CIK));
     for (const [, key] of identities)
-      expect(result.balanceSheet.resolution[key]).toMatchObject({
+      expect(view(result).balanceSheet.resolution[key]).toMatchObject({
         status: "unavailable",
         reason: "concept_missing",
         observationIds: [],
@@ -351,11 +371,11 @@ describe("independent reported Annual balance-sheet totals", () => {
     );
     const result = await finish(provider.loadEvidence(CIK));
     for (const [, key] of identities) {
-      expect(result.balanceSheet[key]).toEqual({
+      expect(source(result).balanceSheet[key]).toEqual({
         scan: { status: "source_unavailable", absence: null, coverage: null },
         observations: [],
       });
-      expect(result.balanceSheet.resolution[key]).toMatchObject({
+      expect(view(result).balanceSheet.resolution[key]).toMatchObject({
         status: "unavailable",
         reason: "source_unavailable",
       });
@@ -467,16 +487,18 @@ describe("explicit observed annual SEC evidence provider", () => {
       },
     });
     expect(result.generation.sha256).toBe(
-      `sha256:${createHash("sha256").update(serializePersonalSecAnnualGeneration(result)).digest("hex")}`,
+      `sha256:${createHash("sha256").update(serializePersonalSecAnnualCanonicalGeneration(result)).digest("hex")}`,
     );
-    expect(result.completeness).toEqual({ status: "complete", reason: null });
+    expect(view(result).income.reason).toBeNull();
     expect(
-      result.resolution.bases.find((basis) => basis.concept === "Revenues"),
+      view(result).income.resolution.bases.find(
+        (basis) => basis.concept === "Revenues",
+      ),
     ).toMatchObject({
       status: "eligible",
       pairs: [{ revenue: "120", netIncome: "-30", netMarginPercent: "-25" }],
     });
-    expect(result.resolution.currentTargetEligible).toBe(true);
+    expect(view(result).income.resolution.currentTargetEligible).toBe(true);
   });
 
   it("has no raw cache: each explicit refresh rereads both sources and binds new bytes", async () => {
@@ -489,10 +511,12 @@ describe("explicit observed annual SEC evidence provider", () => {
     const second = await finish(provider.loadEvidence(CIK));
     expect(fetch).toHaveBeenCalledTimes(4);
     expect(second.generation.sha256).not.toBe(first.generation.sha256);
-    expect(second.resolution.pairs[0]?.netMarginPercent).toBe("-20");
+    expect(view(second).income.resolution.pairs[0]?.netMarginPercent).toBe(
+      "-20",
+    );
   });
 
-  it("finds all target observations beyond unchanged history retention and never filters away comparative or conflicted rows", async () => {
+  it("retains the complete selected graph beyond other-accession scans without claiming an all-accessions history", async () => {
     const history = Array.from({ length: 103 }, (_, index) =>
       fact({
         accn: `0000999999-26-${String(index + 100).padStart(6, "0")}`,
@@ -510,32 +534,38 @@ describe("explicit observed annual SEC evidence provider", () => {
       Response.json(companyFacts([...history, ...selected])),
     );
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.coverage).toMatchObject({
+    expect(view(result).income.coverage).toMatchObject({
       full: { inspectedRows: 108, uniqueObservations: 108 },
       selected: { observations: 5, revenue: 4, netIncome: 1 },
       otherAccessions: { observations: 103 },
       returned: { observations: 5 },
-      history: {
-        returned: { observations: 101, revenue: 100, netIncome: 1 },
-        truncated: true,
-      },
     });
-    expect(result.observations).toHaveLength(5);
+    expect(Object.hasOwn(view(result).income.coverage!, "history")).toBe(false);
+    expect(result.facts.observations).toHaveLength(5);
+    expect(source(result).income.observations).toHaveLength(5);
     expect(
-      result.observations.every((row) => row.accessionNumber === ACCESSION),
+      source(result).income.observations.every(
+        (row) => row.accessionNumber === ACCESSION,
+      ),
     ).toBe(true);
     expect(
-      result.observations.some(
+      source(result).income.observations.some(
         (row) => row.filing.status === "metadata_conflict",
       ),
     ).toBe(true);
     expect(
-      result.observations.some((row) => row.filingFocusPeriod === "Q4"),
+      source(result).income.observations.some(
+        (row) => row.filingFocusPeriod === "Q4",
+      ),
     ).toBe(true);
     expect(
-      result.resolution.pairs.some((pair) => pair.endDate === "2024-12-31"),
+      view(result).income.resolution.pairs.some(
+        (pair) => pair.endDate === "2024-12-31",
+      ),
     ).toBe(true);
-    expect(result.resolution.selectedReportPairEligible).toBe(false);
+    expect(view(result).income.resolution.selectedReportPairEligible).toBe(
+      false,
+    );
   });
 
   it("counts identical raw duplicates separately while retaining distinct agreeing references and their original first locators", async () => {
@@ -544,14 +574,14 @@ describe("explicit observed annual SEC evidence provider", () => {
       Response.json(companyFacts([row, row, fact({ frame: "CY2025" })])),
     );
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.coverage?.full).toMatchObject({
+    expect(view(result).income.coverage?.full).toMatchObject({
       inspectedRows: 4,
       invalidRows: 0,
       duplicateRows: 1,
       uniqueObservations: 3,
     });
-    const revenues = result.observations.filter(
-      (row) => row.metric === "revenue",
+    const revenues = source(result).income.observations.filter(
+      (row) => row.concept !== "NetIncomeLoss",
     );
     expect(revenues).toHaveLength(2);
     expect(revenues.map((row) => row.sourceLocator)).toEqual(
@@ -560,7 +590,7 @@ describe("explicit observed annual SEC evidence provider", () => {
         "/facts/us-gaap/Revenues/units/USD/2",
       ]),
     );
-    expect(result.resolution.pairs[0]).toMatchObject({
+    expect(view(result).income.resolution.pairs[0]).toMatchObject({
       status: "eligible",
       revenueObservationIds: revenues.map((row) => row.id),
     });
@@ -571,19 +601,20 @@ describe("explicit observed annual SEC evidence provider", () => {
       Response.json(companyFacts([fact(), fact({ accn: OLDER, val: "120" })])),
     );
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.completeness).toEqual({
-      status: "refused",
-      reason: "invalid_source_rows",
-    });
-    expect(result.coverage).toMatchObject({
+    expect(view(result).income.reason).toBe("invalid_source_rows");
+    expect(result.facts.observations).toHaveLength(2);
+    expect(source(result).income.summaryReturned.observations).toBe(0);
+    expect(view(result).income.coverage).toMatchObject({
       full: { inspectedRows: 3, invalidRows: 1, uniqueObservations: 2 },
       selected: { observations: 2 },
-      returned: { observations: 0 },
-      omittedSelected: { observations: 2 },
+      returned: { observations: 2 },
+      omittedSelected: { observations: 0 },
     });
-    expect(result.observations).toEqual([]);
+    expect(source(result).income.observations).toEqual([]);
     expect(
-      result.resolution.bases.every((basis) => basis.status === "withheld"),
+      view(result).income.resolution.bases.every(
+        (basis) => basis.status === "withheld",
+      ),
     ).toBe(true);
   });
 
@@ -601,13 +632,22 @@ describe("explicit observed annual SEC evidence provider", () => {
         ),
       );
       const result = await finish(provider.loadEvidence(CIK));
-      expect(result.coverage?.selected?.revenue).toBe(count);
-      expect(result.completeness.status).toBe(
-        count === 100 ? "complete" : "refused",
+      expect(view(result).income.coverage?.selected?.revenue).toBe(count);
+      expect(result.facts.observations).toHaveLength(count + 1);
+      expect(view(result).income.coverage?.returned.observations).toBe(
+        count + 1,
       );
-      expect(result.observations).toHaveLength(count === 100 ? 101 : 0);
+      expect(view(result).income.coverage?.omittedSelected?.observations).toBe(
+        0,
+      );
+      expect(view(result).income.reason).toBe(
+        count === 100 ? null : "selected_report_overflow",
+      );
+      expect(source(result).income.observations).toHaveLength(
+        count === 100 ? 101 : 0,
+      );
       if (count === 101)
-        expect(result.completeness.reason).toBe("selected_report_overflow");
+        expect(view(result).income.reason).toBe("selected_report_overflow");
     },
   );
 
@@ -621,10 +661,19 @@ describe("explicit observed annual SEC evidence provider", () => {
         Response.json(companyFacts([fact()], rows)),
       );
       const result = await finish(provider.loadEvidence(CIK));
-      expect(result.coverage?.selected?.netIncome).toBe(count);
-      expect(result.observations).toHaveLength(count === 100 ? 101 : 0);
-      expect(result.completeness.status).toBe(
-        count === 100 ? "complete" : "refused",
+      expect(view(result).income.coverage?.selected?.netIncome).toBe(count);
+      expect(result.facts.observations).toHaveLength(count === 100 ? 101 : 1);
+      expect(view(result).income.coverage?.returned.observations).toBe(
+        count === 100 ? 101 : 1,
+      );
+      expect(view(result).income.coverage?.omittedSelected?.netIncome).toBe(
+        count === 100 ? 0 : 101,
+      );
+      expect(source(result).income.observations).toHaveLength(
+        count === 100 ? 101 : 0,
+      );
+      expect(view(result).income.reason).toBe(
+        count === 100 ? null : "selected_report_overflow",
       );
     },
   );
@@ -672,27 +721,27 @@ describe("explicit observed annual SEC evidence provider", () => {
     );
     const result = await finish(provider.loadEvidence(CIK));
     expect(result.target).toMatchObject({ accessionNumber: ACCESSION });
-    expect(result.observations).toHaveLength(1);
-    expect(result.resolution.pairs[0]?.status).toBe(
+    expect(source(result).income.observations).toHaveLength(1);
+    expect(view(result).income.resolution.pairs[0]?.status).toBe(
       "income_missing_same_filing_period",
     );
-    expect(result.resolution.selectedReportPairEligible).toBe(false);
+    expect(view(result).income.resolution.selectedReportPairEligible).toBe(
+      false,
+    );
   });
 
   it("reports a complete empty selected set as missing bases rather than manufacturing financial data", async () => {
     const { provider } = setup(() => Response.json(companyFacts([], [])));
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.completeness.status).toBe("complete");
-    expect(result.coverage?.selected).toEqual({
+    expect(view(result).income.reason).toBeNull();
+    expect(view(result).income.coverage?.selected).toEqual({
       observations: 0,
       revenue: 0,
       netIncome: 0,
     });
-    expect(result.resolution.bases.map((basis) => basis.status)).toEqual([
-      "missing",
-      "missing",
-      "missing",
-    ]);
+    expect(
+      view(result).income.resolution.bases.map((basis) => basis.status),
+    ).toEqual(["missing", "missing", "missing"]);
   });
 
   it("reports unresolved current Submissions without inferring an empty target selection, while truthfully scanning both sources", async () => {
@@ -709,14 +758,14 @@ describe("explicit observed annual SEC evidence provider", () => {
     );
     const result = await finish(provider.loadEvidence(CIK));
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(result.completeness.reason).toBe("target_unresolved");
-    expect(result.coverage).toMatchObject({
+    expect(view(result).income.reason).toBe("target_unresolved");
+    expect(view(result).income.coverage).toMatchObject({
       full: { inspectedRows: 2 },
       selected: null,
       otherAccessions: null,
       omittedSelected: null,
     });
-    expect(result.observations).toEqual([]);
+    expect(source(result).income.observations).toEqual([]);
   });
 
   it.each([
@@ -747,7 +796,7 @@ describe("explicit observed annual SEC evidence provider", () => {
       );
       const result = await finish(provider.loadEvidence(CIK));
       expect(result.target).toEqual({ status: "unresolved", reason });
-      expect(result.resolution.currentTargetEligible).toBe(false);
+      expect(view(result).income.resolution.currentTargetEligible).toBe(false);
     },
   );
 
@@ -825,15 +874,23 @@ describe("explicit observed annual SEC evidence provider", () => {
       expect(result.generation.sources.companyFacts.fetchedAt === null).toBe(
         !captured,
       );
-      expect(result.coverage).toBeNull();
-      expect(result.completeness.reason).toBe("source_unavailable");
-      expect(result.observations).toEqual([]);
-      expect(result.incomeScanStatus).toBe("source_unavailable");
-      expect(result.cashGeneration.operatingCashFlow.scan.status).toBe(
+      expect(view(result).income.coverage).toBeNull();
+      expect(view(result).income.reason).toBe("source_unavailable");
+      expect(source(result).income.observations).toEqual([]);
+      expect(view(result).income.scanStatus).toBe("source_unavailable");
+      expect(result.facts.scans).toHaveLength(32);
+      expect(
+        result.facts.scans.every(
+          ({ scan }) =>
+            scan.status === "source_unavailable" && scan.coverage === null,
+        ),
+      ).toBe(true);
+      expect(source(result).cashGeneration.operatingCashFlow.scan.status).toBe(
         "source_unavailable",
       );
       expect(
-        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+        view(result).cashGeneration.resolution
+          .operatingCashFlowLessPpePurchases,
       ).toMatchObject({ status: "unavailable", reason: "source_unavailable" });
       expect(JSON.stringify(result)).not.toContain("private-canary");
     },
@@ -854,13 +911,13 @@ describe("explicit observed annual SEC evidence provider", () => {
       .replace('"val":41', '"val":1.000000000000000001');
     const { provider, fetch } = setup(() => new Response(text));
     const result = await finish(provider.loadEvidence(CIK));
-    const cash = result.cashGeneration;
+    const cash = source(result).cashGeneration;
     expect(fetch.mock.calls.map(([input]) => url(input))).toEqual([
       SUBMISSIONS_URL,
       FACTS_URL,
     ]);
-    expect(result.generation.definitionVersion).toBe("5.0.0");
-    expect(result.incomeScanStatus).toBe("available");
+    expect(result.generation.definitionVersion).toBe("6.0.0");
+    expect(view(result).income.scanStatus).toBe("available");
     expect(cash.operatingCashFlow.scan).toMatchObject({
       coverage: {
         full: { candidateRows: 2 },
@@ -878,7 +935,9 @@ describe("explicit observed annual SEC evidence provider", () => {
         acceptedAt: "2026-02-01T12:00:00.000Z",
       },
     });
-    expect(cash.resolution.operatingCashFlowLessPpePurchases).toEqual({
+    expect(
+      view(result).cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+    ).toEqual({
       status: "available",
       value: "-1.000000000000000003",
       startDate: "2025-01-01",
@@ -890,7 +949,7 @@ describe("explicit observed annual SEC evidence provider", () => {
       ],
       currentUseEligible: true,
     });
-    expect(result.resolution.currentTargetEligible).toBe(true);
+    expect(view(result).income.resolution.currentTargetEligible).toBe(true);
   });
 
   it.each(["invalid_response", "candidate_limit"] as const)(
@@ -922,14 +981,12 @@ describe("explicit observed annual SEC evidence provider", () => {
       expect(result.generation.sources.companyFacts.sha256).toMatch(
         /^sha256:/u,
       );
-      expect(result.incomeScanStatus).toBe(status);
-      expect(result.coverage).toBeNull();
-      expect(result.completeness).toEqual({
-        status: "refused",
-        reason: "source_unavailable",
-      });
+      expect(view(result).income.scanStatus).toBe(status);
+      expect(view(result).income.coverage).toBeNull();
+      expect(view(result).income.reason).toBe(status);
       expect(
-        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+        view(result).cashGeneration.resolution
+          .operatingCashFlowLessPpePurchases,
       ).toMatchObject({ status: "available", value: "5" });
     },
   );
@@ -948,18 +1005,20 @@ describe("explicit observed annual SEC evidence provider", () => {
       ),
     );
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.resolution.currentTargetEligible).toBe(true);
-    expect(result.cashGeneration.operatingCashFlow.scan).toMatchObject({
+    expect(view(result).income.resolution.currentTargetEligible).toBe(true);
+    expect(source(result).cashGeneration.operatingCashFlow.scan).toMatchObject({
       coverage: { full: { invalidRows: 1 }, returned: 1 },
     });
-    expect(result.cashGeneration.operatingCashFlow.observations).toHaveLength(
-      1,
-    );
-    expect(result.cashGeneration.resolution.operatingCashFlow).toMatchObject({
+    expect(
+      source(result).cashGeneration.operatingCashFlow.observations,
+    ).toHaveLength(1);
+    expect(
+      view(result).cashGeneration.resolution.operatingCashFlow,
+    ).toMatchObject({
       status: "unavailable",
       reason: "invalid_source_rows",
     });
-    expect(result.cashGeneration.resolution.ppePurchases).toMatchObject({
+    expect(view(result).cashGeneration.resolution.ppePurchases).toMatchObject({
       status: "available",
       value: "4",
     });
@@ -987,7 +1046,7 @@ describe("explicit observed annual SEC evidence provider", () => {
         "available",
       );
       expect(result.targetScan).toBeNull();
-      expect(result.completeness.reason).toBe("source_unavailable");
+      expect(view(result).income.reason).toBe("source_unavailable");
     }
   });
 
@@ -1011,16 +1070,22 @@ describe("explicit observed annual SEC evidence provider", () => {
       );
       const result = await finish(provider.loadEvidence(CIK));
       expect(result.generation.sources.companyFacts.status).toBe("available");
-      expect(result.resolution.currentTargetEligible).toBe(true);
-      expect(result.cashGeneration.operatingCashFlow.observations).toEqual([]);
-      expect(result.cashGeneration.resolution.operatingCashFlow).toMatchObject({
+      expect(view(result).income.resolution.currentTargetEligible).toBe(true);
+      expect(
+        source(result).cashGeneration.operatingCashFlow.observations,
+      ).toEqual([]);
+      expect(
+        view(result).cashGeneration.resolution.operatingCashFlow,
+      ).toMatchObject({
         status: "unavailable",
         reason,
       });
-      expect(result.cashGeneration.resolution.ppePurchases).toMatchObject({
-        status: "available",
-        value: "4",
-      });
+      expect(view(result).cashGeneration.resolution.ppePurchases).toMatchObject(
+        {
+          status: "available",
+          value: "4",
+        },
+      );
     },
   );
 
@@ -1061,9 +1126,10 @@ describe("explicit observed annual SEC evidence provider", () => {
     const moments = [NOW, NOW, NOW, new Date(NOW.getTime() + 8 * 86_400_000)];
     const { provider } = setup(undefined, undefined, () => moments.shift()!);
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.completeness.reason).toBe("source_stale");
-    expect(result.coverage?.selected?.observations).toBe(2);
-    expect(result.observations).toEqual([]);
+    expect(view(result).income.reason).toBe("source_stale");
+    expect(result.facts.observations).toHaveLength(2);
+    expect(view(result).income.coverage?.selected?.observations).toBe(2);
+    expect(source(result).income.observations).toEqual([]);
   });
 
   it("rejects concurrent work, aborts an uncooperative held fetch, then permits a new explicit load", async () => {
@@ -1088,7 +1154,7 @@ describe("explicit observed annual SEC evidence provider", () => {
     await assertion;
     release(Response.json(submissions()));
     const next = await finish(provider.loadEvidence(CIK));
-    expect(next.completeness.status).toBe("complete");
+    expect(view(next).income.reason).toBeNull();
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
@@ -1156,8 +1222,9 @@ describe("explicit observed annual SEC evidence provider", () => {
       SUBMISSIONS_URL,
       FACTS_URL,
     ]);
-    expect(result.liquidity.currentAssets.observations[0]).toMatchObject({
-      metric: "current_assets",
+    expect(
+      source(result).liquidity.currentAssets.observations[0],
+    ).toMatchObject({
       concept: "AssetsCurrent",
       startDate: null,
       durationDays: null,
@@ -1173,7 +1240,7 @@ describe("explicit observed annual SEC evidence provider", () => {
           "https://www.sec.gov/Archives/edgar/data/42/0000999999-26-000001-index.htm",
       },
     });
-    expect(result.liquidity.resolution).toMatchObject({
+    expect(view(result).liquidity.resolution).toMatchObject({
       currentAssets: {
         status: "available",
         unit: "USD",
@@ -1199,9 +1266,9 @@ describe("explicit observed annual SEC evidence provider", () => {
         currentUseEligible: true,
       },
     });
-    expect(result.resolution.currentTargetEligible).toBe(true);
+    expect(view(result).income.resolution.currentTargetEligible).toBe(true);
     expect(
-      result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+      view(result).cashGeneration.resolution.operatingCashFlowLessPpePurchases,
     ).toMatchObject({ status: "available", value: "5" });
   });
 
@@ -1251,20 +1318,23 @@ describe("explicit observed annual SEC evidence provider", () => {
       );
       const result = await finish(provider.loadEvidence(CIK));
       expect(result.generation.sources.companyFacts.status).toBe("available");
-      expect(result.liquidity.resolution.currentAssets).toMatchObject({
+      expect(view(result).liquidity.resolution.currentAssets).toMatchObject({
         status: "unavailable",
         reason,
       });
-      expect(result.liquidity.resolution.currentLiabilities).toMatchObject({
+      expect(
+        view(result).liquidity.resolution.currentLiabilities,
+      ).toMatchObject({
         status: "available",
         value: "80",
       });
-      expect(result.liquidity.resolution.workingCapital.status).toBe(
+      expect(view(result).liquidity.resolution.workingCapital.status).toBe(
         "unavailable",
       );
-      expect(result.resolution.currentTargetEligible).toBe(true);
+      expect(view(result).income.resolution.currentTargetEligible).toBe(true);
       expect(
-        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+        view(result).cashGeneration.resolution
+          .operatingCashFlowLessPpePurchases,
       ).toMatchObject({ status: "available", value: "5" });
       expect(fetch).toHaveBeenCalledTimes(2);
     },
@@ -1280,15 +1350,15 @@ describe("explicit observed annual SEC evidence provider", () => {
       ),
     );
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.incomeScanStatus).toBe("invalid_response");
-    expect(result.cashGeneration.operatingCashFlow.scan.status).toBe(
+    expect(view(result).income.scanStatus).toBe("invalid_response");
+    expect(source(result).cashGeneration.operatingCashFlow.scan.status).toBe(
       "invalid_response",
     );
-    expect(result.liquidity.resolution.workingCapital).toMatchObject({
+    expect(view(result).liquidity.resolution.workingCapital).toMatchObject({
       status: "available",
       value: "40",
     });
-    expect(result.liquidity.resolution.currentRatio).toMatchObject({
+    expect(view(result).liquidity.resolution.currentRatio).toMatchObject({
       status: "available",
       value: "1.50",
     });
@@ -1312,7 +1382,7 @@ describe("explicit observed annual SEC evidence provider", () => {
       ),
     );
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.liquidity.currentAssets.scan).toMatchObject({
+    expect(source(result).liquidity.currentAssets.scan).toMatchObject({
       coverage: {
         full: { candidateRows: 4, duplicateRows: 1 },
         selected: 2,
@@ -1321,12 +1391,16 @@ describe("explicit observed annual SEC evidence provider", () => {
       },
     });
     expect(
-      result.liquidity.currentAssets.observations.map((row) => row.endDate),
+      source(result).liquidity.currentAssets.observations.map(
+        (row) => row.endDate,
+      ),
     ).toEqual(["2025-12-31", "2024-12-31"]);
-    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+    expect(view(result).liquidity.resolution.currentAssets).toMatchObject({
       status: "available",
       value: "120",
-      observationIds: [result.liquidity.currentAssets.observations[0]!.id],
+      observationIds: [
+        source(result).liquidity.currentAssets.observations[0]!.id,
+      ],
     });
   });
 
@@ -1357,25 +1431,27 @@ describe("explicit observed annual SEC evidence provider", () => {
       SUBMISSIONS_URL,
       FACTS_URL,
     ]);
-    expect(result.coverage?.full.invalidRows).toBe(1);
+    expect(view(result).income.coverage?.full.invalidRows).toBe(1);
     expect(
-      result.liquidity.currentAssets.observations.map((row) => row.endDate),
-    ).toEqual(dates);
-    expect(
-      result.liquidity.currentLiabilities.observations.map(
+      source(result).liquidity.currentAssets.observations.map(
         (row) => row.endDate,
       ),
     ).toEqual(dates);
     expect(
-      result.liquidity.currentAssets.observations.every(
+      source(result).liquidity.currentLiabilities.observations.map(
+        (row) => row.endDate,
+      ),
+    ).toEqual(dates);
+    expect(
+      source(result).liquidity.currentAssets.observations.every(
         (row) => row.filing.reportDate === "2025-12-31",
       ),
     ).toBe(true);
-    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+    expect(view(result).liquidity.resolution.currentAssets).toMatchObject({
       status: "available",
       value: "120.125",
     });
-    expect(resolvePersonalSecAnnualLiquidityHistory(result)).toMatchObject({
+    expect(view(result).liquidity.history).toMatchObject({
       status: "available",
       balances: [
         {
@@ -1417,19 +1493,19 @@ describe("explicit observed annual SEC evidence provider", () => {
       .replace('"val":43', `"val":${tiny}`);
     const { provider } = setup(() => new Response(text));
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+    expect(view(result).liquidity.resolution.currentAssets).toMatchObject({
       status: "available",
       value: integer,
     });
-    expect(result.liquidity.resolution.currentLiabilities).toMatchObject({
+    expect(view(result).liquidity.resolution.currentLiabilities).toMatchObject({
       status: "available",
       value: tiny,
     });
-    expect(result.liquidity.resolution.workingCapital).toMatchObject({
+    expect(view(result).liquidity.resolution.workingCapital).toMatchObject({
       status: "available",
       value: `${"9".repeat(63)}8.${"9".repeat(62)}`,
     });
-    expect(result.liquidity.resolution.currentRatio).toMatchObject({
+    expect(view(result).liquidity.resolution.currentRatio).toMatchObject({
       status: "available",
       value: `${integer}${"0".repeat(62)}.00`,
     });
@@ -1444,19 +1520,19 @@ describe("explicit observed annual SEC evidence provider", () => {
       ),
     );
     const result = await finish(provider.loadEvidence(CIK));
-    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+    expect(view(result).liquidity.resolution.currentAssets).toMatchObject({
       status: "available",
       value: "-1",
     });
-    expect(result.liquidity.resolution.currentLiabilities).toMatchObject({
+    expect(view(result).liquidity.resolution.currentLiabilities).toMatchObject({
       status: "available",
       value: "80",
     });
-    expect(result.liquidity.resolution.workingCapital).toMatchObject({
+    expect(view(result).liquidity.resolution.workingCapital).toMatchObject({
       status: "unavailable",
       reason: "unsupported_sign",
     });
-    expect(result.liquidity.resolution.currentRatio).toMatchObject({
+    expect(view(result).liquidity.resolution.currentRatio).toMatchObject({
       status: "unavailable",
       reason: "unsupported_sign",
     });
@@ -1469,7 +1545,7 @@ describe("explicit observed annual SEC evidence provider", () => {
       () => new Date("2027-06-01T12:00:00.000Z"),
     );
     const old = await finish(historical.provider.loadEvidence(CIK));
-    expect(old.liquidity.resolution.currentAssets).toMatchObject({
+    expect(view(old).liquidity.resolution.currentAssets).toMatchObject({
       status: "available",
       asOfDate: "2025-12-31",
       currentUseEligible: false,
@@ -1481,8 +1557,8 @@ describe("explicit observed annual SEC evidence provider", () => {
       () => moments.shift()!,
     );
     const result = await finish(stale.provider.loadEvidence(CIK));
-    expect(result.liquidity.currentAssets.observations).toHaveLength(1);
-    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+    expect(source(result).liquidity.currentAssets.observations).toHaveLength(1);
+    expect(view(result).liquidity.resolution.currentAssets).toMatchObject({
       status: "unavailable",
       reason: "source_stale",
     });
@@ -1494,11 +1570,11 @@ describe("explicit observed annual SEC evidence provider", () => {
     expect(result.generation.sources.companyFacts.status).toBe(
       "invalid_response",
     );
-    expect(result.liquidity.currentAssets).toMatchObject({
+    expect(source(result).liquidity.currentAssets).toMatchObject({
       scan: { status: "source_unavailable", coverage: null },
       observations: [],
     });
-    expect(result.liquidity.resolution.currentRatio).toMatchObject({
+    expect(view(result).liquidity.resolution.currentRatio).toMatchObject({
       status: "unavailable",
       reason: "source_unavailable",
     });
@@ -1507,10 +1583,295 @@ describe("explicit observed annual SEC evidence provider", () => {
       () => new Response("{invalid"),
     );
     const failed = await finish(noTarget.provider.loadEvidence(CIK));
-    expect(failed.liquidity.currentAssets).toMatchObject({
+    expect(source(failed).liquidity.currentAssets).toMatchObject({
       scan: { coverage: { selected: null, returned: 0 } },
       observations: [],
     });
     expect(noTarget.fetch).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("canonical annual statement provider graph", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("captures all 32 concepts once and resolves three flow years and two balance dates from exact signed source values", async () => {
+    const positive = "9007199254740993.000000000000000001";
+    const negative = "-9007199254740993.000000000000000003";
+    const negativeConcepts = new Set<PersonalSecAnnualStatementConcept>([
+      "NetIncomeLoss",
+      "StockholdersEquity",
+      "NetCashProvidedByUsedInInvestingActivities",
+    ]);
+    const taxonomy = Object.fromEntries(
+      PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.map((entry) => [
+        entry.concept,
+        {
+          units: {
+            USD: (entry.periodType === "duration"
+              ? [2025, 2024, 2023]
+              : [2025, 2024]
+            ).map((year) =>
+              fact({
+                start:
+                  entry.periodType === "duration" ? year + "-01-01" : undefined,
+                end: year + "-12-31",
+                val: negativeConcepts.has(entry.concept) ? negative : positive,
+              }),
+            ),
+          },
+        },
+      ]),
+    );
+    const body = JSON.stringify({ cik: 42, facts: { "us-gaap": taxonomy } })
+      .replaceAll('"' + positive + '"', positive)
+      .replaceAll('"' + negative + '"', negative);
+    const { provider, fetch, starts } = setup(
+      () =>
+        new Response(body, { headers: { "content-type": "application/json" } }),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(fetch.mock.calls.map(([input]) => url(input))).toEqual([
+      SUBMISSIONS_URL,
+      FACTS_URL,
+    ]);
+    expect(starts[1]! - starts[0]!).toBeGreaterThanOrEqual(220);
+    expect(Object.keys(result)).toEqual([
+      "cik",
+      "generation",
+      "target",
+      "targetScan",
+      "facts",
+    ]);
+    expect(result.generation.definitionVersion).toBe("6.0.0");
+    expect(result.generation.sources.companyFacts).toMatchObject({
+      status: "available",
+      bytes: Buffer.byteLength(body),
+      sha256: digest(body),
+    });
+    expect(result.generation.sha256).toBe(
+      digest(serializePersonalSecAnnualCanonicalGeneration(result)),
+    );
+    expect(result.facts.scans.map(({ concept }) => concept)).toEqual(
+      PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.map((entry) => entry.concept),
+    );
+    expect(result.facts.scans).toHaveLength(32);
+    expect(result.facts.observations).toHaveLength(
+      PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.reduce(
+        (count, entry) => count + (entry.periodType === "duration" ? 3 : 2),
+        0,
+      ),
+    );
+    expect(new Set(result.facts.observations.map((row) => row.id)).size).toBe(
+      result.facts.observations.length,
+    );
+    for (const row of result.facts.observations) {
+      expect(row.value).toBe(
+        negativeConcepts.has(row.concept) ? negative : positive,
+      );
+      expect(row.id).toBe(
+        digest(serializePersonalSecAnnualStatementObservation(row)).replace(
+          "sha256:",
+          "sec-fact:",
+        ),
+      );
+      expect(row.filing.status).toBe("matched");
+      expect(Object.hasOwn(row, "metric")).toBe(false);
+      expect(Object.isFrozen(row)).toBe(true);
+      expect(Object.isFrozen(row.filing)).toBe(true);
+    }
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.facts)).toBe(true);
+    expect(Object.isFrozen(result.facts.observations)).toBe(true);
+    expect(Object.isFrozen(result.facts.scans)).toBe(true);
+    for (const { scan } of result.facts.scans) {
+      expect(scan.status).toBe("available");
+      expect(Object.isFrozen(scan)).toBe(true);
+      expect(Object.isFrozen(scan.coverage)).toBe(true);
+    }
+    const statements = view(result).statements;
+    expect(statements.contextReason).toBeNull();
+    expect(statements.statements.map((statement) => statement.id)).toEqual([
+      "income_statement",
+      "balance_sheet",
+      "cash_flow",
+    ]);
+    for (const statement of statements.statements) {
+      expect(statement.columns.map((column) => column.endDate)).toEqual(
+        statement.id === "balance_sheet"
+          ? ["2025-12-31", "2024-12-31"]
+          : ["2025-12-31", "2024-12-31", "2023-12-31"],
+      );
+      for (const row of statement.rows)
+        for (const [index, cell] of row.cells.entries()) {
+          expect(cell).toMatchObject({
+            status: "available",
+            value: negativeConcepts.has(row.concept) ? negative : positive,
+            currentUseEligible: index === 0,
+            startDate:
+              statement.id === "balance_sheet"
+                ? null
+                : cell.endDate.slice(0, 4) + "-01-01",
+          });
+          expect(cell.observationIds).toHaveLength(1);
+          expect(
+            result.facts.observations.find(
+              (observation) => observation.id === cell.observationIds[0],
+            )?.concept,
+          ).toBe(row.concept);
+        }
+    }
+    const revenues = statements.statements[0]!.rows.filter(
+      (row) => row.lineId === "income.revenue",
+    );
+    expect(revenues.map((row) => row.concept)).toEqual([
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "Revenues",
+      "SalesRevenueNet",
+    ]);
+    expect(
+      new Set(revenues.map((row) => row.cells[0]!.observationIds[0])).size,
+    ).toBe(3);
+    expect(
+      source(result).cashGeneration.operatingCashFlow.observations[0],
+    ).toBe(
+      result.facts.observations.find(
+        (row) => row.concept === "NetCashProvidedByUsedInOperatingActivities",
+      ),
+    );
+  });
+
+  it.each([101, 10001])(
+    "withholds an entire added statement concept at %i rows while keeping independent cells and the original source hash",
+    async (count) => {
+      const body = JSON.stringify(
+        companyFacts(undefined, undefined, {
+          GrossProfit: {
+            units: {
+              USD: Array.from({ length: count }, (_, index) =>
+                fact({ val: index + 1 }),
+              ),
+            },
+          },
+          CostOfRevenue: { units: { USD: [fact({ val: 0 })] } },
+          NetCashProvidedByUsedInOperatingActivities: {
+            units: { USD: [fact({ val: 9 })] },
+          },
+          PaymentsToAcquirePropertyPlantAndEquipment: {
+            units: { USD: [fact({ val: 4 })] },
+          },
+        }),
+      );
+      const { provider, fetch } = setup(() => new Response(body));
+      const result = await finish(provider.loadEvidence(CIK));
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(result.generation.sources.companyFacts).toMatchObject({
+        status: "available",
+        bytes: Buffer.byteLength(body),
+        sha256: digest(body),
+      });
+      expect(
+        result.facts.observations.some((row) => row.concept === "GrossProfit"),
+      ).toBe(false);
+      const scan = result.facts.scans.find(
+        (entry) => entry.concept === "GrossProfit",
+      )!.scan;
+      expect(scan).toEqual(
+        count === 101
+          ? {
+              status: "available",
+              absence: null,
+              coverage: {
+                full: {
+                  candidateRows: 101,
+                  inspectedRows: 101,
+                  invalidRows: 0,
+                  duplicateRows: 0,
+                  uniqueObservations: 101,
+                },
+                selected: 101,
+                otherAccessions: 0,
+                returned: 0,
+                omittedSelected: 101,
+              },
+            }
+          : { status: "candidate_limit", absence: null, coverage: null },
+      );
+      const income = view(result).statements.statements.find(
+        (statement) => statement.id === "income_statement",
+      )!;
+      expect(
+        income.rows.find((row) => row.concept === "GrossProfit")!.cells[0],
+      ).toMatchObject({
+        status: "unavailable",
+        reason: count === 101 ? "selected_report_overflow" : "candidate_limit",
+        observationIds: [],
+      });
+      expect(
+        income.rows.find((row) => row.concept === "CostOfRevenue")!.cells[0],
+      ).toMatchObject({ status: "available", value: "0" });
+      expect(view(result).income.reason).toBeNull();
+      expect(
+        view(result).cashGeneration.resolution
+          .operatingCashFlowLessPpePurchases,
+      ).toMatchObject({ status: "available", value: "5" });
+    },
+  );
+
+  it("retains independent concept counts and cash when the effective income scan exceeds the unchanged 20000-row ceiling", async () => {
+    const other = Array.from({ length: 10000 }, (_, index) =>
+      fact({ accn: OLDER, val: index + 1 }),
+    );
+    const body = JSON.stringify(
+      companyFacts(other, [fact({ val: -1 })], {
+        SalesRevenueNet: { units: { USD: other } },
+        NetCashProvidedByUsedInOperatingActivities: {
+          units: { USD: [fact({ val: 9 })] },
+        },
+        PaymentsToAcquirePropertyPlantAndEquipment: {
+          units: { USD: [fact({ val: 4 })] },
+        },
+      }),
+    );
+    const { provider, fetch } = setup(() => new Response(body));
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(view(result).income.reason).toBe("candidate_limit");
+    expect(view(result).income.coverage).toMatchObject({
+      full: {
+        candidateRows: 20001,
+        inspectedRows: 20001,
+        invalidRows: 0,
+        uniqueObservations: 20001,
+      },
+      selected: { observations: 1 },
+      otherAccessions: { observations: 20000 },
+      returned: { observations: 1 },
+    });
+    expect(source(result).income.observations).toEqual([]);
+    expect(
+      result.facts.observations.find((row) => row.concept === "NetIncomeLoss")
+        ?.value,
+    ).toBe("-1");
+    expect(
+      result.facts.scans.every(({ scan }) => scan.status === "available"),
+    ).toBe(true);
+    expect(
+      view(result).cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+    ).toMatchObject({ status: "available", value: "5" });
+    expect(
+      view(result).statements.statements[0]!.rows.find(
+        (row) => row.concept === "NetIncomeLoss",
+      )!.cells[0],
+    ).toMatchObject({ status: "available", value: "-1" });
+  });
+});
+
+function digest(value: string): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}

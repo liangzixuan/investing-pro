@@ -1,12 +1,12 @@
+import { viewOf } from "./test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { resolvePersonalSecAnnualEvidence } from "@research-cockpit/personal-financial-analytics";
-import { response } from "./sec-annual-evidence-fixture";
 import {
-  cashGeneration,
-  cashRow,
-  cashResponse,
-} from "./sec-annual-cash-fixture";
+  bindAnnualPacket,
+  type TestAnnualPacket,
+} from "../../lib/test-personal-sec-annual-api-fixture";
+import { admitUiPacket } from "./test-canonical-annual-ui-fixture";
+import { cashRow, cashResponse } from "./test-canonical-annual-cash-ui-fixture";
 import {
   SecAnnualCashGeneration,
   SecAnnualCashSourceBody,
@@ -15,6 +15,69 @@ import {
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 
 describe("Annual cash generation presentation", () => {
+  it("keeps all100 agreeing references per cash concept and the exact calculation", async () => {
+    const rows = (["operating_cash_flow", "ppe_purchases"] as const).flatMap(
+      (metric) =>
+        Array.from({ length: 100 }, (_, index) =>
+          cashRow(metric, metric === "operating_cash_flow" ? "120" : "20", {
+            frame: `CY2025-${index}`,
+          }),
+        ),
+    );
+    const wire = await cashResponse(rows);
+    const cash = viewOf(wire).cashGeneration.resolution;
+    expect(cash.operatingCashFlow.observationIds).toHaveLength(100);
+    expect(cash.ppePurchases.observationIds).toHaveLength(100);
+    expect(cash.operatingCashFlowLessPpePurchases).toMatchObject({
+      status: "available",
+      value: "100",
+    });
+    expect(cash.operatingCashFlowLessPpePurchases.observationIds).toHaveLength(
+      200,
+    );
+    const html = renderToStaticMarkup(
+      <SecAnnualCashGeneration response={wire} view={viewOf(wire)} />,
+    );
+    for (const reference of cash.operatingCashFlowLessPpePurchases
+      .observationIds)
+      expect(html).toContain(reference);
+    expect(
+      html.match(
+        /Returned 100 of 100 selected-filing observations; 0 omitted\./gu,
+      ),
+    ).toHaveLength(2);
+  });
+  it("refuses a101-row concept as a whole while retaining the independent cash operand", async () => {
+    const wire = await cashResponse([
+      ...Array.from({ length: 101 }, (_, index) =>
+        cashRow("operating_cash_flow", "120", { frame: `CY2025-${index}` }),
+      ),
+      cashRow("ppe_purchases", "20"),
+    ]);
+    const cash = viewOf(wire).cashGeneration.resolution;
+    expect(cash.operatingCashFlow).toMatchObject({
+      status: "unavailable",
+      reason: "selected_report_overflow",
+      observationIds: [],
+    });
+    expect(cash.ppePurchases).toMatchObject({
+      status: "available",
+      value: "20",
+    });
+    expect(
+      wire.evidence.facts.observations.filter(
+        (row) => row.concept === "NetCashProvidedByUsedInOperatingActivities",
+      ),
+    ).toEqual([]);
+    const html = renderToStaticMarkup(
+      <SecAnnualCashGeneration response={wire} view={viewOf(wire)} />,
+    );
+    expect(html).toContain(
+      "Returned 0 of 101 selected-filing observations; 101 omitted.",
+    );
+    expect(html).toContain("This filing exceeds the cash observation limit.");
+    expect(html).not.toContain('class="sec-annual-cash-amount">120<');
+  });
   it("renders independent cash values and refusals inside table cells without layout wrappers", async () => {
     const exact = `-${"9".repeat(61)}.1`;
     expect(exact).toHaveLength(64);
@@ -29,7 +92,7 @@ describe("Annual cash generation presentation", () => {
       "2028-09-20T00:00:00.000Z",
     );
     const before = JSON.stringify(wire);
-    const { resolution } = wire.evidence.cashGeneration;
+    const { resolution } = viewOf(wire).cashGeneration;
     const html = renderToStaticMarkup(
       <table>
         <tbody>
@@ -69,10 +132,10 @@ describe("Annual cash generation presentation", () => {
       cashRow("ppe_purchases", "20.025"),
     ]);
     const body = renderToStaticMarkup(
-      <SecAnnualCashSourceBody response={wire} />,
+      <SecAnnualCashSourceBody response={wire} view={viewOf(wire)} />,
     );
     const company = renderToStaticMarkup(
-      <SecAnnualCashGeneration response={wire} />,
+      <SecAnnualCashGeneration response={wire} view={viewOf(wire)} />,
     );
     expect(company).toContain(
       `<summary>Cash sources and calculation inputs</summary>${body}</details>`,
@@ -87,12 +150,17 @@ describe("Annual cash generation presentation", () => {
     expect(body).toContain(
       "within 485 days and source captures within seven days",
     );
-    const { cashGeneration: cash } = wire.evidence;
-    for (const input of [cash.operatingCashFlow, cash.ppePurchases]) {
+    const { cashGeneration: cash } = viewOf(wire);
+    for (const concept of [
+      "NetCashProvidedByUsedInOperatingActivities",
+      "PaymentsToAcquirePropertyPlantAndEquipment",
+    ] as const) {
       expect(body).toMatch(
         /Scanned 1 rows: 0 invalid,\s*0 identical duplicates\. Returned\s*1 of 1 selected-filing observations;\s*0 omitted\./u,
       );
-      for (const item of input.observations) {
+      for (const item of wire.evidence.facts.observations.filter(
+        (row) => row.concept === concept,
+      )) {
         expect(body).toContain(item.concept);
         expect(body).toContain(item.sourceLocator);
         expect(body).toContain(item.id);
@@ -113,6 +181,7 @@ describe("Annual cash generation presentation", () => {
     const managed = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={wire}
+        view={viewOf(wire)}
         appearance="financial"
         cashAction={cashAction}
       />,
@@ -127,7 +196,11 @@ describe("Annual cash generation presentation", () => {
       managed.indexOf("Cash sources and calculation inputs"),
     );
     const local = renderToStaticMarkup(
-      <SecAnnualEvidenceResult response={wire} cashAction={cashAction} />,
+      <SecAnnualEvidenceResult
+        response={wire}
+        view={viewOf(wire)}
+        cashAction={cashAction}
+      />,
     );
     expect(local).not.toContain("Invented cash note action");
     expect(local).toContain("Cash sources and calculation inputs");
@@ -139,7 +212,7 @@ describe("Annual cash generation presentation", () => {
       cashRow("ppe_purchases", "115948000000"),
     ]);
     const html = renderToStaticMarkup(
-      <SecAnnualCashGeneration response={wire} />,
+      <SecAnnualCashGeneration response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain("182935000000");
     expect(html).toContain("115948000000");
@@ -150,8 +223,9 @@ describe("Annual cash generation presentation", () => {
     expect(html).toContain(
       "<summary>Cash sources and calculation inputs</summary>",
     );
-    for (const row of wire.evidence.cashGeneration.operatingCashFlow
-      .observations) {
+    for (const row of wire.evidence.facts.observations.filter(
+      (row) => row.concept === "NetCashProvidedByUsedInOperatingActivities",
+    )) {
       expect(html).toContain(row.id);
       expect(html).toContain(row.sourceLocator);
     }
@@ -163,7 +237,7 @@ describe("Annual cash generation presentation", () => {
       cashRow("operating_cash_flow", "-987.65"),
     ]);
     const html = renderToStaticMarkup(
-      <SecAnnualCashGeneration response={wire} />,
+      <SecAnnualCashGeneration response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain("-987.65");
     expect(html).toContain("Unavailable. This reported cash concept is absent");
@@ -175,39 +249,31 @@ describe("Annual cash generation presentation", () => {
       cashRow("ppe_purchases", "-20"),
     ]);
     const html = renderToStaticMarkup(
-      <SecAnnualCashGeneration response={wire} />,
+      <SecAnnualCashGeneration response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain('class="sec-annual-cash-amount">-20<');
     expect(html).toContain("Reported PP&amp;E purchases are negative");
     expect(html).not.toContain('class="sec-annual-cash-amount">120<');
   });
   it("renders cash independently of a failed income scan in the full financial view", async () => {
-    const wire = await response();
-    const evidence = {
-      ...wire.evidence,
-      incomeScanStatus: "invalid_response" as const,
-      coverage: null,
-      observations: [],
-      completeness: {
-        status: "refused" as const,
-        reason: "source_unavailable" as const,
-      },
-    };
-    const cash = await cashGeneration(evidence, [
-      cashRow("operating_cash_flow", "17"),
-      cashRow("ppe_purchases", "0"),
-    ]);
+    const raw = structuredClone(
+      await cashResponse([
+        cashRow("operating_cash_flow", "17"),
+        cashRow("ppe_purchases", "0"),
+      ]),
+    ) as TestAnnualPacket;
+    raw.evidence.facts.observations = raw.evidence.facts.observations.filter(
+      (row) => row.concept !== "NetIncomeLoss",
+    );
+    raw.evidence.facts.scans.find(
+      (entry) => entry.concept === "NetIncomeLoss",
+    )!.scan = { status: "invalid_response", absence: null, coverage: null };
+    const wire = await admitUiPacket(await bindAnnualPacket(raw));
     const html = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         appearance="financial"
-        response={{
-          ...wire,
-          evidence: {
-            ...evidence,
-            resolution: resolvePersonalSecAnnualEvidence(evidence),
-            cashGeneration: cash,
-          },
-        }}
+        response={wire}
+        view={viewOf(wire)}
       />,
     );
     expect(html).toContain("Revenue and net income withheld");
@@ -224,7 +290,7 @@ describe("Annual cash generation presentation", () => {
       "2028-09-20T00:00:00.000Z",
     );
     const html = renderToStaticMarkup(
-      <SecAnnualCashGeneration response={wire} />,
+      <SecAnnualCashGeneration response={wire} view={viewOf(wire)} />,
     );
     expect(html).toContain(exact);
     expect(html).toContain(

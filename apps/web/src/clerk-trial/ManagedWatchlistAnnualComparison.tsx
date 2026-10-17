@@ -9,6 +9,8 @@ import {
   type SetStateAction,
   type RefObject,
 } from "react";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedAnnualBalanceSheetComparisonRows } from "./ManagedAnnualBalanceSheetComparisonRows";
@@ -126,6 +128,7 @@ export function ManagedWatchlistAnnualComparison({
   const project = (side: Side) =>
     projectAnnualComparison(
       state[side].report.response,
+      state[side].report.view,
       currentBasis[side].basis,
     );
   const projections = { left: project("left"), right: project("right") };
@@ -253,12 +256,20 @@ export function ManagedWatchlistAnnualComparison({
                 left: state.left.report.response,
                 right: state.right.report.response,
               }}
+              views={{
+                left: state.left.report.view,
+                right: state.right.report.view,
+              }}
             />
             <LiquidityComparisonRows state={state} />
             <ManagedAnnualBalanceSheetComparisonRows
               responses={{
                 left: state.left.report.response,
                 right: state.right.report.response,
+              }}
+              views={{
+                left: state.left.report.view,
+                right: state.right.report.view,
               }}
             />
           </tbody>
@@ -280,6 +291,7 @@ export function ManagedWatchlistAnnualComparison({
         {sides.map((side) => {
           const p = projections[side];
           const response = state[side].report.response;
+          const view = pairedView(state[side].report);
           return (
             <section
               className="managed-annual-comparison-source"
@@ -325,7 +337,7 @@ export function ManagedWatchlistAnnualComparison({
                   Open {sideLabel(side).toLowerCase()} company filing index
                 </a>
               )}
-              {response && (
+              {response && view && (
                 <details>
                   <summary>
                     {sideLabel(side)} company source and validation details
@@ -336,20 +348,23 @@ export function ManagedWatchlistAnnualComparison({
                       <code>{p.selectedBasis}</code>
                     </p>
                   )}
-                  <SecAnnualSourceDetails response={response} />
+                  <SecAnnualSourceDetails response={response} view={view} />
                   <div
                     className="managed-annual-comparison-operating-source"
                     data-annual-comparison-operating-source={side}
                   >
                     <h4>Operating sources and calculation inputs</h4>
-                    <SecAnnualOperatingSourceBody response={response} />
+                    <SecAnnualOperatingSourceBody
+                      response={response}
+                      view={view}
+                    />
                   </div>
                   <div
                     className="managed-annual-comparison-cash-source"
                     data-annual-comparison-cash-source={side}
                   >
                     <h4>Cash sources and calculation inputs</h4>
-                    <SecAnnualCashSourceBody response={response} />
+                    <SecAnnualCashSourceBody response={response} view={view} />
                   </div>
                   <div
                     className="managed-annual-comparison-cash-source"
@@ -358,6 +373,7 @@ export function ManagedWatchlistAnnualComparison({
                     <h4>Cash generation relative to revenue inputs</h4>
                     <ManagedAnnualCashMarginComparisonSources
                       response={response}
+                      view={view}
                     />
                   </div>
                   <div
@@ -365,14 +381,20 @@ export function ManagedWatchlistAnnualComparison({
                     data-annual-comparison-liquidity-source={side}
                   >
                     <h4>Liquidity sources and calculation inputs</h4>
-                    <SecAnnualLiquiditySourceBody response={response} />
+                    <SecAnnualLiquiditySourceBody
+                      response={response}
+                      view={view}
+                    />
                   </div>
                   <div
                     className="managed-annual-comparison-balance-sheet-source"
                     data-annual-comparison-balance-sheet-source={side}
                   >
                     <h4>Balance sheet sources and reported inputs</h4>
-                    <SecAnnualBalanceSheetSourceBody response={response} />
+                    <SecAnnualBalanceSheetSourceBody
+                      response={response}
+                      view={view}
+                    />
                   </div>
                 </details>
               )}
@@ -676,8 +698,9 @@ function OperatingComparisonRows({
       </th>
       {sides.map((side) => {
         const response = state[side].report.response;
+        const view = pairedView(state[side].report);
         const selected = projections[side].selectedBasis;
-        const resolution = response?.evidence.operatingResults.resolution;
+        const resolution = view?.operatingResults.resolution;
         const basis = resolution?.margins.find(
           (candidate) => candidate.concept === selected,
         );
@@ -692,6 +715,8 @@ function OperatingComparisonRows({
             )}
             {!response ? (
               "Not loaded"
+            ) : !view ? (
+              "Unavailable. The source and financial results do not match."
             ) : value ? (
               <SecAnnualOperatingValueContent value={value} />
             ) : (
@@ -723,12 +748,15 @@ function CashComparisonRows({ state }: { state: ComparisonState }) {
       </th>
       {sides.map((side) => {
         const response = state[side].report.response;
+        const view = pairedView(state[side].report);
         return (
           <td key={side}>
-            {response ? (
+            {view ? (
               <SecAnnualCashValueContent
-                value={response.evidence.cashGeneration.resolution[metric]}
+                value={view.cashGeneration.resolution[metric]}
               />
+            ) : response ? (
+              "Unavailable. The source and financial results do not match."
             ) : (
               "Not loaded"
             )}
@@ -757,12 +785,15 @@ function LiquidityComparisonRows({ state }: { state: ComparisonState }) {
       </th>
       {sides.map((side) => {
         const response = state[side].report.response;
+        const view = pairedView(state[side].report);
         return (
           <td key={side}>
-            {response ? (
+            {view ? (
               <SecAnnualLiquidityValueContent
-                value={response.evidence.liquidity.resolution[metric]}
+                value={view.liquidity.resolution[metric]}
               />
+            ) : response ? (
+              "Unavailable. The source and financial results do not match."
             ) : (
               "Not loaded"
             )}
@@ -771,4 +802,15 @@ function LiquidityComparisonRows({ state }: { state: ComparisonState }) {
       })}
     </tr>
   ));
+}
+
+function pairedView(
+  report: Readonly<{
+    response: PersonalSecAnnualCanonicalResponseDto | null;
+    view: PersonalSecAnnualCanonicalView | null;
+  }>,
+): PersonalSecAnnualCanonicalView | null {
+  return report.response && report.view?.canonical === report.response.evidence
+    ? report.view
+    : null;
 }

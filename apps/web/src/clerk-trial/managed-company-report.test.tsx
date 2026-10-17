@@ -1,3 +1,4 @@
+import { reportAnnualPacket } from "./managed-annual-statements-report-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -6,18 +7,6 @@ import { ManagedAnnualReport } from "./managed-annual-report";
 import { ManagedCompanyFilings } from "./managed-company-filings";
 import { eodSelection, eodResponse } from "./eod-history-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
-import {
-  response,
-  row,
-} from "../features/research/sec-annual-evidence-fixture";
-import {
-  cashGeneration,
-  cashRow,
-} from "../features/research/sec-annual-cash-fixture";
-import {
-  liquidity,
-  liquidityRow,
-} from "../features/research/sec-annual-liquidity-fixture";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import {
   companyReportBlock,
@@ -45,25 +34,7 @@ const note =
   "My café 東京 📈 assessment\n<unverified-link> & exact whitespace  ";
 const now = () => new Date("2026-10-14T23:00:00.000Z");
 async function fixture() {
-  const base = await response([
-    row(),
-    row("SalesRevenueNet", "900"),
-    row("NetIncomeLoss", "100"),
-  ]);
-  const packet = {
-    ...base,
-    evidence: {
-      ...base.evidence,
-      cashGeneration: await cashGeneration(base.evidence, [
-        cashRow("operating_cash_flow", "250"),
-        cashRow("ppe_purchases", "75"),
-      ]),
-      liquidity: await liquidity(base.evidence, [
-        liquidityRow("current_assets", "800"),
-        liquidityRow("current_liabilities", "400"),
-      ]),
-    },
-  };
+  const packet = await reportAnnualPacket();
   const readPrice = vi.fn().mockResolvedValue(eodResponse());
   const readAnnual = vi.fn().mockResolvedValue(packet);
   const readFilings = vi

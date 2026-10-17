@@ -574,6 +574,18 @@ describe("bounded annual pair resolution", () => {
 });
 
 describe("global refusal and immutable generation", () => {
+  it("keeps the v5 wrapper's exact definition and completeness admission", () => {
+    const value = input();
+    Object.assign(value.generation, { definitionVersion: "6.0.0" });
+    expect(() => resolvePersonalSecAnnualEvidence(value)).toThrow(TypeError);
+    const refused = resolvePersonalSecAnnualEvidence({
+      ...value,
+      observations: [],
+      completeness: { status: "refused", reason: "invalid_clock" },
+    });
+    expect(refused.pairs).toEqual([]);
+    expect(refused.utilityAge).toBeNull();
+  });
   it("source failure withholds all pairs regardless of otherwise available rows", () => {
     const original = input();
     const value = {

@@ -1,3 +1,4 @@
+import { viewOf } from "../../src/features/research/test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
@@ -46,16 +47,18 @@ describe("invented operating Annual comparison", () => {
     const rightPacket = model.getSnapshot().right.report.response!;
     for (const packet of [leftPacket, rightPacket]) {
       expect(
-        packet.evidence.observations.every((row) => row.metric === "revenue"),
+        packet.evidence.facts.observations.every(
+          (row) => row.concept !== "NetIncomeLoss",
+        ),
       ).toBe(true);
       expect(
-        packet.evidence.resolution.pairs.every(
+        viewOf(packet).income.resolution.pairs.every(
           (pair) => pair.netIncome === null && pair.netMarginPercent === null,
         ),
       ).toBe(true);
     }
     expect(
-      leftPacket.evidence.operatingResults.resolution.operatingIncome,
+      viewOf(leftPacket).operatingResults.resolution.operatingIncome,
     ).toMatchObject({
       status: "available",
       value: "-250.125",
@@ -63,7 +66,7 @@ describe("invented operating Annual comparison", () => {
       endDate: "2025-12-31",
     });
     expect(
-      rightPacket.evidence.operatingResults.resolution.operatingIncome,
+      viewOf(rightPacket).operatingResults.resolution.operatingIncome,
     ).toMatchObject({
       status: "available",
       value: "125.25",
@@ -71,13 +74,13 @@ describe("invented operating Annual comparison", () => {
       endDate: "2025-06-30",
     });
     expect(
-      leftPacket.evidence.operatingResults.resolution.margins.find(
+      viewOf(leftPacket).operatingResults.resolution.margins.find(
         (row) =>
           row.concept === "RevenueFromContractWithCustomerExcludingAssessedTax",
       )?.operatingMargin,
     ).toMatchObject({ status: "available", value: "-50.03" });
     expect(
-      rightPacket.evidence.operatingResults.resolution.margins.find(
+      viewOf(rightPacket).operatingResults.resolution.margins.find(
         (row) => row.concept === "SalesRevenueNet",
       )?.operatingMargin,
     ).toMatchObject({ status: "available", value: "16.7" });

@@ -9,7 +9,7 @@ import type { ManagedApi } from "./managed-api";
 import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
 import { filingsResponse, filingsSelection } from "./sec-filings-fixture";
 import { ManagedAnnualReport as AnnualModel } from "./managed-annual-report";
-import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import { response as annualResponse } from "../features/research/test-canonical-annual-ui-fixture";
 import {
   getManagedFilingsAnnualBaseline,
   type ManagedFilingsAnnualBaseline,

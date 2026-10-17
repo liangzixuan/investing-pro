@@ -1,10 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { resolvePersonalSecAnnualLiquidityHistory } from "@research-cockpit/personal-financial-analytics";
+import { resolvePersonalSecAnnualCanonicalLiquidityHistory } from "@research-cockpit/personal-financial-analytics";
 import { createFixture } from "./fixture";
 import { liquidityHistoryPacket } from "./liquidity-history-fixture";
-import { request } from "../../src/features/research/sec-annual-evidence-fixture";
-import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
+import { request } from "../../src/features/research/test-canonical-annual-read-fixture";
+import { parseSecAnnualCanonicalResponse } from "../../src/lib/sec-annual-canonical-response";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { SecAnnualEvidenceResult } from "../../src/features/research/SecAnnualEvidenceResult";
 import { companySnapshotEvidence } from "../../src/clerk-trial/managed-company-snapshot";
@@ -18,7 +18,7 @@ describe("invented reported liquidity history", () => {
   it("admits complete comparative packets with original filing metadata and calculation-specific refusals", async () => {
     for (const replacement of [false, true]) {
       const packet = await liquidityHistoryPacket(replacement);
-      const admitted = await parseSecAnnualEvidenceResponse(
+      const admitted = await parseSecAnnualCanonicalResponse(
         packet,
         request(),
         new AbortController().signal,
@@ -26,22 +26,38 @@ describe("invented reported liquidity history", () => {
       expect(admitted).not.toBeNull();
       if (!admitted) throw new Error("Comparative packet refused");
       expect(admitted).toEqual(packet);
+      expect(Object.isFrozen(admitted.evidence.facts.observations)).toBe(true);
       expect(
-        Object.isFrozen(admitted.evidence.liquidity.currentAssets.observations),
-      ).toBe(true);
-      expect(admitted.evidence.observations).toEqual([]);
-      expect(
-        admitted.evidence.liquidity.currentAssets.observations,
-      ).toHaveLength(replacement ? 4 : 3);
-      expect(
-        admitted.evidence.liquidity.currentLiabilities.observations,
-      ).toHaveLength(3);
-      expect(
-        admitted.evidence.liquidity.currentAssets.observations.every(
-          (row) => row.filing.reportDate === "2025-12-31",
+        admitted.evidence.facts.observations.every((row) =>
+          Object.isFrozen(row),
         ),
       ).toBe(true);
-      const history = resolvePersonalSecAnnualLiquidityHistory(
+      expect(
+        admitted.evidence.facts.observations.filter((row) =>
+          [
+            "Revenues",
+            "SalesRevenueNet",
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "NetIncomeLoss",
+          ].includes(row.concept),
+        ),
+      ).toEqual([]);
+      expect(
+        admitted.evidence.facts.observations.filter(
+          (row) => row.concept === "AssetsCurrent",
+        ),
+      ).toHaveLength(replacement ? 4 : 3);
+      expect(
+        admitted.evidence.facts.observations.filter(
+          (row) => row.concept === "LiabilitiesCurrent",
+        ),
+      ).toHaveLength(3);
+      expect(
+        admitted.evidence.facts.observations
+          .filter((row) => row.concept === "AssetsCurrent")
+          .every((row) => row.filing.reportDate === "2025-12-31"),
+      ).toBe(true);
+      const history = resolvePersonalSecAnnualCanonicalLiquidityHistory(
         admitted.evidence,
       );
       expect(history.status).toBe("available");
@@ -95,13 +111,14 @@ describe("invented reported liquidity history", () => {
         workspace.filings.getSnapshot(),
       );
     const history = () =>
-      resolvePersonalSecAnnualLiquidityHistory(
+      resolvePersonalSecAnnualCanonicalLiquidityHistory(
         workspace.annual.getSnapshot().response!.evidence,
       );
     const html = () =>
       renderToStaticMarkup(
         <SecAnnualEvidenceResult
           response={workspace.annual.getSnapshot().response!}
+          view={workspace.annual.getSnapshot().view!}
           appearance="financial"
         />,
       );
@@ -152,9 +169,9 @@ describe("invented reported liquidity history", () => {
       }
     ).sources.annual.response;
     expect(captured).toEqual(initial);
-    expect(resolvePersonalSecAnnualLiquidityHistory(captured.evidence)).toEqual(
-      initialHistory,
-    );
+    expect(
+      resolvePersonalSecAnnualCanonicalLiquidityHistory(captured.evidence),
+    ).toEqual(initialHistory);
     await workspace.annual.load();
     expect(workspace.annual.getSnapshot()).toMatchObject({
       response: initial,
@@ -205,9 +222,9 @@ describe("invented reported liquidity history", () => {
       ],
       stopped: { asOfDate: "2024-06-29", reason: "no_report_date" },
     });
-    expect(resolvePersonalSecAnnualLiquidityHistory(captured.evidence)).toEqual(
-      initialHistory,
-    );
+    expect(
+      resolvePersonalSecAnnualCanonicalLiquidityHistory(captured.evidence),
+    ).toEqual(initialHistory);
     expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
     workspace.closeResearch();
     expect(workspace.annual.getSnapshot().response).toBe(null);

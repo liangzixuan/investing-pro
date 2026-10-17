@@ -1,102 +1,35 @@
 import {
+  getPersonalSecAnnualFilingReason as filingReason,
+  getPersonalSecAnnualSourceClockReason,
+  getPersonalSecAnnualSourceUtilityAge,
+  personalSecAnnualInstant as instant,
+  personalSecAnnualDay as day,
+} from "./personal-sec-annual-source-context";
+import { resolvePersonalSecAnnualIncomeCore } from "./personal-sec-annual-income-core";
+export {
+  getPersonalSecAnnualFilingReason,
+  getPersonalSecAnnualRowReason,
+  getPersonalSecAnnualSourceClockReason,
+  getPersonalSecAnnualSourceUtilityAge,
+} from "./personal-sec-annual-source-context";
+export { calculatePersonalSecAnnualNetMargin } from "./personal-sec-annual-income-core";
+import {
   PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
   PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS,
-  type PersonalSecAnnualDiagnosticReason,
   type PersonalSecAnnualFilingDto,
   type PersonalSecAnnualGenerationDto,
-  type PersonalSecAnnualPairDto,
-  type PersonalSecAnnualPairReason,
   type PersonalSecAnnualRefusalReason,
   type PersonalSecAnnualResolutionDto,
   type PersonalSecAnnualResolutionInput,
   type PersonalSecAnnualSourceDto,
   type PersonalSecAnnualTargetDto,
   type PersonalSecAnnualTargetReason,
-  type PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
-import Decimal from "decimal.js";
-import { calculatePersonalMarginPercent } from "./personal-margin";
-
-type Observation = PersonalSecQuarterlyObservationDto;
 const DAY = 86_400_000;
-const D = Decimal.clone({
-  defaults: true,
-  precision: 256,
-  rounding: Decimal.ROUND_HALF_UP,
-  toExpNeg: -256,
-  toExpPos: 256,
-});
-const rowReasonOrder: readonly PersonalSecAnnualPairReason[] = [
-  "unsupported_form",
-  "missing_or_non_FY_focus",
-  "invalid_annual_period",
-  "filing_unmatched_or_conflicted",
-  "report_end_mismatch",
-  "future_or_inconsistent_dates",
-  "cutoff_time_unresolved",
-];
-function freeze<T>(value: T): T {
-  if (value !== null && typeof value === "object") {
-    for (const nested of Object.values(value)) freeze(nested);
-    Object.freeze(value);
-  }
-  return value;
-}
 function requireValid(condition: unknown): asserts condition {
   if (!condition) throw new TypeError("Invalid annual SEC evidence input.");
 }
-function instant(value: string): number | null {
-  if (
-    typeof value !== "string" ||
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u.test(value)
-  )
-    return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) &&
-    new Date(parsed).toISOString().replace(".000Z", "Z") ===
-      value.replace(".000Z", "Z")
-    ? parsed
-    : null;
-}
-function day(value: string): number | null {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/u.test(value)
-    ? instant(`${value}T00:00:00Z`)
-    : null;
-}
-function filingReason(
-  filing: Omit<PersonalSecAnnualFilingDto, "accessionNumber">,
-  cutoffAt: string,
-  fetchedAt: string,
-): PersonalSecAnnualTargetReason | null {
-  if (filing.reportDate === null) return "report_date_missing";
-  if (filing.filedDate === null) return "filed_date_missing";
-  const cutoff = instant(cutoffAt),
-    capture = instant(fetchedAt);
-  if (cutoff === null || capture === null) return "invalid_clock";
-  if (
-    day(filing.reportDate) === null ||
-    day(filing.filedDate) === null ||
-    filing.reportDate > filing.filedDate ||
-    filing.reportDate > cutoffAt.slice(0, 10) ||
-    filing.filedDate > cutoffAt.slice(0, 10) ||
-    filing.filedDate > fetchedAt.slice(0, 10)
-  )
-    return "future_or_inconsistent_dates";
-  if (filing.acceptedAt !== null) {
-    const accepted = instant(filing.acceptedAt);
-    if (
-      accepted === null ||
-      accepted < Date.parse(`${filing.reportDate}T00:00:00Z`) ||
-      accepted > cutoff ||
-      accepted > capture
-    )
-      return "future_or_inconsistent_dates";
-  } else if (filing.filedDate === cutoffAt.slice(0, 10))
-    return "cutoff_time_unresolved";
-  return null;
-}
-
 /** Select metadata before looking at financial values. No older passing fallback. */
 export function selectPersonalSecAnnualTarget(
   filings: readonly PersonalSecAnnualFilingDto[] | null,
@@ -225,58 +158,17 @@ export function serializePersonalSecAnnualGeneration(input: {
 export function getPersonalSecAnnualSourceReason(
   generation: PersonalSecAnnualGenerationDto,
 ): "invalid_clock" | "source_unavailable" | null {
-  const cutoff = instant(generation.cutoffAt),
-    completed = instant(generation.completedAt);
-  if (
-    generation.definitionVersion !== PERSONAL_SEC_ANNUAL_DEFINITION_VERSION ||
-    cutoff === null ||
-    completed === null ||
-    completed < cutoff
-  )
+  if (generation.definitionVersion !== PERSONAL_SEC_ANNUAL_DEFINITION_VERSION)
     return "invalid_clock";
-  const sources = [
-    generation.sources.companyFacts,
-    generation.sources.submissions,
-  ];
-  if (sources.some((s) => s.status !== "available"))
-    return "source_unavailable";
-  const captures = sources.map((s) =>
-    s.fetchedAt === null ? null : instant(s.fetchedAt),
-  );
-  if (
-    captures.some((time) => time === null || time < cutoff || time > completed)
-  )
-    return "invalid_clock";
-  return null;
+  return getPersonalSecAnnualSourceClockReason(generation);
 }
 
 export function getPersonalSecAnnualUtilityAge(
   generation: PersonalSecAnnualGenerationDto,
   target: PersonalSecAnnualTargetDto,
 ): PersonalSecAnnualResolutionDto["utilityAge"] {
-  if (
-    getPersonalSecAnnualSourceReason(generation) !== null ||
-    target.status !== "target" ||
-    day(target.reportDate) === null
-  )
-    return null;
-  const endAgeDays =
-    (day(generation.cutoffAt.slice(0, 10))! - day(target.reportDate)!) / DAY;
-  const sourceAgeDays: [number, number] = [
-    generation.sources.companyFacts,
-    generation.sources.submissions,
-  ].map(
-    (source) =>
-      (instant(generation.completedAt)! - instant(source.fetchedAt!)!) / DAY,
-  ) as [number, number];
-  return {
-    endAgeDays,
-    sourceAgeDays,
-    withinWindow:
-      endAgeDays >= 0 &&
-      endAgeDays <= 485 &&
-      sourceAgeDays.every((age) => age >= 0 && age <= 7),
-  };
+  if (getPersonalSecAnnualSourceReason(generation) !== null) return null;
+  return getPersonalSecAnnualSourceUtilityAge(generation, target);
 }
 
 /** Deterministic revenue/income refusal precedence shared by provider and decoder. */
@@ -312,184 +204,6 @@ export function getPersonalSecAnnualRefusalReason(
   return null;
 }
 
-export { filingReason as getPersonalSecAnnualFilingReason };
-/** Annual row admission; the caller names the filing's expected report end. */
-export function getPersonalSecAnnualRowReason(
-  row: Pick<
-    Observation,
-    | "form"
-    | "filingFocusPeriod"
-    | "startDate"
-    | "endDate"
-    | "durationDays"
-    | "filing"
-    | "filedDate"
-  >,
-  cutoffAt: string,
-  fetchedAt: string,
-  expectedReportDate: string,
-): PersonalSecAnnualPairReason | null {
-  if (row.form !== "10-K" && row.form !== "20-F") return "unsupported_form";
-  if (row.filingFocusPeriod !== "FY") return "missing_or_non_FY_focus";
-  const start = row.startDate === null ? null : day(row.startDate),
-    end = day(row.endDate);
-  if (
-    start === null ||
-    end === null ||
-    row.durationDays === null ||
-    row.durationDays < 335 ||
-    row.durationDays > 395 ||
-    (end - start) / DAY + 1 !== row.durationDays
-  )
-    return "invalid_annual_period";
-  if (
-    row.filing.status !== "matched" ||
-    row.filing.form !== row.form ||
-    row.filing.filedDate !== row.filedDate
-  )
-    return "filing_unmatched_or_conflicted";
-  if (row.filing.reportDate !== expectedReportDate)
-    return "report_end_mismatch";
-  if (row.startDate! > row.endDate || row.endDate > row.filedDate)
-    return "future_or_inconsistent_dates";
-  const reason = filingReason(
-    {
-      form: row.filing.form,
-      filedDate: row.filing.filedDate,
-      reportDate: row.filing.reportDate,
-      acceptedAt: row.filing.acceptedAt,
-    },
-    cutoffAt,
-    fetchedAt,
-  );
-  // The resolver rejects bad operation clocks before evaluating any row.
-  requireValid(reason !== "invalid_clock");
-  return reason as PersonalSecAnnualPairReason | null;
-}
-function firstReason(
-  rows: readonly Observation[],
-  cutoffAt: string,
-  fetchedAt: string,
-): PersonalSecAnnualPairReason | null {
-  const reasons = rows
-    .map((r) =>
-      getPersonalSecAnnualRowReason(r, cutoffAt, fetchedAt, r.endDate),
-    )
-    .filter((r): r is PersonalSecAnnualPairReason => r !== null);
-  return rowReasonOrder.find((r) => reasons.includes(r)) ?? reasons[0] ?? null;
-}
-/** Exact decimal operands admitted by the annual resolver; revenue must be positive. */
-export function calculatePersonalSecAnnualNetMargin(
-  revenue: string,
-  income: string,
-): string {
-  return calculatePersonalMarginPercent(income, revenue);
-}
-function pairs(
-  rows: readonly Observation[],
-  cutoffAt: string,
-  fetchedAt: string,
-): PersonalSecAnnualPairDto[] {
-  const groups = new Map<string, Observation[]>(),
-    incomeByPeriod = new Map<string, Observation[]>(),
-    annualStarts = new Map<string, Set<string | null>>();
-  for (const row of rows) {
-    if (row.metric === "net_income") {
-      const key = JSON.stringify([
-        row.accessionNumber,
-        row.startDate,
-        row.endDate,
-      ]);
-      const found = incomeByPeriod.get(key) ?? [];
-      found.push(row);
-      incomeByPeriod.set(key, found);
-    } else if (
-      row.durationDays !== null &&
-      row.durationDays >= 335 &&
-      row.durationDays <= 395
-    ) {
-      const key = JSON.stringify([
-        row.accessionNumber,
-        row.concept,
-        row.endDate,
-      ]);
-      const found = annualStarts.get(key) ?? new Set<string | null>();
-      found.add(row.startDate);
-      annualStarts.set(key, found);
-    }
-  }
-  for (const row of rows.filter((r) => r.metric === "revenue")) {
-    const key = JSON.stringify([
-      row.accessionNumber,
-      row.concept,
-      row.startDate,
-      row.endDate,
-    ]);
-    const group = groups.get(key) ?? [];
-    group.push(row);
-    groups.set(key, group);
-  }
-  return [...groups.values()].map((revenueRows): PersonalSecAnnualPairDto => {
-    const row = revenueRows[0]!;
-    requireValid(
-      PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.some((c) => c === row.concept),
-    );
-    const income =
-      incomeByPeriod.get(
-        JSON.stringify([row.accessionNumber, row.startDate, row.endDate]),
-      ) ?? [];
-    const diagnostics: PersonalSecAnnualDiagnosticReason[] = [
-      ...new Set(
-        [...revenueRows, ...income]
-          .map((r) =>
-            getPersonalSecAnnualRowReason(r, cutoffAt, fetchedAt, r.endDate),
-          )
-          .filter((r): r is PersonalSecAnnualPairReason => r !== null),
-      ),
-    ];
-    let reason = firstReason(revenueRows, cutoffAt, fetchedAt);
-    const starts =
-      annualStarts.get(
-        JSON.stringify([row.accessionNumber, row.concept, row.endDate]),
-      ) ?? new Set();
-    if (
-      reason === null &&
-      (starts.size > 1 || new Set(revenueRows.map((r) => r.value)).size > 1)
-    )
-      reason = "ambiguous_revenue_period_or_value";
-    if (reason === null && income.length === 0) {
-      reason = "income_missing_same_filing_period";
-      diagnostics.push(
-        incomeByPeriod.size > 0
-          ? "income_only_other_period_or_accession"
-          : "no_income_observations",
-      );
-    }
-    if (reason === null && firstReason(income, cutoffAt, fetchedAt) !== null)
-      reason = "income_metadata_or_period_invalid";
-    if (reason === null && new Set(income.map((r) => r.value)).size > 1)
-      reason = "ambiguous_income_value";
-    if (reason === null && !new D(row.value).gt(0))
-      reason = "nonpositive_revenue";
-    return {
-      accessionNumber: row.accessionNumber,
-      concept: row.concept as PersonalSecAnnualPairDto["concept"],
-      startDate: row.startDate,
-      endDate: row.endDate,
-      status: reason ?? "eligible",
-      subordinateReasons: diagnostics,
-      revenue: reason === null ? row.value : null,
-      netIncome: reason === null ? income[0]!.value : null,
-      netMarginPercent:
-        reason === null
-          ? calculatePersonalSecAnnualNetMargin(row.value, income[0]!.value)
-          : null,
-      revenueObservationIds: revenueRows.map((r) => r.id),
-      incomeObservationIds: income.map((r) => r.id),
-    };
-  });
-}
-
 /** Pure recomputation over the already validated bounded response.
  * Structural wire validation, raw-source parsing and SHA verification are separate.
  */
@@ -503,17 +217,7 @@ export function resolvePersonalSecAnnualEvidence(
         input.completeness.reason === refusal &&
         input.observations.length === 0,
     );
-    return freeze({
-      pairs: [],
-      bases: PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((concept) => ({
-        concept,
-        status: "withheld" as const,
-        pairs: [],
-      })),
-      selectedReportPairEligible: false,
-      currentTargetEligible: false,
-      utilityAge: null,
-    });
+    return resolvePersonalSecAnnualIncomeCore(input, true);
   }
   requireValid(
     input.completeness.status === "complete" &&
@@ -549,36 +253,15 @@ export function resolvePersonalSecAnnualEvidence(
       generation.sources.submissions.fetchedAt!,
     ) === null,
   );
-  const capture = [
-    generation.sources.companyFacts.fetchedAt!,
-    generation.sources.submissions.fetchedAt!,
-  ]
-    .sort()
-    .at(-1)!;
-  const resultPairs = pairs(observations, generation.cutoffAt, capture);
-  const reportPairs = resultPairs.filter(
-    (p) => p.endDate === target.reportDate,
+  requireValid(
+    observations.every(
+      (row) =>
+        (row.metric === "net_income" && row.concept === "NetIncomeLoss") ||
+        (row.metric === "revenue" &&
+          PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.some(
+            (concept) => concept === row.concept,
+          )),
+    ),
   );
-  const bases = PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((concept) => {
-    const basisPairs = reportPairs.filter((p) => p.concept === concept);
-    return {
-      concept,
-      pairs: basisPairs,
-      status: basisPairs.some((p) => p.status === "eligible")
-        ? ("eligible" as const)
-        : basisPairs.length
-          ? ("rejected" as const)
-          : ("missing" as const),
-    };
-  });
-  const utilityAge = getPersonalSecAnnualUtilityAge(generation, target)!;
-  const selectedReportPairEligible = bases.some((b) => b.status === "eligible");
-  return freeze({
-    pairs: resultPairs,
-    bases,
-    selectedReportPairEligible,
-    currentTargetEligible:
-      selectedReportPairEligible && utilityAge.withinWindow,
-    utilityAge,
-  });
+  return resolvePersonalSecAnnualIncomeCore(input);
 }

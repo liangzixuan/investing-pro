@@ -1,4 +1,8 @@
 import {
+  createAnnualStatementsNativeFixture,
+  type NativeAnnualStatementsMetadata,
+} from "./annual-statements-fixture";
+import {
   createPortfolioNativeFixture,
   type PortfolioNativeControls,
 } from "./portfolio-fixture";
@@ -16,7 +20,7 @@ import type {
   ManagedCatalogSnapshotDto,
   ManagedEodHistoryResponseDto,
   PersonalSecurityMasterSearchResultDto,
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
   PersonalEconomicCalendarDto,
   ManagedSecFilingsResponseDto,
   PersonalMonetaryAnnouncementsDto,
@@ -43,22 +47,19 @@ import {
   annualHistoryRows,
   response,
   row,
-} from "../../src/features/research/sec-annual-evidence-fixture";
+} from "../../src/features/research/test-canonical-annual-ui-fixture";
 import {
   annualCashHistoryRows,
-  cashGeneration,
   cashRow,
 } from "../../src/features/research/sec-annual-cash-fixture";
-import {
-  liquidity,
-  liquidityRow,
-} from "../../src/features/research/sec-annual-liquidity-fixture";
+import { liquidityRow } from "../../src/features/research/sec-annual-liquidity-fixture";
 import { TrialApiError } from "../../src/clerk-trial/api";
 import { inventedFilingsPacket } from "./filings-fixture";
 import {
   annualComparisonResponse,
   annualComparisonBalanceRows,
-} from "../../src/clerk-trial/annual-comparison-fixture";
+  parseAnnualComparisonFixture,
+} from "../../src/clerk-trial/test-canonical-annual-comparison-fixture";
 import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
@@ -305,21 +306,15 @@ async function createSharedFixture(
   );
   const annual =
     scenario === "annual-note"
-      ? {
-          ...annualBase,
-          evidence: {
-            ...annualBase.evidence,
-            cashGeneration: await cashGeneration(
-              annualBase.evidence,
-              scenarioName === "annual-cash-history"
-                ? annualCashHistoryRows()
-                : [
-                    cashRow("operating_cash_flow", "120.125"),
-                    cashRow("ppe_purchases", "20.025"),
-                  ],
-            ),
-          },
-        }
+      ? await parseAnnualComparisonFixture(
+          annualBase,
+          scenarioName === "annual-cash-history"
+            ? annualCashHistoryRows()
+            : [
+                cashRow("operating_cash_flow", "120.125"),
+                cashRow("ppe_purchases", "20.025"),
+              ],
+        )
       : annualBase;
   const historyScenario =
     scenarioName === "annual-operating-history" ||
@@ -352,26 +347,18 @@ async function createSharedFixture(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
     "2026-09-21T00:00:00.000Z",
   );
-  const refreshAnnual = {
-    ...annual,
-    evidence: {
-      ...annual.evidence,
-      liquidity: await liquidity(annual.evidence, [
-        liquidityRow("current_assets", "120.125"),
-        liquidityRow("current_liabilities", "80.025"),
-      ]),
-    },
-  };
-  const refreshRecovered = {
-    ...recovered,
-    evidence: {
-      ...recovered.evidence,
-      liquidity: await liquidity(recovered.evidence, [
-        liquidityRow("current_assets", "120.125"),
-        liquidityRow("current_liabilities", "0"),
-      ]),
-    },
-  };
+  const refreshAnnual = await parseAnnualComparisonFixture(annual, undefined, [
+    liquidityRow("current_assets", "120.125"),
+    liquidityRow("current_liabilities", "80.025"),
+  ]);
+  const refreshRecovered = await parseAnnualComparisonFixture(
+    recovered,
+    undefined,
+    [
+      liquidityRow("current_assets", "120.125"),
+      liquidityRow("current_liabilities", "0"),
+    ],
+  );
   const comparisonReports =
     scenario === "annual-comparison"
       ? scenarioName === "annual-operating-comparison"
@@ -636,10 +623,10 @@ async function createSharedFixture(
     state = { ...state, [key]: state[key] + 1 };
     for (const listener of listeners) listener();
   };
-  let pending: ((value: PersonalSecAnnualEvidenceResponseDto) => void) | null =
+  let pending: ((value: PersonalSecAnnualCanonicalResponseDto) => void) | null =
     null;
   let pendingAnnualComparison:
-    ((value: PersonalSecAnnualEvidenceResponseDto) => void) | null = null;
+    ((value: PersonalSecAnnualCanonicalResponseDto) => void) | null = null;
   let rejectRefresh: ((error: unknown) => void) | null = null;
   let pendingFilings: ((value: ManagedSecFilingsResponseDto) => void) | null =
     null;
@@ -1518,7 +1505,7 @@ async function createSharedFixture(
           !annualBalance ||
           signal.aborted ||
           pending ||
-          request.schemaVersion !== "5.0.0" ||
+          request.schemaVersion !== "6.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== "listing-zero" ||
           request.symbol !== "ZERO" ||
@@ -1552,7 +1539,7 @@ async function createSharedFixture(
           !annualHistoryReplacement ||
           signal.aborted ||
           pending ||
-          request.schemaVersion !== "5.0.0" ||
+          request.schemaVersion !== "6.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== "listing-zero" ||
           request.symbol !== "ZERO" ||
@@ -1583,7 +1570,7 @@ async function createSharedFixture(
           !operatingAnnual ||
           signal.aborted ||
           pending ||
-          request.schemaVersion !== "5.0.0" ||
+          request.schemaVersion !== "6.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== "listing-zero" ||
           request.symbol !== "ZERO" ||
@@ -1620,7 +1607,7 @@ async function createSharedFixture(
           !comparisonReports ||
           signal.aborted ||
           pendingAnnualComparison ||
-          request.schemaVersion !== "5.0.0" ||
+          request.schemaVersion !== "6.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== (second ? "listing-one" : "listing-zero") ||
           request.symbol !== (second ? "ONE" : "ZERO") ||
@@ -1655,7 +1642,7 @@ async function createSharedFixture(
       if (
         signal.aborted ||
         pending ||
-        request.schemaVersion !== "5.0.0" ||
+        request.schemaVersion !== "6.0.0" ||
         request.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO"
@@ -1686,7 +1673,7 @@ async function createSharedFixture(
         if (state.annual === 1)
           return Promise.resolve(structuredClone(refreshAnnual));
         if (state.annual === 2)
-          return new Promise<PersonalSecAnnualEvidenceResponseDto>(
+          return new Promise<PersonalSecAnnualCanonicalResponseDto>(
             (_resolve, reject) => {
               rejectRefresh = reject;
             },
@@ -1798,8 +1785,14 @@ async function createSharedFixture(
       void Promise.resolve().then(() => count("fedLateResolved"));
     },
     generations: {
-      initial: annual.evidence.generation,
-      recovered: recovered.evidence.generation,
+      get initial() {
+        return (state.refreshScenario ? refreshAnnual : annual).evidence
+          .generation;
+      },
+      get recovered() {
+        return (state.refreshScenario ? refreshRecovered : recovered).evidence
+          .generation;
+      },
     },
     signOutSavedWatchlist: () => {
       if (!signOutScenario)
@@ -1994,6 +1987,7 @@ export type NativeFinancialReviewMetadata = {
 export type ManagedNativeFixture = SharedNativeFixture & {
   readonly financialReview: NativeFinancialReviewMetadata | null;
   readonly portfolio?: PortfolioNativeControls;
+  readonly annualStatements?: NativeAnnualStatementsMetadata;
 };
 
 /** Dispatch only the new fixed journey; all existing scenario bodies remain unchanged. */
@@ -2001,8 +1995,13 @@ export async function createFixture(
   scenario:
     | Parameters<typeof createSharedFixture>[0]
     | "annual-financial-review"
+    | "annual-statements"
     | "portfolio-ledger" = "default",
 ): Promise<ManagedNativeFixture> {
+  if (scenario === "annual-statements")
+    return createAnnualStatementsNativeFixture(
+      await createSharedFixture("annual-note"),
+    );
   if (scenario === "portfolio-ledger")
     return createPortfolioNativeFixture(
       await createSharedFixture("research-followups"),

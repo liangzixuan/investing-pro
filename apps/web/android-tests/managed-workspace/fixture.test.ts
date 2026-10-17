@@ -19,11 +19,39 @@ import {
   fedNoteDraft,
 } from "./fixture";
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
-import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
+import { parseSecAnnualCanonicalResponse } from "../../src/lib/sec-annual-canonical-response";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import type { AnnualComparisonNoteCapture } from "../../src/clerk-trial/managed-watchlist-annual-comparison-note";
-import { resolvePersonalSecAnnualCashHistory } from "@research-cockpit/personal-financial-analytics";
+import { derivePersonalSecAnnualFinancialInputs } from "@research-cockpit/personal-financial-analytics";
+import { viewOf } from "../../src/features/research/test-canonical-annual-ui-fixture";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
+function cashOf(packet: PersonalSecAnnualCanonicalResponseDto) {
+  return {
+    ...derivePersonalSecAnnualFinancialInputs(packet.evidence).cashGeneration,
+    resolution: viewOf(packet).cashGeneration.resolution,
+  };
+}
+function liquidityOf(packet: PersonalSecAnnualCanonicalResponseDto) {
+  return {
+    ...derivePersonalSecAnnualFinancialInputs(packet.evidence).liquidity,
+    resolution: viewOf(packet).liquidity.resolution,
+  };
+}
 
+async function admitFixture(packet: PersonalSecAnnualCanonicalResponseDto) {
+  const result = await parseSecAnnualCanonicalResponse(
+    packet,
+    {
+      schemaVersion: "6.0.0",
+      catalogSnapshotSha256: packet.catalogSnapshotSha256,
+      listingId: packet.security.listingId,
+      symbol: packet.security.symbol,
+    },
+    new AbortController().signal,
+  );
+  if (!result) throw new Error("Canonical native fixture was refused");
+  return result;
+}
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 
 describe("bounded invented watchlist comparison", () => {
@@ -836,7 +864,7 @@ describe("Android managed fixture startup", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "5.0.0",
+          schemaVersion: "6.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-beta-a",
           symbol: "BETA",
@@ -958,7 +986,7 @@ describe("Android managed fixture startup", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "5.0.0",
+          schemaVersion: "6.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-zero",
           symbol: "ZERO",
@@ -1042,33 +1070,41 @@ describe("Android managed fixture startup", () => {
     const baseline = await createFixture("annual-note");
     const signal = new AbortController().signal;
     const request = {
-      schemaVersion: "5.0.0" as const,
+      schemaVersion: "6.0.0" as const,
       catalogSnapshotSha256: fixtureDigest,
       listingId: "listing-zero",
       symbol: "ZERO",
     };
     await fixture.api.status(signal);
     const packet = await fixture.api.annualReport(request, signal);
-    const decoded = await parseSecAnnualEvidenceResponse(
+    const decoded = await parseSecAnnualCanonicalResponse(
       packet,
       request,
       signal,
     );
-    const original = await baseline.api.annualReport(request, signal);
+    const original = await admitFixture(
+      await baseline.api.annualReport(request, signal),
+    );
     expect(decoded).toEqual(packet);
     if (!decoded) throw new Error("Expected admitted cash-history packet");
-    expect(decoded.evidence.generation).toEqual(original.evidence.generation);
+    expect({ ...decoded.evidence.generation, sha256: null }).toEqual({
+      ...original.evidence.generation,
+      sha256: null,
+    });
+    expect(decoded.evidence.generation.sha256).not.toBe(
+      original.evidence.generation.sha256,
+    );
     expect(decoded.evidence.generation.cutoffAt).toBe(
       "2026-09-20T00:00:00.000Z",
     );
     expect(decoded.evidence.generation.completedAt).toBe(
       "2026-09-20T00:00:02.000Z",
     );
-    expect(decoded.evidence.cashGeneration.resolution).toEqual(
-      original.evidence.cashGeneration.resolution,
+    expect(cashOf(decoded).resolution).toEqual(cashOf(original).resolution);
+    expect(viewOf(decoded).income.resolution).toEqual(
+      viewOf(original).income.resolution,
     );
-    expect(decoded.evidence.resolution).toEqual(original.evidence.resolution);
-    const history = resolvePersonalSecAnnualCashHistory(decoded.evidence);
+    const history = viewOf(decoded).cashGeneration.history;
     expect(history.status).toBe("available");
     if (history.status !== "available")
       throw new Error("Expected cash history");
@@ -1106,7 +1142,7 @@ describe("Android managed fixture startup", () => {
         operatingCashFlowLessPpePurchases: "-250",
       },
     ]);
-    const cash = decoded.evidence.cashGeneration;
+    const cash = cashOf(decoded);
     for (const period of history.periods) {
       expect(period.observationIds).toEqual([
         cash.operatingCashFlow.observations.find(
@@ -1144,17 +1180,19 @@ describe("Android managed fixture startup", () => {
     const original = await fixture.api.load(signal);
     expect(original.payload.snapshotSha256).toBe(fixtureDigest);
     const request = {
-      schemaVersion: "5.0.0" as const,
+      schemaVersion: "6.0.0" as const,
       catalogSnapshotSha256: fixtureDigest,
       listingId: "listing-zero",
       symbol: "ZERO",
     };
-    const report = await fixture.api.annualReport(request, signal);
+    const report = await admitFixture(
+      await fixture.api.annualReport(request, signal),
+    );
     expect(report.evidence.generation).toEqual(fixture.generations.initial);
     expect(
-      await parseSecAnnualEvidenceResponse(report, request, signal),
+      await parseSecAnnualCanonicalResponse(report, request, signal),
     ).toEqual(report);
-    const cash = report.evidence.cashGeneration;
+    const cash = cashOf(report);
     const operating = cash.operatingCashFlow.observations[0]!;
     const purchases = cash.ppePurchases.observations[0]!;
     const period = {
@@ -1220,7 +1258,7 @@ describe("Android managed fixture startup", () => {
         },
       },
     ]);
-    const pair = report.evidence.resolution.bases.find(
+    const pair = viewOf(report).income.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
     expect(
@@ -1238,7 +1276,16 @@ describe("Android managed fixture startup", () => {
     expect(annualNoteDraft).toContain(
       "Earlier same-filing annual comparison: prior 2023-01-01 to 2023-12-31; current 2024-01-01 to 2024-12-31; Revenues revenue change USD 160 (25%); NetIncomeLoss change USD -112 (-350%).",
     );
-    expect(report.evidence.observations).toHaveLength(6);
+    expect(
+      report.evidence.facts.observations.filter((row) =>
+        [
+          "Revenues",
+          "SalesRevenueNet",
+          "RevenueFromContractWithCustomerExcludingAssessedTax",
+          "NetIncomeLoss",
+        ].includes(row.concept),
+      ),
+    ).toHaveLength(6);
     const command = {
       expectedVersion: 1,
       idempotencyKey: "12345678-1234-4123-8123-123456789012",
@@ -1305,7 +1352,7 @@ describe("Android managed fixture startup", () => {
       if (invalid !== "unloaded")
         await fixture.api.annualReport(
           {
-            schemaVersion: "5.0.0",
+            schemaVersion: "6.0.0",
             catalogSnapshotSha256: fixtureDigest,
             listingId: "listing-zero",
             symbol: "ZERO",
@@ -1529,7 +1576,7 @@ describe("Android managed fixture startup", () => {
   it("serves one fresh Annual response after the cancelled visit read settles", async () => {
     const fixture = await createFixture();
     const request = {
-      schemaVersion: "5.0.0" as const,
+      schemaVersion: "6.0.0" as const,
       catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -1541,19 +1588,18 @@ describe("Android managed fixture startup", () => {
     expect((await held).evidence.generation).toEqual(
       fixture.generations.initial,
     );
-    const fresh = await fixture.api.annualReport(
-      request,
-      new AbortController().signal,
+    const fresh = await admitFixture(
+      await fixture.api.annualReport(request, new AbortController().signal),
     );
     expect(fresh.evidence.generation).toEqual(fixture.generations.recovered);
     expect(
-      await parseSecAnnualEvidenceResponse(
+      await parseSecAnnualCanonicalResponse(
         fresh,
         request,
         new AbortController().signal,
       ),
     ).toEqual(fresh);
-    expect(fresh.evidence.cashGeneration.resolution).toMatchObject({
+    expect(cashOf(fresh).resolution).toMatchObject({
       operatingCashFlow: {
         status: "unavailable",
         reason: "concept_missing",
@@ -1918,7 +1964,7 @@ describe("bounded invented Annual liquidity refresh", () => {
     await workspace.annual.load();
     const initial = workspace.annual.getSnapshot().response!;
     expect(initial).not.toBeNull();
-    const balances = initial.evidence.liquidity;
+    const balances = liquidityOf(initial);
     const assets = balances.currentAssets.observations[0]!;
     const liabilities = balances.currentLiabilities.observations[0]!;
     const instant = {
@@ -1988,7 +2034,7 @@ describe("bounded invented Annual liquidity refresh", () => {
     expect(recovered.evidence.generation).toEqual(
       fixture.generations.recovered,
     );
-    expect(recovered.evidence.liquidity.resolution).toMatchObject({
+    expect(viewOf(recovered).liquidity.resolution).toMatchObject({
       currentAssets: { ...instant, unit: "USD", value: "120.125" },
       currentLiabilities: { ...instant, unit: "USD", value: "0" },
       workingCapital: { ...instant, unit: "USD", value: "120.125" },
@@ -2023,7 +2069,7 @@ describe("bounded invented Annual liquidity refresh", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "5.0.0",
+          schemaVersion: "6.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-zero",
           symbol: "ZERO",
@@ -2039,7 +2085,7 @@ describe("bounded invented Annual liquidity refresh", () => {
     async (scenario) => {
       const fixture = await createFixture(scenario);
       const request = {
-        schemaVersion: "5.0.0" as const,
+        schemaVersion: "6.0.0" as const,
         catalogSnapshotSha256: fixtureDigest,
         listingId: "listing-zero",
         symbol: "ZERO",
@@ -2172,7 +2218,7 @@ describe("bounded invented company filings journey", () => {
     const { fixture, workspace } = await readyForNote();
     const signal = new AbortController().signal;
     const annualRequest = {
-      schemaVersion: "5.0.0" as const,
+      schemaVersion: "6.0.0" as const,
       catalogSnapshotSha256: fixtureDigest,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -2416,7 +2462,7 @@ describe("bounded invented company filings journey", () => {
 });
 describe("bounded invented Annual comparison", () => {
   const request = (second = false) => ({
-    schemaVersion: "5.0.0" as const,
+    schemaVersion: "6.0.0" as const,
     catalogSnapshotSha256: fixtureDigest,
     listingId: second ? "listing-one" : "listing-zero",
     symbol: second ? "ONE" : "ZERO",
@@ -2623,7 +2669,7 @@ describe("bounded invented Annual comparison", () => {
     await model.load("right", right);
     const initialLeft = model.getSnapshot().left.report.response!;
     const initialRight = model.getSnapshot().right.report.response!;
-    expect(initialLeft.evidence.balanceSheet.resolution).toMatchObject({
+    expect(viewOf(initialLeft).balanceSheet.resolution).toMatchObject({
       totalAssets: {
         status: "available",
         value: "1000.125",
@@ -2632,7 +2678,7 @@ describe("bounded invented Annual comparison", () => {
       totalLiabilities: { status: "available", value: "0" },
       shareholdersEquity: { status: "available", value: "-200.125" },
     });
-    expect(initialRight.evidence.balanceSheet.resolution).toMatchObject({
+    expect(viewOf(initialRight).balanceSheet.resolution).toMatchObject({
       totalAssets: {
         status: "available",
         value: `1000.${"0".repeat(58)}1`,
@@ -2642,10 +2688,10 @@ describe("bounded invented Annual comparison", () => {
       shareholdersEquity: { status: "unavailable", reason: "concept_missing" },
     });
     for (const wire of [initialLeft, initialRight]) {
-      const parsed = await parseSecAnnualEvidenceResponse(
+      const parsed = await parseSecAnnualCanonicalResponse(
         wire,
         {
-          schemaVersion: "5.0.0",
+          schemaVersion: "6.0.0",
           catalogSnapshotSha256: wire.catalogSnapshotSha256,
           listingId: wire.security.listingId,
           symbol: wire.security.symbol,
@@ -2663,7 +2709,7 @@ describe("bounded invented Annual comparison", () => {
       accessionNumber: "0000000002-25-000001",
     });
     expect(
-      initialLeft.evidence.resolution.bases.filter(
+      viewOf(initialLeft).income.resolution.bases.filter(
         (b) => b.status === "eligible",
       ),
     ).toHaveLength(2);

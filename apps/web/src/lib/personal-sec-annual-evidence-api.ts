@@ -1,14 +1,14 @@
 import {
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
-  parseManagedSecAnnualEvidenceRequest,
-  type PersonalSecAnnualEvidenceRequestDto,
-  type PersonalSecAnnualEvidenceResponseDto,
+  parseManagedSecAnnualCanonicalRequest,
+  type PersonalSecAnnualCanonicalRequestDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import {
   PersonalWorkspaceApiError,
   requestPersonalWorkspace,
 } from "./personal-workspace-api";
-import { parseSecAnnualEvidenceResponse } from "./sec-annual-evidence-response";
+import { parseSecAnnualCanonicalResponse } from "./sec-annual-canonical-response";
 
 export const PERSONAL_SEC_ANNUAL_EVIDENCE_PATH =
   "/v1/personal-filing/workspace/sec-annual-evidence";
@@ -16,10 +16,10 @@ const maxBrowserResponseBytes =
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes;
 
 export async function fetchPersonalSecAnnualEvidence(
-  input: PersonalSecAnnualEvidenceRequestDto,
+  input: PersonalSecAnnualCanonicalRequestDto,
   signal: AbortSignal,
-): Promise<PersonalSecAnnualEvidenceResponseDto> {
-  const requested = parseManagedSecAnnualEvidenceRequest(input);
+): Promise<PersonalSecAnnualCanonicalResponseDto> {
+  const requested = parseManagedSecAnnualCanonicalRequest(input);
   if (requested === null)
     throw new PersonalWorkspaceApiError("invalid_request");
   signal.throwIfAborted();
@@ -37,7 +37,11 @@ export async function fetchPersonalSecAnnualEvidence(
   );
   if (!response.ok) throw await responseError(response, signal);
   const value = await readJson(response, signal);
-  const parsed = await parseSecAnnualEvidenceResponse(value, requested, signal);
+  const parsed = await parseSecAnnualCanonicalResponse(
+    value,
+    requested,
+    signal,
+  );
   if (parsed === null) throw new PersonalWorkspaceApiError("invalid_response");
   return parsed;
 }

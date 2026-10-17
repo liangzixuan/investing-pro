@@ -5,8 +5,9 @@ import { SecAnnualBalanceSheet } from "./SecAnnualBalanceSheet";
 import {
   balanceSheetResponse,
   balanceSheetRow,
-} from "./sec-annual-balance-sheet-fixture";
-import { balanceSheetPacket } from "../../../android-tests/managed-workspace/balance-sheet-fixture";
+  viewOf,
+} from "./test-canonical-annual-balance-ui-fixture";
+import { balanceSheetPacket } from "./test-canonical-annual-balance-ui-fixture";
 
 const text = (html: string) => html.replace(/<[^>]*>/gu, "");
 
@@ -15,7 +16,10 @@ describe("reported balance-sheet history", () => {
     const response = await balanceSheetPacket(),
       before = JSON.stringify(response);
     const html = renderToStaticMarkup(
-      <SecAnnualBalanceSheetHistory response={response} />,
+      <SecAnnualBalanceSheetHistory
+        response={response}
+        view={viewOf(response)}
+      />,
     );
     expect(html).toContain(
       '<details class="managed-annual-balance-sheet-history"><summary>Reported balance sheet history</summary>',
@@ -67,7 +71,17 @@ describe("reported balance-sheet history", () => {
       "totalLiabilities",
       "shareholdersEquity",
     ] as const)
-      for (const row of response.evidence.balanceSheet[key].observations)
+      for (const row of response.evidence.facts.observations.filter(
+        (row) =>
+          row.concept ===
+          (
+            {
+              totalAssets: "Assets",
+              totalLiabilities: "Liabilities",
+              shareholdersEquity: "StockholdersEquity",
+            } as const
+          )[key],
+      ))
         expect(html).toContain(row.id);
     expect(html).toContain("Total liabilities: None");
     expect(text(html)).toContain("Selected filing report date 2025-12-31");
@@ -89,6 +103,7 @@ describe("reported balance-sheet history", () => {
     const html = renderToStaticMarkup(
       <SecAnnualBalanceSheet
         response={response}
+        view={viewOf(response)}
         headingTarget={{ id: "balance-heading", ref: null }}
       />,
     );
@@ -117,7 +132,10 @@ describe("reported balance-sheet history", () => {
         );
       const response = await balanceSheetResponse(rows);
       const html = renderToStaticMarkup(
-        <SecAnnualBalanceSheetHistory response={response} />,
+        <SecAnnualBalanceSheetHistory
+          response={response}
+          view={viewOf(response)}
+        />,
       );
       expect(text(html)).toContain(
         `Reported balances · ${count} ${count === 1 ? "date" : "dates"} · newest first`,
@@ -141,13 +159,18 @@ describe("reported balance-sheet history", () => {
       balanceSheetRow("shareholders_equity", "-7", { endDate: "2024-12-31" }),
     ]);
     const html = renderToStaticMarkup(
-      <SecAnnualBalanceSheetHistory response={response} />,
+      <SecAnnualBalanceSheetHistory
+        response={response}
+        view={viewOf(response)}
+      />,
     );
     expect(html).toContain("Unavailable.");
     expect(html).toContain(
       'class="managed-balance-sheet-history-amount">-7</span>',
     );
-    for (const row of response.evidence.balanceSheet.totalAssets.observations)
+    for (const row of response.evidence.facts.observations.filter(
+      (row) => row.concept === "Assets",
+    ))
       expect(html).toContain(row.id);
     expect(text(html)).toContain("Each amount is checked independently");
   });
@@ -160,7 +183,10 @@ describe("reported balance-sheet history", () => {
       ]);
       expect(
         renderToStaticMarkup(
-          <SecAnnualBalanceSheetHistory response={response} />,
+          <SecAnnualBalanceSheetHistory
+            response={response}
+            view={viewOf(response)}
+          />,
         ),
       ).toContain(
         `class="managed-balance-sheet-history-amount">${value}</span>`,
@@ -174,7 +200,7 @@ describe("reported balance-sheet history", () => {
       "2028-09-20T00:00:00.000Z",
     );
     const html = renderToStaticMarkup(
-      <SecAnnualBalanceSheet response={response} />,
+      <SecAnnualBalanceSheet response={response} view={viewOf(response)} />,
     );
     expect(html).toContain("Balance sheet history unavailable.");
     expect(html).toContain("outside the current-use limits");

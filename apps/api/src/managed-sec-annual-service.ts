@@ -1,7 +1,7 @@
 import {
-  parseManagedSecAnnualEvidenceRequest,
-  type PersonalSecAnnualEvidenceRequestDto,
-  type PersonalSecAnnualEvidenceResponseDto,
+  parseManagedSecAnnualCanonicalRequest,
+  type PersonalSecAnnualCanonicalRequestDto,
+  type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import {
   lookupPersonalSecurityMasterListing,
@@ -15,6 +15,7 @@ import {
 import { MANAGED_SEC_ISSUERS } from "./managed-sec-issuers";
 import type { ManagedSecConfiguration } from "./managed-sec-config";
 import { createSecPersonalAnnualEvidenceProvider } from "./personal-sec-annual-evidence-provider";
+import { encodePersonalSecAnnualCanonicalResponse } from "./personal-sec-annual-canonical-response";
 import type { PersonalSecRequestScheduler } from "./personal-sec-request-scheduler";
 import type { WatchlistPrincipal } from "./watchlist-repository";
 
@@ -35,10 +36,10 @@ export class ManagedSecAnnualServiceError extends Error {
 }
 export interface ManagedSecAnnualService {
   load(
-    request: PersonalSecAnnualEvidenceRequestDto,
+    request: PersonalSecAnnualCanonicalRequestDto,
     principal: WatchlistPrincipal,
     signal: AbortSignal,
-  ): Promise<PersonalSecAnnualEvidenceResponseDto>;
+  ): Promise<PersonalSecAnnualCanonicalResponseDto>;
   assertActive(signal: AbortSignal): void;
 }
 
@@ -91,7 +92,7 @@ export function createManagedSecAnnualService(options: {
     assertActive: (signal) => active(signal, 10_000),
     async load(input, principal, signal) {
       active(signal, 2_000);
-      const request = parseManagedSecAnnualEvidenceRequest(input);
+      const request = parseManagedSecAnnualCanonicalRequest(input);
       if (request === null)
         throw new ManagedSecAnnualServiceError("invalid_request");
       if (request.catalogSnapshotSha256 !== options.catalog.snapshotSha256)
@@ -193,21 +194,14 @@ export function createManagedSecAnnualService(options: {
           providerSignal,
         );
         guard();
-        return Object.freeze({
-          schemaVersion: request.schemaVersion,
-          catalogSnapshotSha256: request.catalogSnapshotSha256,
-          security: Object.freeze({
-            country: listing.country,
-            exchangeMic: listing.exchangeMic,
-            issuerName: listing.issuerName,
-            issuerId: listing.issuerId,
-            listingId: listing.listingId,
-            securityName: listing.securityName,
-            symbol: listing.symbol,
-            cik: listing.cik,
-          }),
+        const prepared = encodePersonalSecAnnualCanonicalResponse(
+          request,
+          options.catalog.snapshotSha256,
+          listing,
           evidence,
-        });
+        );
+        guard();
+        return prepared.response;
       } catch {
         if (signal.aborted || monotonic() >= providerDeadline)
           throw new ManagedSecAnnualServiceError("request_timeout");

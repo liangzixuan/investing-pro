@@ -1,12 +1,11 @@
+import { viewOf, admitUiPacket } from "./test-canonical-annual-ui-fixture";
 import { describe, expect, it } from "vitest";
 import type { PersonalSecAnnualCashObservationDto } from "@research-cockpit/contracts";
-import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
+import { parseSecAnnualCanonicalResponse } from "../../lib/sec-annual-canonical-response";
 import {
   annualCashHistoryRows,
-  cashGeneration,
   cashResponse,
-} from "./sec-annual-cash-fixture";
-import { response as incomeResponse } from "./sec-annual-evidence-fixture";
+} from "./test-canonical-annual-cash-ui-fixture";
 import {
   cashTrendChartInput,
   projectManagedAnnualCashTrend,
@@ -25,10 +24,10 @@ async function decoded(rows = annualCashHistoryRows(), cutoff?: string) {
   return admit(await cashResponse(sourceRows, cutoff));
 }
 async function admit(raw: Awaited<ReturnType<typeof cashResponse>>) {
-  const parsed = await parseSecAnnualEvidenceResponse(
+  const parsed = await parseSecAnnualCanonicalResponse(
     raw,
     {
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       catalogSnapshotSha256: raw.catalogSnapshotSha256,
       listingId: raw.security.listingId,
       symbol: raw.security.symbol,
@@ -39,13 +38,24 @@ async function admit(raw: Awaited<ReturnType<typeof cashResponse>>) {
   return parsed;
 }
 function ready(packet: Awaited<ReturnType<typeof decoded>>) {
-  const projection = projectManagedAnnualCashTrend(packet);
+  const projection = projectManagedAnnualCashTrend(packet, viewOf(packet));
   expect(projection.status).toBe("ready");
   if (projection.status !== "ready") throw new Error("Expected cash trend");
   return projection;
 }
 
 describe("managed cash trend projection", () => {
+  it("refuses an equal separately owned packet's view instead of sharing its chart authority", async () => {
+    const packet = await decoded();
+    const equalPacket = await admitUiPacket(structuredClone(packet));
+    expect(equalPacket).toEqual(packet);
+    expect(projectManagedAnnualCashTrend(packet, viewOf(equalPacket))).toEqual({
+      status: "unavailable",
+      reason: "invalid_response",
+      stoppedReason: null,
+    });
+    expect(ready(packet).periods).toHaveLength(3);
+  });
   it("retains three exact same-filing periods and all references in oldest-first order", async () => {
     const packet = await decoded();
     const before = JSON.stringify(packet);
@@ -79,8 +89,12 @@ describe("managed cash trend projection", () => {
     });
     expect(trend.periods.flatMap((p) => p.observationIds).sort()).toEqual(
       [
-        ...packet.evidence.cashGeneration.operatingCashFlow.observations,
-        ...packet.evidence.cashGeneration.ppePurchases.observations,
+        ...packet.evidence.facts.observations.filter(
+          (row) => row.concept === "NetCashProvidedByUsedInOperatingActivities",
+        ),
+        ...packet.evidence.facts.observations.filter(
+          (row) => row.concept === "PaymentsToAcquirePropertyPlantAndEquipment",
+        ),
       ]
         .map((row) => row.id)
         .sort(),
@@ -103,12 +117,11 @@ describe("managed cash trend projection", () => {
     );
     expect(two.periods).toHaveLength(2);
     expect(two.stoppedReason).toBe("no_report_period");
+    const missingMiddle = await decoded(
+      annualCashHistoryRows().filter((r) => r.endDate !== "2024-12-31"),
+    );
     expect(
-      projectManagedAnnualCashTrend(
-        await decoded(
-          annualCashHistoryRows().filter((r) => r.endDate !== "2024-12-31"),
-        ),
-      ),
+      projectManagedAnnualCashTrend(missingMiddle, viewOf(missingMiddle)),
     ).toEqual({
       status: "unavailable",
       reason: "insufficient_periods",
@@ -128,43 +141,45 @@ describe("managed cash trend projection", () => {
   });
 
   it("keeps source and current-use refusals without borrowing income eligibility", async () => {
+    const missing = await decoded([], undefined);
     expect(
-      projectManagedAnnualCashTrend(await decoded([], undefined)),
+      projectManagedAnnualCashTrend(missing, viewOf(missing)),
     ).toMatchObject({ status: "unavailable", reason: "concept_missing" });
+    const historical = await decoded(undefined, "2028-09-20T00:00:00.000Z");
     expect(
-      projectManagedAnnualCashTrend(
-        await decoded(undefined, "2028-09-20T00:00:00.000Z"),
-      ),
+      projectManagedAnnualCashTrend(historical, viewOf(historical)),
     ).toEqual({
       status: "unavailable",
       reason: "current_use_unavailable",
       stoppedReason: null,
     });
-    const base = await incomeResponse([]);
-    const packet = await admit({
-      ...base,
-      evidence: {
-        ...base.evidence,
-        cashGeneration: await cashGeneration(
-          base.evidence,
-          annualCashHistoryRows(),
-        ),
-      },
-    });
-    expect(packet.evidence.resolution.selectedReportPairEligible).toBe(false);
+    const packet = await cashResponse(annualCashHistoryRows(), undefined, []);
+    expect(viewOf(packet).income.resolution.selectedReportPairEligible).toBe(
+      false,
+    );
     expect(ready(packet).periods).toHaveLength(3);
-    // Typed model probe: the real parser does not admit this malformed clock.
+    const malformed = {
+      ...packet,
+      evidence: {
+        ...packet.evidence,
+        generation: { ...packet.evidence.generation, completedAt: "invalid" },
+      },
+    };
     expect(
-      projectManagedAnnualCashTrend({
-        ...packet,
-        evidence: {
-          ...packet.evidence,
-          generation: { ...packet.evidence.generation, completedAt: "invalid" },
+      await parseSecAnnualCanonicalResponse(
+        malformed,
+        {
+          schemaVersion: "6.0.0",
+          catalogSnapshotSha256: packet.catalogSnapshotSha256,
+          listingId: packet.security.listingId,
+          symbol: packet.security.symbol,
         },
-      }),
-    ).toEqual({
+        new AbortController().signal,
+      ),
+    ).toBeNull();
+    expect(projectManagedAnnualCashTrend(malformed, viewOf(packet))).toEqual({
       status: "unavailable",
-      reason: "invalid_clock",
+      reason: "invalid_response",
       stoppedReason: null,
     });
   });
@@ -231,15 +246,19 @@ describe("managed cash trend projection", () => {
     const second = ready(await decoded(rows("100.000000000000000002")));
     expect(first.plots).toEqual(second.plots);
     expect(first.contentKey).not.toBe(second.contentKey);
-    expect(ready(structuredClone(packet)).contentKey).toBe(first.contentKey);
+    expect(ready(await admitUiPacket(structuredClone(packet))).contentKey).toBe(
+      first.contentKey,
+    );
     expect(
-      ready({
-        ...packet,
-        security: {
-          ...packet.security,
-          securityName: "Another exact share class",
-        },
-      }).contentKey,
+      ready(
+        await admitUiPacket({
+          ...packet,
+          security: {
+            ...packet.security,
+            securityName: "Another exact share class",
+          },
+        }),
+      ).contentKey,
     ).not.toBe(first.contentKey);
     expect(
       ready(

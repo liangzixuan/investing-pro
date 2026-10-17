@@ -8,7 +8,7 @@ import {
 import {
   liquidityResponse,
   liquidityRow,
-} from "../features/research/sec-annual-liquidity-fixture";
+} from "../features/research/test-canonical-annual-liquidity-ui-fixture";
 
 const hooks = vi.hoisted<{ state: unknown }>(() => ({ state: undefined }));
 vi.mock("react", async (original) => {

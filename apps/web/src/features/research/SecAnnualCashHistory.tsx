@@ -1,19 +1,19 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { useState } from "react";
 import { ManagedAnnualCashTrend } from "./ManagedAnnualCashTrend";
-import {
-  resolvePersonalSecAnnualCashHistory,
-  type PersonalSecAnnualCashHistoryReason,
-} from "@research-cockpit/personal-financial-analytics";
+import { type PersonalSecAnnualCashHistoryReason } from "@research-cockpit/personal-financial-analytics";
 import { annualCashUnavailableReasonText } from "./SecAnnualCashGeneration";
 
 export function SecAnnualCashHistory({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
   const [open, setOpen] = useState(false);
-  const history = resolvePersonalSecAnnualCashHistory(response.evidence);
+  const history = view.cashGeneration.history;
   return (
     <details
       className="managed-annual-cash-history"
@@ -23,7 +23,7 @@ export function SecAnnualCashHistory({
       }}
     >
       <summary>Reported cash history</summary>
-      <ManagedAnnualCashTrend response={response} open={open} />
+      <ManagedAnnualCashTrend response={response} view={view} open={open} />
       {history.status === "unavailable" ? (
         <p className="managed-annual-unavailable">
           Cash history unavailable. {historyReason(history.reason)}

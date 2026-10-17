@@ -120,6 +120,43 @@ function input(assets = [row(1)], liabilities = [row(2, true)]): Input {
 }
 
 describe("Annual instant liquidity", () => {
+  it("retains version-5 admission and null utility age for any other definition", () => {
+    const packet = input();
+    Object.assign(packet.generation, { definitionVersion: "6.0.0" });
+    const result = resolve(packet);
+    expect(result.utilityAge).toBeNull();
+    for (const value of [
+      result.currentAssets,
+      result.currentLiabilities,
+      result.workingCapital,
+      result.currentRatio,
+    ])
+      expect(value).toMatchObject({
+        status: "unavailable",
+        reason: "invalid_clock",
+      });
+    expect(history(packet)).toEqual({
+      status: "unavailable",
+      reason: "invalid_clock",
+    });
+  });
+
+  it.each(["currentAssets", "currentLiabilities"] as const)(
+    "retains the metric-tag admission on %s",
+    (side) => {
+      const packet = input();
+      Object.assign(packet.liquidity[side].observations[0]!, {
+        metric: "other",
+      });
+      expect(() => resolve(packet)).toThrow(
+        "Invalid annual liquidity evidence.",
+      );
+      expect(() => history(packet)).toThrow(
+        "Invalid annual liquidity evidence.",
+      );
+    },
+  );
+
   it("resolves a non-Q4 fiscal-end without a flow or calendar-year assumption", () => {
     const packet = input();
     const before = structuredClone(packet);

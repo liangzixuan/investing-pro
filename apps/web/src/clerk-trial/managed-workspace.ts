@@ -1,4 +1,12 @@
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import {
+  prepareManagedAnnualStatementsNote,
+  isManagedAnnualStatementsNoteCurrent,
+  appendManagedAnnualStatementsNote,
+  type ManagedAnnualStatementCellSelection,
+  type ManagedAnnualStatementsNotePreparation,
+  type PreparedManagedAnnualStatementsNote,
+} from "./managed-annual-statements-note";
 import { ManagedValuationWorkbench } from "./managed-valuation-workbench";
 import {
   prepareValuationNote,
@@ -24,7 +32,7 @@ import {
   type ManagedEodIdentity,
   type ManagedSecFilingsResponseDto,
   type PersonalSecRecentFilingDto,
-  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualCanonicalResponseDto,
   type PersonalSecAnnualPairDto,
   type PersonalSecurityMasterSearchResultDto,
   type WatchlistMembership,
@@ -282,6 +290,8 @@ export class ManagedWorkspace {
   } | null = null;
   private readonly financialReview = new ManagedFinancialReview();
   private readonly valuationNotePreviews = new WeakSet<PreparedValuationNote>();
+  private readonly annualStatementsPreviews =
+    new WeakSet<PreparedManagedAnnualStatementsNote>();
   private readonly reportWatchlistRevisions = new WeakMap<object, symbol>();
 
   constructor(
@@ -1638,9 +1648,89 @@ export class ManagedWorkspace {
     if (!this.getResearchWatchlist(selection).canEdit) return;
     this.note(selection.listing.listingId, note, expectedNote);
   }
+  prepareAnnualStatementsNote(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualCanonicalResponseDto,
+    cells: readonly ManagedAnnualStatementCellSelection[],
+    selectionIsCurrent: () => boolean,
+  ): ManagedAnnualStatementsNotePreparation {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        preview: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before preparing statement cells.",
+      };
+    const member = watchlist.member;
+    const visit = this.state.research;
+    const operation = this.researchOperation;
+    const annual = this.annual.getSnapshot();
+    const saved = this.coordinator.getSnapshot();
+    const navigationRevision = this.navigationRevision;
+    const workspaceIsCurrent = () =>
+      !this.retired &&
+      this.researchOperation === operation &&
+      this.navigationRevision === navigationRevision &&
+      this.researchSourceRouteReady(selection) &&
+      this.canUseResearchSource(selection) &&
+      this.state.research === visit &&
+      visit?.section === "annual" &&
+      visit.selection === selection &&
+      this.annual.getSnapshot() === annual &&
+      annual.response === response &&
+      annual.view !== null &&
+      annual.view.canonical === response.evidence &&
+      !annual.running &&
+      !annual.checkingSeed &&
+      !annual.catalogChanged &&
+      this.coordinator.getSnapshot() === saved &&
+      this.getResearchWatchlist(selection).canEdit;
+    const isCurrent = () =>
+      workspaceIsCurrent() && selectionIsCurrent() && workspaceIsCurrent();
+    const proposal = prepareManagedAnnualStatementsNote({
+      response,
+      selection: cells,
+      note: member.note,
+      showingPrevious: annual.showingPrevious,
+      isCurrent,
+      apply: (note) => {
+        if (!isCurrent()) throw new Error("Statement note capture changed.");
+        this.noteResearch(selection, note, member.note);
+        if (
+          this.coordinator
+            .getSnapshot()
+            .draft?.memberships.find(
+              (entry) => entry.listingId === selection.listing.listingId,
+            )?.note !== note
+        )
+          throw new Error("Statement note could not be applied.");
+      },
+    });
+    if (proposal.preview) this.annualStatementsPreviews.add(proposal.preview);
+    return proposal;
+  }
+  annualStatementsPreviewIsCurrent(
+    preview: PreparedManagedAnnualStatementsNote,
+  ) {
+    return (
+      this.annualStatementsPreviews.has(preview) &&
+      isManagedAnnualStatementsNoteCurrent(preview)
+    );
+  }
+  appendAnnualStatementsNote(preview: PreparedManagedAnnualStatementsNote) {
+    if (!this.annualStatementsPreviews.has(preview))
+      return {
+        appended: false,
+        message:
+          "Preview these statement cells in the current workspace before appending.",
+      };
+    this.annualStatementsPreviews.delete(preview);
+    return appendManagedAnnualStatementsNote(preview);
+  }
   prepareFinancialReview(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     keys: readonly PersonalSecAnnualFinancialReviewKey[],
   ): FinancialReviewPreparation {
     const watchlist = this.getResearchWatchlist(selection);
@@ -1757,7 +1847,7 @@ export class ManagedWorkspace {
   }
   private annualNoteProposal(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     pair: PersonalSecAnnualPairDto,
   ): { note: string | null; reason: string | null } {
     const watchlist = this.getResearchWatchlist(selection);
@@ -1801,7 +1891,7 @@ export class ManagedWorkspace {
   }
   getAnnualNoteAction(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     pair: PersonalSecAnnualPairDto,
   ): { canAppend: boolean; reason: string | null } {
     const proposal = this.annualNoteProposal(selection, response, pair);
@@ -1809,7 +1899,7 @@ export class ManagedWorkspace {
   }
   appendAnnualToResearchNote(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     pair: PersonalSecAnnualPairDto,
   ): { appended: boolean; message: string } {
     const proposal = this.annualNoteProposal(selection, response, pair);
@@ -1824,7 +1914,7 @@ export class ManagedWorkspace {
   }
   private annualCashNoteProposal(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
   ): { note: string | null; reason: string | null } {
     const watchlist = this.getResearchWatchlist(selection);
     if (!watchlist.canEdit || !watchlist.member)
@@ -1874,14 +1964,14 @@ export class ManagedWorkspace {
   }
   getAnnualCashNoteAction(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
   ): { canAppend: boolean; reason: string | null } {
     const proposal = this.annualCashNoteProposal(selection, response);
     return { canAppend: proposal.note !== null, reason: proposal.reason };
   }
   appendAnnualCashToResearchNote(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
   ): { appended: boolean; message: string } {
     const proposal = this.annualCashNoteProposal(selection, response);
     if (proposal.note === null)
@@ -1895,7 +1985,7 @@ export class ManagedWorkspace {
   }
   private annualLiquidityNoteProposal(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
   ): { note: string | null; reason: string | null } {
     const watchlist = this.getResearchWatchlist(selection);
     if (!watchlist.canEdit || !watchlist.member)
@@ -1947,14 +2037,14 @@ export class ManagedWorkspace {
   }
   getAnnualLiquidityNoteAction(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
   ): { canAppend: boolean; reason: string | null } {
     const proposal = this.annualLiquidityNoteProposal(selection, response);
     return { canAppend: proposal.note !== null, reason: proposal.reason };
   }
   appendAnnualLiquidityToResearchNote(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
   ): { appended: boolean; message: string } {
     const proposal = this.annualLiquidityNoteProposal(selection, response);
     if (proposal.note === null)
@@ -1968,7 +2058,7 @@ export class ManagedWorkspace {
   }
   private annualOperatingNoteProposal(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     basis: PersonalSecAnnualOperatingMarginDto,
   ): { note: string | null; reason: string | null } {
     const watchlist = this.getResearchWatchlist(selection);
@@ -1983,7 +2073,9 @@ export class ManagedWorkspace {
     if (
       this.state.research?.section !== "annual" ||
       annual.response !== response ||
-      !response.evidence.operatingResults.resolution.margins.includes(basis)
+      annual.view === null ||
+      annual.view.canonical !== response.evidence ||
+      !annual.view.operatingResults.resolution.margins.includes(basis)
     )
       return {
         note: null,
@@ -2024,7 +2116,7 @@ export class ManagedWorkspace {
   }
   getAnnualOperatingNoteAction(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     basis: PersonalSecAnnualOperatingMarginDto,
   ): { canAppend: boolean; reason: string | null } {
     const proposal = this.annualOperatingNoteProposal(
@@ -2036,7 +2128,7 @@ export class ManagedWorkspace {
   }
   appendAnnualOperatingToResearchNote(
     selection: ManagedResearchSelection,
-    response: PersonalSecAnnualEvidenceResponseDto,
+    response: PersonalSecAnnualCanonicalResponseDto,
     basis: PersonalSecAnnualOperatingMarginDto,
   ): { appended: boolean; message: string } {
     const proposal = this.annualOperatingNoteProposal(

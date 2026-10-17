@@ -1,3 +1,4 @@
+import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
 import {
   emptyThesisReview,
@@ -32,14 +33,14 @@ import {
   annualComparativeRows,
   annualHistoryRows,
   response as annualResponse,
-} from "../features/research/sec-annual-evidence-fixture";
+} from "../features/research/test-canonical-annual-ui-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import {
   cashResponse,
   cashRow,
-} from "../features/research/sec-annual-cash-fixture";
+} from "../features/research/test-canonical-annual-cash-ui-fixture";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import {
@@ -65,7 +66,7 @@ import {
   annualComparisonOperatingRows,
   annualComparisonResponse,
   annualComparisonRows,
-} from "./annual-comparison-fixture";
+} from "./test-canonical-annual-comparison-fixture";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
 import type { ManagedAnnualComparisonReportCapture } from "./managed-watchlist-annual-comparison";
 import {
@@ -4397,7 +4398,7 @@ describe("Annual evidence appended to the existing shared note", () => {
     workspace.openDiscoveryAnnual(zero);
     await workspace.annual.load();
     const selection = workspace.getSnapshot().research!.selection;
-    const pair = response.evidence.resolution.bases.find(
+    const pair = viewOf(response).income.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
     return { ...setup, selection, response, pair };
@@ -6002,7 +6003,12 @@ describe("Annual comparison appended to one current draft note", () => {
             ? key === "left"
               ? "Revenues"
               : "SalesRevenueNet"
-            : projectAnnualComparison(state[key].report.response).selectedBasis,
+            : projectAnnualComparison(
+                state[key].report.response,
+                state[key].report.response === null
+                  ? null
+                  : viewOf(state[key].report.response),
+              ).selectedBasis,
         showingPrevious: state[key].report.showingPrevious,
       });
       return { group, left: side("left"), right: side("right") };
@@ -6663,11 +6669,11 @@ describe("loaded Annual comparison report visits", () => {
       const original = capture(side);
       const pair = model.getSnapshot();
       const draft = workspace.coordinator.getSnapshot().draft;
-      expect(original.response.evidence.resolution.currentTargetEligible).toBe(
-        false,
-      );
       expect(
-        original.response.evidence.operatingResults.resolution.operatingIncome,
+        viewOf(original.response).income.resolution.currentTargetEligible,
+      ).toBe(false);
+      expect(
+        viewOf(original.response).operatingResults.resolution.operatingIncome,
       ).toMatchObject({
         status: "available",
         value: side === "left" ? "-250.125" : "125.25",
@@ -6679,9 +6685,9 @@ describe("loaded Annual comparison report visits", () => {
       expect(workspace.annual.getSnapshot().response).toEqual(
         original.response,
       );
-      expect(
-        workspace.annual.getSnapshot().response!.evidence.operatingResults,
-      ).toEqual(original.response.evidence.operatingResults);
+      expect(workspace.annual.getSnapshot().view!.operatingResults).toEqual(
+        viewOf(original.response).operatingResults,
+      );
       workspace.closeResearch();
       for (const key of ["left", "right"] as const)
         expect(model.getSnapshot()[key].report.response).toBe(

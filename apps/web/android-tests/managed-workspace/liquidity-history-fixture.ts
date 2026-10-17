@@ -1,18 +1,11 @@
-import {
-  liquidity,
-  liquidityRow,
-} from "../../src/features/research/sec-annual-liquidity-fixture";
-import { response } from "../../src/features/research/sec-annual-evidence-fixture";
+import { liquidityRow } from "../../src/features/research/sec-annual-liquidity-fixture";
+import { annualComparisonResponse } from "../../src/clerk-trial/test-canonical-annual-comparison-fixture";
 
 /** Invented reported dates in one filing; no annual-adjacency or income assumption. */
 export async function liquidityHistoryPacket(
   replacement = false,
   late = false,
 ) {
-  const base = await response(
-    [],
-    replacement || late ? "2026-09-21T00:00:00.000Z" : undefined,
-  );
   const balances = replacement
     ? ([
         ["2025-12-31", "200.125", "100"],
@@ -42,11 +35,10 @@ export async function liquidityHistoryPacket(
           }),
         ]),
   ]);
-  return {
-    ...base,
-    evidence: {
-      ...base.evidence,
-      liquidity: await liquidity(base.evidence, rows),
-    },
-  };
+  return annualComparisonResponse("left", {
+    rows: [],
+    cashRows: [],
+    liquidityRows: rows,
+    ...(replacement || late ? { cutoffAt: "2026-09-21T00:00:00.000Z" } : {}),
+  });
 }

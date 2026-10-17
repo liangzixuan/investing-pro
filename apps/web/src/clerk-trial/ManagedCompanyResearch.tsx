@@ -1,3 +1,4 @@
+import type { ManagedAnnualStatementsReviewActions } from "./ManagedAnnualStatementsReview";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
@@ -53,6 +54,7 @@ export function ManagedCompanyResearch({
   annualLiquidityNoteActions,
   annualOperatingNoteActions,
   financialReviewActions,
+  annualStatementsActions,
   valuation,
   valuationNoteActions,
   priceNoteActions,
@@ -83,6 +85,7 @@ export function ManagedCompanyResearch({
   annualLiquidityNoteActions: ManagedAnnualLiquidityNoteActions;
   annualOperatingNoteActions: ManagedAnnualOperatingNoteActions;
   financialReviewActions?: ManagedFinancialReviewActions;
+  annualStatementsActions?: ManagedAnnualStatementsReviewActions;
   valuation?: ValuationModel;
   valuationNoteActions?: {
     prepare: (
@@ -209,8 +212,10 @@ export function ManagedCompanyResearch({
                 cashNoteActions={annualCashNoteActions}
                 liquidityNoteActions={annualLiquidityNoteActions}
                 operatingNoteActions={annualOperatingNoteActions}
-                {...(financialReviewActions
-                  ? { financialReviewActions, watchlist }
+                watchlist={watchlist}
+                {...(financialReviewActions ? { financialReviewActions } : {})}
+                {...(annualStatementsActions
+                  ? { statementActions: annualStatementsActions }
                   : {})}
               />
             ) : research.section === "eod" ? (

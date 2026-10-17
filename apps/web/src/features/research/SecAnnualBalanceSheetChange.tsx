@@ -1,7 +1,4 @@
-import {
-  comparePersonalSecAnnualBalanceSheetHistory,
-  type PersonalSecAnnualBalanceSheetHistory,
-} from "@research-cockpit/personal-financial-analytics";
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import { balanceSheetHistoryReason } from "./sec-annual-balance-sheet-history-display";
 
 const metrics = [
@@ -11,11 +8,10 @@ const metrics = [
 ] as const;
 
 export function SecAnnualBalanceSheetChange({
-  history,
+  change,
 }: {
-  readonly history: PersonalSecAnnualBalanceSheetHistory;
+  readonly change: PersonalSecAnnualCanonicalView["balanceSheet"]["change"];
 }) {
-  const change = comparePersonalSecAnnualBalanceSheetHistory(history);
   return (
     <section
       className="managed-annual-balance-sheet-change"

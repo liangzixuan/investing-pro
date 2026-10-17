@@ -1,8 +1,9 @@
+import { viewOf } from "./test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS } from "@research-cockpit/contracts";
-import { cashMarginsResponse } from "./sec-annual-cash-margins-fixture";
-import { cashRow } from "./sec-annual-cash-fixture";
+import { cashMarginsResponse } from "./test-canonical-annual-cash-ui-fixture";
+import { cashRow } from "./test-canonical-annual-cash-ui-fixture";
 import { row } from "./sec-annual-evidence-fixture";
 import {
   SecAnnualCashMargins,
@@ -19,9 +20,9 @@ describe("Annual cash generation margins", () => {
       revenueRows: [row("Revenues", "1000"), row("SalesRevenueNet", "0")],
     });
     const company = renderToStaticMarkup(
-      <SecAnnualCashMargins response={response} />,
+      <SecAnnualCashMargins response={response} view={viewOf(response)} />,
     );
-    const bases = derivePersonalSecAnnualCashMargins(response.evidence);
+    const bases = viewOf(response).cashMargins;
     const revenue = bases.find((basis) => basis.concept === "Revenues")!;
     const zero = bases.find((basis) => basis.concept === "SalesRevenueNet")!;
     expect(
@@ -53,13 +54,17 @@ describe("Annual cash generation margins", () => {
     const response = await cashMarginsResponse();
     const before = JSON.stringify(response);
     expect(
-      response.evidence.observations.every((item) => item.metric === "revenue"),
+      response.evidence.facts.observations.every(
+        (item) =>
+          item.concept !== "NetIncomeLoss" &&
+          item.concept !== "OperatingIncomeLoss",
+      ),
     ).toBe(true);
     expect(
-      response.evidence.operatingResults.resolution.operatingIncome.status,
+      viewOf(response).operatingResults.resolution.operatingIncome.status,
     ).toBe("unavailable");
     const html = renderToStaticMarkup(
-      <SecAnnualCashMargins response={response} />,
+      <SecAnnualCashMargins response={response} view={viewOf(response)} />,
     );
     for (const [
       index,
@@ -91,11 +96,7 @@ describe("Annual cash generation margins", () => {
       "Within current-use limits at this load.",
     ])
       expect(html).toContain(text);
-    const inputs = [
-      ...response.evidence.observations,
-      ...response.evidence.cashGeneration.operatingCashFlow.observations,
-      ...response.evidence.cashGeneration.ppePurchases.observations,
-    ];
+    const inputs = response.evidence.facts.observations;
     for (const input of inputs) {
       for (const value of [
         input.id,
@@ -114,6 +115,7 @@ describe("Annual cash generation margins", () => {
     const managed = renderToStaticMarkup(
       <SecAnnualEvidenceResult
         response={response}
+        view={viewOf(response)}
         appearance="financial"
         cashAction={<button>Existing cash action</button>}
       />,
@@ -125,10 +127,14 @@ describe("Annual cash generation margins", () => {
       managed.indexOf("<summary>Reported cash history</summary>"),
     );
     expect(
-      renderToStaticMarkup(<SecAnnualEvidenceResult response={response} />),
+      renderToStaticMarkup(
+        <SecAnnualEvidenceResult response={response} view={viewOf(response)} />,
+      ),
     ).not.toContain("sec-annual-cash-margins");
     expect(
-      renderToStaticMarkup(<SecAnnualCashGeneration response={response} />),
+      renderToStaticMarkup(
+        <SecAnnualCashGeneration response={response} view={viewOf(response)} />,
+      ),
     ).not.toContain("sec-annual-cash-margins");
   });
 
@@ -141,11 +147,11 @@ describe("Annual cash generation margins", () => {
       ],
     });
     const html = renderToStaticMarkup(
-      <SecAnnualCashMargins response={response} />,
+      <SecAnnualCashMargins response={response} view={viewOf(response)} />,
     );
     expect(html).toContain(">-5.00%<");
     expect(
-      response.evidence.operatingResults.resolution.margins.find(
+      viewOf(response).operatingResults.resolution.margins.find(
         (basis) =>
           basis.concept ===
           "RevenueFromContractWithCustomerExcludingAssessedTax",
@@ -168,9 +174,9 @@ describe("Annual cash generation margins", () => {
       ],
     });
     expect(
-      renderToStaticMarkup(<SecAnnualCashMargins response={zero} />).match(
-        />0\.00%</gu,
-      ),
+      renderToStaticMarkup(
+        <SecAnnualCashMargins response={zero} view={viewOf(zero)} />,
+      ).match(/>0\.00%</gu),
     ).toHaveLength(3);
   });
 
@@ -203,7 +209,7 @@ describe("Annual cash generation margins", () => {
   ])("keeps operand evidence visible when $text", async ({ rows, text }) => {
     const response = await cashMarginsResponse({ cashRows: rows });
     const html = renderToStaticMarkup(
-      <SecAnnualCashMargins response={response} />,
+      <SecAnnualCashMargins response={response} view={viewOf(response)} />,
     );
     expect(
       html.match(
@@ -214,8 +220,12 @@ describe("Annual cash generation margins", () => {
       ),
     ).toHaveLength(3);
     for (const input of [
-      ...response.evidence.cashGeneration.operatingCashFlow.observations,
-      ...response.evidence.cashGeneration.ppePurchases.observations,
+      ...response.evidence.facts.observations.filter(
+        (row) => row.concept === "NetCashProvidedByUsedInOperatingActivities",
+      ),
+      ...response.evidence.facts.observations.filter(
+        (row) => row.concept === "PaymentsToAcquirePropertyPlantAndEquipment",
+      ),
     ]) {
       expect(html).toContain(input.id);
       expect(html).toContain(`>${input.value}<`);
@@ -234,7 +244,7 @@ describe("Annual cash generation margins", () => {
       ],
     });
     const html = renderToStaticMarkup(
-      <SecAnnualCashMargins response={response} />,
+      <SecAnnualCashMargins response={response} view={viewOf(response)} />,
     );
     expect(html).toContain(`>${exact}<`);
     expect(html).toContain(`>-${"9".repeat(61)}10.00%<`);
@@ -250,28 +260,30 @@ describe("Annual cash generation margins", () => {
 
   it("explains a typed-model filing mismatch while retaining each original reference", async () => {
     const response = await cashMarginsResponse();
-    const cash = response.evidence.cashGeneration;
+    const view = viewOf(response);
+    const cash = view.cashGeneration;
     if (cash.resolution.ppePurchases.status !== "available")
       throw new Error("Expected admitted purchases");
     // Deliberate derived-model mutation; this is not claimed as wire-admitted data.
     const changed = {
-      ...response,
-      evidence: {
-        ...response.evidence,
-        cashGeneration: {
-          ...cash,
-          resolution: {
-            ...cash.resolution,
-            ppePurchases: {
-              ...cash.resolution.ppePurchases,
-              accessionNumber: "0000000001-26-000002",
-            },
+      ...view,
+      cashGeneration: {
+        ...cash,
+        resolution: {
+          ...cash.resolution,
+          ppePurchases: {
+            ...cash.resolution.ppePurchases,
+            accessionNumber: "0000000001-26-000002",
           },
         },
       },
     };
+    const changedView = {
+      ...changed,
+      cashMargins: derivePersonalSecAnnualCashMargins(changed),
+    };
     const html = renderToStaticMarkup(
-      <SecAnnualCashMargins response={changed} />,
+      <SecAnnualCashMargins response={response} view={changedView} />,
     );
     expect(
       html.match(

@@ -1,3 +1,4 @@
+import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,16 +24,16 @@ import type { AndroidBackAdapter } from "../mobile/android-back";
 import {
   response as annualResponse,
   annualComparativeRows,
-} from "../features/research/sec-annual-evidence-fixture";
+} from "../features/research/test-canonical-annual-ui-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import {
   cashResponse,
   cashRow,
-} from "../features/research/sec-annual-cash-fixture";
+} from "../features/research/test-canonical-annual-cash-ui-fixture";
 import {
   liquidityResponse,
   liquidityRow,
-} from "../features/research/sec-annual-liquidity-fixture";
+} from "../features/research/test-canonical-annual-liquidity-ui-fixture";
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
@@ -52,7 +53,7 @@ import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualCompar
 import {
   annualComparisonMemberships,
   annualComparisonResponse,
-} from "./annual-comparison-fixture";
+} from "./test-canonical-annual-comparison-fixture";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
 import {
   getAnnualComparisonNoteEvidence,
@@ -565,15 +566,23 @@ async function comparisonNoteReviewFixture(
     left: {
       member: state.left.selected!,
       response: state.left.report.response!,
-      selectedBasis: projectAnnualComparison(state.left.report.response)
-        .selectedBasis,
+      selectedBasis: projectAnnualComparison(
+        state.left.report.response,
+        state.left.report.response === null
+          ? null
+          : viewOf(state.left.report.response),
+      ).selectedBasis,
       showingPrevious: false,
     },
     right: {
       member: state.right.selected!,
       response: state.right.report.response!,
-      selectedBasis: projectAnnualComparison(state.right.report.response)
-        .selectedBasis,
+      selectedBasis: projectAnnualComparison(
+        state.right.report.response,
+        state.right.report.response === null
+          ? null
+          : viewOf(state.right.report.response),
+      ).selectedBasis,
       showingPrevious: false,
     },
   };
@@ -2547,7 +2556,7 @@ describe("managed workspace screen", () => {
         React.ComponentProps<typeof ManagedCompanyResearch>
       >;
     };
-    const pair = report.evidence.resolution.bases.flatMap(
+    const pair = viewOf(report).income.resolution.bases.flatMap(
       (basis) => basis.pairs,
     )[0]!;
     const captured = company().props.annualNoteActions;
@@ -2619,7 +2628,7 @@ describe("managed workspace screen", () => {
       React.ComponentProps<typeof ManagedCompanyResearch>
     >;
     const actions = company.props.annualNoteActions;
-    const pair = report.evidence.resolution.bases.flatMap(
+    const pair = viewOf(report).income.resolution.bases.flatMap(
       (basis) => basis.pairs,
     )[0]!;
     const draft = workspace.coordinator.getSnapshot().draft;
@@ -2628,7 +2637,7 @@ describe("managed workspace screen", () => {
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     workspace.closeResearch();
     workspace.openWatchlistAnnual(draft!.memberships[0]!);
-    const nextPair = next.evidence.resolution.bases.flatMap(
+    const nextPair = viewOf(next).income.resolution.bases.flatMap(
       (basis) => basis.pairs,
     )[0]!;
     expect(actions.append(next, nextPair).appended).toBe(false);
@@ -3785,8 +3794,12 @@ describe("managed workspace screen", () => {
       const side = (key: "left" | "right") => ({
         member: current[key].selected!,
         response: current[key].report.response!,
-        selectedBasis: projectAnnualComparison(current[key].report.response)
-          .selectedBasis,
+        selectedBasis: projectAnnualComparison(
+          current[key].report.response,
+          current[key].report.response === null
+            ? null
+            : viewOf(current[key].report.response),
+        ).selectedBasis,
         showingPrevious: current[key].report.showingPrevious,
       });
       const capture: AnnualComparisonNoteCapture = {

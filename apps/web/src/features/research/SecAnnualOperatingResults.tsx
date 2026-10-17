@@ -1,8 +1,10 @@
-import type {
-  PersonalSecAnnualEvidenceResponseDto,
-  PersonalSecAnnualOperatingMarginDto,
-  PersonalSecAnnualOperatingUnavailableReason,
-  PersonalSecAnnualOperatingValueDto,
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
+import {
+  type PersonalSecAnnualCanonicalResponseDto,
+  PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
+  type PersonalSecAnnualOperatingMarginDto,
+  type PersonalSecAnnualOperatingUnavailableReason,
+  type PersonalSecAnnualOperatingValueDto,
 } from "@research-cockpit/contracts";
 import type { ReactNode, Ref } from "react";
 import { ObservationDetails } from "./SecAnnualObservation";
@@ -81,11 +83,13 @@ export function SecAnnualOperatingValueContent({
 
 export function SecAnnualOperatingResults({
   response,
+  view,
   renderOperatingAction,
   renderHistory,
   headingTarget,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly renderOperatingAction?: (
     basis: PersonalSecAnnualOperatingMarginDto,
   ) => ReactNode;
@@ -97,7 +101,7 @@ export function SecAnnualOperatingResults({
     readonly ref: Ref<HTMLHeadingElement>;
   };
 }) {
-  const { resolution } = response.evidence.operatingResults;
+  const { resolution } = view.operatingResults;
   return (
     <section
       className="sec-annual-operating"
@@ -158,7 +162,7 @@ export function SecAnnualOperatingResults({
       </p>
       <details className="sec-quarterly-row-details sec-annual-operating-source">
         <summary>Operating sources and calculation inputs</summary>
-        <SecAnnualOperatingSourceBody response={response} />
+        <SecAnnualOperatingSourceBody response={response} view={view} />
       </details>
     </section>
   );
@@ -166,11 +170,19 @@ export function SecAnnualOperatingResults({
 
 export function SecAnnualOperatingSourceBody({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
-  const { operatingResults, generation } = response.evidence;
-  const { resolution, operatingIncome } = operatingResults;
+  const { generation, facts } = response.evidence;
+  const { resolution } = view.operatingResults;
+  const scan = facts.scans.find(
+    (entry) => entry.concept === "OperatingIncomeLoss",
+  )!.scan;
+  const observations = facts.observations.filter(
+    (row) => row.concept === "OperatingIncomeLoss",
+  );
   return (
     <>
       <p>
@@ -192,24 +204,22 @@ export function SecAnnualOperatingSourceBody({
         operating income. Missing values are not filled from other concepts or
         filings.
       </p>
-      {operatingIncome.scan.status === "available" ? (
+      {scan.status === "available" ? (
         <p>
-          Scanned {operatingIncome.scan.coverage.full.inspectedRows} rows:{" "}
-          {operatingIncome.scan.coverage.full.invalidRows} invalid,{" "}
-          {operatingIncome.scan.coverage.full.duplicateRows} identical
-          duplicates. Returned {operatingIncome.scan.coverage.returned} of{" "}
-          {operatingIncome.scan.coverage.selected ?? "unresolved"}{" "}
+          Scanned {scan.coverage.full.inspectedRows} rows:{" "}
+          {scan.coverage.full.invalidRows} invalid,{" "}
+          {scan.coverage.full.duplicateRows} identical duplicates. Returned{" "}
+          {scan.coverage.returned} of {scan.coverage.selected ?? "unresolved"}{" "}
           selected-filing observations;{" "}
-          {operatingIncome.scan.coverage.omittedSelected ?? "unknown"} omitted.{" "}
-          {operatingIncome.scan.absence &&
-            reasons[operatingIncome.scan.absence]}
+          {scan.coverage.omittedSelected ?? "unknown"} omitted.{" "}
+          {scan.absence && reasons[scan.absence]}
         </p>
       ) : (
-        <p>{reasons[operatingIncome.scan.status]}</p>
+        <p>{reasons[scan.status]}</p>
       )}
       <h5>Operating income source observations</h5>
       <ol>
-        {operatingIncome.observations.map((row) => (
+        {observations.map((row) => (
           <li key={row.id}>
             <ObservationDetails row={row} />
           </li>
@@ -217,8 +227,12 @@ export function SecAnnualOperatingSourceBody({
       </ol>
       <h5>Revenue source observations</h5>
       <ol>
-        {response.evidence.observations
-          .filter((row) => row.metric === "revenue")
+        {facts.observations
+          .filter((row) =>
+            PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.some(
+              (concept) => concept === row.concept,
+            ),
+          )
           .map((row) => (
             <li key={row.id}>
               <ObservationDetails row={row} />

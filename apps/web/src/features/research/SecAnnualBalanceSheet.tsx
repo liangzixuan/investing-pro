@@ -1,7 +1,9 @@
+import type { PersonalSecAnnualCanonicalView } from "@research-cockpit/personal-financial-analytics";
 import type {
-  PersonalSecAnnualBalanceSheetMetricEvidenceDto,
+  PersonalSecAnnualStatementScanDto,
+  PersonalSecAnnualStatementObservationDto,
   PersonalSecAnnualBalanceSheetValueDto,
-  PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
 import type { Ref } from "react";
 import {
@@ -12,22 +14,25 @@ import {
 import { SecAnnualBalanceSheetHistory } from "./SecAnnualBalanceSheetHistory";
 
 const metrics = [
-  ["totalAssets", "Total assets"],
-  ["totalLiabilities", "Total liabilities"],
-  ["shareholdersEquity", "Shareholders’ equity · parent"],
+  ["totalAssets", "Total assets", "Assets"],
+  ["totalLiabilities", "Total liabilities", "Liabilities"],
+  ["shareholdersEquity", "Shareholders’ equity · parent", "StockholdersEquity"],
 ] as const;
 
 export function SecAnnualBalanceSheet({
   response,
+  view,
   headingTarget,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
   readonly headingTarget?: {
     readonly id: string;
     readonly ref: Ref<HTMLHeadingElement>;
   };
 }) {
-  const { balanceSheet, target } = response.evidence;
+  const { target } = response.evidence;
+  const balanceSheet = view.balanceSheet;
   return (
     <section
       className="sec-annual-balance-sheet"
@@ -81,10 +86,10 @@ export function SecAnnualBalanceSheet({
           </tbody>
         </table>
       </div>
-      <SecAnnualBalanceSheetHistory response={response} />
+      <SecAnnualBalanceSheetHistory response={response} view={view} />
       <details className="sec-quarterly-row-details sec-annual-balance-sheet-source">
         <summary>Balance sheet sources and reported inputs</summary>
-        <SecAnnualBalanceSheetSourceBody response={response} />
+        <SecAnnualBalanceSheetSourceBody response={response} view={view} />
       </details>
     </section>
   );
@@ -116,10 +121,13 @@ export function SecAnnualBalanceSheetValueContent({
 
 export function SecAnnualBalanceSheetSourceBody({
   response,
+  view,
 }: {
-  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly response: PersonalSecAnnualCanonicalResponseDto;
+  readonly view: PersonalSecAnnualCanonicalView;
 }) {
-  const { balanceSheet, generation } = response.evidence;
+  const { generation, facts } = response.evidence;
+  const balanceSheet = view.balanceSheet;
   return (
     <>
       <p>
@@ -142,11 +150,14 @@ export function SecAnnualBalanceSheetSourceBody({
         parent. Missing totals are not inferred from an accounting equation,
         other concepts or other filings. These balances are not market values.
       </p>
-      {metrics.map(([key, label]) => (
+      {metrics.map(([key, label, concept]) => (
         <BalanceSheetInputs
           key={key}
           label={label}
-          evidence={balanceSheet[key]}
+          scan={facts.scans.find((entry) => entry.concept === concept)!.scan}
+          observations={facts.observations.filter(
+            (row) => row.concept === concept,
+          )}
           value={balanceSheet.resolution[key]}
         />
       ))}
@@ -156,14 +167,15 @@ export function SecAnnualBalanceSheetSourceBody({
 
 function BalanceSheetInputs({
   label,
-  evidence,
+  scan,
+  observations,
   value,
 }: {
   readonly label: string;
-  readonly evidence: PersonalSecAnnualBalanceSheetMetricEvidenceDto;
+  readonly scan: PersonalSecAnnualStatementScanDto;
+  readonly observations: readonly PersonalSecAnnualStatementObservationDto[];
   readonly value: PersonalSecAnnualBalanceSheetValueDto;
 }) {
-  const { scan } = evidence;
   return (
     <section aria-label={`${label} source inputs`}>
       <h5>{label}</h5>
@@ -183,7 +195,7 @@ function BalanceSheetInputs({
       )}
       <p>Value references: {value.observationIds.join(" · ") || "None"}</p>
       <ol>
-        {evidence.observations.map((row) => (
+        {observations.map((row) => (
           <li key={row.id}>
             <SecAnnualBalanceObservation row={row} />
           </li>
