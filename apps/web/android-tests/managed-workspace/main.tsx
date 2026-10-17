@@ -371,7 +371,10 @@ function FixtureDraftDiagnostics({
     <aside aria-label="Invented draft diagnostics">
       {scenario === "authored-valuation" && (
         <>
-          <pre id="fixture-valuation-expected">
+          <pre
+            id="fixture-valuation-expected"
+            style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+          >
             {JSON.stringify({
               prefix: authoredValuationPrefix,
               expectedNote: authoredValuationNoteDraft,

@@ -453,7 +453,29 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-signout-review')?.textContent.includes('Valuation inputs are temporary.')" +
             " && [...document.querySelectorAll('#managed-signout-review dt')].find(e => e.textContent === 'Valuation inputs')?.nextElementSibling?.textContent === 'Temporary inputs will be discarded.'" +
             " && document.activeElement?.id === 'managed-signout-stay' && " + DRAFT + ".dirty === false");
-        retainSignOutReviewScreenshot("authoredValuationSignOut", "managed-signout-stay");
+        // This review includes the valuation warning as its third paragraph.
+        // The older sign-out fixture helper owns a different five-target review and draft.
+        CountDownLatch valuationReviewScrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('#managed-signout-review')?.scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> valuationReviewScrolled.countDown()));
+        assertTrue("Valuation sign-out review did not scroll into view", valuationReviewScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String valuationSignOutVisible = "(() => { const targets=Array.from(document.querySelectorAll('#managed-signout-review h2, #managed-signout-review p, #managed-signout-review button'));" +
+            " const v=visualViewport; return v && targets.length === 6 && targets.every(e=>{const r=e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft+v.width && r.top >= v.offsetTop && r.bottom <= v.offsetTop+v.height;});})()";
+        awaitPage("entire valuation sign-out explanation and both actions visible before capture", valuationSignOutVisible);
+        retainScreenshot("authoredValuationSignOut");
+        awaitPage("entire valuation sign-out review and focus retained through capture",
+            valuationSignOutVisible + " && document.activeElement?.id === 'managed-signout-stay'");
+        awaitPage("valuation capture preserves exact saved ZERO then ONE, temporary assumptions and zero pending source requests",
+            "(() => { const draft = " + DRAFT + ", d = " + DIAGNOSTICS + ", v = " + valuation + ";" +
+            " return draft.baseVersion === 2 && draft.dirty === false && draft.memberships?.length === 2" +
+            " && draft.memberships[0].listingId === 'listing-zero' && draft.memberships[0].symbol === 'ZERO' && draft.memberships[0].note === " + JSONObject.quote(expected) +
+            " && draft.memberships[1].listingId === 'listing-one' && draft.memberships[1].symbol === 'ONE' && draft.memberships[1].note === 'Invented second note'" +
+            " && v.editable && v.dirty && !v.retired && v.context?.listing.listingId === 'listing-zero'" +
+            " && v.calculation?.dcfResult.scenarios.base.valuePerShareUsd === '140.00' && v.calculation?.exitResult.scenarios.base.valuePerShare === '19.00'" +
+            " && d.save === 1 && d.load === 2 && d.status === 1 && d.signOut === 0 && d.annual === 0 && d.eod === 0 && d.filings === 0 && d.marketsEod === 0" +
+            " && d.calendar === 0 && d.fed === 0 && d.search === 0 && d.resolve === 0 && d.token === 0; })()");
         click("#managed-signout-stay");
         awaitPage("Keep editing preserves valuation and saved note", "document.querySelector('#managed-signout-review') === null && " + valuation + ".calculation !== null && " + DIAGNOSTICS + ".signOut === 0");
         click("#managed-signout-open");
