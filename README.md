@@ -5,6 +5,10 @@ Investment is a personal market and research platform for desktop and Android.
 workflow for discovering companies, inspecting prices and financial evidence,
 keeping ideas, and reviewing holdings using permitted data and existing resources.
 
+[Current work](docs/CURRENT_WORK.md) contains the current capability and delivery
+table. Integrated source, the deployed app and physical-device acceptance have
+separate status.
+
 The public repository contains several deliberate runtime profiles. Their
 capabilities and acceptance are different:
 
@@ -22,10 +26,12 @@ are not adjusted for splits or dividends. Markets coverage remains limited to AA
 and GOOGL. An explicit Load or Refresh for one selected listing preserves the
 other board histories. Selection alone makes no price request.
 
-Discover and Annual cover AAPL, GOOG, GOOGL and MSFT using the fixed reviewed
-catalog. Price coverage remains the three Markets listings. For an unsupported
-Price identity, the company page explains availability and keeps Annual and note
-editing usable without offering a provider request.
+The integrated Annual screening source has a defined cohort of 18 listings
+across 17 issuers; see [source scope](docs/MANAGED_FINANCIAL_SCREEN.md#source-scope-and-acceptance).
+Price retains the three Markets listings, and Filings has separate eligibility.
+An Annual result does not establish Price or Filings coverage. Unsupported
+Price identities keep Annual and note editing usable without a provider request.
+The Current work table distinguishes this source coverage from the live release.
 
 Annual reports compare eligible adjacent periods from the same filing, including
 reported net margins and their change in percentage points. Each named revenue

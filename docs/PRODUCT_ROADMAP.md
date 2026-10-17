@@ -13,13 +13,30 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The current M2/M4 candidate connects two loaded financial-screen results through
+## Current priority after the October 17 review
+
+The next outcome is a coordinated API, website and Android release with explicit
+daily-use acceptance. Several useful workflows are integrated in source but are
+not in the verified live release. Use the single capability and delivery table in
+[Current work](CURRENT_WORK.md) and the [release readiness plan](MANAGED_RELEASE_READINESS.md).
+Keep the browser stop and all existing release gates intact; offline preparation
+does not establish staging, production or physical-device acceptance.
+
+After delivery, align Price, Annual and Filings eligibility across one useful
+named company universe. Then complete editable valuation persistence and managed
+Portfolio storage/recovery. Defer new portfolio-history features while these
+delivery and persistence gaps remain. Coverage fixes and selected metric rows do
+not complete a milestone.
+
+The integrated M2/M4 source connects two loaded financial-screen results through
 [all three Annual statement groups](MANAGED_SCREEN_COMPARISON.md), independent
 source inspection, either company's research and Back to the retained screen.
 It reuses the captured reports and canonical tables without new requests,
 financial fields, formulas or a saved comparison. Different fiscal periods stay
-explicit; selection does not establish a peer group. Source and native checks are
-in progress.
+explicit; selection does not establish a peer group. PR188 is merged; its PR and
+synthetic native checks pass. Final-main and publication acceptance are recorded
+separately in Current work. The implementation notes below retain their dated
+scope; older "next" labels do not override the current priority above.
 
 The source-integrated M4 outcome connects [authored valuation to dated raw closes](MANAGED_VALUATION_PRICE_CONTEXT.md):
 explicit Price loading, six independently qualified scenario comparisons,
