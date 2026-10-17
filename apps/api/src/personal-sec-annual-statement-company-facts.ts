@@ -111,14 +111,15 @@ function scanConcept(
         unit: "USD" as const,
         ...source,
       };
-      const id =
-        `sec-fact:${createHash("sha256").update(serializePersonalSecAnnualStatementObservation(fields)).digest("hex")}` as const;
-      if (unique.has(id)) {
+      const serialized = serializePersonalSecAnnualStatementObservation(fields);
+      if (unique.has(serialized)) {
         duplicateRows++;
         continue;
       }
+      const id =
+        `sec-fact:${createHash("sha256").update(serialized).digest("hex")}` as const;
       unique.set(
-        id,
+        serialized,
         Object.freeze({
           id,
           ...fields,
@@ -130,12 +131,10 @@ function scanConcept(
     const selected =
       accession === null
         ? null
-        : all
-            .filter((row) => row.accessionNumber === accession)
-            .sort(compareRows);
+        : all.filter((row) => row.accessionNumber === accession);
     const observations =
       selected !== null && selected.length <= LIMITS.observationsPerConcept
-        ? selected
+        ? selected.sort(compareRows)
         : [];
     return Object.freeze({
       scan: Object.freeze({
