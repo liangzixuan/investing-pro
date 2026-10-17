@@ -19,7 +19,7 @@ export function reportProbeDocument(
   kind: ReportProbeKind,
 ): CompanyReportDocument {
   const prefix =
-    '{"purpose":"investment.company-research","schemaVersion":"4.0.0","preparedAt":"2026-10-15T00:00:00.000Z","listing":{"symbol":"ZERO","exchangeMic":"XNAS"},"authoredResearch":{"note":"Café 東京 📈"},"padding":"';
+    '{"purpose":"investment.company-research","schemaVersion":"5.0.0","preparedAt":"2026-10-15T00:00:00.000Z","listing":{"symbol":"ZERO","exchangeMic":"XNAS"},"authoredResearch":{"note":"Café 東京 📈"},"padding":"';
   const suffix = '"}\n';
   const encoder = new TextEncoder();
   let text =

@@ -17,6 +17,12 @@ import {
   type ExitScenarioField,
 } from "./managed-valuation-workbench";
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import type { ManagedEodHistory } from "./managed-eod-history";
+import { resolveManagedValuationPrice } from "./managed-valuation-price";
+import {
+  ManagedValuationPriceContext,
+  valuationPriceRefusal,
+} from "./ManagedValuationPriceContext";
 import type { ResearchWatchlistState } from "./managed-workspace";
 import type {
   PreparedValuationNote,
@@ -32,6 +38,7 @@ export interface ManagedValuationNoteActions {
   prepare: (
     model: "dcf" | "exit",
     scenario: AuthoredValuationScenario,
+    includePriceComparison?: boolean,
   ) => ValuationNotePreparation;
   isCurrent: (preview: PreparedValuationNote) => boolean;
   append: (preview: PreparedValuationNote) => {
@@ -45,7 +52,11 @@ export interface ManagedValuationWorkbenchProps {
   readonly navigationPending: boolean;
   readonly noteActions: ManagedValuationNoteActions;
   readonly watchlist: ResearchWatchlistState;
+  readonly price?: ManagedEodHistory;
+  readonly onOpenPrice?: () => void;
 }
+const subscribeWithoutPrice = () => () => {};
+const snapshotWithoutPrice = () => null;
 const dcfFields: readonly (readonly [DcfField, string])[] = [
   ["startingUnleveredCashFlowUsd", "Starting unlevered cash flow (full USD)"],
   [
@@ -260,6 +271,8 @@ export function ManagedValuationWorkbench({
   navigationPending,
   noteActions,
   watchlist,
+  price,
+  onOpenPrice,
 }: ManagedValuationWorkbenchProps) {
   const id = useId();
   const state = useSyncExternalStore(
@@ -267,11 +280,18 @@ export function ManagedValuationWorkbench({
     model.getSnapshot,
     model.getSnapshot,
   );
+  const priceState = useSyncExternalStore(
+    price?.subscribe ?? subscribeWithoutPrice,
+    price?.getSnapshot ?? snapshotWithoutPrice,
+    price?.getSnapshot ?? snapshotWithoutPrice,
+  );
   const [noteModel, setNoteModel] = useState<"dcf" | "exit">("dcf");
   const [scenario, setScenario] = useState<AuthoredValuationScenario>("base");
   const [preparation, setPreparation] =
     useState<ValuationNotePreparation | null>(null);
   const [message, setMessage] = useState("");
+  const [includePriceComparison, setIncludePriceComparison] = useState(false);
+  const preparedPrice = useRef<typeof priceState | undefined>(undefined);
   const live = useRef(false);
   const choiceRevision = useRef(0);
   useLayoutEffect(() => {
@@ -297,11 +317,27 @@ export function ManagedValuationWorkbench({
       ? (watchlist.reason ??
         "Add this company to My Watchlist before preparing a note.")
       : null;
-  const noteDisabled = disabled || noteBlock !== null || !state.calculation;
+  const priceContext = resolveManagedValuationPrice(
+    selection,
+    state.calculation,
+    priceState,
+  );
+  const selectedComparison = priceContext?.rows.find(
+    (row) => row.model === noteModel && row.scenario === scenario,
+  );
+  const comparisonAvailable = selectedComparison?.result.status === "available";
+  const baseNoteDisabled = disabled || noteBlock !== null || !state.calculation;
+  const noteDisabled =
+    baseNoteDisabled || (includePriceComparison && !comparisonAvailable);
   const preview = preparation?.preview ?? null;
-  const current = preview !== null && noteActions.isCurrent(preview);
+  const current =
+    preview !== null &&
+    preparedPrice.current === priceState &&
+    noteActions.isCurrent(preview);
+  const priceIsCurrent = () => (price?.getSnapshot() ?? null) === priceState;
   const resetPreview = () => {
     choiceRevision.current++;
+    preparedPrice.current = undefined;
     setPreparation(null);
     setMessage("");
   };
@@ -404,6 +440,31 @@ export function ManagedValuationWorkbench({
           {state.calculation && (
             <ManagedValuationResults calculation={state.calculation} />
           )}
+          <ManagedValuationPriceContext context={priceContext} />
+          {onOpenPrice && (
+            <button
+              type="button"
+              className="trial-secondary"
+              disabled={navigationPending}
+              onClick={() => {
+                if (
+                  !live.current ||
+                  navigationPending ||
+                  model.getSnapshot() !== state ||
+                  !priceIsCurrent()
+                )
+                  return;
+                onOpenPrice();
+              }}
+            >
+              Open Price section
+            </button>
+          )}
+          <p>
+            Use the existing Price section to load or refresh raw closing prices
+            explicitly. Viewing this comparison and preparing a note make no
+            source request.
+          </p>
           <details className="managed-valuation-note">
             <summary>Add a valuation result to the note draft</summary>
             <p>
@@ -412,7 +473,7 @@ export function ManagedValuationWorkbench({
               is refused if it exceeds the note limit; nothing is clipped or
               saved here.
             </p>
-            <fieldset disabled={noteDisabled}>
+            <fieldset disabled={baseNoteDisabled}>
               <legend>Valuation to include</legend>
               <div className="managed-valuation-fields">
                 <label
@@ -423,11 +484,12 @@ export function ManagedValuationWorkbench({
                   <select
                     id={`${id}-note-model`}
                     value={noteModel}
-                    disabled={noteDisabled}
+                    disabled={baseNoteDisabled}
                     onChange={(event) => {
                       if (
                         !canAct() ||
-                        noteDisabled ||
+                        baseNoteDisabled ||
+                        !priceIsCurrent() ||
                         !["dcf", "exit"].includes(event.currentTarget.value)
                       )
                         return;
@@ -447,11 +509,12 @@ export function ManagedValuationWorkbench({
                   <select
                     id={`${id}-note-scenario`}
                     value={scenario}
-                    disabled={noteDisabled}
+                    disabled={baseNoteDisabled}
                     onChange={(event) => {
                       if (
                         !canAct() ||
-                        noteDisabled ||
+                        baseNoteDisabled ||
+                        !priceIsCurrent() ||
                         !VALUATION_SCENARIOS.includes(
                           event.currentTarget
                             .value as AuthoredValuationScenario,
@@ -472,14 +535,53 @@ export function ManagedValuationWorkbench({
                   </select>
                 </label>
               </div>
+              <label
+                className="managed-valuation-price-opt-in"
+                htmlFor={`${id}-include-price`}
+              >
+                <input
+                  id={`${id}-include-price`}
+                  type="checkbox"
+                  aria-describedby={`${id}-include-price-help`}
+                  checked={includePriceComparison}
+                  disabled={
+                    baseNoteDisabled ||
+                    (!comparisonAvailable && !includePriceComparison)
+                  }
+                  onChange={(event) => {
+                    if (
+                      !canAct() ||
+                      baseNoteDisabled ||
+                      !priceIsCurrent() ||
+                      (event.currentTarget.checked && !comparisonAvailable)
+                    )
+                      return;
+                    resetPreview();
+                    setIncludePriceComparison(event.currentTarget.checked);
+                  }}
+                />
+                <span>Include dated price comparison</span>
+              </label>
+              <p id={`${id}-include-price-help`}>
+                {comparisonAvailable
+                  ? "Adds this selected scenario's dated raw-close comparison and original source qualifications to the complete note preview."
+                  : selectedComparison?.result.status === "unavailable"
+                    ? valuationPriceRefusal(selectedComparison.result.reason)
+                    : "Calculate an available scenario and explicitly load Price before including a comparison."}
+              </p>
             </fieldset>
             <button
               type="button"
               className="trial-secondary"
               disabled={noteDisabled}
               onClick={() => {
-                if (!canAct() || noteDisabled) return;
-                setPreparation(noteActions.prepare(noteModel, scenario));
+                if (!canAct() || noteDisabled || !priceIsCurrent()) return;
+                preparedPrice.current = priceState;
+                setPreparation(
+                  includePriceComparison
+                    ? noteActions.prepare(noteModel, scenario, true)
+                    : noteActions.prepare(noteModel, scenario),
+                );
                 setMessage("");
               }}
             >
@@ -494,6 +596,8 @@ export function ManagedValuationWorkbench({
                   if (
                     !canAct() ||
                     noteDisabled ||
+                    !current ||
+                    !priceIsCurrent() ||
                     !noteActions.isCurrent(preview)
                   )
                     return;

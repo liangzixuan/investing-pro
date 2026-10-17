@@ -1917,6 +1917,7 @@ export class ManagedWorkspace {
     selection: ManagedResearchSelection,
     model: "dcf" | "exit",
     scenario: AuthoredValuationScenario,
+    includePriceComparison = false,
   ) {
     const watchlist = this.getResearchWatchlist(selection);
     const valuation = this.valuation.getSnapshot();
@@ -1961,6 +1962,9 @@ export class ManagedWorkspace {
       capture,
       model,
       scenario,
+      selection,
+      includePriceComparison,
+      price,
       note: watchlist.member.note,
       isCurrent,
       apply: (note) =>

@@ -1,5 +1,11 @@
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
 import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
+import type { ManagedEodHistoryState } from "./managed-eod-history";
+import type { ManagedResearchSelection } from "./managed-research-selection";
+import {
+  resolveManagedValuationPrice,
+  managedValuationPriceContextIsOwned,
+} from "./managed-valuation-price";
 import {
   captureValuationCalculationGuard,
   VALUATION_SCENARIOS,
@@ -22,6 +28,9 @@ export interface ValuationNoteCapture {
   readonly model: ValuationNoteModel;
   readonly scenario: AuthoredValuationScenario;
   readonly note: string;
+  readonly selection?: ManagedResearchSelection;
+  readonly includePriceComparison?: boolean;
+  readonly price?: ManagedEodHistoryState | null;
   readonly isCurrent: () => boolean;
   readonly apply: (note: string) => void;
 }
@@ -59,11 +68,23 @@ export function prepareValuationNote(
     return refuse("Select one valuation model and scenario.");
   if (normalizeWatchlistNote(input.note) === null)
     return refuse("Correct the current note before adding this valuation.");
-  const excerpt = valuationExcerpt(input.capture, input.model, input.scenario);
-  if (excerpt === null)
+  const valuation = valuationExcerpt(
+    input.capture,
+    input.model,
+    input.scenario,
+  );
+  if (valuation === null)
     return refuse(
       "Calculate valid assumptions for this model before preparing a valuation note.",
     );
+  const comparison = input.includePriceComparison
+    ? valuationPriceExcerpt(input)
+    : { text: "", current: () => true };
+  if (comparison === null)
+    return refuse(
+      "Load this company's Price and use a valid scenario before including its dated comparison.",
+    );
+  const excerpt = valuation + comparison.text;
   if (normalizeWatchlistNote(input.note)!.endsWith(excerpt))
     return refuse("This valuation is already at the end of the note draft.");
   const note = input.note ? `${input.note} ${excerpt}` : excerpt;
@@ -71,7 +92,8 @@ export function prepareValuationNote(
     return refuse(
       "The complete note must fit the existing single-line, 2,000-character limit. Shorten the note before adding this valuation.",
     );
-  if (!safelyCurrent(current)) return refuse(stale);
+  if (!safelyCurrent(() => current() && comparison.current()))
+    return refuse(stale);
   const preview = Object.freeze({
     note,
     excerpt,
@@ -81,10 +103,35 @@ export function prepareValuationNote(
   // Copy callbacks so later mutation of a caller's options cannot retarget append.
   const isCurrent = input.isCurrent;
   previews.set(preview, {
-    current: () => Boolean(guard?.() && isCurrent()),
+    current: () => Boolean(guard?.() && isCurrent() && comparison.current()),
     apply: input.apply,
   });
   return { preview, reason: null };
+}
+
+function valuationPriceExcerpt(
+  input: ValuationNoteCapture,
+): { text: string; current: () => boolean } | null {
+  const selection = input.selection ?? input.capture.owner;
+  const calculation = input.capture;
+  const price = input.price ?? null;
+  const context = resolveManagedValuationPrice(selection, calculation, price);
+  const reference = context?.reference;
+  const row = context?.rows.find(
+    (item) => item.model === input.model && item.scenario === input.scenario,
+  );
+  if (!reference || row?.result.status !== "available") return null;
+  const source = reference.response;
+  return {
+    text: ` Dated raw-close comparison: ${source.provider} raw USD ${reference.rawCloseUsd} on ${reference.date}; ${source.range} window ${source.window.startDate} through ${source.window.endDate}; source request ${source.requestStartedAt}, completed ${source.completedAt}; ${reference.showingPrevious ? "retained previous response, not confirmed by the latest attempt" : "loaded response"}. Displayed authored value/share ${row.modelValuePerShareUsd}; difference ${row.result.differencePercent}% = 100*(model/close-1), half-up to 2 decimals. Raw price is unadjusted for splits/dividends; equivalence with authored diluted shares is unverified. Dated scenario context, not a current quote or price target.`,
+    current: () =>
+      managedValuationPriceContextIsOwned(
+        context,
+        selection,
+        calculation,
+        price,
+      ),
+  };
 }
 export function isValuationNoteCurrent(
   preview: PreparedValuationNote,

@@ -52,6 +52,11 @@ result or refusal; a refused cell cannot inherit a neighboring value.
 
 ## Keep a result in the research workflow
 
+The workbench also supports a [dated raw-close comparison](MANAGED_VALUATION_PRICE_CONTEXT.md)
+for each authored scenario after the existing explicit Price load. The source
+date and authored share-basis limits remain visible. Including the comparison in
+a note requires an explicit choice before the complete preview.
+
 The inputs belong to one full company/listing identity and catalog. They survive
 section changes and Back followed by return to that company. Researching another
 company retains the draft with editing paused. **Discard inputs and use SYMBOL**
@@ -85,13 +90,14 @@ sensitivity cells and refusal reasons. It keeps any separately loaded source
 packets and their original dates. Authored assumptions are not bound to reported
 facts merely because those facts are displayed nearby.
 
-JSON schema 2.0.0 and the browser HTML copy retain this complete capture. The
-valuation field has a separate 128 KiB bound; the whole report refuses overflow.
+Company JSON format 5 and the browser HTML copy retain this complete capture and
+any dated price comparison. The valuation and comparison share the existing
+128 KiB allowance; the whole report refuses overflow.
 Changing any valuation input removes the current report and blocks stale file
 delivery. A batched note edit followed by identical-text restoration also keeps
 the old report invalid. Exported copies do not update with later edits.
 
 Source checks, rendered desktop geometry, packaged native execution and release
-acceptance are separate. This workflow does not add a provider feed, price
-comparison, automatic financial conversion, historical multiples or a saved
+acceptance are separate. This workflow does not add a provider feed,
+automatic financial conversion, historical multiples or a saved
 assumption record.

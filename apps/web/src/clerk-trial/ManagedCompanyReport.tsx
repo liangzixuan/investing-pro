@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { ManagedValuationWorkbench } from "./managed-valuation-workbench";
 import { ManagedValuationResults } from "./ManagedValuationResults";
+import { ManagedValuationPriceContext } from "./ManagedValuationPriceContext";
 import { CapturedPriceStudies } from "./ManagedPriceStudies";
 import type { ResearchWatchlistState } from "./managed-workspace";
 import { CompanySnapshotEvidenceView } from "./ManagedCompanySnapshot";
@@ -208,6 +209,7 @@ export function CompanyReportView({
           {report.valuation && (
             <ManagedValuationResults calculation={report.valuation} />
           )}
+          <ManagedValuationPriceContext context={report.valuationPrice} />
           {report.priceStudies && (
             <CapturedPriceStudies
               studies={report.priceStudies}

@@ -341,7 +341,8 @@ export function ManagedValuationResults({
       <p>{calculation.explanation}</p>
       <p>
         USD amounts are full dollars, not thousands or millions. Shares are
-        actual share counts. No market-price comparison is included.
+        actual share counts. Separately loaded prices keep their own dates and
+        share-basis limits.
       </p>
       <DcfResults result={calculation.dcfResult} />
       <ExitResults result={calculation.exitResult} />

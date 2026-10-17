@@ -52,6 +52,7 @@ if (
   scenario !== "price-comparison-note" &&
   scenario !== "price-studies" &&
   scenario !== "financial-screen" &&
+  scenario !== "valuation-price" &&
   scenario !== "company-filings" &&
   scenario !== "markets-price-handoff" &&
   scenario !== "watchlist-recovery" &&
@@ -395,6 +396,16 @@ function FixtureDraftDiagnostics({
             {JSON.stringify(valuation)}
           </pre>
         </>
+      )}
+      {fixture.valuationPrice && (
+        <pre id="fixture-valuation-price" hidden>
+          {JSON.stringify(fixture.valuationPrice)}
+        </pre>
+      )}
+      {fixture.valuationPrice && (
+        <pre id="fixture-valuation-draft" hidden>
+          {JSON.stringify(valuation)}
+        </pre>
       )}
       {nativeExport && (
         <pre id="fixture-export-document">

@@ -80,7 +80,7 @@ internal object CompanyReportDocumentPolicy : ChosenDocumentPolicy {
             }
             reader.endObject()
             require(reader.peek() == JsonToken.END_DOCUMENT)
-            purpose == PURPOSE && schema == "4.0.0" && listing != null &&
+            purpose == PURPOSE && schema == "5.0.0" && listing != null &&
                 reportFilename(listing.first, listing.second, preparedAt) == filename
         }
     } catch (_: Exception) {

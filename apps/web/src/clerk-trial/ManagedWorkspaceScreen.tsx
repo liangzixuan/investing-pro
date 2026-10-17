@@ -1086,11 +1086,12 @@ export function ManagedWorkspaceScreen({
                   eod={workspace.eod}
                   valuation={workspace.valuation}
                   valuationNoteActions={{
-                    prepare: (model, scenario) =>
+                    prepare: (model, scenario, includePriceComparison) =>
                       workspace.prepareValuationNote(
                         discovery.research!.selection,
                         model,
                         scenario,
+                        includePriceComparison,
                       ),
                     isCurrent: (preview) =>
                       workspace.valuationNotePreviewIsCurrent(preview),

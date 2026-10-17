@@ -367,7 +367,7 @@ describe("invented complete standardized annual statement journey", () => {
     const document = formatCompanyReportDocument(report)!;
     const parsed: unknown = JSON.parse(document.text);
     expect(parsed).toMatchObject({
-      schemaVersion: "4.0.0",
+      schemaVersion: "5.0.0",
       authoredResearch: { note: f.annualStatements.expectedNote },
       sources: { annual: { response, statements: source.view!.statements } },
     });
