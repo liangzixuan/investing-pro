@@ -390,6 +390,29 @@ apply to the entire response. This adds no source request, saved state, cash
 history or note action. Source, browser and native acceptance are recorded in
 [Current work](CURRENT_WORK.md).
 
+### Compare cash generation relative to revenue
+
+The comparison candidate adds three fixed rows after the cash USD amounts, one
+for each named reported revenue concept. Each company shows its exact reported
+revenue and its own operating cash flow less PP&E purchases divided by that
+revenue, expressed as a percentage. The existing cash-margin derivation rounds
+once to two decimal places and preserves the calculation's period, filing and
+current-use qualification. The income basis selector does not change these rows.
+
+Missing or refused inputs affect only that company's basis. Unloaded columns stay
+unloaded. Valid cash margins remain available when operating or net income is
+missing. The calculation requires matching periods and filing references within
+each company. It does not align the companies' fiscal calendars or accounting
+policies, calculate a difference between them or rank them.
+
+Each company's source disclosure includes the same **Cash margin inputs** used
+in company Annual: exact OCF, PP&E and revenue operands, observation references,
+filing dates and original capture/completion times. Refresh failure and Cancel
+retain the previous report's evidence. The existing comparison selection and
+session boundaries apply. This adds no source request, saved field or note action;
+the existing cash note action retains its three USD amounts. Candidate acceptance
+and publication remain separate in [Current work](CURRENT_WORK.md).
+
 ## Financial overview
 
 Once a managed Annual report is loaded, **On this report** links to Revenue and

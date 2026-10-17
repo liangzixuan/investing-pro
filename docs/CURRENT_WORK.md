@@ -124,7 +124,8 @@ retained; current-head checks remain separate.
 The repaired revision passed all four original workflows and five jobs, including
 Android, Ubuntu and Windows. CodeScene passes with no maintenance warnings. The
 reviewed source was merged at `6c6679c` after the owner approved by email.
-Main checks and publication have separate acceptance.
+All three applicable main workflows and four jobs passed, including Ubuntu
+source-proof capture and retention. Publication has separate acceptance.
 This surface is not released.
 
 ## Annual cash margin in progress
@@ -165,8 +166,28 @@ cash table are preserved. An initial invented Chrome check at 1152 CSS pixels
 showed the default signed chart, closed/open behavior and a 44px picker with
 keyboard focus. Full responsive, tooltip and browser lifetime checks remain
 unverified. The additive native test retains all prior assertions and adds one
-image; packaged execution is pending. This candidate is stacked on the unreleased
+image. The original Android run passed; Windows stopped at the unchanged vault
+restart test's five-second deadline. That failure is retained. A reviewed guard
+refactor preserves the plot's numeric acceptance, refusals and freezing; its
+51 affected tests, types and lint pass. Current-head CI is separate. This candidate is stacked on the unreleased
 cash-margin source. Source integration and publication remain separate.
+
+## Annual cash margin comparison in progress
+
+The next M2/M4 candidate adds three fixed revenue-basis rows to the existing
+two-company Annual comparison. Each company's exact revenue, cash-generation
+percentage, period, refusal and original source qualification remain independent.
+It reuses the existing cash-margin derivation and input disclosures without
+requiring operating or net income or using the comparison's income selector.
+
+The 81 affected component cases, real-model journey, web types, scoped lint and
+source boundaries pass. Differential checks retain the prior company markup,
+comparison rows and note outputs. The native test extension preserves all 43
+cases and 121 capture names; Java and constructed-predicate syntax checks pass.
+Packaged execution is pending. Browser/CDP checks are stopped under the owner's
+current direction; no new responsive or browser-lifetime acceptance is claimed.
+Source integration, packaged native execution and publication remain separate.
+Existing production and the earlier comparison note action are unchanged.
 
 ## Remaining milestones and acceptance limits
 

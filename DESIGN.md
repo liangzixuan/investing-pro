@@ -39,6 +39,20 @@ original clocks use the existing evidence renderers. Do not add a selected basis
 new request control or score. Preserve the surrounding Annual section hierarchy,
 retained-report warning and independent note draft.
 
+## Annual cash margin comparison
+
+Keep the existing two-company comparison table. Place three named revenue-basis
+rows after the cash USD rows. Each company cell shows its own reported revenue
+and calculated percentage, with units, period and eligibility. Keep exact values
+wrapping inside the table's contained scroll region. Use neutral signs and give
+refusals the same space as available values.
+
+The existing income basis selector does not change these rows. Put complete
+cash-margin inputs in each company's source panel, using the same initially
+closed native disclosures and 44px summaries as company Annual. Preserve original
+source dates. Explain that the companies can have different fiscal periods and
+accounting policies; do not add a ranking or a cross-company percentage difference.
+
 ## Reported cash history chart
 
 Reported cash history keeps its initially closed native disclosure and exact

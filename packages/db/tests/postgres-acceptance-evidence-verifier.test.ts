@@ -798,6 +798,18 @@ function changedByte(value: Uint8Array): Uint8Array {
   return changed;
 }
 
+function compactMigrationMismatchInput(): MutableInput {
+  const input = cloneInput();
+  // These opaque, hash-only sources are invented for migration-negative cases.
+  input.sources.acceptanceRunner = bytes("// Invented acceptance runner.\n");
+  input.sources.pnpmLockfile = bytes("# Invented dependency lockfile.\n");
+  return mutateEvidence(input, (record) => {
+    const hashes = record.sourceHashes as Record<string, unknown>;
+    hashes.acceptanceRunnerSha256 = sha256(input.sources.acceptanceRunner);
+    hashes.pnpmLockfileSha256 = sha256(input.sources.pnpmLockfile!);
+  });
+}
+
 function expectValueFreeFailure(run: () => unknown): void {
   let caught: unknown;
   try {
@@ -1835,6 +1847,16 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("rejects migration ID, filename, and exact-byte hash mismatches", () => {
+    const baseline = compactMigrationMismatchInput();
+    const originalMigrationHash = sha256(
+      BASE_INPUT.sources.migrations[0]!.bytes,
+    );
+    expect(parsedEvidence(baseline).schemaVersion).toBe(14);
+    expect(verifyPostgresAcceptanceEvidenceOffline(baseline)).toMatchObject({
+      verdict: "offline_consistent",
+      verificationChecks: [...POSTGRES_ACCEPTANCE_OFFLINE_VERIFICATION_CHECKS],
+      recordedChecksPassed: [...POSTGRES_ACCEPTANCE_CHECKS_PASSED],
+    });
     for (const mutate of [
       (input: MutableInput) => {
         const migrations = [...input.sources.migrations];
@@ -1855,12 +1877,22 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
         input.sources = { ...input.sources, migrations };
       },
     ]) {
-      const input = cloneInput();
+      const input = cloneFrom(baseline);
+      expect(input.sources.migrations).not.toBe(baseline.sources.migrations);
+      expect(input.sources.migrations[0]!.bytes).not.toBe(
+        baseline.sources.migrations[0]!.bytes,
+      );
       mutate(input);
       expectValueFreeFailure(() =>
         verifyPostgresAcceptanceEvidenceOffline(input),
       );
     }
+    expect(sha256(baseline.sources.migrations[0]!.bytes)).toBe(
+      originalMigrationHash,
+    );
+    expect(sha256(BASE_INPUT.sources.migrations[0]!.bytes)).toBe(
+      originalMigrationHash,
+    );
   });
 
   it("rejects reordered, duplicated, malformed, and mis-hashed manifest entries", () => {

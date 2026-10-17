@@ -10,6 +10,7 @@ import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
 import { ManagedWatchlistAnnualComparison as Model } from "./managed-watchlist-annual-comparison";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
 import { SecAnnualOperatingSourceBody } from "../features/research/SecAnnualOperatingResults";
+import { SecAnnualCashSourceBody } from "../features/research/SecAnnualCashGeneration";
 import {
   annualComparisonMemberships as members,
   annualComparisonCashRows as cashRows,
@@ -83,6 +84,7 @@ type ControlProps = {
   "aria-label"?: string;
   "aria-describedby"?: string;
   "data-annual-comparison-cash-source"?: string;
+  "data-annual-comparison-cash-margin-source"?: string;
   "data-annual-comparison-liquidity-source"?: string;
   "data-annual-comparison-operating-source"?: string;
   onChange?: React.ChangeEventHandler<HTMLSelectElement>;
@@ -467,7 +469,7 @@ describe("watchlist annual comparison controls and presentation", () => {
         .map((node) => textContent(node.props.children)),
     ).toEqual([
       "Operating margin divides reported operating income by the selected positive revenue for the same filing and exact period, then multiplies by 100. It is rounded to two decimal places, half up. Revenue bases stay separate; negative operating income is valid. This does not establish adjusted earnings, EBIT or EBITDA.",
-      "The app calculation subtracts purchases of property, plant and equipment from operating cash flow for the same filing and period. It does not adjust for leases, acquisitions or other investing cash flows.",
+      "The app calculation subtracts purchases of property, plant and equipment from operating cash flow for the same filing and period. It does not adjust for leases, acquisitions or other investing cash flows. Cash generation relative to revenue divides that exact subtraction by each positive reported revenue basis and multiplies by 100, rounded once to two decimal places, half up. All three inputs must have the same filing and exact period within that company. The three named bases stay separate from the selected income basis. Each company keeps its own fiscal period; these percentages do not rank companies or establish like-for-like performance.",
       "Working capital subtracts current liabilities from current assets. Current ratio divides current assets by current liabilities and rounds to two decimal places, half up. Both calculations require nonnegative balances from the same filing and date; the ratio requires positive liabilities. Current assets are not all cash.",
       "Balance sheet totals are independent reported amounts at each company’s own balance date. Parent equity excludes noncontrolling interests. Different fiscal dates and accounting policies can limit comparison. No balance equation or cross-company difference is inferred.",
     ]);
@@ -752,7 +754,7 @@ describe("cash in the existing annual comparison", () => {
     }
     expect(
       html.split("<tbody>")[1]!.split("</tbody>")[0]!.match(/<tr/gu),
-    ).toHaveLength(19);
+    ).toHaveLength(22);
     expect(
       html.match(
         /It does not adjust for leases, acquisitions or other investing cash flows\./gu,
@@ -1935,5 +1937,89 @@ describe("reported balance sheet totals in the existing annual comparison", () =
     expect(f.read).toHaveBeenCalledTimes(7);
     expect(f.noteActions.append).not.toHaveBeenCalled();
     expect(f.draft).toEqual(f.originalDraft);
+  });
+});
+
+describe("cash margins in the existing Annual comparison", () => {
+  function marginRows(html: string) {
+    return [
+      ...html.matchAll(
+        /<tr data-annual-comparison-cash-margin="[^"]+">.*?<\/tr>/gu,
+      ),
+    ].map((match) => match[0]);
+  }
+
+  it("keeps fixed bases independent of income choices, retained response lifetime and unchanged note actions", async () => {
+    const f = fixture();
+    const left = await packet("left", { mode: "multiple-bases" });
+    const right = await packet("right");
+    f.read.mockResolvedValueOnce(left).mockResolvedValueOnce(right);
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    await f.load("left");
+    await f.load("right");
+    const original = renderToStaticMarkup(f.render());
+    const originalMargins = marginRows(original);
+    expect(originalMargins).toHaveLength(3);
+    expect(originalMargins[0]).toContain(">150.00%<");
+    expect(originalMargins[1]).toContain(">75.00%<");
+    expect(originalMargins[2]).toContain(">80.00%<");
+    for (const [side, response] of [
+      ["left", left],
+      ["right", right],
+    ] as const) {
+      const tree = f.render();
+      const source = walk(tree).find(
+        (node) => node.props["data-annual-comparison-cash-source"] === side,
+      )!;
+      expect(renderToStaticMarkup(source)).toBe(
+        `<div class="managed-annual-comparison-cash-source" data-annual-comparison-cash-source="${side}"><h4>Cash sources and calculation inputs</h4>${renderToStaticMarkup(<SecAnnualCashSourceBody response={response} />)}</div>`,
+      );
+      const marginSource = walk(tree).find(
+        (node) =>
+          node.props["data-annual-comparison-cash-margin-source"] === side,
+      )!;
+      expect(renderToStaticMarkup(marginSource)).toContain(
+        "Cash generation relative to revenue inputs",
+      );
+      expect(renderToStaticMarkup(marginSource)).toContain(
+        response.evidence.generation.completedAt,
+      );
+      expect(renderToStaticMarkup(source)).not.toContain("Cash margin inputs");
+    }
+    control(f.render(), "select", "-left-basis").props.onChange!({
+      currentTarget: { value: "SalesRevenueNet" },
+    } as React.ChangeEvent<HTMLSelectElement>);
+    expect(marginRows(renderToStaticMarkup(f.render()))).toEqual(
+      originalMargins,
+    );
+    f.read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+    await f.load("left");
+    const retained = renderToStaticMarkup(f.render());
+    expect(retained).toContain("Previous report, loaded");
+    expect(marginRows(retained)).toEqual(originalMargins);
+    const replacement = await packet("left", {
+      rows: incomeRows("left").map((row) => ({
+        ...row,
+        value:
+          row.metric === "revenue" && row.endDate === "2025-12-31"
+            ? "500"
+            : row.value,
+      })),
+    });
+    f.read.mockResolvedValueOnce(replacement);
+    await f.load("left");
+    const replaced = marginRows(renderToStaticMarkup(f.render()));
+    expect(replaced[1]).toContain(">150.00%<");
+    expect(replaced[2]).toBe(originalMargins[2]);
+    expect(f.read).toHaveBeenCalledTimes(4);
+    expect(f.draft).toEqual(f.originalDraft);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.noteActions.review).not.toHaveBeenCalled();
+    f.model.retire();
+    const retired = marginRows(renderToStaticMarkup(f.render()));
+    expect(retired).toHaveLength(3);
+    expect(retired.join("").match(/<td>Not loaded<\/td>/gu)).toHaveLength(6);
+    expect(f.read).toHaveBeenCalledTimes(4);
   });
 });
