@@ -13,7 +13,15 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The current M4 candidate connects [authored valuation to dated raw closes](MANAGED_VALUATION_PRICE_CONTEXT.md):
+The current M2/M4 candidate connects two loaded financial-screen results through
+[all three Annual statement groups](MANAGED_SCREEN_COMPARISON.md), independent
+source inspection, either company's research and Back to the retained screen.
+It reuses the captured reports and canonical tables without new requests,
+financial fields, formulas or a saved comparison. Different fiscal periods stay
+explicit; selection does not establish a peer group. Source and native checks are
+in progress.
+
+The source-integrated M4 outcome connects [authored valuation to dated raw closes](MANAGED_VALUATION_PRICE_CONTEXT.md):
 explicit Price loading, six independently qualified scenario comparisons,
 optional complete-note Preview/Append, existing Review/Save/recovery and captured
 JSON/HTML reports. It reuses the existing comparison engine without a new feed,

@@ -131,6 +131,7 @@ jobs:
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",
                   "priceStudiesPreviewSaveReloadAndReportPreserveRawSource",
                   "financialScreenExplicitRunInspectionAndResearchBackPreserveDraft",
+                  "screenComparisonKeepsIndependentStatementsSourcesAndResearchBack",
                   "companyLinkDirectEntryAndBackPreserveDraft",
                   "watchlistReplayReviewAndFailedReadPreserveDraft",
                   "signOutReviewKeepsDraftAndUpdatesAfterSave",

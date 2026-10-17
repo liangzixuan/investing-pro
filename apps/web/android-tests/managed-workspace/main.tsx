@@ -51,6 +51,7 @@ if (
   scenario !== "thesis-review" &&
   scenario !== "price-comparison-note" &&
   scenario !== "price-studies" &&
+  scenario !== "screen-comparison" &&
   scenario !== "financial-screen" &&
   scenario !== "valuation-price" &&
   scenario !== "company-filings" &&
@@ -93,6 +94,9 @@ function FixtureSession({
     const current = new ManagedWorkspace(fixture.api, session, undefined, {
       marketsCohort: fixture.marketsCohort,
       priceCoverage: fixture.priceCoverage,
+      ...(fixture.screenComparison
+        ? { financialScreenListingIds: fixture.screenComparison.listingIds }
+        : {}),
       ...(fixture.financialScreen
         ? { financialScreenListingIds: fixture.financialScreen.listingIds }
         : {}),
@@ -582,6 +586,11 @@ function Fixture() {
         {fixture.annualStatements && (
           <pre id="fixture-annual-statements" hidden>
             {JSON.stringify(fixture.annualStatements)}
+          </pre>
+        )}
+        {fixture.screenComparison && (
+          <pre id="fixture-screen-comparison" hidden>
+            {JSON.stringify(fixture.screenComparison)}
           </pre>
         )}
         {fixture.financialScreen && (
