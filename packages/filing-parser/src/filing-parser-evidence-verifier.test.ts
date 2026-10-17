@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import {
+  appendFile,
   lstat,
   mkdir,
   mkdtemp,
@@ -722,16 +723,11 @@ async function currentSourceFixture(): Promise<{
   );
   temporaryDirectories.push(directory);
   await gitOutput(["init", "--quiet", "--initial-branch=main", directory]);
-  await gitOutput(["-C", directory, "config", "core.autocrlf", "false"]);
-  await gitOutput(["-C", directory, "config", "user.name", "Evidence Test"]);
-  await gitOutput([
-    "-C",
-    directory,
-    "config",
-    "user.email",
-    "evidence@example.invalid",
-  ]);
-  await gitOutput(["-C", directory, "config", "commit.gpgsign", "false"]);
+  // Set fixture-local values together to avoid four extra Git startups on Windows.
+  await appendFile(
+    join(directory, ".git", "config"),
+    "\n[core]\n\tautocrlf = false\n[user]\n\tname = Evidence Test\n\temail = evidence@example.invalid\n[commit]\n\tgpgsign = false\n",
+  );
   await writeFile(join(directory, "source.txt"), "committed source\n");
   await gitOutput(["-C", directory, "add", "source.txt"]);
   await gitOutput(["-C", directory, "commit", "--quiet", "-m", "anchor"]);
