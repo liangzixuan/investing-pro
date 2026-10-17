@@ -22,6 +22,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.InputDevice;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.PixelCopy;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -34,6 +35,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.espresso.PerformException;
 import androidx.test.espresso.UiController;
 import androidx.test.espresso.ViewAction;
+import androidx.test.espresso.action.CoordinatesProvider;
 import androidx.test.espresso.action.EspressoKey;
 import androidx.test.espresso.action.GeneralClickAction;
 import androidx.test.espresso.action.Press;
@@ -8711,7 +8713,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " visible:r.left>=v.offsetLeft && r.top>=v.offsetTop && r.right<=v.offsetLeft+v.width && r.bottom<=v.offsetTop+v.height,hit:input.contains(document.elementFromPoint(x,y))}; })()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Portfolio input geometry returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        touchObservedGeometry(label, observed.get());
+        touchPortfolioGeometry(label, observed.get());
         awaitPage("native Portfolio editor is focused: " + label,
             "document.activeElement === document.querySelector(" + JSONObject.quote(selector) + ") && document.activeElement.disabled === false");
         awaitNativeEditor(label);
@@ -8840,6 +8842,44 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void touchObservedGeometry(String id, String rawGeometry, ViewAction rollbackAction) throws Exception {
+        onView(isAssignableFrom(WebView.class)).perform(new GeneralClickAction(
+            Tap.SINGLE, observedTouchCoordinates(id, rawGeometry), Press.FINGER,
+            InputDevice.SOURCE_TOUCHSCREEN, 0, rollbackAction));
+    }
+
+    private void touchPortfolioGeometry(String id, String rawGeometry) throws Exception {
+        CoordinatesProvider provider = observedTouchCoordinates(id, rawGeometry);
+        AtomicReference<float[]> coordinates = new AtomicReference<>();
+        onView(isAssignableFrom(WebView.class)).check((view, noViewFoundException) -> {
+            if (noViewFoundException != null) throw noViewFoundException;
+            assertTrue("Portfolio WebView retains the native click visibility constraint",
+                androidx.test.espresso.matcher.ViewMatchers.isDisplayingAtLeast(90).matches(view));
+            coordinates.set(provider.calculateCoordinates(view));
+        });
+        float[] point = coordinates.get();
+        assertNotNull("Portfolio native touch coordinates returned", point);
+        long downTime = SystemClock.uptimeMillis();
+        long deadline = downTime + PAGE_TIMEOUT_MS;
+        MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, point[0], point[1], 0);
+        down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        try {
+            // Public, app-scoped injection waits for retiring window animations before DOWN.
+            // Call on the instrumentation thread; never bypass Android's obscured-touch guard.
+            InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
+        } finally {
+            down.recycle();
+        }
+        MotionEvent up = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, point[0], point[1], 0);
+        up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        try {
+            InstrumentationRegistry.getInstrumentation().sendPointerSync(up);
+        } finally {
+            up.recycle();
+        }
+        assertTrue("Single Portfolio touch finishes within the page deadline", SystemClock.uptimeMillis() < deadline);
+    }
+
+    private CoordinatesProvider observedTouchCoordinates(String id, String rawGeometry) throws Exception {
         assertNotNull("Input geometry was null: " + id, rawGeometry);
         Log.i("ManagedInputGeometry", "id=" + id + ", geometry=" + rawGeometry.substring(0, Math.min(rawGeometry.length(), 2048)));
         JSONObject geometry = new JSONObject(rawGeometry);
@@ -8853,9 +8893,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Invalid visual-to-native scale", Double.isFinite(pixelsPerCssPixel) && pixelsPerCssPixel > 0);
         // A real touch activates Android's editor connection; a JS click can focus only the DOM.
         // DOM rectangles and hit testing use layout CSS coordinates; native touch uses the visual viewport.
-        onView(isAssignableFrom(WebView.class)).perform(new GeneralClickAction(
-            Tap.SINGLE,
-            view -> {
+        return view -> {
                 int[] location = new int[2];
                 view.getLocationOnScreen(location);
                 float localX = (float) ((cssX - offsetLeft) * pixelsPerCssPixel);
@@ -8883,7 +8921,7 @@ public class ManagedWorkspaceInstrumentedTest {
                         .withViewDescription("Managed fixture WebView: " + nativeGeometry)
                         .withCause(new IllegalStateException("Input touch is outside the visible WebView")).build();
                 return new float[] { location[0] + localX, location[1] + localY };
-            }, Press.FINGER, InputDevice.SOURCE_TOUCHSCREEN, 0, rollbackAction));
+            };
     }
 
     private void awaitNativeEditor(String id) {

@@ -13,10 +13,11 @@ The product candidate is merged source
 tests pass. Six bounded native content frames were reviewed. The reviewed
 maintenance warnings were accepted for that exact source merge only.
 
-Final-main parser acceptance passes. Final-main Android, Ubuntu and Windows
-checks remain pending at this checkpoint. Their completion is a prerequisite to
-candidate qualification. Do not substitute PR status for those results or replay
-completed checks without a new acceptance question.
+All four final-main jobs pass, covering 177 listed steps with the expected
+platform-only skips. The actual main native run executed 51 tests with no
+failures, errors or skips against the exact source. The six bounded exact-tree
+PR frames are reused. This qualifies source within that scope; it does not
+establish deployed or physical-device acceptance. Keep completed checks closed.
 
 The verified live API and website remain on product `c270131`; signed Android
 1.27.0, code 28, is delivered but physical installation is unverified. The
@@ -28,7 +29,7 @@ qualified by this document.
 
 | Stage                                  | Required result                                                                                                                                  | Current limit and next action                                                                                                                                                        |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Source qualification                   | Exact revision, applicable final-main jobs, reviewed diff and unchanged protections.                                                             | Close the three remaining main jobs once. Keep the current tree and original failures.                                                                                               |
+| Source qualification                   | Exact revision, applicable final-main jobs, reviewed diff and unchanged protections.                                                             | Product final-main checks are complete. Keep the immutable candidate and original failures; qualify artifacts next.                                                                  |
 | Offline artifacts                      | Clean exact-source API/site archives and signed APK with recorded hashes, version, package, signer and provenance.                               | Not yet prepared for this candidate. Use a suitable clean checkout; preserve unrelated changes. A build is not activation.                                                           |
 | API and website compatibility          | Matching Annual/report contracts, session/origin boundaries, draft-retention guidance and reviewed prior deployment pairs.                       | Review the coordinated sequence before any upload or activation. No API-only rollout.                                                                                                |
 | Website staging and browser acceptance | Existing mandatory deployed-origin checks for the same archive before promotion.                                                                 | Blocked by the browser stop. The current workflow activates staging and invokes BrowserStack even with `promote=false`. Do not dispatch it, substitute a browser or weaken the gate. |
