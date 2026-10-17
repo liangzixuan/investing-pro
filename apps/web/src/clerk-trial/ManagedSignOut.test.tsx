@@ -105,19 +105,31 @@ async function fixture() {
     7,
     MANAGED_FOLLOWUPS_SAVE_COPY,
   );
+  const portfolio = resource(
+    "portfolio",
+    { notes: ["Saved ledger"] },
+    3,
+    MANAGED_WATCHLIST_SAVE_COPY,
+  );
   const clearResearch = vi.fn();
   const owner = new ManagedSessionOwner(
-    { watchlist: watchlist.coordinator, followups: followups.coordinator },
+    {
+      watchlist: watchlist.coordinator,
+      followups: followups.coordinator,
+      portfolio: portfolio.coordinator,
+    },
     { signOut },
     clearResearch,
   );
   await Promise.all([
     watchlist.coordinator.load(),
     followups.coordinator.load(),
+    portfolio.coordinator.load(),
   ]);
   return {
     ...watchlist,
     followups,
+    portfolio,
     owner,
     signOut,
     resourceSignOut,
@@ -300,7 +312,9 @@ describe("intentional managed sign-out", () => {
     expect(opened.html).toContain(
       "<dt>Follow-ups</dt><dd>Unsaved local changes.</dd>",
     );
-    expect(opened.html).toContain("Signing out discards both local drafts.");
+    expect(opened.html).toContain(
+      "Signing out discards all three local drafts.",
+    );
     opened.click("managed-signout-stay");
     expect(f.coordinator.getSnapshot()).toBe(watchlist);
     expect(f.followups.coordinator.getSnapshot()).toBe(followups);
@@ -469,4 +483,21 @@ describe("intentional managed sign-out", () => {
     expect(f.save).not.toHaveBeenCalled();
     expect(f.followups.save).not.toHaveBeenCalled();
   });
+});
+
+it("reviews a dirty Portfolio beside the unchanged other resources before one sign-out", async () => {
+  const f = await fixture();
+  f.portfolio.coordinator.replaceDraft({ notes: ["Authored ledger"] });
+  render(f.owner).click("managed-signout-open");
+  const review = render(f.owner);
+  expect(review.html).toContain("Portfolio");
+  expect(review.html).toContain("all three local drafts");
+  expect(review.html).toContain("Unsaved local changes");
+  expect(f.signOut).not.toHaveBeenCalled();
+  review.click("managed-signout-confirm");
+  await Promise.resolve();
+  expect(f.signOut).toHaveBeenCalledOnce();
+  expect(f.portfolio.coordinator.getSnapshot().draft).toBeNull();
+  expect(f.coordinator.getSnapshot().draft).toBeNull();
+  expect(f.followups.coordinator.getSnapshot().draft).toBeNull();
 });

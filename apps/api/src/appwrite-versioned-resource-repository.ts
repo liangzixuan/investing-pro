@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type {
   MainWatchlistPayload,
+  ManagedPortfolioPayload,
   ResearchFollowupsPayload,
 } from "@research-cockpit/contracts";
 import { AppwriteException } from "node-appwrite";
@@ -21,10 +22,11 @@ const ROW_METADATA = [
   "$updatedAt",
   "$permissions",
 ] as const;
-export type ResourceKind = "watchlist" | "research-followups";
+export type ResourceKind = "watchlist" | "research-followups" | "portfolio";
 interface PayloadByKind {
   watchlist: MainWatchlistPayload;
   "research-followups": ResearchFollowupsPayload;
+  portfolio: ManagedPortfolioPayload;
 }
 export interface ResourcePrincipal {
   readonly userId: string;
@@ -44,7 +46,7 @@ interface CapturedCommand<K extends ResourceKind> extends PayloadCapture<K> {
   readonly payloadDigest: string;
   readonly requestDigest: string;
 }
-/** Internal trusted composition, limited to two closed payload kinds. No policy performs I/O. */
+/** Internal trusted composition, limited to three closed payload kinds. No policy performs I/O. */
 export interface ResourcePolicy<K extends ResourceKind> {
   readonly kind: K;
   capture(command: ResourceCommand<K>): PayloadCapture<K>;
@@ -114,7 +116,9 @@ export function createAppwriteVersionedResourceRepository<
   const { store, databaseId, currentTableId, receiptsTableId } = options;
   const now = options.now ?? (() => new Date());
   if (
-    (policy.kind !== "watchlist" && policy.kind !== "research-followups") ||
+    (policy.kind !== "watchlist" &&
+      policy.kind !== "research-followups" &&
+      policy.kind !== "portfolio") ||
     ![databaseId, currentTableId, receiptsTableId].every((id) => ID.test(id)) ||
     currentTableId === receiptsTableId
   ) {
@@ -125,7 +129,7 @@ export function createAppwriteVersionedResourceRepository<
   const namespace = (userId: string) =>
     policy.kind === "watchlist"
       ? [userId, "main"]
-      : [userId, "research-followups", "main"];
+      : [userId, policy.kind, "main"];
   const location = (tableId: string, rowId: string): AppwriteRowLocation => ({
     databaseId,
     tableId,
@@ -134,7 +138,14 @@ export function createAppwriteVersionedResourceRepository<
   const currentLocation = (userId: string) =>
     location(
       currentTableId,
-      opaqueId(policy.kind === "watchlist" ? "w" : "f", namespace(userId)),
+      opaqueId(
+        policy.kind === "watchlist"
+          ? "w"
+          : policy.kind === "research-followups"
+            ? "f"
+            : "p",
+        namespace(userId),
+      ),
     );
   const receiptLocation = (userId: string, key: string) =>
     location(receiptsTableId, opaqueId("r", [...namespace(userId), key]));
@@ -298,7 +309,8 @@ export function createAppwriteVersionedResourceRepository<
         )
           throw new VersionedResourceRepositoryError("unavailable");
         if (
-          policy.kind === "research-followups" &&
+          (policy.kind === "research-followups" ||
+            policy.kind === "portfolio") &&
           !policy.admitFresh(
             captured.payload,
             current?.payload ?? null,
@@ -503,7 +515,7 @@ function captureCommand<K extends ResourceKind>(
         }
       : {
           expectedVersion: captured.expectedVersion,
-          resource: "research-followups",
+          resource: policy.kind,
           id: "main",
           operation: "put",
           payloadSha256: payloadDigest,

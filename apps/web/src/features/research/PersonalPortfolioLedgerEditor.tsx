@@ -17,11 +17,13 @@ import {
   PERSONAL_PORTFOLIO_LEDGER_CSV_TEMPLATE,
   parsePersonalPortfolioLedgerCsv,
   type PersonalPortfolioLedgerCsvResult,
-} from "@/lib/personal-portfolio-ledger-csv";
+} from "../../lib/personal-portfolio-ledger-csv";
 import { PersonalPortfolioSplitEditor } from "./PersonalPortfolioSplitEditor";
 
 export interface PersonalPortfolioLedgerEditorProps {
   readonly ledger: PersonalPortfolioLedgerPayload;
+  readonly saveHelp: string;
+  readonly profile: "local" | "managed";
   readonly disabled: boolean;
   readonly selectedListing: PersonalPortfolioIdentity | null;
   readonly onChange: (next: PersonalPortfolioLedgerPayload) => void;
@@ -53,11 +55,15 @@ const pageSize = 25;
 
 export function PersonalPortfolioLedgerEditor({
   ledger,
+  saveHelp,
+  profile,
   disabled,
   selectedListing,
   onChange,
   onPendingEditsChange,
 }: PersonalPortfolioLedgerEditorProps) {
+  const saveLabel =
+    profile === "managed" ? "Save Portfolio" : "Save My Portfolio";
   const [form, setForm] = useState<TransactionForm>(emptyForm(ledger));
   const [formBaseline, setFormBaseline] = useState<TransactionForm>(
     emptyForm(ledger),
@@ -70,9 +76,7 @@ export function PersonalPortfolioLedgerEditor({
   const [openingListingId, setOpeningListingId] = useState(
     ledger.identities[0]?.listingId ?? "",
   );
-  const [message, setMessage] = useState(
-    "Ledger changes update your draft. Save My Portfolio to keep them in encrypted storage.",
-  );
+  const [message, setMessage] = useState(saveHelp);
   const [page, setPage] = useState(0);
   const [csvText, setCsvText] = useState("");
   const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
@@ -214,8 +218,8 @@ export function PersonalPortfolioLedgerEditor({
     apply(
       withActivities(ledger, transactions),
       editingId === null
-        ? "Transaction added to your draft. Save My Portfolio to keep it."
-        : "Transaction updated in your draft. Save My Portfolio to keep it.",
+        ? `Transaction added to your draft. ${saveLabel} to keep it.`
+        : `Transaction updated in your draft. ${saveLabel} to keep it.`,
       "transaction",
     );
   }
@@ -274,7 +278,7 @@ export function PersonalPortfolioLedgerEditor({
     transactions[other] = entry;
     apply(
       withActivities(ledger, transactions),
-      "Same-day transaction order updated in your draft. Save My Portfolio to keep it.",
+      `Same-day transaction order updated in your draft. ${saveLabel} to keep it.`,
     );
   }
 
@@ -351,7 +355,7 @@ export function PersonalPortfolioLedgerEditor({
     setCsvPreviewContext(context);
     reviewedCsvEpoch.current = csvEpoch.current;
     setMessage(
-      `${String(result.rowCount)} CSV transactions are ready for review. Applying them updates the draft; Save My Portfolio persists it.`,
+      `${String(result.rowCount)} CSV transactions are ready for review. Applying them updates the draft; ${saveLabel} persists it.`,
     );
   }
 
@@ -378,7 +382,7 @@ export function PersonalPortfolioLedgerEditor({
     }
     apply(
       checked.candidate,
-      `${String(checked.rowCount)} reviewed transactions added to your draft. Save My Portfolio to keep them.`,
+      `${String(checked.rowCount)} reviewed transactions added to your draft. ${saveLabel} to keep them.`,
       "csv",
     );
   }
@@ -490,84 +494,86 @@ export function PersonalPortfolioLedgerEditor({
             </div>
           )}
 
-          <details className="ledger-section">
-            <summary>
-              Registered listings ({String(ledger.identities.length)} of 20)
-            </summary>
-            <p className="ledger-help">
-              Choose a catalog listing in company search or My Watchlist, then
-              register it here before adding a trade, dividend, opening
-              position, or CSV row.
-            </p>
-            <div className="ledger-actions">
-              <span>
-                {selectedListing === null
-                  ? "No catalog listing selected"
-                  : `${selectedListing.symbol} · ${selectedListing.issuerName}`}
-              </span>
-              <button
-                type="button"
-                className="secondary-action compact-action"
-                disabled={
-                  locked ||
-                  selectedListing === null ||
-                  ledger.identities.length >=
-                    PERSONAL_PORTFOLIO_LEDGER_LIMITS.identities ||
-                  ledger.identities.some(
-                    (identity) =>
-                      identity.listingId === selectedListing?.listingId,
-                  )
-                }
-                onClick={() => {
-                  if (selectedListing !== null)
-                    apply(
-                      {
-                        ...ledger,
-                        identities: [...ledger.identities, selectedListing],
-                      },
-                      "Listing registered in your draft. You can now use its exact identity in transactions.",
-                    );
-                }}
-              >
-                Register selected listing
-              </button>
-            </div>
-            <ul className="ledger-identity-list">
-              {ledger.identities.map((identity) => (
-                <li key={identity.listingId}>
-                  {identity.symbol} · {identity.issuerName} · Listing ID:{" "}
-                  {identity.listingId}{" "}
-                  <button
-                    type="button"
-                    className="text-button"
-                    disabled={
-                      locked ||
-                      ledger.opening.holdings.some(
-                        (holding) => holding.listingId === identity.listingId,
-                      ) ||
-                      ledger.transactions.some(
-                        (transaction) =>
-                          transaction.listingId === identity.listingId,
-                      )
-                    }
-                    onClick={() =>
+          {profile === "local" && (
+            <details className="ledger-section">
+              <summary>
+                Registered listings ({String(ledger.identities.length)} of 20)
+              </summary>
+              <p className="ledger-help">
+                Choose a catalog listing in company search or My Watchlist, then
+                register it here before adding a trade, dividend, opening
+                position, or CSV row.
+              </p>
+              <div className="ledger-actions">
+                <span>
+                  {selectedListing === null
+                    ? "No catalog listing selected"
+                    : `${selectedListing.symbol} · ${selectedListing.issuerName}`}
+                </span>
+                <button
+                  type="button"
+                  className="secondary-action compact-action"
+                  disabled={
+                    locked ||
+                    selectedListing === null ||
+                    ledger.identities.length >=
+                      PERSONAL_PORTFOLIO_LEDGER_LIMITS.identities ||
+                    ledger.identities.some(
+                      (identity) =>
+                        identity.listingId === selectedListing?.listingId,
+                    )
+                  }
+                  onClick={() => {
+                    if (selectedListing !== null)
                       apply(
                         {
                           ...ledger,
-                          identities: ledger.identities.filter(
-                            (entry) => entry.listingId !== identity.listingId,
-                          ),
+                          identities: [...ledger.identities, selectedListing],
                         },
-                        "Unused listing removed from the draft registry.",
-                      )
-                    }
-                  >
-                    Remove unused {identity.symbol}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </details>
+                        "Listing registered in your draft. You can now use its exact identity in transactions.",
+                      );
+                  }}
+                >
+                  Register selected listing
+                </button>
+              </div>
+              <ul className="ledger-identity-list">
+                {ledger.identities.map((identity) => (
+                  <li key={identity.listingId}>
+                    {identity.symbol} · {identity.issuerName} · Listing ID:{" "}
+                    {identity.listingId}{" "}
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={
+                        locked ||
+                        ledger.opening.holdings.some(
+                          (holding) => holding.listingId === identity.listingId,
+                        ) ||
+                        ledger.transactions.some(
+                          (transaction) =>
+                            transaction.listingId === identity.listingId,
+                        )
+                      }
+                      onClick={() =>
+                        apply(
+                          {
+                            ...ledger,
+                            identities: ledger.identities.filter(
+                              (entry) => entry.listingId !== identity.listingId,
+                            ),
+                          },
+                          "Unused listing removed from the draft registry.",
+                        )
+                      }
+                    >
+                      Remove unused {identity.symbol}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           <details className="ledger-section">
             <summary>Edit opening balances</summary>
@@ -758,7 +764,7 @@ export function PersonalPortfolioLedgerEditor({
                 onClick={() =>
                   apply(
                     { ...ledger, opening },
-                    "Opening balances updated in your draft. Save My Portfolio to keep them.",
+                    `Opening balances updated in your draft. ${saveLabel} to keep them.`,
                     "opening",
                   )
                 }
@@ -778,6 +784,7 @@ export function PersonalPortfolioLedgerEditor({
 
           {ledger.schemaVersion === 3 ? (
             <PersonalPortfolioSplitEditor
+              saveLabel={saveLabel}
               ledger={ledger}
               disabled={locked}
               editing={editingSplit}
@@ -789,7 +796,7 @@ export function PersonalPortfolioLedgerEditor({
               onApply={(candidate) =>
                 apply(
                   candidate,
-                  "Reviewed split applied to your draft. Save My Portfolio to keep it.",
+                  `Reviewed split applied to your draft. ${saveLabel} to keep it.`,
                   "split",
                 )
               }
@@ -801,7 +808,7 @@ export function PersonalPortfolioLedgerEditor({
                 Upgrade this draft to support manually reviewed split
                 adjustments. Existing identities, opening balances, transaction
                 IDs and order remain intact. Nothing is saved until you choose
-                Save My Portfolio.
+                {saveLabel}.
               </p>
               <button
                 type="button"
@@ -810,7 +817,7 @@ export function PersonalPortfolioLedgerEditor({
                 onClick={() =>
                   apply(
                     { ...ledger, schemaVersion: 3 },
-                    "Split records enabled in your draft. Existing transactions are preserved. Save My Portfolio to keep the upgrade.",
+                    `Split records enabled in your draft. Existing transactions are preserved. ${saveLabel} to keep the upgrade.`,
                   )
                 }
               >
@@ -831,9 +838,10 @@ export function PersonalPortfolioLedgerEditor({
               the fee as the amount.
             </p>
             <div className="ledger-fields">
-              <label>
+              <label htmlFor={`${profile}-portfolio-transaction-type`}>
                 Type
                 <select
+                  id={`${profile}-portfolio-transaction-type`}
                   aria-label="Transaction type"
                   value={form.type}
                   disabled={locked}
@@ -870,9 +878,10 @@ export function PersonalPortfolioLedgerEditor({
                 />
               </label>
               {linked && (
-                <label>
+                <label htmlFor={`${profile}-portfolio-transaction-listing`}>
                   Registered listing
                   <select
+                    id={`${profile}-portfolio-transaction-listing`}
                     aria-label="Transaction listing"
                     value={form.listingId}
                     disabled={locked}
@@ -1034,7 +1043,7 @@ export function PersonalPortfolioLedgerEditor({
                                 (entry) => entry.id !== transaction.id,
                               ),
                             ),
-                            "Transaction removed from your draft. Save My Portfolio to keep the change.",
+                            `Transaction removed from your draft. ${saveLabel} to keep the change.`,
                           )
                         }
                       >

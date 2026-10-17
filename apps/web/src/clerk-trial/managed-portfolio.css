@@ -1,0 +1,113 @@
+.managed-frame .managed-portfolio {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.managed-portfolio section,
+.managed-portfolio .ledger-section {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--managed-line);
+  border-radius: 10px;
+  background: var(--managed-surface);
+}
+.managed-portfolio p,
+.managed-portfolio li,
+.managed-portfolio dd,
+.managed-portfolio summary {
+  overflow-wrap: anywhere;
+}
+.managed-portfolio dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 12px;
+}
+.managed-portfolio dt,
+.managed-portfolio .ledger-help,
+.managed-portfolio-coverage {
+  color: var(--managed-muted);
+}
+.managed-portfolio dd {
+  margin: 0;
+}
+.managed-portfolio label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.managed-portfolio input,
+.managed-portfolio select,
+.managed-portfolio textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 7px;
+  color: var(--managed-ink);
+  background: var(--managed-surface-raised);
+  font: inherit;
+}
+.managed-portfolio input[type="checkbox"] {
+  width: 24px;
+}
+.managed-portfolio summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.managed-portfolio
+  :is(button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.managed-portfolio :is(.secondary-action, .text-button) {
+  color: var(--managed-ink);
+  background: var(--managed-surface-raised);
+  border: 1px solid var(--managed-field-border);
+}
+.managed-portfolio :is(button, .compact-action) {
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.managed-portfolio :is(.ledger-actions, .ledger-form-grid) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+.managed-portfolio .ledger-form-grid > label {
+  flex: 1 1 12rem;
+}
+.managed-portfolio :is(.ledger-table-scroll, .managed-portfolio-table) {
+  max-width: 100%;
+  overflow: auto;
+}
+.managed-portfolio table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.managed-portfolio :is(th, td) {
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--managed-line);
+}
+.managed-portfolio :is(.ledger-status, .managed-portfolio-warning) {
+  border-left: 3px solid var(--managed-action);
+  padding: 12px;
+  background: var(--managed-surface-raised);
+}
+.managed-portfolio ul,
+.managed-portfolio ol {
+  padding-left: 24px;
+}
+.managed-portfolio li {
+  margin: 8px 0;
+}
+.managed-portfolio-start {
+  display: grid;
+  gap: 12px;
+}

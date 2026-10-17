@@ -1,3 +1,7 @@
+import {
+  createPortfolioNativeFixture,
+  type PortfolioNativeControls,
+} from "./portfolio-fixture";
 import { createFinancialReviewNativeFixture } from "./financial-review-native-fixture";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { liquidityHistoryPacket } from "./liquidity-history-fixture";
@@ -687,6 +691,14 @@ async function createSharedFixture(
     state.save === 1 &&
     state.load === 2;
   const api: ManagedApi = {
+    loadPortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
+    savePortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
     loadFollowups: (signal) =>
       followups?.api.loadFollowups(signal) ??
       Promise.reject(
@@ -1915,14 +1927,20 @@ export type NativeFinancialReviewMetadata = {
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
   readonly financialReview: NativeFinancialReviewMetadata | null;
+  readonly portfolio?: PortfolioNativeControls;
 };
 
 /** Dispatch only the new fixed journey; all existing scenario bodies remain unchanged. */
 export async function createFixture(
   scenario:
     | Parameters<typeof createSharedFixture>[0]
-    | "annual-financial-review" = "default",
+    | "annual-financial-review"
+    | "portfolio-ledger" = "default",
 ): Promise<ManagedNativeFixture> {
+  if (scenario === "portfolio-ledger")
+    return createPortfolioNativeFixture(
+      await createSharedFixture("research-followups"),
+    );
   if (scenario === "annual-financial-review") {
     return createFinancialReviewNativeFixture(
       await createSharedFixture("annual-note"),

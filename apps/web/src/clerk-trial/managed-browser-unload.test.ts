@@ -67,8 +67,13 @@ function fixture() {
     MANAGED_WATCHLIST_SAVE_COPY,
   );
   const followups = resource("followups", MANAGED_FOLLOWUPS_SAVE_COPY);
+  const portfolio = resource("portfolio", MANAGED_WATCHLIST_SAVE_COPY);
   const owner = new ManagedSessionOwner(
-    { watchlist: coordinator, followups: followups.coordinator },
+    {
+      watchlist: coordinator,
+      followups: followups.coordinator,
+      portfolio: portfolio.coordinator,
+    },
     { signOut },
     vi.fn(),
   );
@@ -85,6 +90,7 @@ function fixture() {
   return {
     owner,
     followups,
+    portfolio,
     resourceSignOut,
     coordinator,
     load,
@@ -375,4 +381,17 @@ describe("managed browser leave warning", () => {
     expect(f.signOut).toHaveBeenCalledOnce();
     expect(f.resourceSignOut).not.toHaveBeenCalled();
   });
+});
+
+it("warns for the independent third Portfolio draft and removes the warning after its save", async () => {
+  const f = fixture();
+  await f.portfolio.coordinator.load();
+  expect(f.leave().defaultPrevented).toBe(false);
+  f.portfolio.coordinator.replaceDraft("Authored portfolio");
+  expect(f.leave().defaultPrevented).toBe(true);
+  await f.portfolio.coordinator.save();
+  expect(f.leave().defaultPrevented).toBe(false);
+  expect(f.save).not.toHaveBeenCalled();
+  expect(f.followups.save).not.toHaveBeenCalled();
+  expect(f.signOut).not.toHaveBeenCalled();
 });

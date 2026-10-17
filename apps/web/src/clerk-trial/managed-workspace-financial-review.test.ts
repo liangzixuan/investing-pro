@@ -113,6 +113,14 @@ async function fixture(
   const unexpected = () =>
     Promise.reject(new Error("Unexpected unrelated invented fixture request"));
   const api: ManagedApi = {
+    loadPortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
+    savePortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
     annualReport: vi
       .fn<ManagedApi["annualReport"]>()
       .mockResolvedValue(response),

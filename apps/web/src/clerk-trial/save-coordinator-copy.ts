@@ -1,5 +1,23 @@
 import type { SaveCopyProfile } from "./save-coordinator";
 
+export const MANAGED_PORTFOLIO_SAVE_COPY: Readonly<SaveCopyProfile> =
+  Object.freeze({
+    loadPrompt: "Load your saved portfolio to begin.",
+    retired:
+      "This session has ended. Its local portfolio data has been cleared.",
+    signedOut: "Signed out. Local portfolio data has been cleared.",
+    signOutFailed:
+      "Local portfolio data has been cleared, but sign-out could not be confirmed. Try signing out again.",
+    invalidDraft:
+      "Review the portfolio amounts, dates and current catalog identities before saving.",
+    saveRejected:
+      "The save was rejected. Review the portfolio ledger before saving again.",
+    accessDenied:
+      "This session cannot access your saved portfolio. Its local data has been cleared.",
+    loadFailed:
+      "The saved portfolio could not be loaded. Your draft is unchanged; try loading again.",
+  });
+
 export const TRIAL_WATCHLIST_SAVE_COPY: Readonly<SaveCopyProfile> =
   Object.freeze({
     loadPrompt: "Load the shared trial watchlist to begin.",

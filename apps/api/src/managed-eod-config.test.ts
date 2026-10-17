@@ -1,10 +1,40 @@
 import { describe, expect, it } from "vitest";
 import {
   MANAGED_EOD_BUDGET,
+  MANAGED_EOD_MAPPING_SNAPSHOT,
   validateManagedEodConfiguration,
 } from "./managed-eod-config";
 
 describe("managed EOD public configuration", () => {
+  it("binds the existing mappings to the reviewed October 16 catalog", () => {
+    expect(MANAGED_EOD_MAPPING_SNAPSHOT).toBe(
+      "sha256:5852beb972fdb7e1a93669d51996b3cca431f006b741c697c1952f7e14d3d5a0",
+    );
+  });
+  it.each([
+    "MSFT",
+    "BKTI",
+    "AMD",
+    "AEM",
+    "MATX",
+    "ALCO",
+    "LNG",
+    "SWKS",
+    "HWM",
+    "UHAL",
+    "AXP",
+    "AFL",
+    "AIG",
+    "UNM",
+    "AVD",
+    "AP",
+  ])(
+    "does not enable newly discoverable %s through public configuration",
+    (symbol) =>
+      expect(() =>
+        validateManagedEodConfiguration({ enabledSymbols: [symbol] }),
+      ).toThrow("Invalid managed EOD configuration"),
+  );
   it("requires an explicit null or owns the enabled fixed symbols", () => {
     expect(validateManagedEodConfiguration(null)).toBeNull();
     const input = { enabledSymbols: ["AAPL", "GOOG", "GOOGL"] };

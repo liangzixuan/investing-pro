@@ -1,4 +1,12 @@
 import {
+  MANAGED_PORTFOLIO_PATH,
+  MANAGED_PORTFOLIO_LIMITS,
+  parseManagedPortfolio,
+  parseManagedPortfolioCommand,
+  parseManagedPortfolioReceipt,
+  type ManagedPortfolioCommand,
+  type ManagedPortfolioDto,
+  type ManagedPortfolioReceiptDto,
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
   parseManagedResearchFollowups,
@@ -63,6 +71,11 @@ import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
 export interface ManagedApi {
+  loadPortfolio: (signal: AbortSignal) => Promise<ManagedPortfolioDto>;
+  savePortfolio: (
+    command: ManagedPortfolioCommand,
+    signal: AbortSignal,
+  ) => Promise<ManagedPortfolioReceiptDto>;
   loadFollowups: (signal: AbortSignal) => Promise<ManagedResearchFollowupsDto>;
   saveFollowups: (
     command: ManagedResearchFollowupsCommand,
@@ -139,6 +152,7 @@ export class ManagedEodCooldownError extends Error {
 }
 
 type RequestKind =
+  | "portfolio"
   | "watchlist"
   | "followups"
   | "resolve"
@@ -267,7 +281,8 @@ function responseError(
     throw new TrialApiError("invalid_response");
   }
   const error = value.error;
-  const mutation = kind === "watchlist" || kind === "followups";
+  const mutation =
+    kind === "watchlist" || kind === "followups" || kind === "portfolio";
   if (!mutation && status === 409 && error === "catalog_changed")
     throw new ManagedCatalogChangedError();
   if (kind === "annual") {
@@ -386,6 +401,27 @@ export function createManagedApi(
     }
   }
   return {
+    loadPortfolio: (signal) =>
+      request(
+        MANAGED_PORTFOLIO_PATH,
+        signal,
+        MANAGED_PORTFOLIO_LIMITS.envelopeBytes,
+        parseManagedPortfolio,
+        undefined,
+        "portfolio",
+      ),
+    savePortfolio: async (input, signal) => {
+      const captured = parseManagedPortfolioCommand(input);
+      if (!captured) throw new TrialApiError("invalid_request");
+      return request(
+        MANAGED_PORTFOLIO_PATH,
+        signal,
+        MANAGED_PORTFOLIO_LIMITS.envelopeBytes,
+        (value) => parseManagedPortfolioReceipt(value, captured),
+        requestBody(captured, MANAGED_PORTFOLIO_LIMITS.envelopeBytes),
+        "portfolio",
+      );
+    },
     loadFollowups: (signal) =>
       request(
         MANAGED_RESEARCH_FOLLOWUPS_PATH,

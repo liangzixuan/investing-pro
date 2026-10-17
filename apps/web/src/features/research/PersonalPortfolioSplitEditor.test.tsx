@@ -25,6 +25,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-09-09T10:00:00.000Z"));
   harness.reset();
   props = {
+    saveLabel: "Save My Portfolio",
     ledger: ledger(),
     disabled: false,
     editing: null,
@@ -44,6 +45,31 @@ afterEach(() => {
 });
 
 describe("PersonalPortfolioSplitEditor", () => {
+  it.each(["Save My Portfolio", "Save Portfolio"])(
+    "uses the owning screen's %s action through preview and apply",
+    async (saveLabel) => {
+      props = { ...props, saveLabel };
+      await mount();
+      configure();
+      click(render(), "Preview split adjustment");
+      expect(text(render())).toContain(
+        `Apply updates the draft; ${saveLabel} persists it.`,
+      );
+      expect(props.onApply).not.toHaveBeenCalled();
+      click(render(), "Apply reviewed split");
+      expect(props.onApply).toHaveBeenCalledOnce();
+      expect(props.ledger.transactions[0]).toMatchObject({
+        type: "split",
+        ratioNumerator: "2",
+        ratioDenominator: "1",
+      });
+      expect(text(render())).toContain(
+        `Reviewed split applied to the draft. ${saveLabel} to keep it.`,
+      );
+      if (saveLabel === "Save Portfolio")
+        expect(text(render())).not.toContain("Save My Portfolio");
+    },
+  );
   it.each([
     ["2", "1", "20"],
     ["1", "10", "1"],

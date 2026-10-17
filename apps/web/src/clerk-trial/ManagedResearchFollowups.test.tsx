@@ -61,6 +61,14 @@ async function fixture() {
   };
   const unexpected = new Error("No extra fixture request is allowed");
   const api: ManagedApi = {
+    loadPortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
+    savePortfolio: () =>
+      Promise.reject(
+        new Error("Portfolio requires an explicit fixture action"),
+      ),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue(catalog),
     load: vi.fn<ManagedApi["load"]>().mockResolvedValue(watchlist),
     save: vi.fn<ManagedApi["save"]>().mockRejectedValue(unexpected),

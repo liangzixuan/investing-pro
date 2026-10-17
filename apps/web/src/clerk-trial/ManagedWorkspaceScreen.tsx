@@ -36,6 +36,7 @@ import {
 import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedPortfolio } from "./ManagedPortfolio";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
@@ -424,10 +425,13 @@ export function ManagedWorkspaceScreen({
   const watchlistNavigation = useRef<HTMLButtonElement | null>(null);
   const marketsNavigation = useRef<HTMLButtonElement | null>(null);
   const followupsNavigation = useRef<HTMLButtonElement | null>(null);
+  const portfolioNavigation = useRef<HTMLButtonElement | null>(null);
   const watchlistPanel = useRef<HTMLElement | null>(null);
   const watchlistEditor = useRef<ManagedWatchlistEditorHandle>(null);
   const watchlistHeading = useRef<HTMLHeadingElement | null>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
+  const [backReview, setBackReview] = useState(false);
+  const backReviewOpen = useRef(false);
   const [localReturnFocus, setLocalReturnFocus] = useState(0);
   const routeBack = navigation?.back;
   const hasCompanyRoute = navigation?.hasCompanyRoute;
@@ -441,7 +445,9 @@ export function ManagedWorkspaceScreen({
           ? watchlistNavigation.current
           : returned.view === "followups"
             ? followupsNavigation.current
-            : discoverHeading.current;
+            : returned.view === "portfolio"
+              ? portfolioNavigation.current
+              : discoverHeading.current;
     panelOrigin.current = null;
     target?.focus();
     const view = target?.ownerDocument?.defaultView;
@@ -486,9 +492,9 @@ export function ManagedWorkspaceScreen({
     if (navigation?.returnFocus || localReturnFocus) return restoreFocus();
   }, [navigation?.returnFocus, localReturnFocus, restoreFocus]);
   const setView = (
-    view: "markets" | "discover" | "watchlist" | "followups",
+    view: "markets" | "discover" | "watchlist" | "followups" | "portfolio",
   ) => {
-    if (navigation?.isPending()) return false;
+    if (navigation?.isPending() || !workspace.canNavigate()) return false;
     liveNoteReview.current = null;
     setNoteReview(null);
     setNoteReviewNotice(null);
@@ -497,6 +503,7 @@ export function ManagedWorkspaceScreen({
     return true;
   };
   const openResearch = (opener: HTMLButtonElement, action: () => void) => {
+    if (!workspace.canNavigate()) return;
     const open = () => {
       action();
       if (workspace.getSnapshot().research) panelOrigin.current = opener;
@@ -514,7 +521,7 @@ export function ManagedWorkspaceScreen({
     const dispose = bindAndroidBack(
       androidBack,
       ({ canGoBack }) => {
-        if (isRetired()) return;
+        if (isRetired() || !workspace.canNavigate()) return;
         if (
           hasCompanyRoute?.() ||
           workspace.getSnapshot().research ||
@@ -522,7 +529,12 @@ export function ManagedWorkspaceScreen({
           navigation?.invalid
         )
           backToWorkspace();
-        else if (canGoBack) window.history.back();
+        else if (canGoBack) {
+          if (workspace.sessionOwner.getSnapshot().needsLeaveReview) {
+            backReviewOpen.current = true;
+            setBackReview(true);
+          } else window.history.back();
+        }
       },
       () => setBackUnavailable(true),
     );
@@ -544,6 +556,11 @@ export function ManagedWorkspaceScreen({
     workspace.subscribe,
     workspace.getSnapshot,
     workspace.getSnapshot,
+  );
+  const portfolioState = useSyncExternalStore(
+    workspace.portfolio.subscribe,
+    workspace.portfolio.getSnapshot,
+    workspace.portfolio.getSnapshot,
   );
   const coordinator = workspace.coordinator;
   const sessionState = useSyncExternalStore(
@@ -836,36 +853,45 @@ export function ManagedWorkspaceScreen({
         </p>
         {!retired && (
           <nav className="managed-navigation" aria-label="Workspace">
-            {(["markets", "discover", "watchlist", "followups"] as const).map(
-              (view) => (
-                <button
-                  key={view}
-                  ref={
-                    view === "watchlist"
-                      ? watchlistNavigation
-                      : view === "markets"
-                        ? marketsNavigation
-                        : view === "followups"
-                          ? followupsNavigation
+            {(
+              [
+                "markets",
+                "discover",
+                "watchlist",
+                "followups",
+                "portfolio",
+              ] as const
+            ).map((view) => (
+              <button
+                key={view}
+                ref={
+                  view === "watchlist"
+                    ? watchlistNavigation
+                    : view === "markets"
+                      ? marketsNavigation
+                      : view === "followups"
+                        ? followupsNavigation
+                        : view === "portfolio"
+                          ? portfolioNavigation
                           : undefined
-                  }
-                  className="trial-secondary"
-                  aria-current={discovery.view === view ? "page" : undefined}
-                  disabled={navigationPending}
-                  onClick={() => setView(view)}
-                >
-                  <ManagedIcon name={view} />
+                }
+                className="trial-secondary"
+                aria-current={discovery.view === view ? "page" : undefined}
+                disabled={navigationPending || portfolioState.pendingEditor}
+                onClick={() => setView(view)}
+              >
+                <ManagedIcon name={view} />
+                {
                   {
-                    {
-                      markets: "Markets",
-                      discover: "Discover",
-                      watchlist: "My Watchlist",
-                      followups: "Follow-ups",
-                    }[view]
-                  }
-                </button>
-              ),
-            )}
+                    markets: "Markets",
+                    discover: "Discover",
+                    watchlist: "My Watchlist",
+                    followups: "Follow-ups",
+                    portfolio: "Portfolio",
+                  }[view]
+                }
+              </button>
+            ))}
           </nav>
         )}
       </aside>
@@ -881,7 +907,7 @@ export function ManagedWorkspaceScreen({
                     ? "Search"
                     : "Searching…"
                 }
-                disabled={retired}
+                disabled={retired || portfolioState.pendingEditor}
                 onChange={(query) => workspace.setQuery(query)}
                 onSearch={() => {
                   if (!setView("discover")) return;
@@ -890,7 +916,9 @@ export function ManagedWorkspaceScreen({
               />
               <button
                 className="trial-secondary"
-                disabled={discovery.read !== null}
+                disabled={
+                  discovery.read !== null || portfolioState.pendingEditor
+                }
                 onClick={() => void workspace.refreshCatalog()}
               >
                 {discovery.read === "status"
@@ -916,6 +944,75 @@ export function ManagedWorkspaceScreen({
         >
           {retired ? null : (
             <>
+              {backReview && (
+                <section aria-label="Leave workspace review">
+                  <h2>Review local changes before leaving</h2>
+                  <p>
+                    Watchlist, Follow-ups and Portfolio have independent drafts.
+                    Leaving can discard unsaved changes and pending save
+                    details. Reopen and load each saved version to check any
+                    uncertain result.
+                  </p>
+                  <dl>
+                    {(["watchlist", "followups", "portfolio"] as const).map(
+                      (key) => (
+                        <div key={key}>
+                          <dt>{key}</dt>
+                          <dd>
+                            {sessionState[key].dirty
+                              ? "Unsaved local changes. "
+                              : ""}
+                            {sessionState[key].phase}
+                            {sessionState[key].uncertain
+                              ? ". Save result uncertain."
+                              : ""}
+                            {sessionState[key].conflict ||
+                            sessionState[key].replayPending
+                              ? ". Saved version needs review."
+                              : ""}
+                          </dd>
+                        </div>
+                      ),
+                    )}
+                  </dl>
+                  <button
+                    id="managed-leave-stay"
+                    onClick={() => {
+                      backReviewOpen.current = false;
+                      setBackReview(false);
+                    }}
+                  >
+                    Stay in workspace
+                  </button>
+                  <button
+                    id="managed-leave-confirm"
+                    className="trial-secondary"
+                    onClick={() => {
+                      if (
+                        !backReviewOpen.current ||
+                        workspace.sessionOwner.getSnapshot().phase !==
+                          "active" ||
+                        !workspace.canNavigate()
+                      )
+                        return;
+                      backReviewOpen.current = false;
+                      setBackReview(false);
+                      workspace.sessionOwner.retire(
+                        "Workspace closed. Load saved resources when you return.",
+                      );
+                      window.history.back();
+                    }}
+                  >
+                    Leave and clear local drafts
+                  </button>
+                </section>
+              )}
+              {portfolioState.pendingEditor &&
+                discovery.view !== "portfolio" && (
+                  <p role="status">
+                    Apply or reset the Portfolio form before leaving.
+                  </p>
+                )}
               {backUnavailable && (
                 <p role="status">
                   Use the on-screen navigation while Android Back is
@@ -1162,6 +1259,25 @@ export function ManagedWorkspaceScreen({
                     else if (section === "filings") workspace.switchToFilings();
                   }}
                 />
+              )}
+              {discovery.view === "portfolio" && (
+                <div
+                  hidden={Boolean(
+                    discovery.research ||
+                    discovery.companyRoute ||
+                    navigation?.invalid,
+                  )}
+                >
+                  <ManagedPortfolio
+                    workspace={workspace}
+                    navigationPending={navigationPending}
+                    onResearch={(draft, listing, opener) =>
+                      openResearch(opener, () =>
+                        workspace.openPortfolioResearch(draft, listing),
+                      )
+                    }
+                  />
+                </div>
               )}
               {discovery.view === "followups" && (
                 <div

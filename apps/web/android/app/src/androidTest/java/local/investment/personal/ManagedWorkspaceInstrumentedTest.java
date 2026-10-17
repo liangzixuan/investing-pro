@@ -213,6 +213,10 @@ public class ManagedWorkspaceInstrumentedTest {
         "JSON.parse(document.querySelector('#fixture-followups-diagnostics').textContent)";
     private static final String FOLLOWUP_DRAFT =
         "JSON.parse(document.querySelector('#fixture-followups-draft').textContent)";
+    private static final String PORTFOLIO =
+        "JSON.parse(document.querySelector('#fixture-portfolio-state').textContent)";
+    private static final String PORTFOLIO_DRAFT =
+        "JSON.parse(document.querySelector('#fixture-portfolio-draft').textContent)";
     private static final long PAGE_TIMEOUT_MS = 10_000;
     private static final long MAX_ASSET_BYTES = 4 * 1024 * 1024;
 
@@ -241,6 +245,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("catalog-startup-recovery");
         if (testName.getMethodName().equals("companyFilingsPagingCancelAndBackPreserveDraft"))
             selectFixtureScenario("company-filings");
+        if (testName.getMethodName().equals("portfolioLedgerKeepsExactFifoAndIndependentSave"))
+            selectFixtureScenario("portfolio-ledger");
         boolean coldCompanyLink = testName.getMethodName().equals("companyLinkDirectEntryAndBackPreserveDraft");
         if (coldCompanyLink) selectFixtureScenario("company-direct-entry");
         if (testName.getMethodName().equals("selectedMarketPriceLoadRefreshAndCancelPreserveDraft"))
@@ -326,6 +332,121 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) assertCompanyHistory("listing-zero", "annual", true);
         else assertRootHistory();
         Log.i("ManagedFixture", "source=" + expectedSourceSha + ", files=" + copiedFiles + ", bytes=" + copiedBytes);
+    }
+
+    @Test
+    public void portfolioLedgerKeepsExactFifoAndIndependentSave() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Independent Portfolio research note");
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("Portfolio journey explicitly loads only the empty Follow-ups resource",
+            FOLLOWUPS + ".load === 1 && " + FOLLOWUP_DRAFT + ".baseVersion === 0");
+        authorFollowup("Keep the independent Follow-ups draft", "2026-10-30");
+        String watchlist = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String followups = readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)");
+        openPortfolioView();
+        awaitPage("Portfolio opens with five labelled workspace actions and no automatic resource read",
+            "(() => { const buttons = [...document.querySelectorAll('nav[aria-label=Workspace] > button')];" +
+            " return buttons.length === 5 && buttons.map(e => e.textContent).join('|') === 'Markets|Discover|My Watchlist|Follow-ups|Portfolio'" +
+            " && buttons.every(e => e.getBoundingClientRect().height >= 44)" +
+            " && " + PORTFOLIO + ".load === 0 && " + PORTFOLIO + ".save === 0 && " + PORTFOLIO_DRAFT + ".ledger === null; })()");
+        click("#managed-portfolio-load");
+        awaitPage("explicit Portfolio read returns version zero and no invented opening cash",
+            PORTFOLIO + ".load === 1 && " + PORTFOLIO_DRAFT + ".baseVersion === 0 && " + PORTFOLIO_DRAFT + ".ledger === null" +
+            " && document.querySelector('#managed-portfolio-opening-cash')?.value === '' && document.querySelector('#managed-portfolio-save')?.disabled === true");
+        typeIntoInput("managed-portfolio-opening-date", "2026-10-01");
+        typeIntoInput("managed-portfolio-opening-cash", "1000.00");
+        click("#managed-portfolio-start");
+        awaitPage("Start creates only the authored opening draft",
+            PORTFOLIO_DRAFT + ".ledger?.opening?.cashUsd === '1000.00' && " + PORTFOLIO_DRAFT + ".dirty === true && " + PORTFOLIO + ".save === 0");
+        typeIntoInput("managed-portfolio-search", "ZERO");
+        clickPortfolioButton("Search catalog");
+        awaitPage("one explicit catalog search offers the complete ZERO identity",
+            DIAGNOSTICS + ".search === 1 && [...document.querySelectorAll('.managed-portfolio button')].some(e => e.textContent === 'Register ZERO' && !e.disabled)");
+        clickPortfolioButton("Register ZERO");
+        awaitPage("registration resolves exactly the selected identity without source reads",
+            PORTFOLIO_DRAFT + ".ledger?.identities?.length === 1 && " + PORTFOLIO_DRAFT + ".ledger.identities[0].listingId === 'listing-zero' && " + DIAGNOSTICS + ".resolve === 1");
+        typePortfolioField("Transaction shares", "2.000000");
+        awaitPage("unapplied native input protects Portfolio and all workspace navigation",
+            PORTFOLIO_DRAFT + ".pendingEditor === true && " + PORTFOLIO_DRAFT + ".ledger.transactions.length === 0" +
+            " && document.querySelector('#managed-portfolio-load')?.disabled === true && document.querySelector('#managed-portfolio-review')?.disabled === true" +
+            " && document.querySelector('#managed-portfolio-save')?.disabled === true && document.querySelector('#managed-portfolio-search')?.disabled === true" +
+            " && [...document.querySelectorAll('nav[aria-label=Workspace] > button')].every(e => e.disabled) && " + PORTFOLIO + ".save === 0");
+        clickPortfolioButton("Reset transaction form");
+        awaitPage("explicit reset releases only the pending raw form",
+            PORTFOLIO_DRAFT + ".pendingEditor === false && document.querySelector('[aria-label=\"Transaction shares\"]')?.value === '' && " + PORTFOLIO_DRAFT + ".ledger.transactions.length === 0");
+        addPortfolioTrade("buy", "Buy", "2.000000", "200.00");
+        addPortfolioTrade("sell", "Sell", "1.000000", "150.00");
+        assertPortfolioFifo(0, true);
+        awaitPage("both trade commands retain exact authored values and dates without a Save",
+            "(() => { const t = " + PORTFOLIO_DRAFT + ".ledger.transactions; return t.length === 2" +
+            " && t.map(e => [e.type,e.listingId,e.shares,e.grossUsd,e.feeUsd].join('|')).join(';') === 'buy|listing-zero|2.000000|200.00|1.00;sell|listing-zero|1.000000|150.00|1.00'" +
+            " && /^\\d{4}-\\d{2}-\\d{2}$/.test(t[0].date) && t[0].date <= t[1].date && t[0].date >= '2026-10-01' && " + PORTFOLIO + ".save === 0; })()");
+        retainAnnualNoteFrame("portfolioAuthoredFifo", ".managed-portfolio [aria-label='Current authored holdings']",
+            ".managed-portfolio [aria-label='Current authored holdings'] > h3, .managed-portfolio [aria-label='Current authored holdings'] dl, .managed-portfolio [aria-label='Authored holdings table']", 3);
+        String ledger = readFixtureString("JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger)");
+        clickPortfolioButton("Research ZERO");
+        assertCompanyHistory("listing-zero", "price", false);
+        awaitPage("Portfolio Research opens the exact company with no implicit financial requests",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && " + DIAGNOSTICS + ".resolve === 1" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0 && " + PORTFOLIO + ".save === 0");
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("native Back restores Portfolio opener and every independent draft",
+            "document.querySelector('.managed-company-visit') === null && document.activeElement?.textContent === 'Research ZERO'" +
+            " && JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger) === " + JSONObject.quote(ledger) +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlist) +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries) === " + JSONObject.quote(followups));
+        assertReturnedRootHistory("listing-zero", "price");
+        click("#managed-portfolio-review-identities");
+        awaitPage("explicit identity review captures one current registry without rewriting history",
+            DIAGNOSTICS + ".resolve === 2 && [...document.querySelectorAll('.managed-portfolio button')].some(e => e.textContent === 'Apply reviewed identities' && !e.disabled)");
+        clickPortfolioButton("Apply reviewed identities");
+        click("#managed-portfolio-review");
+        awaitPage("whole-ledger review precedes the only explicit Save",
+            "document.querySelector('.managed-portfolio-review') !== null && document.activeElement?.textContent === 'Review this portfolio draft'" +
+            " && document.querySelector('#managed-portfolio-save')?.disabled === false && " + PORTFOLIO + ".save === 0");
+        chooseNativeSelectOption("#fixture-portfolio-next-save", "lost-ack", "Commit and lose acknowledgement");
+        click("#managed-portfolio-save");
+        awaitPage("lost acknowledgement retains the exact draft and exposes explicit reconciliation",
+            PORTFOLIO + ".save === 1 && " + PORTFOLIO + ".commits === 1 && " + PORTFOLIO_DRAFT + ".uncertain === true" +
+            " && document.querySelector('#managed-portfolio-reconcile')?.disabled === false && JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger) === " + JSONObject.quote(ledger));
+        click("#managed-portfolio-reconcile");
+        awaitPage("reconciliation replays exactly the original command without another commit",
+            PORTFOLIO + ".save === 2 && " + PORTFOLIO + ".commits === 1 && " + PORTFOLIO + ".replays === 1 && " + PORTFOLIO_DRAFT + ".replayPending === true");
+        click("#managed-portfolio-load");
+        awaitPage("Load latest requires an explicit saved-version choice", PORTFOLIO + ".load === 2 && document.querySelector('#managed-portfolio-use-saved')?.disabled === false");
+        click("#managed-portfolio-use-saved");
+        assertPortfolioFifo(1, false);
+        awaitPage("Portfolio save/replay never writes Watchlist or Follow-ups",
+            DIAGNOSTICS + ".save === 0 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUPS + ".commits === 0" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlist) +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries) === " + JSONObject.quote(followups));
+        click("#managed-signout-open");
+        awaitPage("sign-out review identifies the two unsaved independent drafts",
+            "document.querySelector('#managed-signout-review')?.textContent.includes('WatchlistUnsaved local changes.')" +
+            " && document.querySelector('#managed-signout-review')?.textContent.includes('Follow-upsUnsaved local changes.') && " + PORTFOLIO + ".signOut === 0");
+        click("#managed-signout-confirm");
+        awaitPage("one sign-out retires all three draft lifetimes",
+            PORTFOLIO_DRAFT + ".owner === 'retired' && " + PORTFOLIO_DRAFT + ".ledger === null && " + DRAFT + ".memberships === null && " + FOLLOWUP_DRAFT + ".entries === null" +
+            " && " + PORTFOLIO + ".signOut === 1 && " + FOLLOWUPS + ".signOut === 1");
+        click("#fixture-portfolio-fresh-session");
+        awaitPage("fresh invented session reads neither Portfolio nor Follow-ups automatically",
+            PORTFOLIO + ".session === 2 && " + PORTFOLIO + ".load === 2 && " + PORTFOLIO_DRAFT + ".ledger === null && " + FOLLOWUPS + ".load === 1" +
+            " && " + DIAGNOSTICS + ".load === 2 && " + DIAGNOSTICS + ".status === 2 && " + DRAFT + ".memberships?.[0]?.note === ''");
+        openPortfolioView();
+        click("#managed-portfolio-load");
+        awaitPage("only explicit fresh-session Load recovers the saved Portfolio", PORTFOLIO + ".load === 3");
+        assertPortfolioFifo(1, false);
+        assertFixtureBoundary(2, 0);
+        awaitPage("final isolated counters remain exact and all financial providers remain untouched",
+            PORTFOLIO + ".load === 3 && " + PORTFOLIO + ".save === 2 && " + PORTFOLIO + ".commits === 1 && " + PORTFOLIO + ".replays === 1 && " + PORTFOLIO + ".token === 0" +
+            " && " + DIAGNOSTICS + ".search === 1 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && " + DIAGNOSTICS + ".marketsEod === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0 && " + FOLLOWUPS + ".save === 0");
+        assertEquals("Portfolio fresh session keeps the same native document", origin, readDocumentTimeOrigin(), 0.0);
     }
 
     @Test
@@ -2422,7 +2543,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertSignOutCleared() throws Exception {
         awaitPage("signed-out workspace stays cleared without a sign-out review",
-            "document.body.textContent.includes('Signed out. Both local drafts have been cleared.')" +
+            "document.body.textContent.includes('Signed out. All three local drafts have been cleared.')" +
             " && document.querySelector('.managed-navigation') === null && document.querySelector('.managed-search-bar') === null" +
             " && document.querySelector('#managed-note-0') === null && document.querySelector('#managed-note-1') === null" +
             " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
@@ -7292,7 +7413,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
             scenarioName.equals("thesis-review") ||
             scenarioName.equals("company-snapshot") ||
-            scenarioName.equals("research-followups") ||
+            scenarioName.equals("research-followups") || scenarioName.equals("portfolio-ledger") ||
             scenarioName.equals("markets-day-view") ||
             scenarioName.equals("company-price-ranges") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
@@ -7633,6 +7754,72 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void click(String selector) {
         onWebView().withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
+    }
+
+    private void openPortfolioView() throws Exception {
+        onWebView().withElement(findElement(Locator.XPATH, "//nav[@aria-label='Workspace']/button[normalize-space(.)='Portfolio']")).perform(webClick());
+        awaitPage("Portfolio view commits and focuses its heading",
+            "document.querySelector('#managed-portfolio-heading')?.textContent === 'Portfolio' && document.activeElement === document.querySelector('#managed-portfolio-heading')");
+    }
+
+    private void clickPortfolioButton(String label) {
+        assertTrue("Only fixed alphabetic Portfolio button labels", label.matches("[A-Za-z ]+"));
+        onWebView().withElement(findElement(Locator.XPATH, "//section[@aria-labelledby='managed-portfolio-heading']//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertPortfolioFifo(int version, boolean dirty) throws Exception {
+        awaitPage("exact authored FIFO holdings, cash and gain at version " + version,
+            "(() => { const d = " + PORTFOLIO_DRAFT + "; const p = d.projection; const rows = document.querySelectorAll('.managed-portfolio [aria-label=\"Authored holdings table\"] tbody tr');" +
+            " return d.baseVersion === " + version + " && d.dirty === " + dirty + " && d.pendingEditor === false && p?.status === 'valid'" +
+            " && p.portfolio.cashUsd === '948.00' && p.portfolio.holdings.length === 1 && p.portfolio.holdings[0].shares === '1'" +
+            " && p.portfolio.holdings[0].identity.listingId === 'listing-zero' && p.portfolio.holdings[0].totalCostBasisUsd === '100.50' && p.realized.totalGainUsd === '48.50'" +
+            " && rows.length === 1 && rows[0].querySelector('th')?.textContent.includes('ZERO')" +
+            " && [...rows[0].querySelectorAll('td')].slice(0,2).map(e => e.textContent).join('|') === '1|USD 100.50'" +
+            " && [...document.querySelectorAll('.managed-portfolio [aria-label=\"Current authored holdings\"] dl dd')].map(e => e.textContent).join('|') === 'USD 948.00|USD 48.50|USD 48.50|0 of 1'; })()");
+    }
+
+    private void addPortfolioTrade(String type, String label, String shares, String amount) throws Exception {
+        String date = readFixtureString("document.querySelector('.managed-portfolio [aria-label=\"Transaction date\"]')?.value");
+        assertTrue("Native trade retains its displayed authored UTC date", date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}"));
+        chooseNativeSelectOption(".managed-portfolio [aria-label='Transaction type']", type, label);
+        chooseNativeSelectOption(".managed-portfolio [aria-label='Transaction listing']", "listing-zero", "ZERO");
+        typePortfolioField("Transaction shares", shares);
+        typePortfolioField("Transaction amount", amount);
+        typePortfolioField("Transaction fee", "1.00");
+        clickPortfolioButton("Add transaction to draft");
+        awaitPage("explicit " + type + " applies and resets the native raw form",
+            PORTFOLIO_DRAFT + ".pendingEditor === false && " + PORTFOLIO_DRAFT + ".ledger.transactions.length === " + (type.equals("buy") ? 1 : 2) +
+            " && document.querySelector('[aria-label=\"Transaction shares\"]')?.value === '' && " + PORTFOLIO + ".save === 0" +
+            " && " + PORTFOLIO_DRAFT + ".ledger.transactions.at(-1).date === " + JSONObject.quote(date));
+    }
+
+    private void typePortfolioField(String label, String text) throws Exception {
+        assertTrue("Only the three fixed Portfolio decimal editors", label.equals("Transaction shares") || label.equals("Transaction amount") || label.equals("Transaction fee"));
+        String selector = ".managed-portfolio input[aria-label='" + label + "']";
+        String before = readFixtureString("document.querySelector(" + JSONObject.quote(selector) + ")?.value");
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { const input = document.querySelector(" + JSONObject.quote(selector) + ");" +
+            " if (!input) return null; input.scrollIntoView({block:'center',inline:'center',behavior:'instant'});" +
+            " const r = input.getBoundingClientRect(), v = visualViewport; const x = r.left + r.width / 2, y = r.top + r.height / 2;" +
+            " return {x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio," +
+            " finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio].every(Number.isFinite) && r.width>0 && r.height>0 && v.width>0 && v.height>0 && v.scale>0 && devicePixelRatio>0," +
+            " visible:r.left>=v.offsetLeft && r.top>=v.offsetTop && r.right<=v.offsetLeft+v.width && r.bottom<=v.offsetTop+v.height,hit:input.contains(document.elementFromPoint(x,y))}; })()",
+            value -> { observed.set(value); returned.countDown(); }));
+        assertTrue("Portfolio input geometry returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        touchObservedGeometry(label, observed.get());
+        awaitPage("native Portfolio editor is focused: " + label,
+            "document.activeElement === document.querySelector(" + JSONObject.quote(selector) + ") && document.activeElement.disabled === false");
+        awaitNativeEditor(label);
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(new EspressoKey.Builder().withKeyCode(KeyEvent.KEYCODE_A).withCtrlPressed(true).build()));
+        awaitPage("native Portfolio select-all covers the complete raw value",
+            "(() => { const input = document.querySelector(" + JSONObject.quote(selector) + "); return input && document.activeElement === input && input.selectionStart === 0 && input.selectionEnd === " + before.length() + "; })()");
+        awaitNativeEditor(label);
+        onView(isAssignableFrom(WebView.class)).perform(typeTextIntoFocusedView(text));
+        awaitPage("native Portfolio decimal text is exact: " + label,
+            "document.querySelector(" + JSONObject.quote(selector) + ")?.value === " + JSONObject.quote(text));
+        closeSoftKeyboard();
     }
 
     private void selectWorkspaceView(String label) throws Exception {

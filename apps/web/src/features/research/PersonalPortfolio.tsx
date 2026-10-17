@@ -1106,6 +1106,8 @@ export function PersonalPortfolio({
               <PersonalPortfolioLedgerEditor
                 key={`${context}:${String(version)}`}
                 ledger={ledgerDraft}
+                profile="local"
+                saveHelp="Ledger changes update your draft. Save My Portfolio to keep them in encrypted storage."
                 disabled={locked || stale || conflicted}
                 selectedListing={selectedListing}
                 onChange={edit}
