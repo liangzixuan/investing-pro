@@ -7,6 +7,8 @@ import {
 import { CloseHistoryChart } from "../features/research/CloseHistoryChart";
 import type { ManagedEodHistory as Model } from "./managed-eod-history";
 import { ObservedRawCloseRange } from "./ObservedRawCloseRange";
+import { ManagedPriceStudies } from "./ManagedPriceStudies";
+import type { ManagedPriceStudiesActions } from "./managed-price-studies-note";
 import {
   ManagedPriceNoteAction,
   type ManagedPriceNoteActions,
@@ -15,9 +17,13 @@ import {
 export function ManagedEodHistory({
   model,
   noteActions,
+  studiesActions,
+  studiesBlockedReason = null,
 }: {
   model: Model;
   noteActions?: ManagedPriceNoteActions;
+  studiesActions?: ManagedPriceStudiesActions;
+  studiesBlockedReason?: string | null;
 }) {
   const state = useSyncExternalStore(
     model.subscribe,
@@ -156,6 +162,20 @@ export function ManagedEodHistory({
                     : undefined
                 }
               />
+              {studiesActions && (
+                <ManagedPriceStudies
+                  response={response}
+                  showingPrevious={state.showingPrevious}
+                  blockedReason={
+                    state.running
+                      ? "Wait for the price request to finish before preparing study results."
+                      : state.catalogChanged
+                        ? "The catalog changed. Reopen this company before preparing study results."
+                        : studiesBlockedReason
+                  }
+                  actions={studiesActions}
+                />
+              )}
               <details className="managed-eod-source">
                 <summary>Source and request dates</summary>
                 <dl className="managed-metadata">

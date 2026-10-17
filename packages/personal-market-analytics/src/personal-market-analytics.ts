@@ -148,6 +148,16 @@ export interface PersonalMarketAnalyticsInput {
   readonly mode: PersonalMarketAnalyticsMode;
 }
 
+export interface PersonalRawCloseAnalyticsRow {
+  readonly date: string;
+  readonly close: string;
+}
+
+export interface PersonalRawCloseAnalyticsInput {
+  readonly asOfDate: string;
+  readonly rows: readonly PersonalRawCloseAnalyticsRow[];
+}
+
 export type PersonalMarketAnalyticsFormulaParameters =
   (typeof PERSONAL_MARKET_ANALYTICS_FORMULAS)[keyof typeof PERSONAL_MARKET_ANALYTICS_FORMULAS]["parameters"];
 
@@ -286,9 +296,8 @@ export interface PersonalMarketAnalyticsResult {
 }
 
 interface ValidatedBar {
-  readonly adjustedClose: string;
+  readonly close: string;
   readonly date: string;
-  readonly rawClose: string;
 }
 
 interface ValidatedInput {
@@ -301,6 +310,8 @@ const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/u;
 const UNSIGNED_DECIMAL_PATTERN = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/u;
 const MAXIMUM_DECIMAL_LENGTH = 64;
 const INPUT_KEYS = Object.freeze(["asOfDate", "bars", "mode"] as const);
+const RAW_INPUT_KEYS = Object.freeze(["asOfDate", "rows"] as const);
+const RAW_ROW_KEYS = Object.freeze(["date", "close"] as const);
 const BAR_KEYS = Object.freeze(["adjusted", "date", "raw"] as const);
 const CLOSE_KEYS = Object.freeze(["close"] as const);
 const CALCULATION_PRECISION = 80;
@@ -315,6 +326,17 @@ export function calculatePersonalMarketAnalytics(
   }
 }
 
+/** Calculates the same metrics from raw closes, without an adjusted series. */
+export function calculatePersonalRawCloseAnalytics(
+  input: PersonalRawCloseAnalyticsInput,
+): PersonalMarketAnalyticsResult {
+  try {
+    return calculateValidated(validateRawCloseInput(input));
+  } catch {
+    throw new TypeError();
+  }
+}
+
 function calculateValidated(
   input: ValidatedInput,
 ): PersonalMarketAnalyticsResult {
@@ -323,12 +345,7 @@ function calculateValidated(
     precision: CALCULATION_PRECISION,
     rounding: Decimal.ROUND_HALF_UP,
   });
-  const closes = input.bars.map(
-    (bar) =>
-      new CalculationDecimal(
-        input.mode === "adjusted" ? bar.adjustedClose : bar.rawClose,
-      ),
-  );
+  const closes = input.bars.map((bar) => new CalculationDecimal(bar.close));
   const dates = input.bars.map((bar) => bar.date);
 
   return freezeDeep({
@@ -590,7 +607,7 @@ function validateInput(input: unknown): ValidatedInput {
 
   const validatedBars: ValidatedBar[] = [];
   let previousDate: string | undefined;
-  for (const bar of bars) {
+  for (const bar of readDataArray(bars)) {
     if (!isPlainRecord(bar) || !hasExactKeys(bar, BAR_KEYS)) {
       throw new TypeError();
     }
@@ -609,14 +626,64 @@ function validateInput(input: unknown): ValidatedInput {
       throw new TypeError();
     }
     validatedBars.push({
-      adjustedClose: adjusted.close,
+      close: mode === "adjusted" ? adjusted.close : raw.close,
       date,
-      rawClose: raw.close,
     });
     previousDate = date;
   }
 
   return { asOfDate, bars: validatedBars, mode };
+}
+
+function validateRawCloseInput(input: unknown): ValidatedInput {
+  if (!isPlainRecord(input) || !hasExactKeys(input, RAW_INPUT_KEYS)) {
+    throw new TypeError();
+  }
+  const { asOfDate, rows } = input;
+  if (!isCanonicalDate(asOfDate)) throw new TypeError();
+
+  const validatedBars: ValidatedBar[] = [];
+  let previousDate: string | undefined;
+  for (const row of readDataArray(rows)) {
+    if (!isPlainRecord(row) || !hasExactKeys(row, RAW_ROW_KEYS)) {
+      throw new TypeError();
+    }
+    const { close, date } = row;
+    if (
+      !isCanonicalDate(date) ||
+      date > asOfDate ||
+      (previousDate !== undefined && date <= previousDate) ||
+      !isPositiveFiniteDecimal(close)
+    ) {
+      throw new TypeError();
+    }
+    validatedBars.push({ close, date });
+    previousDate = date;
+  }
+  return { asOfDate, bars: validatedBars, mode: "raw" };
+}
+
+function readDataArray(value: unknown): readonly unknown[] {
+  if (
+    !Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Array.prototype ||
+    Reflect.ownKeys(value).length !== value.length + 1
+  ) {
+    throw new TypeError();
+  }
+  const rows: unknown[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (
+      descriptor === undefined ||
+      !descriptor.enumerable ||
+      !Object.hasOwn(descriptor, "value")
+    ) {
+      throw new TypeError();
+    }
+    rows.push(descriptor.value);
+  }
+  return rows;
 }
 
 function isCanonicalDate(value: unknown): value is string {
@@ -672,10 +739,17 @@ function hasExactKeys(
   value: Record<string, unknown>,
   expectedKeys: readonly string[],
 ): boolean {
-  const actualKeys = Object.keys(value);
+  const actualKeys = Reflect.ownKeys(value);
   return (
     actualKeys.length === expectedKeys.length &&
-    expectedKeys.every((key) => Object.hasOwn(value, key))
+    expectedKeys.every((key) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      return (
+        descriptor !== undefined &&
+        descriptor.enumerable === true &&
+        Object.hasOwn(descriptor, "value")
+      );
+    })
   );
 }
 

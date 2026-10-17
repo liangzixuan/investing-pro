@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next independent M2 outcome is a complete [standardized annual statement explorer](MANAGED_ANNUAL_STATEMENTS.md).
+The current M2/M4 candidate connects [raw close research studies](MANAGED_PRICE_STUDIES.md)
+from explicit history load through seven descriptive results, selected-result
+whole-note Preview/Append, existing Review/Save/recovery and reproducible reports.
+It reuses the admitted raw source and versioned calculation engine without new
+requests. No adjusted-return, forecast, technical recommendation or full
+InvestingPro completion claim is added. Native and release acceptance remain open.
+
+The source-integrated M2 outcome is a complete [standardized annual statement explorer](MANAGED_ANNUAL_STATEMENTS.md).
 All three statement groups connect selected-filing comparative dates and exact
 source inspection to selected-cell note actions, existing Save/recovery and
 captured reports. Its canonical version 6 graph keeps each concept independent.

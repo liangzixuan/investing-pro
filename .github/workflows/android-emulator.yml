@@ -94,6 +94,9 @@ jobs:
           if not reports:
               raise SystemExit("No managed-device JUnit reports were produced.")
           expected_tests = {
+              "local.investment.personal.CompanyReportPolicyInstrumentedTest": {
+                  "acceptsCurrentReportSchemaAndRefusesOldSchemaOrIdentity",
+              },
               "local.investment.personal.DisconnectedAppInstrumentedTest": {
                   "packagedAppLaunchesWithDisconnectedGuards",
                   "localNavigationAndHardwareBackKeepWorkspaceLocked",
@@ -125,6 +128,7 @@ jobs:
                   "authoredValuationPreviewSaveReportAndRetirementPreserveBoundaries",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",
+                  "priceStudiesPreviewSaveReloadAndReportPreserveRawSource",
                   "companyLinkDirectEntryAndBackPreserveDraft",
                   "watchlistReplayReviewAndFailedReadPreserveDraft",
                   "signOutReviewKeepsDraftAndUpdatesAfterSave",

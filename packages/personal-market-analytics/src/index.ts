@@ -42,6 +42,7 @@ export {
   PERSONAL_MARKET_ANALYTICS_SESSION_POLICY,
   PERSONAL_MARKET_ANALYTICS_TREND_CLASSIFICATIONS,
   calculatePersonalMarketAnalytics,
+  calculatePersonalRawCloseAnalytics,
   type PersonalMarketAnalyticsAvailablePercentMetric,
   type PersonalMarketAnalyticsBar,
   type PersonalMarketAnalyticsFormulaParameters,
@@ -60,6 +61,8 @@ export {
   type PersonalMarketAnalyticsSmaTrendMetrics,
   type PersonalMarketAnalyticsTrailingVolatilityMetric,
   type PersonalMarketAnalyticsTrendClassification,
+  type PersonalRawCloseAnalyticsInput,
+  type PersonalRawCloseAnalyticsRow,
 } from "./personal-market-analytics";
 
 export {

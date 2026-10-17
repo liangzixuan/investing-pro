@@ -48,7 +48,18 @@ does not establish authenticated production journeys, provider health or physica
 Android use. The earlier fixed Follow-ups storage proof failed in its recorded
 scope; full live-storage qualification and backup/restore acceptance remain open.
 
-## Annual statement explorer in progress
+## Raw close research workflow in progress
+
+The active M2/M4 candidate connects explicitly loaded Company Price history to
+[seven descriptive studies](MANAGED_PRICE_STUDIES.md), selected-result whole-note
+Preview and single-use Append, existing Review/Save/recovery and schema-4 JSON/HTML
+reports. It reuses the existing decimal engine and source packet. Exact samples,
+raw-price qualifications and independent insufficiency remain visible. Source
+tests cover the actual Save/fresh-read flow, conflict and uncertain-save recovery,
+stale callbacks and all seven captured results. Native execution, visual review,
+source integration and publication remain separate pending steps.
+
+## Annual statement explorer integrated in source
 
 The next complete M2 outcome is the [standardized annual statement explorer](MANAGED_ANNUAL_STATEMENTS.md):
 Income, Balance sheet and Cash flow, selected-filing comparative dates, exact
@@ -60,17 +71,17 @@ explorer appears before the existing financial summaries. The actual workspace
 flow from explicit load through selected-cell Preview, single-use Append, Review,
 Save and fresh read passes, including conflict and uncertain-save recovery.
 
-Captured schema 3 JSON preserves the canonical graph once, with separate statement
+The integrated schema 3 JSON preserves the canonical graph once, with separate statement
 cells and financial results that refer to its observation identifiers. Complete
 passive HTML keeps all three statements. Actual escaped capacity cases fit the
 unchanged wire and report limits; a document over the HTML limit is refused whole.
 The reviewed source passed the full platform gates and all 46 native cases,
 including the statement note, Save, fresh-read and file-capture journey. It is
 merged into main with the owner's acceptance of reviewed CodeScene maintenance
-advisories. Final-main checks and publication remain separate acceptance steps.
+advisories. Final-main checks pass; publication remains separate.
 The reader layout refinement keeps compact scope, filing dates, original load and
 source states above the table, with full context in a native disclosure. Its
-source tests pass; new native layout verification remains open. No new provider,
+source and native layout checks pass within their retained screenshot scope. No new provider,
 automatic load or larger financial response limit is introduced.
 
 ## Authored valuation in progress

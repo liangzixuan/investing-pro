@@ -1,6 +1,13 @@
 import { isOwnedSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
 import { getManagedAnnualView } from "./managed-annual-view";
-import { membershipMatchesResult } from "@research-cockpit/contracts";
+import {
+  resolveManagedPriceStudies,
+  type ManagedPriceStudies,
+} from "./managed-price-studies";
+import {
+  membershipMatchesResult,
+  parseManagedEodHistoryResponse,
+} from "@research-cockpit/contracts";
 import type { ResearchWatchlistState } from "./managed-workspace";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import type { ManagedValuationCalculation } from "./managed-valuation-workbench";
@@ -20,6 +27,7 @@ export interface PreparedCompanyReport {
   readonly note: string | null;
   readonly watchlistRevision: symbol | undefined;
   readonly valuation: ManagedValuationCalculation | null;
+  readonly priceStudies: ManagedPriceStudies | null;
 }
 
 export function companyReportBlock(
@@ -61,6 +69,8 @@ export function companyReportBlock(
     return "Wait for source loads to finish before preparing this report.";
   if (!companyReportAnnualEvidenceIsOwned(evidence.annual))
     return "Annual results no longer match their admitted source.";
+  if (!companyReportPriceEvidenceIsOwned(selection, evidence.price))
+    return "Price results no longer match their admitted company source.";
   if (!valuation && !states.some((source) => source?.response))
     return "Load at least one company source or calculate authored valuation assumptions before preparing this report.";
   return null;
@@ -83,6 +93,9 @@ export function prepareCompanyReport(
     note: watchlist.member?.note ?? null,
     watchlistRevision: watchlist.revision,
     valuation,
+    priceStudies: evidence.price?.response
+      ? resolveManagedPriceStudies(evidence.price.response)
+      : null,
   };
 }
 
@@ -98,12 +111,61 @@ export function companyReportIsCurrent(
     report.selection === selection &&
     companyReportBlock(selection, evidence, watchlist, valuation) === null &&
     report.valuation === valuation &&
+    companyReportPriceStudiesIsOwned(report) &&
     report.evidence.price === evidence.price &&
     report.evidence.annual === evidence.annual &&
     report.evidence.filings === evidence.filings &&
     report.note === (watchlist.member?.note ?? null) &&
     report.watchlistRevision === watchlist.revision
   );
+}
+
+/** Match captured calculations to the exact validated raw source and formula result. */
+export function companyReportPriceStudiesIsOwned(
+  report: PreparedCompanyReport,
+): boolean {
+  try {
+    if (
+      !companyReportPriceEvidenceIsOwned(
+        report.selection,
+        report.evidence.price,
+      )
+    )
+      return false;
+    const response = report.evidence.price?.response;
+    return (
+      report.priceStudies ===
+      (response ? resolveManagedPriceStudies(response) : null)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function companyReportPriceEvidenceIsOwned(
+  selection: ManagedResearchSelection,
+  source: CompanyReportEvidence["price"],
+): boolean {
+  if (!source) return true;
+  if (source.response === null) return true;
+  try {
+    if (!companyEvidenceSelectionMatches(selection, source.selection))
+      return false;
+    const admitted = parseManagedEodHistoryResponse(source.response, {
+      catalogSnapshotSha256: selection.catalogSnapshotSha256,
+      listingId: selection.listing.listingId,
+      range: source.response.range,
+    });
+    return (
+      admitted !== null &&
+      membershipMatchesResult(
+        { ...selection.listing, note: "" },
+        admitted.security,
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Require the decoder-owned canonical graph and its exact cached derived view. */

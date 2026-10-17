@@ -10,6 +10,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { eodSelection, eodResponse } from "./eod-history-fixture";
+import { resolveManagedPriceStudies } from "./managed-price-studies";
 import { filingsResponse } from "./sec-filings-fixture";
 import { ManagedEodHistory } from "./managed-eod-history";
 import { ManagedAnnualReport } from "./managed-annual-report";
@@ -83,6 +84,71 @@ async function fixture(range: "1m" | "1y" = "1m") {
 }
 
 describe("company research document inspection", () => {
+  it("refuses a valid foreign price packet beneath another company's selection", async () => {
+    const f = await fixture();
+    const source = eodResponse();
+    const foreign = {
+      ...source,
+      security: {
+        ...source.security,
+        symbol: "ALFA",
+        listingId: "listing-alfa",
+        securityId: "security-alfa",
+        issuerId: "issuer-alfa",
+        issuerName: "Invented Alfa Company",
+      },
+    };
+    const studies = resolveManagedPriceStudies(foreign);
+    expect(studies).not.toBeNull();
+    const forged = {
+      ...f.report,
+      priceStudies: studies,
+      evidence: {
+        ...f.report.evidence,
+        price: { ...f.report.evidence.price!, response: foreign },
+      },
+    };
+    expect(formatCompanyReportDocument(forged) === null).toBe(true);
+    expect(
+      prepareCompanyReport(
+        eodSelection,
+        forged.evidence,
+        {
+          member: { ...eodSelection.listing, note },
+          canEdit: true,
+          canAdd: false,
+          reason: null,
+        },
+        now,
+      ),
+    ).toBeNull();
+  });
+  it("distinguishes a malformed source from a valid source with unavailable studies", async () => {
+    const f = await fixture();
+    const malformed = { ...eodResponse(), rows: [] };
+    expect(resolveManagedPriceStudies(malformed)).toBeNull();
+    const forged = {
+      ...f.report,
+      priceStudies: null,
+      evidence: {
+        ...f.report.evidence,
+        price: { ...f.report.evidence.price!, response: malformed },
+      },
+    };
+    expect(formatCompanyReportDocument(forged) === null).toBe(true);
+  });
+  it("refuses replaced derived results rather than serializing forged values", async () => {
+    const f = await fixture();
+    const studies = f.report.priceStudies!;
+    const forged = {
+      ...f.report,
+      priceStudies: {
+        ...studies,
+        calculation: { ...studies.calculation, asOfDate: "2026-09-20" },
+      },
+    };
+    expect(formatCompanyReportDocument(forged)).toBeNull();
+  });
   it("reproduces three operating periods from the captured document without renewing dates or loading sources", async () => {
     const periods = [2025, 2024, 2023].map((year) => ({
       startDate: `${year}-01-01`,
@@ -171,7 +237,7 @@ describe("company research document inspection", () => {
       ),
     );
     expect(isCompanyReportDocument(document)).toBe(true);
-    expect(decode(document.text).schemaVersion).toBe("3.0.0");
+    expect(decode(document.text).schemaVersion).toBe("4.0.0");
     expect(
       companyReportIsCurrent(report, eodSelection, evidence(), draft),
     ).toBe(true);
@@ -229,7 +295,7 @@ describe("company research document inspection", () => {
     expect(isCompanyReportDocument(document)).toBe(true);
     const parsed = decode(document.text);
     expect(parsed.purpose).toBe("investment.company-research");
-    expect(parsed.schemaVersion).toBe("3.0.0");
+    expect(parsed.schemaVersion).toBe("4.0.0");
     expect(parsed.preparedAt).toBe(now().toISOString());
     expect(parsed.catalogSnapshotSha256).toBe(
       eodSelection.catalogSnapshotSha256,
@@ -248,6 +314,16 @@ describe("company research document inspection", () => {
         lastAttemptFailed: state.error,
         responseOrigin: state.responseOrigin,
         response: state.response,
+        ...(key === "price"
+          ? {
+              studies: {
+                status: "available",
+                scope:
+                  "Descriptive raw unadjusted close calculations over observed dates; no filled gaps, total-return, forecast or recommendation claim.",
+                calculation: f.report.priceStudies!.calculation,
+              },
+            }
+          : {}),
       });
     }
     expect(parsed.sources.annual).toMatchObject({
@@ -296,6 +372,7 @@ describe("company research document inspection", () => {
     );
     const changed = {
       ...report,
+      priceStudies: null,
       evidence: {
         ...report.evidence,
         price: null,
@@ -373,7 +450,13 @@ describe("company research document inspection", () => {
   );
 
   it("accepts its exact UTF-8 output bound and refuses one extra byte without clipping", async () => {
-    const { report } = await fixture();
+    const { report: loaded } = await fixture();
+    // Isolate the serializer's byte bound from loaded Price identity admission.
+    const report = {
+      ...loaded,
+      evidence: { ...loaded.evidence, price: null },
+      priceStudies: null,
+    };
     const base = formatCompanyReportDocument(report)!;
     const extra = COMPANY_REPORT_DOCUMENT_MAX_BYTES - base.byteLength;
     const issuerName = report.selection.listing.issuerName + "x".repeat(extra);

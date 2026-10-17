@@ -21,6 +21,7 @@ import type { ManagedAnnualCashNoteActions } from "./ManagedAnnualCashNoteAction
 import type { ManagedAnnualOperatingNoteActions } from "./ManagedAnnualOperatingNoteAction";
 import type { ManagedAnnualLiquidityNoteActions } from "./ManagedAnnualLiquidityNoteAction";
 import type { ManagedPriceNoteActions } from "./ManagedPriceNoteAction";
+import type { ManagedPriceStudiesActions } from "./managed-price-studies-note";
 import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ManagedResearchCompanyNavigation } from "./ManagedResearchCompanyNavigation";
@@ -58,6 +59,7 @@ export function ManagedCompanyResearch({
   valuation,
   valuationNoteActions,
   priceNoteActions,
+  priceStudiesActions,
   filingsNoteActions,
   companyNavigationState,
   canOpenCompany,
@@ -99,6 +101,7 @@ export function ManagedCompanyResearch({
     };
   };
   priceNoteActions: ManagedPriceNoteActions;
+  priceStudiesActions?: ManagedPriceStudiesActions;
   filingsNoteActions: ManagedFilingsNoteActions;
   companyNavigationState: ResearchCompanyNavigationState;
   canOpenCompany: (
@@ -219,7 +222,21 @@ export function ManagedCompanyResearch({
                   : {})}
               />
             ) : research.section === "eod" ? (
-              <ManagedEodHistory model={eod} noteActions={priceNoteActions} />
+              <ManagedEodHistory
+                model={eod}
+                noteActions={priceNoteActions}
+                {...(priceStudiesActions
+                  ? { studiesActions: priceStudiesActions }
+                  : {})}
+                studiesBlockedReason={
+                  navigationPending
+                    ? "Finish or cancel navigation before preparing study results."
+                    : !watchlist.canEdit || !watchlist.member
+                      ? (watchlist.reason ??
+                        "Add this company to the watchlist draft before preparing study results.")
+                      : null
+                }
+              />
             ) : research.section === "filings" ? (
               <ManagedCompanyFilings
                 model={filings}

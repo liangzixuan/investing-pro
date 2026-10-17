@@ -167,6 +167,15 @@ public class ManagedWorkspaceInstrumentedTest {
         "requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; " +
         "completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. " +
         "Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String PRICE_STUDIES_NOTE = "Price studies draft " +
+        "ZERO XNAS raw close studies: Loaded-window raw close change: 10.0000% " +
+        "(3 observed closes; 2026-09-17 through 2026-09-19; Raw price change excludes dividends and split adjustments.); " +
+        "Maximum observed drawdown: 0.0000% (3 observed closes; 2026-09-17 through 2026-09-19; " +
+        "Nonnegative decline magnitude; peak 2026-09-17, trough 2026-09-17.). " +
+        "Tiingo raw USD closes, unadjusted for splits/dividends; observed gaps are not filled. " +
+        "Loaded 1m window 2026-08-20 through 2026-09-20; requested 2026-09-20T00:00:00.000Z; " +
+        "completed 2026-09-20T00:00:01.000Z. Formula set 1.0.0; derived percentages rounded half-up to 4 decimal places. " +
+        "Descriptive observations, not a recommendation or forecast.";
     private static final String ANNUAL_NOTE = "Annual research draft " +
         "Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; " +
         "NetIncomeLoss USD 100; net margin 10%. " +
@@ -282,6 +291,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("company-snapshot");
         if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("price-comparison-note");
+        if (testName.getMethodName().equals("priceStudiesPreviewSaveReloadAndReportPreserveRawSource"))
+            selectFixtureScenario("price-studies");
         if (testName.getMethodName().equals("thesisReviewPreviewAppendSaveAndReloadPreservesDraft"))
             selectFixtureScenario("thesis-review");
         if (testName.getMethodName().equals("watchlistReplayReviewAndFailedReadPreserveDraft"))
@@ -405,7 +416,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("schema two report keeps exact authored assumptions, complete results and both sensitivity grids without sources",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), v = d.valuation;" +
-            " return d.schemaVersion === '3.0.0' && d.authoredResearch.note === " + JSONObject.quote(prefix) +
+            " return d.schemaVersion === '4.0.0' && d.authoredResearch.note === " + JSONObject.quote(prefix) +
             " && d.listing.listingId === 'listing-zero' && v.dcfDraft.startingUnleveredCashFlowUsd === '100' && v.exitDraft.cash === '100'" +
             " && v.dcfInput.forecastYears === 5 && v.exitInput.horizonYears === 5" +
             " && v.dcfResult.scenarios.base.valuePerShareUsd === '140.00' && v.exitResult.scenarios.base.valuePerShare === '19.00'" +
@@ -452,7 +463,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-company-report > summary");
         click(".managed-company-report .trial-actions button:first-child");
         click(".managed-report-document > summary");
-        awaitPage("new report captures the saved note together with the retained raw valuation", "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value); return d.schemaVersion === '3.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
+        awaitPage("new report captures the saved note together with the retained raw valuation", "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value); return d.schemaVersion === '4.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
             " && d.valuation.dcfDraft.waccPercent === '10' && d.valuation.exitDraft.cash === '100' && d.valuation.dcfResult.sensitivity.cells.length === 25 && d.valuation.exitResult.sensitivity.cells.length === 25; })()");
         retainAnnualNoteFrame("authoredValuationReport", "#managed-prepared-report-heading", "#managed-prepared-report-heading", 1);
         click("#managed-signout-open");
@@ -2845,7 +2856,7 @@ public class ManagedWorkspaceInstrumentedTest {
             awaitPage("the complete prepared JSON contains the exact unsaved Unicode draft and loaded source",
                 "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly || !field.value) return false;" +
                 " const report = JSON.parse(field.value); return report.authoredResearch.note === " + JSONObject.quote(note) +
-                " && report.purpose === 'investment.company-research' && report.schemaVersion === '3.0.0'" +
+                " && report.purpose === 'investment.company-research' && report.schemaVersion === '4.0.0'" +
                 " && report.listing.listingId === 'listing-zero' && report.listing.symbol === 'ZERO' && report.listing.exchangeMic === 'XNAS'" +
                 " && report.sources.annual.response.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
                 " && report.sources.price.status === 'not_loaded' && report.sources.filings.status === 'not_loaded'; })()");
@@ -3257,7 +3268,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("report JSON retains the exact draft, complete admitted packets and source clocks",
             "(() => { const field = document.querySelector('#managed-report-document'); " +
             "if (!field?.readOnly || !field.value) return false; const value = JSON.parse(field.value); " +
-            "return value.purpose === 'investment.company-research' && value.schemaVersion === '3.0.0' && " +
+            "return value.purpose === 'investment.company-research' && value.schemaVersion === '4.0.0' && " +
             "value.authoredResearch.status === 'watchlist_draft' && value.authoredResearch.note === " + JSONObject.quote(NOTE) + " && " +
             "value.listing.listingId === 'listing-zero' && value.listing.symbol === 'ZERO' && " +
             "value.sources.price.response.completedAt === '2026-09-20T00:00:01.000Z' && " +
@@ -5462,6 +5473,146 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedPriceNote", "phase=saved-reloaded, exactNoteLength=" + PRICE_NOTE.length() + "; " + pageDiagnostic());
     }
 
+    @Test
+    public void priceStudiesPreviewSaveReloadAndReportPreserveRawSource() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        String studies = ".managed-eod-history .managed-price-studies";
+        String review = studies + " > .managed-price-studies-review";
+        String preview = review + " > .managed-price-studies-preview";
+        String choices = studies + " tbody input[type=checkbox]";
+        awaitPage("invented Price studies startup makes no source request", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Price studies draft");
+        click("button[aria-label='EOD close history for saved ZERO']");
+        awaitPage("Price studies require the explicit company history load",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Price studies draft'" +
+            " && document.querySelector(" + JSONObject.quote(studies) + ") === null");
+        assertPriceNoteCounts(0, 0, 1);
+        clickEodAction("Load one-month close history");
+        String exactStudies = priceStudiesTableExact(studies, true);
+        awaitPage("raw studies keep exact values, their own insufficient samples and the last observed date",
+            exactStudies + " && document.querySelector(" + JSONObject.quote(review) + ")?.open === false" +
+            " && document.querySelector(" + JSONObject.quote(preview) + ") === null" +
+            " && document.querySelector('#managed-research-note')?.value === 'Price studies draft'");
+        assertPriceNoteCounts(1, 0, 1);
+        retainAnnualNoteFrame("priceStudiesLoaded", studies + " tbody tr:first-child",
+            studies + " tbody tr:first-child", 1);
+        awaitPage("source study values remain exact after the visible source frame", exactStudies);
+        click(studies + " tbody tr:nth-child(1) input[type=checkbox]");
+        click(studies + " tbody tr:nth-child(2) input[type=checkbox]");
+        click(review + " > summary");
+        awaitPage("only the two explicitly chosen available studies enter the review",
+            "document.querySelector(" + JSONObject.quote(review) + ")?.open === true" +
+            " && document.querySelector(" + JSONObject.quote(review + " > summary") + ")?.textContent === 'Review selected study results (2)'" +
+            " && [...document.querySelectorAll(" + JSONObject.quote(choices) + ")].map(e => e.checked).join('|') === 'true|true'" +
+            " && document.querySelector(" + JSONObject.quote(review + " > button") + ")?.textContent === 'Preview complete note'" +
+            " && document.querySelector(" + JSONObject.quote(review + " > button") + ")?.disabled === false");
+        click(review + " > button");
+        String exactPreview = "document.querySelector(" + JSONObject.quote(preview + " > .managed-price-studies-note-text") + ")?.textContent === " + JSONObject.quote(PRICE_STUDIES_NOTE) +
+            " && document.querySelector(" + JSONObject.quote(preview + " > button") + ")?.textContent === 'Add study results to note draft'" +
+            " && document.querySelector(" + JSONObject.quote(preview + " > button") + ")?.disabled === false" +
+            " && document.querySelector('#managed-research-note')?.value === 'Price studies draft'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Price studies draft'";
+        awaitPage("whole exact preview preserves authored prefix and all original price provenance without appending", exactPreview);
+        assertPriceNoteCounts(1, 0, 1);
+        retainAnnualNoteFrame("priceStudiesAppend", preview + " > button", preview + " > button", 1);
+        awaitPage("complete note remains unchanged before explicit Append", exactPreview);
+        click(preview + " > button");
+        awaitPage("one explicit Append consumes the preview and changes only the watchlist note draft",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(PRICE_STUDIES_NOTE) +
+            " && document.querySelector(" + JSONObject.quote(preview) + ") === null" +
+            " && document.querySelector(" + JSONObject.quote(review + " > [role=status]") + ")?.textContent === 'Study results added to the note draft. Review and save all changes in My Watchlist.'");
+        assertPriceStudiesDraft(1, true);
+        assertPriceNoteCounts(1, 0, 1);
+        click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
+        awaitPage("Review opens the complete price-studies note reader without requesting or saving",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
+            " && document.activeElement === document.querySelector('#managed-note-0-reading-toggle')");
+        assertFullNoteReading("managed-note-0", PRICE_STUDIES_NOTE, true);
+        assertPriceStudiesDraft(1, true);
+        assertPriceNoteCounts(1, 0, 1);
+        clickWatchlistAction("Save watchlist");
+        awaitPage("explicit full-list Save acknowledges version two", DIAGNOSTICS + ".save === 1 && " + DRAFT + ".baseVersion === 2 && " + DRAFT + ".dirty === false");
+        assertPriceStudiesDraft(2, false);
+        clickWatchlistAction("Load saved watchlist");
+        awaitPage("fresh saved read restores the exact full study paragraph", DIAGNOSTICS + ".load === 2 && document.querySelector('#managed-note-0')?.disabled === false");
+        assertPriceStudiesDraft(2, false);
+        assertPriceNoteCounts(1, 1, 2);
+        selectWatchlistNote(0);
+        click("button[aria-label='EOD close history for saved ZERO']");
+        awaitPage("a new company visit retains the saved note but does not silently restore price evidence",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(PRICE_STUDIES_NOTE) +
+            " && document.querySelector(" + JSONObject.quote(studies) + ") === null");
+        assertPriceNoteCounts(1, 1, 2);
+        clickEodAction("Load one-month close history");
+        awaitPage("the second explicit load admits the same original raw inputs for the captured report", exactStudies);
+        assertPriceNoteCounts(2, 1, 2);
+        click(".managed-company-report > summary");
+        click(".managed-company-report .trial-actions button:first-child");
+        String captured = ".managed-company-report .captured-price-studies";
+        String passive = priceStudiesTableExact(captured, false) +
+            " && document.querySelector('.managed-company-report-note')?.textContent === " + JSONObject.quote(PRICE_STUDIES_NOTE) +
+            " && document.querySelectorAll('.managed-company-report .captured-price-studies :is(button,input,select,textarea)').length === 0";
+        awaitPage("captured HTML displays the same passive descriptive studies and the complete saved note", passive);
+        retainAnnualNoteFrame("priceStudiesCapturedReport", captured + " tbody tr:first-child",
+            captured + " tbody tr:first-child", 1);
+        awaitPage("passive captured study values remain exact after their visible frame", passive);
+        click(".managed-report-document > summary");
+        awaitPage("schema4 retains exact raw inputs, original clocks, formulas and independent sample refusals",
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
+            " const d = JSON.parse(field.value), p = d.sources.price, r = p.response, c = p.studies?.calculation, m = c?.metrics;" +
+            " if (!m) return false; const available = [m.selectedWindowReturn,m.maximumDrawdown];" +
+            " const refused = [m.trailing20SessionAnnualizedVolatility,m.smaTrend.sma20,m.smaTrend.sma50,m.smaTrend.sma200,m.trailing252SessionCloseRangePosition];" +
+            " const all = [...available,...refused];" +
+            " return d.purpose === 'investment.company-research' && d.schemaVersion === '4.0.0'" +
+            " && d.authoredResearch.status === 'watchlist_draft' && d.authoredResearch.note === " + JSONObject.quote(PRICE_STUDIES_NOTE) +
+            " && d.listing.listingId === 'listing-zero' && d.listing.symbol === 'ZERO' && d.catalogSnapshotSha256 === 'sha256:'+'a'.repeat(64)" +
+            " && d.sources.annual.status === 'not_loaded' && d.sources.filings.status === 'not_loaded' && d.valuation === null" +
+            " && p.status === 'loaded' && p.retainedPrevious === false && p.lastAttemptFailed === false && p.responseOrigin === 'company' && p.studies.status === 'available'" +
+            " && r.schemaVersion === '1.0.0' && r.provider === 'Tiingo' && r.currency === 'USD' && r.priceBasis === 'raw_close' && r.range === '1m'" +
+            " && r.window.startDate === '2026-08-20' && r.window.endDate === '2026-09-20'" +
+            " && r.requestStartedAt === '2026-09-20T00:00:00.000Z' && r.completedAt === '2026-09-20T00:00:01.000Z'" +
+            " && r.rows.map(row => row.date+'='+row.close).join('|') === '2026-09-17=100.000000000000000001|2026-09-18=107.500000000000000002|2026-09-19=110.000000000000000003'" +
+            " && c.schemaVersion === '1.0.0' && c.formulaSetVersion === '1.0.0' && c.mode === 'raw' && c.asOfDate === '2026-09-19' && c.asOfDate !== r.window.endDate" +
+            " && c.inputWindow.firstDate === '2026-09-17' && c.inputWindow.lastDate === '2026-09-19' && c.inputWindow.sessionCount === 3 && c.inputWindow.sessionPolicy === 'observed_sessions_only_no_gap_filling'" +
+            " && all.length === 7 && all.every(metric => metric.formulaVersion === '1.0.0' && metric.observedSessions === 3 && metric.sampleFirstDate === '2026-09-17' && metric.sampleLastDate === '2026-09-19'" +
+            " && metric.parameters.roundingDecimalPlaces === 4 && metric.parameters.roundingMethod === 'round_half_up' && metric.parameters.sessionPolicy === 'observed_sessions_only_no_gap_filling')" +
+            " && available.every(metric => metric.status === 'available') && m.selectedWindowReturn.valuePercent === '10.0000' && m.maximumDrawdown.valuePercent === '0.0000'" +
+            " && m.selectedWindowReturn.formulaId === 'selected_window_simple_return_percent' && m.selectedWindowReturn.parameters.definition === 'last_close_over_first_close_minus_one'" +
+            " && m.maximumDrawdown.formulaId === 'maximum_drawdown_magnitude_percent' && m.maximumDrawdown.parameters.sign === 'nonnegative_magnitude' && m.maximumDrawdown.peakDate === '2026-09-17' && m.maximumDrawdown.troughDate === '2026-09-17'" +
+            " && refused.every(metric => metric.status === 'insufficient_history' && !('valuePercent' in metric) && !('distancePercent' in metric)) && refused.map(metric => metric.requiredSessions).join('|') === '21|20|50|200|200'" +
+            " && m.trailing20SessionAnnualizedVolatility.parameters.returnObservations === 20 && m.trailing20SessionAnnualizedVolatility.parameters.annualizationSessions === 252 && m.trailing20SessionAnnualizedVolatility.parameters.varianceDenominator === 'n_minus_one'" +
+            " && m.smaTrend.sma20.parameters.windowSessions === 20 && m.smaTrend.sma50.parameters.windowSessions === 50 && m.smaTrend.sma200.parameters.windowSessions === 200 && m.trailing252SessionCloseRangePosition.parameters.maximumWindowSessions === 252; })()");
+        assertPriceStudiesDraft(2, false);
+        assertPriceNoteCounts(2, 1, 2);
+        awaitPage("study note and report make no unrelated source request",
+            DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0");
+        assertEquals("Study note review, Save, fresh read and report preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(0, 1);
+    }
+
+    private String priceStudiesTableExact(String scope, boolean editable) {
+        return "(() => { const root = document.querySelector(" + JSONObject.quote(scope) + "); if (!root) return false; const rows = [...root.querySelectorAll('tbody tr')];" +
+            " const labels = ['Loaded-window raw close change','Maximum observed drawdown','Annualized volatility · 20 log returns','Last close versus 20-observation SMA','Last close versus 50-observation SMA','Last close versus 200-observation SMA','Trailing observed close-range position'];" +
+            " const values = ['10.0000%','0.0000%','Unavailable: needs 21 observed closes','Unavailable: needs 20 observed closes','Unavailable: needs 50 observed closes','Unavailable: needs 200 observed closes','Unavailable: needs 200 observed closes'];" +
+            " return rows.length === 7 && rows.every((row,index) => row.querySelector('th')?.childNodes[0]?.textContent === labels[index] && row.querySelector('th > small')?.textContent === '3 observed closes; 2026-09-17 through 2026-09-19' && row.querySelector('td > strong')?.textContent === values[index])" +
+            " && root.textContent.includes('Calculated through 2026-09-19 from the loaded 1m history.') && !root.textContent.includes('Calculated through 2026-09-20')" +
+            " && root.textContent.includes('Observed closes are unadjusted for splits or dividends; gaps are not filled.')" +
+            " && root.querySelectorAll('input[type=checkbox]').length === " + (editable ? 2 : 0) +
+            (editable ? " && [...root.querySelectorAll('input[type=checkbox]')].every(input => input.disabled === false && input.closest('label')?.textContent.includes('Include '))" : "") + "; })()";
+    }
+
+    private void assertPriceStudiesDraft(int version, boolean dirty) throws Exception {
+        awaitPage("Price studies preserve the exact full note, unrelated note, order and saved state",
+            DRAFT + ".memberships?.map(member => member.symbol).join('|') === 'ZERO|ONE'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(PRICE_STUDIES_NOTE) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".baseVersion === " + version + " && " + DRAFT + ".dirty === " + dirty +
+            " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")");
+    }
+
     private void assertPriceNoteDraft(int version, boolean dirty) throws Exception {
         awaitPage("price note preserves the complete paragraph, other note and membership order",
             "Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
@@ -5529,7 +5680,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("complete report retains the operating graph, raw revenue and missing net income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
             " const doc = JSON.parse(field.value), annual = doc.sources.annual.response;" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '3.0.0' && annual.schemaVersion === '6.0.0'" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '4.0.0' && annual.schemaVersion === '6.0.0'" +
             " && annual.evidence.facts.observations.find(row => row.concept === 'OperatingIncomeLoss').value === '-250.125'" +
             " && doc.sources.annual.financials.operatingResults.resolution.margins.length === 3" +
             " && annual.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').length === 3 && annual.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').every(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax'].includes(row.concept))" +
@@ -5690,10 +5841,10 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-company-report > summary");
         click(".managed-company-report .trial-actions button:first-child");
         click(".managed-report-document > summary");
-        awaitPage("schema3 captures all32 scans and95 original observations once with exact selected-cell references",
+        awaitPage("schema4 captures all32 scans and95 original observations once with exact selected-cell references",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), a = d.sources.annual, e = a.response.evidence;" +
             " const rows = e.facts.observations, ids = new Set(rows.map(row => row.id));" +
-            " return d.schemaVersion === '3.0.0' && a.response.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
+            " return d.schemaVersion === '4.0.0' && a.response.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
             " && e.facts.scans.length === 32 && rows.length === 95 && ids.size === 95 && rows.every(row => !('metric' in row))" +
             " && field.value.split(String.fromCharCode(34) + 'observations' + String.fromCharCode(34) + ':').length === 2 && a.statements.statements.reduce((count,s) => count+s.rows.length,0) === 32" +
             " && a.statements.statements.length === 3 && a.statements.statements.every(s => s.columns.map(c => c.endDate).join('|') === '2025-12-31|2024-12-31|2023-12-31')" +
@@ -5977,7 +6128,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
             " const doc = JSON.parse(field.value), annual = doc.sources.annual.response, e = annual.evidence, b = doc.sources.annual.financials.balanceSheet;" +
             " const keys = ['totalAssets','totalLiabilities','shareholdersEquity'], concepts = ['Assets','Liabilities','StockholdersEquity'], amounts = ['1000.125','1200.25','-200.125'];" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '3.0.0' && annual.schemaVersion === '6.0.0'" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '4.0.0' && annual.schemaVersion === '6.0.0'" +
             " && annual.security.symbol === 'ZERO' && annual.security.listingId === 'listing-zero' && e.facts.observations.filter(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax','NetIncomeLoss'].includes(row.concept)).length === 0 && doc.sources.annual.financials.income.resolution.pairs.length === 0" +
             " && keys.every((key,i) => { const observations = e.facts.observations.filter(row => row.concept === concepts[i]), value = b.resolution[key], row = observations[0];" +
             " return observations.length === [3,2,3][i] && row.value === amounts[i] && row.concept === concepts[i] && row.unit === 'USD' && row.startDate === null && row.durationDays === null" +
@@ -7751,7 +7902,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-financial-review") || scenarioName.equals("annual-operating-comparison") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
-            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
+            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") || scenarioName.equals("price-studies") ||
             scenarioName.equals("thesis-review") ||
             scenarioName.equals("company-snapshot") || scenarioName.equals("authored-valuation") ||
             scenarioName.equals("research-followups") || scenarioName.equals("portfolio-ledger") ||
