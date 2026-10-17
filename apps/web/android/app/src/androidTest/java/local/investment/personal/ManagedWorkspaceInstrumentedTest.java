@@ -5826,7 +5826,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("same visit remains ready for its single Back", visit, true);
         pressBack();
         awaitPage("single native Back retains exact pair, results, criteria and comparison opener",
-            screenComparisonStatementExact("Income statement") +
+            screenComparisonStatementExact("Cash flow") +
+            " && document.querySelector(" + JSONObject.quote(selector) + ")?.value==='cash_flow'" +
             " && location.pathname==='/' && location.search==='' && location.hash==='' && document.querySelector('.managed-company-visit')===null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Discover'" +
             " && document.querySelector('.managed-screen-clause select:first-of-type')?.value==='operatingCashFlow' && document.querySelector('.managed-screen-clause input')?.value==='0'" +
