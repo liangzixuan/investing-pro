@@ -397,7 +397,10 @@ public class ManagedWorkspaceInstrumentedTest {
             valuation + ".calculation.dcfResult.scenarios.base.valuePerShareUsd === '140.00' && " + valuation + ".calculation.exitResult.scenarios.base.valuePerShare === '19.00'");
         assertPriceNoteCounts(0, 0, 1);
         onWebView().withElement(findElement(Locator.XPATH, "//details[contains(concat(' ',normalize-space(@class),' '),' managed-valuation-workbench ')]/button[normalize-space(.)='Open Price section']")).perform(webClick());
-        awaitPage("opening the existing Price section makes no source request", "new URL(location.href).searchParams.get('section') === 'eod'");
+        awaitPage("opening the existing Price section commits before its explicit load",
+            "(() => { const heading=document.querySelector('#managed-eod-heading'), panel=document.querySelector('.managed-eod-history');" +
+            " return location.pathname==='/' && location.search==='?company=listing-zero&section=price' && location.hash===''" +
+            " && heading?.textContent==='EOD close history' && document.activeElement===heading && panel?.getAttribute('aria-busy')==='false'; })()", true);
         assertPriceNoteCounts(0, 0, 1);
         clickEodAction("Load one-month close history");
         String exact = valuationPriceRowsExact(context);
