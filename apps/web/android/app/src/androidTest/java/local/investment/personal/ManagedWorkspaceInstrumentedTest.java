@@ -3740,7 +3740,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertEodState(1, 0, 0, false, true);
         String initialHistory =
             "document.querySelector('.managed-eod-history caption')?.textContent === 'Raw closing prices in USD'" +
-            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-eod-table-scroll > table > tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('2026-08-20')" +
@@ -3821,7 +3821,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertEodState(4, 1, 1, false, true);
         awaitPage("explicit recovery replaces every history value and request date",
             "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'" +
-            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|102.75;2026-09-20|103.5'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-eod-table-scroll > table > tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|102.75;2026-09-20|103.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '103.5|2026-09-20|2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'" +
             " && document.querySelector('.managed-eod-previous') === null" +
             " && document.querySelector('.managed-eod-origin') === null" +
@@ -4293,7 +4293,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-annual-report') === null" +
             " && document.querySelector('.managed-eod-history')?.getAttribute('aria-busy') === 'false'" +
             " && document.querySelector('.managed-eod-history caption')?.textContent === 'Raw closing prices in USD'" +
-            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-eod-table-scroll > table > tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')" +
             " && document.querySelector(\".managed-company-sections button[aria-label='Annual section for ZERO']\")?.disabled === false";
@@ -4893,7 +4893,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("company Price starts with a staged month and no read",
             "document.querySelector('#managed-eod-range')?.value === '1m' && " +
             "document.querySelector('#managed-eod-range')?.disabled === false && " +
-            "document.querySelector('.managed-eod-history tbody') === null && " + DIAGNOSTICS + ".eod === 0" +
+            "document.querySelector('.managed-eod-history .managed-eod-table-scroll > table > tbody') === null && " + DIAGNOSTICS + ".eod === 0" +
             " && document.querySelector('.managed-observed-close-range') === null");
         String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
         chooseNativeSelectOption("#managed-eod-range", "1y", "One year");
@@ -4909,11 +4909,11 @@ public class ManagedWorkspaceInstrumentedTest {
         assertEodDraftAndCounts(0, 0, 0);
         awaitPage("staging a year changes only the explicit load choice",
             "document.querySelector('.managed-eod-history .trial-actions button')?.textContent === 'Load one-year close history' && " +
-            "document.querySelector('.managed-eod-history tbody') === null");
+            "document.querySelector('.managed-eod-history .managed-eod-table-scroll > table > tbody') === null");
         clickEodAction("Load one-year close history");
         String year =
             "document.querySelector('.managed-eod-history caption')?.textContent === 'Raw closing prices in USD'" +
-            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2025-09-22|80.125;2026-03-20|90.25;2026-09-19|101.5'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-eod-table-scroll > table > tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2025-09-22|80.125;2026-03-20|90.25;2026-09-19|101.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2025-09-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('Loaded request range: One year.')" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('not adjusted for splits or dividends and are not live quotes')" +
@@ -4944,7 +4944,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && !document.querySelector('.managed-eod-history').textContent.includes('999.75')");
         clickEodAction("Load one-month close history");
         String month =
-            "Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|102.75;2026-09-20|103.5'" +
+            "Array.from(document.querySelectorAll('.managed-eod-history .managed-eod-table-scroll > table > tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|102.75;2026-09-20|103.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '103.5|2026-09-20|2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('Loaded request range: One month.')" +
             " && document.querySelector('.managed-eod-previous') === null" +
@@ -4972,7 +4972,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click("button[aria-label='EOD close history for saved ZERO']");
         awaitPage("new company visit resets staging and carries no disposed packet",
             "document.querySelector('#managed-eod-range')?.value === '1m' && " +
-            "document.querySelector('.managed-eod-history tbody') === null && " + DIAGNOSTICS + ".eod === 4" +
+            "document.querySelector('.managed-eod-history .managed-eod-table-scroll > table > tbody') === null && " + DIAGNOSTICS + ".eod === 4" +
             " && document.querySelector('.managed-observed-close-range') === null");
         clickEodAction("Load one-month close history");
         awaitPage("last month read is held before explicit session expiry",
@@ -7553,7 +7553,7 @@ public class ManagedWorkspaceInstrumentedTest {
         String metadata = close + "|" + date + "|" + window + "|" + started + "|" + completed;
         awaitPage("company history preserves complete response dates and explicit origin",
             "document.querySelector('.managed-eod-history caption')?.textContent === 'Raw closing prices in USD'" +
-            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === " + JSONObject.quote(rows) +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-eod-table-scroll > table > tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === " + JSONObject.quote(rows) +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === " + JSONObject.quote(metadata) +
             " && (document.querySelector('.managed-eod-history .managed-eod-origin') !== null) === " + fromMarkets +
             (fromMarkets ? " && document.querySelector('.managed-eod-history .managed-eod-origin')?.textContent === 'Showing history loaded in Markets. Original dates and request times are unchanged.'" : "") +
@@ -7810,7 +7810,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-eod-history')?.getAttribute('aria-busy') === '" + pending + "'" +
             " && (document.querySelector('.managed-eod-history .managed-metadata') !== null) === " + rows +
             " && (document.querySelector('.managed-eod-history .managed-eod-chart') !== null) === " + rows +
-            " && document.querySelectorAll('.managed-eod-history tbody tr').length === " + (rows ? 2 : 0));
+            " && document.querySelectorAll('.managed-eod-history .managed-eod-table-scroll > table > tbody tr').length === " + (rows ? 2 : 0));
     }
 
     private void assertEodDraftAndCounts(int reads, int aborted, int late) throws Exception {
