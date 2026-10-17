@@ -25,7 +25,11 @@ export function AnnualStatementsReportView({
       aria-label="Captured standardized annual statements"
     >
       <h3>Standardized annual statements</h3>
-      <AnnualStatementsContext evidence={evidence} statements={statements} />
+      <AnnualStatementsContext
+        evidence={evidence}
+        statements={statements}
+        presentation="report"
+      />
       {annualStatementOrder.map((id) => {
         const statement = statements.statements.find((item) => item.id === id);
         return (

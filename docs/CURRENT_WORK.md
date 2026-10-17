@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 16, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns the full
+Updated October 17, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns the full
 InvestingPro feature goal. [Architecture](ARCHITECTURE.md) defines the runtime
 boundaries. Source checks, integration, publication and physical-device use have
 separate acceptance.
@@ -64,9 +64,13 @@ Captured schema 3 JSON preserves the canonical graph once, with separate stateme
 cells and financial results that refer to its observation identifiers. Complete
 passive HTML keeps all three statements. Actual escaped capacity cases fit the
 unchanged wire and report limits; a document over the HTML limit is refused whole.
-All workspace types pass. Screen and existing native fixture tests are migrated
-to the same contract. The dedicated Android statement journey, current full checks,
-source review and publication remain separate acceptance steps. No new provider,
+The reviewed source passed the full platform gates and all 46 native cases,
+including the statement note, Save, fresh-read and file-capture journey. It is
+merged into main with the owner's acceptance of reviewed CodeScene maintenance
+advisories. Final-main checks and publication remain separate acceptance steps.
+The reader layout refinement keeps compact scope, filing dates, original load and
+source states above the table, with full context in a native disclosure. Its
+source tests pass; new native layout verification remains open. No new provider,
 automatic load or larger financial response limit is introduced.
 
 ## Authored valuation in progress
@@ -85,7 +89,8 @@ navigation into page flow while the review is open. Stronger hit checks and
 affected source tests pass. Current native CI passes all 45 cases; direct review
 of its sign-out and results screenshots confirms visible actions and whole
 scenario headings. All six current workflows and seven jobs pass. CodeScene
-maintenance advisories remain failed and unaccepted; source integration is open.
+maintenance advisories remain recorded as failures accepted by the owner; source
+integration is complete. Final-main checks remain separate from publication.
 Desktop browser geometry, publication and physical installation are not accepted.
 The Portfolio storage and source integration decisions remain separate.
 
