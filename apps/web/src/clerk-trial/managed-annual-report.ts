@@ -25,13 +25,15 @@ import {
 export interface ManagedAnnualReportSeed {
   readonly response: PersonalSecAnnualCanonicalResponseDto;
   readonly showingPrevious: boolean;
+  readonly provenance?: "financial-screen";
 }
 
 export interface ManagedAnnualReportState {
   readonly selection: ManagedResearchSelection | null;
   readonly response: PersonalSecAnnualCanonicalResponseDto | null;
   readonly view: PersonalSecAnnualCanonicalView | null;
-  readonly responseOrigin: "request" | "watchlist-comparison" | null;
+  readonly responseOrigin:
+    "request" | "watchlist-comparison" | "financial-screen" | null;
   readonly showingPrevious: boolean;
   readonly running: boolean;
   readonly checkingSeed: boolean;
@@ -77,8 +79,11 @@ async function parseReportSeed(
   signal: AbortSignal,
 ): Promise<ManagedAnnualReportSeed> {
   if (
-    selection.origin !== "watchlist" ||
-    selection.cik !== null ||
+    (selection.origin === "screening"
+      ? seed.provenance !== "financial-screen"
+      : selection.origin !== "watchlist" ||
+        selection.cik !== null ||
+        seed.provenance !== undefined) ||
     typeof seed.showingPrevious !== "boolean"
   )
     throw new TrialApiError("invalid_response");
@@ -95,7 +100,11 @@ async function parseReportSeed(
   );
   if (!response || !matchesSelection(response, selection))
     throw new TrialApiError("invalid_response");
-  return Object.freeze({ response, showingPrevious });
+  return Object.freeze({
+    response,
+    showingPrevious,
+    ...(seed.provenance ? { provenance: seed.provenance } : {}),
+  });
 }
 
 function deriveReportView(response: PersonalSecAnnualCanonicalResponseDto) {
@@ -161,7 +170,9 @@ export class ManagedAnnualReport {
       running: operation !== null,
       checkingSeed: operation !== null,
       message: operation
-        ? "Checking the loaded watchlist comparison report…"
+        ? selection.origin === "screening"
+          ? "Checking the loaded financial screening report…"
+          : "Checking the loaded watchlist comparison report…"
         : "Load the observed annual report when you are ready.",
     });
     if (operation && seed !== undefined)
@@ -186,16 +197,23 @@ export class ManagedAnnualReport {
       this.update({
         ...accepted,
         view,
-        responseOrigin: "watchlist-comparison",
+        responseOrigin:
+          accepted.provenance === "financial-screen"
+            ? "financial-screen"
+            : "watchlist-comparison",
         message:
-          "The loaded watchlist comparison report is available in this company visit. Refresh explicitly to check again.",
+          accepted.provenance === "financial-screen"
+            ? "The report loaded for financial screening is available in this company visit. Original source times are unchanged. Refresh explicitly to check again."
+            : "The loaded watchlist comparison report is available in this company visit. Refresh explicitly to check again.",
       });
     } catch {
       if (!current()) return;
       this.update({
         error: true,
         message:
-          "The loaded watchlist comparison report could not be validated. Load the annual report when you are ready.",
+          selection.origin === "screening"
+            ? "The loaded screening report could not be validated. Load the annual report when you are ready."
+            : "The loaded watchlist comparison report could not be validated. Load the annual report when you are ready.",
       });
     } finally {
       if (current()) {

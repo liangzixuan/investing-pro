@@ -12,7 +12,7 @@ import {
   ManagedSecAdmissionError,
   type ManagedSecAdmissionOperation,
 } from "./managed-sec-admission";
-import { MANAGED_SEC_ISSUERS } from "./managed-sec-issuers";
+import { MANAGED_SEC_ANNUAL_ISSUERS } from "./managed-sec-issuers";
 import type { ManagedSecConfiguration } from "./managed-sec-config";
 import { createSecPersonalAnnualEvidenceProvider } from "./personal-sec-annual-evidence-provider";
 import { encodePersonalSecAnnualCanonicalResponse } from "./personal-sec-annual-canonical-response";
@@ -104,7 +104,7 @@ export function createManagedSecAnnualService(options: {
       if (
         listing === null ||
         listing.symbol !== request.symbol ||
-        !MANAGED_SEC_ISSUERS.includes(listing.cik)
+        !MANAGED_SEC_ANNUAL_ISSUERS.includes(listing.cik)
       )
         throw new ManagedSecAnnualServiceError("invalid_request");
       if (options.configuration === null)

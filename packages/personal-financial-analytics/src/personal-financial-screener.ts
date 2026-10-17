@@ -20,6 +20,11 @@ import {
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
 import {
+  comparePersonalNumericScreenRows,
+  evaluatePersonalNumericScreenClauses,
+  isPersonalNumericScreenDecimal as isDecimal,
+} from "./personal-numeric-screen";
+import {
   calculatePersonalCurrentAssetsLessCurrentLiabilities,
   calculatePersonalCurrentRatio,
 } from "./personal-liquidity";
@@ -143,7 +148,6 @@ const FAILED_SOURCE_STATUSES = new Set([
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
 const CIK = /^\d{10}$/u;
 const ACCESSION = /^\d{10}-\d{2}-\d{6}$/u;
-const DECIMAL = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/u;
 const INVALID_TEXT = /[\p{Cc}\p{Cf}\p{Cs}]/u;
 const ScreenDecimal = Decimal.clone({
   precision: 256,
@@ -308,12 +312,17 @@ export function evaluatePersonalFinancialScreen(
           metrics[metric].status === "available" ? "known" : "unknown"
         ] += 1;
       }
-      const outcome = evaluateClauses(metrics, criteria);
+      const outcome = evaluatePersonalNumericScreenClauses(
+        metrics,
+        criteria.clauses,
+      );
       if (outcome === "false") totalNonMatches += 1;
       else if (outcome === "unknown") totalUnknown += 1;
       else matches.push({ identity: { ...identity }, metrics });
     }
-    matches.sort((left, right) => compareRows(left, right, criteria.sort));
+    matches.sort((left, right) =>
+      comparePersonalNumericScreenRows(left, right, criteria.sort),
+    );
     return {
       schemaVersion: "14.0.0",
       instantQuarter: 4,
@@ -997,55 +1006,6 @@ function margin(
   };
 }
 
-function evaluateClauses(
-  metrics: PersonalFinancialScreenRowDto["metrics"],
-  criteria: PersonalFinancialScreenCriteriaDto,
-): "true" | "false" | "unknown" {
-  let unknown = false;
-  for (const clause of criteria.clauses) {
-    const metric = metrics[clause.field];
-    if (metric.status === "unavailable") {
-      unknown = true;
-      continue;
-    }
-    const value = new ScreenDecimal(metric.value);
-    if (
-      clause.operator === "gte"
-        ? value.lt(clause.value)
-        : value.gt(clause.value)
-    )
-      return "false";
-  }
-  return unknown ? "unknown" : "true";
-}
-
-function compareRows(
-  left: PersonalFinancialScreenRowDto,
-  right: PersonalFinancialScreenRowDto,
-  sort: PersonalFinancialScreenCriteriaDto["sort"],
-): number {
-  const direction = sort.direction === "asc" ? 1 : -1;
-  let comparison = 0;
-  if (sort.field === "symbol")
-    comparison =
-      compareText(left.identity.symbol, right.identity.symbol) * direction;
-  else {
-    const leftCell = left.metrics[sort.field];
-    const rightCell = right.metrics[sort.field];
-    if (leftCell.status !== rightCell.status)
-      return leftCell.status === "available" ? -1 : 1;
-    if (leftCell.status === "available" && rightCell.status === "available") {
-      comparison =
-        new ScreenDecimal(leftCell.value).cmp(rightCell.value) * direction;
-    }
-  }
-  return (
-    comparison ||
-    compareText(left.identity.symbol, right.identity.symbol) ||
-    compareText(left.identity.listingId, right.identity.listingId)
-  );
-}
-
 function indexFrames(frames: readonly PersonalSecAnnualFrameDto[]): FrameIndex {
   return new Map(
     frames.map((frame) => {
@@ -1352,14 +1312,6 @@ function boundedInteger(
     Number.isSafeInteger(value) &&
     value >= minimum &&
     value <= maximum
-  );
-}
-function isDecimal(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length <= 64 &&
-    DECIMAL.test(value) &&
-    new ScreenDecimal(value).isFinite()
   );
 }
 function canonicalDecimal(value: Decimal): string {

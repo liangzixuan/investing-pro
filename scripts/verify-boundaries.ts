@@ -7200,6 +7200,10 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     );
   const managedAnnualMutations = [
     managedAnnual.replace(
+      "MANAGED_SEC_ANNUAL_ISSUERS.includes",
+      "MANAGED_SEC_FILINGS_ISSUERS.includes",
+    ),
+    managedAnnual.replace(
       "data.sec.gov/submissions",
       "unreviewed.example/submissions",
     ),
@@ -7246,6 +7250,10 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       "scripts/verify-boundaries.ts: managed annual service capability classifier regressed",
     );
   const managedFilingsMutations = [
+    managedFilings.replace(
+      "MANAGED_SEC_FILINGS_ISSUERS.includes",
+      "MANAGED_SEC_ANNUAL_ISSUERS.includes",
+    ),
     managedFilings.replace(
       "data.sec.gov/submissions",
       "unreviewed.example/submissions",
@@ -9787,7 +9795,7 @@ function managedSecAnnualServiceCapabilityViolation(
     "constrequest=parseManagedSecAnnualCanonicalRequest(input)",
     "request.catalogSnapshotSha256!==options.catalog.snapshotSha256",
     "lookupPersonalSecurityMasterListing(options.catalog,request.listingId)",
-    "listing.symbol!==request.symbol||!MANAGED_SEC_ISSUERS.includes(listing.cik)",
+    "listing.symbol!==request.symbol||!MANAGED_SEC_ANNUAL_ISSUERS.includes(listing.cik)",
     "operation.admission.reserve(principal,options.enteredAt,admissionSignal)",
     "constproviderDeadline=Math.min(monotonic()+7_500,options.startedAt+9_500)",
     "provider.loadEvidence(listing.cik,providerSignal)",
@@ -9869,6 +9877,7 @@ function managedSecFilingsServiceCapabilityViolation(
   const compact = content.replace(/\s+/gu, "").replace(/,(?=[})])/gu, "");
   if (
     [
+      "!MANAGED_SEC_FILINGS_ISSUERS.includes(listing.cik)",
       'if(used||typeofinput!=="string"||input!==url||!validRequest(init,contact))',
       'init?.method==="GET"',
       'init.redirect==="error"',

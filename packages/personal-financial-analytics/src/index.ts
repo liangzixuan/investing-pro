@@ -231,3 +231,12 @@ export {
   type PersonalSecAnnualHistory,
   type PersonalSecAnnualPeriod,
 } from "./personal-sec-annual-comparison";
+export {
+  comparePersonalNumericScreenRows,
+  evaluatePersonalNumericScreenClauses,
+  isPersonalNumericScreenDecimal,
+  type PersonalNumericScreenCell,
+  type PersonalNumericScreenClause,
+  type PersonalNumericScreenRow,
+  type PersonalNumericScreenSort,
+} from "./personal-numeric-screen";

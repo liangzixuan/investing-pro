@@ -14,6 +14,10 @@ import {
 } from "./managed-annual-statements-note";
 import { ManagedValuationWorkbench } from "./managed-valuation-workbench";
 import {
+  ManagedFinancialScreen,
+  type ManagedFinancialScreenReportCapture,
+} from "./managed-financial-screen";
+import {
   prepareValuationNote,
   isValuationNoteCurrent,
   appendValuationNote,
@@ -263,6 +267,7 @@ export class ManagedWorkspace {
   readonly valuation = new ManagedValuationWorkbench();
   readonly annual: ManagedAnnualReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
+  readonly financialScreen: ManagedFinancialScreen;
   readonly filings: ManagedCompanyFilings;
   readonly watchlistFilings: ManagedWatchlistFilings;
   private readonly secAccess = new ManagedSecAccess();
@@ -307,6 +312,7 @@ export class ManagedWorkspace {
     options: {
       marketsCohort?: readonly ManagedEodIdentity[];
       priceCoverage?: readonly ManagedEodIdentity[];
+      financialScreenListingIds?: readonly string[];
     } = {},
   ) {
     const resourceSession: TrialSession = {
@@ -373,6 +379,16 @@ export class ManagedWorkspace {
       if (this.annualComparison.getSnapshot().catalogChanged)
         this.invalidateCatalog();
     });
+    this.financialScreen = new ManagedFinancialScreen(
+      api,
+      (error) => this.coordinator.readError(error),
+      this.secAccess,
+      options.financialScreenListingIds,
+    );
+    this.financialScreen.subscribe(() => {
+      if (this.financialScreen.getSnapshot().catalogChanged)
+        this.invalidateCatalog();
+    });
     this.filings = new ManagedCompanyFilings(
       (request, signal) => api.recentFilings(request, signal),
       (error) => this.coordinator.readError(error),
@@ -435,6 +451,7 @@ export class ManagedWorkspace {
       const saved = this.coordinator.getSnapshot();
       this.syncWatchlistPrices();
       this.syncAnnualComparison();
+      this.syncFinancialScreen();
       this.syncWatchlistFilings();
       const selection = this.state.research?.selection;
       if (
@@ -453,6 +470,7 @@ export class ManagedWorkspace {
       }
     });
     this.portfolio.coordinator.subscribe(() => {
+      this.syncFinancialScreen();
       const selection = this.state.research?.selection;
       if (
         selection?.origin === "portfolio" &&
@@ -481,6 +499,7 @@ export class ManagedWorkspace {
     this.syncAnnouncements();
     this.syncWatchlistPrices();
     this.syncAnnualComparison();
+    this.syncFinancialScreen();
     this.syncWatchlistFilings();
     for (const listener of this.listeners) listener();
   }
@@ -490,6 +509,7 @@ export class ManagedWorkspace {
     this.navigationBlocked = blocked;
     this.syncAnnouncements();
     this.syncAnnualComparison();
+    this.syncFinancialScreen();
     this.syncWatchlistFilings();
   }
   private syncWatchlistFilings() {
@@ -553,6 +573,19 @@ export class ManagedWorkspace {
       this.canEdit(),
     );
   }
+  private syncFinancialScreen() {
+    const active =
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.state.view === "discover" &&
+      !this.state.research &&
+      !this.state.companyRoute;
+    this.financialScreen.reconcile(
+      this.state.snapshot?.snapshotSha256 ?? null,
+      active,
+      active && this.canNavigate(),
+    );
+  }
   private syncWatchlistPrices() {
     if (this.retired || this.state.view !== "watchlist") {
       this.watchlistPrices.leave();
@@ -582,6 +615,7 @@ export class ManagedWorkspace {
     this.closeResearch();
     this.annual.retire();
     this.annualComparison.retire();
+    this.financialScreen.retire();
     this.filings.retire();
     this.watchlistFilings.retire();
     this.secAccess.retire();
@@ -818,6 +852,28 @@ export class ManagedWorkspace {
     this.openResearch(handoff.selection, "annual", {
       annualSeed: handoff.seed,
       admit: () => this.canOpenAnnualComparisonReport(capture),
+    });
+  }
+  private canOpenFinancialScreenReport(
+    capture: ManagedFinancialScreenReportCapture,
+  ) {
+    return (
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.canNavigate() &&
+      this.state.view === "discover" &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      this.financialScreen.canAdmitReport(capture)
+    );
+  }
+  openFinancialScreenReport(capture: ManagedFinancialScreenReportCapture) {
+    if (!this.canOpenFinancialScreenReport(capture)) return;
+    const handoff = this.financialScreen.admitReport(capture);
+    if (!handoff || !this.canOpenFinancialScreenReport(capture)) return;
+    this.openResearch(handoff.selection, "annual", {
+      annualSeed: handoff.seed,
+      admit: () => this.canOpenFinancialScreenReport(capture),
     });
   }
   private canOpenWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
@@ -1230,6 +1286,23 @@ export class ManagedWorkspace {
     )
       return false;
     if (selection.origin === "discover") return true;
+    if (selection.origin === "screening") {
+      const screen = this.financialScreen.getSnapshot();
+      return (
+        !screen.catalogChanged &&
+        Boolean(
+          screen.run?.rows.some(
+            (row) =>
+              row.report?.response &&
+              row.report.response.security.cik === selection.cik &&
+              membershipMatchesResult(
+                { ...selection.listing, note: "" },
+                row.member.listing,
+              ),
+          ),
+        )
+      );
+    }
     if (selection.origin === "route") return selection.cik === null;
     if (selection.origin === "markets") {
       const current = this.markets.selection(selection.listing.listingId);

@@ -129,6 +129,7 @@ jobs:
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",
                   "priceStudiesPreviewSaveReloadAndReportPreserveRawSource",
+                  "financialScreenExplicitRunInspectionAndResearchBackPreserveDraft",
                   "companyLinkDirectEntryAndBackPreserveDraft",
                   "watchlistReplayReviewAndFailedReadPreserveDraft",
                   "signOutReviewKeepsDraftAndUpdatesAfterSave",

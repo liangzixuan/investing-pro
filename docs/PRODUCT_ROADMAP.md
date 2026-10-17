@@ -13,12 +13,22 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The current M2/M4 candidate connects [raw close research studies](MANAGED_PRICE_STUDIES.md)
+The current M2 candidate is an [annual financial screening workflow](MANAGED_FINANCIAL_SCREEN.md):
+explicit criteria and a named cohort, paced source reads, dated results and
+unknowns, source inspection, a session shortlist, and company research with Back
+to the retained screen. It reuses canonical Annual calculations and the existing
+numeric screening predicates. Its 18 listings and 17 issuers are a defined
+cohort; broader discovery, quarterly/TTM data and valuation screening remain
+open. Local qualification of fourteen additional issuers does not establish
+deployed performance or publication acceptance.
+
+The source-integrated M2/M4 workflow connects [raw close research studies](MANAGED_PRICE_STUDIES.md)
 from explicit history load through seven descriptive results, selected-result
 whole-note Preview/Append, existing Review/Save/recovery and reproducible reports.
 It reuses the admitted raw source and versioned calculation engine without new
 requests. No adjusted-return, forecast, technical recommendation or full
-InvestingPro completion claim is added. Native and release acceptance remain open.
+InvestingPro completion claim is added. Final-main source and 48 native tests
+pass; release and broader visual acceptance remain open.
 
 The source-integrated M2 outcome is a complete [standardized annual statement explorer](MANAGED_ANNUAL_STATEMENTS.md).
 All three statement groups connect selected-filing comparative dates and exact
