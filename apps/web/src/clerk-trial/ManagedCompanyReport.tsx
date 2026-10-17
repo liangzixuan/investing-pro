@@ -209,7 +209,9 @@ export function CompanyReportView({
           {report.valuation && (
             <ManagedValuationResults calculation={report.valuation} />
           )}
-          <ManagedValuationPriceContext context={report.valuationPrice} />
+          {report.valuationPrice && (
+            <ManagedValuationPriceContext context={report.valuationPrice} />
+          )}
           {report.priceStudies && (
             <CapturedPriceStudies
               studies={report.priceStudies}

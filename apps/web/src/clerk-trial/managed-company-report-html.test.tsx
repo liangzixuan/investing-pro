@@ -138,6 +138,11 @@ describe("passive readable company report", () => {
     const f = await fixture();
     const before = JSON.stringify(f.report);
     const { markup } = render(f.report);
+    expect(f.report.valuationPrice).toBeNull();
+    expect(markup).not.toContain("Authored scenarios versus dated raw close");
+    expect(markup).not.toContain(
+      "Calculate authored scenarios for this company",
+    );
     const expected = ["250.125", "120.125", "-80.125", "0", "-7.5"];
     const rows = f.report.evidence.annual!.view!.financialReview;
     expect(markup.match(/class="fact"/gu)).toHaveLength(5);

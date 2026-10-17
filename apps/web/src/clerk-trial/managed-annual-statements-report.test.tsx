@@ -404,10 +404,10 @@ describe("canonical statements in captured schema5 company reports", () => {
       } else expect(result.bytes).not.toBeNull();
       const expected =
         rowsPerConcept === 60
-          ? { wire: 2072519, json: 2445275, html: 8950362 }
+          ? { wire: 2072519, json: 2445275, html: 8950096 }
           : escapedMetadata
-            ? { wire: 1728729, json: 2042205, html: 7475152 }
-            : { wire: 1231479, json: 1544355, html: 4175884 };
+            ? { wire: 1728729, json: 2042205, html: 7474886 }
+            : { wire: 1231479, json: 1544355, html: 4175618 };
       expect({
         wire: wireBytes,
         json: result.json.byteLength,

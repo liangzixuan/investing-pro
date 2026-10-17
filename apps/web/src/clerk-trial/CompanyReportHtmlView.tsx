@@ -387,7 +387,9 @@ export function CompanyReportHtmlView({
           <ManagedValuationResults calculation={report.valuation} />
         </section>
       )}
-      <ManagedValuationPriceContext context={report.valuationPrice} />
+      {report.valuationPrice && (
+        <ManagedValuationPriceContext context={report.valuationPrice} />
+      )}
       <Annual report={report} />
       <CapturedPrice report={report} />
       <CapturedFilings report={report} />
