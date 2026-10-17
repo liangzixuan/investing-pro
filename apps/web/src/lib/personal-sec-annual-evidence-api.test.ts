@@ -413,6 +413,11 @@ describe("canonical Annual SEC local browser transport", () => {
         status: "unresolved",
         reason: "target_ambiguous",
       };
+      packet.evidence.targetScan = {
+        currentFilings: 2,
+        annualFilings: 2,
+        olderHistoryAvailable: false,
+      };
       packet.evidence.facts.observations = [];
       for (const item of packet.evidence.facts.scans)
         if (item.scan.status === "available")

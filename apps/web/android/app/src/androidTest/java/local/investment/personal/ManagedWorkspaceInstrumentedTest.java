@@ -1359,8 +1359,11 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("full-report handoff retains the complete operating packet without loading net income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value);" +
-            " const report = doc.sources.annual.response; return report.security.symbol === 'ONE' && report.schemaVersion === '6.0.0'" +
-            " && report.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').every(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax'].includes(row.concept))" +
+            " const report = doc.sources.annual.response, rows = report.evidence.facts.observations;" +
+            " const expected = {SalesRevenueNet:'2025-06-30|750;2024-06-30|600',OperatingIncomeLoss:'2025-06-30|125.25',NetCashProvidedByUsedInOperatingActivities:'2025-06-30|900',PaymentsToAcquirePropertyPlantAndEquipment:'2025-06-30|300',AssetsCurrent:'2025-06-30|900',LiabilitiesCurrent:'2025-06-30|1200'};" +
+            " return report.security.symbol === 'ONE' && report.schemaVersion === '6.0.0' && rows.length === 7 && !rows.some(row => row.concept === 'NetIncomeLoss')" +
+            " && rows.every(row => Object.hasOwn(expected,row.concept) && row.unit === 'USD' && row.accessionNumber === '0000000002-25-000001' && /^sec-fact:[a-f0-9]{64}$/.test(row.id))" +
+            " && Object.entries(expected).every(([concept, values]) => rows.filter(row => row.concept === concept).map(row => row.endDate + '|' + row.value).join(';') === values)" +
             " && doc.sources.annual.financials.operatingResults.resolution.operatingIncome.value === '125.25'" +
             " && report.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
             " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded'; })()");
@@ -1670,7 +1673,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " return sources.length === 2 && sources.every((source, side) => { const company = source.closest('.managed-annual-comparison-source');" +
             " const rawCash = company.querySelector('[data-annual-comparison-cash-source]');" +
             " const cashRows = [...rawCash.querySelectorAll(':scope > section > ol > li > details')];" +
-            " const revenueRows = [...company.querySelectorAll(':scope > details > .sec-filing-context > ol > li > details')];" +
+            " const revenueRows = [...company.querySelectorAll(':scope > details > .sec-filing-context > details > ol > li > details')];" +
             " const inputs = [...source.querySelectorAll(':scope > details')];" +
             " const date = side === 0 ? '2025-12-31' : '2025-06-30', filed = side === 0 ? '2026-02-01' : '2025-08-01';" +
             " const accession = side === 0 ? '0000000001-26-000001' : '0000000002-25-000001';" +
@@ -5968,7 +5971,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && e.generation.sources.companyFacts.fetchedAt === '2026-09-20T00:00:01.000Z' && e.generation.sources.submissions.fetchedAt === '2026-09-20T00:00:02.000Z'" +
             " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded' && doc.authoredResearch.note === " + JSONObject.quote(note) + "; })()" +
             " && " + balanceSheetSnapshotExact("section[aria-labelledby=managed-prepared-report-heading]") + " && " + exact);
-        String captured = readFixtureString("JSON.stringify(JSON.parse(document.querySelector('#managed-report-document').value).sources.annual.response)");
+        String captured = readFixtureString("JSON.stringify(JSON.parse(document.querySelector('#managed-report-document').value).sources.annual)");
         assertOperatingCounts(1, 0, 0, 1);
         click(".managed-company-report > summary");
         click(".managed-annual-report .trial-actions button:first-child");
@@ -5976,11 +5979,12 @@ public class ManagedWorkspaceInstrumentedTest {
             exact + " && " + balanceSheetSourceExact() + " && " + DIAGNOSTICS + ".refreshFailed === 1" +
             " && document.querySelector('.managed-annual-report [role=alert]') !== null && document.querySelector('#managed-prepared-report-heading') === null");
         assertOperatingCounts(2, 0, 0, 1);
-        JSONObject capturedEvidence = new JSONObject(captured).getJSONObject("evidence");
+        JSONObject capturedAnnual = new JSONObject(captured);
+        JSONObject capturedEvidence = capturedAnnual.getJSONObject("response").getJSONObject("evidence");
         assertEquals("Captured Annual clock remains the original load", "2026-09-20T00:00:02.000Z", capturedEvidence.getJSONObject("generation").getString("completedAt"));
-        assertEquals("Captured parent equity remains its exact signed source value", "-200.125", capturedEvidence.getJSONObject("balanceSheet").getJSONObject("resolution").getJSONObject("shareholdersEquity").getString("value"));
-        assertEquals("Captured prior assets retain the exact subtraction operand", "900.5", capturedEvidence.getJSONObject("balanceSheet").getJSONObject("totalAssets").getJSONArray("observations").getJSONObject(1).getString("value"));
-        assertEquals("Captured older liability retains its own date and cannot fill the missing prior cell", "2023-09-30", capturedEvidence.getJSONObject("balanceSheet").getJSONObject("totalLiabilities").getJSONArray("observations").getJSONObject(1).getString("endDate"));
+        assertEquals("Captured parent equity remains its exact signed source value", "-200.125", capturedAnnual.getJSONObject("financials").getJSONObject("balanceSheet").getJSONObject("resolution").getJSONObject("shareholdersEquity").getString("value"));
+        assertEquals("Captured prior assets retain the exact subtraction operand", "900.5", canonicalAnnualConceptRows(capturedEvidence, "Assets").getJSONObject(1).getString("value"));
+        assertEquals("Captured older liability retains its own date and cannot fill the missing prior cell", "2023-09-30", canonicalAnnualConceptRows(capturedEvidence, "Liabilities").getJSONObject(1).getString("endDate"));
         click(".managed-annual-report .trial-actions button:first-child");
         awaitPage("third explicit refresh holds without replacing any total", exact + " && " + DIAGNOSTICS + ".annual === 3 && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'");
         click(CATALOG_REFRESH);
@@ -6148,8 +6152,8 @@ public class ManagedWorkspaceInstrumentedTest {
         assertOperatingCounts(4, 1, 1, 1);
         JSONObject capturedEvidence = new JSONObject(captured).getJSONObject("evidence");
         assertEquals("Captured report retains its initial clock after live replacement", "2026-09-20T00:00:02.000Z", capturedEvidence.getJSONObject("generation").getString("completedAt"));
-        assertEquals("Captured report retains all initial asset dates", 3, capturedEvidence.getJSONObject("liquidity").getJSONObject("currentAssets").getJSONArray("observations").length());
-        assertEquals("Captured report retains its original first raw balance", "120.125", capturedEvidence.getJSONObject("liquidity").getJSONObject("currentAssets").getJSONArray("observations").getJSONObject(0).getString("value"));
+        assertEquals("Captured report retains all initial asset dates", 3, canonicalAnnualConceptRows(capturedEvidence, "AssetsCurrent").length());
+        assertEquals("Captured report retains its original first raw balance", "120.125", canonicalAnnualConceptRows(capturedEvidence, "AssetsCurrent").getJSONObject(0).getString("value"));
         click(".managed-company-visit .trial-toolbar > button");
         awaitPage("leaving clears loaded liquidity history while restoring the exact unsaved draft and Annual opener",
             "document.querySelector('.managed-company-visit') === null && document.querySelector('.managed-annual-liquidity-history') === null && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(draft) + " && document.activeElement === document.querySelector(" + JSONObject.quote(ANNUAL) + ")");
@@ -7707,11 +7711,21 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("invented EOD canvas stayed visible", visible);
     }
 
+    private org.json.JSONArray canonicalAnnualConceptRows(JSONObject evidence, String concept) throws org.json.JSONException {
+        org.json.JSONArray observations = evidence.getJSONObject("facts").getJSONArray("observations");
+        org.json.JSONArray selected = new org.json.JSONArray();
+        for (int index = 0; index < observations.length(); index++) {
+            JSONObject row = observations.getJSONObject(index);
+            if (row.getString("concept").equals(concept)) selected.put(row);
+        }
+        return selected;
+    }
+
     /** Fixed metadata in this test's copied HTML is read before the fixture's sole React mount. */
     private void selectFixtureScenario(String scenarioName) throws IOException {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
-            scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
+            scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") || scenarioName.equals("annual-statements") ||
             scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-financial-review") || scenarioName.equals("annual-operating-comparison") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
