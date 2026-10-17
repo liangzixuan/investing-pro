@@ -1605,6 +1605,9 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("full Annual visit reuses the selected company's original checked evidence",
             "(() => { const panel = document.querySelector('.managed-annual-report'); const text = panel?.textContent ?? '';" +
             " return document.querySelector('#managed-company-heading')?.textContent === 'Company research · ' + " + JSONObject.quote(symbol) +
+            " && location.search === " + JSONObject.quote("?company=listing-" + symbol.toLowerCase(java.util.Locale.ROOT) + "&section=annual") +
+            " && document.querySelector('.managed-company-visit .trial-toolbar > button')?.disabled === false" +
+            " && document.activeElement === document.querySelector('#managed-annual-heading')" +
             " && document.querySelector('.managed-company-identity strong')?.textContent === " + JSONObject.quote(issuer) +
             " && panel?.getAttribute('aria-busy') === 'false'" +
             " && text.includes('The loaded watchlist comparison report is available in this company visit.')" +
@@ -1612,7 +1615,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && text.includes(" + JSONObject.quote(accession) + ") && text.includes(" + JSONObject.quote(periodEnd) + ")" +
             " && text.includes('2026-09-20T00:00:00.000Z')" +
             " && text.includes('Showing the previous report, completed 2026-09-20T00:00:02.000Z') === " + previous +
-            " && [...panel.querySelectorAll('button')].some(b => b.textContent === 'Refresh annual report' && !b.disabled); })()");
+            " && [...panel.querySelectorAll('button')].some(b => b.textContent === 'Refresh annual report' && !b.disabled); })()", true);
     }
 
     private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {

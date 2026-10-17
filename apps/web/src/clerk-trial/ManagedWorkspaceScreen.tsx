@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useRef,
   useState,
@@ -511,6 +512,33 @@ export function ManagedWorkspaceScreen({
     if (navigation) navigation.open(open);
     else open();
   };
+  const onNativeBack = useEffectEvent(
+    ({ canGoBack }: { canGoBack: boolean }) => {
+      const phase = workspace.coordinator.getSnapshot().phase;
+      if (
+        phase === "retired" ||
+        phase === "signing_out" ||
+        !workspace.canNavigate()
+      )
+        return;
+      if (
+        hasCompanyRoute?.() ||
+        workspace.getSnapshot().research ||
+        workspace.getSnapshot().companyRoute ||
+        navigation?.invalid
+      )
+        backToWorkspace();
+      else if (canGoBack) {
+        if (workspace.sessionOwner.getSnapshot().needsLeaveReview) {
+          backReviewOpen.current = true;
+          setBackReview(true);
+        } else window.history.back();
+      }
+    },
+  );
+  const onNativeBackUnavailable = useEffectEvent(() =>
+    setBackUnavailable(true),
+  );
   useEffect(() => {
     if (!androidBack) return;
     const isRetired = () => {
@@ -520,23 +548,8 @@ export function ManagedWorkspaceScreen({
     if (isRetired()) return;
     const dispose = bindAndroidBack(
       androidBack,
-      ({ canGoBack }) => {
-        if (isRetired() || !workspace.canNavigate()) return;
-        if (
-          hasCompanyRoute?.() ||
-          workspace.getSnapshot().research ||
-          workspace.getSnapshot().companyRoute ||
-          navigation?.invalid
-        )
-          backToWorkspace();
-        else if (canGoBack) {
-          if (workspace.sessionOwner.getSnapshot().needsLeaveReview) {
-            backReviewOpen.current = true;
-            setBackReview(true);
-          } else window.history.back();
-        }
-      },
-      () => setBackUnavailable(true),
+      (event) => onNativeBack(event),
+      () => onNativeBackUnavailable(),
     );
     const unsubscribe = workspace.coordinator.subscribe(() => {
       if (isRetired()) dispose();
@@ -545,13 +558,7 @@ export function ManagedWorkspaceScreen({
       unsubscribe();
       dispose();
     };
-  }, [
-    androidBack,
-    workspace,
-    backToWorkspace,
-    hasCompanyRoute,
-    navigation?.invalid,
-  ]);
+  }, [androidBack, workspace]);
   const discovery = useSyncExternalStore(
     workspace.subscribe,
     workspace.getSnapshot,

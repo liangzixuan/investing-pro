@@ -556,7 +556,6 @@ export function ManagedAnnualStatements({
       aria-labelledby={`${id}-heading`}
     >
       <h3 id={`${id}-heading`}>Standardized annual statements</h3>
-      <AnnualStatementsContext evidence={evidence} statements={statements} />
       <label
         className="managed-annual-statement-selector"
         htmlFor={`${id}-statement`}
@@ -583,6 +582,7 @@ export function ManagedAnnualStatements({
           ))}
         </select>
       </label>
+      <AnnualStatementsContext evidence={evidence} statements={statements} />
       <p>
         Showing {annualStatementLabels[selectedStatement]}. Select specific
         available reported cells for the existing note preview. Selection does
