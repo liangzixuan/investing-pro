@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.2",
+    "cheerio": "1.0.0-rc.11",
     "vite": "8.2.1"
   }
 }

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { load, type CheerioAPI } from "cheerio";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,21 +7,6 @@ import { ManagedEodHistory } from "../../src/clerk-trial/ManagedEodHistory";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { createFixture } from "./fixture";
 
-interface HtmlNodes {
-  readonly length: number;
-  toArray(): object[];
-  find(selector: string): HtmlNodes;
-  text(): string;
-}
-type HtmlQuery = (selector: string | object) => HtmlNodes;
-// Reuse the HTML parser already shipped with the declared Capacitor CLI dependency.
-const require = createRequire(import.meta.url);
-const cliRequire = createRequire(
-  require.resolve("@capacitor/cli/package.json"),
-);
-const { load } = cliRequire("cheerio") as {
-  readonly load: (html: string) => HtmlQuery;
-};
 const nativeSource = readFileSync(
   new URL(
     "../../android/app/src/androidTest/java/local/investment/personal/ManagedWorkspaceInstrumentedTest.java",
@@ -85,7 +70,7 @@ async function panel(range: "1m" | "1y") {
   return { fixture, workspace, html };
 }
 
-function exactRows($: HtmlQuery, selector: string) {
+function exactRows($: CheerioAPI, selector: string) {
   return $(selector)
     .toArray()
     .map((row) =>
