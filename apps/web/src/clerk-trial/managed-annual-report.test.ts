@@ -48,6 +48,59 @@ function holdHash() {
     });
   return { release, spy };
 }
+
+describe("financial screening report handoff", () => {
+  it("retains the exact report and original clocks without a source read", async () => {
+    const response = await annualReportPacket();
+    const { model, read } = fixture();
+    model.open(
+      { ...selection, origin: "screening", cik: response.security.cik },
+      {
+        response,
+        showingPrevious: false,
+        provenance: "financial-screen",
+      },
+    );
+    await settled(model);
+    const state = model.getSnapshot();
+    expect(state.response).toEqual(response);
+    expect(state.response?.evidence.generation).toEqual(
+      response.evidence.generation,
+    );
+    expect(state.responseOrigin).toBe("financial-screen");
+    expect(state.view).not.toBeNull();
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "missing-screen-origin",
+    "wrong-visit-origin",
+    "foreign-cik",
+  ] as const)("refuses %s instead of relabelling a report", async (mode) => {
+    const response = await annualReportPacket();
+    const { model, read } = fixture();
+    const screened: ManagedResearchSelection = {
+      ...selection,
+      origin: mode === "wrong-visit-origin" ? "watchlist" : "screening",
+      cik: mode === "foreign-cik" ? "0000002488" : null,
+    };
+    model.open(screened, {
+      response,
+      showingPrevious: false,
+      ...(mode === "missing-screen-origin"
+        ? {}
+        : { provenance: "financial-screen" as const }),
+    });
+    await settled(model);
+    expect(model.getSnapshot()).toMatchObject({
+      response: null,
+      view: null,
+      responseOrigin: null,
+      error: true,
+    });
+    expect(read).not.toHaveBeenCalled();
+  });
+});
 afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();

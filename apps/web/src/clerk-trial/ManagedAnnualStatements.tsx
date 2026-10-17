@@ -87,7 +87,7 @@ export function annualStatementUnavailableText(
   return reasonText[reason];
 }
 
-function Observation({
+export function AnnualStatementObservation({
   observation,
 }: {
   readonly observation: PersonalSecAnnualStatementObservationDto;
@@ -245,7 +245,10 @@ function LineInspection({
       </dl>
       {observations.length ? (
         observations.map((observation) => (
-          <Observation key={observation.id} observation={observation} />
+          <AnnualStatementObservation
+            key={observation.id}
+            observation={observation}
+          />
         ))
       ) : (
         <p>No observations were returned for this concept.</p>

@@ -293,6 +293,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("price-comparison-note");
         if (testName.getMethodName().equals("priceStudiesPreviewSaveReloadAndReportPreserveRawSource"))
             selectFixtureScenario("price-studies");
+        if (testName.getMethodName().equals("financialScreenExplicitRunInspectionAndResearchBackPreserveDraft"))
+            selectFixtureScenario("financial-screen");
         if (testName.getMethodName().equals("thesisReviewPreviewAppendSaveAndReloadPreservesDraft"))
             selectFixtureScenario("thesis-review");
         if (testName.getMethodName().equals("watchlistReplayReviewAndFailedReadPreserveDraft"))
@@ -5474,6 +5476,119 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void financialScreenExplicitRunInspectionAndResearchBackPreserveDraft() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String screen = ".managed-financial-screen";
+        String row = screen + " .managed-screen-table tbody > tr";
+        String evidence = row + " .managed-screen-evidence";
+        String cashSource = evidence + " > details:nth-last-of-type(5)";
+        awaitPage("screening starts without a source request", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Screening research draft");
+        selectWatchlistNote(1);
+        touchInput("managed-note-1");
+        replaceFocusedInput("managed-note-1", "Invented second note", "Unrelated screen draft");
+        selectWorkspaceView("Discover");
+        awaitPage("Discover keeps the explicit screen and has not resolved or read its cohort",
+            "document.querySelector(" + JSONObject.quote(screen + " > h3") + ")?.textContent === 'Annual financial screen'" +
+            " && document.querySelectorAll(" + JSONObject.quote(row) + ").length === 0");
+        assertFinancialScreenCounts(0, 0);
+        clickFinancialScreenAction("Load screening cohort");
+        awaitPage("explicit cohort resolution admits the sole invented exact listing without an Annual read",
+            "document.querySelectorAll('.managed-screen-cohort input[type=checkbox]').length === 1" +
+            " && document.querySelector('.managed-screen-cohort input')?.checked === true" +
+            " && document.querySelector('.managed-screen-cohort label')?.textContent === 'ZERO · XNASZero Company'");
+        assertFinancialScreenCounts(1, 0);
+        clickFinancialScreenAction("Add criterion");
+        awaitPage("the explicitly added cash-flow criterion requires Apply before Run",
+            "document.querySelector('.managed-screen-clause select:first-of-type')?.value === 'operatingCashFlow'" +
+            " && document.querySelector('.managed-screen-clause input')?.value === '0'" +
+            " && [...document.querySelectorAll('.managed-financial-screen button')].find(b => b.textContent === 'Run screen (1 companies)')?.disabled === true");
+        clickFinancialScreenAction("Apply criteria");
+        awaitPage("valid applied criteria enable the one-company explicit Run",
+            "[...document.querySelectorAll('.managed-financial-screen button')].find(b => b.textContent === 'Run screen (1 companies)')?.disabled === false");
+        assertFinancialScreenCounts(1, 0);
+        clickFinancialScreenAction("Run screen (1 companies)");
+        String exact = financialScreenExact();
+        awaitPage("screened exact values and independent missing operating income share one original Annual packet", exact);
+        assertFinancialScreenCounts(1, 1);
+        retainAnnualNoteFrame("financialScreenCashFlow", row + " > td:nth-of-type(3) > span",
+            row + " > td:nth-of-type(3) > span", 1);
+        awaitPage("exact screen values survive horizontal source-table inspection", exact);
+        click(evidence + " > summary");
+        awaitPage("cash-flow inspection opens the named original source rather than an inferred metric",
+            "document.querySelector(" + JSONObject.quote(evidence) + ")?.open === true" +
+            " && document.querySelector(" + JSONObject.quote(cashSource + " > summary") + ")?.textContent === 'Reported operating cash flow source'");
+        click(cashSource + " > summary");
+        String originalCash = "(() => { const source = document.querySelector(" + JSONObject.quote(cashSource) + ");" +
+            " const groups = [...(source?.querySelectorAll('.managed-annual-statement-observation dl > div') ?? [])];" +
+            " const values = groups.map(group => group.querySelector('dd')?.textContent);" +
+            " const meta = JSON.parse(document.querySelector('#fixture-financial-screen').textContent), g = meta.generation;" +
+            " return source?.open === true && groups.length === 10 && /^sec-fact:[a-f0-9]{64}$/.test(values[0])" +
+            " && values[1] === 'USD 120.125' && values[2] === '2025-01-01 through 2025-12-31'" +
+            " && values[4] === '/facts/us-gaap/NetCashProvidedByUsedInOperatingActivities/units/USD/0'" +
+            " && values[5] === '10-K · 0000999999-26-000001 · filed 2026-02-01' && values[6] === 'matched'" +
+            " && values[7] === 'Form 10-K; report date 2025-12-31; filed 2026-02-01; accepted 2026-02-01T00:00:00.000Z'" +
+            " && values[8] === 'https://www.sec.gov/Archives/edgar/data/1/0000999999-26-000001-index.htm'" +
+            " && g.cutoffAt === '2026-09-20T00:00:00.000Z' && g.completedAt === '2026-09-20T00:00:03.000Z'" +
+            " && g.sources.companyFacts.fetchedAt === '2026-09-20T00:00:02.000Z' && g.sources.submissions.fetchedAt === '2026-09-20T00:00:01.000Z'" +
+            " && document.querySelector(" + JSONObject.quote(evidence + " > p") + ")?.textContent === 'CIK 0000000001. Original load cutoff '+g.cutoffAt+'; completed '+g.completedAt+'. Generation '+g.sha256+'.'; })()";
+        awaitPage("source inspection preserves exact amount, joined filing, pointer, complete reference and original clocks", originalCash);
+        retainAnnualNoteFrame("financialScreenOriginalAmount", cashSource + " .managed-annual-statement-observation dl > div:nth-child(2)",
+            cashSource + " .managed-annual-statement-observation dl > div:nth-child(2)", 1);
+        awaitPage("the inspected original source stays exact after its visible frame", originalCash);
+        click(row + " > th > label input[type=checkbox]");
+        awaitPage("shortlist is explicit and does not save the watchlist", "document.querySelector(" + JSONObject.quote(row + " > th > label input") + ")?.checked === true");
+        assertFinancialScreenCounts(1, 1);
+        click(row + " > th > button");
+        awaitPage("Research admits the exact screening Annual seed without another source read",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('.managed-annual-origin')?.textContent === 'Showing the report loaded for financial screening. Original source and observation times are unchanged.'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Screening research draft'" +
+            " && document.querySelector('.managed-annual-statements')?.textContent.includes('2026-09-20T00:00:03.000Z')");
+        assertFinancialScreenCounts(1, 1);
+        pressBack();
+        awaitPage("native Back restores the exact captured screen, shortlist, applied criterion and opener",
+            exact + " && document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'Discover'" +
+            " && document.querySelector('.managed-screen-clause select:first-of-type')?.value === 'operatingCashFlow'" +
+            " && document.querySelector('.managed-screen-clause input')?.value === '0'" +
+            " && document.querySelector(" + JSONObject.quote(row + " > th > label input") + ")?.checked === true" +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(row + " > th > button") + ")");
+        retainAnnualNoteFrame("financialScreenReturnedCriteria", screen + " .managed-screen-clause", screen + " .managed-screen-clause", 1);
+        assertFinancialScreenCounts(1, 1);
+        awaitPage("screening preserves both authored note drafts, identities, order and unsaved state",
+            DRAFT + ".memberships?.map(m => m.symbol).join('|') === 'ZERO|ONE'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Screening research draft'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Unrelated screen draft'" +
+            " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true");
+        assertEquals("The screening journey retains one document", origin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(1, 0);
+    }
+
+    private String financialScreenExact() {
+        return "(() => { const root = document.querySelector('.managed-financial-screen'), rows = [...root.querySelectorAll('.managed-screen-table tbody > tr')];" +
+            " if (rows.length !== 1) return false; const cells = [...rows[0].querySelectorAll(':scope > td')];" +
+            " return cells.length === 7 && cells[0].textContent === 'match' && cells[1].textContent === 'Unknown: concept missing'" +
+            " && cells.slice(2).map(cell => cell.querySelector('span')?.childNodes[0]?.textContent).join('|') === '120.125|100.1|40.1|-200.125|1.50'" +
+            " && cells.slice(2).map(cell => cell.querySelector('small')?.textContent).join('|') === '2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31|As of 2025-12-31|As of 2025-12-31|As of 2025-12-31'" +
+            " && rows[0].querySelector('th > button')?.textContent === 'Research ZERO' && rows[0].querySelector('th > button')?.disabled === false" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
+    }
+
+    private void assertFinancialScreenCounts(int resolves, int annual) throws Exception {
+        awaitPage("financial screen retains its exact finite read counts",
+            "(() => { const d = " + DIAGNOSTICS + "; return d.load === 1 && d.status === 1 && d.marketsResolve === 1" +
+            " && d.resolve === " + resolves + " && d.annual === " + annual + " && d.save === 0 && d.eod === 0 && d.filings === 0" +
+            " && d.search === 0 && d.calendar === 0 && d.fed === 0 && d.token === 0 && d.signOut === 0; })()");
+    }
+
+    private void clickFinancialScreenAction(String text) {
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[contains(concat(' ',normalize-space(@class),' '),' managed-financial-screen ')]//button[normalize-space(.)='" + text + "']")).perform(webClick());
+    }
+
+    @Test
     public void priceStudiesPreviewSaveReloadAndReportPreserveRawSource() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         String studies = ".managed-eod-history .managed-price-studies";
@@ -7902,7 +8017,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-financial-review") || scenarioName.equals("annual-operating-comparison") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
-            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") || scenarioName.equals("price-studies") ||
+            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") || scenarioName.equals("price-studies") || scenarioName.equals("financial-screen") ||
             scenarioName.equals("thesis-review") ||
             scenarioName.equals("company-snapshot") || scenarioName.equals("authored-valuation") ||
             scenarioName.equals("research-followups") || scenarioName.equals("portfolio-ledger") ||

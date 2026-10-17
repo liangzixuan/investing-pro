@@ -5,5 +5,11 @@ export interface ManagedResearchSelection {
   readonly listing: Omit<WatchlistMembership, "note">;
   readonly cik: string | null;
   readonly origin:
-    "discover" | "watchlist" | "markets" | "route" | "followups" | "portfolio";
+    | "discover"
+    | "watchlist"
+    | "markets"
+    | "route"
+    | "followups"
+    | "portfolio"
+    | "screening";
 }

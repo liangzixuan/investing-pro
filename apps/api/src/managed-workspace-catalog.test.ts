@@ -15,7 +15,10 @@ import snapshot from "./managed-catalog/2026-10-16.snapshot.json";
 import { createManagedEodService } from "./managed-eod-service";
 import { createManagedSecAnnualService } from "./managed-sec-annual-service";
 import { createManagedSecFilingsService } from "./managed-sec-filings-service";
-import { MANAGED_SEC_ISSUERS } from "./managed-sec-issuers";
+import {
+  MANAGED_SEC_FILINGS_ISSUERS,
+  MANAGED_SEC_ANNUAL_ISSUERS,
+} from "./managed-sec-issuers";
 import { MANAGED_EOD_MAPPING_CANDIDATES } from "./managed-eod-config";
 import {
   createManagedCatalogService,
@@ -313,30 +316,20 @@ describe("fixed managed catalog", () => {
       (row) => !["AAPL", "GOOG", "GOOGL", "MSFT"].includes(row.symbol),
     ),
   )(
-    "refuses Annual and Filings for $symbol before admission or a provider request",
+    "keeps Filings outside the separately qualified Annual cohort for $symbol",
     async ({ listingId, symbol, cik }) => {
       const f = refusingSources();
-      expect(MANAGED_SEC_ISSUERS).toEqual([
+      expect(MANAGED_SEC_FILINGS_ISSUERS).toEqual([
         "0000320193",
         "0001652044",
         "0000789019",
       ]);
-      expect(MANAGED_SEC_ISSUERS).not.toContain(cik);
+      expect(MANAGED_SEC_FILINGS_ISSUERS).not.toContain(cik);
       const request = {
         catalogSnapshotSha256: getManagedWorkspaceCatalog().snapshotSha256,
         listingId,
         symbol,
       };
-      await expect(
-        f.annual.load(
-          {
-            ...request,
-            schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
-          },
-          { userId: "invented-owner" },
-          new AbortController().signal,
-        ),
-      ).rejects.toMatchObject({ code: "invalid_request" });
       await expect(
         f.filings.load(
           { ...request, schemaVersion: "1.0.0" },
@@ -348,6 +341,26 @@ describe("fixed managed catalog", () => {
       expect(f.fetch).not.toHaveBeenCalled();
     },
   );
+
+  it("refuses AEM Annual before admission: current 40-F coverage is not an old 20-F", async () => {
+    const row = REVIEWED_LISTINGS.find((listing) => listing.symbol === "AEM")!;
+    const f = refusingSources();
+    expect(MANAGED_SEC_ANNUAL_ISSUERS).not.toContain(row.cik);
+    await expect(
+      f.annual.load(
+        {
+          schemaVersion: PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
+          catalogSnapshotSha256: getManagedWorkspaceCatalog().snapshotSha256,
+          listingId: row.listingId,
+          symbol: row.symbol,
+        },
+        { userId: "invented-owner" },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(f.openAdmission).not.toHaveBeenCalled();
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
 
   it("resolves exact listings in request order beyond the search result cap", () => {
     const service = createManagedCatalogService();

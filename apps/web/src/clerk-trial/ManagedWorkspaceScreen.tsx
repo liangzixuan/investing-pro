@@ -38,6 +38,7 @@ import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedPortfolio } from "./ManagedPortfolio";
+import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
@@ -67,6 +68,7 @@ interface SessionProps {
   androidBack?: AndroidBackAdapter;
   marketsCohort?: readonly ManagedEodIdentity[];
   priceCoverage?: readonly ManagedEodIdentity[];
+  financialScreenListingIds?: readonly string[];
   warnOnBrowserLeave?: boolean;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
@@ -176,6 +178,9 @@ function SessionWorkspace(props: SessionProps) {
           : {}),
         ...(initial.priceCoverage
           ? { priceCoverage: initial.priceCoverage }
+          : {}),
+        ...(initial.financialScreenListingIds
+          ? { financialScreenListingIds: initial.financialScreenListingIds }
           : {}),
       },
     );
@@ -1507,6 +1512,14 @@ export function ManagedWorkspaceScreen({
                     Discover
                   </h2>
                 </div>
+                <ManagedFinancialScreen
+                  model={workspace.financialScreen}
+                  onOpenReport={(capture, opener) =>
+                    openResearch(opener, () =>
+                      workspace.openFinancialScreenReport(capture),
+                    )
+                  }
+                />
                 {discovery.results.length > 0 && (
                   <ul className="managed-results">
                     {discovery.results.map((result) => {

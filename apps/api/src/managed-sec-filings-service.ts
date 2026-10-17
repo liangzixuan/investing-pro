@@ -16,7 +16,7 @@ import {
   type ManagedSecAdmissionOperation,
 } from "./managed-sec-admission";
 import type { ManagedSecConfiguration } from "./managed-sec-config";
-import { MANAGED_SEC_ISSUERS } from "./managed-sec-issuers";
+import { MANAGED_SEC_FILINGS_ISSUERS } from "./managed-sec-issuers";
 import { createSecPersonalFilingsProvider } from "./personal-sec-filings-provider";
 import type { PersonalSecRequestScheduler } from "./personal-sec-request-scheduler";
 import type { WatchlistPrincipal } from "./watchlist-repository";
@@ -105,7 +105,7 @@ function selected(options: Options, input: ManagedSecFilingsRequestDto) {
   if (
     !listing ||
     listing.symbol !== request.symbol ||
-    !MANAGED_SEC_ISSUERS.includes(listing.cik)
+    !MANAGED_SEC_FILINGS_ISSUERS.includes(listing.cik)
   )
     throw new ManagedSecFilingsServiceError("invalid_request");
   const window = managedSecFilingsWindow(options.enteredAt);

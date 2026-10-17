@@ -116,6 +116,12 @@ export function ManagedAnnualReport({
           and observation times are unchanged.
         </p>
       )}
+      {state.response && state.responseOrigin === "financial-screen" && (
+        <p className="managed-annual-help managed-annual-origin">
+          Showing the report loaded for financial screening. Original source and
+          observation times are unchanged.
+        </p>
+      )}
       {state.showingPrevious && state.response && (
         <p className="managed-annual-help">
           Showing the previous report, completed{" "}

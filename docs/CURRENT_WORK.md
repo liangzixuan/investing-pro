@@ -48,16 +48,36 @@ does not establish authenticated production journeys, provider health or physica
 Android use. The earlier fixed Follow-ups storage proof failed in its recorded
 scope; full live-storage qualification and backup/restore acceptance remain open.
 
-## Raw close research workflow in progress
+## Annual financial screen in progress
 
-The active M2/M4 candidate connects explicitly loaded Company Price history to
+The next complete M2 outcome is an [annual financial screening workflow](MANAGED_FINANCIAL_SCREEN.md):
+choose exact listings and criteria, run paced explicit reads, inspect dated
+values and independent unknowns, create a session shortlist, then visit company
+research and return to the retained screen. It uses the existing canonical
+Annual calculations and shared numeric screening kernel. The named cohort has
+18 listings for 17 issuers; it is not a whole-market screen. Annual and Filings
+eligibility are separate. Fourteen additional issuers passed bounded public
+source capture and exact canonical replay, within existing source and response
+limits. Missing concepts remain explicit. AEM's current 40-F is excluded.
+The complete local web suite passes 8,761 tests, including the screen, source
+inspection, explicit watchlist addition, three-draft preservation, note Save and
+fresh-read, report provenance and Research/Back cases. The affected API suites,
+types, lint, formatting and source boundaries pass. The isolated Android fixture
+and its new journey are prepared. Packaged native execution, visual acceptance,
+source integration and publication remain open.
+
+## Raw close research workflow integrated in source
+
+The integrated M2/M4 workflow connects explicitly loaded Company Price history to
 [seven descriptive studies](MANAGED_PRICE_STUDIES.md), selected-result whole-note
 Preview and single-use Append, existing Review/Save/recovery and schema-4 JSON/HTML
 reports. It reuses the existing decimal engine and source packet. Exact samples,
 raw-price qualifications and independent insufficiency remain visible. Source
 tests cover the actual Save/fresh-read flow, conflict and uncertain-save recovery,
-stale callbacks and all seven captured results. Native execution, visual review,
-source integration and publication remain separate pending steps.
+stale callbacks and all seven captured results. PR185 is merged at `dec041a9`;
+all seven final-main workflows and eight jobs pass, including 48 native tests.
+Retained native image review has its recorded bounded scope. Publication,
+desktop geometry and physical installation remain separate pending steps.
 
 ## Annual statement explorer integrated in source
 
