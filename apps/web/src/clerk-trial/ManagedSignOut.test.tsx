@@ -13,6 +13,8 @@ import {
   MANAGED_WATCHLIST_SAVE_COPY,
 } from "./save-coordinator-copy";
 import { ManagedSessionOwner } from "./managed-session-owner";
+import { ManagedValuationWorkbench } from "./managed-valuation-workbench";
+import { eodSelection } from "./eod-history-fixture";
 
 // Controlled callback scope only; the Android fixture verifies mounted focus and updates.
 const view = vi.hoisted(() => ({
@@ -58,7 +60,7 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
-async function fixture() {
+async function fixture(valuation?: ManagedValuationWorkbench) {
   const signOut = vi.fn<() => Promise<void>>().mockResolvedValue();
   const resourceSignOut = vi
     .fn<() => Promise<void>>()
@@ -120,6 +122,7 @@ async function fixture() {
     },
     { signOut },
     clearResearch,
+    valuation,
   );
   await Promise.all([
     watchlist.coordinator.load(),
@@ -168,6 +171,41 @@ function render(owner: ManagedSessionOwner) {
   };
 }
 describe("intentional managed sign-out", () => {
+  it("reviews temporary valuation inputs even when all three saved resources are clean", async () => {
+    const valuation = new ManagedValuationWorkbench();
+    valuation.activate(eodSelection);
+    const f = await fixture(valuation);
+    valuation.setDcfField("startingUnleveredCashFlowUsd", "123");
+    expect(f.owner.getSnapshot()).toMatchObject({
+      valuationInputs: true,
+      watchlist: { dirty: false },
+      followups: { dirty: false },
+      portfolio: { dirty: false },
+    });
+    render(f.owner).click("managed-signout-open");
+    const review = render(f.owner);
+    expect(review.html).toContain("Sign out with unsaved changes?");
+    expect(review.html).toContain(
+      "Signing out discards these inputs and calculated results",
+    );
+    expect(f.signOut).not.toHaveBeenCalled();
+    review.click("managed-signout-stay");
+    expect(valuation.getSnapshot().dcfDraft.startingUnleveredCashFlowUsd).toBe(
+      "123",
+    );
+    render(f.owner).click("managed-signout-open");
+    render(f.owner).click("managed-signout-confirm");
+    await f.owner.signOut();
+    expect(valuation.getSnapshot()).toMatchObject({
+      retired: true,
+      owner: null,
+      dcfDraft: { startingUnleveredCashFlowUsd: "" },
+    });
+    expect(f.signOut).toHaveBeenCalledOnce();
+    expect(f.save).not.toHaveBeenCalled();
+    expect(f.followups.save).not.toHaveBeenCalled();
+    expect(f.portfolio.save).not.toHaveBeenCalled();
+  });
   it("cancels a dirty review without changing raw notes, order, saved data or requests", async () => {
     const f = await fixture();
     f.coordinator.replaceDraft(changed);

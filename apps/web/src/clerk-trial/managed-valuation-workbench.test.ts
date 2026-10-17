@@ -1,0 +1,398 @@
+import { describe, expect, it, vi } from "vitest";
+import type { ManagedResearchSelection } from "./managed-research-selection";
+import {
+  captureValuationCalculationGuard,
+  ManagedValuationWorkbench,
+  type DcfField,
+  type ExitField,
+  type ExitScenarioField,
+} from "./managed-valuation-workbench";
+import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
+
+export function valuationSelection(
+  overrides: Partial<ManagedResearchSelection> = {},
+): ManagedResearchSelection {
+  return {
+    catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
+    listing: {
+      country: "US",
+      exchangeMic: "XNAS",
+      instrumentType: "common_stock",
+      issuerId: "issuer-example",
+      issuerName: "Example issuer",
+      listingId: "listing-example",
+      securityId: "security-example",
+      securityName: "Example common",
+      shareClassId: "class-example",
+      shareClassName: "Example class",
+      symbol: "EXAMPLE",
+    },
+    cik: "0000000001",
+    origin: "watchlist",
+    ...overrides,
+  };
+}
+export function fillValuation(workbench: ManagedValuationWorkbench): void {
+  for (const [field, value] of Object.entries({
+    startingUnleveredCashFlowUsd: "100.125",
+    enterpriseToEquityBridgeUsd: "-20.25",
+    dilutedShares: "10",
+    waccPercent: "10",
+    terminalGrowthPercent: "2",
+  }))
+    workbench.setDcfField(field as DcfField, value);
+  for (const [scenario, value] of Object.entries({
+    conservative: "0",
+    base: "5",
+    expansion: "10",
+  }))
+    workbench.setDcfScenario(scenario as AuthoredValuationScenario, value);
+  for (const [field, value] of Object.entries({
+    baseRevenue: "1000.125",
+    cash: "20.25",
+    debt: "10.125",
+    dilutedShares: "10",
+    discountRatePercent: "10",
+  }))
+    workbench.setExitField(field as ExitField, value);
+  for (const [scenario, growth] of Object.entries({
+    conservative: "0",
+    base: "5",
+    expansion: "10",
+  })) {
+    workbench.setExitScenario(
+      scenario as AuthoredValuationScenario,
+      "annualRevenueGrowthPercent",
+      growth,
+    );
+    workbench.setExitScenario(
+      scenario as AuthoredValuationScenario,
+      "targetEbitdaMarginPercent",
+      "20",
+    );
+    workbench.setExitScenario(
+      scenario as AuthoredValuationScenario,
+      "exitMultiple",
+      "10",
+    );
+  }
+}
+
+describe("transient authored valuation workbench", () => {
+  it("publishes stable immutable snapshots and stops notifications after unsubscribe", () => {
+    const workbench = new ManagedValuationWorkbench();
+    workbench.activate(valuationSelection());
+    const before = workbench.getSnapshot();
+    const listener = vi.fn();
+    const unsubscribe = workbench.subscribe(listener);
+    workbench.setDcfField("waccPercent", "10");
+    const edited = workbench.getSnapshot();
+    expect(edited).not.toBe(before);
+    expect(workbench.getSnapshot()).toBe(edited);
+    expect(before.dcfDraft.waccPercent).toBe("");
+    expect(Object.isFrozen(edited.dcfDraft.scenarios)).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+    workbench.setDcfField("waccPercent", "10");
+    expect(workbench.getSnapshot()).toBe(edited);
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+    workbench.setDcfField("waccPercent", "11");
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("rebinds an untouched company and rejects stale discard actions", () => {
+    const workbench = new ManagedValuationWorkbench();
+    const first = valuationSelection();
+    const second = valuationSelection({
+      listing: { ...first.listing, listingId: "other" },
+    });
+    workbench.activate(first);
+    workbench.calculate();
+    expect(workbench.hasDraft()).toBe(false);
+    workbench.activate(second);
+    expect(workbench.getSnapshot()).toMatchObject({
+      owner: second,
+      context: second,
+      editable: true,
+      calculation: null,
+    });
+    workbench.setDcfField("waccPercent", "10");
+    const before = workbench.getSnapshot();
+    workbench.discardAndUse(first);
+    expect(workbench.getSnapshot()).toBe(before);
+    workbench.activate(null);
+    workbench.discardAndUse(second);
+    expect(workbench.getSnapshot().dcfDraft.waccPercent).toBe("10");
+  });
+  it("starts blank, not dirty; only Calculate runs both models and freezes full raw inputs and outputs", () => {
+    const workbench = new ManagedValuationWorkbench();
+    expect(workbench.hasDraft()).toBe(false);
+    expect(workbench.calculate()).toBeNull();
+    workbench.activate(valuationSelection());
+    expect(workbench.getSnapshot()).toMatchObject({
+      editable: true,
+      dirty: false,
+      calculation: null,
+      dcfDraft: {
+        startingUnleveredCashFlowUsd: "",
+        enterpriseToEquityBridgeUsd: "",
+        forecastYears: "5",
+      },
+      exitDraft: { cash: "", debt: "", horizonYears: "5" },
+    });
+    expect(workbench.hasDraft()).toBe(false);
+    const blank = workbench.calculate()!;
+    expect(blank.dcfResult).toMatchObject({
+      status: "unavailable",
+      reason: "invalid_input",
+    });
+    expect(blank.exitResult).toMatchObject({
+      status: "unavailable",
+      reason: "invalid_input",
+    });
+    fillValuation(workbench);
+    expect(workbench.getSnapshot().calculation).toBeNull();
+    const capture = workbench.calculate()!;
+    expect(capture.dcfResult.status).toBe("available");
+    expect(capture.exitResult.status).toBe("available");
+    expect(capture.dcfInput.startingUnleveredCashFlowUsd).toBe("100.125");
+    expect(capture.dcfInput.forecastYears).toBe(5);
+    expect(capture.dcfDraft.forecastYears).toBe("5");
+    expect(capture.explanation).toContain("USD");
+    if (capture.dcfResult.status === "available") {
+      expect(capture.dcfResult.scenarios.base.projection).toHaveLength(5);
+      expect(capture.dcfResult.sensitivity.cells).toHaveLength(25);
+    }
+    if (capture.exitResult.status === "available")
+      expect(capture.exitResult.sensitivity.cells).toHaveLength(25);
+    expect(Object.isFrozen(capture)).toBe(true);
+    expect(Object.isFrozen(capture.dcfInput.scenarios.base)).toBe(true);
+    expect(Object.isFrozen(capture.exitResult.methodology)).toBe(true);
+    const json = JSON.stringify(capture);
+    workbench.setDcfField("startingUnleveredCashFlowUsd", "200");
+    expect(JSON.stringify(capture)).toBe(json);
+    expect(workbench.getSnapshot().calculation).toBeNull();
+  });
+
+  it("retains one owner across Back and same complete identity return; different company/catalog cannot edit or calculate", () => {
+    const workbench = new ManagedValuationWorkbench();
+    const first = valuationSelection();
+    workbench.activate(first);
+    fillValuation(workbench);
+    const result = workbench.calculate()!;
+    const guard = captureValuationCalculationGuard(result)!;
+    expect(guard()).toBe(true);
+    workbench.activate(null);
+    expect(workbench.getSnapshot()).toMatchObject({
+      context: null,
+      editable: false,
+      calculation: null,
+      dirty: true,
+    });
+    expect(guard()).toBe(false);
+    workbench.activate({ ...first, origin: "route" });
+    expect(workbench.getSnapshot().calculation).toBe(result);
+    expect(guard()).toBe(false);
+    const second = valuationSelection({
+      listing: {
+        ...first.listing,
+        listingId: "other",
+        shareClassId: "other-class",
+      },
+    });
+    workbench.activate(second);
+    expect(workbench.getSnapshot().owner!.listing.listingId).toBe(
+      first.listing.listingId,
+    );
+    expect(workbench.getSnapshot()).toMatchObject({
+      editable: false,
+      calculation: null,
+    });
+    expect(workbench.calculate()).toBeNull();
+    expect(workbench.setDcfField("waccPercent", "20")).toBe(false);
+    expect(workbench.setExitScenario("base", "exitMultiple", "20")).toBe(false);
+    workbench.activate(
+      valuationSelection({ catalogSnapshotSha256: `sha256:${"b".repeat(64)}` }),
+    );
+    expect(workbench.getSnapshot().editable).toBe(false);
+    expect(workbench.getSnapshot().dcfDraft.startingUnleveredCashFlowUsd).toBe(
+      "100.125",
+    );
+    workbench.discardAndUse(second);
+    expect(workbench.getSnapshot().dcfDraft.startingUnleveredCashFlowUsd).toBe(
+      "100.125",
+    );
+    workbench.activate(second);
+    workbench.discardAndUse(second);
+    expect(workbench.getSnapshot()).toMatchObject({
+      owner: second,
+      context: second,
+      editable: true,
+      dirty: false,
+      calculation: null,
+      dcfDraft: { startingUnleveredCashFlowUsd: "" },
+    });
+    expect(workbench.hasDraft()).toBe(false);
+    workbench.activate(first);
+    expect(workbench.getSnapshot().owner).toEqual(first);
+    expect(workbench.getSnapshot().dcfDraft.startingUnleveredCashFlowUsd).toBe(
+      "",
+    );
+  });
+
+  it.each([
+    "exchangeMic",
+    "instrumentType",
+    "issuerId",
+    "issuerName",
+    "listingId",
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "symbol",
+  ] as const)("checks the full listing identity including %s", (field) => {
+    const workbench = new ManagedValuationWorkbench();
+    const selection = valuationSelection();
+    workbench.activate(selection);
+    workbench.setDcfField("waccPercent", "10");
+    const value =
+      field === "exchangeMic"
+        ? "XNYS"
+        : field === "instrumentType"
+          ? "adr"
+          : field === "symbol"
+            ? "OTHER"
+            : "other";
+    workbench.activate({
+      ...selection,
+      listing: { ...selection.listing, [field]: value },
+    });
+    expect(workbench.getSnapshot().editable).toBe(false);
+  });
+
+  it("rejects malformed runtime fields, scenarios and oversized text without a mutation", () => {
+    const workbench = new ManagedValuationWorkbench();
+    workbench.activate(valuationSelection());
+    const original = workbench.getSnapshot();
+    for (const field of ["__proto__", "constructor", "toString", {}, null]) {
+      expect(workbench.setDcfField(field as DcfField, "1")).toBe(false);
+      expect(workbench.setExitField(field as ExitField, "1")).toBe(false);
+      expect(
+        workbench.setDcfScenario(field as AuthoredValuationScenario, "1"),
+      ).toBe(false);
+      expect(
+        workbench.setExitScenario("base", field as ExitScenarioField, "1"),
+      ).toBe(false);
+    }
+    expect(workbench.setDcfField("waccPercent", {} as string)).toBe(false);
+    expect(workbench.getSnapshot()).toBe(original);
+    expect(workbench.setDcfField("waccPercent", "😀".repeat(513))).toBe(false);
+    expect(workbench.getSnapshot().inputIssue).toContain("exceeds 512");
+    expect(workbench.calculate()).toBeNull();
+    expect(workbench.setDcfField("waccPercent", "😀".repeat(512))).toBe(true);
+    expect(workbench.getSnapshot().inputIssue).toBeNull();
+    expect(workbench.calculate()!.dcfResult.status).toBe("unavailable");
+  });
+  it("blocks calculation after a rejected paste until that field is corrected or inputs are discarded", () => {
+    const workbench = new ManagedValuationWorkbench();
+    workbench.activate(valuationSelection());
+    fillValuation(workbench);
+    workbench.calculate();
+    expect(workbench.setExitField("cash", "9".repeat(513))).toBe(false);
+    expect(workbench.getSnapshot().calculation).toBeNull();
+    expect(workbench.getSnapshot().inputIssue).toContain("Exit multiple cash");
+    workbench.setDcfField("waccPercent", "9".repeat(513));
+    workbench.setExitField("cash", "25");
+    expect(workbench.calculate()).toBeNull();
+    expect(workbench.getSnapshot().inputIssue).toContain("DCF WACC");
+    workbench.setDcfField("waccPercent", "12");
+    expect(workbench.getSnapshot().inputIssue).toBeNull();
+    expect(workbench.calculate()!.exitResult.status).toBe("available");
+  });
+  it("retains an oversized numeric lexeme and refuses it instead of calculating the prior valid amount", () => {
+    const workbench = new ManagedValuationWorkbench();
+    workbench.activate(valuationSelection());
+    fillValuation(workbench);
+    expect(workbench.calculate()!.dcfResult.status).toBe("available");
+    const pasted = "9".repeat(65);
+    expect(workbench.setDcfField("startingUnleveredCashFlowUsd", pasted)).toBe(
+      true,
+    );
+    expect(workbench.getSnapshot().calculation).toBeNull();
+    expect(workbench.getSnapshot().dcfDraft.startingUnleveredCashFlowUsd).toBe(
+      pasted,
+    );
+    expect(workbench.calculate()!.dcfResult).toMatchObject({
+      status: "unavailable",
+      reason: "invalid_input",
+    });
+  });
+
+  it("preserves invalid year lexemes and domain bounds without converting blank operands to zero", () => {
+    const workbench = new ManagedValuationWorkbench();
+    workbench.activate(valuationSelection());
+    fillValuation(workbench);
+    workbench.setDcfField("forecastYears", "");
+    workbench.setExitField("horizonYears", "5.0");
+    const invalid = workbench.calculate()!;
+    expect(invalid.dcfDraft.forecastYears).toBe("");
+    expect(invalid.exitDraft.horizonYears).toBe("5.0");
+    expect(invalid.dcfInput.forecastYears).toBeNull();
+    expect(invalid.exitInput.horizonYears).toBeNull();
+    expect(JSON.parse(JSON.stringify(invalid)) as unknown).toEqual(invalid);
+    expect(invalid.dcfResult.status).toBe("unavailable");
+    expect(invalid.exitResult.status).toBe("unavailable");
+    workbench.setDcfField("forecastYears", "4");
+    expect(workbench.calculate()!.dcfResult).toMatchObject({
+      status: "unavailable",
+      reason: "forecast_years_out_of_bounds",
+    });
+    workbench.setDcfField("forecastYears", "5");
+    workbench.setDcfField("waccPercent", "2");
+    expect(workbench.calculate()!.dcfResult).toMatchObject({
+      status: "unavailable",
+      reason: "discount_rate_not_above_terminal_growth",
+    });
+    workbench.setExitField("horizonYears", "5");
+    workbench.setExitField("cash", "-1");
+    expect(workbench.calculate()!.exitResult.status).toBe("unavailable");
+  });
+
+  it("copies admitted identity, rejects malformed selections, notifies changes and retires all raw inputs", () => {
+    const workbench = new ManagedValuationWorkbench();
+    const listener = vi.fn();
+    const unsubscribe = workbench.subscribe(listener);
+    const selection = valuationSelection();
+    workbench.activate(selection);
+    expect(Object.isFrozen(selection)).toBe(false);
+    expect(workbench.getSnapshot().owner).not.toBe(selection);
+    const before = workbench.getSnapshot();
+    workbench.activate(Object.create(selection) as ManagedResearchSelection);
+    expect(workbench.getSnapshot()).toBe(before);
+    fillValuation(workbench);
+    const capture = workbench.calculate()!;
+    const guard = captureValuationCalculationGuard(capture)!;
+    listener.mockClear();
+    workbench.retire();
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(workbench.getSnapshot()).toMatchObject({
+      retired: true,
+      owner: null,
+      context: null,
+      dirty: false,
+      editable: false,
+      calculation: null,
+      dcfDraft: { startingUnleveredCashFlowUsd: "", forecastYears: "" },
+      exitDraft: { horizonYears: "", baseRevenue: "" },
+    });
+    expect(workbench.hasDraft()).toBe(false);
+    expect(guard()).toBe(false);
+    workbench.activate(selection);
+    workbench.discardAndUse(selection);
+    expect(workbench.setDcfField("waccPercent", "10")).toBe(false);
+    expect(workbench.calculate()).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+});

@@ -1220,6 +1220,10 @@
     background: #191b1f;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
   }
+  /* The sign-out decision uses the full viewport without a navigation overlay. */
+  .managed-frame:has(#managed-signout-review) .managed-navigation {
+    position: static;
+  }
   .managed-frame .managed-navigation button {
     flex-direction: column;
     justify-content: center;

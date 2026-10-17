@@ -2,7 +2,8 @@
 
 Company research has an initially closed **Research report** disclosure after the
 loaded snapshot. Load the sources you need, then select **Prepare research report**.
-At least one admitted source and a verified current watchlist draft are required.
+At least one admitted source or a calculated [authored valuation](MANAGED_VALUATION_WORKBENCH.md),
+and a verified current watchlist draft, are required.
 Preparation is blocked while a company source load or watchlist operation is
 pending, or the draft requires catalog/conflict review. An unavailable draft is
 never described as a missing note. It starts no data request, calculation or saved change.
@@ -30,7 +31,7 @@ session clears its evidence and preview. Clear report preview removes it explici
 
 In a current prepared report, open **Inspect report document (JSON)**. The
 read-only field contains a bounded UTF-8 document with purpose
-`investment.company-research`, schema `1.0.0`, preparation time, exact listing and
+`investment.company-research`, schema `2.0.0`, preparation time, exact listing and
 catalog identity. Its authored-research section preserves the draft's full text,
 including whitespace and Unicode. JSON escapes preserve that text when decoded;
 they do not verify its claims or establish a saved version. A missing watchlist
@@ -50,6 +51,14 @@ keep the admitted packet bounds. If its output bound or note-character check
 fails, it refuses the complete document without clipping or changing the draft.
 The parent report's source, draft and visit checks also remove its document view.
 No session, credential, pending operation or unrelated note is serialized.
+
+When calculated, authored valuation is a separate field. Both models retain their
+raw draft text, admitted inputs, versions, methods, scenarios, projections and
+25-cell sensitivities with individual refusals. It does not renew source dates
+or label an assumption as a reported fact. The field is bounded to 128 KiB; the
+complete report byte bound includes that separate allowance. Editing an assumption
+invalidates the preview and pending delivery. Watchlist revision checks keep a
+report invalid after an edit followed by identical-text restoration.
 
 This inspection is available in browser and Android. Opening it does not download,
 Save, upload or restore a file.

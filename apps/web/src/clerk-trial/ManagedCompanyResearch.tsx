@@ -24,6 +24,13 @@ import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ManagedResearchCompanyNavigation } from "./ManagedResearchCompanyNavigation";
 import type { ManagedFinancialReviewActions } from "./managed-financial-review";
+import { ManagedValuationWorkbench } from "./ManagedValuationWorkbench";
+import type { ManagedValuationWorkbench as ValuationModel } from "./managed-valuation-workbench";
+import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
+import type {
+  PreparedValuationNote,
+  ValuationNotePreparation,
+} from "./valuation-note";
 
 export function ManagedCompanyResearch({
   research,
@@ -46,6 +53,8 @@ export function ManagedCompanyResearch({
   annualLiquidityNoteActions,
   annualOperatingNoteActions,
   financialReviewActions,
+  valuation,
+  valuationNoteActions,
   priceNoteActions,
   filingsNoteActions,
   companyNavigationState,
@@ -74,6 +83,18 @@ export function ManagedCompanyResearch({
   annualLiquidityNoteActions: ManagedAnnualLiquidityNoteActions;
   annualOperatingNoteActions: ManagedAnnualOperatingNoteActions;
   financialReviewActions?: ManagedFinancialReviewActions;
+  valuation?: ValuationModel;
+  valuationNoteActions?: {
+    prepare: (
+      model: "dcf" | "exit",
+      scenario: AuthoredValuationScenario,
+    ) => ValuationNotePreparation;
+    isCurrent: (preview: PreparedValuationNote) => boolean;
+    append: (preview: PreparedValuationNote) => {
+      appended: boolean;
+      message: string;
+    };
+  };
   priceNoteActions: ManagedPriceNoteActions;
   filingsNoteActions: ManagedFilingsNoteActions;
   companyNavigationState: ResearchCompanyNavigationState;
@@ -146,10 +167,20 @@ export function ManagedCompanyResearch({
         annual={annual}
         filings={filings}
         watchlist={watchlist}
+        {...(valuation ? { valuation } : {})}
         {...(reportDelivery ? { reportDelivery } : {})}
         {...(readReportWatchlist ? { readReportWatchlist } : {})}
         onSection={onSection}
       />
+      {valuation && valuationNoteActions && (
+        <ManagedValuationWorkbench
+          model={valuation}
+          selection={research.selection}
+          navigationPending={navigationPending}
+          noteActions={valuationNoteActions}
+          watchlist={watchlist}
+        />
+      )}
       <div className="managed-research-body">
         <div>
           <nav

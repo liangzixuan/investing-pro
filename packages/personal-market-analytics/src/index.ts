@@ -219,3 +219,15 @@ export {
   type PersonalManualPeerComparisonUnit,
   type PersonalManualPeerComparisonValuationCoordinate,
 } from "./personal-manual-peer-comparison";
+export {
+  calculateAuthoredCashFlowDcf,
+  calculateAuthoredPriceComparison,
+  AUTHORED_DCF_BOUNDS,
+  AUTHORED_DCF_METHODOLOGY,
+  type AuthoredCashFlowDcfInput,
+  type AuthoredCashFlowDcfScenarioResult,
+  type AuthoredCashFlowDcfSensitivityCell,
+  type AuthoredCashFlowDcfUnavailableReason,
+  type AuthoredCashFlowDcfResult,
+  type AuthoredValuationScenario,
+} from "./authored-cash-flow-dcf";

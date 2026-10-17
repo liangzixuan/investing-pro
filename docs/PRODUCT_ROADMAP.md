@@ -29,6 +29,13 @@ complete-note preview precede guarded append and the existing whole-draft Save.
 This adds no financial-health score, provider, schema or automatic source request.
 Full statements, valuation, peers and the broader InvestingPro goal remain open.
 
+The next independent M4 outcome is a complete [authored company valuation workflow](MANAGED_VALUATION_WORKBENCH.md).
+Cash flow DCF and exit-multiple models connect explicit assumptions, three
+scenarios and independent sensitivities to company-owned drafts, whole-note
+preview, existing Watchlist Save/recovery and reproducible JSON/HTML reports.
+It adds no provider request or automatic fair-value verdict. Broad sourced
+valuation coverage, historical multiples and full InvestingPro parity remain open.
+
 The next M4 increment adds a [browser-readable offline report](MANAGED_COMPANY_REPORT.md#read-the-html-copy-offline)
 beside JSON. It retains the exact authored draft, independent Annual facts and
 original source qualifications, with a complete captured JSON appendix. The

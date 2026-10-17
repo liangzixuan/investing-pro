@@ -1,0 +1,150 @@
+/* Precision Desk authored assumptions; calculations also render in offline reports. */
+.managed-frame .managed-valuation-workbench {
+  min-width: 0;
+  margin-block: 20px;
+  padding: 16px;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+  background: var(--managed-surface);
+}
+.managed-frame .managed-valuation-workbench summary {
+  min-height: 44px;
+  padding-block: 10px;
+  cursor: pointer;
+}
+.managed-frame .managed-valuation-workbench :is(button, input, select) {
+  min-height: 44px;
+  max-width: 100%;
+}
+.managed-frame
+  .managed-valuation-workbench
+  :is(button, input, select, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.managed-frame .managed-valuation-workbench fieldset {
+  min-width: 0;
+  margin-block: 16px;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+}
+.managed-frame .managed-valuation-workbench legend {
+  padding-inline: 4px;
+  font-weight: 600;
+}
+.managed-frame .managed-valuation-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.managed-frame .managed-valuation-scenarios {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.managed-frame .managed-valuation-field {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  flex-direction: column;
+  gap: 6px;
+  margin-block: 8px;
+}
+.managed-frame .managed-valuation-field :is(input, select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  color: var(--managed-ink);
+  background: var(--managed-canvas);
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+  font: inherit;
+}
+.managed-frame .managed-valuation-workbench button {
+  white-space: normal;
+}
+.managed-frame
+  .managed-valuation-workbench
+  :is(p, label, legend, h3, h4, h5, li, dt, dd, button) {
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-valuation-workbench :is(pre, .trial-saved-note) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+.managed-frame .managed-valuation-workbench pre {
+  font-size: 12px;
+}
+.managed-frame .managed-valuation-retained,
+.managed-frame .managed-valuation-note-preview {
+  padding: 12px;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+}
+.managed-frame .managed-valuation-results {
+  min-width: 0;
+  margin-block: 24px;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-valuation-results pre {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.managed-frame .managed-valuation-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  margin-block: 16px;
+}
+.managed-frame .managed-valuation-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.managed-frame .managed-valuation-table caption {
+  text-align: left;
+  padding-block: 8px;
+}
+.managed-frame .managed-valuation-table :is(th, td) {
+  min-width: 110px;
+  padding: 10px;
+  border-bottom: 1px solid var(--managed-line);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-valuation-table :is(th, td):first-child {
+  text-align: left;
+}
+.managed-frame .managed-valuation-table th:first-child {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+.managed-frame .managed-valuation-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.managed-frame .managed-valuation-facts > div {
+  min-width: 0;
+}
+.managed-frame .managed-valuation-facts dd {
+  margin: 4px 0 0;
+}
+@media (max-width: 760px) {
+  .managed-frame .managed-valuation-fields,
+  .managed-frame .managed-valuation-scenarios,
+  .managed-frame .managed-valuation-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .managed-frame .managed-valuation-workbench {
+    padding: 12px;
+  }
+}

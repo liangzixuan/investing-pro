@@ -17,6 +17,7 @@ export interface ManagedSessionState {
   readonly watchlist: Readonly<ManagedResourceSaveSummary>;
   readonly followups: Readonly<ManagedResourceSaveSummary>;
   readonly portfolio: Readonly<ManagedResourceSaveSummary>;
+  readonly valuationInputs: boolean;
   readonly needsLeaveReview: boolean;
   readonly signOutFailed: boolean;
   readonly cleanupFailed: boolean;
@@ -62,6 +63,11 @@ export class ManagedSessionOwner {
     }>,
     private readonly session: Pick<TrialSession, "signOut">,
     private readonly clearResearch: () => void,
+    private readonly valuation?: {
+      hasDraft: () => boolean;
+      subscribe: (listener: () => void) => () => void;
+      retire: () => void;
+    },
   ) {
     this.state = this.snapshot();
     this.unsubscribers = [
@@ -79,6 +85,12 @@ export class ManagedSessionOwner {
         } else this.publish();
       }),
     );
+    if (valuation)
+      this.unsubscribers.push(
+        valuation.subscribe(() => {
+          if (!this.retiring && !this.disposed) this.publish();
+        }),
+      );
   }
   getSnapshot = (): Readonly<ManagedSessionState> => this.state;
   subscribe = (listener: () => void) => {
@@ -89,16 +101,19 @@ export class ManagedSessionOwner {
     const watchlist = summary(this.resources.watchlist);
     const followups = summary(this.resources.followups);
     const portfolio = summary(this.resources.portfolio);
+    const valuationInputs = this.valuation?.hasDraft() ?? false;
     return Object.freeze({
       phase: this.phase,
       watchlist,
       followups,
       portfolio,
+      valuationInputs,
       needsLeaveReview:
         this.phase === "active" &&
         (resourceNeedsLeaveReview(watchlist) ||
           resourceNeedsLeaveReview(followups) ||
-          resourceNeedsLeaveReview(portfolio)),
+          resourceNeedsLeaveReview(portfolio) ||
+          valuationInputs),
       signOutFailed: this.signOutFailed,
       cleanupFailed: this.cleanupFailed,
       message: this.message,
@@ -126,6 +141,7 @@ export class ManagedSessionOwner {
         () => this.resources.watchlist.retire(message),
         () => this.resources.followups.retire(message),
         () => this.resources.portfolio.retire(message),
+        () => this.valuation?.retire(),
         this.clearResearch,
       ]) {
         try {

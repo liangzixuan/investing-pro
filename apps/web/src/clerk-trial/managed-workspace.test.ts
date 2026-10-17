@@ -2163,7 +2163,10 @@ describe("company research watchlist draft", () => {
       await researchFixture(initial);
     const visit = workspace.getSnapshot().research;
     workspace.setQuery("A new query without searching");
-    expect(workspace.getResearchWatchlist(selection)).toEqual({
+    const researchWatchlist = workspace.getResearchWatchlist(selection);
+    expect(typeof researchWatchlist.revision).toBe("symbol");
+    expect(researchWatchlist).toEqual({
+      revision: researchWatchlist.revision,
       member: null,
       canAdd: true,
       canEdit: false,
@@ -2307,7 +2310,10 @@ describe("company research watchlist draft", () => {
         ],
       });
       const changed = workspace.coordinator.getSnapshot().draft;
-      expect(workspace.getResearchWatchlist(selection)).toEqual({
+      const researchWatchlist = workspace.getResearchWatchlist(selection);
+      expect(typeof researchWatchlist.revision).toBe("symbol");
+      expect(researchWatchlist).toEqual({
+        revision: researchWatchlist.revision,
         member: null,
         canAdd: false,
         canEdit: false,

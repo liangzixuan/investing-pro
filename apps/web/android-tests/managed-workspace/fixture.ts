@@ -62,6 +62,15 @@ import {
 import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
+export const authoredValuationPrefix = "Authored valuation thesis";
+export const authoredValuationNoteDraft = [
+  authoredValuationPrefix,
+  `Authored valuation: ZERO (XNAS), listing listing-zero, security security-zero, class class-zero, issuer issuer-zero, CIK unavailable, catalog ${digest}; base scenario.`,
+  "All money is USD; shares are diluted shares; rates are percent. Assumptions are authored, not reported financial facts or current prices. Scenario context, not a recommendation.",
+  "DCF authored-cash-flow-dcf-v1, schema 1.0.0: starting unlevered cash flow 100; signed enterprise-to-equity bridge 100; shares 10; years 5; WACC 10%; terminal growth 0%; annual cash-flow growth 10%.",
+  "Enterprise value 1500.00; equity value 1400.00; value/share 140.00; explicit cash-flow present value 500.00; terminal present value 1000.00; terminal value 1610.51; terminal share of enterprise value 66.67%.",
+  "Method: CF(t)=starting CF*(1+growth)^t; discount each year-end CF by (1+WACC)^t; terminal=final CF*(1+terminal growth)/(WACC-terminal growth); enterprise=sum of present values; equity=enterprise-signed bridge; value/share=equity/shares. Decimal arithmetic, half-up; money and value/share 2 decimals.",
+].join(" ");
 export const thesisReviewNoteDraft =
   "Original thesis Thesis review (my assessment). Research purpose: Review a holding | Time horizon: The next two filed reports | My thesis: Margins can recover | Supporting evidence: Invented report 2026-10-01 | Opposing evidence: Demand remains uncertain | Confirmation condition: Two stronger reported periods | Invalidation condition: Cash keeps falling | Next check: Read the next filed report";
 export const annualComparisonNoteDraft = [
@@ -271,7 +280,8 @@ async function createSharedFixture(
     | "annual-comparison"
     | "markets-selected-price"
     | "watchlist-comparison"
-    | "watchlist-export" = "default",
+    | "watchlist-export"
+    | "authored-valuation" = "default",
 ) {
   // These journeys reuse the one-read Annual source behavior. The snapshot
   // admits one Filings read; cash history adds only same-filing cash rows.
@@ -994,6 +1004,43 @@ async function createSharedFixture(
       if (scenario === "company-price-ranges") return unexpected("save");
       if (scenario === "watchlist-comparison") return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
+      if (scenario === "authored-valuation") {
+        const expected = {
+          ...payload,
+          memberships: payload.memberships.map((member, index) =>
+            index === 0
+              ? { ...member, note: authoredValuationNoteDraft }
+              : member,
+          ),
+        };
+        if (
+          signal.aborted ||
+          state.save !== 0 ||
+          state.load !== 1 ||
+          state.status !== 1 ||
+          state.annual !== 0 ||
+          state.eod !== 0 ||
+          state.filings !== 0 ||
+          state.marketsEod !== 0 ||
+          state.calendar !== 0 ||
+          state.fed !== 0 ||
+          state.resolve !== 0 ||
+          savedWatchlist.version !== 1 ||
+          captured?.expectedVersion !== 1 ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(expected)
+        )
+          return unexpected("save");
+        count("save");
+        savedWatchlist = {
+          version: 2,
+          payload: structuredClone(captured.payload),
+        };
+        return Promise.resolve({
+          ...structuredClone(savedWatchlist),
+          replayed: false,
+        });
+      }
       if (scenario === "thesis-review") {
         const expected = {
           ...payload,
@@ -1659,6 +1706,25 @@ async function createSharedFixture(
     sessionId: "invented-android-session",
     getToken: () => unexpected("token"),
     signOut: () => {
+      if (scenario === "authored-valuation") {
+        if (
+          state.signOut !== 0 ||
+          state.save !== 1 ||
+          state.load < 2 ||
+          state.annual !== 0 ||
+          state.eod !== 0 ||
+          state.filings !== 0 ||
+          state.marketsEod !== 0 ||
+          state.calendar !== 0 ||
+          state.fed !== 0 ||
+          savedWatchlist.version !== 2 ||
+          savedWatchlist.payload.memberships[0]?.note !==
+            authoredValuationNoteDraft
+        )
+          return unexpected("signOut");
+        count("signOut");
+        return Promise.resolve();
+      }
       if (
         !signOutScenario ||
         state.signOut !== 0 ||

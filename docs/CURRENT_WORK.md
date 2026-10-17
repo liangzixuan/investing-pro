@@ -48,6 +48,21 @@ does not establish authenticated production journeys, provider health or physica
 Android use. The earlier fixed Follow-ups storage proof failed in its recorded
 scope; full live-storage qualification and backup/restore acceptance remain open.
 
+## Authored valuation in progress
+
+The next independent M4 outcome is the [authored valuation workbench](MANAGED_VALUATION_WORKBENCH.md):
+editable cash flow DCF and exit-multiple assumptions, three scenarios, projections
+and sensitivity results, company-owned temporary inputs, guarded complete-note
+Preview/Append through existing Save and recovery, and complete JSON/HTML report
+capture. It reuses exact decimal calculators without new source requests or
+invented financial operands. The composed Calculate/Preview/Append/Save/fresh-read
+and report cases pass, including uncertainty recovery, independent source
+refusals, draft retention and retirement. The complete web suite and workspace
+types pass. A fixed native journey is authored with fixture and syntax checks;
+Android compilation and execution remain separate. Browser geometry, packaged
+execution and publication are not accepted.
+The Portfolio storage and source integration decisions remain separate.
+
 ## Managed portfolio in progress
 
 The selected M5 outcome is an [authored managed portfolio](MANAGED_PORTFOLIO.md):
