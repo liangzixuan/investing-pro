@@ -11,6 +11,13 @@ establish their position on the face of an issuer's published statements.
 
 ## Read and inspect statements
 
+Choose a statement below the heading. The reader keeps the selected filing's
+dates, original load time, independent source states and availability failures
+visible. Open **Statement coverage and original sources** for the full coverage
+qualifications, separate source clocks and filing references. Opening or closing
+this disclosure does not load data or change selected note cells. Captured
+reports retain the full context before the three statement views.
+
 Each flow cell keeps its actual start date, end date, full USD amount and sign.
 Balance cells keep their instant date. Up to three displayed dates come from the
 selected annual filing, including its report date. Comparative dates do not imply

@@ -12,6 +12,7 @@ import {
 import {
   AnnualStatementCell,
   AnnualStatementTable,
+  AnnualStatementsContext,
   ManagedAnnualStatements,
   type ManagedAnnualStatementsProps,
 } from "./ManagedAnnualStatements";
@@ -266,6 +267,80 @@ function statement(
 }
 
 describe("standardized annual statement reader", () => {
+  it("keeps filing, original load and source states outside initially closed coverage details", () => {
+    const input = props();
+    const node: React.ReactElement<{ children: React.ReactNode }> =
+      AnnualStatementsContext({ ...input, presentation: "reader" });
+    const top = React.Children.toArray(node.props.children).filter(
+      React.isValidElement<Record<string, unknown>>,
+    );
+    const summary = top.find(
+      (entry) => entry.props.className === "managed-annual-statement-summary",
+    )!;
+    const coverage = top.find((entry) => entry.type === "details")!;
+    expect(coverage.props.open).toBeUndefined();
+    const visible = renderToStaticMarkup(summary);
+    expect(visible).toContain("Limited US-GAAP concepts in full USD");
+    expect(visible).toContain("report 2025-12-31 · filed 2026-02-20");
+    expect(visible).toContain(
+      "Original load completed 2026-03-01T00:00:01.000Z",
+    );
+    expect(visible).toContain(
+      "Company Facts: available · Submissions: available",
+    );
+    const detail = renderToStaticMarkup(coverage);
+    expect(detail).toContain("Statement coverage and original sources");
+    expect(detail).toContain("excludes custom-taxonomy and IFRS facts");
+    expect(detail).toContain(
+      "not reconstruct totals, comprehensive debt, EBITDA or FCFF",
+    );
+    expect(detail).toContain("Company Facts captured 2026-03-01T00:00:00.000Z");
+    expect(detail).toContain("not an as-originally-filed timeline");
+    expect(input.onToggleCell).not.toHaveBeenCalled();
+  });
+  it("keeps availability failures and independent source states outside the closed disclosure", () => {
+    const input = props();
+    const node: React.ReactElement<{ children: React.ReactNode }> =
+      AnnualStatementsContext({
+        evidence: {
+          ...input.evidence,
+          generation: {
+            ...input.evidence.generation,
+            sources: {
+              ...input.evidence.generation.sources,
+              companyFacts: {
+                ...input.evidence.generation.sources.companyFacts,
+                status: "upstream_unavailable",
+                fetchedAt: null,
+                bytes: null,
+                sha256: null,
+              },
+            },
+          },
+        },
+        statements: {
+          ...input.statements,
+          contextReason: "source_unavailable",
+        },
+        presentation: "reader",
+      });
+    const top = React.Children.toArray(node.props.children).filter(
+      React.isValidElement<Record<string, unknown>>,
+    );
+    const visible = renderToStaticMarkup(
+      <>{top.filter((entry) => entry.type !== "details")}</>,
+    );
+    expect(visible).toContain(
+      "Company Facts: unavailable from SEC · Submissions: available",
+    );
+    expect(visible).toContain('role="status"');
+    expect(visible).toContain(
+      "Statement availability: A required SEC source is unavailable.",
+    );
+    expect(
+      renderToStaticMarkup(node).match(/Statement availability:/g),
+    ).toHaveLength(1);
+  });
   it("shows exact signed full-USD values, independent refusals and actual start/end dates", () => {
     const input = props();
     const html = renderToStaticMarkup(<ManagedAnnualStatements {...input} />);

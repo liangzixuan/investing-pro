@@ -421,8 +421,10 @@ export function AnnualStatementTable({
 
 function SourceContext({
   evidence,
+  presentation,
 }: {
   readonly evidence: PersonalSecAnnualCanonicalEvidenceDto;
+  readonly presentation: "reader" | "report";
 }) {
   const { generation, target } = evidence;
   return (
@@ -432,7 +434,13 @@ function SourceContext({
           ? `${target.form} · report date ${target.reportDate} · filed ${target.filedDate}.`
           : "An annual filing could not be selected for this load."}
       </p>
-      <p>
+      <p
+        className={
+          presentation === "reader"
+            ? "managed-annual-statement-source-clocks"
+            : undefined
+        }
+      >
         Company Facts captured{" "}
         {generation.sources.companyFacts.fetchedAt ?? "Unavailable"} (
         {sourceStatusLabels[generation.sources.companyFacts.status]}).
@@ -506,8 +514,11 @@ function SourceContext({
 export function AnnualStatementsContext({
   evidence,
   statements,
-}: Pick<ManagedAnnualStatementsProps, "evidence" | "statements">) {
-  return (
+  presentation,
+}: Pick<ManagedAnnualStatementsProps, "evidence" | "statements"> & {
+  readonly presentation: "reader" | "report";
+}) {
+  const context = (
     <>
       <p>
         Exact reported US-GAAP concepts in full USD, with signs and decimals
@@ -519,19 +530,52 @@ export function AnnualStatementsContext({
         statements. This view excludes custom-taxonomy and IFRS facts. It does
         not reconstruct totals, comprehensive debt, EBITDA or FCFF.
       </p>
-      <SourceContext evidence={evidence} />
-      {statements.contextReason && (
-        <p role="status">
-          Statement availability:{" "}
-          {annualStatementUnavailableText(statements.contextReason)}
-        </p>
-      )}
+      <SourceContext evidence={evidence} presentation={presentation} />
       <p>
         Comparative dates come from the selected filing and need not be
         consecutive fiscal years. Each flow keeps its actual start and end
         dates. Earlier values are historical comparatives, not an
         as-originally-filed timeline.
       </p>
+    </>
+  );
+  const { target, generation } = evidence;
+  return (
+    <>
+      {presentation === "reader" && (
+        <div className="managed-annual-statement-summary">
+          <p>
+            Limited US-GAAP concepts in full USD. Comparatives use the selected
+            filing.
+          </p>
+          <p>
+            {target.status === "target"
+              ? `${target.form} · report ${target.reportDate} · filed ${target.filedDate}`
+              : "An annual filing could not be selected for this load."}
+          </p>
+          <p>Original load completed {generation.completedAt}.</p>
+          <p>
+            Company Facts:{" "}
+            {sourceStatusLabels[generation.sources.companyFacts.status]}
+            {" · "}Submissions:{" "}
+            {sourceStatusLabels[generation.sources.submissions.status]}.
+          </p>
+        </div>
+      )}
+      {statements.contextReason && (
+        <p role="status">
+          Statement availability:{" "}
+          {annualStatementUnavailableText(statements.contextReason)}
+        </p>
+      )}
+      {presentation === "reader" ? (
+        <details className="managed-annual-statement-context">
+          <summary>Statement coverage and original sources</summary>
+          {context}
+        </details>
+      ) : (
+        context
+      )}
     </>
   );
 }
@@ -582,11 +626,14 @@ export function ManagedAnnualStatements({
           ))}
         </select>
       </label>
-      <AnnualStatementsContext evidence={evidence} statements={statements} />
-      <p>
-        Showing {annualStatementLabels[selectedStatement]}. Select specific
-        available reported cells for the existing note preview. Selection does
-        not add or save a note.
+      <AnnualStatementsContext
+        evidence={evidence}
+        statements={statements}
+        presentation="reader"
+      />
+      <p className="managed-annual-statement-instructions">
+        Select reported cells for a note preview. Selection does not append or
+        save a note.
       </p>
       {statement ? (
         <AnnualStatementTable

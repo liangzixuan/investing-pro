@@ -5640,7 +5640,26 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector(" + JSONObject.quote(tools) + ")?.open === false && document.querySelector(" + JSONObject.quote(preview) + ") === null");
         assertFinancialReviewCounts(1, 0, 0, 0, 1, 1);
         retainAnnualNoteFrame("annualStatementsIncome", reader + " h3", reader + " h3, " + selector, 2);
+        String coverage = reader + " .managed-annual-statement-context";
+        awaitPage("statement coverage starts closed while original load and source states remain visible",
+            "document.querySelector(" + JSONObject.quote(coverage) + ")?.open === false" +
+            " && document.querySelector('.managed-annual-statement-summary')?.textContent.includes('Original load completed 2026-09-20T00:00:03.000Z')" +
+            " && document.querySelector('.managed-annual-statement-summary')?.textContent.includes('Company Facts: available')");
+        click(coverage + " > summary");
+        String sourceClocksExact = "(() => { const text = document.querySelector('.managed-annual-statement-source-clocks')?.textContent ?? ''; return text.includes('Company Facts captured 2026-09-20T00:00:02.000Z')" +
+            " && text.includes('Submissions captured 2026-09-20T00:00:01.000Z') && text.includes('Original load completed 2026-09-20T00:00:03.000Z'); })()";
+        awaitPage("statement coverage exposes original source clocks without changing evidence",
+            "document.querySelector(" + JSONObject.quote(coverage) + ")?.open === true && " + sourceClocksExact);
+        retainAnnualNoteFrame("annualStatementsSourceClocks", coverage + " .managed-annual-statement-source-clocks", coverage + " .managed-annual-statement-source-clocks", 1);
+        awaitPage("both original source clocks remain exact after capture", sourceClocksExact);
+        click(coverage + " > summary");
+        awaitPage("statement coverage closes without changing the exact table", "document.querySelector(" + JSONObject.quote(coverage) + ")?.open === false && " + statementTableExact("Income statement"));
         click(incomeChoice);
+        String incomeAmount = reader + " td:has(input[aria-label^='Include Net income or loss attributable to parent, '][aria-label*='through 2025-12-31,']) .managed-annual-statement-amount";
+        String incomeExact = "document.querySelector(" + JSONObject.quote(incomeAmount) + ")?.textContent === 'USD -9007199254740993.123456789012345678' && document.querySelector(" + JSONObject.quote(incomeChoice) + ")?.checked === true";
+        awaitPage("the selected income cell displays the exact signed full-USD amount", incomeExact);
+        retainAnnualNoteFrame("annualStatementsExactIncome", incomeAmount, incomeAmount, 1);
+        awaitPage("the selected exact income amount remains unchanged after capture", incomeExact);
         chooseNativeSelectOption(selector, "balance_sheet", "Balance sheet");
         awaitPage("Balance sheet retains instant dates and exact comparative assets", statementTableExact("Balance sheet") +
             " && document.querySelector(" + JSONObject.quote(assetsChoice) + ")?.checked === false");

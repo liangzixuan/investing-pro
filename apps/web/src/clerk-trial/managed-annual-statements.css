@@ -6,6 +6,25 @@
 .managed-frame .managed-annual-statements p {
   overflow-wrap: anywhere;
 }
+.managed-frame .managed-annual-statement-summary,
+.managed-frame .managed-annual-statement-instructions {
+  color: var(--managed-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.managed-frame .managed-annual-statement-summary p {
+  margin-block: 6px;
+}
+.managed-frame .managed-annual-statement-context {
+  margin-block: 12px;
+}
+.managed-frame .managed-annual-statement-context > summary {
+  display: list-item;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding-block: 10px;
+  cursor: pointer;
+}
 .managed-frame .managed-annual-statement-selector {
   display: flex;
   flex-direction: column;

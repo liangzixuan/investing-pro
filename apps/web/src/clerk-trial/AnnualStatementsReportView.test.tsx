@@ -216,5 +216,8 @@ describe("static annual statement report", () => {
     expect(html).not.toContain("<table");
     expect(html).not.toContain("<input");
     expect(html).not.toContain("<select");
+    expect(html).not.toContain('class="managed-annual-statement-context"');
+    expect(html).not.toContain('class="managed-annual-statement-summary"');
+    expect(html).toContain("excludes custom-taxonomy and IFRS facts");
   });
 });
