@@ -27,6 +27,13 @@ browser formats share currentness and pending-operation ownership. It adds no
 report store, import, provider request or AI verdict. Android keeps JSON save.
 Source, file-delivery and rendering acceptance remain separate from publication.
 
+The next M2 increment adds [cash generation relative to revenue](MANAGED_SEC_ANNUAL.md#read-cash-generation-relative-to-revenue)
+to the loaded company Annual page. Three exact named revenue bases keep their
+own percentage, inputs, periods, filing references and refusal reasons. It reuses
+the current admitted graph without an income-pair requirement or another source
+request. This is a narrow statement ratio; full statements, valuation, screening
+and the broader InvestingPro goal remain open.
+
 The preceding M3 increment adds [Markets day view](MANAGED_MARKETS_HOME.md#read-the-markets-day-view):
 one Eastern-date reading view of the already loaded BEA schedule and Fed
 announcements. Independent source controls, original UTC times, scheduled versus

@@ -25,6 +25,20 @@ append; preserve authored whitespace and wrap long references without page
 overflow. A changed source or draft marks the old preview unavailable and
 requires a new preview. Append, Review and Save remain separate actions.
 
+## Annual cash generation relative to revenue
+
+Place the three named revenue bases below the existing cash note action and
+before cash history. Keep each reported revenue amount, calculated percentage,
+period and original qualification visible. Use the existing cash value layout;
+stack it at narrow widths and wrap long exact amounts and concept names. Keep
+signs neutral and give refusals the same space as available values.
+
+Each basis has an initially closed **Cash margin inputs** disclosure with a 44px
+summary target and visible keyboard focus. Its inputs, filing references and
+original clocks use the existing evidence renderers. Do not add a selected basis,
+new request control or score. Preserve the surrounding Annual section hierarchy,
+retained-report warning and independent note draft.
+
 ## Profiles and ownership
 
 The managed browser and Android workspace share the Precision Desk presentation.

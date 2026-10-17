@@ -504,6 +504,35 @@ unavailable and historical cash, and report/session lifetime. The action fits at
 The native fixture builds; hosted execution and delivery are recorded separately
 in current work.
 
+### Read cash generation relative to revenue
+
+After an explicit Annual load, **Cash generation relative to revenue** shows
+operating cash flow less PP&E purchases as a percentage of each reported revenue
+basis: revenue, revenue from contracts with customers excluding assessed tax, and
+net sales revenue. Each named concept stays separate. Missing operating income or
+net income does not hide a valid cash/revenue calculation.
+
+The app subtracts the exact cash amounts, divides by that basis's exact revenue,
+multiplies by 100 and rounds once to two decimal places. All three inputs must
+cover the same exact period and accession. Revenue must be positive and reported
+PP&E purchases nonnegative. Operating cash flow and the resulting percentage can
+be zero or negative. Missing, refused or incompatible inputs keep their reason;
+another basis, period or filing cannot fill the gap.
+
+The revenue amount, percentage, annual period and original current-use
+qualification stay visible. Open the initially closed **Cash margin inputs** for
+that basis to read all three original operands, observation references, selected
+filing and source capture times. A percentage is an app calculation, not a rating
+or a forecast. It uses the same narrow PP&E subtraction described above.
+
+The section reads the current Annual response without another request or save.
+Failed refresh and Cancel retain the original result under the existing previous
+report warning. A valid replacement updates it; company and session retirement
+clear it. This increment adds no percentage to the existing cash-to-note action,
+five-fact review or report summary. The report's complete JSON still captures the
+underlying Annual response. [Current work](CURRENT_WORK.md) records acceptance
+and delivery status.
+
 ### Read reported cash history
 
 In the managed Annual view, open **Reported cash history** below cash generation.

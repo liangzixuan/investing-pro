@@ -155,7 +155,17 @@ export {
   comparePersonalMargins,
   type PersonalMarginComparison,
 } from "./personal-margin";
-export { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
+export {
+  calculatePersonalOperatingCashFlowLessPpePurchases,
+  calculatePersonalOperatingCashFlowLessPpePurchasesMargin,
+  PERSONAL_CASH_GENERATION_MARGIN_MAX_CHARACTERS,
+} from "./personal-cash-generation";
+export {
+  derivePersonalSecAnnualCashMargins,
+  type PersonalSecAnnualCashMargin,
+  type PersonalSecAnnualCashMarginValue,
+  type PersonalSecAnnualCashMarginReason,
+} from "./personal-sec-annual-cash-margins";
 export {
   calculatePersonalCurrentAssetsLessCurrentLiabilities,
   calculatePersonalCurrentRatio,

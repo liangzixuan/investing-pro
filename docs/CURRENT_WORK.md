@@ -113,10 +113,37 @@ provisional base marker; current-head CI and release qualification are separate.
 Draft PR175 contains this candidate. Its first CodeScene check found structural
 issues in three new files. A focused refactor splits the passive report sections,
 simplifies the refusal condition and extracts calculation-reference assertions.
-The 19 original formatter cases and a private comparison across those same
-fixtures pass with identical before/after markup. Web types and scoped lint pass.
-The original CI attempt and the refactor's current-head checks remain separate.
+The 19 original formatter cases and 19 private copies pass, including 15 rendered
+fixtures with identical before/after markup. Web types and scoped lint pass.
+The original candidate passed Ubuntu and Windows CI but failed one packaged
+Android test at its existing saved-report screenshot visibility check. The failure
+was caused by a selector that still expected the JSON button as a direct child.
+The selector now follows its action container; all three visibility targets and
+the original deadline and save assertions remain. The original failure is
+retained; current-head checks remain separate.
 This surface is not released.
+
+## Annual cash margin in progress
+
+The next M2 candidate adds cash generation relative to each of the three named
+reported revenue bases. It uses the current Annual response and the exact
+operating cash flow, PP&E purchases and revenue operands. Matching periods and
+accessions, signed amounts, explicit refusals, original eligibility and complete
+input references remain visible. Missing operating or net income does not gate
+the calculation. The percentage rounds once to two decimal places. No provider,
+wire contract, saved field, note action, request or save is added.
+
+The 132 focused domain checks and 53 UI/composed cases pass, with web types,
+scoped lint and boundaries. Independent domain review is clear. Invented Chrome
+checks at measured 1440, 390 and 320 CSS pixels cover the dated percentages,
+keyboard inputs, long-value wrapping, failed/Cancel refresh retention, late replies,
+historical and missing-revenue replacements, and session retirement. Six explicit
+Annual reads made no price/filings/calendar/Fed request or save. The composed test
+separately covers both dirty drafts and company replacement. The additive native
+journey extension has passed syntax and source review; packaged execution is
+pending. It preserves all prior cases and frames, adding one percentage frame.
+This branch is stacked on the unreleased
+readable-report candidate; its acceptance and publication are separate.
 
 ## Remaining milestones and acceptance limits
 
