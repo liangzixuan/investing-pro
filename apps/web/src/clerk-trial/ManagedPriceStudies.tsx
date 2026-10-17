@@ -1,44 +1,14 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useId } from "react";
 import type { ManagedEodHistoryResponseDto } from "@research-cockpit/contracts";
 import {
-  resolveManagedPriceStudies,
   type ManagedPriceStudies as Studies,
   type ManagedPriceStudyKey,
 } from "./managed-price-studies";
-import type {
-  ManagedPriceStudiesActions,
-  PreparedPriceStudiesNote,
-  PriceStudiesNotePreparation,
-} from "./managed-price-studies-note";
+import type { ManagedPriceStudiesActions } from "./managed-price-studies-note";
+import { usePriceStudiesReview } from "./use-price-studies-review";
 import "./managed-price-studies.css";
 
-interface Context {
-  readonly response: ManagedEodHistoryResponseDto;
-  readonly blockedReason: string | null;
-  live: boolean;
-  choiceRevision: symbol;
-  previewRevision: symbol;
-}
-interface Preparation {
-  readonly response: ManagedEodHistoryResponseDto;
-  readonly guard: () => boolean;
-  readonly value: PriceStudiesNotePreparation;
-}
 const empty: readonly ManagedPriceStudyKey[] = Object.freeze([]);
-function isCurrent(
-  prepared: Preparation | null,
-  actions: ManagedPriceStudiesActions,
-) {
-  try {
-    return Boolean(
-      prepared?.value.preview &&
-      prepared.guard() &&
-      actions.isCurrent(prepared.value.preview),
-    );
-  } catch {
-    return false;
-  }
-}
 
 /** Temporary choices have a committed lifetime; the workspace owns draft changes. */
 export function ManagedPriceStudies({
@@ -53,39 +23,16 @@ export function ManagedPriceStudies({
   readonly actions: ManagedPriceStudiesActions;
 }) {
   const id = useId();
-  const studies = useMemo(
-    () => resolveManagedPriceStudies(response),
-    [response],
-  );
-  const context = useMemo<Context>(
-    () => ({
-      response,
-      blockedReason,
-      live: false,
-      choiceRevision: Symbol("study choices"),
-      previewRevision: Symbol("study preview"),
-    }),
-    [response, blockedReason],
-  );
-  const active = useRef<Context | null>(null);
-  const consumed = useRef(new WeakSet<PreparedPriceStudiesNote>());
-  const [choice, setChoice] = useState<{
-    response: ManagedEodHistoryResponseDto;
-    keys: readonly ManagedPriceStudyKey[];
-  }>(() => ({ response, keys: empty }));
-  const [prepared, setPrepared] = useState<Preparation | null>(null);
-  const [feedback, setFeedback] = useState<{
-    context: Context;
-    message: string;
-  } | null>(null);
-  useLayoutEffect(() => {
-    context.live = true;
-    active.current = context;
-    return () => {
-      context.live = false;
-      if (active.current === context) active.current = null;
-    };
-  }, [context]);
+  const {
+    studies,
+    keys,
+    preview,
+    current,
+    status,
+    onToggle,
+    onPrepare,
+    onAppend,
+  } = usePriceStudiesReview({ response, blockedReason, actions });
   if (!studies)
     return (
       <p role="status">
@@ -93,19 +40,6 @@ export function ManagedPriceStudies({
         history remains available.
       </p>
     );
-  const keys = choice.response === response ? choice.keys : empty;
-  const revision = context.choiceRevision;
-  const canAct = () =>
-    context.live &&
-    active.current === context &&
-    context.blockedReason === null &&
-    context.choiceRevision === revision;
-  const preparation = prepared?.response === response ? prepared : null;
-  const preview = preparation?.value.preview ?? null;
-  const current =
-    isCurrent(preparation, actions) &&
-    (preview === null || !consumed.current.has(preview));
-  const message = feedback?.context === context ? feedback.message : "";
   return (
     <section
       className="managed-price-studies"
@@ -121,25 +55,7 @@ export function ManagedPriceStudies({
         studies={studies}
         selected={keys}
         disabled={blockedReason !== null}
-        onToggle={(key) => {
-          if (
-            !canAct() ||
-            !studies.rows.some((row) => row.key === key && row.available)
-          )
-            return;
-          context.choiceRevision = Symbol("study choices");
-          context.previewRevision = Symbol("study preview");
-          setChoice({
-            response,
-            keys: Object.freeze(
-              keys.includes(key)
-                ? keys.filter((entry) => entry !== key)
-                : [...keys, key],
-            ),
-          });
-          setPrepared(null);
-          setFeedback(null);
-        }}
+        onToggle={onToggle}
       />
       <details className="managed-price-studies-review">
         <summary>Review selected study results ({keys.length})</summary>
@@ -153,25 +69,7 @@ export function ManagedPriceStudies({
           className="trial-secondary"
           disabled={blockedReason !== null || keys.length === 0}
           aria-describedby={`${id}-help ${id}-status`}
-          onClick={() => {
-            if (!canAct()) return;
-            context.previewRevision = Symbol("study preview");
-            const previewRevision = context.previewRevision;
-            const guard = () =>
-              canAct() && context.previewRevision === previewRevision;
-            let value: PriceStudiesNotePreparation;
-            try {
-              value = actions.prepare(response, keys, guard);
-            } catch {
-              value = {
-                preview: null,
-                reason:
-                  "The study note could not be prepared. Review the current price history and draft.",
-              };
-            }
-            setPrepared({ response, guard, value });
-            setFeedback(null);
-          }}
+          onClick={onPrepare}
         >
           Preview complete note
         </button>
@@ -183,40 +81,14 @@ export function ManagedPriceStudies({
               type="button"
               className="trial-secondary"
               disabled={!current || blockedReason !== null}
-              onClick={() => {
-                if (
-                  !canAct() ||
-                  !preparation ||
-                  !isCurrent(preparation, actions) ||
-                  consumed.current.has(preview)
-                )
-                  return;
-                consumed.current.add(preview);
-                let result: { readonly message: string };
-                try {
-                  result = actions.append(preview);
-                } catch {
-                  result = {
-                    message:
-                      "The study note could not be applied. Review the draft and prepare a new preview.",
-                  };
-                }
-                context.previewRevision = Symbol("study preview consumed");
-                setPrepared(null);
-                setFeedback({ context, message: result.message });
-              }}
+              onClick={onAppend}
             >
               Add study results to note draft
             </button>
           </div>
         )}
         <p id={`${id}-status`} role="status" aria-live="polite">
-          {blockedReason ||
-            message ||
-            (preview && !current
-              ? "The study choices, history, note or review context changed. Preview the complete note again."
-              : preparation?.value.reason) ||
-            ""}
+          {status}
         </p>
       </details>
     </section>

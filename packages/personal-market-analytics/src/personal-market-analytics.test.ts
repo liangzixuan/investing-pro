@@ -474,33 +474,15 @@ describe("raw-close market analytics", () => {
         [result.metrics.smaTrend.sma200, 200, 200],
       ] as const;
       for (const [metric, requiredSessions, window] of metrics) {
-        expect(metric).toMatchObject({
-          observedSessions: Math.min(count, window),
-          sampleFirstDate:
-            count === 0 ? null : dateAt(Math.max(0, count - window)),
-          sampleLastDate: count === 0 ? null : dateAt(count - 1),
-        });
+        expectMetricSample(metric, count, window);
         if (count < requiredSessions) {
-          expect(metric).toMatchObject({
-            status: "insufficient_history",
-            requiredSessions,
-          });
-          expect(metric).not.toHaveProperty("valuePercent");
-          expect(metric).not.toHaveProperty("distancePercent");
+          expectInsufficientMetric(metric, requiredSessions);
         } else if (
           metric === result.metrics.trailing252SessionCloseRangePosition
         ) {
-          expect(metric.status).toBe("zero_range");
-          expect(metric).not.toHaveProperty("valuePercent");
+          expectZeroRangeMetric(metric);
         } else {
-          expect(metric.status).toBe("available");
-          if ("valuePercent" in metric)
-            expect(metric.valuePercent).toBe("0.0000");
-          else
-            expect(metric).toMatchObject({
-              classification: "at",
-              distancePercent: "0.0000",
-            });
+          expectAvailableConstantMetric(metric);
         }
       }
     },
@@ -750,6 +732,45 @@ function rawRows(length: number, closeAt: (index: number) => string) {
     date: dateAt(index),
     close: closeAt(index),
   }));
+}
+
+function expectMetricSample(
+  metric: MetricLeaf,
+  count: number,
+  window: number,
+): void {
+  expect(metric).toMatchObject({
+    observedSessions: Math.min(count, window),
+    sampleFirstDate: count === 0 ? null : dateAt(Math.max(0, count - window)),
+    sampleLastDate: count === 0 ? null : dateAt(count - 1),
+  });
+}
+
+function expectInsufficientMetric(
+  metric: MetricLeaf,
+  requiredSessions: number,
+): void {
+  expect(metric).toMatchObject({
+    status: "insufficient_history",
+    requiredSessions,
+  });
+  expect(metric).not.toHaveProperty("valuePercent");
+  expect(metric).not.toHaveProperty("distancePercent");
+}
+
+function expectZeroRangeMetric(metric: MetricLeaf): void {
+  expect(metric.status).toBe("zero_range");
+  expect(metric).not.toHaveProperty("valuePercent");
+}
+
+function expectAvailableConstantMetric(metric: MetricLeaf): void {
+  expect(metric.status).toBe("available");
+  if ("valuePercent" in metric) expect(metric.valuePercent).toBe("0.0000");
+  else
+    expect(metric).toMatchObject({
+      classification: "at",
+      distancePercent: "0.0000",
+    });
 }
 
 function bar(

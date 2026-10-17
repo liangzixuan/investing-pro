@@ -2,6 +2,7 @@ import {
   createAnnualStatementsNativeFixture,
   type NativeAnnualStatementsMetadata,
 } from "./annual-statements-fixture";
+import { createPriceStudiesNativeFixture } from "./price-studies-fixture";
 import {
   createPortfolioNativeFixture,
   type PortfolioNativeControls,
@@ -92,8 +93,6 @@ export const annualNoteDraft =
   "Annual research draft Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Same-filing annual comparison: prior 2024-01-01 to 2024-12-31; Revenues revenue USD 800 to 1000, change USD 200 (25%); NetIncomeLoss USD -80 to 100, change USD 180 (Unavailable: prior value is negative). Reported net margin -10% to 10%, change 20 percentage points. Period length, accounting changes and restatements are unadjusted; not as-originally-filed history or organic growth. Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; NetIncomeLoss USD 32; net margin 5%. Earlier same-filing annual comparison: prior 2023-01-01 to 2023-12-31; current 2024-01-01 to 2024-12-31; Revenues revenue change USD 160 (25%); NetIncomeLoss change USD -112 (-350%). Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
 export const priceNoteDraft =
   "Price research draft Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 to 2026-09-18 USD 107.500000000000000002; raw close change +$7.500000000000000001 (+7.5000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Evidence dates are unchanged; this action does not refresh sources.";
-export const priceStudiesNoteDraft =
-  "Price studies draft ZERO XNAS raw close studies: Loaded-window raw close change: 10.0000% (3 observed closes; 2026-09-17 through 2026-09-19; Raw price change excludes dividends and split adjustments.); Maximum observed drawdown: 0.0000% (3 observed closes; 2026-09-17 through 2026-09-19; Nonnegative decline magnitude; peak 2026-09-17, trough 2026-09-17.). Tiingo raw USD closes, unadjusted for splits/dividends; observed gaps are not filled. Loaded 1m window 2026-08-20 through 2026-09-20; requested 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Formula set 1.0.0; derived percentages rounded half-up to 4 decimal places. Descriptive observations, not a recommendation or forecast.";
 export const marketsPriceNoteDraft =
   "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to 2026-09-19 USD 20.5; raw close change -$0.25 (-1.2048%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Retained previous history; newer prices were not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
 export const recoveryNoteDraft = "Retained recovery draft";
@@ -270,7 +269,6 @@ async function createSharedFixture(
     | "company-price-ranges"
     | "thesis-review"
     | "price-comparison-note"
-    | "price-studies"
     | "company-filings"
     | "markets-price-handoff"
     | "watchlist-recovery"
@@ -417,9 +415,7 @@ async function createSharedFixture(
             ? "2026-09-21T00:00:02.000Z"
             : "2026-09-20T00:00:01.000Z",
         rows:
-          (scenario === "price-comparison-note" ||
-            scenario === "price-studies") &&
-          kind === "initial"
+          scenario === "price-comparison-note" && kind === "initial"
             ? [
                 { date: "2026-09-17", close: "100.000000000000000001" },
                 { date: "2026-09-18", close: "107.500000000000000002" },
@@ -1223,8 +1219,7 @@ async function createSharedFixture(
                   { ...marketsCohort[1], note: marketsPriceNoteDraft },
                 ]
               : scenario === "annual-note" ||
-                  scenario === "price-comparison-note" ||
-                  scenario === "price-studies"
+                  scenario === "price-comparison-note"
                 ? payload.memberships.map((member, index) =>
                     index === 0
                       ? {
@@ -1232,9 +1227,7 @@ async function createSharedFixture(
                           note:
                             scenario === "annual-note"
                               ? annualNoteDraft
-                              : scenario === "price-studies"
-                                ? priceStudiesNoteDraft
-                                : priceNoteDraft,
+                              : priceNoteDraft,
                         }
                       : member,
                   )
@@ -1251,11 +1244,6 @@ async function createSharedFixture(
         signal.aborted ||
         (scenario === "annual-note" && state.annual !== 1) ||
         (scenario === "price-comparison-note" && state.eod !== 1) ||
-        (scenario === "price-studies" &&
-          (state.eod !== 1 ||
-            state.load !== 1 ||
-            state.annual !== 0 ||
-            state.filings !== 0)) ||
         (scenario === "fed-announcements" &&
           (state.fed !== 6 ||
             state.fedAborted !== 2 ||
@@ -1348,23 +1336,6 @@ async function createSharedFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
-      if (scenario === "price-studies") {
-        if (
-          signal.aborted ||
-          request.catalogSnapshotSha256 !== digest ||
-          request.listingId !== "listing-zero" ||
-          request.range !== "1m" ||
-          state.status !== 1 ||
-          state.marketsResolve !== 1 ||
-          state.eod >= 2 ||
-          (state.eod === 0
-            ? state.save !== 0 || state.load !== 1
-            : state.save !== 1 || state.load !== 2)
-        )
-          throw new Error("Unexpected invented price studies read or order");
-        count("eod");
-        return Promise.resolve(structuredClone(eodInitial));
-      }
       if (balanceScenario) {
         count("eod");
         throw new Error("Unexpected balance-sheet Price read");
@@ -1665,7 +1636,7 @@ async function createSharedFixture(
       }
       if (scenario === "watchlist-comparison")
         throw new Error("Unexpected invented watchlist comparison Annual read");
-      if (scenario === "price-comparison-note" || scenario === "price-studies")
+      if (scenario === "price-comparison-note")
         throw new Error("Unexpected fixture price note Annual read");
       if (scenario === "markets-price-handoff")
         throw new Error("Unexpected fixture handoff Annual read");
@@ -2026,8 +1997,13 @@ export async function createFixture(
     | Parameters<typeof createSharedFixture>[0]
     | "annual-financial-review"
     | "annual-statements"
+    | "price-studies"
     | "portfolio-ledger" = "default",
 ): Promise<ManagedNativeFixture> {
+  if (scenario === "price-studies")
+    return createPriceStudiesNativeFixture(
+      await createSharedFixture("price-comparison-note"),
+    );
   if (scenario === "annual-statements")
     return createAnnualStatementsNativeFixture(
       await createSharedFixture("annual-note"),
