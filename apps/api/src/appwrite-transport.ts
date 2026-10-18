@@ -24,6 +24,9 @@ interface Options {
   readonly limits?: Partial<Limits>;
   /** Injection seam for isolated tests. This composition owns its lifetime. */
   readonly dispatcher?: Dispatcher;
+  /** Trusted qualification only: retain exact 404 database absence for this
+   * database's TablesDB row GETs. Never supplied by a client request. */
+  readonly expectedAbsentDatabaseId?: string;
 }
 
 type Failure =
@@ -52,6 +55,13 @@ function failure(type: Failure): AppwriteException {
 
 /** One bounded lifetime shared by every SDK call in a server operation. */
 export function createAppwriteTransport(options: Options) {
+  const expectedAbsentDatabaseId = options.expectedAbsentDatabaseId;
+  if (
+    expectedAbsentDatabaseId !== undefined &&
+    (typeof expectedAbsentDatabaseId !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/u.test(expectedAbsentDatabaseId))
+  )
+    throw failure("invalid_request");
   let endpoint: URL;
   try {
     endpoint = new URL(options.endpoint);
@@ -280,7 +290,7 @@ export function createAppwriteTransport(options: Options) {
         assertActive();
         return result;
       } catch (error) {
-        // Keep only finite diagnostic types and the exact row absence type.
+        // Keep only finite diagnostic types and exact, scoped absence types.
         // Raw SDK messages/responses can contain records; no cause is attached.
         const code =
           error instanceof AppwriteException &&
@@ -294,11 +304,20 @@ export function createAppwriteTransport(options: Options) {
           error instanceof AppwriteException &&
           error.type === "row_not_found"
             ? "row_not_found"
-            : code !== 0 &&
+            : code === 404 &&
                 error instanceof AppwriteException &&
-                ERROR_TYPES.has(error.type)
-              ? error.type
-              : "request_failed";
+                error.type === "database_not_found" &&
+                expectedAbsentDatabaseId !== undefined &&
+                method.toUpperCase() === "GET" &&
+                /^\/v1\/tablesdb\/([A-Za-z0-9][A-Za-z0-9._-]{0,35})\/tables\/[A-Za-z0-9][A-Za-z0-9._-]{0,35}\/rows\/[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/u.exec(
+                  url.pathname,
+                )?.[1] === expectedAbsentDatabaseId
+              ? "database_not_found"
+              : code !== 0 &&
+                  error instanceof AppwriteException &&
+                  ERROR_TYPES.has(error.type)
+                ? error.type
+                : "request_failed";
         throw new AppwriteException("Appwrite request failed.", code, type);
       }
     }
