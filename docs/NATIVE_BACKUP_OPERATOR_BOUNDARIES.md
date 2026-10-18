@@ -1,8 +1,8 @@
 # Native backup operator boundaries
 
-These internal modules prepare the request and receipt boundaries for an isolated
-native Appwrite backup drill. They do not create a runnable controller, obtain
-account authority, provision resources or qualify a cloud restore.
+These internal modules compose a fixed one-use controller for an isolated native
+Appwrite backup drill. They expose no public route or operational CLI. Source
+acceptance does not establish account authority or an executed cloud restore.
 
 The [Watchlist proof](MANAGED_WATCHLIST_RESTORE_PROOF.md) checks application data
 and command receipts. An operator must separately bind its reviewed resource
@@ -21,7 +21,7 @@ The transport limits the attempt to 89 dispatches and 20 minutes, each request
 to 20 seconds, JSON responses to 1 MiB and the deployment archive to 2 MiB.
 The request limit counts client dispatches. It does not bound Appwrite's internal
 build, archive or restore work, or show that a timed-out mutation did not commit.
-The controller still needs its finite phase order and durable original results.
+The controller fixes its phase order and records each request before dispatch.
 Always close the owned transport in `finally`. Cleanup has its own finite limit;
 a cleanup error leaves the attempt sealed and must not trigger another dispatch.
 
@@ -66,6 +66,40 @@ whole-account recovery or an atomic backup across separate databases.
 ## Validation and operation
 
 Local tests use invented responses and isolated SDK dispatchers. They qualify the
-specified transport and receipt behavior. They do not establish account
+specified transport, receipt and controller behavior. They do not establish account
 allowance, pricing, retention, a completed archive or a successful cloud restore.
 Keep operation approval and actual tool review separate from source acceptance.
+
+## One-use admission and durable evidence
+
+The private operator must supply a verified decision for the exact controller
+revision, fixed plan, target, artifact and expiry. Allowance, retention and zero
+additional spending require separate acceptance. A caller cannot supply a phase,
+resource ID, command, replacement artifact or retry policy through the controller.
+
+Before creating its transport, the controller consumes a new journal directory
+exclusively. The file journal writes, syncs and closes each new file before it
+returns. Preserve that directory as the custody record for the matching one-use
+decision. The implementation does not establish host directory durability or
+Windows access control; it cannot safely resume from a lost custody record.
+
+Each request has a preceding durable intent. Its result record retains the SDK
+JSON value's digest, bounded operation metadata and any admitted receipt or proof
+report. Provider bodies, response headers, build logs and credentials are excluded.
+An invalid projection records refusal and stops. A missing result or persistence
+failure must not trigger another attempt, repair or deletion.
+
+The fixed workflow creates only the invented source schema and private proof
+function. It binds the uploaded artifact to the returned deployment, checks its
+private settings and active pointer, and runs the four fixed application phases.
+Native restoration receives the explicit different target immediately after a
+typed absence check. Complete source and destination schema and row inventories
+bind the observed result before the target's next-version Save. Final checks
+compare source full-row fingerprints and the expected destination rows.
+
+The successful ceiling is 89 operator requests and 51 function store requests.
+Polling has six finite batches per observation stage and at most 690 seconds of
+scheduled waits. Any failed, incomplete or uncertain step stops progression.
+Transport cleanup and the terminal journal write must both succeed before the
+controller reports qualification. These checks assume exclusive ownership of the
+invented resources; they do not qualify concurrent external writes.
