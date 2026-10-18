@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 16, 2026. This document defines the durable product goals and
+Updated October 18, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -19,8 +19,11 @@ The next outcome is a coordinated API, website and Android release with explicit
 daily-use acceptance. Several useful workflows are integrated in source but are
 not in the verified live release. Use the single capability and delivery table in
 [Current work](CURRENT_WORK.md) and the [release readiness plan](MANAGED_RELEASE_READINESS.md).
-Keep the browser stop and all existing release gates intact; offline preparation
-does not establish staging, production or physical-device acceptance.
+Keep all existing release gates intact and use the current task's browser
+authorization. The owner resumed browser testing on October 18; older stop labels
+are historical. Record actual tool restrictions separately from owner permission.
+Offline preparation does not establish staging, production or physical-device
+acceptance.
 
 After delivery, align Price, Annual and Filings eligibility across one useful
 named company universe. Then complete editable valuation persistence and managed

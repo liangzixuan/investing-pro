@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 17, 2026. This is the current capability and delivery record.
+Updated October 18, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
@@ -37,12 +37,18 @@ acceptance matrix, compatibility checks and rollback boundaries. Product source
 has passed all final-main checks; artifact qualification remains separate. Record API upload,
 website promotion, signed package delivery and device upgrade separately.
 
-Keep the browser stop in force. The current site release workflow activates
-staging and invokes BrowserStack even when production promotion is disabled.
-It cannot be used as an offline build while browser work is stopped. Do not
-weaken the gate, use an alternate browser or repeat the same permission request.
-Offline source/artifact review and independent API/CLI work can continue within
-actual authorization.
+Matching local API and website artifacts and signed Android 1.28.0, code 29, are
+prepared. They have not replaced the verified live release or delivered 1.27
+package. Reuse unchanged local qualification; staging and delivery remain open.
+
+Use the current task's browser authorization. The owner explicitly resumed
+browser testing on October 18; older browser-stop labels do not override that
+instruction. The site release workflow activates staging and invokes BrowserStack
+even when production promotion is disabled. Run it only within the authorized
+scope and actual tool permissions. A tool rejection remains a separate blocker;
+preserve its reason and do not retry the action through an indirect route. Do not
+ask for the same browser permission again. Keep the existing release checks and
+the owner's selected browser. Independent source/API/CLI work can continue.
 
 After this delivery outcome, align Price, Annual and Filings eligibility across
 one useful named company universe. Then complete editable valuation persistence
