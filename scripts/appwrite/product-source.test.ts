@@ -109,27 +109,40 @@ beforeAll(async () => {
   git(productRoot, "checkout", "-q", "--detach", sourceSha);
 });
 
-describe("selected-product release workflow", () => {
-  it("keeps both source gates before product code and the mandatory staging/browser/production sequence", async () => {
-    const document = load(
-      await readFile(
-        resolve(
-          import.meta.dirname,
-          "../../.github/workflows/appwrite-site-release.yml",
-        ),
-        "utf8",
+interface ReleaseWorkflow {
+  on: { workflow_dispatch: { inputs: Record<string, { required: boolean }> } };
+  concurrency: { group: string; "cancel-in-progress": boolean };
+  jobs: Record<
+    string,
+    { if: string; needs?: string; steps: Record<string, unknown>[] }
+  >;
+}
+
+async function releaseWorkflow() {
+  return load(
+    await readFile(
+      resolve(
+        import.meta.dirname,
+        "../../.github/workflows/appwrite-site-release.yml",
       ),
-      { schema: JSON_SCHEMA },
-    ) as {
-      on: {
-        workflow_dispatch: { inputs: Record<string, { required: boolean }> };
-      };
-      concurrency: { group: string; "cancel-in-progress": boolean };
-      jobs: Record<
-        string,
-        { if: string; needs?: string; steps: Record<string, unknown>[] }
-      >;
-    };
+      "utf8",
+    ),
+    { schema: JSON_SCHEMA },
+  ) as ReleaseWorkflow;
+}
+
+function stageIndex(document: ReleaseWorkflow, name: string) {
+  const steps = document.jobs.staging!.steps;
+  const matches = steps
+    .map((step, position) => (step.name === name ? position : -1))
+    .filter((position) => position >= 0);
+  expect(matches).toHaveLength(1);
+  return matches[0]!;
+}
+
+describe("selected-product release workflow", () => {
+  it("requires both source proofs, separate checkouts and main-only execution", async () => {
+    const document = await releaseWorkflow();
     for (const key of [
       "ci_run_id",
       "ci_run_attempt",
@@ -144,14 +157,30 @@ describe("selected-product release workflow", () => {
     });
     const staging = document.jobs.staging!;
     expect(staging.if).toBe("github.ref == 'refs/heads/main'");
-    const steps = staging.steps;
-    const index = (name: string) => {
-      const matches = steps
-        .map((step, position) => (step.name === name ? position : -1))
-        .filter((position) => position >= 0);
-      expect(matches).toHaveLength(1);
-      return matches[0]!;
-    };
+    const controllerCheckout =
+      staging.steps[stageIndex(document, "Check out the exact main revision")]!;
+    const productCheckout =
+      staging.steps[
+        stageIndex(
+          document,
+          "Check out the selected product revision separately",
+        )
+      ]!;
+    expect(controllerCheckout.with).toMatchObject({
+      ref: "${{ github.sha }}",
+      "persist-credentials": false,
+    });
+    expect(productCheckout.with).toMatchObject({
+      ref: "${{ inputs.product_source_sha }}",
+      path: "release-product",
+      "persist-credentials": false,
+    });
+  });
+
+  it("keeps both gates before product code and the mandatory staging/browser sequence", async () => {
+    const document = await releaseWorkflow();
+    const steps = document.jobs.staging!.steps;
+    const index = (name: string) => stageIndex(document, name);
     const controllerGate = index("Verify actual applicable GitHub checks");
     const productGate = index(
       "Verify the selected main product and its actual checks",
@@ -167,12 +196,6 @@ describe("selected-product release workflow", () => {
     expect(installProduct).toBeLessThan(build);
     expect(build).toBeLessThan(pack);
     expect(pack).toBeLessThan(stage);
-    expect(steps[pack]?.run).toContain(
-      "cp dist/source-proof/source-proof.json dist/appwrite-release/controller-source-proof.json",
-    );
-    expect(steps[pack]?.run).toContain(
-      "cp dist/product-source-proof/source-proof.json dist/appwrite-release/product-source-proof.json",
-    );
     expect(stage).toBeLessThan(browser);
     expect(browser).toBeLessThan(acceptance);
     for (const position of [
@@ -185,6 +208,22 @@ describe("selected-product release workflow", () => {
       expect(steps[position]).not.toHaveProperty("continue-on-error");
       expect(steps[position]).not.toHaveProperty("if");
     }
+    expect(steps[browser]?.run).toBe(
+      "pnpm exec tsx scripts/browserstack/run-web.ts --run-staging",
+    );
+  });
+
+  it("binds product code and browser expectations without exposing secrets or relabeling the controller", async () => {
+    const document = await releaseWorkflow();
+    const steps = document.jobs.staging!.steps;
+    const build = stageIndex(
+      document,
+      "Build the production Clerk static site",
+    );
+    const browser = stageIndex(
+      document,
+      "Test this exact build on BrowserStack",
+    );
     expect(steps[build]?.["working-directory"]).toBe("release-product");
     expect(
       (steps[build]?.env as Record<string, string>).INVESTMENT_BUILD_SHA,
@@ -193,28 +232,26 @@ describe("selected-product release workflow", () => {
       (steps[browser]?.env as Record<string, string>)
         .INVESTMENT_EXPECTED_BUILD_SHA,
     ).toBe("${{ inputs.product_source_sha }}");
-    expect(steps[browser]?.run).toBe(
-      "pnpm exec tsx scripts/browserstack/run-web.ts --run-staging",
-    );
     for (const step of steps)
       expect(step.env ?? {}).not.toHaveProperty("GITHUB_SHA");
-    const controllerCheckout =
-      steps[index("Check out the exact main revision")]!;
-    const productCheckout =
-      steps[index("Check out the selected product revision separately")]!;
-    expect(controllerCheckout.with).toMatchObject({
-      ref: "${{ github.sha }}",
-      "persist-credentials": false,
-    });
-    expect(productCheckout.with).toMatchObject({
-      ref: "${{ inputs.product_source_sha }}",
-      path: "release-product",
-      "persist-credentials": false,
-    });
     for (const step of steps.filter(
       (step) => step["working-directory"] === "release-product",
     ))
       expect(JSON.stringify(step.env ?? {})).not.toContain("secrets.");
+  });
+
+  it("retains both proofs and promotes the same artifact only after accepted staging", async () => {
+    const document = await releaseWorkflow();
+    const pack =
+      document.jobs.staging!.steps[
+        stageIndex(document, "Package the exact artifact")
+      ]!;
+    expect(pack.run).toContain(
+      "cp dist/source-proof/source-proof.json dist/appwrite-release/controller-source-proof.json",
+    );
+    expect(pack.run).toContain(
+      "cp dist/product-source-proof/source-proof.json dist/appwrite-release/product-source-proof.json",
+    );
     expect(document.jobs.production?.needs).toBe("staging");
     expect(document.jobs.production?.if).toBe(
       "inputs.promote && github.ref == 'refs/heads/main'",
@@ -340,20 +377,31 @@ describe("separate product and controller source", () => {
     ).toThrow();
   });
 
-  it("rejects a product outside the accepted controller history before any request", async () => {
-    const request = acceptedGitHub();
-    await expect(
-      verifyProductSource(
-        { ...selection(), sourceSha: unrelated },
-        controller,
-        root,
-        proof,
-        "synthetic-token",
-        request,
-      ),
-    ).rejects.toThrow();
-    expect(request).not.toHaveBeenCalled();
-  });
+  it.each(["unrelated history", "wrong repository"])(
+    "rejects %s before any request",
+    async (reason) => {
+      const request = acceptedGitHub();
+      const selected =
+        reason === "unrelated history"
+          ? { ...selection(), sourceSha: unrelated }
+          : selection();
+      const evidence =
+        reason === "wrong repository"
+          ? { ...proof, repository: "other/repository" }
+          : proof;
+      await expect(
+        verifyProductSource(
+          selected,
+          controller,
+          root,
+          evidence,
+          "synthetic-token",
+          request,
+        ),
+      ).rejects.toThrow();
+      expect(request).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([{ ciRunAttempt: 1 }, { ciRunId: "99999" }])(
     "rejects a different product proof or attempt %j",
@@ -372,21 +420,6 @@ describe("separate product and controller source", () => {
       expect(request).not.toHaveBeenCalled();
     },
   );
-
-  it("rejects a proof from a different repository before any request", async () => {
-    const request = acceptedGitHub();
-    await expect(
-      verifyProductSource(
-        selection(),
-        controller,
-        root,
-        { ...proof, repository: "other/repository" },
-        "synthetic-token",
-        request,
-      ),
-    ).rejects.toThrow();
-    expect(request).not.toHaveBeenCalled();
-  });
 
   it("rejects product edits instead of trusting its HEAD label", async () => {
     const request = acceptedGitHub();

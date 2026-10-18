@@ -21,6 +21,11 @@ export interface ControllerContext {
   event: string;
 }
 
+const isSourceSha = (candidate: unknown): candidate is string =>
+  typeof candidate === "string" &&
+  /^[a-f0-9]{40}$/u.test(candidate) &&
+  candidate !== "0".repeat(40);
+
 export function selectProduct(
   input: unknown,
   controller: ControllerContext,
@@ -32,11 +37,7 @@ export function selectProduct(
     "ciRunId",
     "sourceSha",
   ]);
-  const sha = (candidate: unknown): candidate is string =>
-    typeof candidate === "string" &&
-    /^[a-f0-9]{40}$/u.test(candidate) &&
-    candidate !== "0".repeat(40);
-  assert(sha(value.sourceSha) && sha(controller.sha));
+  assert(isSourceSha(value.sourceSha) && isSourceSha(controller.sha));
   assert(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(controller.repository));
   assert(controller.ref === "refs/heads/main");
   assert(controller.event === "workflow_dispatch");
