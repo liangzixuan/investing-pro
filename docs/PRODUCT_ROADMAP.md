@@ -15,9 +15,10 @@ an authored review to the existing note draft and saving it explicitly.
 
 ## Current priority after the October 17 review
 
-The next outcome is a coordinated API, website and Android release with explicit
-daily-use acceptance. Several useful workflows are integrated in source but are
-not in the verified live release. Use the single capability and delivery table in
+The next outcome is matching Android delivery and supported upgrade, followed by
+daily-use acceptance. The October 18 website/API release publishes product
+`f4379679`; matching Android 1.28 is signed and locally qualified but not delivered.
+Use the single capability and delivery table in
 [Current work](CURRENT_WORK.md) and the [release readiness plan](MANAGED_RELEASE_READINESS.md).
 Keep all existing release gates intact and use the current task's browser
 authorization. The owner resumed browser testing on October 18; older stop labels
