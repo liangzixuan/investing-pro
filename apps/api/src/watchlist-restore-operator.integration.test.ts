@@ -236,6 +236,8 @@ async function assertDurableSuccess(
   await assertDurableIdentities(f, files);
 }
 
+// A successful run syncs 120 exclusive files, then audits every saved step.
+// Give real disk IO a bounded budget; production request/lifetime limits stay fixed.
 describe("offline one-use Watchlist restore operator integration", () => {
   it("joins real SDK receipts, full inventories, four proofs and durable results in 59 dispatches", async () => {
     const f = await setup();
@@ -250,7 +252,7 @@ describe("offline one-use Watchlist restore operator integration", () => {
       requests: 0,
     });
     expect(f.requests).toHaveLength(59);
-  });
+  }, 30_000);
 
   it("stops after a restored historical receipt changes, before replay or the next Save", async () => {
     const f = await setup(true);
@@ -285,5 +287,5 @@ describe("offline one-use Watchlist restore operator integration", () => {
       requests: result.requests,
     });
     expect(f.requests.length).toBeLessThan(59);
-  });
+  }, 30_000);
 });
