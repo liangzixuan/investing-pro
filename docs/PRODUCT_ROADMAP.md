@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 16, 2026. This document defines the durable product goals and
+Updated October 18, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -15,12 +15,16 @@ an authored review to the existing note draft and saving it explicitly.
 
 ## Current priority after the October 17 review
 
-The next outcome is a coordinated API, website and Android release with explicit
-daily-use acceptance. Several useful workflows are integrated in source but are
-not in the verified live release. Use the single capability and delivery table in
+The next outcome is matching Android delivery and supported upgrade, followed by
+daily-use acceptance. The October 18 website/API release publishes product
+`f4379679`; matching Android 1.28 is signed and locally qualified but not delivered.
+Use the single capability and delivery table in
 [Current work](CURRENT_WORK.md) and the [release readiness plan](MANAGED_RELEASE_READINESS.md).
-Keep the browser stop and all existing release gates intact; offline preparation
-does not establish staging, production or physical-device acceptance.
+Keep all existing release gates intact and use the current task's browser
+authorization. The owner resumed browser testing on October 18; older stop labels
+are historical. Record actual tool restrictions separately from owner permission.
+Offline preparation does not establish staging, production or physical-device
+acceptance.
 
 After delivery, align Price, Annual and Filings eligibility across one useful
 named company universe. Then complete editable valuation persistence and managed
@@ -715,7 +719,7 @@ rendering and note checks, actual-main source checks, eighteen invented-data nat
 cases, fresh API activation, same-archive website promotion and signed delivery
 passed. This completes the selected company-page outcome toward M2. The broader
 company page and browser/physical recovery acceptance remain open.
-[Current work](CURRENT_WORK.md#accepted-release) records the exact release and
+[Current work](CURRENT_WORK.md#current-capability-and-delivery-status) records the exact release and
 limits, and [the Annual guide](MANAGED_SEC_ANNUAL.md#reported-net-margin-comparison)
 defines the calculation contract.
 

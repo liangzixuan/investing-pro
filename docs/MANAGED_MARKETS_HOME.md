@@ -569,5 +569,5 @@ The same staged archive passed the configured inert BrowserStack gate and normal
 production approval. These checks do not establish a live selected-price provider
 journey or physical-phone acceptance. The signed package passed artifact and
 delivery review; installation and physical use remain separate. See
-[Current work](CURRENT_WORK.md#accepted-release) for release identities and
+[Current work](CURRENT_WORK.md#current-capability-and-delivery-status) for release identities and
 current limits.

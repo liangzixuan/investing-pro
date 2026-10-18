@@ -923,7 +923,7 @@ generation and draft boundaries.
 PR 59 delivers prior and current net margin and their difference in percentage
 points on the website and in signed Android 1.17. It uses the same eligible
 observations and named revenue basis as the reported annual comparison.
-[Current work](CURRENT_WORK.md#accepted-release) records source, delivery and
+[Current work](CURRENT_WORK.md#current-capability-and-delivery-status) records source, delivery and
 acceptance limits.
 
 Net margin is `NetIncomeLoss / revenue * 100`. Revenue must be positive;

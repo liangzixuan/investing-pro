@@ -3,8 +3,8 @@
 The managed Android app packages the shared React workspace with Capacitor.
 Clerk supplies native sign-in; Appwrite hosts the managed API and data. The
 production package is `app.investingpro.android`.
-[Current work](./CURRENT_WORK.md#accepted-release) records the accepted version,
-source revision, APK digest and physical-device status.
+[Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) records the accepted
+version, source revision and physical-device status.
 
 PR 32 delivered Investment 1.3.0 (version code 4) from its accepted source tree.
 Its package, signer, bundled assets and backup rules passed artifact review;
@@ -374,7 +374,7 @@ must preserve existing owner records and follow the selected device journey.
 BrowserStack remains browser-only. Synthetic tests and browser checks do not
 substitute for physical Pixel results. The production 1.1 owner report remains
 historical and does not accept later versions. See
-[Current work](./CURRENT_WORK.md#accepted-release) for version-specific physical
+[Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) for version-specific physical
 acceptance and its limits.
 Native iOS and public store distribution are later
 outcomes with separate toolchain, signing and device requirements.
