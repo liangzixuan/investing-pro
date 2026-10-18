@@ -6,6 +6,14 @@ production package is `app.investingpro.android`.
 [Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) records the accepted
 version, source revision and physical-device status.
 
+On October 18 the owner reported a successful update from production 1.27 to
+matching 1.28 and passes for all four requested checks: version/sign-in/reopen,
+existing saved Watchlist and Follow-ups presence, the requested Annual/screen/
+comparison/research Back check, and Android Back, keyboard, background/reopen and
+force-stop/reopen. This is owner-reported physical acceptance without independent
+device inspection or per-step logs. Sustained use, controlled storage recovery,
+backup/restore and screen-reader acceptance remain separate.
+
 PR 32 delivered Investment 1.3.0 (version code 4) from its accepted source tree.
 Its package, signer, bundled assets and backup rules passed artifact review;
 physical installation and use of 1.3 were not established by that review.

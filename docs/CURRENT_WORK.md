@@ -12,33 +12,37 @@ The website and API publish product
 `dc781e41a751e6de0d8c73fff5ec8c3cf89aa1fe`. The October 18
 [production promotion](https://github.com/liangzixuan/investing-pro/actions/runs/39117654678)
 passed all 12 job steps. Its receipts and fresh metadata confirm the matching
-API/site pair and unchanged settings. Android 1.27.0, code 28, was delivered;
-1.28.0, code 29, is signed and locally qualified but not delivered. Installation
-and physical use of these versions remain unverified.
+API/site pair and unchanged settings. Matching Android 1.28.0, code 29, was
+prepared with the existing production signer. On October 18 the owner reported
+a successful 1.27-to-1.28 update and passes for all four requested physical
+checks. This accepts the reported upgrade and checklist; no independent device
+inspection or per-step logs were collected.
 
 | Capability                        | Current source and scope                                                                                                                            | Delivery or acceptance still needed                                                                                                                        |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Markets and Price                 | AAPL, GOOG and GOOGL: three listings for two issuers. Dated raw USD closes; no adjusted-return or live-quote claim.                                 | Broader lawful coverage and complete market discovery.                                                                                                     |
-| Annual statements and screening   | Canonical Annual 6 explorer and explicit screening are published on the website/API. Defined cohort: 18 listings across 17 issuers.                 | Matching Android delivery/upgrade. Quarterly, TTM, custom-taxonomy and broader statement coverage remain open.                                             |
+| Annual statements and screening   | Canonical Annual 6 explorer and explicit screening are published on the website/API. Defined cohort: 18 listings across 17 issuers.                 | Matching Android update and requested checks passed by owner report. Quarterly, TTM, custom-taxonomy and broader statement coverage remain open.           |
 | Filings                           | Separate admitted scope of three issuers.                                                                                                           | Screening or Annual eligibility does not establish Filings eligibility.                                                                                    |
-| Screening comparison              | Published website/API source connects two loaded results, three statement groups, independent sources, either company's research and retained Back. | Matching Android delivery/upgrade and daily-use acceptance. Source/main, synthetic native and staging checks retain their original scope.                  |
+| Screening comparison              | Published website/API source connects two loaded results, three statement groups, independent sources, either company's research and retained Back. | Requested Android screen/comparison/research Back check passed by owner report. Sustained use and controlled recovery remain open.                         |
 | Valuation and dated price context | Authored DCF/exit models and dated raw-price comparisons are integrated through PR187.                                                              | Editable assumptions are session-only. A saved note or captured report is not an editable saved model.                                                     |
-| Research studies and reports      | Website/API publish Price studies, explicit complete-note Preview/Append and company JSON/HTML capture. Report format 5 retains Annual 6 evidence.  | Matching Android delivery and affected daily-use acceptance. Captured reports do not establish browser file delivery or live provider health.              |
+| Research studies and reports      | Website/API publish Price studies, explicit complete-note Preview/Append and company JSON/HTML capture. Report format 5 retains Annual 6 evidence.  | Matching Android update passed by owner report. Export/file delivery and sustained use remain separate; the physical checklist did not test every feature. |
 | Watchlist and Follow-ups          | Independent drafts, explicit Review/Save and conflict/uncertain-save recovery exist.                                                                | Controlled real-account recovery and isolated backup/restore remain open; in-memory tests are not cloud persistence proof.                                 |
 | Managed Portfolio                 | Authored schema-3 ledger, holdings/cash, Review/Save/recovery and research return are integrated in source.                                         | Production storage remains disabled pending configuration and persistence qualification. Price history and returns are not a delivered managed capability. |
-| Daily use and access              | Synthetic web/native checks exercise the recorded boundaries.                                                                                       | Screen-reader use, physical upgrade, process-death restoration, sustained production use and cloud recovery remain unverified.                             |
+| Daily use and access              | Owner reports successful update, sign-in/reopen, saved-work presence, research Back, keyboard, background/reopen and force-stop/reopen checks.      | Screen-reader use, durable draft restoration, sustained production use and controlled cloud recovery remain open.                                          |
 
-Source and native checks establish their stated cases. They do not establish full
-InvestingPro parity, production account recovery or physical-device acceptance.
+Source and native checks establish their stated cases. The owner report adds its
+requested physical checklist only. Full InvestingPro parity, controlled account
+recovery and sustained use remain open.
 The full goal still includes broader company discovery, news and calendars,
 quarterly/TTM financials, peer research and comparable portfolio returns.
 
-## Selected next outcome: coordinated release and daily-use acceptance
+## Selected next outcome: daily-use reliability and recovery
 
-Finish matching Android delivery and supported upgrade, then qualify daily use.
-Use the [release readiness plan](MANAGED_RELEASE_READINESS.md) for the acceptance
-matrix and compatibility boundaries. The website/API cutover is accepted;
-package delivery, installation and physical acceptance are separate events.
+The matching website/API release and owner-reported Android upgrade/checklist
+are accepted within their recorded scopes. Next qualify controlled storage
+recovery, backup/restore and accessibility. Use the
+[release readiness plan](MANAGED_RELEASE_READINESS.md) for the separate acceptance
+requirements; the update report does not close these remaining checks.
 
 Staging run `39112966766`, attempt 1, passed its deployed-origin BrowserStack
 checks. Production promoted that exact accepted archive without rebuilding or
@@ -64,9 +68,11 @@ are coverage fixes; selected metric rows are small increments.
 The live API uses Annual 6 and report format 5. Older Annual 5 clients, including
 delivered Android 1.27, cannot load Annual against it. The owner approved a
 web-first cutover with older Android clients closed until a supported upgrade.
-The phone's installed version remains unverified; no phone failure is asserted.
-Android 1.28 is the matching prepared package. Do not treat its local qualification
-as delivery or installation.
+The owner reports the phone upgraded from 1.27 to matching Android 1.28. The
+reported checks cover normal sign-in/reopen, existing saved Watchlist and
+Follow-ups presence, the requested Annual/screen/comparison/research Back check,
+and native Back, keyboard, background/reopen and force-stop/reopen. These results
+are owner-reported; the installed code and signer were not independently read.
 
 Save wanted Watchlist and Follow-ups drafts before reloading or updating.
 Valuation inputs are temporary and clear on reload, session retirement or
