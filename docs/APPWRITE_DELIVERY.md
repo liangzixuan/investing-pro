@@ -9,7 +9,7 @@ acceptance boundaries.
 
 PR 26 completed the website flow from main `ae2cfbb48c672a5c960bce3910b526663f52734b`.
 That historical release included signed Android 1.2 and dated live-browser
-acceptance. [Current work](./CURRENT_WORK.md#accepted-release) records the latest
+acceptance. [Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) records the latest
 accepted API, website and Android identities and their separate limits.
 BrowserStack uses an inert client and does not establish authenticated research
 or phone behavior.

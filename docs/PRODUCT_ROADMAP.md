@@ -718,7 +718,7 @@ rendering and note checks, actual-main source checks, eighteen invented-data nat
 cases, fresh API activation, same-archive website promotion and signed delivery
 passed. This completes the selected company-page outcome toward M2. The broader
 company page and browser/physical recovery acceptance remain open.
-[Current work](CURRENT_WORK.md#accepted-release) records the exact release and
+[Current work](CURRENT_WORK.md#current-capability-and-delivery-status) records the exact release and
 limits, and [the Annual guide](MANAGED_SEC_ANNUAL.md#reported-net-margin-comparison)
 defines the calculation contract.
 

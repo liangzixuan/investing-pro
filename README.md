@@ -62,7 +62,7 @@ it does not save or restore a draft. Native Android and disconnected sessions
 omit this warning. [Current status](docs/CURRENT_WORK.md) keeps actual dialog
 acceptance separate from synthetic event and composition tests.
 
-[Current status and limits](docs/CURRENT_WORK.md#accepted-release) records the
+[Current status and limits](docs/CURRENT_WORK.md#current-capability-and-delivery-status) records the
 accepted website and signed Android releases, evidence limits and remaining work.
 
 ## Start reading

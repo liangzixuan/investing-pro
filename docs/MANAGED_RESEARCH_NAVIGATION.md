@@ -227,7 +227,7 @@ provider request. Unsaved drafts remain in the mounted session only.
 
 ## Read a full note
 
-PR 63 and signed Android 1.19 deliver this reader. [Current work](CURRENT_WORK.md#accepted-release)
+PR 63 and signed Android 1.19 deliver this reader. [Current work](CURRENT_WORK.md#current-capability-and-delivery-status)
 records the source, website and signed-package acceptance, with separate visual,
 authenticated-browser and physical-device limits.
 
@@ -288,7 +288,7 @@ and backup/restore remain unperformed for this workflow.
 ## Add annual evidence to a note draft
 
 The website and signed Android 1.10 provide an explicit **Add to note draft**
-action beside each eligible Annual pair through PR 44. [Current work](CURRENT_WORK.md#accepted-release)
+action beside each eligible Annual pair through PR 44. [Current work](CURRENT_WORK.md#current-capability-and-delivery-status)
 records the release and limits. Choose the named revenue basis to retain its exact
 USD revenue, NetIncomeLoss and net-margin percentage with the annual period,
 filing link and original observation times. Revenue bases stay separate.
