@@ -463,6 +463,28 @@ async function boundedFile(path: string): Promise<string> {
   return text;
 }
 
+export async function validateCheckoutSourceProof(
+  root: string,
+  input: unknown,
+  expected: Pick<SourceProofContext, "repository" | "sha" | "ciRunId">,
+): Promise<SourceCheckProof> {
+  const proof = record(input);
+  const sources = Object.fromEntries(
+    await Promise.all(
+      CHECK_WORKFLOWS.map(async (path) => [
+        path,
+        await boundedFile(resolve(root, path)),
+      ]),
+    ),
+  ) as WorkflowSources;
+  return validateSourceCheckProof(
+    proof,
+    expected,
+    gitInventory(root, proof.before, expected.sha),
+    sources,
+  );
+}
+
 function gitText(root: string, args: string[]): string {
   const result = spawnSync("git", args, {
     cwd: root,

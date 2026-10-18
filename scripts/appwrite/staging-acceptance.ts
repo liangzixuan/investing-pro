@@ -46,7 +46,8 @@ if (
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
   try {
-    if (process.argv.length !== 2) throw new Error("Unexpected arguments.");
+    if (process.argv.length !== 4 || process.argv[2] !== "--source-sha")
+      throw new Error("Unexpected arguments.");
     const base = "dist/appwrite-release";
     const result = makeStagingAcceptance(
       await readFile(`${base}/site.tar.gz`),
@@ -55,7 +56,7 @@ if (
         await readFile(`${base}/staging-receipt.json`, "utf8"),
       ) as unknown,
       {
-        sha: process.env.GITHUB_SHA,
+        sha: process.argv[3],
         runId: process.env.GITHUB_RUN_ID,
         attempt: process.env.GITHUB_RUN_ATTEMPT,
       },

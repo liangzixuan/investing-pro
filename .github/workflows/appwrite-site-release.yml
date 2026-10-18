@@ -11,6 +11,18 @@ on:
         description: Latest successful attempt of that CI run
         required: true
         type: string
+      product_source_sha:
+        description: Accepted main product commit to build under this controller
+        required: true
+        type: string
+      product_ci_run_id:
+        description: Successful main CI run for the selected product commit
+        required: true
+        type: string
+      product_ci_run_attempt:
+        description: Latest successful attempt of the product CI run
+        required: true
+        type: string
       promote:
         description: Promote the tested artifact to the configured production site
         required: true
@@ -54,9 +66,15 @@ jobs:
         env:
           CI_RUN_ID: ${{ inputs.ci_run_id }}
           CI_RUN_ATTEMPT: ${{ inputs.ci_run_attempt }}
+          PRODUCT_SOURCE_SHA: ${{ inputs.product_source_sha }}
+          PRODUCT_CI_RUN_ID: ${{ inputs.product_ci_run_id }}
+          PRODUCT_CI_RUN_ATTEMPT: ${{ inputs.product_ci_run_attempt }}
         run: |
           [[ "$CI_RUN_ID" =~ ^[1-9][0-9]{0,19}$ ]]
           [[ "$CI_RUN_ATTEMPT" =~ ^[1-9][0-9]{0,3}$ ]]
+          [[ "$PRODUCT_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$PRODUCT_CI_RUN_ID" =~ ^[1-9][0-9]{0,14}$ ]]
+          [[ "$PRODUCT_CI_RUN_ATTEMPT" =~ ^[1-9][0-9]{0,3}$ ]]
 
       - name: Download that CI attempt's source proof
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -76,16 +94,52 @@ jobs:
           CI_RUN_ID: ${{ inputs.ci_run_id }}
         run: pnpm exec tsx scripts/appwrite/github-checks.ts verify --proof dist/source-proof/source-proof.json --ci-run-id "$CI_RUN_ID"
 
-      - name: Build the production Clerk static site
+      - name: Check out the selected product revision separately
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.product_source_sha }}
+          path: release-product
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download the product CI attempt's source proof
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: source-proof-${{ inputs.product_ci_run_attempt }}
+          path: dist/product-source-proof
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.product_ci_run_id }}
+          digest-mismatch: error
+
+      - name: Verify the selected main product and its actual checks
         env:
-          INVESTMENT_BUILD_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          PRODUCT_SOURCE_SHA: ${{ inputs.product_source_sha }}
+          PRODUCT_CI_RUN_ID: ${{ inputs.product_ci_run_id }}
+          PRODUCT_CI_RUN_ATTEMPT: ${{ inputs.product_ci_run_attempt }}
+        run: pnpm exec tsx scripts/appwrite/product-source.ts
+
+      - name: Install exact product dependencies
+        working-directory: release-product
+        run: pnpm install --frozen-lockfile --strict-peer-dependencies
+
+      - name: Build the production Clerk static site
+        working-directory: release-product
+        env:
+          INVESTMENT_BUILD_SHA: ${{ inputs.product_source_sha }}
           INVESTMENT_CLERK_ENVIRONMENT: production
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_live_Y2xlcmsuaW52ZXN0aW5ncHJvLmFwcCQ
           INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://investment-managed-6abac57a.appwrite.network
         run: pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.config.ts
 
       - name: Package the exact artifact
-        run: pnpm exec tsx scripts/appwrite/site-artifact.ts
+        env:
+          PRODUCT_SOURCE_SHA: ${{ inputs.product_source_sha }}
+        run: |
+          pnpm exec tsx scripts/appwrite/site-artifact.ts --source-sha "$PRODUCT_SOURCE_SHA"
+          cp dist/product-source-proof/selection.json dist/appwrite-release/controller-source.json
+          cp dist/source-proof/source-proof.json dist/appwrite-release/controller-source-proof.json
+          cp dist/product-source-proof/source-proof.json dist/appwrite-release/product-source-proof.json
 
       - name: Deploy and activate staging
         timeout-minutes: 9
@@ -98,17 +152,19 @@ jobs:
         env:
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
-          INVESTMENT_EXPECTED_BUILD_SHA: ${{ github.sha }}
+          INVESTMENT_EXPECTED_BUILD_SHA: ${{ inputs.product_source_sha }}
         run: pnpm exec tsx scripts/browserstack/run-web.ts --run-staging
 
       - name: Record successful staging acceptance
-        run: pnpm exec tsx scripts/appwrite/staging-acceptance.ts
+        env:
+          PRODUCT_SOURCE_SHA: ${{ inputs.product_source_sha }}
+        run: pnpm exec tsx scripts/appwrite/staging-acceptance.ts --source-sha "$PRODUCT_SOURCE_SHA"
 
       - name: Retain the artifact and finite deployment evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: appwrite-site-${{ github.sha }}-${{ github.run_attempt }}
+          name: appwrite-site-${{ inputs.product_source_sha }}-${{ github.run_attempt }}
           path: dist/appwrite-release/
           if-no-files-found: ignore
           retention-days: 30
@@ -139,7 +195,7 @@ jobs:
       - name: Download the tested bytes without rebuilding
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: appwrite-site-${{ github.sha }}-${{ github.run_attempt }}
+          name: appwrite-site-${{ inputs.product_source_sha }}-${{ github.run_attempt }}
           path: dist/appwrite-release
           digest-mismatch: error
 

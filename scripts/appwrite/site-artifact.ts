@@ -164,13 +164,13 @@ if (
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
   try {
-    if (process.argv.length !== 2 || !process.env.GITHUB_SHA)
+    if (process.argv.length !== 4 || process.argv[2] !== "--source-sha")
       throw new Error(
         "Run the fixed artifact packager from the release workflow.",
       );
     const manifest = await packageSite(
-      process.env.GITHUB_SHA,
-      "apps/web/dist/clerk-production",
+      process.argv[3]!,
+      "release-product/apps/web/dist/clerk-production",
       "dist/appwrite-release",
     );
     console.log(
