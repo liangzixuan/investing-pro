@@ -15,9 +15,11 @@ an authored review to the existing note draft and saving it explicitly.
 
 ## Current priority after the October 17 review
 
-The next outcome is matching Android delivery and supported upgrade, followed by
-daily-use acceptance. The October 18 website/API release publishes product
-`f4379679`; matching Android 1.28 is signed and locally qualified but not delivered.
+The October 18 website/API release publishes product `f4379679`. The owner
+reported a successful 1.27-to-1.28 Android update and passes for all four requested
+physical checks. This closes that upgrade/checklist within its reported scope.
+The next outcome is controlled daily-use recovery, backup/restore and access
+qualification; sustained use and screen-reader acceptance remain open.
 Use the single capability and delivery table in
 [Current work](CURRENT_WORK.md) and the [release readiness plan](MANAGED_RELEASE_READINESS.md).
 Keep all existing release gates intact and use the current task's browser
@@ -728,7 +730,7 @@ review after conflict or original-command reconciliation. The explicit choice
 shows both notes and order and requires a fresh successful read after a failed
 repeat read. The invented Android journey, required source checks, website
 promotion and signed delivery are accepted. Real two-device editing and durable
-draft restoration remain open. [Current work](CURRENT_WORK.md#next-acceptance-and-open-limits)
+draft restoration remain open. [Current work](CURRENT_WORK.md#current-capability-and-delivery-status)
 records the separate acceptance limits.
 
 1. Follow the accepted recovery journey with controlled session expiry and

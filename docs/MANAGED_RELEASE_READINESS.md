@@ -27,11 +27,14 @@ promoted the same accepted archive under controller `dc781e41`; all 12 job steps
 passed. Original artifact digest/member checks, exact dispatch/controller joins
 and fresh API/site metadata confirm the new pair. No restore was needed.
 
-Signed Android 1.27.0, code 28, was delivered; physical installation is unverified.
-Matching Android 1.28.0, code 29, is signed and locally qualified but not delivered
-or installed. Older clients remain closed under the owner's approved web-first
-plan until a supported upgrade. Production metadata does not establish owner
-account use, provider health, persistence recovery or physical-device acceptance.
+Matching Android 1.28.0, code 29, was prepared with the existing production signer.
+On October 18 the owner reported a successful 1.27-to-1.28 update and passes for
+all four requested physical checks: version/sign-in/reopen, saved-work presence,
+the requested Annual/screen/comparison/research Back check, and native lifecycle
+and keyboard use. This accepts the owner-reported upgrade/checklist. It does not
+establish independent device inspection, sustained provider health, controlled
+persistence recovery, backup/restore or screen-reader use. Keep older clients
+closed while they remain on Annual 5.
 
 ## Acceptance matrix
 
@@ -39,14 +42,14 @@ account use, provider health, persistence recovery or physical-device acceptance
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Source qualification                   | Exact revision, applicable final-main jobs, reviewed diff and unchanged protections.                                                             | Product final-main checks are complete. Keep the immutable candidate and original failures; do not repeat unchanged checks.                                |
 | Offline artifacts                      | Clean exact-source API/site archives and signed APK with recorded hashes, version, package, signer and provenance.                               | Complete within recorded scope. Retain artifacts and original identities; no rebuild is needed.                                                            |
-| API and website compatibility          | Matching Annual/report contracts, session/origin boundaries, draft-retention guidance and reviewed prior deployment pairs.                       | Matching Annual 6/report 5 website/API pair accepted. Android 1.28 delivery/upgrade remains open; older clients stay closed.                               |
+| API and website compatibility          | Matching Annual/report contracts, session/origin boundaries, draft-retention guidance and reviewed prior deployment pairs.                       | Matching Annual 6/report 5 website/API pair accepted. Android 1.28 upgrade/checklist passed by owner report; older clients stay closed.                    |
 | Website staging and browser acceptance | Existing mandatory deployed-origin checks for the same archive before promotion.                                                                 | Passed for run 39112966766/attempt 1. Original tool rejections were resolved within the exact approved scope; retain them and keep this acceptance closed. |
 | Production website/API cutover         | Same tested archive, exact approved controller/source, retained receipts and fresh matching pointers/settings.                                   | Accepted October 18 through run 39117654678 and bounded pair observation. One-use scope is consumed; no further activation or rollback follows from it.    |
-| Signed Android delivery                | Matching source/version/signer, prior APK retained and packaged behavior accepted.                                                               | Android 1.28.0, code 29, is signed and locally qualified. Delivery and installation remain open. Retain the prior 1.27 package.                            |
+| Signed Android delivery                | Matching source/version/signer, prior APK retained and packaged behavior accepted.                                                               | Android 1.28.0/code 29 artifact is qualified; owner reports a successful update from 1.27 to 1.28. Retain the prior package and original receipts.         |
 | Controlled storage recovery            | Isolated invented-data load/edit/Save/fresh-read, conflict, uncertain-save reconciliation and expiry against the intended backend.               | Open. In-memory tests do not establish real-account recovery. Do not write QA records into owner resources.                                                |
 | Backup and restore                     | Isolated recovery of the intended data and receipts, with measured retained evidence.                                                            | Open. Preserve live records; use the reviewed qualification procedure and its actual authorization.                                                        |
 | Accessibility                          | Keyboard and screen-reader navigation through the affected complete workflow.                                                                    | Open. Native screenshots and source inspection do not establish screen-reader use.                                                                         |
-| Physical upgrade                       | Verify installed version, preserve wanted drafts, upgrade through the supported flow, reopen saved work and test native Back/session boundaries. | Open. No phone version or failure is inferred. Do not uninstall, clear data or assume APK downgrade support.                                               |
+| Physical upgrade                       | Verify installed version, preserve wanted drafts, upgrade through the supported flow, reopen saved work and test native Back/session boundaries. | Requested four-check 1.27-to-1.28 upgrade passed by owner report on October 18. No independent device logs; durable draft restoration remains separate.    |
 
 ## Operational sequence
 
