@@ -438,7 +438,7 @@ class OfflineProvider {
         path: operation.path,
         result:
           "key" in params
-            ? { key: params.key }
+            ? { key: params.key, status: "processing", error: "" }
             : { $id: "tableId" in params ? params.tableId : params.databaseId },
         status: 201,
         inspectBody: (body) =>

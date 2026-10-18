@@ -111,6 +111,25 @@ function record(value: unknown): Record<string, unknown> {
   assert.ok(value && typeof value === "object" && !Array.isArray(value));
   return value as Record<string, unknown>;
 }
+function metadataScalar(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string")
+    return Buffer.byteLength(value) <= 4096 ? value : undefined;
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : undefined;
+  return undefined;
+}
+function metadataServices(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  if (value.length > 16) return undefined;
+  if (
+    !value.every(
+      (item: unknown) => typeof item === "string" && item.length <= 256,
+    )
+  )
+    return undefined;
+  return value.map((item: unknown) => String(item));
+}
 function originalMetadata(value: unknown) {
   const source = record(value);
   const result: Record<string, unknown> = {};
@@ -124,7 +143,6 @@ function originalMetadata(value: unknown) {
     "migrationId",
     "status",
     "startedAt",
-    "services",
     "policyId",
     "entrypoint",
     "activate",
@@ -136,23 +154,52 @@ function originalMetadata(value: unknown) {
     "key",
     "absent",
   ]) {
-    const entry = source[key];
-    if (typeof entry === "string" && Buffer.byteLength(entry) <= 4096)
-      result[key] = entry;
-    else if (
-      typeof entry === "boolean" ||
-      (typeof entry === "number" && Number.isFinite(entry))
-    )
-      result[key] = entry;
-    else if (
-      key === "services" &&
-      Array.isArray(entry) &&
-      entry.length <= 16 &&
-      entry.every((item) => typeof item === "string" && item.length <= 256)
-    )
-      result[key] = entry.map((item: unknown) => String(item));
+    const entry = metadataScalar(source[key]);
+    if (entry !== undefined) result[key] = entry;
   }
+  const services = metadataServices(source.services);
+  if (services !== undefined) result.services = services;
   return result;
+}
+function createSourceResource(
+  client: Client,
+  operation: (typeof WATCHLIST_RESTORE_SOURCE_CREATES)[number],
+) {
+  const tables = new TablesDB(client),
+    { sdkMethod, params } = operation;
+  switch (sdkMethod) {
+    case "create":
+      return tables.create({ ...params });
+    case "createTable":
+      return tables.createTable({
+        ...params,
+        permissions: [...params.permissions],
+      });
+    case "createVarcharColumn":
+      return tables.createVarcharColumn({ ...params });
+    case "createBigIntColumn":
+      return tables.createBigIntColumn({ ...params });
+    case "createMediumtextColumn":
+      return tables.createMediumtextColumn({ ...params });
+  }
+}
+function admitSourceCreate(
+  value: unknown,
+  operation: (typeof WATCHLIST_RESTORE_SOURCE_CREATES)[number],
+) {
+  const original = record(value),
+    { params } = operation;
+  if ("key" in params) {
+    assert.equal(original.key, params.key);
+    assert.ok(typeof original.status === "string");
+    assert.ok(["available", "processing"].includes(original.status));
+    assert.equal(original.error, "");
+  } else {
+    assert.equal(
+      original.$id,
+      "tableId" in params ? params.tableId : params.databaseId,
+    );
+  }
 }
 function databaseId(side: WatchlistRestoreProofSide) {
   return side === "source"
@@ -383,37 +430,14 @@ class RestoreRun {
   }
   async createSource() {
     for (const operation of WATCHLIST_RESTORE_SOURCE_CREATES) {
-      const { params, sdkMethod, path } = operation;
+      const { params, path } = operation;
       const value = await this.post(
         "source-create-" + operation.ordinal,
         path,
         params,
-        (client) => {
-          const tables = new TablesDB(client);
-          switch (sdkMethod) {
-            case "create":
-              return tables.create({ ...params });
-            case "createTable":
-              return tables.createTable({
-                ...params,
-                permissions: [...params.permissions],
-              });
-            case "createVarcharColumn":
-              return tables.createVarcharColumn({ ...params });
-            case "createBigIntColumn":
-              return tables.createBigIntColumn({ ...params });
-            case "createMediumtextColumn":
-              return tables.createMediumtextColumn({ ...params });
-          }
-        },
+        (client) => createSourceResource(client, operation),
       );
-      const original = record(value);
-      if ("key" in params) assert.equal(original.key, params.key);
-      else
-        assert.equal(
-          original.$id,
-          "tableId" in params ? params.tableId : params.databaseId,
-        );
+      admitSourceCreate(value, operation);
     }
   }
   async schema(side: WatchlistRestoreProofSide, complete: boolean) {

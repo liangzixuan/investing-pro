@@ -139,6 +139,7 @@ interface Faults {
   expireAtWait?: boolean;
   abortAtWait?: boolean;
   pendingSchemaBatches?: number;
+  createdColumnStatus?: string;
 }
 interface OfflineCall {
   readonly method: string;
@@ -337,7 +338,11 @@ function mutationResponse(context: OfflineContext, call: OfflineCall) {
   if (created) return created;
   const columns = ["varchar", "bigint", "mediumtext"];
   if (columns.some((type) => call.path.endsWith("/columns/" + type)))
-    return { key: call.params.key };
+    return {
+      key: call.params.key,
+      status: context.faults.createdColumnStatus ?? "processing",
+      error: "",
+    };
   const responses = new Map<string, () => unknown>([
     ["/tables", () => ({ $id: call.params.tableId })],
     ["/deployments", () => ({ $id: DEPLOYMENT, status: "building" })],
@@ -490,6 +495,14 @@ beforeEach(() => {
 });
 
 describe("fixed one-use restore orchestration with offline SDK calls", () => {
+  it("stops on a failed column creation receipt before another create", async () => {
+    const f = fixture({ createdColumnStatus: "failed" });
+    expect(await createWatchlistRestoreOperator(f.options).run()).toMatchObject(
+      { outcome: "uncertain", sourceAndDestinationQualified: false },
+    );
+    expect(f.calls).toHaveLength(9);
+    expect(f.calls.at(-1)?.path).toContain("/columns/varchar");
+  });
   it("orders59 successful minimum calls, intent/results and destination validation before target Save", async () => {
     const f = fixture();
     const result = await createWatchlistRestoreOperator(f.options).run();

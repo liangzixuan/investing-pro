@@ -188,6 +188,74 @@ function sdkObject<T extends object>(value: T) {
   return { value, stringify };
 }
 
+interface ReportMutationGroup {
+  readonly group: string;
+  readonly target: (report: WatchlistRestoreProofReport) => object;
+  readonly changes: readonly Record<string, unknown>[];
+}
+const reportMutationGroups: ReportMutationGroup[] = [
+  {
+    group: "report identity/completeness",
+    target: (report) => report,
+    changes: [
+      { version: 2 },
+      { buildProof: "a".repeat(64) },
+      { planSha256: "b".repeat(64) },
+      { phase: "verify-source" },
+      { outcome: "incomplete" },
+      { failure: "deadline" },
+      { repositoryError: "commit_unknown" },
+      { operationCount: 18 },
+      { httpDispatches: 18 },
+      { upstreamStatus: 500 },
+      { elapsedMs: -1 },
+      { elapsedMs: 12001 },
+      { elapsedMs: null },
+      { closed: false },
+      { cleanupIncomplete: true },
+      { unexpected: "private extra field" },
+    ],
+  },
+  {
+    group: "trace operation field",
+    target: (report) => report.trace[0]!,
+    changes: [
+      { sequence: 0 },
+      { actor: "writer" },
+      { operation: "rollback" },
+      { outcome: "ok" },
+      { status: 200 },
+      { errorType: "database_not_found" },
+      { transactionStatus: "committed" },
+      { private: "not allowed" },
+    ],
+  },
+  {
+    group: "row identity and fingerprint",
+    target: (report) => report.rowFingerprints[0]!,
+    changes: [
+      { side: "restored" },
+      { rowId: "wrong" },
+      { sha256: "invalid" },
+      { applicationSha256: "a".repeat(65) },
+      { applicationSha256: "a".repeat(64) },
+      { other: "private" },
+    ],
+  },
+];
+const reportMutations = reportMutationGroups.flatMap(
+  ({ group, target, changes }) =>
+    changes.map((change) => ({ group, target, change })),
+);
+function rejectReportMutation(
+  change: (report: WatchlistRestoreProofReport) => void,
+) {
+  const value = reportChange(change);
+  expect(() =>
+    decodeRestoreExecution(value, { phase: "seed", deploymentId: DEPLOYMENT }),
+  ).toThrow(SAFE_ERROR);
+}
+
 describe("fixed restore function metadata", () => {
   it("copies the corrected immutable SDK-compatible private settings", () => {
     expect(WATCHLIST_RESTORE_OPERATOR_FUNCTION_SETTINGS).toMatchObject({
@@ -403,32 +471,12 @@ describe("fixed restore execution evidence", () => {
       ),
     ).toThrow(SAFE_ERROR);
   });
-  it.each([
-    { version: 2 },
-    { buildProof: "a".repeat(64) },
-    { planSha256: "b".repeat(64) },
-    { phase: "verify-source" },
-    { outcome: "incomplete" },
-    { failure: "deadline" },
-    { repositoryError: "commit_unknown" },
-    { operationCount: 18 },
-    { httpDispatches: 18 },
-    { upstreamStatus: 500 },
-    { elapsedMs: -1 },
-    { elapsedMs: 12001 },
-    { elapsedMs: null },
-    { closed: false },
-    { cleanupIncomplete: true },
-    { unexpected: "private extra field" },
-  ])("refuses report identity/completeness changes %j", (change) => {
-    const value = reportChange((report) => Object.assign(report, change));
-    expect(() =>
-      decodeRestoreExecution(value, {
-        phase: "seed",
-        deploymentId: DEPLOYMENT,
-      }),
-    ).toThrow(SAFE_ERROR);
-  });
+  it.each(reportMutations)(
+    "refuses $group change $change",
+    ({ target, change }) => {
+      rejectReportMutation((report) => Object.assign(target(report), change));
+    },
+  );
   it.each(["checks", "trace", "rowFingerprints"] as const)(
     "refuses removed/reordered/extra %s evidence",
     (field) => {
@@ -452,44 +500,6 @@ describe("fixed restore execution evidence", () => {
       ).toThrow(SAFE_ERROR);
     },
   );
-  it.each([
-    { sequence: 0 },
-    { actor: "writer" },
-    { operation: "rollback" },
-    { outcome: "ok" },
-    { status: 200 },
-    { errorType: "database_not_found" },
-    { transactionStatus: "committed" },
-    { private: "not allowed" },
-  ])("binds every trace operation field %j", (change) => {
-    const value = reportChange((report) =>
-      Object.assign(report.trace[0]!, change),
-    );
-    expect(() =>
-      decodeRestoreExecution(value, {
-        phase: "seed",
-        deploymentId: DEPLOYMENT,
-      }),
-    ).toThrow(SAFE_ERROR);
-  });
-  it.each([
-    { side: "restored" },
-    { rowId: "wrong" },
-    { sha256: "invalid" },
-    { applicationSha256: "a".repeat(65) },
-    { applicationSha256: "a".repeat(64) },
-    { other: "private" },
-  ])("binds fixed row identity and bounded fingerprints %j", (change) => {
-    const value = reportChange((report) =>
-      Object.assign(report.rowFingerprints[0]!, change),
-    );
-    expect(() =>
-      decodeRestoreExecution(value, {
-        phase: "seed",
-        deploymentId: DEPLOYMENT,
-      }),
-    ).toThrow(SAFE_ERROR);
-  });
   it("accepts the SDK nonenumerable toString and returns only admitted report fields", () => {
     const { value, stringify } = sdkObject(execution());
     const report = decodeRestoreExecution(value, {

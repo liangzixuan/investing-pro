@@ -57,6 +57,21 @@ function bounded<T>(action: () => T): T {
     throw new Error("Invalid Watchlist restore operator evidence");
   }
 }
+function sdkStringifier(key: string, descriptor: PropertyDescriptor): boolean {
+  return (
+    key === "toString" &&
+    !descriptor.enumerable &&
+    typeof descriptor.value === "function"
+  );
+}
+function jsonDataValue(descriptor: PropertyDescriptor): unknown {
+  requireEvidence(descriptor.enumerable && Object.hasOwn(descriptor, "value"));
+  const value: unknown = descriptor.value;
+  if (typeof value === "string")
+    requireEvidence(Buffer.byteLength(value) <= 65536);
+  if (Array.isArray(value)) requireEvidence(value.length <= 128);
+  return value;
+}
 /** Copy only own data properties; SDK29 adds a nonenumerable toString method. */
 function record(value: unknown): Row {
   requireEvidence(
@@ -68,21 +83,9 @@ function record(value: unknown): Row {
   for (const key of Reflect.ownKeys(descriptors)) {
     requireEvidence(typeof key === "string");
     const descriptor = descriptors[key]!;
-    if (
-      key === "toString" &&
-      !descriptor.enumerable &&
-      typeof descriptor.value === "function"
-    )
-      continue;
-    requireEvidence(
-      descriptor.enumerable && Object.hasOwn(descriptor, "value"),
-    );
-    const item: unknown = descriptor.value;
-    if (typeof item === "string")
-      requireEvidence(Buffer.byteLength(item) <= 65536);
-    if (Array.isArray(item)) requireEvidence(item.length <= 128);
+    if (sdkStringifier(key, descriptor)) continue;
     Object.defineProperty(result, key, {
-      value: item,
+      value: jsonDataValue(descriptor),
       enumerable: true,
       writable: true,
       configurable: true,
@@ -90,6 +93,29 @@ function record(value: unknown): Row {
   }
   return result;
 }
+function nonnegativeNumber(
+  value: unknown,
+  maximum: number,
+): asserts value is number {
+  requireEvidence(
+    typeof value === "number" &&
+      Number.isFinite(value) &&
+      value >= 0 &&
+      value <= maximum,
+  );
+}
+function safeCount(
+  value: unknown,
+  maximum = Number.MAX_SAFE_INTEGER,
+): asserts value is number {
+  nonnegativeNumber(value, maximum);
+  requireEvidence(Number.isSafeInteger(value));
+}
+function emptyMetadataFields(row: Row, keys: readonly string[]) {
+  for (const key of keys)
+    if (Object.hasOwn(row, key)) requireEvidence(row[key] === "");
+}
+
 function exactKeys(row: Row, keys: readonly string[]) {
   requireEvidence(
     Object.keys(row).length === keys.length &&
@@ -118,13 +144,7 @@ function metadata(row: Row) {
     timestamp(row[key]);
   }
   if (Object.hasOwn(row, "buildDuration")) {
-    const duration = row.buildDuration;
-    requireEvidence(
-      typeof duration === "number" &&
-        Number.isFinite(duration) &&
-        duration >= 0 &&
-        duration <= Number.MAX_SAFE_INTEGER,
-    );
+    nonnegativeNumber(row.buildDuration, Number.MAX_SAFE_INTEGER);
   }
 }
 
@@ -171,28 +191,22 @@ export function inspectRestoreFunction(
 function deploymentSizes(row: Row) {
   for (const key of ["sourceSize", "buildSize", "totalSize"]) {
     if (!Object.hasOwn(row, key)) continue;
-    const number = row[key];
-    requireEvidence(
-      typeof number === "number" && Number.isSafeInteger(number) && number >= 0,
-    );
-    if (key === "sourceSize") requireEvidence(number <= 2 * 1024 * 1024);
+    safeCount(row[key]);
+    if (key === "sourceSize") requireEvidence(row[key] <= 2 * 1024 * 1024);
   }
 }
-function deploymentRepository(row: Row) {
-  for (const key of [
-    "providerRepositoryName",
-    "providerRepositoryOwner",
-    "providerRepositoryUrl",
-    "providerCommitHash",
-    "providerCommitAuthorUrl",
-    "providerCommitAuthor",
-    "providerCommitMessage",
-    "providerCommitUrl",
-    "providerBranch",
-    "providerBranchUrl",
-  ])
-    if (Object.hasOwn(row, key)) requireEvidence(row[key] === "");
-}
+const DEPLOYMENT_REPOSITORY_FIELDS = [
+  "providerRepositoryName",
+  "providerRepositoryOwner",
+  "providerRepositoryUrl",
+  "providerCommitHash",
+  "providerCommitAuthorUrl",
+  "providerCommitAuthor",
+  "providerCommitMessage",
+  "providerCommitUrl",
+  "providerBranch",
+  "providerBranchUrl",
+] as const;
 
 export function inspectRestoreDeployment(
   value: unknown,
@@ -212,7 +226,7 @@ export function inspectRestoreDeployment(
     );
     requireEvidence(row.entrypoint === "main.js" && row.activate === false);
     deploymentSizes(row);
-    deploymentRepository(row);
+    emptyMetadataFields(row, DEPLOYMENT_REPOSITORY_FIELDS);
     if (row.status === "ready")
       return Object.freeze({ id: row.$id, status: "ready" as const });
     requireEvidence(
@@ -311,39 +325,39 @@ const TRACE: Record<WatchlistRestoreProofPhase, readonly Step[]> = {
     ["read_current", "ok"],
   ],
 };
+const TRACE_RESULTS = {
+  ok: { outcome: "ok", status: null, errorType: null },
+  row_not_found: {
+    outcome: "appwrite_error",
+    status: 404,
+    errorType: "row_not_found",
+  },
+  other: { outcome: "appwrite_error", status: 404, errorType: "other" },
+} as const;
+const TRACE_TRANSACTIONS: Partial<
+  Record<OperationTrace["operation"], OperationTrace["transactionStatus"]>
+> = { begin: "pending", commit: "committed" };
+function inspectTraceEntry(value: unknown, index: number, step: Step) {
+  const row = record(value);
+  const [operation, result] = step;
+  const expected = {
+    sequence: index + 1,
+    actor: "inspection",
+    operation,
+    ...TRACE_RESULTS[result],
+    transactionStatus: TRACE_TRANSACTIONS[operation] ?? null,
+  };
+  exactKeys(row, Object.keys(expected));
+  for (const [key, field] of Object.entries(expected))
+    requireEvidence(row[key] === field);
+}
 function inspectTrace(value: unknown, phase: WatchlistRestoreProofPhase) {
   requireEvidence(Array.isArray(value) && value.length === TRACE[phase].length);
-  value.forEach((entry, index) => {
-    const row = record(entry);
-    exactKeys(row, [
-      "sequence",
-      "actor",
-      "operation",
-      "outcome",
-      "status",
-      "errorType",
-      "transactionStatus",
-    ]);
-    const [operation, result] = TRACE[phase][index]!;
-    requireEvidence(
-      row.sequence === index + 1 &&
-        row.actor === "inspection" &&
-        row.operation === operation,
-    );
-    requireEvidence(
-      row.outcome === (result === "ok" ? "ok" : "appwrite_error"),
-    );
-    requireEvidence(row.status === (result === "ok" ? null : 404));
-    requireEvidence(row.errorType === (result === "ok" ? null : result));
-    const transaction =
-      operation === "begin"
-        ? "pending"
-        : operation === "commit"
-          ? "committed"
-          : null;
-    requireEvidence(row.transactionStatus === transaction);
-  });
+  value.forEach((entry, index) =>
+    inspectTraceEntry(entry, index, TRACE[phase][index]!),
+  );
 }
+
 function applicationFingerprint(version: 1 | 2 | 3, current: boolean): string {
   const pin = WATCHLIST_RESTORE_PROOF_COMMAND_PINS[version - 1]!;
   const identity = {
@@ -410,12 +424,7 @@ function reportLifetime(row: Row, phase: WatchlistRestoreProofPhase) {
       row.httpDispatches === row.operationCount,
   );
   requireEvidence(row.upstreamStatus === (phase === "preflight" ? 404 : 200));
-  requireEvidence(
-    typeof row.elapsedMs === "number" &&
-      Number.isSafeInteger(row.elapsedMs) &&
-      row.elapsedMs >= 0 &&
-      row.elapsedMs <= 12000,
-  );
+  safeCount(row.elapsedMs, 12000);
   requireEvidence(row.closed === true && row.cleanupIncomplete === false);
 }
 function proofReport(
@@ -468,18 +477,27 @@ function freeze<T>(value: T): T {
 }
 function executionLifetime(row: Row) {
   requireEvidence(row.status === "completed" && row.responseStatusCode === 200);
-  if (Object.hasOwn(row, "scheduledAt"))
-    requireEvidence(row.scheduledAt === "");
-  if (Object.hasOwn(row, "duration"))
-    requireEvidence(
-      typeof row.duration === "number" &&
-        Number.isFinite(row.duration) &&
-        row.duration >= 0 &&
-        row.duration <= 15,
-    );
-  for (const key of ["logs", "errors"])
-    if (Object.hasOwn(row, key)) requireEvidence(row[key] === "");
+  emptyMetadataFields(row, ["scheduledAt"]);
+  if (Object.hasOwn(row, "duration")) nonnegativeNumber(row.duration, 15);
+  emptyMetadataFields(row, ["logs", "errors"]);
 }
+function executionIdentity(
+  row: Row,
+  phase: WatchlistRestoreProofPhase,
+  deploymentId: string,
+) {
+  requireEvidence(
+    row.resourceId === WATCHLIST_RESTORE_OPERATOR_FUNCTION_ID &&
+      row.resourceType === "functions" &&
+      row.deploymentId === deploymentId,
+  );
+  requireEvidence(
+    row.trigger === "http" &&
+      row.requestMethod === "POST" &&
+      row.requestPath === `/proof/${phase}`,
+  );
+}
+
 export function decodeRestoreExecution(
   value: unknown,
   expectation: {
@@ -493,16 +511,7 @@ export function decodeRestoreExecution(
     const row = record(value);
     metadata(row);
     identifier(row.$id);
-    requireEvidence(
-      row.resourceId === WATCHLIST_RESTORE_OPERATOR_FUNCTION_ID &&
-        row.resourceType === "functions" &&
-        row.deploymentId === expectation.deploymentId,
-    );
-    requireEvidence(
-      row.trigger === "http" &&
-        row.requestMethod === "POST" &&
-        row.requestPath === `/proof/${expectation.phase}`,
-    );
+    executionIdentity(row, expectation.phase, expectation.deploymentId);
     executionLifetime(row);
     requireEvidence(
       typeof row.responseBody === "string" &&
