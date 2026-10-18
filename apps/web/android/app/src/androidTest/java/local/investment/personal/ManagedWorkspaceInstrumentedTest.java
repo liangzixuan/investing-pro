@@ -1494,9 +1494,11 @@ public class ManagedWorkspaceInstrumentedTest {
             activity.getBridge().setServerBasePath(fixtureDirectory.getAbsolutePath());
         });
         assertEquals("invalid_handle", result.get(2, TimeUnit.SECONDS));
+        // Recreation can deliver JS callbacks before the new WebView can draw.
+        // Require native readiness before the final committed-window capture.
         awaitPage("recreated fixture loaded without restoring export",
             "document.querySelector('#fixture-export-choice')?.textContent === 'null' && " +
-            DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0");
+            DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0", true);
     }
 
     @Test
@@ -3287,7 +3289,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).choice === null && " +
             "document.querySelector('.managed-report-delivery') === null && " +
             DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0 && " +
-            DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0");
+            DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0", true);
         assertFixtureBoundary();
     }
 
