@@ -79,3 +79,7 @@ complete the drill.
 Provisioning, function deployment/execution, native archive/restore, production
 configuration and owner backup acceptance remain separate operations. A source
 merge or a passing in-memory test grants no authority for them.
+
+The [operator boundaries](NATIVE_BACKUP_OPERATOR_BOUNDARIES.md) provide separate
+SDK request limits and native receipt validation. Their local tests do not
+replace the complete operational controller or an executed restore drill.
