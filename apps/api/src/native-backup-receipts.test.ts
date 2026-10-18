@@ -390,25 +390,110 @@ describe("native backup states", () => {
     restoration: (status: string) => restore(restoration({ status })),
   };
   it.each([
-    ["archive", "pending", "pending", true, false],
-    ["archive", "processing", "pending", true, false],
-    ["archive", "uploading", "pending", true, false],
-    ["restoration", "pending", "pending", true, false],
-    ["restoration", "downloading", "pending", true, false],
-    ["restoration", "processing", "pending", true, false],
-    ["archive", "completed", "completed", false, true],
-    ["archive", "failed", "failed", false, true],
-    ["archive", "skipped", "skipped", false, true],
-    ["restoration", "completed", "completed", false, true],
-    ["restoration", "failed", "failed", false, true],
+    [
+      "archive",
+      {
+        status: "pending",
+        progress: "pending",
+        pollingAllowed: true,
+        terminal: false,
+      },
+    ],
+    [
+      "archive",
+      {
+        status: "processing",
+        progress: "pending",
+        pollingAllowed: true,
+        terminal: false,
+      },
+    ],
+    [
+      "archive",
+      {
+        status: "uploading",
+        progress: "pending",
+        pollingAllowed: true,
+        terminal: false,
+      },
+    ],
+    [
+      "restoration",
+      {
+        status: "pending",
+        progress: "pending",
+        pollingAllowed: true,
+        terminal: false,
+      },
+    ],
+    [
+      "restoration",
+      {
+        status: "downloading",
+        progress: "pending",
+        pollingAllowed: true,
+        terminal: false,
+      },
+    ],
+    [
+      "restoration",
+      {
+        status: "processing",
+        progress: "pending",
+        pollingAllowed: true,
+        terminal: false,
+      },
+    ],
+    [
+      "archive",
+      {
+        status: "completed",
+        progress: "completed",
+        pollingAllowed: false,
+        terminal: true,
+      },
+    ],
+    [
+      "archive",
+      {
+        status: "failed",
+        progress: "failed",
+        pollingAllowed: false,
+        terminal: true,
+      },
+    ],
+    [
+      "archive",
+      {
+        status: "skipped",
+        progress: "skipped",
+        pollingAllowed: false,
+        terminal: true,
+      },
+    ],
+    [
+      "restoration",
+      {
+        status: "completed",
+        progress: "completed",
+        pollingAllowed: false,
+        terminal: true,
+      },
+    ],
+    [
+      "restoration",
+      {
+        status: "failed",
+        progress: "failed",
+        pollingAllowed: false,
+        terminal: true,
+      },
+    ],
   ] as const)(
-    "%s state %s preserves progress, polling and no operation retry",
-    (kind, status, progress, pollingAllowed, terminal) => {
-      expect(stateDecoders[kind](status)).toMatchObject({
-        status,
-        progress,
-        pollingAllowed,
-        terminal,
+    "%s state %j preserves progress, polling and no operation retry",
+    (kind, expected) => {
+      expect(stateDecoders[kind](expected.status)).toMatchObject({
+        ...expected,
         operationRetryAllowed: false,
       });
     },
