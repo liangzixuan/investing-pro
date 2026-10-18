@@ -29,6 +29,10 @@ type Failure =
   | "closed"
   | "cleanup_failed";
 type Absence = "database_not_found" | "function_not_found";
+const ABSENCE_ROUTES = new Map<string, RegExp>([
+  ["database_not_found", /^\/v1\/tablesdb\/[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/u],
+  ["function_not_found", /^\/v1\/functions\/[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/u],
+]);
 
 export class RestoreOperatorTransportError extends Error {
   constructor(
@@ -65,6 +69,20 @@ interface Lease extends RestoreOperatorStep {
 }
 type Headers = Parameters<Client["prepareRequest"]>[2];
 type Payload = Parameters<Client["prepareRequest"]>[3];
+type Configuration = ReturnType<typeof configuration>;
+interface ClientContext {
+  readonly config: Configuration;
+  readonly signal: AbortSignal;
+  check(lease: Lease): void;
+  target(lease: Lease, method: string, url: URL): void;
+  seal(reason: Failure): void;
+}
+interface ResponseContext {
+  readonly signal: AbortSignal;
+  readonly maxBytes: number;
+  observeStatus(status: number): void;
+  seal(reason: Failure): void;
+}
 
 function configuration(options: Options) {
   try {
@@ -130,22 +148,7 @@ function requestHeaders(headers: Headers, projectId: string) {
       assert.equal(value, projectId);
   }
 }
-function bufferUpload(payload: Payload) {
-  assert.ok(payload);
-  assert.ok(
-    Object.keys(payload).every((name) =>
-      ["code", "activate", "entrypoint", "commands"].includes(name),
-    ),
-  );
-  assert.equal(typeof payload.activate, "boolean");
-  for (const name of ["entrypoint", "commands"]) {
-    const value: unknown = payload[name];
-    if (value !== undefined) {
-      assert.ok(typeof value === "string");
-      assert.ok(Buffer.byteLength(value) <= 4096);
-    }
-  }
-  const file: unknown = payload.code;
+function copiedBufferFile(file: unknown) {
   assert.ok(file instanceof InputFile);
   // SDK29's own buffer discriminator lets us refuse fromPath before size()/toFile() can read a file.
   const source: unknown = Object.getOwnPropertyDescriptor(
@@ -165,10 +168,38 @@ function bufferUpload(payload: Payload) {
   assert.ok(typeof filename === "string");
   assert.match(filename, /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u);
   assert.equal(Client.CHUNK_SIZE, 5 * 1024 * 1024);
-  return {
-    ...payload,
-    code: InputFile.fromBuffer(Buffer.from(data), filename),
-  };
+  return InputFile.fromBuffer(Buffer.from(data), filename);
+}
+function uploadTextFields(payload: NonNullable<Payload>) {
+  for (const name of ["entrypoint", "commands"]) {
+    const value: unknown = payload[name];
+    if (value !== undefined) {
+      assert.ok(typeof value === "string");
+      assert.ok(Buffer.byteLength(value) <= 4096);
+    }
+  }
+}
+function bufferUpload(payload: Payload) {
+  assert.ok(payload);
+  assert.ok(
+    Object.keys(payload).every((name) =>
+      ["code", "activate", "entrypoint", "commands"].includes(name),
+    ),
+  );
+  assert.equal(typeof payload.activate, "boolean");
+  uploadTextFields(payload);
+  return { ...payload, code: copiedBufferFile(payload.code) };
+}
+function providerStatus(code: number) {
+  if (!Number.isInteger(code)) return null;
+  if (code < 400 || code > 599) return null;
+  return code;
+}
+function expectedAbsence(error: AppwriteException, lease: Lease) {
+  if (error.code !== 404 || lease.method !== "GET") return null;
+  const route = ABSENCE_ROUTES.get(error.type);
+  if (route === undefined) return null;
+  return route.test(lease.path) ? (error.type as Absence) : null;
 }
 function errorProjection(
   error: unknown,
@@ -178,24 +209,11 @@ function errorProjection(
   if (!(error instanceof AppwriteException)) {
     return new RestoreOperatorTransportError("step_failed");
   }
-  const status =
-    Number.isInteger(error.code) && error.code >= 400 && error.code <= 599
-      ? error.code
-      : null;
-  let absence: Absence | null = null;
-  if (status === 404 && lease.method === "GET") {
-    if (
-      /^\/v1\/tablesdb\/[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/u.test(lease.path) &&
-      error.type === "database_not_found"
-    )
-      absence = "database_not_found";
-    if (
-      /^\/v1\/functions\/[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/u.test(lease.path) &&
-      error.type === "function_not_found"
-    )
-      absence = "function_not_found";
-  }
-  return new RestoreOperatorTransportError("request_failed", status, absence);
+  return new RestoreOperatorTransportError(
+    "request_failed",
+    providerStatus(error.code),
+    expectedAbsence(error, lease),
+  );
 }
 function wireBody(input: Dispatcher.DispatchOptions) {
   // SDK29 fetch supplies a plain header map and calculates FormData length before dispatch.
@@ -217,6 +235,199 @@ function wireBody(input: Dispatcher.DispatchOptions) {
   } else {
     assert.equal(type, "application/json");
     assert.ok(Number(length) <= MAX_JSON_BYTES);
+  }
+}
+function verifyResponseHeader(key: string, text: string, maxBytes: number) {
+  if (key === "content-encoding")
+    assert.equal(text.trim().toLowerCase(), "identity");
+  if (key === "content-length") {
+    assert.match(text, /^(?:0|[1-9]\d*)$/u);
+    assert.ok(Number(text) <= maxBytes);
+  }
+}
+function responseHeaders(headers: Buffer[], maxBytes: number) {
+  const filtered: Buffer[] = [];
+  let json = false;
+  for (let index = 0; index < headers.length; index += 2) {
+    const name = headers[index]!,
+      value = headers[index + 1]!;
+    assert.ok(name && value);
+    const key = name.toString().toLowerCase(),
+      text = value.toString();
+    verifyResponseHeader(key, text, maxBytes);
+    if (key === "content-type") {
+      json = /^application\/json(?:\s*;|$)/iu.test(text);
+      filtered.push(name, Buffer.from("application/json"));
+    } else if (key !== "x-appwrite-warning") filtered.push(name, value);
+  }
+  assert.ok(json);
+  return filtered;
+}
+function verifyResponseStatus(status: number) {
+  assert.ok(Number.isInteger(status) && status <= 599);
+  assert.ok(status < 300 || status >= 400);
+  assert.notEqual(status, 421);
+}
+class OperatorResponseHandler
+  extends DecoratorHandler
+  implements Dispatcher.DispatchHandlers
+{
+  private bytes = 0;
+  constructor(
+    private readonly handler: Dispatcher.DispatchHandlers,
+    private readonly context: ResponseContext,
+  ) {
+    super(handler);
+  }
+  onHeaders(
+    status: number,
+    headers: Buffer[],
+    resume: () => void,
+    statusText: string,
+  ) {
+    if (this.context.signal.aborted) return false;
+    if (status < 200)
+      return (
+        this.handler.onHeaders?.(status, headers, resume, statusText) ?? true
+      );
+    this.context.observeStatus(status);
+    try {
+      verifyResponseStatus(status);
+      const filtered = responseHeaders(headers, this.context.maxBytes);
+      return (
+        this.handler.onHeaders?.(status, filtered, resume, statusText) ?? true
+      );
+    } catch {
+      this.context.seal("invalid_response");
+      return false;
+    }
+  }
+  onData(chunk: Buffer) {
+    if (this.context.signal.aborted) return false;
+    this.bytes += chunk.byteLength;
+    if (this.bytes > this.context.maxBytes) {
+      this.context.seal("invalid_response");
+      return false;
+    }
+    return this.handler.onData?.(chunk) ?? true;
+  }
+  onComplete(trailers: string[] | null) {
+    if (!this.context.signal.aborted) this.handler.onComplete?.(trailers);
+  }
+}
+function verifyClock(
+  now: number,
+  started: number,
+  lease: Lease,
+  limits: Limits,
+) {
+  assert.ok(Number.isFinite(now));
+  assert.ok(now >= started);
+  assert.ok(now - started < limits.timeoutMs);
+  assert.ok(now < lease.deadlineAt);
+}
+class OperatorClient extends Client {
+  readonly #context: ClientContext;
+  readonly #lease: Lease;
+  readonly #dispatcher: Dispatcher;
+  constructor(context: ClientContext, lease: Lease, dispatcher: Dispatcher) {
+    super();
+    this.#context = context;
+    this.#lease = lease;
+    this.#dispatcher = dispatcher;
+  }
+  override prepareRequest(
+    method: string,
+    url: URL,
+    headers: Headers = {},
+    params: Payload = {},
+  ) {
+    const context = this.#context,
+      lease = this.#lease;
+    context.target(lease, method, url);
+    assert.equal(lease.prepares++, 0);
+    requestHeaders(headers, context.config.projectId);
+    if (headers["content-type"] === "multipart/form-data") {
+      assert.equal(lease.upload, true);
+      assert.ok(params.code instanceof File);
+    }
+    const prepared = super.prepareRequest(
+      method,
+      new URL(url),
+      headers,
+      params,
+    );
+    context.target(lease, method, new URL(prepared.uri));
+    if (typeof prepared.options.body === "string")
+      assert.ok(Buffer.byteLength(prepared.options.body) <= MAX_JSON_BYTES);
+    prepared.options.headers = {
+      ...(prepared.options.headers as Record<string, string>),
+      "accept-encoding": "identity",
+    };
+    prepared.options.redirect = "error";
+    prepared.options.dispatcher = this.#dispatcher;
+    prepared.options.signal = context.signal;
+    return prepared;
+  }
+  override async chunkedUpload(
+    method: string,
+    url: URL,
+    headers: Headers = {},
+    payload: Payload = {},
+    onProgress: Parameters<Client["chunkedUpload"]>[4],
+  ) {
+    this.#context.check(this.#lease);
+    assert.equal(method.toUpperCase(), "POST");
+    assert.equal(headers["content-type"], "multipart/form-data");
+    assert.equal(this.#lease.upload, false);
+    this.#lease.upload = true;
+    assert.equal(onProgress, undefined);
+    const result: unknown = await super.chunkedUpload(
+      method,
+      url,
+      headers,
+      bufferUpload(payload),
+      onProgress,
+    );
+    return result;
+  }
+  override async call(
+    method: string,
+    url: URL,
+    headers: Headers = {},
+    params: Payload = {},
+    responseType = "json",
+  ): Promise<unknown> {
+    const context = this.#context,
+      lease = this.#lease;
+    try {
+      context.check(lease);
+      assert.equal(lease.calls++, 0);
+      assert.equal(responseType, "json");
+      const result: unknown = await super.call(
+        method,
+        url,
+        headers,
+        params,
+        responseType,
+      );
+      context.check(lease);
+      return result;
+    } catch (error) {
+      const safe = errorProjection(error, lease);
+      if (safe.absence === null) {
+        lease.failure ??= safe;
+        context.seal(safe.reason);
+      }
+      throw safe;
+    } finally {
+      lease.settled = true;
+    }
+  }
+  override redirect(...args: Parameters<Client["redirect"]>): Promise<string> {
+    void args;
+    this.#context.seal("invalid_request");
+    return Promise.reject(new RestoreOperatorTransportError("invalid_request"));
   }
 }
 
@@ -254,15 +465,12 @@ export function createRestoreOperatorTransport(options: Options) {
   timer.unref();
   function check(lease: Lease) {
     if (closing || closed) throw new RestoreOperatorTransportError("closed");
-    const now = performance.now();
-    if (
-      !Number.isFinite(now) ||
-      now < started ||
-      signal.aborted ||
-      now - started >= config.limits.timeoutMs ||
-      now >= lease.deadlineAt
-    )
+    try {
+      verifyClock(performance.now(), started, lease, config.limits);
+      assert.equal(signal.aborted, false);
+    } catch {
       throw new RestoreOperatorTransportError(sealed ?? "deadline");
+    }
     if (sealed) throw new RestoreOperatorTransportError(sealed);
     assert.equal(active, lease);
     assert.equal(lease.active, true);
@@ -275,60 +483,21 @@ export function createRestoreOperatorTransport(options: Options) {
     assert.equal(url.username + url.password + url.hash, "");
     assert.ok(url.href.length <= 8192);
   }
-  function responseHandler(handler: Dispatcher.DispatchHandlers) {
-    let bytes = 0;
-    const wrapped: Dispatcher.DispatchHandlers = new DecoratorHandler(handler);
-    wrapped.onHeaders = (status, headers, resume, statusText) => {
-      if (signal.aborted) return false;
-      if (status < 200)
-        return handler.onHeaders?.(status, headers, resume, statusText) ?? true;
+  const clientContext: ClientContext = Object.freeze({
+    config,
+    signal,
+    check,
+    target,
+    seal,
+  });
+  const responseContext: ResponseContext = Object.freeze({
+    signal,
+    maxBytes: config.limits.maxResponseBytes,
+    observeStatus(status: number) {
       lastStatus = status;
-      try {
-        assert.ok(Number.isInteger(status) && status <= 599);
-        assert.ok(status < 300 || status >= 400);
-        assert.notEqual(status, 421);
-        const filtered: Buffer[] = [];
-        let json = false;
-        for (let index = 0; index < headers.length; index += 2) {
-          const name = headers[index]!,
-            value = headers[index + 1]!;
-          assert.ok(name && value);
-          const key = name.toString().toLowerCase(),
-            text = value.toString();
-          if (key === "content-encoding")
-            assert.equal(text.trim().toLowerCase(), "identity");
-          if (key === "content-length") {
-            assert.match(text, /^(?:0|[1-9]\d*)$/u);
-            assert.ok(Number(text) <= config.limits.maxResponseBytes);
-          }
-          if (key === "content-type") {
-            json = /^application\/json(?:\s*;|$)/iu.test(text);
-            filtered.push(name, Buffer.from("application/json"));
-          } else if (key !== "x-appwrite-warning") filtered.push(name, value);
-        }
-        assert.ok(json);
-        return (
-          handler.onHeaders?.(status, filtered, resume, statusText) ?? true
-        );
-      } catch {
-        seal("invalid_response");
-        return false;
-      }
-    };
-    wrapped.onData = (chunk) => {
-      if (signal.aborted) return false;
-      bytes += chunk.byteLength;
-      if (bytes > config.limits.maxResponseBytes) {
-        seal("invalid_response");
-        return false;
-      }
-      return handler.onData?.(chunk) ?? true;
-    };
-    wrapped.onComplete = (trailers) => {
-      if (!signal.aborted) handler.onComplete?.(trailers);
-    };
-    return wrapped;
-  }
+    },
+    seal,
+  });
   function clientFor(lease: Lease) {
     const dispatcher = agent.compose((dispatch) => (input, handler) => {
       try {
@@ -344,109 +513,14 @@ export function createRestoreOperatorTransport(options: Options) {
         requests++;
         return dispatch(
           { ...input, idempotent: false },
-          responseHandler(handler),
+          new OperatorResponseHandler(handler, responseContext),
         );
       } catch {
         seal("invalid_request");
         throw new RestoreOperatorTransportError("invalid_request");
       }
     });
-    class OperatorClient extends Client {
-      override prepareRequest(
-        method: string,
-        url: URL,
-        headers: Headers = {},
-        params: Payload = {},
-      ) {
-        target(lease, method, url);
-        assert.equal(lease.prepares++, 0);
-        requestHeaders(headers, config.projectId);
-        if (headers["content-type"] === "multipart/form-data") {
-          assert.equal(lease.upload, true);
-          assert.ok(params.code instanceof File);
-        }
-        const prepared = super.prepareRequest(
-          method,
-          new URL(url),
-          headers,
-          params,
-        );
-        target(lease, method, new URL(prepared.uri));
-        if (typeof prepared.options.body === "string")
-          assert.ok(Buffer.byteLength(prepared.options.body) <= MAX_JSON_BYTES);
-        prepared.options.headers = {
-          ...(prepared.options.headers as Record<string, string>),
-          "accept-encoding": "identity",
-        };
-        prepared.options.redirect = "error";
-        prepared.options.dispatcher = dispatcher;
-        prepared.options.signal = signal;
-        return prepared;
-      }
-      override async chunkedUpload(
-        method: string,
-        url: URL,
-        headers: Headers = {},
-        payload: Payload = {},
-        onProgress: Parameters<Client["chunkedUpload"]>[4],
-      ) {
-        check(lease);
-        assert.equal(method.toUpperCase(), "POST");
-        assert.equal(headers["content-type"], "multipart/form-data");
-        assert.equal(lease.upload, false);
-        lease.upload = true;
-        assert.equal(onProgress, undefined);
-        const result: unknown = await super.chunkedUpload(
-          method,
-          url,
-          headers,
-          bufferUpload(payload),
-          onProgress,
-        );
-        return result;
-      }
-      override async call(
-        method: string,
-        url: URL,
-        headers: Headers = {},
-        params: Payload = {},
-        responseType = "json",
-      ): Promise<unknown> {
-        try {
-          check(lease);
-          assert.equal(lease.calls++, 0);
-          assert.equal(responseType, "json");
-          const result: unknown = await super.call(
-            method,
-            url,
-            headers,
-            params,
-            responseType,
-          );
-          check(lease);
-          return result;
-        } catch (error) {
-          const safe = errorProjection(error, lease);
-          if (safe.absence === null) {
-            lease.failure ??= safe;
-            seal(safe.reason);
-          }
-          throw safe;
-        } finally {
-          lease.settled = true;
-        }
-      }
-      override redirect(
-        ...args: Parameters<Client["redirect"]>
-      ): Promise<string> {
-        void args;
-        seal("invalid_request");
-        return Promise.reject(
-          new RestoreOperatorTransportError("invalid_request"),
-        );
-      }
-    }
-    const client = new OperatorClient()
+    const client = new OperatorClient(clientContext, lease, dispatcher)
       .setEndpoint(config.endpoint)
       .setProject(config.projectId)
       .setKey(config.key);

@@ -8,6 +8,7 @@ import {
   NATIVE_BACKUP_DESTINATION_EVIDENCE,
   NATIVE_BACKUP_RECEIPT_LIMITS,
   NativeBackupReceiptError,
+  type NativeBackupArchiveReceipt,
 } from "./native-backup-receipts";
 import { createRestoreOperatorTransport } from "./restore-operator-transport";
 
@@ -85,123 +86,147 @@ async function requestBody(body: unknown): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+interface NativeReceiptRequest {
+  method: "GET" | "POST";
+  path: string;
+  status: number;
+  body?: string;
+  response: Record<string, unknown>;
+}
+
+function nativeReceiptRequests(): NativeReceiptRequest[] {
+  return [
+    {
+      method: "POST",
+      path: "/v1/backups/archives",
+      status: 202,
+      body: JSON.stringify({
+        services: ["tablesdb"],
+        resourceId: sourceResourceId,
+      }),
+      response: archive({ status: "pending", startedAt: "", migrationId: "" }),
+    },
+    {
+      method: "GET",
+      path: `/v1/backups/archives/${archiveId}`,
+      status: 200,
+      response: archive(),
+    },
+    {
+      method: "POST",
+      path: "/v1/backups/restoration",
+      status: 202,
+      body: JSON.stringify({
+        archiveId,
+        services: ["tablesdb"],
+        newResourceId: requestedDestinationResourceId,
+      }),
+      response: restoration({
+        status: "pending",
+        startedAt: "",
+        migrationId: "",
+      }),
+    },
+    {
+      method: "GET",
+      path: `/v1/backups/restorations/${restorationId}`,
+      status: 200,
+      response: restoration(),
+    },
+  ];
+}
+
+function nativeReceiptFixture() {
+  const agent = new OwnedMockAgent();
+  agent.disableNetConnect();
+  const transport = createRestoreOperatorTransport({
+    endpoint: "https://native-backup.example.invalid/v1",
+    projectId: "invented-project",
+    key: "invented-key",
+    dispatcher: agent,
+  });
+  const pool = agent.get("https://native-backup.example.invalid");
+  for (const step of nativeReceiptRequests()) {
+    pool.intercept({ path: step.path, method: step.method }).reply(
+      step.status,
+      async (options) => {
+        if (step.body !== undefined)
+          expect(await requestBody(options.body)).toBe(step.body);
+        return JSON.stringify(step.response);
+      },
+      { headers: { "content-type": "application/json" } },
+    );
+  }
+  return { agent, transport };
+}
+
+type ReceiptTransport = ReturnType<typeof createRestoreOperatorTransport>;
+
+async function archiveRoundtrip(transport: ReceiptTransport) {
+  const created = await transport.runStep(
+    { method: "POST", path: "/v1/backups/archives" },
+    async (client) => {
+      const value = await new Backups(client).createArchive({
+        services: [BackupServices.Tablesdb],
+        resourceId: sourceResourceId,
+      });
+      expect(Object.getOwnPropertyDescriptor(value, "toString")).toMatchObject({
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      });
+      expect(
+        typeof Object.getOwnPropertyDescriptor(value, "toString")?.value,
+      ).toBe("function");
+      return decodeNativeBackupArchive(value, archiveExpected);
+    },
+  );
+  return transport.runStep(
+    { method: "GET", path: `/v1/backups/archives/${created.id}` },
+    async (client) =>
+      decodeNativeBackupArchive(
+        await new Backups(client).getArchive({ archiveId: created.id }),
+        { ...archiveExpected, archiveId: created.id },
+      ),
+  );
+}
+
+async function restorationRoundtrip(
+  transport: ReceiptTransport,
+  completed: NativeBackupArchiveReceipt,
+) {
+  const queued = await transport.runStep(
+    { method: "POST", path: "/v1/backups/restoration" },
+    async (client) =>
+      decodeNativeBackupRestoration(
+        await new Backups(client).createRestoration({
+          archiveId: completed.id,
+          services: [BackupServices.Tablesdb],
+          newResourceId: requestedDestinationResourceId,
+        }),
+        { archive: completed, requestedDestinationResourceId },
+      ),
+  );
+  return transport.runStep(
+    { method: "GET", path: `/v1/backups/restorations/${queued.id}` },
+    async (client) =>
+      decodeNativeBackupRestoration(
+        await new Backups(client).getRestoration({ restorationId: queued.id }),
+        {
+          archive: completed,
+          requestedDestinationResourceId,
+          restorationId: queued.id,
+        },
+      ),
+  );
+}
+
 describe("native backup receipt identity chain", () => {
   it("admits actual SDK response descriptors through a network-disabled roundtrip", async () => {
-    const agent = new OwnedMockAgent();
-    agent.disableNetConnect();
-    const transport = createRestoreOperatorTransport({
-      endpoint: "https://native-backup.example.invalid/v1",
-      projectId: "invented-project",
-      key: "invented-key",
-      dispatcher: agent,
-    });
-    const pool = agent.get("https://native-backup.example.invalid");
-    const headers = { "content-type": "application/json" };
-    pool
-      .intercept({
-        path: "/v1/backups/archives",
-        method: "POST",
-      })
-      .reply(
-        202,
-        async (options) => {
-          expect(await requestBody(options.body)).toBe(
-            JSON.stringify({
-              services: ["tablesdb"],
-              resourceId: sourceResourceId,
-            }),
-          );
-          return JSON.stringify(
-            archive({ status: "pending", startedAt: "", migrationId: "" }),
-          );
-        },
-        { headers },
-      );
-    pool
-      .intercept({ path: `/v1/backups/archives/${archiveId}`, method: "GET" })
-      .reply(200, JSON.stringify(archive()), { headers });
-    pool
-      .intercept({
-        path: "/v1/backups/restoration",
-        method: "POST",
-      })
-      .reply(
-        202,
-        async (options) => {
-          expect(await requestBody(options.body)).toBe(
-            JSON.stringify({
-              archiveId,
-              services: ["tablesdb"],
-              newResourceId: requestedDestinationResourceId,
-            }),
-          );
-          return JSON.stringify(
-            restoration({ status: "pending", startedAt: "", migrationId: "" }),
-          );
-        },
-        { headers },
-      );
-    pool
-      .intercept({
-        path: `/v1/backups/restorations/${restorationId}`,
-        method: "GET",
-      })
-      .reply(200, JSON.stringify(restoration()), { headers });
+    const { agent, transport } = nativeReceiptFixture();
     try {
-      const created = await transport.runStep(
-        { method: "POST", path: "/v1/backups/archives" },
-        async (client) => {
-          const value = await new Backups(client).createArchive({
-            services: [BackupServices.Tablesdb],
-            resourceId: sourceResourceId,
-          });
-          expect(
-            Object.getOwnPropertyDescriptor(value, "toString"),
-          ).toMatchObject({
-            enumerable: false,
-            configurable: true,
-            writable: true,
-          });
-          expect(
-            typeof Object.getOwnPropertyDescriptor(value, "toString")?.value,
-          ).toBe("function");
-          return decodeNativeBackupArchive(value, archiveExpected);
-        },
-      );
-      const completed = await transport.runStep(
-        { method: "GET", path: `/v1/backups/archives/${created.id}` },
-        async (client) =>
-          decodeNativeBackupArchive(
-            await new Backups(client).getArchive({ archiveId: created.id }),
-            { ...archiveExpected, archiveId: created.id },
-          ),
-      );
-      const queued = await transport.runStep(
-        { method: "POST", path: "/v1/backups/restoration" },
-        async (client) =>
-          decodeNativeBackupRestoration(
-            await new Backups(client).createRestoration({
-              archiveId: completed.id,
-              services: [BackupServices.Tablesdb],
-              newResourceId: requestedDestinationResourceId,
-            }),
-            { archive: completed, requestedDestinationResourceId },
-          ),
-      );
-      const observed = await transport.runStep(
-        { method: "GET", path: `/v1/backups/restorations/${queued.id}` },
-        async (client) =>
-          decodeNativeBackupRestoration(
-            await new Backups(client).getRestoration({
-              restorationId: queued.id,
-            }),
-            {
-              archive: completed,
-              requestedDestinationResourceId,
-              restorationId: queued.id,
-            },
-          ),
-      );
+      const completed = await archiveRoundtrip(transport);
+      const observed = await restorationRoundtrip(transport, completed);
       expect(observed.progress).toBe("completed");
       expect(transport.snapshot()).toMatchObject({
         steps: 4,
@@ -359,57 +384,31 @@ describe("native backup receipt identity chain", () => {
 });
 
 describe("native backup states", () => {
-  it.each(["pending", "processing", "uploading"])(
-    "allows archive polling for %s without a new operation",
-    (status) => {
-      expect(
-        decodeNativeBackupArchive(archive({ status }), archiveExpected),
-      ).toMatchObject({
+  const stateDecoders = {
+    archive: (status: string) =>
+      decodeNativeBackupArchive(archive({ status }), archiveExpected),
+    restoration: (status: string) => restore(restoration({ status })),
+  };
+  it.each([
+    ["archive", "pending", "pending", true, false],
+    ["archive", "processing", "pending", true, false],
+    ["archive", "uploading", "pending", true, false],
+    ["restoration", "pending", "pending", true, false],
+    ["restoration", "downloading", "pending", true, false],
+    ["restoration", "processing", "pending", true, false],
+    ["archive", "completed", "completed", false, true],
+    ["archive", "failed", "failed", false, true],
+    ["archive", "skipped", "skipped", false, true],
+    ["restoration", "completed", "completed", false, true],
+    ["restoration", "failed", "failed", false, true],
+  ] as const)(
+    "%s state %s preserves progress, polling and no operation retry",
+    (kind, status, progress, pollingAllowed, terminal) => {
+      expect(stateDecoders[kind](status)).toMatchObject({
         status,
-        progress: "pending",
-        pollingAllowed: true,
-        terminal: false,
-        operationRetryAllowed: false,
-      });
-    },
-  );
-
-  it.each(["pending", "downloading", "processing"])(
-    "allows restoration polling for %s without a new operation",
-    (status) => {
-      expect(restore(restoration({ status }))).toMatchObject({
-        status,
-        progress: "pending",
-        pollingAllowed: true,
-        terminal: false,
-        operationRetryAllowed: false,
-      });
-    },
-  );
-
-  it.each(["completed", "failed", "skipped"])(
-    "keeps archive terminal state %s distinct",
-    (status) => {
-      expect(
-        decodeNativeBackupArchive(archive({ status }), archiveExpected),
-      ).toMatchObject({
-        status,
-        progress: status,
-        pollingAllowed: false,
-        terminal: true,
-        operationRetryAllowed: false,
-      });
-    },
-  );
-
-  it.each(["completed", "failed"])(
-    "keeps restoration terminal state %s distinct",
-    (status) => {
-      expect(restore(restoration({ status }))).toMatchObject({
-        status,
-        progress: status,
-        pollingAllowed: false,
-        terminal: true,
+        progress,
+        pollingAllowed,
+        terminal,
         operationRetryAllowed: false,
       });
     },

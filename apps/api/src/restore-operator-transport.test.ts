@@ -49,6 +49,96 @@ function reply(
     .intercept({ path: PATH, method: "GET" })
     .reply(status, body, { headers });
 }
+interface RequestChange {
+  readonly kind: string;
+  readonly configure?: (client: Client) => void;
+  readonly method?: string;
+  readonly route?: string;
+  readonly headers?: Record<string, string>;
+}
+const requestChanges: RequestChange[] = [
+  {
+    kind: "endpoint",
+    configure: (client) => {
+      client.setEndpoint("https://other.invalid/v1");
+    },
+  },
+  {
+    kind: "project",
+    configure: (client) => {
+      client.setProject("other-project");
+    },
+  },
+  {
+    kind: "key",
+    configure: (client) => {
+      client.setKey("other-private-key");
+    },
+  },
+  {
+    kind: "selfSigned",
+    configure: (client) => {
+      client.setSelfSigned(true);
+    },
+  },
+  { kind: "host", headers: { host: "other.invalid" } },
+  {
+    kind: "authorization",
+    headers: { authorization: "private-other-authority" },
+  },
+  { kind: "route", route: "/other" },
+  { kind: "method", method: "POST" },
+];
+interface ContractViolation {
+  readonly kind: string;
+  readonly setup?: (f: ReturnType<typeof fixture>) => void;
+  readonly run: (
+    client: Client,
+    capturePending: (value: Promise<unknown>) => void,
+  ) => Promise<unknown>;
+}
+const contractViolations: ContractViolation[] = [
+  { kind: "none", run: () => Promise.resolve("invented sentinel") },
+  {
+    kind: "missing-await",
+    setup: (f) => {
+      reply(f).delay(30);
+    },
+    run: (client, capturePending) => {
+      const pending = new TablesDB(client).get({ databaseId: ID });
+      capturePending(pending);
+      void pending.catch(() => undefined);
+      return Promise.resolve("invented sentinel");
+    },
+  },
+  {
+    kind: "second-call",
+    setup: (f) => {
+      reply(f);
+    },
+    run: async (client) => {
+      const tables = new TablesDB(client);
+      await tables.get({ databaseId: ID });
+      return tables.get({ databaseId: ID });
+    },
+  },
+  {
+    kind: "direct-prepare",
+    setup: (f) => {
+      reply(f);
+    },
+    run: async (client) => {
+      client.prepareRequest("GET", new URL(ENDPOINT + `/tablesdb/${ID}`));
+      await new TablesDB(client).get({ databaseId: ID });
+      return "sentinel";
+    },
+  },
+  {
+    kind: "redirect",
+    run: (client) =>
+      client.redirect("GET", new URL(ENDPOINT + `/tablesdb/${ID}`)),
+  },
+];
 afterEach(async () => {
   vi.restoreAllMocks();
   vi.useRealTimers();
@@ -367,81 +457,48 @@ describe("bounded private restore operator transport", () => {
     },
   );
 
-  it.each([
-    "endpoint",
-    "project",
-    "key",
-    "selfSigned",
-    "host",
-    "authorization",
-    "route",
-    "method",
-  ])("rejects changed %s before dispatch", async (kind) => {
-    const f = fixture();
-    const operation = f.runStep(
-      { method: "GET", path: PATH },
-      async (client) => {
-        if (kind === "endpoint") client.setEndpoint("https://other.invalid/v1");
-        if (kind === "project") client.setProject("other-project");
-        if (kind === "key") client.setKey("other-private-key");
-        if (kind === "selfSigned") client.setSelfSigned(true);
-        const headers =
-          kind === "host"
-            ? { host: "other.invalid" }
-            : kind === "authorization"
-              ? { authorization: "private-other-authority" }
-              : {};
-        const result: unknown = await client.call(
-          kind === "method" ? "POST" : "GET",
-          new URL(ENDPOINT + (kind === "route" ? "/other" : `/tablesdb/${ID}`)),
-          headers,
-        );
-        return result;
-      },
-    );
-    await expect(operation).rejects.toBeInstanceOf(
-      RestoreOperatorTransportError,
-    );
-    expect(f.snapshot().requests).toBe(0);
-  });
+  it.each(requestChanges)(
+    "rejects changed $kind before dispatch",
+    async (change) => {
+      const f = fixture();
+      const operation = f.runStep(
+        { method: "GET", path: PATH },
+        async (client) => {
+          change.configure?.(client);
+          const result: unknown = await client.call(
+            change.method ?? "GET",
+            new URL(ENDPOINT + (change.route ?? `/tablesdb/${ID}`)),
+            change.headers ?? {},
+          );
+          return result;
+        },
+      );
+      await expect(operation).rejects.toBeInstanceOf(
+        RestoreOperatorTransportError,
+      );
+      expect(f.snapshot().requests).toBe(0);
+    },
+  );
 
-  it.each([
-    "none",
-    "missing-await",
-    "second-call",
-    "direct-prepare",
-    "redirect",
-  ])("seals the %s step contract violation", async (kind) => {
-    const f = fixture();
-    if (kind === "missing-await") reply(f).delay(30);
-    else if (kind !== "none" && kind !== "redirect") reply(f);
-    let pending: Promise<unknown> | undefined;
-    const operation = f.runStep(
-      { method: "GET", path: PATH },
-      async (client) => {
-        const tables = new TablesDB(client);
-        if (kind === "none") return "invented sentinel";
-        if (kind === "redirect")
-          return client.redirect("GET", new URL(ENDPOINT + `/tablesdb/${ID}`));
-        if (kind === "direct-prepare")
-          client.prepareRequest("GET", new URL(ENDPOINT + `/tablesdb/${ID}`));
-        if (kind === "missing-await") {
-          pending = tables.get({ databaseId: ID });
-          void pending.catch(() => undefined);
-          return "invented sentinel";
-        }
-        await tables.get({ databaseId: ID });
-        if (kind === "second-call") return tables.get({ databaseId: ID });
-        return "sentinel";
-      },
-    );
-    await expect(operation).rejects.toBeInstanceOf(
-      RestoreOperatorTransportError,
-    );
-    if (pending) await pending.catch(() => undefined);
-    expect(f.snapshot().requests).toBeLessThanOrEqual(1);
-    expect(f.snapshot().sealed).toBe(true);
-  });
+  it.each(contractViolations)(
+    "seals the $kind step contract violation",
+    async (violation) => {
+      const f = fixture();
+      violation.setup?.(f);
+      let pending: Promise<unknown> | undefined;
+      const operation = f.runStep({ method: "GET", path: PATH }, (client) =>
+        violation.run(client, (value) => {
+          pending = value;
+        }),
+      );
+      await expect(operation).rejects.toBeInstanceOf(
+        RestoreOperatorTransportError,
+      );
+      await pending?.catch(() => undefined);
+      expect(f.snapshot().requests).toBeLessThanOrEqual(1);
+      expect(f.snapshot().sealed).toBe(true);
+    },
+  );
 
   it("allows admitted expected absence, then one next step", async () => {
     const f = fixture();
