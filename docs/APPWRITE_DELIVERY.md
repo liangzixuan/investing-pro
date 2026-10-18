@@ -17,7 +17,11 @@ or phone behavior.
 ## Release sequence
 
 The `Appwrite site release` workflow has one manual start on `main`. Supply the
-successful main CI run ID and its latest attempt. Leave **promote** off for a
+successful controller CI run ID and its latest attempt, the full product commit
+SHA, and that product's successful main CI run ID and latest attempt. The product
+can be an earlier accepted revision retained in the controller's history. Both
+revisions need their own source checks; selecting a product does not replace the
+controller's checks. Leave **promote** off for a
 staging-only release. Select it when the same tested artifact should also go to
 the configured production site. No local terminal needs to remain open.
 
@@ -28,6 +32,27 @@ release workflow. Missing, pending, failed or superseded checks stop deployment.
 It performs one bounded observation, without polling or rerunning gates. After
 the remaining checks finish, start a new release workflow using the current
 successful CI attempt.
+
+The controller stays at the actual workflow commit. A separate clean checkout
+holds the selected product. Before installing or building product code, the
+controller verifies that commit is its ancestor, reconstructs the product's own
+change inventory and workflow hashes, and checks the exact latest main CI attempt
+and every applicable job. A branch name, unrelated commit, changed checkout,
+wrong repository, stale proof or failed check stops the run. `GITHUB_SHA` is never
+reassigned to label the controller as the product.
+
+The selected product supplies the website build. The controller supplies the
+packager and release writer. The product SHA binds the document marker, archive,
+BrowserStack expectation and staging acceptance. A separate controller-source
+receipt records both commits and the product CI attempt in the retained artifact.
+Both complete source proofs are retained beside it, including their CI run and
+attempt identities, change inventories and workflow hashes.
+The workflow builds a new website archive from that product; it does not upload
+an archive from an operator's filesystem or rebuild the API or signed APK. Each
+new archive still needs its own staging and browser acceptance before promotion.
+This source selector does not authorize workflow dispatch or resume stopped
+browser work. Staging still activates the preview and invokes BrowserStack even
+when **promote** is off.
 
 The pipeline then:
 
