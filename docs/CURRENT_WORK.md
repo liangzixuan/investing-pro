@@ -44,6 +44,10 @@ recovery, backup/restore and accessibility. Use the
 [release readiness plan](MANAGED_RELEASE_READINESS.md) for the separate acceptance
 requirements; the update report does not close these remaining checks.
 
+The [isolated Watchlist restore proof](MANAGED_WATCHLIST_RESTORE_PROOF.md)
+prepares fixed invented-data checks around Appwrite's native backup service.
+Its local evidence does not establish an executed cloud restore or owner backup.
+
 Staging run `39112966766`, attempt 1, passed its deployed-origin BrowserStack
 checks. Production promoted that exact accepted archive without rebuilding or
 repeating staging/browser checks. A fresh metadata observation confirmed both

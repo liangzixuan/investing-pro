@@ -11477,6 +11477,13 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/watchlist-restore-proof-data.ts",
+      [
+        "admitManagedSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
+      ],
+    ],
+    [
       "apps/api/src/portfolio-proof-data.test.ts",
       [
         "lookupPersonalSecurityMasterListing",
@@ -11755,6 +11762,7 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
   for (const portfolioProofDataPath of [
     "apps/api/src/portfolio-proof-data.ts",
     "apps/api/src/portfolio-proof-data.test.ts",
+    "apps/api/src/watchlist-restore-proof-data.ts",
   ]) {
     const source = await cycle2kText(portfolioProofDataPath, found);
     if (

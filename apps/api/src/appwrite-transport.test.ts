@@ -27,6 +27,7 @@ afterEach(async () => {
 
 function fixture(
   limits?: Parameters<typeof createAppwriteTransport>[0]["limits"],
+  expectedAbsentDatabaseId?: string,
 ) {
   const agent = new OwnedMockAgent();
   agent.disableNetConnect();
@@ -34,6 +35,9 @@ function fixture(
     endpoint: ENDPOINT,
     dispatcher: agent,
     ...(limits ? { limits } : {}),
+    ...(expectedAbsentDatabaseId === undefined
+      ? {}
+      : { expectedAbsentDatabaseId }),
   });
   transport.client.setProject("synthetic-project").setKey("synthetic-key");
   resources.push(() => transport.close());
@@ -94,6 +98,108 @@ function closeServer(server: Server) {
 }
 
 describe("Appwrite bounded SDK transport", () => {
+  it.each(["", "-invalid", "../db", "db/other", "x".repeat(37)])(
+    "refuses an invalid trusted absence scope %s",
+    (expectedAbsentDatabaseId) => {
+      expect(() =>
+        createAppwriteTransport({
+          endpoint: ENDPOINT,
+          expectedAbsentDatabaseId,
+        }),
+      ).toThrow(AppwriteException);
+    },
+  );
+  it.each([
+    {
+      configured: undefined,
+      id: "db",
+      method: "GET",
+      status: 404,
+      path: PATH,
+      type: "database_not_found",
+      expected: "request_failed",
+    },
+    {
+      configured: "db",
+      id: "db",
+      method: "GET",
+      status: 404,
+      path: PATH,
+      type: "database_not_found",
+      expected: "database_not_found",
+    },
+    {
+      configured: "another",
+      id: "db",
+      method: "GET",
+      status: 404,
+      path: PATH,
+      type: "database_not_found",
+      expected: "request_failed",
+    },
+    {
+      configured: "db",
+      id: "db",
+      method: "PATCH",
+      status: 404,
+      path: PATH,
+      type: "database_not_found",
+      expected: "request_failed",
+    },
+    {
+      configured: "db",
+      id: "db",
+      method: "GET",
+      status: 500,
+      path: PATH,
+      type: "database_not_found",
+      expected: "request_failed",
+    },
+    {
+      configured: "db",
+      id: "db",
+      method: "GET",
+      status: 404,
+      path: "/v1/tablesdb/db",
+      type: "database_not_found",
+      expected: "request_failed",
+    },
+    {
+      configured: "db",
+      id: "db",
+      method: "GET",
+      status: 404,
+      path: PATH,
+      type: "table_not_found",
+      expected: "request_failed",
+    },
+  ])(
+    "retains only exact opted-in database row GET absence: %j",
+    async (scenario) => {
+      const f = fixture(undefined, scenario.configured);
+      f.pool.intercept({ path: scenario.path, method: scenario.method }).reply(
+        scenario.status,
+        JSON.stringify({
+          message: "synthetic-private-row",
+          type: scenario.type,
+        }),
+        { headers: HEADERS },
+      );
+      await expect(
+        f.client.call(
+          scenario.method,
+          new URL(new URL(ENDPOINT).origin + scenario.path),
+          HEADERS,
+        ),
+      ).rejects.toMatchObject({
+        code: scenario.status,
+        type: scenario.expected,
+        message: "Appwrite request failed.",
+        response: "",
+      });
+      expect(f.snapshot().requests).toBe(1);
+    },
+  );
   it("keeps a malformed endpoint out of its error text", () => {
     expect(() =>
       createAppwriteTransport({ endpoint: "synthetic-private-invalid-url" }),
