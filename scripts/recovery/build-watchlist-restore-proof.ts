@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
   readFile,
@@ -17,10 +18,16 @@ import {
   WATCHLIST_RESTORE_PROOF_PLAN_SHA256,
 } from "../../apps/api/src/watchlist-restore-proof-data";
 
-if (process.argv.length !== 2 || !/^v24\./u.test(process.version))
-  throw new Error(
-    "Use the fixed Node 24 restore-proof builder without arguments.",
-  );
+assert.equal(
+  process.argv.length,
+  2,
+  "Use the restore-proof builder without arguments",
+);
+assert.match(
+  process.version,
+  /^v24\./u,
+  "Use the fixed Node 24 restore-proof builder",
+);
 const root = await realpath(
   resolve(dirname(fileURLToPath(import.meta.url)), "../.."),
 );
@@ -66,8 +73,10 @@ const logical = (path: string) =>
   relative(root, resolve(root, path)).replaceAll(sep, "/");
 async function pin(path: string) {
   const actual = await realpath(resolve(root, path));
-  if (!actual.startsWith(root + sep))
-    throw new Error("Restore-proof input escaped its checkout");
+  assert.ok(
+    actual.startsWith(root + sep),
+    "Restore-proof input escaped its checkout",
+  );
   const bytes = await readFile(actual);
   return { path: logical(actual), bytes: bytes.length, sha256: hash(bytes) };
 }
@@ -136,13 +145,21 @@ for (const vendor of vendors) {
   const manifest = JSON.parse(
     await readFile(resolve(root, manifestPin.path), "utf8"),
   ) as { name?: unknown; version?: unknown };
-  if (manifest.name !== vendor.name || manifest.version !== vendor.version)
-    throw new Error("Unreviewed restore-proof runtime package");
+  assert.equal(
+    manifest.name,
+    vendor.name,
+    "Unreviewed restore-proof runtime package",
+  );
+  assert.equal(
+    manifest.version,
+    vendor.version,
+    "Unreviewed restore-proof runtime version",
+  );
   licensePins.push(manifestPin);
   for (const file of vendor.files) {
     const value = await pin(resolve(vendor.root, file));
-    if (value.bytes < 100 || value.bytes > 64 * 1024)
-      throw new Error("Invalid runtime license bounds");
+    assert.ok(value.bytes >= 100, "Runtime license below proof bound");
+    assert.ok(value.bytes <= 64 * 1024, "Runtime license exceeds proof bound");
     licensePins.push(value);
     notices.push(
       Buffer.from(`\n===== ${vendor.name}@${vendor.version}: ${file} =====\n`),
@@ -165,8 +182,7 @@ for (const file of [
         /(?:Copyright|MIT License|MIT license)/u.test(line) &&
         line.length < 1024,
     );
-  if (lines.length === 0)
-    throw new Error("Missing reviewed embedded license notice");
+  assert.ok(lines.length > 0, "Missing reviewed embedded license notice");
   notices.push(
     Buffer.from(
       `\n===== undici embedded notices: ${file} =====\n${lines.join("\n")}\n`,
@@ -174,8 +190,10 @@ for (const file of [
   );
 }
 const noticeBytes = Buffer.concat(notices);
-if (noticeBytes.length > 1024 * 1024)
-  throw new Error("Runtime notices exceed proof bound");
+assert.ok(
+  noticeBytes.length <= 1024 * 1024,
+  "Runtime notices exceed proof bound",
+);
 const tsupRoot = dirname(
   await realpath(resolve(root, "node_modules/tsup/package.json")),
 );
@@ -242,8 +260,11 @@ async function generateGraph(outDir: string, buildProof: string) {
         name: "restore-proof-fixed-graph",
         setup(context) {
           context.onEnd((result) => {
-            if (result.warnings.length)
-              throw new Error("Restore-proof build warning requires review");
+            assert.equal(
+              result.warnings.length,
+              0,
+              "Restore-proof build warning requires review",
+            );
             graph = result.metafile;
           });
         },
@@ -258,37 +279,44 @@ async function generateGraph(outDir: string, buildProof: string) {
       };
     },
   });
-  if (!graph) throw new Error("Missing proof graph");
-  if (Object.keys(graph.inputs).length > 2000)
-    throw new Error("Unbounded proof graph");
+  assert.ok(graph, "Missing proof graph");
+  assert.ok(Object.keys(graph.inputs).length <= 2000, "Unbounded proof graph");
   return graph;
 }
 
 function validateOutputGraph(graph: Graph, outDir: string) {
   const outputs = Object.keys(graph.outputs);
-  if (outputs.length !== 1)
-    throw new Error("Unexpected restore-proof output graph");
-  if (resolve(root, outputs[0]!) !== resolve(outDir, "main.js"))
-    throw new Error("Unexpected restore-proof output path");
+  assert.equal(outputs.length, 1, "Unexpected restore-proof output graph");
+  assert.equal(
+    resolve(root, outputs[0]!),
+    resolve(outDir, "main.js"),
+    "Unexpected restore-proof output path",
+  );
   const imports = Object.values(graph.outputs).flatMap(
     (output) => output.imports,
   );
   for (const item of imports) {
-    if (!item.external)
-      throw new Error("Unexpected internal restore-proof runtime import");
-    if (!builtins.has(item.path.replace(/^node:/u, "")))
-      throw new Error("Unreviewed restore-proof runtime import");
+    assert.ok(
+      item.external,
+      "Unexpected internal restore-proof runtime import",
+    );
+    assert.ok(
+      builtins.has(item.path.replace(/^node:/u, "")),
+      "Unreviewed restore-proof runtime import",
+    );
   }
 }
 
 async function validateOutputMember(outDir: string) {
   const entries = await readdir(outDir, { withFileTypes: true });
-  if (entries.length !== 1)
-    throw new Error("Unexpected restore-proof output member");
+  assert.equal(entries.length, 1, "Unexpected restore-proof output member");
   const entry = entries[0]!;
-  if (entry.name !== "main.js")
-    throw new Error("Unexpected restore-proof output member name");
-  if (!entry.isFile()) throw new Error("Restore-proof output is not a file");
+  assert.equal(
+    entry.name,
+    "main.js",
+    "Unexpected restore-proof output member name",
+  );
+  assert.ok(entry.isFile(), "Restore-proof output is not a file");
 }
 
 function isApplicationModule(path: string) {
@@ -305,12 +333,20 @@ async function pinGraphModule(path: string, input: Graph["inputs"][string]) {
   const allowedVendor = vendors.some((vendor) =>
     actual.startsWith(vendor.root + sep),
   );
-  if (!isApplicationModule(value.path) && !allowedVendor)
-    throw new Error("Unreviewed restore-proof module");
-  if (/(?:\.test\.|\/test-)/u.test(value.path))
-    throw new Error("Test module cannot enter restore proof");
-  if (input.bytes !== value.bytes)
-    throw new Error("Proof module changed during discovery");
+  assert.ok(
+    isApplicationModule(value.path) || allowedVendor,
+    "Unreviewed restore-proof module",
+  );
+  assert.doesNotMatch(
+    value.path,
+    /(?:\.test\.|\/test-)/u,
+    "Test module cannot enter restore proof",
+  );
+  assert.equal(
+    input.bytes,
+    value.bytes,
+    "Proof module changed during discovery",
+  );
   return { ...value, imports: input.imports };
 }
 
@@ -322,13 +358,15 @@ async function pinRuntimeGraph(graph: Graph) {
     modules.push(await pinGraphModule(path, input));
   }
   const paths = new Set(modules.map((inputPin) => inputPin.path));
-  if (api.some((path) => !paths.has(path)))
-    throw new Error("Missing application proof graph");
-  if (
-    modules.reduce((sum, inputPin) => sum + inputPin.bytes, 0) >
-    64 * 1024 * 1024
-  )
-    throw new Error("Unbounded application proof graph");
+  assert.ok(
+    api.every((path) => paths.has(path)),
+    "Missing application proof graph",
+  );
+  assert.ok(
+    modules.reduce((sum, inputPin) => sum + inputPin.bytes, 0) <=
+      64 * 1024 * 1024,
+    "Unbounded application proof graph",
+  );
   return modules;
 }
 
@@ -340,18 +378,21 @@ async function bundle(outDir: string, buildProof: string) {
 }
 async function verify(pins: readonly Pin[]) {
   for (const value of pins) {
-    if (
-      JSON.stringify(await pin(value.path)) !==
+    assert.equal(
+      JSON.stringify(await pin(value.path)),
       JSON.stringify({
         path: value.path,
         bytes: value.bytes,
         sha256: value.sha256,
-      })
-    )
-      throw new Error("Restore-proof source or tool changed during build");
+      }),
+      "Restore-proof source or tool changed during build",
+    );
   }
-  if (hash(await readFile(process.execPath)) !== node.sha256)
-    throw new Error("Proof Node changed during build");
+  assert.equal(
+    hash(await readFile(process.execPath)),
+    node.sha256,
+    "Proof Node changed during build",
+  );
 }
 // Refuse redirected output ancestors before creating any artifact directory.
 for (const path of [
@@ -360,20 +401,30 @@ for (const path of [
 ]) {
   try {
     const entry = await lstat(path);
-    if (
-      !entry.isDirectory() ||
-      entry.isSymbolicLink() ||
-      (await realpath(path)) !== path
-    )
-      throw new Error("Restore-proof output ancestor is redirected");
+    assert.ok(
+      entry.isDirectory(),
+      "Restore-proof output ancestor is not a directory",
+    );
+    assert.ok(
+      !entry.isSymbolicLink(),
+      "Restore-proof output ancestor is redirected",
+    );
+    assert.equal(
+      await realpath(path),
+      path,
+      "Restore-proof output ancestor is redirected",
+    );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }
 const parent = resolve(root, "dist/managed-watchlist-restore-proof");
 await mkdir(parent, { recursive: true });
-if ((await realpath(parent)) !== parent)
-  throw new Error("Proof output parent is redirected");
+assert.equal(
+  await realpath(parent),
+  parent,
+  "Proof output parent is redirected",
+);
 const discovery = await mkdtemp(resolve(parent, ".discovery-"));
 const modules = await bundle(discovery, "0".repeat(64));
 const pins = [...sources, ...toolPins, ...licensePins, ...modules];
@@ -394,12 +445,17 @@ const buildProof = hash(JSON.stringify(marker));
 const outDir = resolve(parent, buildProof);
 await mkdir(outDir); // Exclusive identity; preserve every prior artifact and failure.
 const finalModules = await bundle(outDir, buildProof);
-if (JSON.stringify(finalModules) !== JSON.stringify(modules))
-  throw new Error("Final restore-proof graph changed");
+assert.equal(
+  JSON.stringify(finalModules),
+  JSON.stringify(modules),
+  "Final restore-proof graph changed",
+);
 await verify(pins);
 const artifact = await readFile(resolve(outDir, "main.js"));
-if (artifact.length > 8 * 1024 * 1024)
-  throw new Error("Restore-proof artifact exceeds its bound");
+assert.ok(
+  artifact.length <= 8 * 1024 * 1024,
+  "Restore-proof artifact exceeds its bound",
+);
 await writeFile(resolve(outDir, "THIRD_PARTY_NOTICES.txt"), noticeBytes, {
   flag: "wx",
 });

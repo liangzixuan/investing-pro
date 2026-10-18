@@ -182,6 +182,23 @@ function validateReceiptRow(
   requireProof(row.committedAt === pin.committedAt);
 }
 
+function expectedAbsenceType(
+  phase: WatchlistRestoreProofPhase,
+  side: WatchlistRestoreProofSide,
+): "database_not_found" | "row_not_found" {
+  if (phase !== "preflight") return "row_not_found";
+  if (side !== "restored") return "row_not_found";
+  return "database_not_found";
+}
+function isExpectedAbsence(
+  error: unknown,
+  expectedType: "database_not_found" | "row_not_found",
+) {
+  if (!(error instanceof AppwriteException)) return false;
+  if (error.code !== 404) return false;
+  return error.type === expectedType;
+}
+
 /** One invocation owns its operation, admitted rows and mutation fences. */
 class RestoreProofRun {
   readonly lifetime: StorageProofPhase;
@@ -257,19 +274,11 @@ class RestoreProofRun {
     });
   }
   async absent(side: WatchlistRestoreProofSide, version?: Version) {
-    const absenceType =
-      this.phase === "preflight" && side === "restored"
-        ? "database_not_found"
-        : "row_not_found";
+    const absenceType = expectedAbsenceType(this.phase, side);
     try {
       await this.store().getRow(watchlistRestoreProofLocation(side, version));
     } catch (error) {
-      if (
-        error instanceof AppwriteException &&
-        error.code === 404 &&
-        error.type === absenceType
-      )
-        return;
+      if (isExpectedAbsence(error, absenceType)) return;
       throw error;
     }
     throw new ProofFailure("unexpected_result");
