@@ -398,7 +398,7 @@ describe("bounded private restore operator transport", () => {
       expect(boundary).toMatch(/^multipart\/form-data; boundary=/u);
       const form = uploaded as { get(name: string): unknown };
       const file = form.get("code") as { arrayBuffer(): Promise<ArrayBuffer> };
-      expect(Buffer.from(await file.arrayBuffer())).toEqual(original);
+      expect(Buffer.from(await file.arrayBuffer()).equals(original)).toBe(true);
       expect(form.get("activate")).toBe("false");
       expect(f.snapshot().requests).toBe(1);
       f.agent.assertNoPendingInterceptors();
