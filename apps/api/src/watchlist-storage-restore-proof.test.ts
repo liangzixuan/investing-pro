@@ -14,6 +14,7 @@ import {
 import {
   runWatchlistRestoreProof,
   type WatchlistRestoreProofFactory,
+  type WatchlistRestoreProofReport,
 } from "./watchlist-storage-restore-proof";
 
 const BUILD = "a".repeat(64);
@@ -111,6 +112,52 @@ async function fixture() {
     operationCount: 19,
   });
   return { store, op, seeded: result };
+}
+
+function assertCompletePhaseReports(
+  reports: readonly WatchlistRestoreProofReport[],
+) {
+  for (const [index, result] of reports.entries()) {
+    expect(result, JSON.stringify(result)).toMatchObject({
+      outcome: "passed",
+      failure: "none",
+      cleanupIncomplete: false,
+      closed: true,
+    });
+    expect(result.operationCount).toBe([8, 19, 18, 6][index]);
+    expect(result.httpDispatches).toBe(result.operationCount);
+    expect(result.operationCount).toBeLessThanOrEqual(
+      WATCHLIST_RESTORE_PROOF_LIMITS[result.phase],
+    );
+    expect(result.trace.length).toBeLessThanOrEqual(20);
+    expect(result.httpDispatches).toBeLessThanOrEqual(19);
+    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(8192);
+    expect(JSON.stringify(result)).not.toMatch(
+      /café|quoted|payloadJson|ownerId/u,
+    );
+  }
+}
+function assertAllowedRowTraffic(calls: AtomicStore["calls"]) {
+  for (const call of calls) {
+    if (
+      call.operation === "createTransaction" ||
+      call.operation === "updateTransaction"
+    )
+      continue;
+    const input = call.input as {
+      databaseId: string;
+      tableId: string;
+      rowId: string;
+    };
+    expect(
+      WATCHLIST_RESTORE_PROOF_ROWS.some(
+        (row) =>
+          row.databaseId === input.databaseId &&
+          row.tableId === input.tableId &&
+          row.rowId === input.rowId,
+      ),
+    ).toBe(true);
+  }
 }
 describe("fixed native-restore application qualification", () => {
   it.each([
@@ -308,53 +355,9 @@ describe("fixed native-restore application qualification", () => {
           (call.input as { commit?: boolean }).commit,
       ),
     ).toHaveLength(1);
-    for (const [index, result] of [
-      preflight,
-      seed,
-      restored,
-      source,
-    ].entries()) {
-      expect(result, JSON.stringify(result)).toMatchObject({
-        outcome: "passed",
-        failure: "none",
-        cleanupIncomplete: false,
-        closed: true,
-      });
-      expect(result.operationCount).toBe([8, 19, 18, 6][index]);
-      expect(result.httpDispatches).toBe(result.operationCount);
-      expect(result.operationCount).toBeLessThanOrEqual(
-        WATCHLIST_RESTORE_PROOF_LIMITS[result.phase],
-      );
-      expect(result.trace.length).toBeLessThanOrEqual(20);
-      expect(result.httpDispatches).toBeLessThanOrEqual(19);
-      expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(
-        8192,
-      );
-      expect(JSON.stringify(result)).not.toMatch(
-        /café|quoted|payloadJson|ownerId/u,
-      );
-    }
+    assertCompletePhaseReports([preflight, seed, restored, source]);
     expect(op.counts()).toEqual({ opens: 4, closes: 4 });
-    for (const call of store.calls) {
-      if (
-        call.operation === "createTransaction" ||
-        call.operation === "updateTransaction"
-      )
-        continue;
-      const input = call.input as {
-        databaseId: string;
-        tableId: string;
-        rowId: string;
-      };
-      expect(
-        WATCHLIST_RESTORE_PROOF_ROWS.some(
-          (row) =>
-            row.databaseId === input.databaseId &&
-            row.tableId === input.tableId &&
-            row.rowId === input.rowId,
-        ),
-      ).toBe(true);
-    }
+    assertAllowedRowTraffic(store.calls);
   });
   it("refuses a second seed or target-check replay without another mutation", async () => {
     const { store, op } = await fixture();

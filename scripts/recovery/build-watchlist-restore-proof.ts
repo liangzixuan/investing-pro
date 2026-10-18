@@ -213,7 +213,9 @@ type Graph = {
   >;
   outputs: Record<string, { imports: { path: string; external?: boolean }[] }>;
 };
-async function bundle(outDir: string, buildProof: string) {
+type ModulePin = Pin & { imports: Graph["inputs"][string]["imports"] };
+
+async function generateGraph(outDir: string, buildProof: string) {
   let graph: Graph | undefined;
   await build({
     config: false,
@@ -256,59 +258,85 @@ async function bundle(outDir: string, buildProof: string) {
       };
     },
   });
-  if (!graph || Object.keys(graph.inputs).length > 2000)
-    throw new Error("Missing or unbounded proof graph");
+  if (!graph) throw new Error("Missing proof graph");
+  if (Object.keys(graph.inputs).length > 2000)
+    throw new Error("Unbounded proof graph");
+  return graph;
+}
+
+function validateOutputGraph(graph: Graph, outDir: string) {
   const outputs = Object.keys(graph.outputs);
-  if (
-    outputs.length !== 1 ||
-    resolve(root, outputs[0]!) !== resolve(outDir, "main.js")
-  )
+  if (outputs.length !== 1)
     throw new Error("Unexpected restore-proof output graph");
-  if (
-    Object.values(graph.outputs).some((output) =>
-      output.imports.some(
-        (item) =>
-          !item.external || !builtins.has(item.path.replace(/^node:/u, "")),
-      ),
-    )
-  )
-    throw new Error("External or unreviewed restore-proof runtime import");
+  if (resolve(root, outputs[0]!) !== resolve(outDir, "main.js"))
+    throw new Error("Unexpected restore-proof output path");
+  const imports = Object.values(graph.outputs).flatMap(
+    (output) => output.imports,
+  );
+  for (const item of imports) {
+    if (!item.external)
+      throw new Error("Unexpected internal restore-proof runtime import");
+    if (!builtins.has(item.path.replace(/^node:/u, "")))
+      throw new Error("Unreviewed restore-proof runtime import");
+  }
+}
+
+async function validateOutputMember(outDir: string) {
   const entries = await readdir(outDir, { withFileTypes: true });
-  if (
-    entries.length !== 1 ||
-    entries[0]?.name !== "main.js" ||
-    !entries[0].isFile()
-  )
+  if (entries.length !== 1)
     throw new Error("Unexpected restore-proof output member");
-  const modules: (Pin & { imports: Graph["inputs"][string]["imports"] })[] = [];
+  const entry = entries[0]!;
+  if (entry.name !== "main.js")
+    throw new Error("Unexpected restore-proof output member name");
+  if (!entry.isFile()) throw new Error("Restore-proof output is not a file");
+}
+
+function isApplicationModule(path: string) {
+  if (api.includes(path)) return true;
+  return [
+    "packages/contracts/src/",
+    "packages/personal-security-master/src/",
+  ].some((prefix) => path.startsWith(prefix));
+}
+
+async function pinGraphModule(path: string, input: Graph["inputs"][string]) {
+  const value = await pin(path);
+  const actual = resolve(root, value.path);
+  const allowedVendor = vendors.some((vendor) =>
+    actual.startsWith(vendor.root + sep),
+  );
+  if (!isApplicationModule(value.path) && !allowedVendor)
+    throw new Error("Unreviewed restore-proof module");
+  if (/(?:\.test\.|\/test-)/u.test(value.path))
+    throw new Error("Test module cannot enter restore proof");
+  if (input.bytes !== value.bytes)
+    throw new Error("Proof module changed during discovery");
+  return { ...value, imports: input.imports };
+}
+
+async function pinRuntimeGraph(graph: Graph) {
+  const modules: ModulePin[] = [];
   for (const [path, input] of Object.entries(graph.inputs).sort(
     ([left], [right]) => left.localeCompare(right),
   )) {
-    const value = await pin(path);
-    const allowedApplication =
-      api.includes(value.path) ||
-      value.path.startsWith("packages/contracts/src/") ||
-      value.path.startsWith("packages/personal-security-master/src/");
-    const actual = resolve(root, value.path);
-    const allowedVendor = vendors.some((vendor) =>
-      actual.startsWith(vendor.root + sep),
-    );
-    if (
-      (!allowedApplication && !allowedVendor) ||
-      /(?:\.test\.|\/test-)/u.test(value.path)
-    )
-      throw new Error("Unreviewed restore-proof module");
-    if (input.bytes !== value.bytes)
-      throw new Error("Proof module changed during discovery");
-    modules.push({ ...value, imports: input.imports });
+    modules.push(await pinGraphModule(path, input));
   }
+  const paths = new Set(modules.map((inputPin) => inputPin.path));
+  if (api.some((path) => !paths.has(path)))
+    throw new Error("Missing application proof graph");
   if (
-    api.some((path) => !modules.some((inputPin) => inputPin.path === path)) ||
     modules.reduce((sum, inputPin) => sum + inputPin.bytes, 0) >
-      64 * 1024 * 1024
+    64 * 1024 * 1024
   )
-    throw new Error("Missing or unbounded application proof graph");
+    throw new Error("Unbounded application proof graph");
   return modules;
+}
+
+async function bundle(outDir: string, buildProof: string) {
+  const graph = await generateGraph(outDir, buildProof);
+  validateOutputGraph(graph, outDir);
+  await validateOutputMember(outDir);
+  return pinRuntimeGraph(graph);
 }
 async function verify(pins: readonly Pin[]) {
   for (const value of pins) {

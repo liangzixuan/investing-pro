@@ -64,7 +64,24 @@ export interface WatchlistRestoreProofReport {
   }[];
   readonly trace: readonly Readonly<OperationTrace>[];
 }
+
 type Row = Record<string, unknown>;
+type Version = 1 | 2 | 3;
+type CommandPin = (typeof WATCHLIST_RESTORE_PROOF_COMMAND_PINS)[number];
+interface ObservedRow {
+  readonly side: WatchlistRestoreProofSide;
+  readonly row: Row;
+}
+interface PhaseOutcome {
+  outcome: WatchlistRestoreProofReport["outcome"];
+  failure: WatchlistRestoreProofReport["failure"];
+  repositoryError: WatchlistRepositoryErrorCode | null;
+}
+interface ObservedOutcome extends PhaseOutcome {
+  httpDispatches: number | null;
+  lastStatus: number | null;
+  closed: boolean;
+}
 const metadata = [
   "$id",
   "$sequence",
@@ -119,94 +136,104 @@ function fingerprint(row: Row, fields: readonly string[]) {
   );
 }
 
-/** Fixed application checks only. The operator performs native backup/restore separately. */
-export async function runWatchlistRestoreProof(
-  phase: WatchlistRestoreProofPhase,
-  buildProof: string,
-  factory: WatchlistRestoreProofFactory,
-): Promise<WatchlistRestoreProofReport> {
-  if (
-    !WATCHLIST_RESTORE_PROOF_PHASES.includes(phase) ||
-    !/^[0-9a-f]{64}$/u.test(buildProof)
-  )
-    throw new Error("Invalid restore proof configuration");
-  const lifetime = new StorageProofPhase(
-    WATCHLIST_RESTORE_PROOF_LIMITS[phase],
-    true,
+/** Common storage envelope: exact fields, location, platform metadata and grants. */
+function validateRowEnvelope(
+  row: Row,
+  input: AppwriteRowLocation,
+  fields: readonly string[],
+) {
+  requireProof(
+    Object.keys(row).sort().join(",") ===
+      [...metadata, ...fields].sort().join(","),
   );
-  const data = watchlistRestoreProofData();
-  const checks: string[] = [];
-  const rows = new Map<string, { side: WatchlistRestoreProofSide; row: Row }>();
-  let operation: WatchlistRestoreProofOperation | undefined;
-  let outcome: WatchlistRestoreProofReport["outcome"];
-  let failure: WatchlistRestoreProofReport["failure"] = "none";
-  let repositoryError: WatchlistRepositoryErrorCode | null = null;
+  requireProof(row.$id === input.rowId);
+  requireProof(row.$databaseId === input.databaseId);
+  requireProof(row.$tableId === input.tableId);
+  requireProof(typeof row.$sequence === "string");
+  requireProof(/^\d+$/u.test(row.$sequence));
+  requireProof(metadataTime(row.$createdAt));
+  requireProof(metadataTime(row.$updatedAt));
+  const permissions = row.$permissions;
+  requireProof(Array.isArray(permissions));
+  requireProof(permissions.length === 0);
+  requireProof(row.ownerId === WATCHLIST_RESTORE_PROOF_PRINCIPAL.userId);
+  requireProof(row.watchlistId === "main");
+}
+function validatedCommandPin(row: Row): CommandPin {
+  const version = row.version;
+  requireProof(version === 1 || version === 2 || version === 3);
+  const pin = WATCHLIST_RESTORE_PROOF_COMMAND_PINS[version - 1]!;
+  requireProof(row.digestSha256 === pin.payloadSha256);
+  return pin;
+}
+function validateCurrentRow(row: Row, pin: CommandPin) {
+  requireProof(row.payloadJson === pin.payloadJson);
+  requireProof(row.createdAt === WATCHLIST_RESTORE_PROOF_TIMES[0]);
+  requireProof(row.updatedAt === pin.committedAt);
+}
+function validateReceiptRow(
+  row: Row,
+  expectedVersion: number,
+  pin: CommandPin,
+) {
+  requireProof(row.version === expectedVersion);
+  requireProof(row.keyDigest === pin.keySha256);
+  requireProof(row.requestDigest === pin.requestSha256);
+  requireProof(row.committedAt === pin.committedAt);
+}
 
-  function location(input: AppwriteRowLocation) {
-    lifetime.assertRunning();
+/** One invocation owns its operation, admitted rows and mutation fences. */
+class RestoreProofRun {
+  readonly lifetime: StorageProofPhase;
+  readonly checks: string[] = [];
+  readonly rows = new Map<string, ObservedRow>();
+  readonly data = watchlistRestoreProofData();
+  operation: WatchlistRestoreProofOperation | undefined;
+
+  constructor(readonly phase: WatchlistRestoreProofPhase) {
+    this.lifetime = new StorageProofPhase(
+      WATCHLIST_RESTORE_PROOF_LIMITS[phase],
+      true,
+    );
+  }
+  private location(input: AppwriteRowLocation) {
+    this.lifetime.assertRunning();
     const expected = WATCHLIST_RESTORE_PROOF_ROWS.find(
       (row) =>
         row.databaseId === input.databaseId &&
         row.tableId === input.tableId &&
         row.rowId === input.rowId,
     );
-    requireProof(
-      expected &&
-        (phase === "preflight" ||
-          expected.side ===
-            (phase === "verify-restored" ? "restored" : "source")),
-    );
+    requireProof(expected);
+    if (this.phase === "preflight") return expected;
+    const side = this.phase === "verify-restored" ? "restored" : "source";
+    requireProof(expected.side === side);
     return expected;
   }
-  function inspect(input: AppwriteRowLocation, value: unknown) {
-    const expected = location(input);
+  private inspect(input: AppwriteRowLocation, value: unknown) {
+    const expected = this.location(input);
     requireProof(object(value));
     const fields = expected.version === null ? currentFields : receiptFields;
-    requireProof(
-      Object.keys(value).sort().join(",") ===
-        [...metadata, ...fields].sort().join(",") &&
-        value.$id === input.rowId &&
-        value.$databaseId === input.databaseId &&
-        value.$tableId === input.tableId &&
-        typeof value.$sequence === "string" &&
-        /^\d+$/u.test(value.$sequence) &&
-        metadataTime(value.$createdAt) &&
-        metadataTime(value.$updatedAt) &&
-        Array.isArray(value.$permissions) &&
-        value.$permissions.length === 0 &&
-        value.ownerId === WATCHLIST_RESTORE_PROOF_PRINCIPAL.userId &&
-        value.watchlistId === "main",
-    );
-    const version = value.version;
-    requireProof(version === 1 || version === 2 || version === 3);
-    const pin = WATCHLIST_RESTORE_PROOF_COMMAND_PINS[version - 1]!;
-    requireProof(value.digestSha256 === pin.payloadSha256);
-    if (expected.version === null) {
-      requireProof(
-        value.payloadJson === pin.payloadJson &&
-          value.createdAt === WATCHLIST_RESTORE_PROOF_TIMES[0] &&
-          value.updatedAt === pin.committedAt,
-      );
-    } else {
-      requireProof(
-        version === expected.version &&
-          value.keyDigest === pin.keySha256 &&
-          value.requestDigest === pin.requestSha256 &&
-          value.committedAt === pin.committedAt,
-      );
-    }
-    rows.set(JSON.stringify(input), {
+    validateRowEnvelope(value, input, fields);
+    const pin = validatedCommandPin(value);
+    if (expected.version === null) validateCurrentRow(value, pin);
+    else validateReceiptRow(value, expected.version, pin);
+    this.rows.set(JSON.stringify(input), {
       side: expected.side,
       row: structuredClone(value),
     });
   }
-  function store() {
-    const counted = lifetime.store(
-      operation!.newStore(),
-      { visit: location, read: inspect },
+  private store() {
+    const counted = this.lifetime.store(
+      this.operation!.newStore(),
+      {
+        visit: (input) => this.location(input),
+        read: (input, value) => this.inspect(input, value),
+      },
       "inspection",
     );
-    const mutationsAllowed = phase === "seed" || phase === "verify-restored";
+    const mutationsAllowed =
+      this.phase === "seed" || this.phase === "verify-restored";
     const deny = () => Promise.reject(new ProofFailure("unexpected_result"));
     return mutationsAllowed
       ? counted
@@ -219,226 +246,312 @@ export async function runWatchlistRestoreProof(
           updateTransaction: deny,
         } satisfies AppwriteVersionedRowStore);
   }
-  function repository(side: WatchlistRestoreProofSide, version: 1 | 2 | 3 = 1) {
+  private repository(side: WatchlistRestoreProofSide, version: Version = 1) {
     return createAppwriteWatchlistRepository({
-      store: store(),
+      store: this.store(),
       databaseId: watchlistRestoreProofLocation(side).databaseId,
       watchlistsTableId: "watchlists",
       receiptsTableId: "receipts",
-      catalog: data.catalog,
+      catalog: this.data.catalog,
       now: () => new Date(WATCHLIST_RESTORE_PROOF_TIMES[version - 1]!),
     });
   }
-  async function absent(side: WatchlistRestoreProofSide, version?: 1 | 2 | 3) {
+  async absent(side: WatchlistRestoreProofSide, version?: Version) {
+    const absenceType =
+      this.phase === "preflight" && side === "restored"
+        ? "database_not_found"
+        : "row_not_found";
     try {
-      await store().getRow(watchlistRestoreProofLocation(side, version));
+      await this.store().getRow(watchlistRestoreProofLocation(side, version));
     } catch (error) {
       if (
         error instanceof AppwriteException &&
         error.code === 404 &&
-        error.type ===
-          (phase === "preflight" && side === "restored"
-            ? "database_not_found"
-            : "row_not_found")
+        error.type === absenceType
       )
         return;
       throw error;
     }
     throw new ProofFailure("unexpected_result");
   }
-  async function current(side: WatchlistRestoreProofSide, version: 1 | 2 | 3) {
-    const record = await repository(side).get(
+  async absentSet(
+    side: WatchlistRestoreProofSide,
+    versions: readonly (Version | undefined)[],
+  ) {
+    for (const version of versions) await this.absent(side, version);
+  }
+  async current(side: WatchlistRestoreProofSide, version: Version) {
+    const record = await this.repository(side).get(
       WATCHLIST_RESTORE_PROOF_PRINCIPAL,
     );
     requireProof(record?.version === version);
   }
-  async function readSet(side: WatchlistRestoreProofSide, version: 2 | 3) {
-    await current(side, version);
+  async readReceipts(
+    side: WatchlistRestoreProofSide,
+    versions: readonly Version[],
+  ) {
+    for (const version of versions)
+      await this.store().getRow(watchlistRestoreProofLocation(side, version));
+  }
+  async readSet(side: WatchlistRestoreProofSide, version: 2 | 3) {
+    await this.current(side, version);
     for (const receiptVersion of [1, 2, 3] as const) {
-      if (receiptVersion > version) await absent(side, receiptVersion);
+      if (receiptVersion > version) await this.absent(side, receiptVersion);
       else
-        await store().getRow(
+        await this.store().getRow(
           watchlistRestoreProofLocation(side, receiptVersion),
         );
     }
   }
-  async function put(
+  async put(
     side: WatchlistRestoreProofSide,
-    version: 1 | 2 | 3,
+    version: Version,
     replayed: boolean,
   ) {
-    const before = lifetime.count;
-    const receipt = await repository(side, version).put(
+    const before = this.lifetime.count;
+    const receipt = await this.repository(side, version).put(
       WATCHLIST_RESTORE_PROOF_PRINCIPAL,
-      data.commands[version - 1]!,
+      this.data.commands[version - 1]!,
     );
     const pin = WATCHLIST_RESTORE_PROOF_COMMAND_PINS[version - 1]!;
-    requireProof(
-      receipt.version === version &&
-        receipt.replayed === replayed &&
-        receipt.digestSha256 === pin.payloadSha256 &&
-        receipt.committedAt === pin.committedAt,
-    );
-    if (replayed)
-      requireProof(
-        lifetime.count === before + 1 &&
-          lifetime.trace.at(-1)?.operation === "read_receipt",
-      );
-  }
-  async function execute() {
-    operation = factory(lifetime.controller.signal);
-    if (phase === "preflight") {
-      for (const side of ["source", "restored"] as const)
-        for (const version of [undefined, 1, 2, 3] as const)
-          await absent(side, version);
-      checks.push(
-        "source_four_fixed_locations_absent",
-        "distinct_restore_database_absent",
-      );
-    } else if (phase === "seed") {
-      // The first put itself checks receipt 1 and must create, never replay.
-      // Avoid a redundant read so the transport retains its rollback slot.
-      for (const version of [undefined, 2, 3] as const)
-        await absent("source", version);
-      await put("source", 1, false);
-      await put("source", 2, false);
-      await current("source", 2);
-      for (const version of [1, 2] as const)
-        await store().getRow(watchlistRestoreProofLocation("source", version));
-      checks.push(
-        "source_two_canonical_versions",
-        "source_both_original_receipts",
-        "source_application_and_metadata_fingerprints",
-      );
-    } else if (phase === "verify-restored") {
-      await readSet("restored", 2);
-      await put("restored", 1, true);
-      await current("restored", 2);
-      checks.push(
-        "restored_baseline_and_both_receipts",
-        "older_original_receipt_only_replay_no_second_commit",
-      );
-      await put("restored", 3, false);
-      await readSet("restored", 3);
-      await put("restored", 3, true);
-      checks.push(
-        "next_version_save_at_distinct_target",
-        "all_three_target_receipts",
-        "target_next_save_receipt_only_replay",
-      );
-    } else {
-      await readSet("source", 2);
-      await put("source", 1, true);
-      await current("source", 2);
-      checks.push(
-        "source_baseline_and_original_receipts_retained",
-        "source_target_only_receipt_absent",
-        "source_read_only_replay",
-        "source_application_and_metadata_fingerprints",
-      );
+    requireProof(receipt.version === version);
+    requireProof(receipt.replayed === replayed);
+    requireProof(receipt.digestSha256 === pin.payloadSha256);
+    requireProof(receipt.committedAt === pin.committedAt);
+    if (replayed) {
+      requireProof(this.lifetime.count === before + 1);
+      requireProof(this.lifetime.trace.at(-1)?.operation === "read_receipt");
     }
   }
+  async execute(factory: WatchlistRestoreProofFactory) {
+    this.operation = factory(this.lifetime.controller.signal);
+    await phaseProcedures[this.phase](this);
+  }
+}
+
+async function preflight(run: RestoreProofRun) {
+  await run.absentSet("source", [undefined, 1, 2, 3]);
+  await run.absentSet("restored", [undefined, 1, 2, 3]);
+  run.checks.push(
+    "source_four_fixed_locations_absent",
+    "distinct_restore_database_absent",
+  );
+}
+async function seed(run: RestoreProofRun) {
+  // Put 1 checks its receipt and must create, leaving the rollback slot free.
+  await run.absentSet("source", [undefined, 2, 3]);
+  await run.put("source", 1, false);
+  await run.put("source", 2, false);
+  await run.current("source", 2);
+  await run.readReceipts("source", [1, 2]);
+  run.checks.push(
+    "source_two_canonical_versions",
+    "source_both_original_receipts",
+    "source_application_and_metadata_fingerprints",
+  );
+}
+async function verifyRestored(run: RestoreProofRun) {
+  await run.readSet("restored", 2);
+  await run.put("restored", 1, true);
+  await run.current("restored", 2);
+  run.checks.push(
+    "restored_baseline_and_both_receipts",
+    "older_original_receipt_only_replay_no_second_commit",
+  );
+  await run.put("restored", 3, false);
+  await run.readSet("restored", 3);
+  await run.put("restored", 3, true);
+  run.checks.push(
+    "next_version_save_at_distinct_target",
+    "all_three_target_receipts",
+    "target_next_save_receipt_only_replay",
+  );
+}
+async function verifySource(run: RestoreProofRun) {
+  await run.readSet("source", 2);
+  await run.put("source", 1, true);
+  await run.current("source", 2);
+  run.checks.push(
+    "source_baseline_and_original_receipts_retained",
+    "source_target_only_receipt_absent",
+    "source_read_only_replay",
+    "source_application_and_metadata_fingerprints",
+  );
+}
+const phaseProcedures: Record<
+  WatchlistRestoreProofPhase,
+  (run: RestoreProofRun) => Promise<void>
+> = {
+  preflight,
+  seed,
+  "verify-restored": verifyRestored,
+  "verify-source": verifySource,
+};
+
+function failedPhase(
+  lifetime: StorageProofPhase,
+  error: unknown,
+): PhaseOutcome {
+  const failure = lifetime.controller.signal.aborted
+    ? "deadline"
+    : lifetime.limitReached
+      ? "operation_limit"
+      : error instanceof ProofFailure
+        ? error.reason
+        : "operation_failed";
+  return {
+    outcome:
+      failure === "deadline" || failure === "operation_limit"
+        ? "incomplete"
+        : "failed",
+    failure,
+    repositoryError:
+      error instanceof WatchlistRepositoryError ? error.code : null,
+  };
+}
+async function closePhase(
+  run: RestoreProofRun,
+  result: PhaseOutcome,
+): Promise<PhaseOutcome> {
+  let cleanupFailed = false;
   try {
-    const actor = execute();
-    // The phase records the actor's original rejection below. Cleanup waits for
-    // settlement without reclassifying that known failure as a cleanup failure.
-    lifetime.actors.push(
+    await run.lifetime.close(run.operation);
+  } catch {
+    cleanupFailed = true;
+  }
+  if (run.lifetime.rollbackIncomplete) cleanupFailed = true;
+  if (cleanupFailed)
+    return { ...result, outcome: "incomplete", failure: "cleanup_failed" };
+  return result;
+}
+async function executeOwnedPhase(
+  run: RestoreProofRun,
+  factory: WatchlistRestoreProofFactory,
+) {
+  let result: PhaseOutcome = {
+    outcome: "passed",
+    failure: "none",
+    repositoryError: null,
+  };
+  try {
+    const actor = run.execute(factory);
+    // Keep the original failure below; cleanup waits for actor settlement only.
+    run.lifetime.actors.push(
       actor.then(
         () => undefined,
         () => undefined,
       ),
     );
-    await lifetime.bounded(actor);
-    lifetime.assertRunning();
-    outcome = "passed";
+    await run.lifetime.bounded(actor);
+    run.lifetime.assertRunning();
   } catch (error) {
-    repositoryError =
-      error instanceof WatchlistRepositoryError ? error.code : null;
-    failure = lifetime.controller.signal.aborted
-      ? "deadline"
-      : lifetime.limitReached
-        ? "operation_limit"
-        : error instanceof ProofFailure
-          ? error.reason
-          : "operation_failed";
-    outcome =
-      failure === "deadline" || failure === "operation_limit"
-        ? "incomplete"
-        : "failed";
+    result = failedPhase(run.lifetime, error);
   } finally {
-    try {
-      await lifetime.close(operation);
-    } catch {
-      outcome = "incomplete";
-      failure = "cleanup_failed";
-    }
-    if (lifetime.rollbackIncomplete) {
-      outcome = "incomplete";
-      failure = "cleanup_failed";
-    }
+    result = await closePhase(run, result);
   }
-  let dispatches: number | null = null,
-    lastStatus: number | null = null,
-    closed = false;
+  return result;
+}
+function validStatus(status: number | null) {
+  return (
+    status === null ||
+    (Number.isInteger(status) && status >= 100 && status <= 599)
+  );
+}
+function validateTraffic(
+  snapshot: ReturnType<WatchlistRestoreProofOperation["snapshot"]> | undefined,
+  phase: WatchlistRestoreProofPhase,
+): asserts snapshot is ReturnType<WatchlistRestoreProofOperation["snapshot"]> {
+  requireProof(snapshot);
+  requireProof(Number.isSafeInteger(snapshot.requests));
+  requireProof(snapshot.requests >= 0);
+  requireProof(snapshot.requests <= WATCHLIST_RESTORE_PROOF_LIMITS[phase]);
+  requireProof(validStatus(snapshot.lastStatus));
+  requireProof(typeof snapshot.closed === "boolean");
+}
+function observeTraffic(
+  run: RestoreProofRun,
+  result: PhaseOutcome,
+): ObservedOutcome {
+  const empty = {
+    ...result,
+    httpDispatches: null,
+    lastStatus: null,
+    closed: false,
+  };
   try {
-    const snapshot = operation?.snapshot();
-    requireProof(
-      snapshot &&
-        Number.isSafeInteger(snapshot.requests) &&
-        snapshot.requests >= 0 &&
-        snapshot.requests <= WATCHLIST_RESTORE_PROOF_LIMITS[phase] &&
-        (snapshot.lastStatus === null ||
-          (Number.isInteger(snapshot.lastStatus) &&
-            snapshot.lastStatus >= 100 &&
-            snapshot.lastStatus <= 599)) &&
-        typeof snapshot.closed === "boolean",
-    );
-    if (outcome === "passed")
-      requireProof(snapshot.requests === lifetime.count);
-    dispatches = snapshot.requests;
-    lastStatus = snapshot.lastStatus;
-    closed = snapshot.closed;
-    if (!closed) {
-      outcome = "incomplete";
-      failure = "cleanup_failed";
-    }
+    const snapshot = run.operation?.snapshot();
+    validateTraffic(snapshot, run.phase);
+    if (result.outcome === "passed")
+      requireProof(snapshot.requests === run.lifetime.count);
+    const observed = {
+      ...result,
+      httpDispatches: snapshot.requests,
+      lastStatus: snapshot.lastStatus,
+      closed: snapshot.closed,
+    };
+    if (!observed.closed)
+      return { ...observed, outcome: "incomplete", failure: "cleanup_failed" };
+    return observed;
   } catch {
-    outcome = "incomplete";
-    failure = "cleanup_failed";
+    return { ...empty, outcome: "incomplete", failure: "cleanup_failed" };
   }
-  const elapsed = performance.now() - lifetime.started;
-  if (!Number.isFinite(elapsed) || elapsed < 0) {
-    outcome = "failed";
-    failure = "unexpected_result";
-  }
+}
+function rowFingerprints(rows: ReadonlyMap<string, ObservedRow>) {
+  return [...rows.values()].map(({ side, row }) => ({
+    side,
+    rowId: row.$id as string,
+    sha256: fingerprint(row, Object.keys(row)),
+    applicationSha256: fingerprint(
+      row,
+      row.$tableId === "watchlists" ? currentFields : receiptFields,
+    ),
+  }));
+}
+function assembleReport(
+  run: RestoreProofRun,
+  buildProof: string,
+  observed: ObservedOutcome,
+) {
+  const elapsed = performance.now() - run.lifetime.started;
+  let elapsedMs: number | null = null;
+  if (Number.isFinite(elapsed) && elapsed >= 0) elapsedMs = Math.round(elapsed);
+  else
+    observed = { ...observed, outcome: "failed", failure: "unexpected_result" };
   const report: WatchlistRestoreProofReport = {
     version: 1,
     buildProof,
     planSha256: WATCHLIST_RESTORE_PROOF_PLAN_SHA256,
-    phase,
-    outcome,
-    failure,
-    repositoryError,
-    operationCount: lifetime.count,
-    httpDispatches: dispatches,
-    upstreamStatus: lifetime.upstreamStatus ?? lastStatus,
-    elapsedMs:
-      Number.isFinite(elapsed) && elapsed >= 0 ? Math.round(elapsed) : null,
-    closed,
+    phase: run.phase,
+    outcome: observed.outcome,
+    failure: observed.failure,
+    repositoryError: observed.repositoryError,
+    operationCount: run.lifetime.count,
+    httpDispatches: observed.httpDispatches,
+    upstreamStatus: run.lifetime.upstreamStatus ?? observed.lastStatus,
+    elapsedMs,
+    closed: observed.closed,
     cleanupIncomplete:
-      lifetime.rollbackIncomplete || failure === "cleanup_failed",
-    checks,
-    rowFingerprints: [...rows.values()].map(({ side, row }) => ({
-      side,
-      rowId: row.$id as string,
-      sha256: fingerprint(row, Object.keys(row)),
-      applicationSha256: fingerprint(
-        row,
-        row.$tableId === "watchlists" ? currentFields : receiptFields,
-      ),
-    })),
-    trace: lifetime.trace.map((entry) => ({ ...entry })),
+      run.lifetime.rollbackIncomplete || observed.failure === "cleanup_failed",
+    checks: run.checks,
+    rowFingerprints: rowFingerprints(run.rows),
+    trace: run.lifetime.trace.map((entry) => ({ ...entry })),
   };
   requireProof(Buffer.byteLength(JSON.stringify(report)) <= 8192);
   return report;
+}
+
+/** Fixed application checks only. Native backup/restore remains an operator action. */
+export async function runWatchlistRestoreProof(
+  phase: WatchlistRestoreProofPhase,
+  buildProof: string,
+  factory: WatchlistRestoreProofFactory,
+): Promise<WatchlistRestoreProofReport> {
+  if (
+    !WATCHLIST_RESTORE_PROOF_PHASES.includes(phase) ||
+    !/^[0-9a-f]{64}$/u.test(buildProof)
+  )
+    throw new Error("Invalid restore proof configuration");
+  const run = new RestoreProofRun(phase);
+  const result = await executeOwnedPhase(run, factory);
+  return assembleReport(run, buildProof, observeTraffic(run, result));
 }
