@@ -8715,7 +8715,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " visible:r.left>=v.offsetLeft && r.top>=v.offsetTop && r.right<=v.offsetLeft+v.width && r.bottom<=v.offsetTop+v.height,hit:input.contains(document.elementFromPoint(x,y))}; })()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Portfolio input geometry returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        touchPortfolioGeometry(label, observed.get());
+        touchEditorGeometry(label, observed.get());
         awaitPage("native Portfolio editor is focused: " + label,
             "document.activeElement === document.querySelector(" + JSONObject.quote(selector) + ") && document.activeElement.disabled === false");
         awaitNativeEditor(label);
@@ -8816,10 +8816,6 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void touchInput(String id) throws Exception {
-        touchInput(id, null);
-    }
-
-    private void touchInput(String id, ViewAction rollbackAction) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> observed = new AtomicReference<>();
         // Center both axes before enforcing full visibility at fractional viewport edges.
@@ -8836,7 +8832,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " hit:input.contains(document.elementFromPoint(x,y))};})()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Input geometry was not returned: " + id, returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        touchObservedGeometry(id, observed.get(), rollbackAction);
+        touchEditorGeometry(id, observed.get());
     }
 
     private void touchObservedGeometry(String id, String rawGeometry) throws Exception {
@@ -8849,17 +8845,17 @@ public class ManagedWorkspaceInstrumentedTest {
             InputDevice.SOURCE_TOUCHSCREEN, 0, rollbackAction));
     }
 
-    private void touchPortfolioGeometry(String id, String rawGeometry) throws Exception {
+    private void touchEditorGeometry(String id, String rawGeometry) throws Exception {
         CoordinatesProvider provider = observedTouchCoordinates(id, rawGeometry);
         AtomicReference<float[]> coordinates = new AtomicReference<>();
         onView(isAssignableFrom(WebView.class)).check((view, noViewFoundException) -> {
             if (noViewFoundException != null) throw noViewFoundException;
-            assertTrue("Portfolio WebView retains the native click visibility constraint",
+            assertTrue("Editor WebView retains the native click visibility constraint",
                 androidx.test.espresso.matcher.ViewMatchers.isDisplayingAtLeast(90).matches(view));
             coordinates.set(provider.calculateCoordinates(view));
         });
         float[] point = coordinates.get();
-        assertNotNull("Portfolio native touch coordinates returned", point);
+        assertNotNull("Editor native touch coordinates returned", point);
         long downTime = SystemClock.uptimeMillis();
         long deadline = downTime + PAGE_TIMEOUT_MS;
         MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, point[0], point[1], 0);
@@ -8878,7 +8874,7 @@ public class ManagedWorkspaceInstrumentedTest {
         } finally {
             up.recycle();
         }
-        assertTrue("Single Portfolio touch finishes within the page deadline", SystemClock.uptimeMillis() < deadline);
+        assertTrue("Single editor touch finishes within the page deadline", SystemClock.uptimeMillis() < deadline);
     }
 
     private CoordinatesProvider observedTouchCoordinates(String id, String rawGeometry) throws Exception {
