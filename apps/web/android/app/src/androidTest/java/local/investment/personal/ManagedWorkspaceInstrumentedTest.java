@@ -1570,8 +1570,32 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void selectInventedDraftFile(WatchlistTestDocuments.Output output) throws Exception {
-        click("#managed-watchlist-draft-files input[type=file]");
+        touchDraftFileChooserLabel();
         new WatchlistSystemPicker().openInventedDocument(output.name);
+    }
+
+    /** A real gesture activates the file chooser again after Cancel returns DOM focus. */
+    private void touchDraftFileChooserLabel() throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { const input=document.querySelector('#managed-watchlist-draft-files input[type=file]'),label=input?.closest('label');" +
+            " if(!input || input.disabled || !label)return null;" +
+            " if(label.control!==input || !input.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return null;" +
+            " const text=[...label.childNodes].find(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim()==='Select a Watchlist draft file');" +
+            " if(!text)return null; label.scrollIntoView({block:'center',inline:'center',behavior:'instant'});" +
+            " const range=document.createRange();range.selectNodeContents(text);const r=range.getBoundingClientRect(),ir=input.getBoundingClientRect(),v=visualViewport;" +
+            " const x=r.left+r.width/2,y=r.top+r.height/2;" +
+            " return {x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:v.width,height:v.height," +
+            " offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio," +
+            " finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,ir.left,ir.top,ir.right,ir.bottom,ir.width,ir.height,v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio].every(Number.isFinite)" +
+            " &&r.width>0&&r.height>0&&ir.width>0&&ir.height>0&&v.width>0&&v.height>0&&v.scale>0&&devicePixelRatio>0," +
+            " visible:r.left>=v.offsetLeft&&r.top>=v.offsetTop&&r.right<=v.offsetLeft+v.width&&r.bottom<=v.offsetTop+v.height" +
+            " &&ir.left>=v.offsetLeft&&ir.top>=v.offsetTop&&ir.right<=v.offsetLeft+v.width&&ir.bottom<=v.offsetTop+v.height," +
+            " hit:label.contains(document.elementFromPoint(x,y))}; })()",
+            value -> { observed.set(value); returned.countDown(); }));
+        assertTrue("Draft file chooser label geometry returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        touchEditorGeometry("Watchlist draft file chooser label", observed.get());
     }
 
     private void assertCompleteDraftFileComparison() throws Exception {
