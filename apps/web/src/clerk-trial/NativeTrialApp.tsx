@@ -17,6 +17,10 @@ import {
   createNativeWatchlistExportAdapter,
   type InvestmentWatchlistExportPlugin,
 } from "./native-watchlist-export";
+import {
+  createNativeWatchlistDraftFileAdapter,
+  type InvestmentWatchlistDraftFilePlugin,
+} from "./native-watchlist-draft-file";
 
 export function NativeTrialApp({ config }: { config: ClerkTrialConfig }) {
   const checked = validateTrialConfig(config);
@@ -88,6 +92,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const draftFileDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeWatchlistDraftFileAdapter(
+            registerPlugin<InvestmentWatchlistDraftFilePlugin>(
+              "InvestmentWatchlistDraftFile",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const signInMessage =
     state.message ||
     (state.auth.status === "loading"
@@ -125,6 +140,7 @@ function NativeSession({
               session={session}
               androidBack={App}
               {...(exportDelivery ? { exportDelivery } : {})}
+              {...(draftFileDelivery ? { draftFileDelivery } : {})}
               {...(reportDelivery ? { reportDelivery } : {})}
             />
           ) : (

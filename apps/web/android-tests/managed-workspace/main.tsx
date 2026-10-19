@@ -17,6 +17,8 @@ import {
   operatingComparisonNoteDraft,
 } from "./operating-comparison-fixture";
 import { createNativeExportFixture } from "./native-export-fixture";
+import { createNativeDraftFileFixture } from "./native-draft-file-fixture";
+import { createManagedWatchlistDraftAccountScope } from "../../src/clerk-trial/managed-watchlist-draft-recovery";
 import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
 import type { TrialSession } from "../../src/clerk-trial/session";
 
@@ -67,7 +69,8 @@ if (
   scenario !== "annual-comparison" &&
   scenario !== "markets-selected-price" &&
   scenario !== "watchlist-comparison" &&
-  scenario !== "watchlist-export"
+  scenario !== "watchlist-export" &&
+  scenario !== "watchlist-draft-file"
 )
   throw new Error("Unknown invented Android test scenario");
 // Fixed test input before the router mounts; no navigation or account bypass.
@@ -80,6 +83,8 @@ const nativeReport =
     : null;
 const nativeExport =
   scenario === "watchlist-export" ? createNativeExportFixture() : null;
+const nativeDraftFile =
+  scenario === "watchlist-draft-file" ? createNativeDraftFileFixture() : null;
 
 /** Own the real session model so diagnostics can observe invented drafts without a production bridge. */
 function FixtureSession({
@@ -90,6 +95,14 @@ function FixtureSession({
   onFreshSession: (session: TrialSession) => void;
 }) {
   const [workspace, setWorkspace] = useState<ManagedWorkspace | null>(null);
+  const [draftFileScope] = useState(() =>
+    nativeDraftFile
+      ? createManagedWatchlistDraftAccountScope(
+          "https://fixture.invalid",
+          session.userId,
+        )
+      : undefined,
+  );
   useLayoutEffect(() => {
     const current = new ManagedWorkspace(fixture.api, session, undefined, {
       marketsCohort: fixture.marketsCohort,
@@ -115,6 +128,9 @@ function FixtureSession({
             androidBack={App}
             {...(nativeReport ? { reportDelivery: nativeReport.delivery } : {})}
             {...(nativeExport ? { exportDelivery: nativeExport.delivery } : {})}
+            {...(nativeDraftFile && draftFileScope
+              ? { draftFileDelivery: nativeDraftFile.delivery, draftFileScope }
+              : {})}
           />
         ) : (
           <p role="status">Loading your workspace…</p>
@@ -126,6 +142,13 @@ function FixtureSession({
       )}
       {workspace && nativeExport && (
         <nativeExport.Controls workspace={workspace} />
+      )}
+      {workspace && nativeDraftFile && (
+        <nativeDraftFile.Controls
+          workspace={workspace}
+          session={session}
+          onFreshSession={onFreshSession}
+        />
       )}
       {workspace && fixture.portfolio && (
         <PortfolioFixtureControls

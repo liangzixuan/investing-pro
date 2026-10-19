@@ -295,6 +295,7 @@ async function createSharedFixture(
     | "markets-selected-price"
     | "watchlist-comparison"
     | "watchlist-export"
+    | "watchlist-draft-file"
     | "authored-valuation" = "default",
 ) {
   // These journeys reuse the one-read Annual source behavior. The snapshot
@@ -658,7 +659,7 @@ async function createSharedFixture(
     return Promise.reject(new Error(`Unexpected fixture operation: ${key}`));
   };
   let savedWatchlist = { version: 1, payload: structuredClone(payload) };
-  if (scenario === "watchlist-export")
+  if (scenario === "watchlist-export" || scenario === "watchlist-draft-file")
     savedWatchlist = {
       ...savedWatchlist,
       payload: {
@@ -1298,6 +1299,30 @@ async function createSharedFixture(
       });
     },
     resolve: (request, signal) => {
+      if (
+        scenario === "watchlist-draft-file" &&
+        request.listingIds.join("|") === "listing-zero|listing-one"
+      ) {
+        if (
+          signal.aborted ||
+          state.resolve !== 0 ||
+          request.snapshotSha256 !== digest
+        )
+          return unexpected("resolve");
+        const results = savedWatchlist.payload.memberships.map(
+          ({ note: discardedNote, ...listing }) => {
+            void discardedNote;
+            return { listingId: listing.listingId, listing };
+          },
+        );
+        const resolved = parseManagedCatalogResolveResponse(
+          { snapshotSha256: digest, results },
+          request,
+        );
+        if (!resolved) throw new Error("Invalid invented draft catalog review");
+        count("resolve");
+        return Promise.resolve(resolved);
+      }
       if (balanceScenario && state.marketsResolve !== 0)
         return unexpected("resolve");
       if (scenario === "watchlist-comparison" && state.marketsResolve !== 0)

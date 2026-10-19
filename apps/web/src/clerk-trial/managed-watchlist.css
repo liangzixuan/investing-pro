@@ -565,3 +565,18 @@
     padding: 20px 16px;
   }
 }
+.managed-draft-file-input {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+
+.managed-draft-file-input input {
+  min-height: 44px;
+  max-width: 100%;
+}
+
+.managed-draft-file-list {
+  padding-inline-start: 1.5rem;
+  overflow-wrap: anywhere;
+}

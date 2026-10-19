@@ -293,6 +293,7 @@ export class ManagedWorkspace {
     selection: ManagedResearchSelection;
   } | null = null;
   private draft: MainWatchlistPayload | null = null;
+  private fileCatalogReviewRequired = false;
   private validation: {
     draft: MainWatchlistPayload;
     digest: string | null;
@@ -339,7 +340,9 @@ export class ManagedWorkspace {
     this.followups = new ManagedResearchFollowups(api, resourceSession, {
       getCreationContext: () => ({
         draft: this.coordinator.getSnapshot().draft,
-        catalogSnapshotSha256: this.state.snapshot?.snapshotSha256 ?? null,
+        catalogSnapshotSha256: this.fileCatalogReviewRequired
+          ? null
+          : (this.state.snapshot?.snapshotSha256 ?? null),
       }),
       onRetire: () =>
         this.sessionOwner.retire(
@@ -449,6 +452,8 @@ export class ManagedWorkspace {
     });
     this.coordinator.subscribe(() => {
       const saved = this.coordinator.getSnapshot();
+      if (!saved.dirty && saved.draft !== null)
+        this.fileCatalogReviewRequired = false;
       this.syncWatchlistPrices();
       this.syncAnnualComparison();
       this.syncFinancialScreen();
@@ -519,7 +524,9 @@ export class ManagedWorkspace {
     }
     this.watchlistFilings.reconcile(
       this.coordinator.getSnapshot().draft,
-      this.state.snapshot?.snapshotSha256 ?? null,
+      this.fileCatalogReviewRequired
+        ? null
+        : (this.state.snapshot?.snapshotSha256 ?? null),
       !this.navigationBlocked &&
         !this.state.research &&
         !this.state.companyRoute,
@@ -568,7 +575,9 @@ export class ManagedWorkspace {
       !this.state.companyRoute;
     this.annualComparison.reconcile(
       this.coordinator.getSnapshot().draft,
-      this.state.snapshot?.snapshotSha256 ?? null,
+      this.fileCatalogReviewRequired
+        ? null
+        : (this.state.snapshot?.snapshotSha256 ?? null),
       active,
       this.canEdit(),
     );
@@ -592,7 +601,9 @@ export class ManagedWorkspace {
       return;
     }
     const draft = this.coordinator.getSnapshot().draft;
-    const digest = this.state.snapshot?.snapshotSha256 ?? null;
+    const digest = this.fileCatalogReviewRequired
+      ? null
+      : (this.state.snapshot?.snapshotSha256 ?? null);
     const canRead =
       this.canEdit() &&
       !this.state.research &&
@@ -629,6 +640,7 @@ export class ManagedWorkspace {
     this.searchOperation = null;
     this.resolveOperation = null;
     this.draft = null;
+    this.fileCatalogReviewRequired = false;
     this.validation = null;
     this.state = emptyDiscovery();
     for (const listener of this.listeners) listener();
@@ -810,6 +822,7 @@ export class ManagedWorkspace {
     const draft = this.coordinator.getSnapshot().draft;
     return (
       !this.retired &&
+      !this.fileCatalogReviewRequired &&
       this.state.snapshot !== null &&
       draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
       draft.memberships.includes(member)
@@ -833,6 +846,7 @@ export class ManagedWorkspace {
     const draft = this.coordinator.getSnapshot().draft;
     return (
       !this.retired &&
+      !this.fileCatalogReviewRequired &&
       !this.navigationBlocked &&
       this.state.view === "watchlist" &&
       !this.state.research &&
@@ -880,6 +894,7 @@ export class ManagedWorkspace {
     const draft = this.coordinator.getSnapshot().draft;
     return (
       !this.retired &&
+      !this.fileCatalogReviewRequired &&
       !this.navigationBlocked &&
       this.state.view === "watchlist" &&
       !this.state.research &&
@@ -1340,7 +1355,8 @@ export class ManagedWorkspace {
         )
       );
     }
-    if (selection.origin !== "watchlist") return false;
+    if (selection.origin !== "watchlist" || this.fileCatalogReviewRequired)
+      return false;
     const draft = this.coordinator.getSnapshot().draft;
     return (
       selection.cik === null &&
@@ -2747,7 +2763,41 @@ export class ManagedWorkspace {
       message: `Release reference added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
   }
+  watchlistFileCatalogReviewRequired() {
+    return this.fileCatalogReviewRequired;
+  }
+  restoreWatchlistFileDraft(payload: MainWatchlistPayload) {
+    const saved = this.coordinator.getSnapshot();
+    if (
+      !this.canEdit() ||
+      this.navigationBlocked ||
+      this.state.view !== "watchlist" ||
+      this.state.research ||
+      this.state.companyRoute ||
+      this.state.read ||
+      this.state.review ||
+      this.state.reviewing ||
+      saved.phase !== "idle" ||
+      !saved.saved ||
+      !saved.latestLoaded ||
+      saved.baseVersion !== saved.saved.version ||
+      saved.uncertain ||
+      saved.replayPending
+    )
+      return false;
+    this.fileCatalogReviewRequired = true;
+    this.validation = null;
+    this.coordinator.replaceDraft(payload);
+    this.update({});
+    return true;
+  }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {
+    if (this.fileCatalogReviewRequired)
+      return {
+        payload: null,
+        issue:
+          "Review imported file listings against the current catalog before saving.",
+      };
     const digest = this.state.snapshot?.snapshotSha256 ?? null;
     if (this.validation?.draft === draft && this.validation.digest === digest)
       return this.validation.result;
@@ -2895,6 +2945,8 @@ export class ManagedWorkspace {
         ? [{ ...result.listing, note: review.draft.memberships[index]!.note }]
         : [],
     );
+    this.fileCatalogReviewRequired = false;
+    this.validation = null;
     this.coordinator.replaceDraft({
       ...review.draft,
       snapshotSha256: review.snapshotSha256,

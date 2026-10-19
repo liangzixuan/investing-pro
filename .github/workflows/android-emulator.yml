@@ -94,6 +94,13 @@ jobs:
           if not reports:
               raise SystemExit("No managed-device JUnit reports were produced.")
           expected_tests = {
+              "local.investment.personal.WatchlistDraftFilePolicyInstrumentedTest": {
+                  "derivesOnlyTheFixedFilenameAndMimeFromCaptureMetadata",
+                  "rejectsCallerFilenameUnknownMetadataAndInvalidBaseVersions",
+                  "validatesRealUtcCalendarTimeWithoutNormalizingTheName",
+                  "rejectsDifferentFramingAndFilenameBeforeWriting",
+                  "inheritedWriterEncodingRejectsOversizeAndMalformedUtf16",
+              },
               "local.investment.personal.CompanyReportPolicyInstrumentedTest": {
                   "acceptsCurrentReportSchemaAndRefusesOldSchemaOrIdentity",
               },
@@ -128,6 +135,8 @@ jobs:
                   "authoredValuationPreviewSaveReportAndRetirementPreserveBoundaries",
                   "valuationPriceComparisonPreviewSaveFreshReadAndReportPreserveSources",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
+                  "watchlistDraftFileUsesSystemExportImportAndExplicitRestore",
+                  "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",
                   "priceStudiesPreviewSaveReloadAndReportPreserveRawSource",
                   "financialScreenExplicitRunInspectionAndResearchBackPreserveDraft",
