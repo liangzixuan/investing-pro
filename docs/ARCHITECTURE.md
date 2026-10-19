@@ -38,8 +38,13 @@ flowchart LR
 The managed [valuation workbench](MANAGED_VALUATION_WORKBENCH.md) is one bounded
 transient model owned by the workspace. It retains raw company/catalog-bound
 inputs across research return, with explicit discard before changing ownership.
-The existing session owner observes its unsaved state and clears it on retirement;
-it adds no persisted resource or command store. Authored calculations call the
+The session owner observes its unsaved state and clears it on retirement.
+The saved-input source candidate adds a separate schema-1 resource through the
+existing SaveCoordinator and atomic versioned repository. Explicit staging,
+Save and confirmed-input restore remain separate from the transient editor.
+The server setting `MANAGED_VALUATION_ASSUMPTIONS_STORAGE_ENABLED` must be exactly
+`true` to enable the fixed resource; it defaults to disabled. Storage provisioning
+and real persistence qualification remain separate. Authored calculations call the
 shared pure DCF kernel and the clean `research-core/valuation` export. Provider
 admission remains separate. Note capabilities capture the current model, sources,
 coordinator, navigation and visit; report captures also retain an opaque watchlist

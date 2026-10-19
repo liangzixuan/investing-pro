@@ -1,4 +1,12 @@
 import {
+  MANAGED_VALUATION_ASSUMPTIONS_PATH,
+  MANAGED_VALUATION_ASSUMPTIONS_LIMITS,
+  parseManagedValuationAssumptions,
+  parseManagedValuationAssumptionsCommand,
+  parseManagedValuationAssumptionsReceipt,
+  type ManagedValuationAssumptionsCommand,
+  type ManagedValuationAssumptionsDto,
+  type ManagedValuationAssumptionsReceiptDto,
   MANAGED_PORTFOLIO_PATH,
   MANAGED_PORTFOLIO_LIMITS,
   parseManagedPortfolio,
@@ -71,6 +79,13 @@ import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
 export interface ManagedApi {
+  loadValuationAssumptions: (
+    signal: AbortSignal,
+  ) => Promise<ManagedValuationAssumptionsDto>;
+  saveValuationAssumptions: (
+    command: ManagedValuationAssumptionsCommand,
+    signal: AbortSignal,
+  ) => Promise<ManagedValuationAssumptionsReceiptDto>;
   loadPortfolio: (signal: AbortSignal) => Promise<ManagedPortfolioDto>;
   savePortfolio: (
     command: ManagedPortfolioCommand,
@@ -152,6 +167,7 @@ export class ManagedEodCooldownError extends Error {
 }
 
 type RequestKind =
+  | "valuation-assumptions"
   | "portfolio"
   | "watchlist"
   | "followups"
@@ -161,6 +177,12 @@ type RequestKind =
   | "calendar"
   | "filings"
   | "announcements";
+const mutationKinds: readonly RequestKind[] = [
+  "watchlist",
+  "followups",
+  "portfolio",
+  "valuation-assumptions",
+];
 
 function secCooldown(value: unknown): never {
   const error = parseManagedSecFilingsError(value);
@@ -281,8 +303,7 @@ function responseError(
     throw new TrialApiError("invalid_response");
   }
   const error = value.error;
-  const mutation =
-    kind === "watchlist" || kind === "followups" || kind === "portfolio";
+  const mutation = mutationKinds.includes(kind);
   if (!mutation && status === 409 && error === "catalog_changed")
     throw new ManagedCatalogChangedError();
   if (kind === "annual") {
@@ -308,6 +329,45 @@ function requestBody(value: unknown, maximum: number): string {
   if (new TextEncoder().encode(body).byteLength > maximum)
     throw new TrialApiError("payload_too_large");
   return body;
+}
+type ManagedRequest = <T>(
+  path: string,
+  signal: AbortSignal,
+  maximum: number,
+  parse: (value: unknown, signal: AbortSignal) => T | null | Promise<T | null>,
+  body?: string,
+  kind?: RequestKind,
+) => Promise<T>;
+
+function valuationAssumptionsApi(
+  request: ManagedRequest,
+): Pick<ManagedApi, "loadValuationAssumptions" | "saveValuationAssumptions"> {
+  return {
+    loadValuationAssumptions: (signal) =>
+      request(
+        MANAGED_VALUATION_ASSUMPTIONS_PATH,
+        signal,
+        MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
+        parseManagedValuationAssumptions,
+        undefined,
+        "valuation-assumptions",
+      ),
+    saveValuationAssumptions: async (input, signal) => {
+      const captured = parseManagedValuationAssumptionsCommand(input);
+      if (!captured) throw new TrialApiError("invalid_request");
+      return request(
+        MANAGED_VALUATION_ASSUMPTIONS_PATH,
+        signal,
+        MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
+        (value) => parseManagedValuationAssumptionsReceipt(value, captured),
+        requestBody(
+          captured,
+          MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
+        ),
+        "valuation-assumptions",
+      );
+    },
+  };
 }
 
 export function createManagedApi(
@@ -401,6 +461,7 @@ export function createManagedApi(
     }
   }
   return {
+    ...valuationAssumptionsApi(request),
     loadPortfolio: (signal) =>
       request(
         MANAGED_PORTFOLIO_PATH,

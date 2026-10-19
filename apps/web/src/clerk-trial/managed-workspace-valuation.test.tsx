@@ -83,6 +83,16 @@ async function fixture(withPrice = false) {
   const unexpected = () =>
     Promise.reject(new Error("Unexpected source or unrelated storage request"));
   const api: ManagedApi = {
+    loadValuationAssumptions: vi
+      .fn<ManagedApi["loadValuationAssumptions"]>()
+      .mockRejectedValue(
+        new Error("Unexpected invented valuation assumptions read"),
+      ),
+    saveValuationAssumptions: vi
+      .fn<ManagedApi["saveValuationAssumptions"]>()
+      .mockRejectedValue(
+        new Error("Unexpected invented valuation assumptions write"),
+      ),
     loadPortfolio: vi.fn().mockImplementation(unexpected),
     savePortfolio: vi.fn().mockImplementation(unexpected),
     loadFollowups: vi.fn().mockImplementation(unexpected),

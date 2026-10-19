@@ -114,11 +114,18 @@ async function fixture(valuation?: ManagedValuationWorkbench) {
     MANAGED_WATCHLIST_SAVE_COPY,
   );
   const clearResearch = vi.fn();
+  const valuationAssumptions = resource(
+    "valuations",
+    { notes: ["Saved model inputs"] },
+    2,
+    MANAGED_WATCHLIST_SAVE_COPY,
+  );
   const owner = new ManagedSessionOwner(
     {
       watchlist: watchlist.coordinator,
       followups: followups.coordinator,
       portfolio: portfolio.coordinator,
+      valuationAssumptions: valuationAssumptions.coordinator,
     },
     { signOut },
     clearResearch,
@@ -128,11 +135,13 @@ async function fixture(valuation?: ManagedValuationWorkbench) {
     watchlist.coordinator.load(),
     followups.coordinator.load(),
     portfolio.coordinator.load(),
+    valuationAssumptions.coordinator.load(),
   ]);
   return {
     ...watchlist,
     followups,
     portfolio,
+    valuationAssumptions,
     owner,
     signOut,
     resourceSignOut,
@@ -171,7 +180,7 @@ function render(owner: ManagedSessionOwner) {
   };
 }
 describe("intentional managed sign-out", () => {
-  it("reviews temporary valuation inputs even when all three saved resources are clean", async () => {
+  it("reviews temporary valuation inputs even when all four saved resources are clean", async () => {
     const valuation = new ManagedValuationWorkbench();
     valuation.activate(eodSelection);
     const f = await fixture(valuation);
@@ -186,7 +195,7 @@ describe("intentional managed sign-out", () => {
     const review = render(f.owner);
     expect(review.html).toContain("Sign out with unsaved changes?");
     expect(review.html).toContain(
-      "Signing out discards these inputs and calculated results",
+      "Signing out discards valuation inputs that are not confirmed as saved, and clears calculated results.",
     );
     expect(f.signOut).not.toHaveBeenCalled();
     review.click("managed-signout-stay");
@@ -350,9 +359,7 @@ describe("intentional managed sign-out", () => {
     expect(opened.html).toContain(
       "<dt>Follow-ups</dt><dd>Unsaved local changes.</dd>",
     );
-    expect(opened.html).toContain(
-      "Signing out discards all three local drafts.",
-    );
+    expect(opened.html).toContain("Signing out discards all local drafts.");
     opened.click("managed-signout-stay");
     expect(f.coordinator.getSnapshot()).toBe(watchlist);
     expect(f.followups.coordinator.getSnapshot()).toBe(followups);
@@ -529,7 +536,7 @@ it("reviews a dirty Portfolio beside the unchanged other resources before one si
   render(f.owner).click("managed-signout-open");
   const review = render(f.owner);
   expect(review.html).toContain("Portfolio");
-  expect(review.html).toContain("all three local drafts");
+  expect(review.html).toContain("all local drafts");
   expect(review.html).toContain("Unsaved local changes");
   expect(f.signOut).not.toHaveBeenCalled();
   review.click("managed-signout-confirm");
@@ -538,4 +545,31 @@ it("reviews a dirty Portfolio beside the unchanged other resources before one si
   expect(f.portfolio.coordinator.getSnapshot().draft).toBeNull();
   expect(f.coordinator.getSnapshot().draft).toBeNull();
   expect(f.followups.coordinator.getSnapshot().draft).toBeNull();
+});
+
+it("reviews an uncertain valuation save without saving or clearing another resource", async () => {
+  const f = await fixture();
+  f.valuationAssumptions.coordinator.replaceDraft({
+    notes: ["Unconfirmed editable assumptions"],
+  });
+  f.valuationAssumptions.save.mockRejectedValueOnce(
+    new TrialApiError("commit_unknown"),
+  );
+  await f.valuationAssumptions.coordinator.save();
+  const original = f.valuationAssumptions.save.mock.calls[0]![0];
+  const watchlist = f.coordinator.getSnapshot();
+  render(f.owner).click("managed-signout-open");
+  const review = render(f.owner);
+  expect(review.html).toContain("Check this save before signing out");
+  expect(review.html).toContain("Saved valuation inputs");
+  expect(review.html).toContain("Save result uncertain");
+  review.click("managed-signout-stay");
+  expect(f.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.valuationAssumptions.coordinator.getSnapshot().uncertain).toBe(true);
+  expect(f.valuationAssumptions.save.mock.calls[0]![0]).toBe(original);
+  expect(f.valuationAssumptions.save).toHaveBeenCalledOnce();
+  expect(f.signOut).not.toHaveBeenCalled();
+  expect(f.save).not.toHaveBeenCalled();
+  expect(f.followups.save).not.toHaveBeenCalled();
+  expect(f.portfolio.save).not.toHaveBeenCalled();
 });

@@ -398,6 +398,14 @@ function fixture(
   priceCoverage = [eodSelection.listing, ...payload.memberships],
 ) {
   const api: ManagedApi = {
+    loadValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions read"),
+      ),
+    saveValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions write"),
+      ),
     loadPortfolio: () =>
       Promise.reject(
         new Error("Portfolio requires an explicit fixture action"),

@@ -21,6 +21,7 @@ export interface CheckedClerkTrialFunctionConfiguration extends ClerkTrialFuncti
 
 const DEVELOPMENT_ORIGIN = "https://investment-clerk-6abac57a.appwrite.network";
 const PRODUCTION_ORIGIN = "https://app.investingpro.app";
+export const CLERK_TRIAL_PRODUCTION_ISSUER = "https://clerk.investingpro.app";
 const NATIVE_ORIGIN = "https://localhost";
 
 function invalid(): never {
@@ -135,7 +136,7 @@ export function validateClerkTrialFunctionConfiguration(
   if (
     typeof issuer !== "string" ||
     (production
-      ? issuer !== "https://clerk.investingpro.app"
+      ? issuer !== CLERK_TRIAL_PRODUCTION_ISSUER
       : issuer !== "https://allowed-lobster-3386.clerk.accounts.dev")
   )
     return invalid();

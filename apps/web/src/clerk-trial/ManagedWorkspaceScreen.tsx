@@ -1073,6 +1073,7 @@ export function ManagedWorkspaceScreen({
                   filings={workspace.filings}
                   eod={workspace.eod}
                   valuation={workspace.valuation}
+                  valuationAssumptions={workspace.valuationAssumptions}
                   valuationNoteActions={{
                     prepare: (model, scenario, includePriceComparison) =>
                       workspace.prepareValuationNote(

@@ -145,6 +145,14 @@ async function fixture(
     return Promise.resolve({ ...structuredClone(stored), replayed: false });
   });
   const api: ManagedApi = {
+    loadValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions read"),
+      ),
+    saveValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions write"),
+      ),
     loadPortfolio: vi
       .fn<ManagedApi["loadPortfolio"]>()
       .mockImplementation(unexpected),

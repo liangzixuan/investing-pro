@@ -1,6 +1,12 @@
 import {
   isMainWatchlistPayload,
   membershipMatchesResult,
+  MANAGED_VALUATION_DCF_MODEL_VERSION,
+  MANAGED_VALUATION_EXIT_MODEL_VERSION,
+  parseValuationAssumptionEntry,
+  parseValuationAssumptionsPayload,
+  type ValuationAssumptionEntry,
+  type ValuationAssumptionsPayload,
 } from "@research-cockpit/contracts";
 import {
   calculateAuthoredCashFlowDcf,
@@ -14,6 +20,7 @@ import {
   type AuthoredExitMultipleResult,
 } from "@research-cockpit/research-core/valuation";
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import { getManagedResearchCoverageCik } from "./managed-research-eligibility";
 
 export const VALUATION_SCENARIOS = Object.freeze([
   "conservative",
@@ -55,6 +62,10 @@ export interface ManagedValuationSnapshot {
   readonly calculation: ManagedValuationCalculation | null;
   readonly retired: boolean;
   readonly inputIssue: string | null;
+}
+export interface ManagedValuationInputCapture {
+  readonly entry: ValuationAssumptionEntry;
+  readonly revision: symbol;
 }
 const dcfFields: readonly DcfField[] = [
   "startingUnleveredCashFlowUsd",
@@ -101,6 +112,13 @@ export class ManagedValuationWorkbench {
   private listeners = new Set<() => void>();
   private calculation: ManagedValuationCalculation | null = null;
   private readonly rejectedFields = new Set<string>();
+  private editorRevision = Symbol();
+  private savedInputRevision: symbol | null = null;
+  private retainedInputs = false;
+  private readonly inputCaptures = new WeakMap<
+    ManagedValuationInputCapture,
+    ManagedValuationSnapshot
+  >();
   private snapshot: ManagedValuationSnapshot = freeze({
     owner: null,
     context: null,
@@ -125,10 +143,19 @@ export class ManagedValuationWorkbench {
     if (this.snapshot.retired) return;
     const context = selection === null ? null : copySelection(selection);
     if (selection !== null && context === null) return;
-    const owner =
-      !this.hasDraft() && context ? context : (this.snapshot.owner ?? context);
-    if (!sameSelection(owner, this.snapshot.owner)) this.calculation = null;
+    const owner = this.nextOwner(context);
+    if (!sameSelection(owner, this.snapshot.owner)) {
+      this.calculation = null;
+      this.editorRevision = Symbol();
+    }
     this.publish({ ...this.snapshot, owner, context });
+  }
+  private nextOwner(
+    context: ManagedResearchSelection | null,
+  ): ManagedResearchSelection | null {
+    if (this.hasDraft() || this.retainedInputs)
+      return this.snapshot.owner ?? context;
+    return context ?? this.snapshot.owner;
   }
   discardAndUse(selection: ManagedResearchSelection): void {
     if (this.snapshot.retired) return;
@@ -140,6 +167,9 @@ export class ManagedValuationWorkbench {
     )
       return;
     this.calculation = null;
+    this.editorRevision = Symbol();
+    this.retainedInputs = false;
+    this.savedInputRevision = null;
     this.rejectedFields.clear();
     this.publish({
       owner,
@@ -268,9 +298,97 @@ export class ManagedValuationWorkbench {
     this.publish(this.snapshot);
     return this.calculation;
   }
+  captureInputs(): ManagedValuationInputCapture | null {
+    const snapshot = this.snapshot;
+    if (!snapshot.editable || snapshot.inputIssue) return null;
+    const entry = this.authoredEntry();
+    if (!entry) return null;
+    const capture = Object.freeze({ entry, revision: this.editorRevision });
+    this.inputCaptures.set(capture, snapshot);
+    return capture;
+  }
+  private authoredEntry(): ValuationAssumptionEntry | null {
+    const snapshot = this.snapshot;
+    if (!snapshot.owner) return null;
+    return parseValuationAssumptionEntry({
+      catalogSnapshotSha256: snapshot.owner.catalogSnapshotSha256,
+      listing: snapshot.owner.listing,
+      cik: snapshot.owner.cik,
+      dcf: {
+        modelVersion: MANAGED_VALUATION_DCF_MODEL_VERSION,
+        inputs: snapshot.dcfDraft,
+      },
+      exit: {
+        modelVersion: MANAGED_VALUATION_EXIT_MODEL_VERSION,
+        inputs: snapshot.exitDraft,
+      },
+    });
+  }
+  isInputCaptureCurrent(capture: ManagedValuationInputCapture): boolean {
+    const snapshot = this.inputCaptures.get(capture);
+    if (!snapshot || !snapshot.editable) return false;
+    return snapshot === this.snapshot;
+  }
+  acknowledgeSavedInputs(capture: ManagedValuationInputCapture): boolean {
+    if (!this.inputCaptures.has(capture)) return false;
+    if (this.snapshot.retired || this.snapshot.inputIssue) return false;
+    if (this.editorRevision !== capture.revision) return false;
+    this.retainedInputs = true;
+    this.savedInputRevision = this.editorRevision;
+    const published = this.publish({ ...this.snapshot, dirty: false });
+    return this.snapshot === published;
+  }
+  reconcileSavedInputs(value: ValuationAssumptionsPayload | null): void {
+    if (this.snapshot.retired) return;
+    if (this.savedInputRevision !== this.editorRevision) return;
+    const authored = this.authoredEntry();
+    const saved = parseValuationAssumptionsPayload(value);
+    if (
+      authored &&
+      saved?.entries.some((entry) => sameAuthoredInputs(authored, entry))
+    )
+      return;
+    this.savedInputRevision = null;
+    this.publish({ ...this.snapshot, dirty: true });
+  }
+  restoreInputs(
+    value: ValuationAssumptionEntry,
+    expectedSnapshot: ManagedValuationSnapshot,
+  ): boolean {
+    if (this.snapshot !== expectedSnapshot || this.snapshot.retired)
+      return false;
+    const entry = parseValuationAssumptionEntry(value);
+    const context = this.snapshot.context;
+    if (!entry || !context) return false;
+    const owner = copySelection({
+      catalogSnapshotSha256: entry.catalogSnapshotSha256,
+      listing: entry.listing,
+      cik: entry.cik,
+      origin: context.origin,
+    });
+    if (!sameSelection(owner, context)) return false;
+    this.calculation = null;
+    this.editorRevision = Symbol();
+    this.savedInputRevision = this.editorRevision;
+    this.retainedInputs = true;
+    this.rejectedFields.clear();
+    const published = this.publish({
+      ...this.snapshot,
+      owner: context,
+      dirty: false,
+      dcfDraft: entry.dcf.inputs,
+      exitDraft: entry.exit.inputs,
+      calculation: null,
+      inputIssue: null,
+    });
+    return this.snapshot === published;
+  }
   retire(): void {
     if (this.snapshot.retired) return;
     this.calculation = null;
+    this.editorRevision = Symbol();
+    this.retainedInputs = false;
+    this.savedInputRevision = null;
     this.rejectedFields.clear();
     this.publish({
       owner: null,
@@ -299,6 +417,7 @@ export class ManagedValuationWorkbench {
     if ([...value].length > VALUATION_DRAFT_FIELD_MAX_CODE_POINTS) {
       this.rejectedFields.add(key);
       this.calculation = null;
+      this.editorRevision = Symbol();
       this.publish({
         ...this.snapshot,
         dirty: true,
@@ -307,10 +426,12 @@ export class ManagedValuationWorkbench {
       return false;
     }
     if (this.rejectedFields.delete(key)) {
-      this.publish({
+      this.editorRevision = Symbol();
+      const published = this.publish({
         ...this.snapshot,
         inputIssue: this.rejectedInputMessage(),
       });
+      if (this.snapshot !== published) return false;
     }
     return true;
   }
@@ -323,16 +444,19 @@ export class ManagedValuationWorkbench {
     change: Partial<Pick<ManagedValuationSnapshot, "dcfDraft" | "exitDraft">>,
   ): void {
     this.calculation = null;
+    this.editorRevision = Symbol();
     this.publish({ ...this.snapshot, ...change, dirty: true });
   }
-  private publish(next: ManagedValuationSnapshot): void {
+  private publish(next: ManagedValuationSnapshot): ManagedValuationSnapshot {
     const editable = !next.retired && sameSelection(next.owner, next.context);
-    this.snapshot = freeze({
+    const published = freeze({
       ...next,
       editable,
       calculation: editable ? this.calculation : null,
     });
+    this.snapshot = published;
     for (const listener of [...this.listeners]) listener();
+    return published;
   }
 }
 function rejectedFieldLabel(key: string) {
@@ -405,8 +529,25 @@ function sameSelection(
     left !== null &&
     right !== null &&
     left.catalogSnapshotSha256 === right.catalogSnapshotSha256 &&
-    left.cik === right.cik &&
+    compatibleCik(left.cik, right.cik) &&
     membershipMatchesResult({ ...left.listing, note: "" }, right.listing)
+  );
+}
+function compatibleCik(left: string | null, right: string | null): boolean {
+  if (left === null || right === null) return true;
+  return left === right;
+}
+function sameAuthoredInputs(
+  left: ValuationAssumptionEntry,
+  right: ValuationAssumptionEntry,
+): boolean {
+  if (left.catalogSnapshotSha256 !== right.catalogSnapshotSha256) return false;
+  if (!compatibleCik(left.cik, right.cik)) return false;
+  if (!membershipMatchesResult({ ...left.listing, note: "" }, right.listing))
+    return false;
+  return (
+    JSON.stringify(left.dcf) === JSON.stringify(right.dcf) &&
+    JSON.stringify(left.exit) === JSON.stringify(right.exit)
   );
 }
 function plainData(value: unknown): value is Record<string, unknown> {
@@ -451,15 +592,21 @@ function copySelection(raw: unknown): ManagedResearchSelection | null {
       })
     )
       return null;
-    return freeze({
+    return freezeSelection({
       catalogSnapshotSha256: raw.catalogSnapshotSha256,
       listing: { ...raw.listing },
       cik: raw.cik,
       origin: raw.origin,
-    }) as ManagedResearchSelection;
+    });
   } catch {
     return null;
   }
+}
+function freezeSelection(value: unknown): ManagedResearchSelection | null {
+  const selection = freeze(value as ManagedResearchSelection);
+  const knownCik = getManagedResearchCoverageCik(selection);
+  if (knownCik === null || selection.cik === null) return selection;
+  return knownCik === selection.cik ? selection : null;
 }
 function freeze<T>(value: T): T {
   if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {

@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 18, 2026. This document defines the durable product goals and
+Updated October 19, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -32,10 +32,12 @@ are historical. Record actual tool restrictions separately from owner permission
 Offline preparation does not establish staging, production or physical-device
 acceptance.
 
-The active source increment aligns Price, Annual and Filings eligibility across
+The merged research-source increment aligns Price, Annual and Filings eligibility across
 the existing named company universe, from screening through cited evidence,
-normal Save and retained Back state. Then complete editable valuation persistence and managed
-Portfolio storage/recovery. Defer new portfolio-history features while these
+normal Save and retained Back state. Its delivery remains separate. The active
+source increment is editable valuation persistence: explicit saved-input read,
+complete comparison, independent Review/Save, fresh-session restore and explicit
+Calculate. Then complete managed Portfolio storage/recovery. Defer new portfolio-history features while these
 delivery and persistence gaps remain. Coverage fixes and selected metric rows do
 not complete a milestone.
 

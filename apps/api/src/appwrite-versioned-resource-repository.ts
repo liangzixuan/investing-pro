@@ -3,6 +3,7 @@ import type {
   MainWatchlistPayload,
   ManagedPortfolioPayload,
   ResearchFollowupsPayload,
+  ValuationAssumptionsPayload,
 } from "@research-cockpit/contracts";
 import { AppwriteException } from "node-appwrite";
 import type {
@@ -22,11 +23,13 @@ const ROW_METADATA = [
   "$updatedAt",
   "$permissions",
 ] as const;
-export type ResourceKind = "watchlist" | "research-followups" | "portfolio";
+export type ResourceKind =
+  "watchlist" | "research-followups" | "portfolio" | "valuation-assumptions";
 interface PayloadByKind {
   watchlist: MainWatchlistPayload;
   "research-followups": ResearchFollowupsPayload;
   portfolio: ManagedPortfolioPayload;
+  "valuation-assumptions": ValuationAssumptionsPayload;
 }
 export interface ResourcePrincipal {
   readonly userId: string;
@@ -46,7 +49,7 @@ interface CapturedCommand<K extends ResourceKind> extends PayloadCapture<K> {
   readonly payloadDigest: string;
   readonly requestDigest: string;
 }
-/** Internal trusted composition, limited to three closed payload kinds. No policy performs I/O. */
+/** Internal trusted composition, limited to four closed payload kinds. No policy performs I/O. */
 export interface ResourcePolicy<K extends ResourceKind> {
   readonly kind: K;
   capture(command: ResourceCommand<K>): PayloadCapture<K>;
@@ -118,7 +121,8 @@ export function createAppwriteVersionedResourceRepository<
   if (
     (policy.kind !== "watchlist" &&
       policy.kind !== "research-followups" &&
-      policy.kind !== "portfolio") ||
+      policy.kind !== "portfolio" &&
+      policy.kind !== "valuation-assumptions") ||
     ![databaseId, currentTableId, receiptsTableId].every((id) => ID.test(id)) ||
     currentTableId === receiptsTableId
   ) {
@@ -143,7 +147,9 @@ export function createAppwriteVersionedResourceRepository<
           ? "w"
           : policy.kind === "research-followups"
             ? "f"
-            : "p",
+            : policy.kind === "portfolio"
+              ? "p"
+              : "v",
         namespace(userId),
       ),
     );
@@ -310,7 +316,8 @@ export function createAppwriteVersionedResourceRepository<
           throw new VersionedResourceRepositoryError("unavailable");
         if (
           (policy.kind === "research-followups" ||
-            policy.kind === "portfolio") &&
+            policy.kind === "portfolio" ||
+            policy.kind === "valuation-assumptions") &&
           !policy.admitFresh(
             captured.payload,
             current?.payload ?? null,

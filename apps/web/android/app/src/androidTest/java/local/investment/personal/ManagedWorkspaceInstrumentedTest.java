@@ -94,6 +94,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "thesis-review",
         "company-snapshot",
         "authored-valuation",
+        "saved-valuation",
         "valuation-price",
         "research-followups",
         "portfolio-ledger",
@@ -318,6 +319,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("annual-financial-review");
         if (testName.getMethodName().equals("authoredValuationPreviewSaveReportAndRetirementPreserveBoundaries"))
             selectFixtureScenario("authored-valuation");
+        if (testName.getMethodName().equals("savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation"))
+            selectFixtureScenario("saved-valuation");
         if (testName.getMethodName().equals("valuationPriceComparisonPreviewSaveFreshReadAndReportPreserveSources"))
             selectFixtureScenario("valuation-price");
         if (testName.getMethodName().equals("annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh"))
@@ -733,6 +736,104 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("valuation journey makes no research/provider calls, duplicate writes, tokens or document reload",
             "(() => { const d = " + DIAGNOSTICS + "; return d.save === 1 && d.load === 2 && d.status === 1 && d.annual === 0 && d.eod === 0 && d.filings === 0 && d.marketsEod === 0 && d.calendar === 0 && d.fed === 0 && d.search === 0 && d.resolve === 0 && d.token === 0; })()");
         assertEquals("authored valuation keeps the original document", origin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    @Test
+    public void savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Independent saved valuation note");
+        String watchlist = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        click(ANNUAL);
+        awaitPage("same exact company opens without saved or source reads", savedValuationEditor() + ".owner?.listing.listingId === 'listing-zero' && " + savedValuationStore() + ".counts.load === 0");
+        click(".managed-valuation-workbench:not(.managed-valuation-assumptions) > summary");
+        authorSavedValuationInputs();
+        saveReviewedValuationInputs();
+        clearAndReopenSavedValuationInputs();
+        restoreSavedValuationInputs();
+        click(".managed-valuation-workbench:not(.managed-valuation-assumptions) > button:first-of-type");
+        awaitPage("only explicit Calculate runs both restored authored models", savedValuationEditor() + ".calculation?.dcfResult.scenarios.base.valuePerShareUsd === '140.00' && " + savedValuationEditor() + ".calculation?.exitResult.scenarios.base.valuePerShare === '19.00'");
+        assertSavedValuationIsolation(watchlist);
+        assertEquals("saved assumptions journey preserves the mounted document", origin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    private String savedValuationEditor() {
+        return "JSON.parse(document.querySelector('#fixture-valuation-draft').textContent)";
+    }
+
+    private String savedValuationStore() {
+        return "JSON.parse(document.querySelector('#fixture-saved-valuation-store').textContent)";
+    }
+
+    private String savedValuationResource() {
+        return "JSON.parse(document.querySelector('#fixture-saved-valuation-resource').textContent)";
+    }
+
+    private void authorSavedValuationInputs() throws Exception {
+        String[][] fields = {
+            {"dcf-startingUnleveredCashFlowUsd", "100.00"}, {"dcf-enterpriseToEquityBridgeUsd", "100.00"},
+            {"dcf-dilutedShares", "10.00"}, {"dcf-waccPercent", "10.00"}, {"dcf-terminalGrowthPercent", "0.00"},
+            {"dcf-conservative", "0.00"}, {"dcf-base", "10.00"}, {"dcf-expansion", "20.00"},
+            {"exit-baseRevenue", "1000.00"}, {"exit-cash", "100.00"}, {"exit-debt", "200.00"},
+            {"exit-dilutedShares", "100.00"}, {"exit-discountRatePercent", "10.00"},
+            {"exit-conservative-annualRevenueGrowthPercent", "0.00"}, {"exit-conservative-targetEbitdaMarginPercent", "20.00"}, {"exit-conservative-exitMultiple", "10.00"},
+            {"exit-base-annualRevenueGrowthPercent", "10.00"}, {"exit-base-targetEbitdaMarginPercent", "20.00"}, {"exit-base-exitMultiple", "10.00"},
+            {"exit-expansion-annualRevenueGrowthPercent", "20.00"}, {"exit-expansion-targetEbitdaMarginPercent", "20.00"}, {"exit-expansion-exitMultiple", "10.00"}
+        };
+        for (String[] field : fields) {
+            String selector = ".managed-valuation-workbench:not(.managed-valuation-assumptions) input[id$='-" + field[0] + "']";
+            awaitPage("exact associated blank saved-input editor: " + field[0], "(() => { const all=document.querySelectorAll(" + JSONObject.quote(selector) + "),e=all[0]; return all.length===1 && !e.disabled && e.value==='' && [...document.querySelectorAll('label')].some(label=>label.htmlFor===e.id); })()");
+            typeIntoInput(readFixtureString("document.querySelector(" + JSONObject.quote(selector) + ").id"), field[1]);
+        }
+        awaitPage("all raw lexemes and model inputs match before any saved read or calculation", "(() => { const e=" + savedValuationEditor() + ",s=" + savedValuationStore() + ";return JSON.stringify(e.dcfDraft)===JSON.stringify(s.expected.dcf.inputs) && JSON.stringify(e.exitDraft)===JSON.stringify(s.expected.exit.inputs) && e.calculation===null && s.counts.load===0 && s.counts.save===0; })()");
+    }
+
+    private void saveReviewedValuationInputs() throws Exception {
+        click(".managed-valuation-assumptions > summary");
+        click("#managed-valuation-load");
+        awaitPage("explicit saved read returns version zero without replacing scratch", savedValuationStore() + ".counts.load===1 && " + savedValuationResource() + ".baseVersion===0 && " + savedValuationResource() + ".draft.entries.length===0 && " + savedValuationEditor() + ".dcfDraft.waccPercent==='10.00'");
+        click("#managed-valuation-stage-review");
+        awaitPage("complete staging review precedes the only Stage action", "document.querySelector('[aria-label=\"Valuation staging review\"]')?.textContent.includes('authored-cash-flow-dcf-v1') && document.querySelector('[aria-label=\"Valuation staging review\"]')?.textContent.includes('authored-exit-multiple-v1') && document.querySelector('#managed-valuation-stage')?.disabled===false && " + savedValuationStore() + ".counts.save===0");
+        retainAnnualNoteFrame("savedValuationStaging", "[aria-label='Valuation staging review'] > h4", "[aria-label='Valuation staging review'] > h4", 1);
+        click("#managed-valuation-stage");
+        awaitPage("staged collection is not confirmed saved and cannot Save before draft review", savedValuationResource() + ".draft.entries.length===1 && " + savedValuationResource() + ".saved.version===0 && document.querySelector('#managed-valuation-save')?.disabled===true");
+        click("#managed-valuation-review");
+        awaitPage("complete resource draft review enables explicit Save", "document.querySelector('[aria-label=\"Complete valuation draft for Save\"]')?.textContent.includes('100.00') && document.querySelector('#managed-valuation-save')?.disabled===false && " + savedValuationStore() + ".counts.save===0");
+        click("#managed-valuation-save");
+        awaitPage("one confirmed Save preserves exact current raw inputs and clears only their scratch warning", savedValuationStore() + ".counts.save===1 && " + savedValuationResource() + ".saved.version===1 && " + savedValuationResource() + ".dirty===false && " + savedValuationEditor() + ".dirty===false && " + savedValuationEditor() + ".calculation===null");
+    }
+
+    private void clearAndReopenSavedValuationInputs() throws Exception {
+        String cash = readFixtureString("document.querySelector('.managed-valuation-workbench:not(.managed-valuation-assumptions) input[id$=\"-exit-cash\"]').id");
+        touchInput(cash);
+        replaceFocusedInput(cash, "100.00", "101.00");
+        onWebView().withElement(findElement(Locator.XPATH, "//details[contains(@class,'managed-valuation-workbench')]/button[normalize-space(.)='Discard valuation inputs']")).perform(webClick());
+        awaitPage("independent editor discard leaves confirmed saved inputs intact", savedValuationEditor() + ".dcfDraft.startingUnleveredCashFlowUsd==='' && " + savedValuationStore() + ".saved.payload.entries[0].dcf.inputs.startingUnleveredCashFlowUsd==='100.00'");
+        pressBack();
+        awaitPage("native Back clears context while saved collection remains confirmed", "document.querySelector('.managed-company-visit')===null && " + savedValuationEditor() + ".context===null && " + savedValuationResource() + ".saved.version===1");
+        selectWatchlistNote(0);
+        click(ANNUAL);
+        click(".managed-valuation-workbench:not(.managed-valuation-assumptions) > summary");
+        click(".managed-valuation-assumptions > summary");
+        click("#managed-valuation-load");
+        awaitPage("reopened company explicitly reads saved assumptions without loading them into the editor", savedValuationStore() + ".counts.load===2 && " + savedValuationEditor() + ".dcfDraft.startingUnleveredCashFlowUsd==='' && " + savedValuationEditor() + ".calculation===null");
+    }
+
+    private void restoreSavedValuationInputs() throws Exception {
+        String review = "//section[@aria-label='Confirmed saved valuation inputs']//button[normalize-space(.)='Review saved inputs for ZERO']";
+        onWebView().withElement(findElement(Locator.XPATH, review)).perform(webClick());
+        awaitPage("saved/current full comparison requires explicit Use", "document.querySelector('[aria-label=\"Saved valuation restore review\"]')?.textContent.includes('100.00') && document.querySelector('#managed-valuation-use-inputs')?.disabled===false && " + savedValuationEditor() + ".dcfDraft.startingUnleveredCashFlowUsd===''");
+        String cash = readFixtureString("document.querySelector('.managed-valuation-workbench:not(.managed-valuation-assumptions) input[id$=\"-exit-cash\"]').id");
+        typeIntoInput(cash, "newer scratch");
+        awaitPage("typing invalidates the earlier restore review without adopting saved inputs", "document.querySelector('#managed-valuation-use-inputs')===null && " + savedValuationEditor() + ".exitDraft.cash==='newer scratch'");
+        onWebView().withElement(findElement(Locator.XPATH, review)).perform(webClick());
+        retainAnnualNoteFrame("savedValuationRestore", "[aria-label='Saved valuation restore review'] > h4", "[aria-label='Saved valuation restore review'] > h4", 1);
+        click("#managed-valuation-use-inputs");
+        awaitPage("Use atomically restores both exact raw maps and full current company ownership without calculating", "(() => { const e=" + savedValuationEditor() + ",s=" + savedValuationStore() + ";return JSON.stringify(e.dcfDraft)===JSON.stringify(s.expected.dcf.inputs) && JSON.stringify(e.exitDraft)===JSON.stringify(s.expected.exit.inputs) && Object.keys(e.owner.listing).length===11 && Object.keys(s.expected.listing).every(key=>e.owner.listing[key]===s.expected.listing[key]) && e.owner.cik===null && e.owner.origin==='watchlist' && e.context.origin==='watchlist' && !e.dirty && e.calculation===null; })()");
+    }
+
+    private void assertSavedValuationIsolation(String watchlist) throws Exception {
+        awaitPage("saved assumptions preserve the entire independent note draft and exact source/resource counts", "(() => { const d=" + DIAGNOSTICS + ",s=" + savedValuationStore() + ";return JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist) + " && s.counts.load===2 && s.counts.save===1 && s.counts.resolve===1 && s.saved.payload.entries.length===1 && JSON.stringify(s.saved.payload.entries[0])===JSON.stringify(s.expected) && d.load===1 && d.status===1 && d.save===0 && d.annual===0 && d.eod===0 && d.filings===0 && d.marketsEod===0 && d.calendar===0 && d.fed===0 && d.search===0 && d.resolve===0 && d.token===0 && d.signOut===0; })()");
     }
 
     @Test

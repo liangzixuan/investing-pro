@@ -8,6 +8,7 @@ import {
   type ExitScenarioField,
 } from "./managed-valuation-workbench";
 import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
+import { MANAGED_RESEARCH_COVERAGE } from "./managed-research-eligibility";
 
 export function valuationSelection(
   overrides: Partial<ManagedResearchSelection> = {},
@@ -394,5 +395,141 @@ describe("transient authored valuation workbench", () => {
     expect(workbench.calculate()).toBeNull();
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
+  });
+});
+
+describe("complete authored input capture and restore", () => {
+  it("captures exact invalid and incomplete raw maps without calculating and blocks rejected overlength input", () => {
+    const workbench = new ManagedValuationWorkbench();
+    workbench.activate(valuationSelection());
+    workbench.setDcfField("waccPercent", " 12.. 😀\n");
+    workbench.setExitField("horizonYears", "5.0");
+    const capture = workbench.captureInputs()!;
+    expect(capture.entry.dcf.inputs.waccPercent).toBe(" 12.. 😀\n");
+    expect(capture.entry.exit.inputs.horizonYears).toBe("5.0");
+    expect(capture.entry.dcf.inputs.startingUnleveredCashFlowUsd).toBe("");
+    expect(Object.isFrozen(capture.entry.exit.inputs.scenarios.base)).toBe(
+      true,
+    );
+    expect(workbench.getSnapshot().calculation).toBeNull();
+    workbench.setDcfField("waccPercent", "9".repeat(513));
+    expect(workbench.captureInputs()).toBeNull();
+    workbench.setDcfField("waccPercent", " 12.. 😀\n");
+    expect(workbench.isInputCaptureCurrent(capture)).toBe(false);
+    expect(workbench.acknowledgeSavedInputs(capture)).toBe(false);
+  });
+
+  it("acknowledges only the saved editor revision and keeps clean inputs bound to their company", () => {
+    const workbench = new ManagedValuationWorkbench();
+    const owner = valuationSelection();
+    workbench.activate(owner);
+    fillValuation(workbench);
+    const old = workbench.captureInputs()!;
+    workbench.setDcfField("waccPercent", "11");
+    expect(workbench.acknowledgeSavedInputs(old)).toBe(false);
+    expect(workbench.hasDraft()).toBe(true);
+    const current = workbench.captureInputs()!;
+    expect(workbench.acknowledgeSavedInputs({ ...current })).toBe(false);
+    expect(workbench.acknowledgeSavedInputs(current)).toBe(true);
+    expect(workbench.hasDraft()).toBe(false);
+    const other = valuationSelection({
+      listing: { ...owner.listing, listingId: "other" },
+    });
+    workbench.activate(other);
+    expect(workbench.getSnapshot().owner).toEqual(owner);
+    expect(workbench.getSnapshot().editable).toBe(false);
+    workbench.discardAndUse(other);
+    expect(workbench.getSnapshot().owner).toEqual(other);
+    expect(workbench.getSnapshot().dcfDraft.waccPercent).toBe("");
+  });
+
+  it.each([true, false])(
+    "restores the same full company across known/null CIK and origins (%s)",
+    (knownFirst) => {
+      const workbench = new ManagedValuationWorkbench();
+      const first = valuationSelection({
+        cik: knownFirst ? "0000000001" : null,
+        origin: "discover",
+      });
+      workbench.activate(first);
+      fillValuation(workbench);
+      const entry = workbench.captureInputs()!.entry;
+      const calculation = workbench.calculate()!;
+      const guard = captureValuationCalculationGuard(calculation)!;
+      const context = valuationSelection({
+        cik: knownFirst ? null : "0000000001",
+        origin: "watchlist",
+      });
+      workbench.activate(context);
+      const before = workbench.getSnapshot();
+      const listener = vi.fn();
+      workbench.subscribe(listener);
+      expect(workbench.restoreInputs(entry, before)).toBe(true);
+      expect(listener).toHaveBeenCalledOnce();
+      expect(workbench.getSnapshot().owner).toEqual(context);
+      expect(workbench.getSnapshot().context).toEqual(context);
+      expect(workbench.getSnapshot().dcfDraft).toEqual(entry.dcf.inputs);
+      expect(workbench.getSnapshot().exitDraft).toEqual(entry.exit.inputs);
+      expect(workbench.getSnapshot().calculation).toBeNull();
+      expect(workbench.hasDraft()).toBe(false);
+      expect(guard()).toBe(false);
+      expect(workbench.calculate()!.dcfResult.status).toBe("available");
+    },
+  );
+
+  it("refuses changed nonnull CIK, catalog, listing and stale restore snapshots", () => {
+    const workbench = new ManagedValuationWorkbench();
+    const owner = valuationSelection();
+    workbench.activate(owner);
+    const entry = workbench.captureInputs()!.entry;
+    for (const change of [
+      { cik: "0000000002" },
+      { catalogSnapshotSha256: `sha256:${"b".repeat(64)}` as const },
+      { listing: { ...owner.listing, shareClassId: "other-class" } },
+    ]) {
+      workbench.activate(valuationSelection(change));
+      const before = workbench.getSnapshot();
+      expect(workbench.restoreInputs(entry, before)).toBe(false);
+      expect(workbench.getSnapshot()).toBe(before);
+    }
+    workbench.activate(owner);
+    const stale = workbench.getSnapshot();
+    workbench.setExitField("cash", "newer");
+    expect(workbench.restoreInputs(entry, stale)).toBe(false);
+    expect(workbench.getSnapshot().exitDraft.cash).toBe("newer");
+  });
+
+  it("rejects a known roster issuer conflict even when the other claim is null", () => {
+    const row = MANAGED_RESEARCH_COVERAGE.listings[0]!;
+    const workbench = new ManagedValuationWorkbench();
+    workbench.activate({
+      catalogSnapshotSha256: MANAGED_RESEARCH_COVERAGE.catalogSnapshotSha256,
+      listing: row.listing,
+      cik: null,
+      origin: "watchlist",
+    });
+    const entry = workbench.captureInputs()!.entry;
+    const before = workbench.getSnapshot();
+    expect(
+      workbench.restoreInputs({ ...entry, cik: "9999999999" }, before),
+    ).toBe(false);
+    expect(workbench.getSnapshot()).toBe(before);
+  });
+
+  it("cannot revive inputs when a listener retires during rejected-input correction", () => {
+    const workbench = new ManagedValuationWorkbench();
+    workbench.activate(valuationSelection());
+    workbench.setDcfField("waccPercent", "9".repeat(513));
+    let armed = true;
+    workbench.subscribe(() => {
+      if (!armed) return;
+      if (workbench.getSnapshot().inputIssue !== null) return;
+      armed = false;
+      workbench.retire();
+    });
+    expect(workbench.setDcfField("waccPercent", "12")).toBe(false);
+    expect(workbench.getSnapshot().retired).toBe(true);
+    expect(workbench.getSnapshot().dcfDraft.waccPercent).toBe("");
+    expect(workbench.captureInputs()).toBeNull();
   });
 });
