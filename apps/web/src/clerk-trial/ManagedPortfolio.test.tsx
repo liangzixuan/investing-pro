@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
@@ -190,6 +191,7 @@ function fixture(initial: ManagedPortfolioPayload | null = null) {
     api,
     session,
     () => "invented-portfolio-command",
+    { researchCoverage: inventedManagedResearchCoverage },
   );
   workspace.setView("portfolio");
   const research = vi.fn<
@@ -693,10 +695,15 @@ it("composes authored Start, exact registration, shared-editor Apply, Review, Sa
   const command = vi.mocked(f.api.savePortfolio).mock.calls[0]![0];
   expect(command.payload.transactions).toEqual([buy, sell]);
   expect(f.api.savePortfolio).toHaveBeenCalledOnce();
-  const reopened = new ManagedWorkspace(f.api, {
-    ...f.session,
-    sessionId: "invented-fresh-session",
-  });
+  const reopened = new ManagedWorkspace(
+    f.api,
+    {
+      ...f.session,
+      sessionId: "invented-fresh-session",
+    },
+    undefined,
+    { researchCoverage: inventedManagedResearchCoverage },
+  );
   await reopened.portfolio.coordinator.load();
   expect(reopened.portfolio.coordinator.getSnapshot().draft?.ledger).toEqual(
     command.payload,

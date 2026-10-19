@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import {
   viewOf,
   admitUiPacket,
@@ -118,7 +119,9 @@ function deferred<T>() {
 function fixture() {
   const load = vi.fn<ManagedApi["annualReport"]>();
   const readError = vi.fn();
-  const model = new ManagedAnnualReport(load, readError);
+  const model = new ManagedAnnualReport(load, readError, undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   return {
     model,
     load,

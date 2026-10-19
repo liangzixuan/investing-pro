@@ -86,13 +86,15 @@ export function ManagedCompanyEvidenceActions({
           loaded={Boolean(annual?.response)}
           completedAt={annual?.response?.evidence.generation.completedAt}
           requestLabel={annual?.response ? "Refresh Annual" : "Load Annual"}
+          supported={models.annual.hasCoverage(models.selection)}
           onRequest={onRequest}
           onCancel={onCancel}
           onOpen={onOpen}
         >
           <p>
-            Financial values keep their own availability and refusal reasons in
-            Annual.
+            {models.annual.hasCoverage(models.selection)
+              ? "Financial values keep their own availability and refusal reasons in Annual."
+              : "New Annual reads are not available for this listing in this workspace."}
           </p>
         </SourceCard>
         <SourceCard
@@ -103,11 +105,17 @@ export function ManagedCompanyEvidenceActions({
           loaded={Boolean(filings?.response)}
           completedAt={filings?.response?.completedAt}
           requestLabel={filings?.response ? "Refresh Filings" : "Load Filings"}
+          supported={models.filings.hasCoverage(models.selection)}
           onRequest={onRequest}
           onCancel={onCancel}
           onOpen={onOpen}
         >
-          {filings?.response ? (
+          {!models.filings.hasCoverage(models.selection) ? (
+            <p>
+              New Filings reads are not available for this listing in this
+              workspace.
+            </p>
+          ) : filings?.response ? (
             <p>
               {filings.response.issuer.status !== "available"
                 ? managedFilingsStatus(filings.response.issuer.status)
@@ -132,7 +140,7 @@ function SourceCard({
   loaded,
   completedAt,
   requestLabel,
-  supported = true,
+  supported,
   onRequest,
   onCancel,
   onOpen,
@@ -145,7 +153,7 @@ function SourceCard({
   loaded: boolean;
   completedAt: string | undefined;
   requestLabel: string;
-  supported?: boolean;
+  supported: boolean;
   onRequest: (section: Section) => void;
   onCancel: (section: Section) => void;
   onOpen: (section: Section) => void;

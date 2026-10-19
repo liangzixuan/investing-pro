@@ -5,6 +5,11 @@ or watchlist listing. Loading is explicit. The workspace stays mounted so its
 watchlist draft survives opening and closing the report. Selection, catalog and
 session changes retire the old request and evidence; editing a note does not
 invalidate an unchanged listing. Workspace CURRENT records actual delivery.
+The [source eligibility candidate](MANAGED_RESEARCH_ELIGIBILITY.md) keeps Annual
+admission independent from Filings and Price. The named Annual cohort remains
+18 listings for 17 issuers, including exact-identity Watchlist and screen handoffs
+whose selection has no CIK. Unsupported selections remain inspectable without
+enabling a source read.
 
 An explicit refresh keeps the last validated report for that selection readable.
 The panel labels it as the previous report while the refresh is pending, after a

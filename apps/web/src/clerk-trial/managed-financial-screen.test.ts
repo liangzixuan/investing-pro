@@ -1,3 +1,4 @@
+import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type {
   ManagedEodIdentity,
@@ -83,7 +84,20 @@ function fixture(listings: readonly ManagedEodIdentity[] = [first, second]) {
     { resolve, annualReport: read },
     readError,
     access,
-    listings.map((row) => row.listingId),
+    {
+      listingIds: listings.map((row) => row.listingId),
+      coverage: createManagedResearchCoverageFixture(
+        listings.map((listing, index) => ({
+          listing,
+          cik:
+            listing.issuerId === first.issuerId
+              ? "0000000001"
+              : listing.issuerId === second.issuerId
+                ? "0000000002"
+                : String(index + 10).padStart(10, "0"),
+        })),
+      ),
+    },
   );
   model.reconcile(digest, true, true);
   const universe = () => model.loadUniverse(model.getSnapshot());
@@ -729,7 +743,20 @@ describe("screen admission and report handoff", () => {
             { resolve: f.resolve, annualReport: f.read },
             f.readError,
             f.access,
-            ids,
+            {
+              listingIds: ids,
+              coverage: createManagedResearchCoverageFixture(
+                listings.map((listing, index) => ({
+                  listing,
+                  cik:
+                    listing.issuerId === first.issuerId
+                      ? "0000000001"
+                      : listing.issuerId === second.issuerId
+                        ? "0000000002"
+                        : String(index + 10).padStart(10, "0"),
+                })),
+              ),
+            },
           ),
       ).toThrow();
     }

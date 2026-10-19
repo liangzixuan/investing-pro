@@ -23,6 +23,7 @@ async function startDraftWorkspace(
     { ...f.session, sessionId },
     undefined,
     {
+      researchCoverage: f.researchCoverage,
       marketsCohort: f.marketsCohort,
       priceCoverage: f.priceCoverage,
     },

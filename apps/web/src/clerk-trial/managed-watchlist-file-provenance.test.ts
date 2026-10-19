@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -118,7 +119,10 @@ async function fixture() {
     api,
     session,
     () => "invented-command",
-    { priceCoverage: [first, second] },
+    {
+      researchCoverage: inventedManagedResearchCoverage,
+      priceCoverage: [first, second],
+    },
   );
   cleanup.push(() => workspace.sessionOwner.dispose());
   workspace.setView("watchlist");

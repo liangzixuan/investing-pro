@@ -13,6 +13,7 @@ import {
 } from "./managed-annual-report";
 import { ManagedSecAccess } from "./managed-sec-access";
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import type { ManagedResearchCoverage } from "./managed-research-eligibility";
 
 export type ManagedWatchlistAnnualComparisonSide = "left" | "right";
 export interface ManagedWatchlistAnnualComparisonMember {
@@ -75,6 +76,7 @@ export class ManagedWatchlistAnnualComparison {
     read: ManagedApi["annualReport"],
     readError: (error: TrialApiError) => void,
     access = new ManagedSecAccess(),
+    options: { readonly coverage?: ManagedResearchCoverage } = {},
   ) {
     const owner = (side: ManagedWatchlistAnnualComparisonSide): Owner => ({
       selected: null,
@@ -95,6 +97,7 @@ export class ManagedWatchlistAnnualComparison {
           readError(error);
         },
         access,
+        options,
       ),
     });
     this.owners = { left: owner("left"), right: owner("right") };
@@ -290,6 +293,7 @@ export class ManagedWatchlistAnnualComparison {
       this.owners[side].selected !== member
     )
       return;
+    if (!this.owners[side].model.getSnapshot().supported) return;
     const operation: Operation = {
       side,
       member,

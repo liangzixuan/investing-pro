@@ -40,6 +40,7 @@ function canLoad(state: ManagedWatchlistFilingsState, active: boolean) {
     active &&
     state.active &&
     state.canRead &&
+    state.filings.supported &&
     !state.pending &&
     !state.catalogChanged &&
     !state.filings.catalogChanged

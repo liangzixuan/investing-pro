@@ -115,6 +115,7 @@ export function ManagedFinancialScreen({
               <label key={member.listing.listingId}>
                 <input
                   type="checkbox"
+                  disabled={!model.hasCoverage(member)}
                   checked={state.selected.includes(member)}
                   onChange={(event) =>
                     model.select(state, member, event.target.checked)
@@ -123,6 +124,9 @@ export function ManagedFinancialScreen({
                 <span>
                   {member.listing.symbol} · {member.listing.exchangeMic}
                   <small>{member.listing.issuerName}</small>
+                  {!model.hasCoverage(member) && (
+                    <small>Annual is not available for this listing.</small>
+                  )}
                 </span>
               </label>
             ))}

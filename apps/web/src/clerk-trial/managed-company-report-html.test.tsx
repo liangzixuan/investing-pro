@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { createHash } from "node:crypto";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -48,8 +49,12 @@ async function fixture(
   const price = new ManagedEodHistory(priceRead, vi.fn(), undefined, [
     eodSelection.listing,
   ]);
-  const annual = new ManagedAnnualReport(annualRead, vi.fn());
-  const filings = new ManagedCompanyFilings(filingsRead, vi.fn());
+  const annual = new ManagedAnnualReport(annualRead, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
+  const filings = new ManagedCompanyFilings(filingsRead, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   for (const model of [price, annual, filings]) model.open(eodSelection);
   if (loaded !== "filings") await price.load();
   if (loaded === "all") await annual.load();

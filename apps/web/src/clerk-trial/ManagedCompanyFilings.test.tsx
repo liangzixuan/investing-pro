@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -333,7 +334,9 @@ describe("company SEC filings presentation", () => {
     const read = vi
       .fn<ManagedApi["recentFilings"]>()
       .mockResolvedValueOnce(filingsResponse(51));
-    const model = new Model(read, vi.fn());
+    const model = new Model(read, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     model.open(filingsSelection);
     await model.load();
     const response = model.getSnapshot().response!;
@@ -425,13 +428,19 @@ describe("company SEC filings presentation", () => {
       const read = vi
         .fn<ManagedApi["recentFilings"]>()
         .mockResolvedValue(filingsResponse(0, status));
-      const model = new Model(read, vi.fn());
+      const model = new Model(read, vi.fn(), undefined, {
+        coverage: inventedManagedResearchCoverage,
+      });
       model.open(filingsSelection);
       await model.load();
       const html = renderToStaticMarkup(
         <ManagedCompanyFilings
           model={model}
-          annual={new AnnualModel(vi.fn(), vi.fn())}
+          annual={
+            new AnnualModel(vi.fn(), vi.fn(), undefined, {
+              coverage: inventedManagedResearchCoverage,
+            })
+          }
         />,
       );
       if (status === "available")
@@ -465,7 +474,9 @@ describe("company SEC filings presentation", () => {
     const read = vi
       .fn<ManagedApi["recentFilings"]>()
       .mockResolvedValueOnce(filingsResponse());
-    const model = new Model(read, vi.fn());
+    const model = new Model(read, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     model.open(filingsSelection);
     await model.load();
     read.mockResolvedValueOnce({
@@ -476,7 +487,11 @@ describe("company SEC filings presentation", () => {
     const html = renderToStaticMarkup(
       <ManagedCompanyFilings
         model={model}
-        annual={new AnnualModel(vi.fn(), vi.fn())}
+        annual={
+          new AnnualModel(vi.fn(), vi.fn(), undefined, {
+            coverage: inventedManagedResearchCoverage,
+          })
+        }
       />,
     );
     expect(html).toContain(
@@ -501,11 +516,15 @@ describe("filings after the current Annual report", () => {
     const annualRead = vi
       .fn<ManagedApi["annualReport"]>()
       .mockResolvedValue(await annualResponse());
-    const annual = new AnnualModel(annualRead, vi.fn());
+    const annual = new AnnualModel(annualRead, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     const filingsRead = vi
       .fn<ManagedApi["recentFilings"]>()
       .mockResolvedValue(filingsResponse());
-    const filings = new Model(filingsRead, vi.fn());
+    const filings = new Model(filingsRead, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     annual.open(filingsSelection);
     filings.open(filingsSelection);
     await annual.load();
@@ -656,7 +675,11 @@ describe("consecutive loaded filing lists", () => {
     return renderToStaticMarkup(
       <ManagedCompanyFilings
         model={model}
-        annual={new AnnualModel(vi.fn(), vi.fn())}
+        annual={
+          new AnnualModel(vi.fn(), vi.fn(), undefined, {
+            coverage: inventedManagedResearchCoverage,
+          })
+        }
       />,
     );
   }
@@ -667,7 +690,10 @@ describe("consecutive loaded filing lists", () => {
         .fn<ManagedApi["recentFilings"]>()
         .mockResolvedValueOnce(checked(filingsResponse(1)))
         .mockResolvedValueOnce(later(2));
-      const model = new Model(read, vi.fn(), undefined, { compareRefresh });
+      const model = new Model(read, vi.fn(), undefined, {
+        coverage: inventedManagedResearchCoverage,
+        compareRefresh,
+      });
       model.open(filingsSelection);
       await model.load();
       expect(panel(model)).not.toContain("managed-filings-refresh-count");
@@ -843,7 +869,10 @@ describe("consecutive loaded filing lists", () => {
       .fn<ManagedApi["recentFilings"]>()
       .mockResolvedValueOnce(checked(filingsResponse(1)))
       .mockResolvedValueOnce(later(2));
-    const model = new Model(read, vi.fn(), undefined, { compareRefresh: true });
+    const model = new Model(read, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+      compareRefresh: true,
+    });
     model.open(filingsSelection);
     await model.load();
     await model.load();
@@ -1078,7 +1107,10 @@ describe("consecutive loaded filing lists", () => {
       .fn<ManagedApi["recentFilings"]>()
       .mockResolvedValueOnce(checked(filingsResponse(1)))
       .mockResolvedValueOnce(later(51));
-    const model = new Model(read, vi.fn(), undefined, { compareRefresh: true });
+    const model = new Model(read, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+      compareRefresh: true,
+    });
     model.open(filingsSelection);
     await model.load();
     await model.load();

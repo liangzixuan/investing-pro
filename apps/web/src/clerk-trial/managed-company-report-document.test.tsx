@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { reportAnnualPacket } from "./managed-annual-statements-report-fixture";
 import { comparePersonalSecAnnualCanonicalOperatingEvidence } from "@research-cockpit/personal-financial-analytics";
 import type {
@@ -56,8 +57,12 @@ async function fixture(range: "1m" | "1y" = "1m") {
   const price = new ManagedEodHistory(priceRead, vi.fn(), undefined, [
     eodSelection.listing,
   ]);
-  const annual = new ManagedAnnualReport(annualRead, vi.fn());
-  const filings = new ManagedCompanyFilings(filingsRead, vi.fn());
+  const annual = new ManagedAnnualReport(annualRead, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
+  const filings = new ManagedCompanyFilings(filingsRead, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   for (const model of [price, annual, filings]) model.open(eodSelection);
   price.selectRange(range);
   await price.load();
@@ -170,7 +175,9 @@ describe("company research document inspection", () => {
       },
     });
     const read = vi.fn().mockResolvedValue(packet);
-    const annual = new ManagedAnnualReport(read, vi.fn());
+    const annual = new ManagedAnnualReport(read, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     annual.open(eodSelection);
     await annual.load();
     const evidence = () => ({

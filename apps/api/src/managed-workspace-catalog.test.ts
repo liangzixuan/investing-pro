@@ -25,6 +25,12 @@ import {
   getManagedWorkspaceCatalog,
 } from "./managed-workspace-catalog";
 
+import {
+  MANAGED_RESEARCH_COVERAGE,
+  hasManagedAnnualCoverage,
+  hasManagedFilingsCoverage,
+} from "../../web/src/clerk-trial/managed-research-eligibility";
+
 // Exact reviewed listing coordinates; source receipt is pinned by the manifest.
 const REVIEWED_LISTINGS = [
   {
@@ -311,19 +317,10 @@ describe("fixed managed catalog", () => {
     },
   );
 
-  it.each(
-    REVIEWED_LISTINGS.filter(
-      (row) => !["AAPL", "GOOG", "GOOGL", "MSFT"].includes(row.symbol),
-    ),
-  )(
-    "keeps Filings outside the separately qualified Annual cohort for $symbol",
+  it.each(REVIEWED_LISTINGS.filter((row) => row.symbol === "AEM"))(
+    "keeps Filings closed outside its independently qualified cohort for $symbol",
     async ({ listingId, symbol, cik }) => {
       const f = refusingSources();
-      expect(MANAGED_SEC_FILINGS_ISSUERS).toEqual([
-        "0000320193",
-        "0001652044",
-        "0000789019",
-      ]);
       expect(MANAGED_SEC_FILINGS_ISSUERS).not.toContain(cik);
       const request = {
         catalogSnapshotSha256: getManagedWorkspaceCatalog().snapshotSha256,
@@ -587,5 +584,65 @@ describe("fixed managed catalog", () => {
       Object.assign(service.status().snapshot.coverage, { activeListings: 99 });
     }).toThrow(TypeError);
     expect(service.status().snapshot.coverage.activeListings).toBe(19);
+  });
+});
+
+describe("public research eligibility against the admitted catalog", () => {
+  it("matches independent server and client source memberships", () => {
+    expect(MANAGED_RESEARCH_COVERAGE.annualIssuers).toEqual(
+      MANAGED_SEC_ANNUAL_ISSUERS,
+    );
+    expect(MANAGED_RESEARCH_COVERAGE.filingsIssuers).toEqual(
+      MANAGED_SEC_FILINGS_ISSUERS,
+    );
+  });
+
+  it.each(MANAGED_RESEARCH_COVERAGE.listings)(
+    "binds the complete public $listing.symbol identity to the independently admitted catalog",
+    (row) => {
+      const catalog = getManagedWorkspaceCatalog();
+      expect(MANAGED_RESEARCH_COVERAGE.catalogSnapshotSha256).toBe(
+        catalog.snapshotSha256,
+      );
+      const found = lookupPersonalSecurityMasterListing(
+        catalog,
+        row.listing.listingId,
+      )!;
+      expect(found).not.toBeNull();
+      for (const key of Object.keys(
+        row.listing,
+      ) as (keyof typeof row.listing)[])
+        expect(row.listing[key]).toBe(found[key]);
+      expect(row.cik).toBe(found.cik);
+      expect(MANAGED_SEC_ANNUAL_ISSUERS).toContain(found.cik);
+      expect(MANAGED_SEC_FILINGS_ISSUERS).toContain(found.cik);
+      const current = {
+        catalogSnapshotSha256: catalog.snapshotSha256,
+        listing: row.listing,
+        cik: null,
+        origin: "watchlist" as const,
+      };
+      expect(hasManagedAnnualCoverage(current)).toBe(true);
+      expect(hasManagedFilingsCoverage(current)).toBe(true);
+    },
+  );
+
+  it("does not admit a cataloged issuer merely because its identity is valid", () => {
+    const catalog = getManagedWorkspaceCatalog();
+    const found = lookupPersonalSecurityMasterListing(
+      catalog,
+      "oid-listing-f2a900e0dbe04e54a112ed3605c15b9f",
+    )!;
+    expect(found.symbol).toBe("AEM");
+    expect(MANAGED_SEC_ANNUAL_ISSUERS).not.toContain(found.cik);
+    expect(MANAGED_SEC_FILINGS_ISSUERS).not.toContain(found.cik);
+    const current = {
+      catalogSnapshotSha256: catalog.snapshotSha256,
+      listing: found,
+      cik: found.cik,
+      origin: "discover" as const,
+    };
+    expect(hasManagedAnnualCoverage(current)).toBe(false);
+    expect(hasManagedFilingsCoverage(current)).toBe(false);
   });
 });

@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "../../clerk-trial/test-managed-research-coverage-fixture";
 import { viewOf } from "./test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -194,7 +195,9 @@ describe("reported cash history", () => {
       .mockResolvedValueOnce(initial)
       .mockRejectedValueOnce(new TrialApiError("unavailable"))
       .mockResolvedValueOnce(replacement);
-    const model = new ManagedAnnualReport(read, vi.fn());
+    const model = new ManagedAnnualReport(read, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     model.open({ ...eodSelection, origin: "watchlist", cik: null });
     const html = () => {
       const { response, view } = model.getSnapshot();

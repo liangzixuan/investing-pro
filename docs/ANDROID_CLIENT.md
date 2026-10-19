@@ -6,6 +6,13 @@ production package is `app.investingpro.android`.
 [Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) records the accepted
 version, source revision and physical-device status.
 
+Android 1.29.0, code 30, is prepared from product `6ca5e0db` with the existing
+production signer. Artifact checks confirm the package, version, signer and
+bundled source marker. It adds explicit Watchlist draft-file capture and local
+restoration with independent catalog review and normal Save. It has not been
+installed or physically accepted. It retains Annual 6/report 5 compatibility
+with the current API; the prior 1.28 APK remains preserved.
+
 On October 18 the owner reported a successful update from production 1.27 to
 matching 1.28 and passes for all four requested checks: version/sign-in/reopen,
 existing saved Watchlist and Follow-ups presence, the requested Annual/screen/

@@ -481,6 +481,7 @@ function AnnualCompanyControls({
             !state.active ||
             !state.canRead ||
             !selected ||
+            !column.report.supported ||
             pending !== null ||
             state.catalogChanged
           }

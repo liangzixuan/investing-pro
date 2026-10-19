@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
@@ -111,12 +112,10 @@ async function fixture(withPrice = false) {
     getToken: vi.fn(),
     signOut: vi.fn().mockResolvedValue(undefined),
   };
-  const workspace = new ManagedWorkspace(
-    api,
-    session,
-    undefined,
-    withPrice ? { priceCoverage: [eodSelection.listing] } : {},
-  );
+  const workspace = new ManagedWorkspace(api, session, undefined, {
+    ...(withPrice ? { priceCoverage: [eodSelection.listing] } : {}),
+    researchCoverage: inventedManagedResearchCoverage,
+  });
   owners.push(workspace);
   workspace.setView("watchlist");
   await workspace.coordinator.load();
@@ -220,10 +219,15 @@ describe("composed authored valuation workflow", () => {
     expect(f.workspace.canSavePayload()).toBe(true);
     await f.workspace.coordinator.save();
     expect(f.api.save).toHaveBeenCalledOnce();
-    const reopened = new ManagedWorkspace(f.api, {
-      ...f.session,
-      sessionId: "invented-fresh-session",
-    });
+    const reopened = new ManagedWorkspace(
+      f.api,
+      {
+        ...f.session,
+        sessionId: "invented-fresh-session",
+      },
+      undefined,
+      { researchCoverage: inventedManagedResearchCoverage },
+    );
     owners.push(reopened);
     await reopened.coordinator.load();
     expect(reopened.coordinator.getSnapshot().draft!.memberships).toEqual([
@@ -601,10 +605,15 @@ describe("composed authored valuation with explicitly dated Price", () => {
       other,
     );
     await f.workspace.coordinator.save();
-    const fresh = new ManagedWorkspace(f.api, {
-      ...f.session,
-      sessionId: "dated-price-fresh-session",
-    });
+    const fresh = new ManagedWorkspace(
+      f.api,
+      {
+        ...f.session,
+        sessionId: "dated-price-fresh-session",
+      },
+      undefined,
+      { researchCoverage: inventedManagedResearchCoverage },
+    );
     owners.push(fresh);
     await fresh.coordinator.load();
     expect(fresh.coordinator.getSnapshot().draft!.memberships).toEqual([

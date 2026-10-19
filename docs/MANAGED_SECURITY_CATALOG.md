@@ -77,9 +77,12 @@ documented mapping-request default. Source-role acquisition clocks and older
 capture dates are preserved. Assembly time does not refresh the sources.
 
 Discovery does not enable financial feeds. Price remains limited to AAPL, GOOG
-and GOOGL. Annual and Filings retain the existing Apple, Alphabet and Microsoft
-CIKs. The 15 additional identities are refused before source admission or a
-provider request. Saved records still require the current catalog review for new
+and GOOGL. Annual independently admits the named 18-listing, 17-issuer
+[screening cohort](MANAGED_FINANCIAL_SCREEN.md). The deployed Filings scope remains
+Apple, Alphabet and Microsoft. The next source candidate independently qualifies
+Filings for the same named cohort; publication and API admission remain separate.
+Other identities are refused before source admission or a provider request.
+Saved records still require the current catalog review for new
 writes; historical reads and original-command reconciliation retain their
 existing rules. Source integration does not establish a running deployment.
 

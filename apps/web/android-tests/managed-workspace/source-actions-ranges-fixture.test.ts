@@ -10,6 +10,7 @@ it("uses exact-visit overview Price actions across staged ranges, Cancel, reopen
     fixture.session,
     undefined,
     {
+      researchCoverage: fixture.researchCoverage,
       priceCoverage: fixture.priceCoverage,
       marketsCohort: fixture.marketsCohort,
     },

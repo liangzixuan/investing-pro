@@ -30,6 +30,7 @@ it("composes both admitted sources with two real dirty drafts and fences each fa
     fixture.session,
     undefined,
     {
+      researchCoverage: fixture.researchCoverage,
       priceCoverage: fixture.priceCoverage,
       marketsCohort: fixture.marketsCohort,
     },

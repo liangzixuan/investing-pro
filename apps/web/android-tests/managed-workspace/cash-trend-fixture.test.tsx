@@ -93,6 +93,7 @@ async function setupJourney() {
     fixture.session,
     undefined,
     {
+      researchCoverage: fixture.researchCoverage,
       priceCoverage: fixture.priceCoverage,
       marketsCohort: fixture.marketsCohort,
     },

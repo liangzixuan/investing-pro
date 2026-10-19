@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ManagedCatalogSnapshotDto } from "@research-cockpit/contracts";
 import { ManagedWorkspace } from "./managed-workspace";
@@ -232,7 +233,10 @@ function fixture() {
       signOut: vi.fn(),
     },
     undefined,
-    { priceCoverage: [eodSelection.listing] },
+    {
+      researchCoverage: inventedManagedResearchCoverage,
+      priceCoverage: [eodSelection.listing],
+    },
   );
   workspace.setView("discover");
   const render = () => {

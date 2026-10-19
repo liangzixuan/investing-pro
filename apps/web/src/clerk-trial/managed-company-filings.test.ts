@@ -1,3 +1,9 @@
+import {
+  createManagedResearchCoverageFixture,
+  inventedManagedResearchCoverage,
+} from "./test-managed-research-coverage-fixture";
+import type { ManagedResearchCoverage } from "./managed-research-eligibility";
+import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedAnnualReport } from "./managed-annual-report";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -26,10 +32,14 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
-function fixture(access = new ManagedSecAccess()) {
+function fixture(
+  access = new ManagedSecAccess(),
+  coverage: ManagedResearchCoverage = inventedManagedResearchCoverage,
+) {
   const read = vi.fn<ManagedApi["recentFilings"]>();
   const readError = vi.fn();
   const model = new ManagedCompanyFilings(read, readError, access, {
+    coverage,
     compareRefresh: true,
   });
   model.open(filingsSelection);
@@ -245,7 +255,9 @@ it("keeps the greatest checked SEC deadline when current Annual and Filings resp
   vi.setSystemTime("2026-10-12T00:00:00.000Z");
   const { model, read, access } = fixture();
   const annualRead = vi.fn<ManagedApi["annualReport"]>();
-  const annual = new ManagedAnnualReport(annualRead, vi.fn(), access);
+  const annual = new ManagedAnnualReport(annualRead, vi.fn(), access, {
+    coverage: inventedManagedResearchCoverage,
+  });
   annual.open(filingsSelection);
   const first = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
   const second = deferred<ManagedSecFilingsResponseDto>();
@@ -408,7 +420,6 @@ describe("owned watchlist filings handoff", () => {
     expect(model.getSnapshot().responseOrigin).toBeNull();
   });
   it("keeps a newer open published during the internal close notification", () => {
-    const { model } = fixture();
     const newer = {
       ...selection,
       listing: {
@@ -417,6 +428,11 @@ describe("owned watchlist filings handoff", () => {
         symbol: "ONE",
       },
     };
+    const coverage = createManagedResearchCoverageFixture([
+      { listing: selection.listing, cik: "0000000001" },
+      { listing: newer.listing, cik: "0000000001" },
+    ]);
+    const { model } = fixture(undefined, coverage);
     let replaced = false;
     model.subscribe(() => {
       if (!replaced && model.getSnapshot().selection === null) {
@@ -460,7 +476,6 @@ describe("owned watchlist filings handoff", () => {
     expect(model.getSnapshot().selection).toBeNull();
   });
   it("preserves a newer seeded visit installed by an aborted request's listener", async () => {
-    const { model, read } = fixture();
     const held = deferred<ManagedSecFilingsResponseDto>();
     const newer = {
       ...selection,
@@ -470,6 +485,11 @@ describe("owned watchlist filings handoff", () => {
         symbol: "ONE",
       },
     };
+    const coverage = createManagedResearchCoverageFixture([
+      { listing: selection.listing, cik: "0000000001" },
+      { listing: newer.listing, cik: "0000000001" },
+    ]);
+    const { model, read } = fixture(undefined, coverage);
     const newerPacket = filingsResponse(1, "available", newer);
     read.mockImplementationOnce((_request, signal) => {
       signal.addEventListener(
@@ -726,4 +746,198 @@ describe("visit-owned successful refresh comparison", () => {
       running: false,
     });
   });
+});
+
+describe("closed Filings source coverage", () => {
+  const unsupported: readonly [string, ManagedResearchSelection][] = [
+    [
+      "old catalog",
+      {
+        ...filingsSelection,
+        catalogSnapshotSha256: `sha256:${"b".repeat(64)}`,
+      },
+    ],
+    ["wrong CIK", { ...filingsSelection, cik: "0000000002" }],
+    [
+      "unknown listing",
+      {
+        ...filingsSelection,
+        listing: { ...filingsSelection.listing, listingId: "listing-unknown" },
+      },
+    ],
+    [
+      "changed share class",
+      {
+        ...filingsSelection,
+        listing: {
+          ...filingsSelection.listing,
+          shareClassName: "Another class",
+        },
+      },
+    ],
+  ];
+  it.each(unsupported)(
+    "refuses %s before cooldown, operation publication or a read",
+    async (_name, selected) => {
+      const { model, read, access } = fixture();
+      const cooldown = vi.spyOn(access, "getNextAllowedAt");
+      const record = vi.spyOn(access, "recordCooldown");
+      model.open(selected);
+      const before = model.getSnapshot();
+      const changed = vi.fn();
+      const unsubscribe = model.subscribe(changed);
+      expect(before).toMatchObject({
+        selection: selected,
+        supported: false,
+        running: false,
+        response: null,
+      });
+      await model.load();
+      await model.load();
+      expect(model.getSnapshot()).toBe(before);
+      expect(changed).not.toHaveBeenCalled();
+      expect(cooldown).not.toHaveBeenCalled();
+      expect(record).not.toHaveBeenCalled();
+      expect(read).not.toHaveBeenCalled();
+      unsubscribe();
+    },
+  );
+
+  it("admits valid null-CIK Filings independently of Annual membership", async () => {
+    const { model, read } = fixture(undefined, {
+      ...inventedManagedResearchCoverage,
+      annualIssuers: Object.freeze([]),
+    });
+    model.open({ ...filingsSelection, cik: null });
+    read.mockResolvedValueOnce(filingsResponse());
+    await model.load();
+    expect(model.getSnapshot()).toMatchObject({
+      supported: true,
+      response: filingsResponse(),
+      responseOrigin: "request",
+    });
+    expect(read).toHaveBeenCalledOnce();
+  });
+
+  it("retains a validated unsupported seed for inspection without permitting refresh", async () => {
+    const { model, read, access } = fixture(undefined, {
+      ...inventedManagedResearchCoverage,
+      filingsIssuers: Object.freeze([]),
+    });
+    const cooldown = vi.spyOn(access, "getNextAllowedAt");
+    const response = filingsResponse();
+    model.open(
+      { ...filingsSelection, origin: "watchlist", cik: null },
+      { response, showingPrevious: true },
+    );
+    const before = model.getSnapshot();
+    expect(before).toMatchObject({
+      supported: false,
+      response,
+      responseOrigin: "watchlist",
+      showingPrevious: true,
+      error: false,
+    });
+    await model.load();
+    expect(model.getSnapshot()).toBe(before);
+    expect(cooldown).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("does not fall back to a request after refusing an unsupported seed", async () => {
+    const { model, read, access } = fixture(undefined, {
+      ...inventedManagedResearchCoverage,
+      filingsIssuers: Object.freeze([]),
+    });
+    const cooldown = vi.spyOn(access, "getNextAllowedAt");
+    const response = filingsResponse();
+    model.open(
+      { ...filingsSelection, origin: "watchlist", cik: null },
+      {
+        response: {
+          ...response,
+          security: { ...response.security, issuerName: "Another issuer" },
+        },
+        showingPrevious: false,
+      },
+    );
+    expect(model.getSnapshot()).toMatchObject({
+      supported: false,
+      selection: null,
+      response: null,
+      error: true,
+    });
+    await model.load();
+    expect(cooldown).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+  });
+});
+
+it("binds a null-CIK Filings response to its fixed roster issuer rather than relabelled source metadata", async () => {
+  const { model, read } = fixture();
+  model.open({ ...filingsSelection, cik: null });
+  read.mockResolvedValueOnce(
+    filingsResponse(1, "available", { ...filingsSelection, cik: "0000000002" }),
+  );
+  await model.load();
+  const state = model.getSnapshot();
+  expect({
+    retainedResponse: state.response !== null,
+    retainedCheck: state.lastCheck !== null,
+    error: state.error,
+  }).toEqual({ retainedResponse: false, retainedCheck: false, error: true });
+  expect(read).toHaveBeenCalledOnce();
+});
+
+it.each([null, "0000000002"])(
+  "refuses relabelled Filings seed even when selected CIK is %s",
+  (cik) => {
+    const { model, read } = fixture();
+    const foreign = filingsResponse(1, "available", {
+      ...filingsSelection,
+      cik: "0000000002",
+    });
+    model.open(
+      { ...filingsSelection, origin: "watchlist", cik },
+      { response: foreign, showingPrevious: false },
+    );
+    const state = model.getSnapshot();
+    expect({
+      retainedResponse: state.response !== null,
+      retainedCheck: state.lastCheck !== null,
+      retainedSelection: state.selection !== null,
+      error: state.error,
+    }).toEqual({
+      retainedResponse: false,
+      retainedCheck: false,
+      retainedSelection: false,
+      error: true,
+    });
+    expect(read).not.toHaveBeenCalled();
+  },
+);
+
+it("keeps a decoded historical Filings seed inspectable without a current issuer mapping or fresh read", async () => {
+  const { model, read, access } = fixture();
+  const selected: ManagedResearchSelection = {
+    ...filingsSelection,
+    catalogSnapshotSha256: `sha256:${"b".repeat(64)}`,
+    origin: "watchlist",
+    cik: null,
+  };
+  const response = filingsResponse(1, "available", selected);
+  const cooldown = vi.spyOn(access, "getNextAllowedAt");
+  model.open(selected, { response, showingPrevious: true });
+  const before = model.getSnapshot();
+  expect(before).toMatchObject({
+    supported: false,
+    response,
+    responseOrigin: "watchlist",
+    showingPrevious: true,
+    error: false,
+  });
+  await model.load();
+  expect(model.getSnapshot()).toBe(before);
+  expect(cooldown).not.toHaveBeenCalled();
+  expect(read).not.toHaveBeenCalled();
 });

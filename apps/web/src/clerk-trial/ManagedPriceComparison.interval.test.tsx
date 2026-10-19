@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";
 import type * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -110,6 +111,7 @@ async function workspaceFixture() {
   const invented = await createFixture();
   const { api, session, marketsCohort, priceCoverage } = invented;
   const workspace = new ManagedWorkspace(api, session, undefined, {
+    researchCoverage: inventedManagedResearchCoverage,
     marketsCohort,
     priceCoverage,
   });

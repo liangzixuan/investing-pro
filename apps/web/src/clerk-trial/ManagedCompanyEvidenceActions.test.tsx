@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -36,15 +37,22 @@ function buttons(node: React.ReactNode): React.ReactElement<NodeProps>[] {
     ...React.Children.toArray(node.props.children).flatMap(buttons),
   ];
 }
-async function fixture(open = false) {
+async function fixture(
+  open = false,
+  coverage = inventedManagedResearchCoverage,
+) {
   const readPrice = vi.fn().mockResolvedValue(eodResponse());
   const readAnnual = vi.fn().mockResolvedValue(await response());
   const readFilings = vi.fn().mockResolvedValue(filingsResponse(2));
   const price = new ManagedEodHistory(readPrice, vi.fn(), undefined, [
     eodSelection.listing,
   ]);
-  const annual = new ManagedAnnualReport(readAnnual, vi.fn());
-  const filings = new ManagedCompanyFilings(readFilings, vi.fn());
+  const annual = new ManagedAnnualReport(readAnnual, vi.fn(), undefined, {
+    coverage,
+  });
+  const filings = new ManagedCompanyFilings(readFilings, vi.fn(), undefined, {
+    coverage,
+  });
   if (open) {
     price.open(eodSelection);
     annual.open(eodSelection);
@@ -86,6 +94,28 @@ async function fixture(open = false) {
 }
 
 describe("company research source actions", () => {
+  it.each(["Annual", "Filings"] as const)(
+    "keeps %s eligibility independent and Inspect source-free",
+    async (source) => {
+      const coverage =
+        source === "Annual"
+          ? { ...inventedManagedResearchCoverage, annualIssuers: [] }
+          : { ...inventedManagedResearchCoverage, filingsIssuers: [] };
+      const f = await fixture(false, coverage);
+      expect(f.html()).not.toContain(`Load ${source}`);
+      expect(f.html()).toContain(
+        source === "Annual" ? "Load Filings" : "Load Annual",
+      );
+      f.button(`Inspect ${source}`).props.onClick?.();
+      expect(f.onOpen).toHaveBeenCalledExactlyOnceWith(
+        source === "Annual" ? "annual" : "filings",
+      );
+      expect(f.onRequest).not.toHaveBeenCalled();
+      expect(f.readAnnual).not.toHaveBeenCalled();
+      expect(f.readFilings).not.toHaveBeenCalled();
+      expect(f.readPrice).not.toHaveBeenCalled();
+    },
+  );
   it("disables section-changing requests and inspection while preserving loaded evidence and Cancel", async () => {
     const f = await fixture(true);
     await f.price.load();
@@ -173,8 +203,10 @@ describe("company research source actions", () => {
     expect(html).toContain("Price history is not available for this listing");
     expect(html).not.toContain("Load Price");
     expect(html).toContain("Inspect Price");
-    expect(html).toContain("Load Annual");
-    expect(html).toContain("Load Filings");
+    expect(html).not.toContain("Load Annual");
+    expect(html).not.toContain("Load Filings");
+    expect(html).toContain("Inspect Annual");
+    expect(html).toContain("Inspect Filings");
     expect(f.readPrice).not.toHaveBeenCalled();
     expect(f.price.getSnapshot().selection).toBeNull();
   });

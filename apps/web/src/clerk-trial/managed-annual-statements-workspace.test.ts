@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -185,7 +186,9 @@ async function fixture(
     getToken: vi.fn(),
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
-  const workspace = new ManagedWorkspace(api, session);
+  const workspace = new ManagedWorkspace(api, session, undefined, {
+    researchCoverage: inventedManagedResearchCoverage,
+  });
   owners.push(workspace);
   workspace.setView("watchlist");
   await workspace.coordinator.load();
@@ -328,10 +331,15 @@ describe("canonical statement cells through the real workspace draft and Save", 
     expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(
       independent,
     );
-    const reopened = new ManagedWorkspace(f.api, {
-      ...f.session,
-      sessionId: "invented-fresh-session",
-    });
+    const reopened = new ManagedWorkspace(
+      f.api,
+      {
+        ...f.session,
+        sessionId: "invented-fresh-session",
+      },
+      undefined,
+      { researchCoverage: inventedManagedResearchCoverage },
+    );
     owners.push(reopened);
     await reopened.coordinator.load();
     expect(reopened.coordinator.getSnapshot().draft!.memberships).toEqual([

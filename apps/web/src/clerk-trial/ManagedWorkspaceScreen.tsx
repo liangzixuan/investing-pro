@@ -57,6 +57,7 @@ import {
 } from "./ManagedWatchlistDraftFilesEntry";
 import type { ManagedWatchlistDraftFileDeliveryAdapter } from "./managed-watchlist-draft-file-delivery";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
+import type { ManagedResearchCoverage } from "./managed-research-eligibility";
 import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
 import { ManagedIcon } from "./ManagedIcon";
 import { bindManagedBrowserUnload } from "./managed-browser-unload";
@@ -73,6 +74,7 @@ interface SessionProps {
   marketsCohort?: readonly ManagedEodIdentity[];
   priceCoverage?: readonly ManagedEodIdentity[];
   financialScreenListingIds?: readonly string[];
+  researchCoverage?: ManagedResearchCoverage;
   warnOnBrowserLeave?: boolean;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
@@ -192,6 +194,9 @@ function SessionWorkspace(props: SessionProps) {
       initial.session,
       undefined,
       {
+        ...(initial.researchCoverage
+          ? { researchCoverage: initial.researchCoverage }
+          : {}),
         ...(initial.marketsCohort
           ? { marketsCohort: initial.marketsCohort }
           : {}),

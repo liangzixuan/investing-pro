@@ -74,17 +74,19 @@ export function ManagedAnnualReport({
           Annual report
         </h3>
         <div className="trial-actions">
-          <button
-            ref={loadButton}
-            disabled={state.running || state.catalogChanged}
-            onClick={() => void model.load()}
-          >
-            {annualLoadLabel(
-              state.running,
-              state.response !== null,
-              state.checkingSeed,
-            )}
-          </button>
+          {state.supported && (
+            <button
+              ref={loadButton}
+              disabled={state.running || state.catalogChanged}
+              onClick={() => void model.load()}
+            >
+              {annualLoadLabel(
+                state.running,
+                state.response !== null,
+                state.checkingSeed,
+              )}
+            </button>
+          )}
           {state.running && (
             <button
               className="trial-secondary"

@@ -34,6 +34,7 @@ async function panel(range: "1m" | "1y") {
     fixture.session,
     undefined,
     {
+      researchCoverage: fixture.researchCoverage,
       priceCoverage: fixture.priceCoverage,
       marketsCohort: fixture.marketsCohort,
     },

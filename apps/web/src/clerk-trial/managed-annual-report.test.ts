@@ -1,3 +1,8 @@
+import {
+  createManagedResearchCoverageFixture,
+  inventedManagedResearchCoverage,
+} from "./test-managed-research-coverage-fixture";
+import type { ManagedResearchCoverage } from "./managed-research-eligibility";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { annualReportPacket } from "./test-annual-report-fixture";
@@ -20,7 +25,9 @@ const selection: ManagedResearchSelection = {
   cik: null,
 };
 type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
-function fixture() {
+function fixture(
+  coverage: ManagedResearchCoverage = inventedManagedResearchCoverage,
+) {
   const read = vi.fn<ManagedApi["annualReport"]>();
   const readError = vi.fn();
   const access = new ManagedSecAccess();
@@ -28,7 +35,7 @@ function fixture() {
     read,
     readError,
     access,
-    model: new ManagedAnnualReport(read, readError, access),
+    model: new ManagedAnnualReport(read, readError, access, { coverage }),
   };
 }
 async function settled(model: ManagedAnnualReport) {
@@ -230,15 +237,19 @@ describe("checked Annual comparison report seed", () => {
     "fences delayed local hash completion after %s",
     async (action) => {
       const response = await annualReportPacket();
-      const { model, read } = fixture();
+      const replacement = {
+        ...selection,
+        listing: { ...selection.listing, listingId: "another-listing" },
+      };
+      const coverage = createManagedResearchCoverageFixture([
+        { listing: selection.listing, cik: "0000000001" },
+        { listing: replacement.listing, cik: "0000000001" },
+      ]);
+      const { model, read } = fixture(coverage);
       const held = holdHash();
       model.open(selection, { response, showingPrevious: true });
       expect(held.spy).toHaveBeenCalled();
-      if (action === "replace")
-        model.open({
-          ...selection,
-          listing: { ...selection.listing, listingId: "another-listing" },
-        });
+      if (action === "replace") model.open(replacement);
       else model[action]();
       const after = model.getSnapshot();
       expect(after.running).toBe(false);
@@ -612,17 +623,21 @@ describe("atomic canonical Annual request admission", () => {
         analytics,
         "derivePersonalSecAnnualCanonicalView",
       );
-      const { model, read } = fixture();
+      const replacement = {
+        ...selection,
+        listing: { ...selection.listing, listingId: "listing-other" },
+      };
+      const coverage = createManagedResearchCoverageFixture([
+        { listing: selection.listing, cik: "0000000001" },
+        { listing: replacement.listing, cik: "0000000001" },
+      ]);
+      const { model, read } = fixture(coverage);
       read.mockResolvedValueOnce(response);
       model.open(selection);
       const held = holdHash();
       const loading = model.load();
       await vi.waitFor(() => expect(held.spy).toHaveBeenCalled());
-      if (action === "replace")
-        model.open({
-          ...selection,
-          listing: { ...selection.listing, listingId: "listing-other" },
-        });
+      if (action === "replace") model.open(replacement);
       else model[action]();
       const after = model.getSnapshot();
       held.release();
@@ -727,7 +742,11 @@ describe("canonical Annual identity and cancellation ownership", () => {
         analytics,
         "derivePersonalSecAnnualCanonicalView",
       );
-      const { model, read } = fixture();
+      const coverage = createManagedResearchCoverageFixture(
+        [{ listing: selected.listing, cik: selected.cik ?? "0000000001" }],
+        selected.catalogSnapshotSha256,
+      );
+      const { model, read } = fixture(coverage);
       read.mockResolvedValueOnce(response);
       model.open(selected);
       await model.load();
@@ -737,6 +756,7 @@ describe("canonical Annual identity and cancellation ownership", () => {
         error: true,
       });
       expect(derive).not.toHaveBeenCalled();
+      expect(read).toHaveBeenCalledOnce();
     },
   );
   it("preserves a replacement visit opened synchronously by a cancelled request's abort listener", async () => {
@@ -767,4 +787,187 @@ describe("canonical Annual identity and cancellation ownership", () => {
     await loading;
     expect(model.getSnapshot()).toBe(accepted);
   });
+});
+
+describe("closed Annual source coverage", () => {
+  const unsupported: readonly [string, ManagedResearchSelection][] = [
+    [
+      "old catalog",
+      { ...selection, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` },
+    ],
+    ["wrong CIK", { ...selection, cik: "0000000002" }],
+    [
+      "unknown listing",
+      {
+        ...selection,
+        listing: { ...selection.listing, listingId: "listing-unknown" },
+      },
+    ],
+    [
+      "changed share class",
+      {
+        ...selection,
+        listing: { ...selection.listing, shareClassName: "Another class" },
+      },
+    ],
+  ];
+  it.each(unsupported)(
+    "refuses %s before cooldown, operation publication or a read",
+    async (_name, selected) => {
+      const { model, read, access } = fixture();
+      const cooldown = vi.spyOn(access, "getNextAllowedAt");
+      const record = vi.spyOn(access, "recordCooldown");
+      model.open(selected);
+      const before = model.getSnapshot();
+      const changed = vi.fn();
+      const unsubscribe = model.subscribe(changed);
+      expect(before).toMatchObject({
+        selection: selected,
+        supported: false,
+        running: false,
+        checkingSeed: false,
+        response: null,
+      });
+      await model.load();
+      await model.load();
+      expect(model.getSnapshot()).toBe(before);
+      expect(changed).not.toHaveBeenCalled();
+      expect(cooldown).not.toHaveBeenCalled();
+      expect(record).not.toHaveBeenCalled();
+      expect(read).not.toHaveBeenCalled();
+      unsubscribe();
+    },
+  );
+
+  it("uses independent Annual membership while retaining a validated unsupported seed for inspection", async () => {
+    const response = await annualReportPacket();
+    const coverage = {
+      ...inventedManagedResearchCoverage,
+      annualIssuers: Object.freeze([]),
+    };
+    const { model, read, access } = fixture(coverage);
+    const cooldown = vi.spyOn(access, "getNextAllowedAt");
+    model.open(selection, { response, showingPrevious: true });
+    await settled(model);
+    const before = model.getSnapshot();
+    expect(before).toMatchObject({
+      supported: false,
+      response,
+      responseOrigin: "watchlist-comparison",
+      showingPrevious: true,
+      error: false,
+    });
+    await model.load();
+    expect(model.getSnapshot()).toBe(before);
+    expect(cooldown).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+    const allowed = fixture({
+      ...inventedManagedResearchCoverage,
+      filingsIssuers: Object.freeze([]),
+    });
+    allowed.read.mockResolvedValueOnce(response);
+    allowed.model.open(selection);
+    await allowed.model.load();
+    expect(allowed.model.getSnapshot()).toMatchObject({
+      supported: true,
+      response,
+      responseOrigin: "request",
+    });
+    expect(allowed.read).toHaveBeenCalledOnce();
+  });
+
+  it("does not fall back to a request after refusing an unsupported seed", async () => {
+    const original = await annualReportPacket();
+    const response = {
+      ...original,
+      security: { ...original.security, issuerName: "Another issuer" },
+    };
+    const { model, read, access } = fixture({
+      ...inventedManagedResearchCoverage,
+      annualIssuers: Object.freeze([]),
+    });
+    const cooldown = vi.spyOn(access, "getNextAllowedAt");
+    model.open(selection, { response, showingPrevious: false });
+    await settled(model);
+    expect(model.getSnapshot()).toMatchObject({
+      supported: false,
+      response: null,
+      view: null,
+      error: true,
+    });
+    await model.load();
+    expect(cooldown).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+  });
+});
+
+it("binds a null-CIK Annual response to its fixed roster issuer rather than relabelled canonical evidence", async () => {
+  const { model, read } = fixture();
+  const original = await annualReportPacket();
+  const foreign = await annualReportPacket("right");
+  read.mockResolvedValueOnce({
+    ...foreign,
+    security: { ...original.security, cik: foreign.security.cik },
+  });
+  model.open(selection);
+  await model.load();
+  const state = model.getSnapshot();
+  expect({
+    retainedResponse: state.response !== null,
+    retainedView: state.view !== null,
+    error: state.error,
+  }).toEqual({ retainedResponse: false, retainedView: false, error: true });
+  expect(read).toHaveBeenCalledOnce();
+});
+
+it.each([null, "0000000002"])(
+  "refuses relabelled Annual screening seed even when selected CIK is %s",
+  async (cik) => {
+    const { model, read } = fixture();
+    const original = await annualReportPacket();
+    const foreign = await annualReportPacket("right");
+    model.open(
+      { ...selection, origin: "screening", cik },
+      {
+        response: {
+          ...foreign,
+          security: { ...original.security, cik: foreign.security.cik },
+        },
+        showingPrevious: false,
+        provenance: "financial-screen",
+      },
+    );
+    await settled(model);
+    const state = model.getSnapshot();
+    expect({
+      retainedResponse: state.response !== null,
+      retainedView: state.view !== null,
+      error: state.error,
+    }).toEqual({ retainedResponse: false, retainedView: false, error: true });
+    expect(read).not.toHaveBeenCalled();
+  },
+);
+
+it("keeps a decoded historical Annual seed inspectable without a current issuer mapping or fresh read", async () => {
+  const { model, read, access } = fixture();
+  const catalogSnapshotSha256 = `sha256:${"b".repeat(64)}` as const;
+  const response = { ...(await annualReportPacket()), catalogSnapshotSha256 };
+  const cooldown = vi.spyOn(access, "getNextAllowedAt");
+  model.open(
+    { ...selection, catalogSnapshotSha256 },
+    { response, showingPrevious: true },
+  );
+  await settled(model);
+  const before = model.getSnapshot();
+  expect(before).toMatchObject({
+    supported: false,
+    response,
+    responseOrigin: "watchlist-comparison",
+    showingPrevious: true,
+    error: false,
+  });
+  await model.load();
+  expect(model.getSnapshot()).toBe(before);
+  expect(cooldown).not.toHaveBeenCalled();
+  expect(read).not.toHaveBeenCalled();
 });

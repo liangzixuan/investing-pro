@@ -18,8 +18,12 @@ an authored review to the existing note draft and saving it explicitly.
 The October 18 website/API release publishes product `f4379679`. The owner
 reported a successful 1.27-to-1.28 Android update and passes for all four requested
 physical checks. This closes that upgrade/checklist within its reported scope.
-The next outcome is controlled daily-use recovery, backup/restore and access
-qualification; sustained use and screen-reader acceptance remain open.
+The website now publishes explicit Watchlist draft-file capture and restoration
+from product `6ca5e0db`, with independent catalog review and normal Save. Matching
+Android 1.29 artifact review passed; its physical upgrade and new file workflow
+remain separate acceptance steps.
+The owner deferred the optional cloud backup drill. Sustained use, controlled
+account recovery and screen-reader acceptance remain open.
 Use the single capability and delivery table in
 [Current work](CURRENT_WORK.md) and the [release readiness plan](MANAGED_RELEASE_READINESS.md).
 Keep all existing release gates intact and use the current task's browser
@@ -28,8 +32,9 @@ are historical. Record actual tool restrictions separately from owner permission
 Offline preparation does not establish staging, production or physical-device
 acceptance.
 
-After delivery, align Price, Annual and Filings eligibility across one useful
-named company universe. Then complete editable valuation persistence and managed
+The active source increment aligns Price, Annual and Filings eligibility across
+the existing named company universe, from screening through cited evidence,
+normal Save and retained Back state. Then complete editable valuation persistence and managed
 Portfolio storage/recovery. Defer new portfolio-history features while these
 delivery and persistence gaps remain. Coverage fixes and selected metric rows do
 not complete a milestone.

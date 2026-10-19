@@ -18,6 +18,12 @@ import {
 
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
+  hasManagedAnnualCoverage,
+  getManagedResearchCoverageCik,
+  MANAGED_RESEARCH_COVERAGE,
+  type ManagedResearchCoverage,
+} from "./managed-research-eligibility";
+import {
   ManagedSecAccess,
   managedSecCooldownMessage,
 } from "./managed-sec-access";
@@ -30,6 +36,7 @@ export interface ManagedAnnualReportSeed {
 
 export interface ManagedAnnualReportState {
   readonly selection: ManagedResearchSelection | null;
+  readonly supported: boolean;
   readonly response: PersonalSecAnnualCanonicalResponseDto | null;
   readonly view: PersonalSecAnnualCanonicalView | null;
   readonly responseOrigin:
@@ -43,6 +50,7 @@ export interface ManagedAnnualReportState {
 }
 const empty = (): ManagedAnnualReportState => ({
   selection: null,
+  supported: false,
   response: null,
   view: null,
   responseOrigin: null,
@@ -57,9 +65,11 @@ const empty = (): ManagedAnnualReportState => ({
 function matchesSelection(
   response: PersonalSecAnnualCanonicalResponseDto,
   selected: ManagedResearchSelection,
+  knownCik: string | null,
 ) {
   const security = response.security;
   const listing = selected.listing;
+  if (knownCik !== null && security.cik !== knownCik) return false;
   return (
     response.catalogSnapshotSha256 === selected.catalogSnapshotSha256 &&
     security.listingId === listing.listingId &&
@@ -77,6 +87,7 @@ async function parseReportSeed(
   selection: ManagedResearchSelection,
   seed: ManagedAnnualReportSeed,
   signal: AbortSignal,
+  knownCik: string | null,
 ): Promise<ManagedAnnualReportSeed> {
   if (
     (selection.origin === "screening"
@@ -98,7 +109,7 @@ async function parseReportSeed(
     },
     signal,
   );
-  if (!response || !matchesSelection(response, selection))
+  if (!response || !matchesSelection(response, selection, knownCik))
     throw new TrialApiError("invalid_response");
   return Object.freeze({
     response,
@@ -140,12 +151,19 @@ export class ManagedAnnualReport {
   private operation: AbortController | null = null;
   private lifetime = Symbol();
   private retired = false;
+  private readonly coverage: ManagedResearchCoverage;
 
   constructor(
     private readonly loadReport: ManagedApi["annualReport"],
     private readonly readError: (error: TrialApiError) => void,
     private readonly access = new ManagedSecAccess(),
-  ) {}
+    options: { readonly coverage?: ManagedResearchCoverage } = {},
+  ) {
+    this.coverage = options.coverage ?? MANAGED_RESEARCH_COVERAGE;
+  }
+  hasCoverage(selection: ManagedResearchSelection) {
+    return hasManagedAnnualCoverage(selection, this.coverage);
+  }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -163,10 +181,21 @@ export class ManagedAnnualReport {
       ...selection,
       listing: Object.freeze({ ...selection.listing }),
     });
+    const supported = this.hasCoverage(captured);
+    if (!supported && seed === undefined) {
+      this.update({
+        selection: captured,
+        supported: false,
+        message:
+          "Annual reports are not available for this listing in this workspace.",
+      });
+      return;
+    }
     const operation = seed === undefined ? null : new AbortController();
     this.operation = operation;
     this.update({
       selection: captured,
+      supported,
       running: operation !== null,
       checkingSeed: operation !== null,
       message: operation
@@ -190,7 +219,12 @@ export class ManagedAnnualReport {
       !operation.signal.aborted;
     try {
       if (!current()) return;
-      const accepted = await parseReportSeed(selection, seed, operation.signal);
+      const accepted = await parseReportSeed(
+        selection,
+        seed,
+        operation.signal,
+        getManagedResearchCoverageCik(selection, this.coverage),
+      );
       if (!current()) return;
       const view = deriveReportView(accepted.response);
       if (!current()) return;
@@ -201,8 +235,9 @@ export class ManagedAnnualReport {
           accepted.provenance === "financial-screen"
             ? "financial-screen"
             : "watchlist-comparison",
-        message:
-          accepted.provenance === "financial-screen"
+        message: !this.state.supported
+          ? "The checked report is retained with its original source times. New Annual reads are not available for this listing in this workspace."
+          : accepted.provenance === "financial-screen"
             ? "The report loaded for financial screening is available in this company visit. Original source times are unchanged. Refresh explicitly to check again."
             : "The loaded watchlist comparison report is available in this company visit. Refresh explicitly to check again.",
       });
@@ -210,8 +245,9 @@ export class ManagedAnnualReport {
       if (!current()) return;
       this.update({
         error: true,
-        message:
-          selection.origin === "screening"
+        message: !this.state.supported
+          ? "The loaded report could not be validated. New Annual reads are not available for this listing in this workspace."
+          : selection.origin === "screening"
             ? "The loaded screening report could not be validated. Load the annual report when you are ready."
             : "The loaded watchlist comparison report could not be validated. Load the annual report when you are ready.",
       });
@@ -254,11 +290,13 @@ export class ManagedAnnualReport {
       checkingSeed: false,
       showingPrevious: this.state.response !== null,
       error: false,
-      message: checkingSeed
-        ? "Checking the loaded report was cancelled. Load the annual report when you are ready."
-        : this.state.response
-          ? "Annual report refresh cancelled. Refresh again when ready."
-          : "Annual report load cancelled. Load again when ready.",
+      message: !this.state.supported
+        ? "Checking the loaded report was cancelled. New Annual reads are not available for this listing in this workspace."
+        : checkingSeed
+          ? "Checking the loaded report was cancelled. Load the annual report when you are ready."
+          : this.state.response
+            ? "Annual report refresh cancelled. Refresh again when ready."
+            : "Annual report load cancelled. Load again when ready.",
     });
   }
   async load() {
@@ -266,6 +304,7 @@ export class ManagedAnnualReport {
     if (
       this.retired ||
       !selection ||
+      !this.state.supported ||
       this.operation ||
       this.state.catalogChanged
     )
@@ -324,7 +363,14 @@ export class ManagedAnnualReport {
             operation.signal,
           );
       if (!current()) return;
-      if (!response || !matchesSelection(response, selection))
+      if (
+        !response ||
+        !matchesSelection(
+          response,
+          selection,
+          getManagedResearchCoverageCik(selection, this.coverage),
+        )
+      )
         throw new TrialApiError("invalid_response");
       const view = deriveReportView(response);
       if (!current()) return;

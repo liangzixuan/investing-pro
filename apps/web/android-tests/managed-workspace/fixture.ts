@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "../../src/clerk-trial/test-managed-research-coverage-fixture";
 import {
   createScreenComparisonNativeFixture,
   type NativeScreenComparisonMetadata,
@@ -1757,6 +1758,7 @@ async function createSharedFixture(
     session,
     followups,
     marketsCohort,
+    researchCoverage: inventedManagedResearchCoverage,
     priceCoverage:
       scenario === "watchlist-comparison"
         ? comparisonListings

@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { parseAnnualComparisonFixture } from "./test-canonical-annual-comparison-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -41,8 +42,12 @@ async function fixture(
   const price = new ManagedEodHistory(readPrice, vi.fn(), undefined, [
     eodSelection.listing,
   ]);
-  const annual = new ManagedAnnualReport(readAnnual, vi.fn());
-  const filings = new ManagedCompanyFilings(readFilings, vi.fn());
+  const annual = new ManagedAnnualReport(readAnnual, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
+  const filings = new ManagedCompanyFilings(readFilings, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   price.open(eodSelection);
   annual.open(eodSelection);
   filings.open(eodSelection);

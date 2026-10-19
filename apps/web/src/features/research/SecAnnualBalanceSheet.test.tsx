@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "../../clerk-trial/test-managed-research-coverage-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -87,7 +88,9 @@ describe("Annual reported balance-sheet presentation", () => {
   it("shows the same admitted totals in both Annual appearances and company snapshot without another read", async () => {
     const response = await balanceSheetResponse(rows());
     const read = vi.fn().mockResolvedValue(response);
-    const model = new ManagedAnnualReport(read, vi.fn());
+    const model = new ManagedAnnualReport(read, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     model.open(eodSelection);
     await model.load();
     const admitted = model.getSnapshot().response;

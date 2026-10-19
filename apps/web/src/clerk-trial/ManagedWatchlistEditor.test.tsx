@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -123,7 +124,9 @@ function fixture() {
     ],
     editable: true,
     active: true,
-    filings: new FilingsModel(vi.fn(), vi.fn()),
+    filings: new FilingsModel(vi.fn(), vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    }),
     onSelectedMember: vi.fn(),
     onViewFilings: vi.fn(),
     comparisonNoteActions: {

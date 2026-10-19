@@ -1,19 +1,27 @@
 # Current work
 
-Updated October 18, 2026. This is the current capability and delivery record.
+Updated October 19, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
 ## Current capability and delivery status
 
-The website and API publish product
-`f43796794320286fd9c1ce02d7472c454519953e`, with production controller
-`dc781e41a751e6de0d8c73fff5ec8c3cf89aa1fe`. The October 18
+The website publishes product and controller
+`6ca5e0dbc648914eb36401f008d56809e56b0a60`. Its
+[tested archive promotion](https://github.com/liangzixuan/investing-pro/actions/runs/39195520174)
+passed after staging and BrowserStack acceptance. Fresh deployment metadata and
+the served public entry page match the accepted archive. This publishes explicit
+Watchlist draft-file capture, review and local restoration. The API retains
+`f43796794320286fd9c1ce02d7472c454519953e`; no API or saved-data change was needed.
+The October 18
 [production promotion](https://github.com/liangzixuan/investing-pro/actions/runs/39117654678)
 passed all 12 job steps. Its receipts and fresh metadata confirm the matching
 API/site pair and unchanged settings. Matching Android 1.28.0, code 29, was
-prepared with the existing production signer. On October 18 the owner reported
+prepared with the existing production signer. Matching Android 1.29.0, code 30,
+is also prepared from `6ca5e0db`. Its package, production signer and bundled source
+marker passed artifact review. Installation and physical acceptance of 1.29
+remain open. On October 18 the owner reported
 a successful 1.27-to-1.28 update and passes for all four requested physical
 checks. This accepts the reported upgrade and checklist; no independent device
 inspection or per-step logs were collected.
@@ -36,11 +44,11 @@ recovery and sustained use remain open.
 The full goal still includes broader company discovery, news and calendars,
 quarterly/TTM financials, peer research and comparable portfolio returns.
 
-## Selected next outcome: daily-use reliability and recovery
+## Selected next outcome: coherent company research
 
-The matching website/API release and owner-reported Android upgrade/checklist
-are accepted within their recorded scopes. Next qualify controlled storage
-recovery, backup/restore and accessibility. Use the
+The website draft-file release, matching Android artifact and owner-reported
+earlier Android upgrade/checklist are accepted within their recorded scopes.
+Controlled storage recovery and accessibility remain open. Use the
 [release readiness plan](MANAGED_RELEASE_READINESS.md) for the separate acceptance
 requirements; the update report does not close these remaining checks.
 
@@ -48,18 +56,30 @@ The [isolated Watchlist restore proof](MANAGED_WATCHLIST_RESTORE_PROOF.md)
 prepares fixed invented-data checks around Appwrite's native backup service.
 The owner deferred this optional cloud drill on October 18. Its execution stays
 disabled; source checks do not establish an executed restore or owner backup.
-The active independent increment is [Watchlist draft files](MANAGED_WATCHLIST_DRAFT_FILES.md):
+The website now includes [Watchlist draft files](MANAGED_WATCHLIST_DRAFT_FILES.md):
 explicit file capture, complete review and local restoration, followed by
 independent catalog review and the normal online Save. This does not provide
-automatic draft storage or confirmed-record recovery. Source and native
-qualification remain in progress.
+automatic draft storage or confirmed-record recovery. Source and synthetic native
+qualification and matching Android artifact review passed. Real file delivery
+and physical acceptance remain separate.
 
-Staging run `39112966766`, attempt 1, passed its deployed-origin BrowserStack
-checks. Production promoted that exact accepted archive without rebuilding or
-repeating staging/browser checks. A fresh metadata observation confirmed both
-new pointers and settings; no restore was needed. The recorded API-to-website
-switch sequence spanned about 5 minutes 47 seconds. This is not a measurement of
-client downtime, authenticated use or provider health.
+The next source increment aligns independent Price, Annual and Filings eligibility
+across the named screening cohort. It reuses the current source cards, explicit
+reads, captured Annual handoff, cited-note actions, normal Save and retained Back
+state. Price remains limited to its three qualified listings. Expanded Filings
+requires its own API admission and delivery; the current live API still admits
+three issuers. Captured-source parser qualification does not activate that scope.
+Affected model, view and native-fixture tests pass for the candidate. These include
+the complete AMD screening, captured Annual, explicit Filings, note Preview/Append,
+Review/Save and retained Back flow with invented financial values. Request and
+captured-response checks also reject a different issuer's evidence when the known
+listing selection has no CIK. Source integration and release checks remain separate.
+
+Staging run `39195015502`, attempt 1, passed its deployed-origin BrowserStack
+checks. Production run `39195520174` promoted that exact archive without a rebuild
+or repeated staging/browser test. Fresh metadata confirms the new website and
+retained API; the public entry page matches the archive. No restore was needed.
+These checks do not establish authenticated saves or physical file delivery.
 
 The owner resumed browser testing on October 18 and separately approved this
 production sequence. Both operations are complete; preserve original approvals,
@@ -67,9 +87,8 @@ rejections and receipts without replaying consumed actions. Keep unchanged
 source/native/staging evidence closed and use Chrome for any newly authorized
 browser work. No browser permission is pending for the completed release.
 
-After this delivery outcome, align Price, Annual and Filings eligibility across
-one useful named company universe. Then complete editable valuation persistence
-and managed Portfolio storage/recovery. New portfolio-history work is deferred
+After the coherent research-source workflow, complete editable valuation
+persistence and managed Portfolio storage/recovery. New portfolio-history work is deferred
 while its source-contract assessment remains useful preparation. Ticker additions
 are coverage fixes; selected metric rows are small increments.
 

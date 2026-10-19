@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -166,7 +167,9 @@ async function fixture(packet?: Report, loadAnnual = true) {
     getToken: vi.fn(),
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
-  const workspace = new ManagedWorkspace(api, session);
+  const workspace = new ManagedWorkspace(api, session, undefined, {
+    researchCoverage: inventedManagedResearchCoverage,
+  });
   workspace.setView("watchlist");
   await workspace.coordinator.load();
   await workspace.refreshCatalog();
@@ -413,7 +416,9 @@ describe("workspace Annual liquidity note action", () => {
       payload: normalized,
     });
     expect(saved()).toEqual({ version: 2, payload: normalized });
-    const reopened = new ManagedWorkspace(api, session);
+    const reopened = new ManagedWorkspace(api, session, undefined, {
+      researchCoverage: inventedManagedResearchCoverage,
+    });
     await reopened.coordinator.load();
     expect(reopened.coordinator.getSnapshot().draft).toEqual(normalized);
   });
