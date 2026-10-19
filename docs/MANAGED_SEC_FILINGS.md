@@ -8,7 +8,11 @@ original request date. **Refresh filings** starts another explicit request.
 The initial managed cohort is AAPL, GOOG, GOOGL and MSFT. GOOG and GOOGL retain
 their separate listing identities while sharing Alphabet's CIK. Catalog identity
 determines the issuer; a ticker alone cannot select another issuer or expand
-coverage. [Current work](CURRENT_WORK.md) records verification and release status.
+coverage. The next [source eligibility candidate](MANAGED_RESEARCH_ELIGIBILITY.md)
+independently qualifies Filings for the named 18-listing screening cohort. That
+requires separate API admission and compatible client delivery; the initial scope
+above remains the deployed baseline. [Current work](CURRENT_WORK.md) records
+verification and release status.
 
 ## Check a selected watchlist company
 

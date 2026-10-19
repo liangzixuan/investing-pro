@@ -1,3 +1,8 @@
+import {
+  createManagedResearchCoverageFixture,
+  inventedManagedResearchCoverage,
+} from "./test-managed-research-coverage-fixture";
+import type { ManagedResearchCoverage } from "./managed-research-eligibility";
 import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
 import {
@@ -147,6 +152,41 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
+const workspaceResearchCoverage = createManagedResearchCoverageFixture([
+  { listing: eodSelection.listing, cik: "0000000001" },
+  { listing: listingMembership(result), cik: "0000000001" },
+  { listing: listingMembership(second), cik: "0000000001" },
+]);
+function workspaceFixtureOptions(researchCoverage: ManagedResearchCoverage) {
+  return {
+    researchCoverage,
+    priceCoverage: [
+      eodSelection.listing,
+      listingMembership(result),
+      listingMembership(second),
+    ],
+  };
+}
+function createFixtureWorkspace(
+  api: ManagedApi,
+  session: TrialSession,
+  initial: MainWatchlistPayload,
+) {
+  let keys = 0;
+  const researchCoverage = initial.memberships.some(
+    (member) => member.symbol === "ONE" && member.issuerName === "One Company",
+  )
+    ? inventedManagedResearchCoverage
+    : workspaceResearchCoverage;
+  const workspace = new ManagedWorkspace(
+    api,
+    session,
+    () => `synthetic-command-${++keys}`,
+    workspaceFixtureOptions(researchCoverage),
+  );
+  workspace.setView("discover");
+  return workspace;
+}
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
@@ -209,20 +249,7 @@ function fixture(initial = empty) {
     getToken: vi.fn(),
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
-  let keys = 0;
-  const workspace = new ManagedWorkspace(
-    api,
-    session,
-    () => `synthetic-command-${++keys}`,
-    {
-      priceCoverage: [
-        eodSelection.listing,
-        listingMembership(result),
-        listingMembership(second),
-      ],
-    },
-  );
-  workspace.setView("discover");
+  const workspace = createFixtureWorkspace(api, session, initial);
   return { workspace, api, session, saved: () => structuredClone(stored) };
 }
 async function ready(workspace: ManagedWorkspace) {
@@ -378,7 +405,9 @@ describe("Fed announcement appended to one current draft note", () => {
           (entry) => entry.listingId === listingId,
         )!.note,
       ).toBe(normalizeWatchlistNote(raw + " " + excerpt));
-      const reopened = new ManagedWorkspace(api, session);
+      const reopened = new ManagedWorkspace(api, session, undefined, {
+        researchCoverage: inventedManagedResearchCoverage,
+      });
       await reopened.coordinator.load();
       expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
       expect(
@@ -1340,6 +1369,7 @@ describe("managed workspace composition", () => {
     workspace.remove(second.listingId);
     await workspace.coordinator.save();
     const reopened = new ManagedWorkspace(api, session, undefined, {
+      researchCoverage: inventedManagedResearchCoverage,
       priceCoverage: [
         eodSelection.listing,
         listingMembership(result),
@@ -2208,13 +2238,12 @@ describe("company research watchlist draft", () => {
       initial.memberships[0],
       { ...listingMembership(result), note: "Shared workspace note" },
     ]);
-    const reopened = new ManagedWorkspace(api, session, undefined, {
-      priceCoverage: [
-        eodSelection.listing,
-        listingMembership(result),
-        listingMembership(second),
-      ],
-    });
+    const reopened = new ManagedWorkspace(
+      api,
+      session,
+      undefined,
+      workspaceFixtureOptions(inventedManagedResearchCoverage),
+    );
     await reopened.coordinator.load();
     await reopened.refreshCatalog();
     reopened.openWatchlistAnnual(
@@ -2467,6 +2496,7 @@ describe("company research watchlist draft", () => {
       })),
     });
     const workspace = new ManagedWorkspace(api, session, undefined, {
+      researchCoverage: inventedManagedResearchCoverage,
       marketsCohort: cohort,
       priceCoverage: cohort,
     });
@@ -2609,6 +2639,7 @@ describe("Markets price handoff", () => {
       setup.session,
       undefined,
       {
+        researchCoverage: inventedManagedResearchCoverage,
         marketsCohort: cohort,
         priceCoverage: cohort,
       },
@@ -3969,6 +4000,7 @@ describe("Price comparison appended to the existing shared note", () => {
       normalizeWatchlistNote(expected),
     );
     const reopened = new ManagedWorkspace(api, session, undefined, {
+      researchCoverage: inventedManagedResearchCoverage,
       priceCoverage: [
         eodSelection.listing,
         listingMembership(result),
@@ -4441,6 +4473,7 @@ describe("Annual evidence appended to the existing shared note", () => {
       normalizeWatchlistNote(expected),
     );
     const reopened = new ManagedWorkspace(api, session, undefined, {
+      researchCoverage: inventedManagedResearchCoverage,
       priceCoverage: [
         eodSelection.listing,
         listingMembership(result),
@@ -6067,7 +6100,9 @@ describe("Annual comparison appended to one current draft note", () => {
       expect(saved().payload.memberships[destinationIndex]!.note).toBe(
         normalizeWatchlistNote(raw + " " + evidence.excerpt),
       );
-      const reopened = new ManagedWorkspace(api, session);
+      const reopened = new ManagedWorkspace(api, session, undefined, {
+        researchCoverage: inventedManagedResearchCoverage,
+      });
       await reopened.coordinator.load();
       expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
     },
@@ -6383,7 +6418,9 @@ describe("Annual cash generation appended to the shared note", () => {
     expect(saved().payload.memberships[1]?.note).toBe(
       normalizeWatchlistNote(prose + " " + excerpt),
     );
-    const reopened = new ManagedWorkspace(api, session);
+    const reopened = new ManagedWorkspace(api, session, undefined, {
+      researchCoverage: inventedManagedResearchCoverage,
+    });
     await reopened.coordinator.load();
     expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
   });

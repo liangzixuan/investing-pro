@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -199,7 +200,9 @@ function fixture(initial = payload) {
     getToken: vi.fn(),
     signOut: vi.fn(),
   };
-  const workspace = new ManagedWorkspace(api, session);
+  const workspace = new ManagedWorkspace(api, session, undefined, {
+    researchCoverage: inventedManagedResearchCoverage,
+  });
   workspace.setView("watchlist");
   const deliver = vi
     .fn<WatchlistExportDeliveryAdapter["deliver"]>()

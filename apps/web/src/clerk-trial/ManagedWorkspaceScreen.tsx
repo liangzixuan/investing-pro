@@ -11,7 +11,6 @@ import {
   membershipMatchesResult,
   normalizeWatchlistNote,
   type ManagedCatalogSnapshotDto,
-  type ManagedEodIdentity,
   type MainWatchlistPayload,
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
@@ -21,14 +20,16 @@ import {
   type ManagedCompanyNavigation,
 } from "./useManagedCompanyNavigation";
 import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
-import { createManagedApi, type ManagedApi } from "./managed-api";
 import {
-  ManagedWorkspace,
+  createManagedSessionWorkspace,
+  type ManagedSessionWorkspaceOptions,
+} from "./managed-session-workspace";
+import {
+  type ManagedWorkspace,
   reviewChanges,
   type CatalogReview,
   type FollowupReview,
 } from "./managed-workspace";
-import type { TrialSession } from "./session";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import {
   ManagedWatchlistEditor,
@@ -65,14 +66,8 @@ import {
   type AndroidBackAdapter,
 } from "../mobile/android-back";
 
-interface SessionProps {
-  session: TrialSession;
-  apiOrigin: string;
-  api?: ManagedApi;
+interface SessionProps extends ManagedSessionWorkspaceOptions {
   androidBack?: AndroidBackAdapter;
-  marketsCohort?: readonly ManagedEodIdentity[];
-  priceCoverage?: readonly ManagedEodIdentity[];
-  financialScreenListingIds?: readonly string[];
   warnOnBrowserLeave?: boolean;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
@@ -187,22 +182,7 @@ function SessionWorkspace(props: SessionProps) {
   const draftFileSession = useWatchlistDraftFileSession(initial);
   const [workspace, setWorkspace] = useState<ManagedWorkspace | null>(null);
   useLayoutEffect(() => {
-    const current = new ManagedWorkspace(
-      initial.api ?? createManagedApi(initial.apiOrigin, initial.session),
-      initial.session,
-      undefined,
-      {
-        ...(initial.marketsCohort
-          ? { marketsCohort: initial.marketsCohort }
-          : {}),
-        ...(initial.priceCoverage
-          ? { priceCoverage: initial.priceCoverage }
-          : {}),
-        ...(initial.financialScreenListingIds
-          ? { financialScreenListingIds: initial.financialScreenListingIds }
-          : {}),
-      },
-    );
+    const current = createManagedSessionWorkspace(initial);
     const unbindBrowserLeave = initial.warnOnBrowserLeave
       ? bindManagedBrowserUnload(current.sessionOwner, window)
       : undefined;

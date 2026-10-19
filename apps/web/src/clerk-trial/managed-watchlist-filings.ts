@@ -14,6 +14,7 @@ import {
 } from "./managed-company-filings";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedSecAccess } from "./managed-sec-access";
+import type { ManagedResearchCoverage } from "./managed-research-eligibility";
 
 export interface ManagedWatchlistFilingsMember {
   readonly handle: symbol;
@@ -77,6 +78,9 @@ export class ManagedWatchlistFilings {
     read: ManagedApi["recentFilings"],
     readError: (error: TrialApiError) => void,
     access = new ManagedSecAccess(),
+    private readonly options: {
+      readonly coverage?: ManagedResearchCoverage;
+    } = {},
   ) {
     this.model = new ManagedCompanyFilings(
       (request, signal) => {
@@ -90,6 +94,7 @@ export class ManagedWatchlistFilings {
         readError(error);
       },
       access,
+      options,
     );
     this.state = this.snapshot();
     this.model.subscribe(() => this.publish());
@@ -226,6 +231,7 @@ export class ManagedWatchlistFilings {
       this.selected !== member
     )
       return;
+    if (!this.model.getSnapshot().supported) return;
     const operation: Operation = {
       member,
       pending: { cancel: () => this.cancelOperation(operation) },
@@ -267,10 +273,14 @@ export class ManagedWatchlistFilings {
       cik: null,
       origin: "watchlist",
     });
-    const seed = captureManagedCompanyFilingsSeed(selection, {
-      response: capture.response,
-      showingPrevious: state.showingPrevious,
-    });
+    const seed = captureManagedCompanyFilingsSeed(
+      selection,
+      {
+        response: capture.response,
+        showingPrevious: state.showingPrevious,
+      },
+      this.options,
+    );
     return seed && !this.operation && this.canAdmitFilings(capture)
       ? Object.freeze({ selection, seed })
       : null;

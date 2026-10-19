@@ -159,6 +159,7 @@ describe("shared fixture and actual aggregate lifetime", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         priceCoverage: fixture.priceCoverage,
         marketsCohort: fixture.marketsCohort,
       },
@@ -348,7 +349,12 @@ describe("shared fixture and actual aggregate lifetime", () => {
     const late = workspace.followups.coordinator.load();
     workspace.sessionOwner.dispose();
     expect(controls.getSnapshot().aborted).toBe(1);
-    const next = new ManagedWorkspace(fixture.api, controls.nextSession());
+    const next = new ManagedWorkspace(
+      fixture.api,
+      controls.nextSession(),
+      undefined,
+      { researchCoverage: fixture.researchCoverage },
+    );
     await next.coordinator.load();
     await next.refreshCatalog();
     controls.setNextRead("retire");

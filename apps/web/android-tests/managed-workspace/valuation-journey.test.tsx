@@ -37,6 +37,7 @@ async function setup() {
     fixture.session,
     undefined,
     {
+      researchCoverage: fixture.researchCoverage,
       marketsCohort: fixture.marketsCohort,
       priceCoverage: fixture.priceCoverage,
     },
@@ -237,10 +238,15 @@ describe("invented native authored valuation scenario", () => {
       exitDraft: { cash: "", horizonYears: "" },
     });
     expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
-    const fresh = new ManagedWorkspace(f.fixture.api, {
-      ...f.fixture.session,
-      sessionId: "invented-valuation-reopened",
-    });
+    const fresh = new ManagedWorkspace(
+      f.fixture.api,
+      {
+        ...f.fixture.session,
+        sessionId: "invented-valuation-reopened",
+      },
+      undefined,
+      { researchCoverage: f.fixture.researchCoverage },
+    );
     owners.push(fresh);
     await fresh.coordinator.load();
     expect(fresh.coordinator.getSnapshot().draft!.memberships[0]!.note).toBe(

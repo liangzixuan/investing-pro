@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -84,7 +85,9 @@ describe("Company Financial review rendering", () => {
 
   it("mounts within the actual managed Annual panel only after an explicit load", async () => {
     const read = vi.fn().mockResolvedValue(await financialReviewResponse());
-    const model = new ManagedAnnualReport(read, vi.fn());
+    const model = new ManagedAnnualReport(read, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     model.open(eodSelection);
     const panel = () =>
       renderToStaticMarkup(

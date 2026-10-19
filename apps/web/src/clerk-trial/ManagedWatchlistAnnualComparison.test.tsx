@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import type * as React from "react";
 import { isValidElement, type ReactNode, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -118,7 +119,9 @@ function textContent(node: ReactNode): string {
 }
 function fixture() {
   const read = vi.fn<ManagedApi["annualReport"]>();
-  const model = new Model(read, vi.fn());
+  const model = new Model(read, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   const digest = `sha256:${"a".repeat(64)}` as const;
   const draft: MainWatchlistPayload = {
     schemaVersion: 1,

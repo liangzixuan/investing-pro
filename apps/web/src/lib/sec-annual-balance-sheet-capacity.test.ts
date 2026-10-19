@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "../clerk-trial/test-managed-research-coverage-fixture";
 import { annualComparisonResponse } from "../clerk-trial/test-canonical-annual-comparison-fixture";
 import { expect, it, vi } from "vitest";
 import { MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS } from "@research-cockpit/contracts";
@@ -63,7 +64,9 @@ it("admits all 1000 observations and preserves the complete captured report insi
   );
   expect(bytes).toBeLessThan(MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes);
   const read = vi.fn().mockResolvedValue(wire);
-  const model = new ManagedAnnualReport(read, vi.fn());
+  const model = new ManagedAnnualReport(read, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   model.open(eodSelection);
   await model.load();
   const state = model.getSnapshot();

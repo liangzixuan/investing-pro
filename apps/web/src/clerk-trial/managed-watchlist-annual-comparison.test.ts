@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -196,7 +197,9 @@ describe("Annual comparison report handoff", () => {
     const { model, read, capture } = await loadedHandoff();
     const handoff = model.admitReport(capture)!;
     const companyRead = vi.fn<ManagedApi["annualReport"]>();
-    const company = new ManagedAnnualReport(companyRead, vi.fn());
+    const company = new ManagedAnnualReport(companyRead, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     company.open(handoff.selection, handoff.seed);
     model.reconcile(draft(), digest, false, false);
     await vi.waitFor(() =>
@@ -271,7 +274,9 @@ function fixture() {
   const read = vi.fn<ManagedApi["annualReport"]>();
   const readError = vi.fn();
   const access = new ManagedSecAccess();
-  const model = new ManagedWatchlistAnnualComparison(read, readError, access);
+  const model = new ManagedWatchlistAnnualComparison(read, readError, access, {
+    coverage: inventedManagedResearchCoverage,
+  });
   model.reconcile(draft(), digest, true, true);
   const choose = (
     side: ManagedWatchlistAnnualComparisonSide,

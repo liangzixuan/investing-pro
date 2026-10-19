@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { describe, expect, it, vi } from "vitest";
 import {
   normalizeWatchlistNote,
@@ -159,6 +160,7 @@ function fixture(initial = empty) {
     session,
     () => `synthetic-command-${++keys}`,
     {
+      researchCoverage: inventedManagedResearchCoverage,
       priceCoverage: [
         eodSelection.listing,
         listingMembership(result),
@@ -260,7 +262,9 @@ describe("BEA release appended to one current draft note", () => {
           (entry) => entry.listingId === listingId,
         )!.note,
       ).toBe(normalizeWatchlistNote(raw + " " + excerpt));
-      const reopened = new ManagedWorkspace(api, session);
+      const reopened = new ManagedWorkspace(api, session, undefined, {
+        researchCoverage: inventedManagedResearchCoverage,
+      });
       await reopened.coordinator.load();
       expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
       expect(

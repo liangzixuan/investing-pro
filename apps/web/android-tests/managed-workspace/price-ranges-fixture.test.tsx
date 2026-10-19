@@ -30,6 +30,7 @@ describe("bounded company price-range fixture", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         marketsCohort: fixture.marketsCohort,
         priceCoverage: fixture.priceCoverage,
       },
@@ -183,7 +184,10 @@ describe("bounded company price-range fixture", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { priceCoverage: fixture.priceCoverage },
+      {
+        researchCoverage: fixture.researchCoverage,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     workspace.setView("watchlist");
     await workspace.coordinator.load();

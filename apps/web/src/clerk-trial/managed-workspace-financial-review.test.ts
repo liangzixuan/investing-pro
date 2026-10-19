@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -165,7 +166,9 @@ async function fixture(
     getToken: vi.fn(),
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
-  const workspace = new ManagedWorkspace(api, session);
+  const workspace = new ManagedWorkspace(api, session, undefined, {
+    researchCoverage: inventedManagedResearchCoverage,
+  });
   workspace.setView("watchlist");
   await workspace.coordinator.load();
   await workspace.refreshCatalog();
@@ -402,10 +405,15 @@ describe("composed explicit company financial review", () => {
     expect(f.storedFollowups().payload.entries[0]!.check).toBe(
       "Review next filing",
     );
-    const reopened = new ManagedWorkspace(f.api, {
-      ...f.session,
-      sessionId: "invented-new-session",
-    });
+    const reopened = new ManagedWorkspace(
+      f.api,
+      {
+        ...f.session,
+        sessionId: "invented-new-session",
+      },
+      undefined,
+      { researchCoverage: inventedManagedResearchCoverage },
+    );
     await reopened.coordinator.load();
     expect(reopened.coordinator.getSnapshot().draft).toEqual(
       f.stored().payload,

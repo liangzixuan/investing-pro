@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -173,6 +174,7 @@ async function fixture(loadPrice = true) {
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
   const workspace = new ManagedWorkspace(api, session, undefined, {
+    researchCoverage: inventedManagedResearchCoverage,
     priceCoverage: [eodSelection.listing],
   });
   owners.push(workspace);
@@ -311,10 +313,15 @@ describe("raw price studies through the real workspace draft and Save", () => {
     expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(
       independent,
     );
-    const fresh = new ManagedWorkspace(f.api, {
-      ...f.session,
-      sessionId: "invented-fresh-price-session",
-    });
+    const fresh = new ManagedWorkspace(
+      f.api,
+      {
+        ...f.session,
+        sessionId: "invented-fresh-price-session",
+      },
+      undefined,
+      { researchCoverage: inventedManagedResearchCoverage },
+    );
     owners.push(fresh);
     await fresh.coordinator.load();
     expect(fresh.coordinator.getSnapshot().draft!.memberships).toEqual([

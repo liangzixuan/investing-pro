@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import type { ManagedEodHistoryResponseDto } from "@research-cockpit/contracts";
 import type { PersonalMarketAnalyticsResult } from "@research-cockpit/personal-market-analytics";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -42,8 +43,12 @@ async function fixture() {
   const price = new ManagedEodHistory(priceRead, vi.fn(), undefined, [
     eodSelection.listing,
   ]);
-  const annual = new ManagedAnnualReport(annualRead, vi.fn());
-  const filings = new ManagedCompanyFilings(filingsRead, vi.fn());
+  const annual = new ManagedAnnualReport(annualRead, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
+  const filings = new ManagedCompanyFilings(filingsRead, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   for (const model of [price, annual, filings]) model.open(eodSelection);
   price.selectRange("1y");
   await price.load();

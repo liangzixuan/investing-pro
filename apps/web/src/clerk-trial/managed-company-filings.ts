@@ -15,6 +15,12 @@ import {
 
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
+  hasManagedFilingsCoverage,
+  getManagedResearchCoverageCik,
+  MANAGED_RESEARCH_COVERAGE,
+  type ManagedResearchCoverage,
+} from "./managed-research-eligibility";
+import {
   compareManagedFilingsResponses,
   type ManagedFilingsRefreshComparison,
 } from "./managed-filings-refresh-comparison";
@@ -26,6 +32,7 @@ import {
 
 export interface ManagedCompanyFilingsState {
   readonly selection: ManagedResearchSelection | null;
+  readonly supported: boolean;
 
   readonly response: ManagedSecFilingsResponseDto | null;
 
@@ -54,6 +61,7 @@ export interface ManagedCompanyFilingsSeed {
 function checkedResponse(
   selection: ManagedResearchSelection,
   response: ManagedSecFilingsResponseDto,
+  knownCik: string | null,
 ) {
   const checked = parseManagedSecFilingsResponse(response, {
     schemaVersion: "1.0.0",
@@ -61,11 +69,12 @@ function checkedResponse(
     listingId: selection.listing.listingId,
     symbol: selection.listing.symbol,
   });
-  return checked &&
-    membershipMatchesResult(
-      { ...selection.listing, note: "" },
-      checked.security,
-    ) &&
+  if (checked === null) return null;
+  if (knownCik !== null && checked.security.cik !== knownCik) return null;
+  return membershipMatchesResult(
+    { ...selection.listing, note: "" },
+    checked.security,
+  ) &&
     (selection.cik === null || checked.security.cik === selection.cik)
     ? checked
     : null;
@@ -75,6 +84,7 @@ function checkedResponse(
 export function captureManagedCompanyFilingsSeed(
   selection: ManagedResearchSelection,
   seed: ManagedCompanyFilingsSeed,
+  options: { readonly coverage?: ManagedResearchCoverage } = {},
 ): ManagedCompanyFilingsSeed | null {
   try {
     if (
@@ -82,7 +92,11 @@ export function captureManagedCompanyFilingsSeed(
       typeof seed.showingPrevious !== "boolean"
     )
       return null;
-    const response = checkedResponse(selection, seed.response);
+    const response = checkedResponse(
+      selection,
+      seed.response,
+      getManagedResearchCoverageCik(selection, options.coverage),
+    );
     return response
       ? Object.freeze({ response, showingPrevious: seed.showingPrevious })
       : null;
@@ -93,6 +107,7 @@ export function captureManagedCompanyFilingsSeed(
 
 const empty = (): ManagedCompanyFilingsState => ({
   selection: null,
+  supported: false,
   response: null,
   responseOrigin: null,
   refreshComparison: null,
@@ -162,6 +177,7 @@ export class ManagedCompanyFilings {
   private retired = false;
 
   private readonly compareRefresh: boolean;
+  private readonly coverage: ManagedResearchCoverage;
 
   constructor(
     private readonly read: ManagedApi["recentFilings"],
@@ -170,9 +186,16 @@ export class ManagedCompanyFilings {
 
     private readonly access = new ManagedSecAccess(),
 
-    options: { readonly compareRefresh?: boolean } = {},
+    options: {
+      readonly compareRefresh?: boolean;
+      readonly coverage?: ManagedResearchCoverage;
+    } = {},
   ) {
     this.compareRefresh = options.compareRefresh === true;
+    this.coverage = options.coverage ?? MANAGED_RESEARCH_COVERAGE;
+  }
+  hasCoverage(selection: ManagedResearchSelection) {
+    return hasManagedFilingsCoverage(selection, this.coverage);
   }
 
   getSnapshot = () => this.state;
@@ -196,13 +219,26 @@ export class ManagedCompanyFilings {
       ...selection,
       listing: Object.freeze({ ...selection.listing }),
     });
+    const supported = this.hasCoverage(captured);
+    if (!supported && seed === undefined) {
+      this.update({
+        selection: captured,
+        supported: false,
+        message:
+          "Filings are not available for this listing in this workspace.",
+      });
+      return;
+    }
     const admitted =
       seed === undefined
         ? null
-        : captureManagedCompanyFilingsSeed(captured, seed);
+        : captureManagedCompanyFilingsSeed(captured, seed, {
+            coverage: this.coverage,
+          });
     if (this.retired || this.lifetime !== lifetime) return;
     this.update({
       selection: seed !== undefined && admitted === null ? null : captured,
+      supported: supported && (admitted !== null || seed === undefined),
       response: admitted?.response ?? null,
       responseOrigin: admitted ? "watchlist" : null,
       lastCheck: admitted?.response ?? null,
@@ -210,13 +246,16 @@ export class ManagedCompanyFilings {
       error:
         seed !== undefined &&
         (admitted === null || admitted.response.issuer.status !== "available"),
-      message: admitted
-        ? admitted.response.issuer.status === "available"
-          ? "The loaded watchlist filings are available in this company visit. Refresh explicitly to check again."
-          : managedFilingsStatus(admitted.response.issuer.status)
-        : seed !== undefined
-          ? "The loaded watchlist filings could not be validated. Return to the watchlist and choose the company again."
-          : "Load SEC filings from the last 90 days when you are ready.",
+      message:
+        admitted && !supported
+          ? "The checked filings packet is retained with its original source times. New Filings reads are not available for this listing in this workspace."
+          : admitted
+            ? admitted.response.issuer.status === "available"
+              ? "The loaded watchlist filings are available in this company visit. Refresh explicitly to check again."
+              : managedFilingsStatus(admitted.response.issuer.status)
+            : seed !== undefined
+              ? "The loaded watchlist filings could not be validated. Return to the watchlist and choose the company again."
+              : "Load SEC filings from the last 90 days when you are ready.",
     });
   }
 
@@ -261,7 +300,11 @@ export class ManagedCompanyFilings {
     response: ManagedSecFilingsResponseDto,
     selection: ManagedResearchSelection,
   ) {
-    const checked = checkedResponse(selection, response);
+    const checked = checkedResponse(
+      selection,
+      response,
+      getManagedResearchCoverageCik(selection, this.coverage),
+    );
     if (!checked) throw new TrialApiError("invalid_response");
 
     const previous =
@@ -331,6 +374,7 @@ export class ManagedCompanyFilings {
     if (
       this.retired ||
       !selection ||
+      !this.state.supported ||
       this.operation ||
       this.state.catalogChanged
     )

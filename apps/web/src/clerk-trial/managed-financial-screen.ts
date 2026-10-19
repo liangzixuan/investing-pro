@@ -17,6 +17,11 @@ import {
 } from "./managed-annual-report";
 import { ManagedSecAccess } from "./managed-sec-access";
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import {
+  hasManagedAnnualCoverage,
+  MANAGED_RESEARCH_COVERAGE,
+  type ManagedResearchCoverage,
+} from "./managed-research-eligibility";
 import { MANAGED_FINANCIAL_SCREEN_LISTING_IDS } from "./managed-financial-screen-cohort";
 import {
   DEFAULT_MANAGED_FINANCIAL_SCREEN_CRITERIA,
@@ -168,18 +173,40 @@ export class ManagedFinancialScreen {
   private retired = false;
   private blocked = false;
   private readonly listingIds: readonly string[];
+  private readonly coverage: ManagedResearchCoverage;
 
   constructor(
     private readonly api: Pick<ManagedApi, "resolve" | "annualReport">,
     private readonly readError: (error: TrialApiError) => void,
     private readonly access = new ManagedSecAccess(),
-    listingIds: readonly string[] = MANAGED_FINANCIAL_SCREEN_LISTING_IDS,
+    options: {
+      readonly listingIds?: readonly string[];
+      readonly coverage?: ManagedResearchCoverage;
+    } = {},
   ) {
+    const listingIds =
+      options.listingIds ?? MANAGED_FINANCIAL_SCREEN_LISTING_IDS;
     if (!validListingIds(listingIds))
       throw new TypeError(
         "A financial screen requires at most 18 exact listings.",
       );
     this.listingIds = Object.freeze([...listingIds]);
+    this.coverage = options.coverage ?? MANAGED_RESEARCH_COVERAGE;
+  }
+  hasCoverage(member: ManagedFinancialScreenMember) {
+    const digest = this.state.catalogSnapshotSha256;
+    return (
+      digest !== null &&
+      hasManagedAnnualCoverage(
+        {
+          listing: member.listing,
+          catalogSnapshotSha256: digest,
+          cik: null,
+          origin: "screening",
+        },
+        this.coverage,
+      )
+    );
   }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
@@ -298,9 +325,9 @@ export class ManagedFinancialScreen {
       const selected = memberships.filter((member) => {
         if (issuers.has(member.listing.issuerId)) return false;
         issuers.add(member.listing.issuerId);
-        return true;
+        return this.hasCoverage(member);
       });
-      if (selected.length > 17) throw new TrialApiError("invalid_response");
+      if (issuers.size > 17) throw new TrialApiError("invalid_response");
       this.update({
         memberships,
         selected: Object.freeze(selected),
@@ -368,6 +395,7 @@ export class ManagedFinancialScreen {
       captured.selected.includes(member) === selected
     )
       return;
+    if (selected && !this.hasCoverage(member)) return;
     if (
       selected &&
       (captured.selected.length >= 17 ||
@@ -487,6 +515,7 @@ export class ManagedFinancialScreen {
       !captured.selected.length
     )
       return;
+    if (captured.selected.some((member) => !this.hasCoverage(member))) return;
     const operation = { controller: new AbortController() };
     this.operation = operation;
     const run: ManagedFinancialScreenRun = Object.freeze({
@@ -537,6 +566,7 @@ export class ManagedFinancialScreen {
             this.readError(error);
           },
           this.access,
+          { coverage: this.coverage },
         );
         this.reader = reader;
         reader.open({

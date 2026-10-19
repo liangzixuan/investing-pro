@@ -109,7 +109,10 @@ describe("invented operating-results acceptance", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { priceCoverage: fixture.priceCoverage },
+      {
+        researchCoverage: fixture.researchCoverage,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();

@@ -1,3 +1,7 @@
+import {
+  createManagedResearchCoverageFixture,
+  inventedManagedResearchCoverage,
+} from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -56,7 +60,12 @@ function fixture() {
   const read = vi.fn<ManagedApi["recentFilings"]>();
   const readError = vi.fn();
   const access = new ManagedSecAccess();
-  const model = new ManagedWatchlistFilings(read, readError, access);
+  const model = new ManagedWatchlistFilings(read, readError, access, {
+    coverage: createManagedResearchCoverageFixture([
+      { listing: first, cik: "0000000001" },
+      { listing: second, cik: "0000000001" },
+    ]),
+  });
   model.reconcile(draft(), digest, true, true);
   const choose = (index: number) => {
     const state = model.getSnapshot();
@@ -335,7 +344,9 @@ describe("one selected watchlist filings packet", () => {
   it("opens an independently decoded company copy and leaves the selected packet unchanged after company Refresh", async () => {
     const { model, member, response, capture, read } = await loaded();
     const companyRead = vi.fn<ManagedApi["recentFilings"]>();
-    const company = new ManagedCompanyFilings(companyRead, vi.fn());
+    const company = new ManagedCompanyFilings(companyRead, vi.fn(), undefined, {
+      coverage: inventedManagedResearchCoverage,
+    });
     const handoff = model.admitFilings(capture)!;
     expect(handoff.selection).toEqual({
       listing: member.listing,

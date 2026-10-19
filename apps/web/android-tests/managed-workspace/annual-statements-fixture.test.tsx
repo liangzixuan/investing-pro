@@ -147,6 +147,7 @@ async function fixture(loadAnnual = true) {
   const base = await createFixture("annual-note");
   const f = await createAnnualStatementsNativeFixture(base);
   const workspace = new ManagedWorkspace(f.api, f.session, undefined, {
+    researchCoverage: f.researchCoverage,
     marketsCohort: f.marketsCohort,
     priceCoverage: f.priceCoverage,
   });
@@ -418,10 +419,15 @@ describe("invented complete standardized annual statement journey", () => {
     expect(workspace.canSavePayload()).toBe(true);
     await workspace.coordinator.save();
     expect(workspace.coordinator.getSnapshot().dirty).toBe(false);
-    const fresh = new ManagedWorkspace(f.api, {
-      ...f.session,
-      sessionId: "invented-statements-fresh-session",
-    });
+    const fresh = new ManagedWorkspace(
+      f.api,
+      {
+        ...f.session,
+        sessionId: "invented-statements-fresh-session",
+      },
+      undefined,
+      { researchCoverage: f.researchCoverage },
+    );
     owners.push(fresh);
     await fresh.coordinator.load();
     expect(fresh.coordinator.getSnapshot()).toMatchObject({

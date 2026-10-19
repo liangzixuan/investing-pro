@@ -1,3 +1,4 @@
+import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
@@ -81,7 +82,20 @@ async function fixture(historical = false) {
     { resolve, annualReport },
     vi.fn(),
     undefined,
-    listings.map((item) => item.listingId),
+    {
+      listingIds: listings.map((item) => item.listingId),
+      coverage: createManagedResearchCoverageFixture(
+        listings.map((listing, index) => ({
+          listing,
+          cik:
+            listing.issuerId === left.issuerId
+              ? "0000000001"
+              : listing.issuerId === right.issuerId
+                ? "0000000002"
+                : String(index + 10).padStart(10, "0"),
+        })),
+      ),
+    },
   );
   models.add(model);
   model.reconcile(eodSelection.catalogSnapshotSha256, true, true);

@@ -100,6 +100,7 @@ function FixtureSession({
   );
   useLayoutEffect(() => {
     const current = new ManagedWorkspace(fixture.api, session, undefined, {
+      researchCoverage: fixture.researchCoverage,
       marketsCohort: fixture.marketsCohort,
       priceCoverage: fixture.priceCoverage,
       ...(fixture.screenComparison

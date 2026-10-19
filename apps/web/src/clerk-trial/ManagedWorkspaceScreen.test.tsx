@@ -1,3 +1,7 @@
+import {
+  createManagedResearchCoverageFixture,
+  inventedManagedResearchCoverage,
+} from "./test-managed-research-coverage-fixture";
 import { viewOf } from "../features/research/test-canonical-annual-ui-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
@@ -436,7 +440,21 @@ function fixture(
       signOut: vi.fn(),
     },
     undefined,
-    { priceCoverage },
+    {
+      researchCoverage: initial.memberships.some(
+        (member) =>
+          member.symbol === "ONE" && member.issuerName === "One Company",
+      )
+        ? inventedManagedResearchCoverage
+        : createManagedResearchCoverageFixture([
+            { listing: eodSelection.listing, cik: "0000000001" },
+            ...payload.memberships.map((listing) => ({
+              listing,
+              cik: "0000000001",
+            })),
+          ]),
+      priceCoverage,
+    },
   );
   workspace.setView("discover");
   return {

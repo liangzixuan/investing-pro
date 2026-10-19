@@ -1,3 +1,5 @@
+import type { ManagedFinancialScreenReportCapture } from "./managed-financial-screen";
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -13,6 +15,15 @@ import { companySnapshotEvidence } from "./managed-company-snapshot";
 import { prepareCompanyReport } from "./managed-company-report";
 import { formatCompanyReportDocument } from "./managed-company-report-document";
 import { annualComparisonResponse } from "./test-canonical-annual-comparison-fixture";
+import { MANAGED_RESEARCH_COVERAGE } from "./managed-research-eligibility";
+import type { ManagedResearchSelection } from "./managed-research-selection";
+import {
+  bindAnnualPacket,
+  type TestAnnualPacket,
+} from "../lib/test-personal-sec-annual-api-fixture";
+import { parseSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
+import { filingsResponse } from "./sec-filings-fixture";
+import { reviewWatchlistVersions } from "./managed-watchlist-review";
 
 const digest = eodSelection.catalogSnapshotSha256;
 const snapshot: ManagedCatalogSnapshotDto = {
@@ -53,14 +64,64 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function fixture(twoCompanies = false) {
-  const response = twoCompanies
+async function amdFixtureReport(selection: ManagedResearchSelection) {
+  // Financial values remain invented; only the fixed public identity is reused.
+  const packet = structuredClone(
+    await financialReviewResponse(),
+  ) as TestAnnualPacket;
+  const cik = selection.cik!;
+  packet.catalogSnapshotSha256 = selection.catalogSnapshotSha256;
+  // The wire security projection intentionally excludes catalog graph-only fields.
+  const { listing } = selection;
+  packet.security = {
+    country: listing.country,
+    exchangeMic: listing.exchangeMic,
+    issuerId: listing.issuerId,
+    issuerName: listing.issuerName,
+    listingId: listing.listingId,
+    securityName: listing.securityName,
+    symbol: listing.symbol,
+    cik,
+  };
+  packet.evidence.cik = cik;
+  for (const [key, source] of Object.entries(
+    packet.evidence.generation.sources,
+  ))
+    source.sourceUrl =
+      key === "companyFacts"
+        ? `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`
+        : `https://data.sec.gov/submissions/CIK${cik}.json`;
+  for (const observation of packet.evidence.facts.observations)
+    observation.filing.sourceUrl = `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${observation.accessionNumber}-index.htm`;
+  const bound = await bindAnnualPacket(packet);
+  const accepted = await parseSecAnnualCanonicalResponse(
+    bound,
+    {
+      schemaVersion: "6.0.0",
+      catalogSnapshotSha256: selection.catalogSnapshotSha256,
+      listingId: listing.listingId,
+      symbol: listing.symbol,
+    },
+    new AbortController().signal,
+  );
+  if (!accepted) throw new Error("Invented AMD workflow graph was refused");
+  return accepted;
+}
+
+async function fixture(
+  twoCompanies = false,
+  selected: ManagedResearchSelection = eodSelection,
+) {
+  const original = twoCompanies
     ? await annualComparisonResponse("left")
     : await financialReviewResponse();
+  const response =
+    selected === eodSelection ? original : await amdFixtureReport(selected);
   const rightResponse = twoCompanies
     ? await annualComparisonResponse("right")
     : null;
-  const listing = eodSelection.listing;
+  const listing = selected.listing;
+  const digest = selected.catalogSnapshotSha256;
   const secondListing = {
     ...listing,
     listingId: "listing-one",
@@ -101,7 +162,9 @@ async function fixture(twoCompanies = false) {
   const unexpected = () =>
     Promise.reject(new Error("Unexpected unrelated source or save request"));
   const api: ManagedApi = {
-    status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
+    status: vi
+      .fn<ManagedApi["status"]>()
+      .mockResolvedValue({ snapshot: { ...snapshot, snapshotSha256: digest } }),
     search: vi.fn<ManagedApi["search"]>().mockImplementation(unexpected),
     resolve: vi.fn<ManagedApi["resolve"]>().mockImplementation((request) =>
       Promise.resolve({
@@ -168,6 +231,10 @@ async function fixture(twoCompanies = false) {
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
   const options = {
+    researchCoverage:
+      selected === eodSelection
+        ? inventedManagedResearchCoverage
+        : MANAGED_RESEARCH_COVERAGE,
     financialScreenListingIds: twoCompanies
       ? [listing.listingId, secondListing.listingId]
       : [listing.listingId],
@@ -218,7 +285,123 @@ async function runScreen(f: Awaited<ReturnType<typeof fixture>>) {
   return { screen, capture: { run, row, response: row.report!.response! } };
 }
 
+type WorkflowFixture = Awaited<ReturnType<typeof fixture>>;
+async function inspectAmdSources(
+  f: WorkflowFixture,
+  selected: ManagedResearchSelection,
+  capture: ManagedFinancialScreenReportCapture,
+) {
+  f.workspace.openFinancialScreenReport(capture);
+  await vi.waitFor(() =>
+    expect(f.workspace.annual.getSnapshot().checkingSeed).toBe(false),
+  );
+  const originalGeneration = capture.response.evidence.generation;
+  expect(f.workspace.annual.getSnapshot()).toMatchObject({
+    supported: true,
+    responseOrigin: "financial-screen",
+  });
+  expect(
+    f.workspace.annual.getSnapshot().response?.evidence.generation,
+  ).toEqual(originalGeneration);
+  expect(f.api.annualReport).toHaveBeenCalledOnce();
+  const firstVisit = f.workspace.getSnapshot().research!;
+  await f.workspace.requestResearchSource(firstVisit, "eod");
+  expect(f.workspace.eod.hasPriceCoverage(selected.listing)).toBe(false);
+  expect(f.api.eodHistory).not.toHaveBeenCalled();
+  f.workspace.switchToFilings();
+  expect(f.workspace.filings.getSnapshot().supported).toBe(true);
+  expect(f.api.recentFilings).not.toHaveBeenCalled();
+  const expectedFilings = filingsResponse(2, "available", selected);
+  vi.mocked(f.api.recentFilings).mockResolvedValueOnce(expectedFilings);
+  await f.workspace.requestResearchSource(
+    f.workspace.getSnapshot().research!,
+    "filings",
+  );
+  const filings = f.workspace.filings.getSnapshot().response!;
+  expect(filings.security.cik).toBe(selected.cik);
+  expect(filings.issuer.filings).toHaveLength(2);
+  expect(filings.window).toEqual(expectedFilings.window);
+  expect(filings.issuer.fetchedAt).toBe(expectedFilings.issuer.fetchedAt);
+  expect(filings.issuer.sourceUrl).toBe(expectedFilings.issuer.sourceUrl);
+  expect(filings.issuer.filings[0]!.sourceUrl).toBe(
+    expectedFilings.issuer.filings[0]!.sourceUrl,
+  );
+  expect(f.api.recentFilings).toHaveBeenCalledOnce();
+  f.workspace.switchToAnnual();
+}
+async function saveAmdAnnualNote(
+  f: WorkflowFixture,
+  selected: ManagedResearchSelection,
+) {
+  const visit = f.workspace.getSnapshot().research!;
+  const beforePreview = f.workspace.coordinator.getSnapshot().draft!;
+  const proposal = f.workspace.prepareFinancialReview(
+    visit.selection,
+    f.workspace.annual.getSnapshot().response!,
+    ["operatingIncome"],
+  );
+  expect(proposal.preview).not.toBeNull();
+  const preview = proposal.preview!;
+  expect(preview.note).toContain("AMD");
+  expect(preview.note).toContain(selected.cik);
+  expect(f.workspace.coordinator.getSnapshot().draft).toBe(beforePreview);
+  expect(f.workspace.appendFinancialReview(preview).appended).toBe(true);
+  const saveState = f.workspace.coordinator.getSnapshot();
+  const review = reviewWatchlistVersions(
+    saveState.saved!.payload,
+    saveState.draft!,
+  );
+  expect(review.entries[0]).toMatchObject({
+    listingId: selected.listing.listingId,
+    noteChanged: true,
+    identityChanged: false,
+  });
+  expect(f.api.save).not.toHaveBeenCalled();
+  await f.workspace.coordinator.save();
+  expect(f.api.save).toHaveBeenCalledOnce();
+  expect(f.stored().payload.memberships[0]!.note).toBe(preview.note);
+}
+
 describe("financial screening through company research and Save", () => {
+  it("connects the qualified AMD identity to independent sources, cited draft review, Save and retained Back using invented financial values", async () => {
+    const entry = MANAGED_RESEARCH_COVERAGE.listings.find(
+      (row) => row.listing.symbol === "AMD",
+    )!;
+    const selected: ManagedResearchSelection = {
+      ...entry,
+      catalogSnapshotSha256: MANAGED_RESEARCH_COVERAGE.catalogSnapshotSha256,
+      origin: "screening",
+    };
+    const f = await fixture(false, selected);
+    const independentDrafts = [
+      f.workspace.followups.coordinator.getSnapshot().draft,
+      f.workspace.portfolio.coordinator.getSnapshot().draft,
+    ];
+    const { screen, capture } = await runScreen(f);
+    screen.toggleShortlist(screen.getSnapshot(), capture.row);
+    const selectedMembers = screen.getSnapshot().selected;
+    const shortlist = screen.getSnapshot().shortlist;
+    await inspectAmdSources(f, selected, capture);
+    await saveAmdAnnualNote(f, selected);
+    f.workspace.closeResearch();
+    expect(f.workspace.getSnapshot().view).toBe("discover");
+    expect(screen.getSnapshot().run).toBe(capture.run);
+    expect(screen.getSnapshot().criteria).toBe(capture.run.criteria);
+    expect(screen.getSnapshot().selected).toBe(selectedMembers);
+    expect(screen.getSnapshot().selected[0]).toBe(capture.row.member);
+    expect(screen.getSnapshot().shortlist).toBe(shortlist);
+    expect(shortlist[0]).toBe(capture.row);
+    expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(
+      independentDrafts[0],
+    );
+    expect(f.workspace.portfolio.coordinator.getSnapshot().draft).toBe(
+      independentDrafts[1],
+    );
+    expect(f.api.annualReport).toHaveBeenCalledOnce();
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    expect(f.api.savePortfolio).not.toHaveBeenCalled();
+  });
   it("keeps a two-company statement comparison and all independent drafts through either research visit without another Annual read", async () => {
     const f = await fixture(true);
     const screen = f.workspace.financialScreen;
@@ -412,7 +595,7 @@ describe("financial screening through company research and Save", () => {
       f.api,
       { ...f.session, sessionId: "invented-fresh-screen-session" },
       undefined,
-      f.options,
+      { ...f.options, researchCoverage: inventedManagedResearchCoverage },
     );
     owners.push(fresh);
     await fresh.coordinator.load();

@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -114,6 +115,7 @@ async function fixture() {
     api,
     session,
     () => "invented-followup-command",
+    { researchCoverage: inventedManagedResearchCoverage },
   );
   workspaces.push(workspace);
   workspace.setView("followups");

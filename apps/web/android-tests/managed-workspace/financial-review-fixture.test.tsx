@@ -58,6 +58,7 @@ describe("invented native Financial review journey", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         marketsCohort: fixture.marketsCohort,
         priceCoverage: fixture.priceCoverage,
       },

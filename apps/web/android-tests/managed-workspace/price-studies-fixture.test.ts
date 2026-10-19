@@ -30,6 +30,7 @@ async function setup() {
     fixture.session,
     undefined,
     {
+      researchCoverage: fixture.researchCoverage,
       marketsCohort: fixture.marketsCohort,
       priceCoverage: fixture.priceCoverage,
     },

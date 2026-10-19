@@ -19,6 +19,7 @@ describe("invented operating Annual comparison", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         marketsCohort: fixture.marketsCohort,
         priceCoverage: fixture.priceCoverage,
       },

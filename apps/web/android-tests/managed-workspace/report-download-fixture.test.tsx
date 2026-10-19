@@ -51,7 +51,10 @@ async function fixture() {
     source.api,
     source.session,
     undefined,
-    { priceCoverage: source.priceCoverage },
+    {
+      researchCoverage: source.researchCoverage,
+      priceCoverage: source.priceCoverage,
+    },
   );
   await workspace.coordinator.load();
   await workspace.refreshCatalog();

@@ -1,3 +1,4 @@
+import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -85,7 +86,11 @@ async function loaded(input?: PersonalSecAnnualCanonicalResponseDto) {
     },
   };
   const read = vi.fn().mockResolvedValue(packet);
-  const annual = new ManagedAnnualReport(read, vi.fn());
+  const annual = new ManagedAnnualReport(read, vi.fn(), undefined, {
+    coverage: createManagedResearchCoverageFixture([
+      { listing: selection.listing, cik: selection.cik },
+    ]),
+  });
   annual.open(selection);
   await annual.load();
   expect(annual.getSnapshot().response).not.toBeNull();

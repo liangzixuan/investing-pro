@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
@@ -151,6 +152,7 @@ async function fixture() {
     original.session,
     undefined,
     {
+      researchCoverage: inventedManagedResearchCoverage,
       priceCoverage: original.priceCoverage,
       marketsCohort: original.marketsCohort,
     },

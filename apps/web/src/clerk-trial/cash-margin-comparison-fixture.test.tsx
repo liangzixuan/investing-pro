@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import type * as React from "react";
 import { isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -200,7 +201,9 @@ async function fixture() {
     getToken: vi.fn(),
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
-  const workspace = new ManagedWorkspace(api, session);
+  const workspace = new ManagedWorkspace(api, session, undefined, {
+    researchCoverage: inventedManagedResearchCoverage,
+  });
   workspace.setView("watchlist");
   await workspace.coordinator.load();
   await workspace.refreshCatalog();

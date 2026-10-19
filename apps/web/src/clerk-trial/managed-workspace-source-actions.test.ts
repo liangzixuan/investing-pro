@@ -1,3 +1,4 @@
+import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -135,7 +136,13 @@ async function fixture(
       signOut: vi.fn().mockResolvedValue(undefined),
     },
     undefined,
-    { priceCoverage: covered ? [zero] : [] },
+    {
+      researchCoverage: createManagedResearchCoverageFixture([
+        { listing: zero, cik: zero.cik },
+        { listing: other, cik: other.cik },
+      ]),
+      priceCoverage: covered ? [zero] : [],
+    },
   );
   workspaces.push(workspace);
   workspace.setView("discover");
@@ -572,7 +579,11 @@ describe("explicit exact-visit research source actions", () => {
   it("cannot cancel a directly replaced model with a different exact identity", async () => {
     const { workspace, api } = await fixture();
     const captured = visit(workspace);
-    workspace.filings.open({ ...captured.selection, cik: "0000000002" });
+    workspace.filings.open({
+      ...captured.selection,
+      listing: other,
+      cik: other.cik,
+    });
     const held = deferred<never>();
     vi.mocked(api.recentFilings).mockReturnValueOnce(held.promise);
     const reading = workspace.filings.load();

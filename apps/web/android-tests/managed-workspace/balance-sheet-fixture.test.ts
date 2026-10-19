@@ -173,6 +173,7 @@ describe("invented balance-sheet acceptance", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         marketsCohort: fixture.marketsCohort,
         priceCoverage: fixture.priceCoverage,
       },
@@ -441,6 +442,7 @@ describe("balance-sheet history cancellation and replacement", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         marketsCohort: fixture.marketsCohort,
         priceCoverage: fixture.priceCoverage,
       },

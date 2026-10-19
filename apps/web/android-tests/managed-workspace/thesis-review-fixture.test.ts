@@ -13,6 +13,7 @@ async function setup() {
     fixture.session,
     () => "invented-thesis-command",
     {
+      researchCoverage: fixture.researchCoverage,
       marketsCohort: fixture.marketsCohort,
       priceCoverage: fixture.priceCoverage,
     },

@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -85,7 +86,9 @@ async function harness(
     .fn<ManagedApi["annualReport"]>()
     .mockResolvedValueOnce(left)
     .mockResolvedValueOnce(right);
-  const model = new Model(read, vi.fn());
+  const model = new Model(read, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   const digest = `sha256:${"a".repeat(64)}` as const;
   const draft = {
     schemaVersion: 1 as const,

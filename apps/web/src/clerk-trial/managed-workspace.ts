@@ -1,5 +1,9 @@
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
+  MANAGED_RESEARCH_COVERAGE,
+  type ManagedResearchCoverage,
+} from "./managed-research-eligibility";
+import {
   ManagedPriceStudiesNote,
   type PreparedPriceStudiesNote,
 } from "./managed-price-studies-note";
@@ -318,8 +322,12 @@ export class ManagedWorkspace {
       marketsCohort?: readonly ManagedEodIdentity[];
       priceCoverage?: readonly ManagedEodIdentity[];
       financialScreenListingIds?: readonly string[];
+      researchCoverage?: ManagedResearchCoverage;
     } = {},
   ) {
+    const researchOptions = {
+      coverage: options.researchCoverage ?? MANAGED_RESEARCH_COVERAGE,
+    };
     const resourceSession: TrialSession = {
       ...session,
       signOut: () => this.sessionOwner.signOut(),
@@ -374,11 +382,13 @@ export class ManagedWorkspace {
       (request, signal) => api.annualReport(request, signal),
       (error) => this.coordinator.readError(error),
       this.secAccess,
+      researchOptions,
     );
     this.annualComparison = new ManagedWatchlistAnnualComparison(
       (request, signal) => api.annualReport(request, signal),
       (error) => this.coordinator.readError(error),
       this.secAccess,
+      researchOptions,
     );
     this.annualComparison.subscribe(() => {
       if (this.annualComparison.getSnapshot().catalogChanged)
@@ -388,7 +398,12 @@ export class ManagedWorkspace {
       api,
       (error) => this.coordinator.readError(error),
       this.secAccess,
-      options.financialScreenListingIds,
+      {
+        ...researchOptions,
+        ...(options.financialScreenListingIds
+          ? { listingIds: options.financialScreenListingIds }
+          : {}),
+      },
     );
     this.financialScreen.subscribe(() => {
       if (this.financialScreen.getSnapshot().catalogChanged)
@@ -398,7 +413,7 @@ export class ManagedWorkspace {
       (request, signal) => api.recentFilings(request, signal),
       (error) => this.coordinator.readError(error),
       this.secAccess,
-      { compareRefresh: true },
+      { compareRefresh: true, ...researchOptions },
     );
     this.filings.subscribe(() => {
       if (this.filings.getSnapshot().catalogChanged) this.invalidateCatalog();
@@ -407,6 +422,7 @@ export class ManagedWorkspace {
       (request, signal) => api.recentFilings(request, signal),
       (error) => this.coordinator.readError(error),
       this.secAccess,
+      researchOptions,
     );
     this.watchlistFilings.subscribe(() => {
       if (this.watchlistFilings.getSnapshot().catalogChanged)
@@ -1583,6 +1599,9 @@ export class ManagedWorkspace {
     if (!admitted()) return;
     const switched = this.switchResearch(section, admitted);
     if (!switched || this.state.research !== switched || !admitted()) return;
+    if (section === "eod") {
+      if (!this.eod.hasPriceCoverage(selection.listing)) return;
+    } else if (!this[section].hasCoverage(selection)) return;
     const model = this[section];
     if (
       !companyEvidenceSelectionMatches(selection, model.getSnapshot().selection)

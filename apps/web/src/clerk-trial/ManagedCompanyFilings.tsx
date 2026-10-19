@@ -70,13 +70,15 @@ export function ManagedCompanyFilings({
         </h3>
 
         <div className="trial-actions">
-          <button
-            ref={loadButton}
-            disabled={state.running || state.catalogChanged}
-            onClick={() => void model.load()}
-          >
-            {loadLabel(state.running, state.response !== null)}
-          </button>
+          {state.supported && (
+            <button
+              ref={loadButton}
+              disabled={state.running || state.catalogChanged}
+              onClick={() => void model.load()}
+            >
+              {loadLabel(state.running, state.response !== null)}
+            </button>
+          )}
 
           {state.running && (
             <button

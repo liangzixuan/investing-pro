@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -145,7 +146,9 @@ async function fixture(options: FixtureOptions = {}) {
     getToken: vi.fn(),
     signOut: vi.fn<TrialSession["signOut"]>().mockResolvedValue(),
   };
-  const workspace = new ManagedWorkspace(source.api, session);
+  const workspace = new ManagedWorkspace(source.api, session, undefined, {
+    researchCoverage: inventedManagedResearchCoverage,
+  });
   workspace.setView("watchlist");
   if (options.load !== false) await workspace.coordinator.load();
   await workspace.refreshCatalog();

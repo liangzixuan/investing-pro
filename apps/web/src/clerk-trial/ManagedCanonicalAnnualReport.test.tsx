@@ -1,3 +1,4 @@
+import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ManagedAnnualReport as Panel } from "./ManagedAnnualReport";
@@ -24,7 +25,9 @@ function actions() {
 async function loaded() {
   const response = await annualReportPacket();
   const read = vi.fn(() => Promise.resolve(response));
-  const model = new ManagedAnnualReport(read, vi.fn());
+  const model = new ManagedAnnualReport(read, vi.fn(), undefined, {
+    coverage: inventedManagedResearchCoverage,
+  });
   model.open({ ...eodSelection, origin: "watchlist", cik: null });
   await model.load();
   return { model, read, response };

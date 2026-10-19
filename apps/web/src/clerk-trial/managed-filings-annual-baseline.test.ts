@@ -25,6 +25,7 @@ function snapshots(annualResponse = response) {
   });
   if (!checked) throw new Error("Invalid invented filings packet");
   const annual: ManagedAnnualReportState = {
+    supported: true,
     selection: {
       ...filingsSelection,
       listing: { ...filingsSelection.listing },
@@ -40,6 +41,7 @@ function snapshots(annualResponse = response) {
     error: false,
   };
   const filings: ManagedCompanyFilingsState = {
+    supported: true,
     selection: filingsSelection,
     response: checked,
     responseOrigin: "request",

@@ -1,3 +1,4 @@
+import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -113,12 +114,20 @@ async function fixture(
       })),
     }),
   );
-  const model = new ScreenModel(
-    { annualReport, resolve },
-    vi.fn(),
-    undefined,
-    listings.map((listing) => listing.listingId),
-  );
+  const model = new ScreenModel({ annualReport, resolve }, vi.fn(), undefined, {
+    listingIds: listings.map((listing) => listing.listingId),
+    coverage: createManagedResearchCoverageFixture(
+      listings.map((listing, index) => ({
+        listing,
+        cik:
+          listing.issuerId === first.issuerId
+            ? "0000000001"
+            : listing.issuerId === second.issuerId
+              ? "0000000002"
+              : String(index + 10).padStart(10, "0"),
+      })),
+    ),
+  });
   models.add(model);
   model.reconcile(eodSelection.catalogSnapshotSha256, true, true);
   const opened: ManagedFinancialScreenReportCapture[] = [];
@@ -449,11 +458,15 @@ describe("managed financial screening surface", () => {
       expect(f.model.canAdmitReport(forged)).toBe(false);
       expect(f.model.admitReport(forged)).toBeNull();
     }
-    const shortlist = elements(before).find(
+    const shortlistLabel = elements(before).find(
       (element) =>
-        element.type === "input" &&
-        element.props.type === "checkbox" &&
-        element.props.disabled === false,
+        element.type === "label" &&
+        text(element.props.children as React.ReactNode).includes(
+          "Shortlist ZERO",
+        ),
+    );
+    const shortlist = elements(shortlistLabel).find(
+      (element) => element.type === "input",
     );
     if (!shortlist) throw new Error("Expected actionable shortlist control");
     // Stage and restore the same raw form. The completed run's old authority stays stale.

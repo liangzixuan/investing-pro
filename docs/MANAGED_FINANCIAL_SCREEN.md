@@ -3,6 +3,9 @@
 Discover connects an explicit annual financial screen to source inspection,
 a session shortlist and company research. It uses a named cohort of 18 listings
 for 17 issuers. It does not establish whole-market coverage or InvestingPro parity.
+The [source eligibility candidate](MANAGED_RESEARCH_ELIGIBILITY.md) carries a
+result into company research with independent Annual, Filings and Price scope;
+it retains this screen's explicit reads and captured Annual handoff.
 
 ## Choose companies and criteria
 

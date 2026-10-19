@@ -20,6 +20,7 @@ async function setup() {
     fixture.session,
     undefined,
     {
+      researchCoverage: fixture.researchCoverage,
       marketsCohort: fixture.marketsCohort,
       priceCoverage: fixture.priceCoverage,
     },
@@ -170,7 +171,12 @@ it("authors the exact FIFO ledger, preserves both other drafts, returns from res
   expect(f.model.coordinator.getSnapshot().draft).toBeNull();
   expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
   expect(f.workspace.followups.coordinator.getSnapshot().draft).toBeNull();
-  const fresh = new ManagedWorkspace(f.fixture.api, f.controls.nextSession());
+  const fresh = new ManagedWorkspace(
+    f.fixture.api,
+    f.controls.nextSession(),
+    undefined,
+    { researchCoverage: f.fixture.researchCoverage },
+  );
   active.push(fresh);
   expect(fresh.portfolio.coordinator.getSnapshot().draft).toBeNull();
   await fresh.portfolio.coordinator.load();

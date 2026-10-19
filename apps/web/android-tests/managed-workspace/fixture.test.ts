@@ -62,6 +62,7 @@ describe("bounded invented watchlist comparison", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         marketsCohort: fixture.marketsCohort,
         priceCoverage: fixture.priceCoverage,
       },
@@ -192,7 +193,10 @@ describe("bounded invented Federal Reserve journey", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { priceCoverage: fixture.priceCoverage },
+      {
+        researchCoverage: fixture.researchCoverage,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -348,7 +352,10 @@ describe("bounded invented BEA journeys", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { priceCoverage: fixture.priceCoverage },
+      {
+        researchCoverage: fixture.researchCoverage,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -404,7 +411,10 @@ describe("bounded invented BEA journeys", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { priceCoverage: fixture.priceCoverage },
+      {
+        researchCoverage: fixture.researchCoverage,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -451,6 +461,7 @@ describe("bounded invented sign-out save scenarios", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         marketsCohort: fixture.marketsCohort,
         priceCoverage: fixture.priceCoverage,
       },
@@ -666,7 +677,10 @@ describe("Android managed fixture startup", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { priceCoverage: fixture.priceCoverage },
+      {
+        researchCoverage: fixture.researchCoverage,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -1951,7 +1965,12 @@ describe("bounded invented Annual liquidity refresh", () => {
   it("retains exact instant balances on failure and replaces only the explicit recovered response", async () => {
     const fixture = await createFixture();
     fixture.enableRefreshScenario();
-    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { researchCoverage: fixture.researchCoverage },
+    );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
     workspace.note("listing-zero", "Draft survives native Back");
@@ -2106,7 +2125,10 @@ describe("bounded invented company filings journey", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { priceCoverage: fixture.priceCoverage },
+      {
+        researchCoverage: fixture.researchCoverage,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -2370,7 +2392,10 @@ describe("bounded invented company filings journey", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { priceCoverage: fixture.priceCoverage },
+      {
+        researchCoverage: fixture.researchCoverage,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -2574,7 +2599,12 @@ describe("bounded invented Annual comparison", () => {
 
   it("uses the real note action for exact retained text, duplicate refusal and explicit full-draft Save", async () => {
     const fixture = await createFixture("annual-comparison");
-    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { researchCoverage: fixture.researchCoverage },
+    );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
     workspace.setView("watchlist");
@@ -2644,6 +2674,7 @@ describe("bounded invented Annual comparison", () => {
       fixture.session,
       undefined,
       {
+        researchCoverage: fixture.researchCoverage,
         marketsCohort: fixture.marketsCohort,
         priceCoverage: fixture.priceCoverage,
       },

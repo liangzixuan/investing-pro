@@ -1,3 +1,4 @@
+import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type {
   ManagedEodIdentity,
@@ -66,7 +67,20 @@ async function fixture(listings = [first, second]) {
     { resolve, annualReport: read },
     vi.fn(),
     undefined,
-    listings.map((listing) => listing.listingId),
+    {
+      listingIds: listings.map((listing) => listing.listingId),
+      coverage: createManagedResearchCoverageFixture(
+        listings.map((listing, index) => ({
+          listing,
+          cik:
+            listing.issuerId === first.issuerId
+              ? "0000000001"
+              : listing.issuerId === second.issuerId
+                ? "0000000002"
+                : String(index + 10).padStart(10, "0"),
+        })),
+      ),
+    },
   );
   model.reconcile(digest, true, true);
   await model.loadUniverse(model.getSnapshot());
