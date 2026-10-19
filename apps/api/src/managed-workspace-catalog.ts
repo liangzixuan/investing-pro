@@ -8,6 +8,7 @@ import {
   type ManagedCatalogStatusDto,
   type ManagedCatalogResolveRequest,
   type ManagedCatalogResolveResponse,
+  type ValuationAssumptionEntry,
 } from "@research-cockpit/contracts";
 import {
   PersonalSecurityMasterError,
@@ -28,6 +29,41 @@ export interface ManagedCatalogService {
   resolve(
     request: ManagedCatalogResolveRequest,
   ): ManagedCatalogResolveResponse | null;
+}
+
+/** Repository-facing projection of the fixed, admitted catalog. */
+export interface ManagedValuationAssumptionsCatalog {
+  readonly snapshotSha256: ValuationAssumptionEntry["catalogSnapshotSha256"];
+  lookup(
+    listingId: string,
+  ):
+    | (ValuationAssumptionEntry["listing"] & { readonly cik: string | null })
+    | null;
+}
+
+export function createManagedValuationAssumptionsCatalog(): ManagedValuationAssumptionsCatalog {
+  const catalog = getManagedWorkspaceCatalog();
+  return Object.freeze({
+    snapshotSha256: catalog.snapshotSha256,
+    lookup(listingId: string) {
+      const found = lookupPersonalSecurityMasterListing(catalog, listingId);
+      if (found === null) return null;
+      return Object.freeze({
+        country: found.country,
+        exchangeMic: found.exchangeMic,
+        instrumentType: found.instrumentType,
+        issuerId: found.issuerId,
+        issuerName: found.issuerName,
+        listingId: found.listingId,
+        securityId: found.securityId,
+        securityName: found.securityName,
+        shareClassId: found.shareClassId,
+        shareClassName: found.shareClassName,
+        symbol: found.symbol,
+        cik: found.cik,
+      });
+    },
+  });
 }
 
 let admittedCatalog: ManagedSecurityMasterCatalog | undefined;

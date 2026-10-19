@@ -30,9 +30,9 @@ inspection or per-step logs were collected.
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Markets and Price                 | AAPL, GOOG and GOOGL: three listings for two issuers. Dated raw USD closes; no adjusted-return or live-quote claim.                                 | Broader lawful coverage and complete market discovery.                                                                                                     |
 | Annual statements and screening   | Canonical Annual 6 explorer and explicit screening are published on the website/API. Defined cohort: 18 listings across 17 issuers.                 | Matching Android update and requested checks passed by owner report. Quarterly, TTM, custom-taxonomy and broader statement coverage remain open.           |
-| Filings                           | Separate admitted scope of three issuers.                                                                                                           | Screening or Annual eligibility does not establish Filings eligibility.                                                                                    |
+| Filings                           | Merged source independently admits 17 issuers; the published API retains three.                                                                     | Expanded API/client delivery remains open. Screening or Annual eligibility does not establish Filings eligibility.                                         |
 | Screening comparison              | Published website/API source connects two loaded results, three statement groups, independent sources, either company's research and retained Back. | Requested Android screen/comparison/research Back check passed by owner report. Sustained use and controlled recovery remain open.                         |
-| Valuation and dated price context | Authored DCF/exit models and dated raw-price comparisons are integrated through PR187.                                                              | Editable assumptions are session-only. A saved note or captured report is not an editable saved model.                                                     |
+| Valuation and dated price context | Authored DCF/exit models and dated raw-price comparisons are integrated. The source candidate adds explicit saved-input review, Save and restore.   | Published inputs remain session-only. New storage defaults disabled; provisioning, real persistence and matching delivery remain open.                     |
 | Research studies and reports      | Website/API publish Price studies, explicit complete-note Preview/Append and company JSON/HTML capture. Report format 5 retains Annual 6 evidence.  | Matching Android update passed by owner report. Export/file delivery and sustained use remain separate; the physical checklist did not test every feature. |
 | Watchlist and Follow-ups          | Independent drafts, explicit Review/Save and conflict/uncertain-save recovery exist.                                                                | Controlled real-account recovery and isolated backup/restore remain open; in-memory tests are not cloud persistence proof.                                 |
 | Managed Portfolio                 | Authored schema-3 ledger, holdings/cash, Review/Save/recovery and research return are integrated in source.                                         | Production storage remains disabled pending configuration and persistence qualification. Price history and returns are not a delivered managed capability. |
@@ -44,7 +44,19 @@ recovery and sustained use remain open.
 The full goal still includes broader company discovery, news and calendars,
 quarterly/TTM financials, peer research and comparable portfolio returns.
 
-## Selected next outcome: coherent company research
+## Selected next outcome: editable saved valuation inputs
+
+Coherent company research is merged through PR199 at `abf1646`. Its PR and main checks pass, including
+58 synthetic Android cases and the exact-main source proof. Six of 159 PR frames
+were reviewed and reused for the identical main tree. Expanded Filings delivery
+remains separate; the live API still admits three Filings issuers.
+
+The active source candidate adds explicit saved valuation inputs: Load,
+complete input review, Stage, independent Review and Save, then fresh-session
+read, complete comparison, explicit Use and Calculate. The
+[valuation guide](MANAGED_VALUATION_WORKBENCH.md) defines the workflow and bounds.
+The fourth saved resource defaults to disabled on the server. No new live
+storage, provisioning, persistence qualification or release is accepted yet.
 
 The website draft-file release, matching Android artifact and owner-reported
 earlier Android upgrade/checklist are accepted within their recorded scopes.
@@ -63,7 +75,7 @@ automatic draft storage or confirmed-record recovery. Source and synthetic nativ
 qualification and matching Android artifact review passed. Real file delivery
 and physical acceptance remain separate.
 
-The next source increment aligns independent Price, Annual and Filings eligibility
+The merged research-source increment aligns independent Price, Annual and Filings eligibility
 across the named screening cohort. It reuses the current source cards, explicit
 reads, captured Annual handoff, cited-note actions, normal Save and retained Back
 state. Price remains limited to its three qualified listings. Expanded Filings
@@ -87,8 +99,8 @@ rejections and receipts without replaying consumed actions. Keep unchanged
 source/native/staging evidence closed and use Chrome for any newly authorized
 browser work. No browser permission is pending for the completed release.
 
-After the coherent research-source workflow, complete editable valuation
-persistence and managed Portfolio storage/recovery. New portfolio-history work is deferred
+Complete editable valuation persistence, then managed Portfolio storage/recovery.
+New portfolio-history work is deferred
 while its source-contract assessment remains useful preparation. Ticker additions
 are coverage fixes; selected metric rows are small increments.
 

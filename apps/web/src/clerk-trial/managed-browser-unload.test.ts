@@ -68,11 +68,16 @@ function fixture() {
   );
   const followups = resource("followups", MANAGED_FOLLOWUPS_SAVE_COPY);
   const portfolio = resource("portfolio", MANAGED_WATCHLIST_SAVE_COPY);
+  const valuationAssumptions = resource(
+    "valuation-assumptions",
+    MANAGED_WATCHLIST_SAVE_COPY,
+  );
   const owner = new ManagedSessionOwner(
     {
       watchlist: coordinator,
       followups: followups.coordinator,
       portfolio: portfolio.coordinator,
+      valuationAssumptions: valuationAssumptions.coordinator,
     },
     { signOut },
     vi.fn(),

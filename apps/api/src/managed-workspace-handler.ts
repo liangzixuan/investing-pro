@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 
 import {
+  MANAGED_VALUATION_ASSUMPTIONS_PATH,
+  MANAGED_VALUATION_ASSUMPTIONS_LIMITS,
+  parseManagedValuationAssumptions,
+  parseManagedValuationAssumptionsCommand,
+  parseManagedValuationAssumptionsReceipt,
+  encodeValuationAssumptionsPayload,
+  type ManagedValuationAssumptionsCommand,
   MANAGED_PORTFOLIO_PATH,
   MANAGED_PORTFOLIO_LIMITS,
   encodePortfolioPayload,
@@ -64,6 +71,13 @@ import {
   type ResearchFollowupsRecord,
   type ResearchFollowupsReceipt,
 } from "./research-followups-repository";
+import {
+  ValuationAssumptionsRepositoryError,
+  type ValuationAssumptionsRepository,
+  type ValuationAssumptionsRecord,
+  type ValuationAssumptionsReceipt,
+  type ValuationAssumptionsPrincipal,
+} from "./valuation-assumptions-repository";
 import type { ManagedCatalogService } from "./managed-workspace-catalog";
 import {
   ManagedSecAnnualServiceError,
@@ -104,6 +118,10 @@ export interface ManagedPortfolioRepositoryOperation {
   readonly repository: PortfolioRepository;
   close(): Promise<void>;
 }
+export interface ManagedValuationAssumptionsRepositoryOperation {
+  readonly repository: ValuationAssumptionsRepository;
+  close(): Promise<void>;
+}
 export interface ManagedWorkspaceHandlerOptions {
   readonly auth: ClerkTrialAuth;
   readonly catalog: ManagedCatalogService;
@@ -118,6 +136,9 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly openFollowupsRepository: (
     signal: AbortSignal,
   ) => Promise<ManagedFollowupsRepositoryOperation>;
+  readonly openValuationAssumptionsRepository?: (
+    signal: AbortSignal,
+  ) => Promise<ManagedValuationAssumptionsRepositoryOperation>;
   readonly openPortfolioRepository?: (
     signal: AbortSignal,
   ) => Promise<ManagedPortfolioRepositoryOperation>;
@@ -134,6 +155,7 @@ export function getManagedWorkspaceOrigin(origin: string | null | undefined) {
 }
 
 const PATHS: readonly string[] = [
+  MANAGED_VALUATION_ASSUMPTIONS_PATH,
   MANAGED_PORTFOLIO_PATH,
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_CATALOG_STATUS_PATH,
@@ -196,6 +218,7 @@ function methods(path: string): readonly string[] {
   if (
     path === MANAGED_WATCHLIST_PATH ||
     path === MANAGED_PORTFOLIO_PATH ||
+    path === MANAGED_VALUATION_ASSUMPTIONS_PATH ||
     path === MANAGED_RESEARCH_FOLLOWUPS_PATH
   )
     return ["GET", "POST"];
@@ -216,6 +239,7 @@ function admitRoute(request: Request) {
     !(
       [
         MANAGED_PORTFOLIO_PATH,
+        MANAGED_VALUATION_ASSUMPTIONS_PATH,
         MANAGED_RESEARCH_FOLLOWUPS_PATH,
         MANAGED_WATCHLIST_PATH,
         MANAGED_CATALOG_RESOLVE_PATH,
@@ -416,6 +440,18 @@ function readFollowupsResult(record: ResearchFollowupsRecord | null) {
   );
 }
 
+function readValuationAssumptionsResult(
+  record: ValuationAssumptionsRecord | null,
+) {
+  if (record !== null && (record.id !== "main" || record.version < 1))
+    throw new Error("Invalid valuation assumptions record");
+  return parseManagedValuationAssumptions(
+    record === null
+      ? { version: 0, payload: { schemaVersion: 1, entries: [] } }
+      : { version: record.version, payload: record.payload },
+  );
+}
+
 function writeFollowupsResult(
   receipt: ResearchFollowupsReceipt,
   command: ManagedResearchFollowupsCommand,
@@ -432,6 +468,72 @@ function writeFollowupsResult(
       replayed: receipt.replayed,
     },
     command,
+  );
+}
+
+function writeValuationAssumptionsResult(
+  receipt: ValuationAssumptionsReceipt,
+  command: ManagedValuationAssumptionsCommand,
+) {
+  const digest = createHash("sha256")
+    .update(encodeValuationAssumptionsPayload(command.payload))
+    .digest("hex");
+  if (receipt.id !== "main" || receipt.digestSha256 !== digest)
+    throw new Error("Invalid valuation assumptions receipt");
+  return parseManagedValuationAssumptionsReceipt(
+    {
+      version: receipt.version,
+      payload: command.payload,
+      replayed: receipt.replayed,
+    },
+    command,
+  );
+}
+
+interface ValuationRequestState {
+  operation?: ManagedValuationAssumptionsRepositoryOperation;
+  writeStarted: boolean;
+}
+/** One schema-aware resource branch; shared auth/error/cleanup stay in the workspace handler. */
+async function valuationAssumptionsResponse(context: {
+  request: Request;
+  principal: ValuationAssumptionsPrincipal;
+  headers: Headers;
+  open: ManagedWorkspaceHandlerOptions["openValuationAssumptionsRepository"];
+  state: ValuationRequestState;
+}): Promise<Response> {
+  const { request, principal, headers, state } = context;
+  const command =
+    request.method === "POST"
+      ? parseManagedValuationAssumptionsCommand(
+          await readJson(
+            request,
+            MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
+          ),
+        )
+      : undefined;
+  if (command === null) throw new RequestFailure(400, "invalid_request");
+  requireActiveRequest(request);
+  if (!context.open)
+    throw new Error("Valuation assumptions storage unavailable");
+  state.operation = await context.open(request.signal);
+  requireActiveRequest(request);
+  if (command) {
+    state.writeStarted = true;
+    const receipt = await state.operation.repository.put(principal, command);
+    if (request.signal.aborted) throw new Error("Write response retired");
+    return jsonResponse(
+      writeValuationAssumptionsResult(receipt, command),
+      MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
+      headers,
+    );
+  }
+  const record = await state.operation.repository.get(principal);
+  requireActiveRequest(request);
+  return jsonResponse(
+    readValuationAssumptionsResult(record),
+    MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
+    headers,
   );
 }
 
@@ -503,7 +605,8 @@ function errorResponse(
     repositoryOpened &&
     (error instanceof WatchlistRepositoryError ||
       error instanceof PortfolioRepositoryError ||
-      error instanceof ResearchFollowupsRepositoryError) &&
+      error instanceof ResearchFollowupsRepositoryError ||
+      error instanceof ValuationAssumptionsRepositoryError) &&
     error.code !== "invalid_response"
   ) {
     code =
@@ -541,6 +644,7 @@ export function createManagedWorkspaceHandler(
     if (origin === null) return fail(403, "origin_denied");
     let operation: ManagedWorkspaceRepositoryOperation | undefined;
     let followupsOperation: ManagedFollowupsRepositoryOperation | undefined;
+    const valuationState: ValuationRequestState = { writeStarted: false };
     let portfolioOperation: ManagedPortfolioRepositoryOperation | undefined;
     let writeStarted = false;
     let response: Response;
@@ -683,7 +787,16 @@ export function createManagedWorkspaceHandler(
         requireActiveRequest(request);
         return response;
       }
-      if (route.path === MANAGED_PORTFOLIO_PATH) {
+      if (route.path === MANAGED_VALUATION_ASSUMPTIONS_PATH) {
+        response = await valuationAssumptionsResponse({
+          request,
+          principal: auth.principal,
+          headers,
+          open: options.openValuationAssumptionsRepository,
+          state: valuationState,
+        });
+        writeStarted = valuationState.writeStarted;
+      } else if (route.path === MANAGED_PORTFOLIO_PATH) {
         const command =
           request.method === "POST"
             ? parseManagedPortfolioCommand(
@@ -794,16 +907,22 @@ export function createManagedWorkspaceHandler(
         }
       }
     } catch (error) {
+      writeStarted = writeStarted || valuationState.writeStarted;
       response = errorResponse(
         error,
         writeStarted,
         operation !== undefined ||
           followupsOperation !== undefined ||
-          portfolioOperation !== undefined,
+          portfolioOperation !== undefined ||
+          valuationState.operation !== undefined,
         headers,
       );
     } finally {
-      const opened = operation ?? followupsOperation ?? portfolioOperation;
+      const opened =
+        operation ??
+        followupsOperation ??
+        portfolioOperation ??
+        valuationState.operation;
       if (opened) {
         try {
           await opened.close();
@@ -820,7 +939,8 @@ export function createManagedWorkspaceHandler(
         writeStarted,
         operation !== undefined ||
           followupsOperation !== undefined ||
-          portfolioOperation !== undefined,
+          portfolioOperation !== undefined ||
+          valuationState.operation !== undefined,
         headers,
       );
     return response;

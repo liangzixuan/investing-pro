@@ -68,6 +68,14 @@ async function fixture() {
     Promise.reject(new Error("Unexpected provider request")),
   );
   const api: ManagedApi = {
+    loadValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions read"),
+      ),
+    saveValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions write"),
+      ),
     loadPortfolio: unexpected,
     savePortfolio: unexpected,
     loadFollowups: vi.fn<ManagedApi["loadFollowups"]>().mockResolvedValue({

@@ -79,6 +79,22 @@
 .managed-frame .managed-valuation-workbench pre {
   font-size: 12px;
 }
+.managed-frame .managed-valuation-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.managed-frame .managed-valuation-comparison > section {
+  min-width: 0;
+}
+.managed-frame .managed-valuation-raw {
+  white-space: pre-wrap;
+}
+@media (max-width: 700px) {
+  .managed-frame .managed-valuation-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .managed-frame .managed-valuation-retained,
 .managed-frame .managed-valuation-note-preview {
   padding: 12px;

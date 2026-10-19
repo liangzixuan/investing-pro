@@ -162,6 +162,14 @@ async function fixture(
   const unexpected = () =>
     Promise.reject(new Error("Unexpected unrelated source or save request"));
   const api: ManagedApi = {
+    loadValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions read"),
+      ),
+    saveValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions write"),
+      ),
     status: vi
       .fn<ManagedApi["status"]>()
       .mockResolvedValue({ snapshot: { ...snapshot, snapshotSha256: digest } }),

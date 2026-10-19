@@ -1,4 +1,6 @@
 import {
+  MANAGED_VALUATION_ASSUMPTIONS_PATH,
+  MANAGED_VALUATION_ASSUMPTIONS_LIMITS,
   MANAGED_PORTFOLIO_PATH,
   MANAGED_PORTFOLIO_LIMITS,
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
@@ -23,6 +25,11 @@ import { TablesDB } from "node-appwrite";
 
 import { createAppwriteTransport } from "./appwrite-transport";
 import { appwriteVersionedRowStore } from "./appwrite-versioned-row-store";
+import { openManagedValuationAssumptionsStorage } from "./managed-valuation-assumptions-storage";
+import {
+  MANAGED_VALUATION_ASSUMPTIONS_STORAGE_ENVIRONMENT_KEY,
+  managedValuationAssumptionsStorageEnabled,
+} from "./managed-valuation-assumptions-config";
 import { createAppwritePortfolioRepository } from "./appwrite-portfolio-repository";
 import {
   MANAGED_PORTFOLIO_STORAGE_ENVIRONMENT_KEY,
@@ -112,6 +119,7 @@ declare const __MANAGED_WORKSPACE_SERVER_CONFIG__: unknown;
 declare const __MANAGED_SEC_CONFIG__: unknown;
 declare const __MANAGED_EOD_CONFIG__: unknown;
 const PATHS: readonly string[] = [
+  MANAGED_VALUATION_ASSUMPTIONS_PATH,
   MANAGED_PORTFOLIO_PATH,
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
   MANAGED_CATALOG_STATUS_PATH,
@@ -164,19 +172,21 @@ export function bridgeManagedWorkspaceRequest(
   if (!Buffer.isBuffer(req.bodyBinary))
     throw new BridgeFailure(400, "invalid_request");
   const maximum =
-    req.path === MANAGED_PORTFOLIO_PATH
-      ? MANAGED_PORTFOLIO_LIMITS.envelopeBytes
-      : req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH
-        ? MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes
-        : req.path === MANAGED_WATCHLIST_PATH
-          ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
-          : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
-            ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
-            : req.path === MANAGED_SEC_FILINGS_PATH
-              ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
-              : req.path === MANAGED_EOD_HISTORY_PATH
-                ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
-                : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
+    req.path === MANAGED_VALUATION_ASSUMPTIONS_PATH
+      ? MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes
+      : req.path === MANAGED_PORTFOLIO_PATH
+        ? MANAGED_PORTFOLIO_LIMITS.envelopeBytes
+        : req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH
+          ? MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes
+          : req.path === MANAGED_WATCHLIST_PATH
+            ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
+            : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
+              ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
+              : req.path === MANAGED_SEC_FILINGS_PATH
+                ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
+                : req.path === MANAGED_EOD_HISTORY_PATH
+                  ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
+                  : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
   if (req.bodyBinary.byteLength > maximum)
     throw new BridgeFailure(413, "payload_too_large");
   if (req.method !== "POST" && req.bodyBinary.byteLength !== 0)
@@ -257,6 +267,9 @@ export function createManagedWorkspaceFunction(
         : bridged;
       // Copy the supplied authority before auth awaits; it is never user authority.
       const executionKey = req.headers["x-appwrite-key"];
+      const valuationEnabled = managedValuationAssumptionsStorageEnabled(
+        process.env[MANAGED_VALUATION_ASSUMPTIONS_STORAGE_ENVIRONMENT_KEY],
+      );
       const portfolioEnabled = managedPortfolioStorageEnabled(
         process.env[MANAGED_PORTFOLIO_STORAGE_ENVIRONMENT_KEY],
       );
@@ -432,6 +445,12 @@ export function createManagedWorkspaceFunction(
               },
             }
           : {}),
+        ...(valuationEnabled
+          ? {
+              openValuationAssumptionsRepository: (signal: AbortSignal) =>
+                openManagedValuationAssumptionsStorage(signal, executionKey),
+            }
+          : {}),
         async openRepository(signal) {
           if (!executionKey) throw new Error("Execution authority unavailable");
           const transport = createAppwriteTransport({
@@ -462,6 +481,7 @@ export function createManagedWorkspaceFunction(
         req.method === "POST" &&
         (req.path === MANAGED_WATCHLIST_PATH ||
           req.path === MANAGED_PORTFOLIO_PATH ||
+          req.path === MANAGED_VALUATION_ASSUMPTIONS_PATH ||
           req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH);
       const response = await (sourceController
         ? announcements

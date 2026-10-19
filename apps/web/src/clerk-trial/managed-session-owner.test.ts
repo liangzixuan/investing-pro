@@ -52,12 +52,14 @@ function fixture() {
   const watchlist = make("watchlist", MANAGED_WATCHLIST_SAVE_COPY);
   const followups = make("followups", MANAGED_FOLLOWUPS_SAVE_COPY);
   const portfolio = make("portfolio", MANAGED_WATCHLIST_SAVE_COPY);
+  const valuationAssumptions = make("valuations", MANAGED_WATCHLIST_SAVE_COPY);
   const clearResearch = vi.fn();
   const owner = new ManagedSessionOwner(
     {
       watchlist: watchlist.coordinator,
       followups: followups.coordinator,
       portfolio: portfolio.coordinator,
+      valuationAssumptions: valuationAssumptions.coordinator,
     },
     { signOut: sdkSignOut },
     clearResearch,
@@ -67,12 +69,14 @@ function fixture() {
       watchlist.coordinator.load(),
       followups.coordinator.load(),
       portfolio.coordinator.load(),
+      valuationAssumptions.coordinator.load(),
     ]);
   return {
     owner,
     watchlist,
     followups,
     portfolio,
+    valuationAssumptions,
     sdkSignOut,
     resourceSignOut,
     clearResearch,
@@ -161,7 +165,12 @@ it("keeps the original uncertain follow-up command during independent watchlist 
   expect(f.watchlist.save).not.toHaveBeenCalled();
 });
 
-it.each(["watchlist", "followups", "portfolio"] as const)(
+it.each([
+  "watchlist",
+  "followups",
+  "portfolio",
+  "valuationAssumptions",
+] as const)(
   "retires both resources on a fatal %s result and fences the other late save",
   async (resource) => {
     const f = fixture();
@@ -328,5 +337,61 @@ it("keeps the third Portfolio save independent and clears all three once on reti
   await f.owner.signOut();
   for (const retired of retirements) expect(retired).toHaveBeenCalledOnce();
   expect(f.portfolio.coordinator.getSnapshot().draft).toBeNull();
+  expect(f.sdkSignOut).toHaveBeenCalledOnce();
+});
+
+it("keeps the fourth resource's uncertain command independent and reconciles its exact capture", async () => {
+  const f = fixture();
+  await f.loadBoth();
+  f.valuationAssumptions.coordinator.replaceDraft("Authored raw assumptions");
+  f.valuationAssumptions.save.mockRejectedValueOnce(
+    new TrialApiError("commit_unknown"),
+  );
+  await f.valuationAssumptions.coordinator.save();
+  const command = f.valuationAssumptions.save.mock.calls[0]![0];
+  f.watchlist.coordinator.replaceDraft("Independent note draft");
+  const watchlist = f.watchlist.coordinator.getSnapshot();
+  expect(f.owner.getSnapshot()).toMatchObject({
+    needsLeaveReview: true,
+    valuationAssumptions: { dirty: true, uncertain: true },
+    portfolio: { dirty: false },
+    followups: { dirty: false },
+  });
+  f.valuationAssumptions.save.mockResolvedValueOnce({
+    version: 2,
+    payload: command.payload,
+    replayed: true,
+  });
+  await f.valuationAssumptions.coordinator.reconcile();
+  expect(f.valuationAssumptions.save.mock.calls[1]![0]).toStrictEqual(command);
+  expect(f.watchlist.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.watchlist.save).not.toHaveBeenCalled();
+  expect(f.followups.save).not.toHaveBeenCalled();
+  expect(f.portfolio.save).not.toHaveBeenCalled();
+  expect(f.sdkSignOut).not.toHaveBeenCalled();
+});
+
+it("retires all four resources before SDK sign-out and fences a late assumptions receipt", async () => {
+  const f = fixture();
+  await f.loadBoth();
+  f.valuationAssumptions.coordinator.replaceDraft("Pending raw inputs");
+  const held = deferred<SavedPayload<string>>();
+  f.valuationAssumptions.save.mockReturnValueOnce(held.promise);
+  const saving = f.valuationAssumptions.coordinator.save();
+  const signal = f.valuationAssumptions.save.mock.calls[0]![1];
+  const signingOut = f.owner.signOut();
+  expect(signal.aborted).toBe(true);
+  for (const resource of [
+    f.watchlist,
+    f.followups,
+    f.portfolio,
+    f.valuationAssumptions,
+  ])
+    expect(resource.coordinator.getSnapshot().draft).toBeNull();
+  const retired = f.valuationAssumptions.coordinator.getSnapshot();
+  held.resolve({ version: 2, payload: "Pending raw inputs", replayed: false });
+  await Promise.all([saving, signingOut]);
+  expect(f.valuationAssumptions.coordinator.getSnapshot()).toBe(retired);
+  expect(f.owner.getSnapshot().needsLeaveReview).toBe(false);
   expect(f.sdkSignOut).toHaveBeenCalledOnce();
 });

@@ -22,8 +22,36 @@ import {
 import { MANAGED_EOD_MAPPING_CANDIDATES } from "./managed-eod-config";
 import {
   createManagedCatalogService,
+  createManagedValuationAssumptionsCatalog,
   getManagedWorkspaceCatalog,
 } from "./managed-workspace-catalog";
+
+it("projects the admitted catalog identity and authoritative CIK through the valuation port", () => {
+  const catalog = getManagedWorkspaceCatalog();
+  const port = createManagedValuationAssumptionsCatalog();
+  const rows = createManagedCatalogService().search("AAPL")!.results;
+  const listingId = rows.find((row) => row.symbol === "AAPL")!.listingId;
+  const found = lookupPersonalSecurityMasterListing(catalog, listingId)!;
+  expect(port.snapshotSha256).toBe(catalog.snapshotSha256);
+  expect(port.lookup(listingId)).toEqual({
+    country: found.country,
+    exchangeMic: found.exchangeMic,
+    instrumentType: found.instrumentType,
+    issuerId: found.issuerId,
+    issuerName: found.issuerName,
+    listingId: found.listingId,
+    securityId: found.securityId,
+    securityName: found.securityName,
+    shareClassId: found.shareClassId,
+    shareClassName: found.shareClassName,
+    symbol: found.symbol,
+    cik: found.cik,
+  });
+  expect(Object.isFrozen(port)).toBe(true);
+  expect(Object.isFrozen(port.lookup(listingId))).toBe(true);
+  expect(port.lookup("absent-invented-listing")).toBeNull();
+  expect(() => port.lookup("invalid ID")).toThrow();
+});
 
 import {
   MANAGED_RESEARCH_COVERAGE,

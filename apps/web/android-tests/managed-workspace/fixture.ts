@@ -39,6 +39,8 @@ import type {
   PersonalEconomicCalendarDto,
   ManagedSecFilingsResponseDto,
   PersonalMonetaryAnnouncementsDto,
+  ValuationAssumptionEntry,
+  ManagedValuationAssumptionsDto,
 } from "@research-cockpit/contracts";
 import { createResearchFollowupsFixture } from "./followups-fixture";
 import {
@@ -51,6 +53,11 @@ import {
   PERSONAL_BEA_CALENDAR_SOURCE,
   PERSONAL_FED_MONETARY_SOURCE,
   parseManagedMonetaryAnnouncements,
+  parseValuationAssumptionEntry,
+  parseManagedValuationAssumptionsCommand,
+  parseManagedValuationAssumptionsReceipt,
+  MANAGED_VALUATION_DCF_MODEL_VERSION,
+  MANAGED_VALUATION_EXIT_MODEL_VERSION,
 } from "@research-cockpit/contracts";
 import {
   ManagedEodHistoryError,
@@ -704,6 +711,14 @@ async function createSharedFixture(
     state.save === 1 &&
     state.load === 2;
   const api: ManagedApi = {
+    loadValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions read"),
+      ),
+    saveValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions write"),
+      ),
     loadPortfolio: () =>
       Promise.reject(
         new Error("Portfolio requires an explicit fixture action"),
@@ -2016,7 +2031,223 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly financialScreen?: NativeFinancialScreenMetadata;
   readonly valuationPrice?: NativeValuationPriceMetadata;
   readonly screenComparison?: NativeScreenComparisonMetadata;
+  readonly savedValuation?: SavedValuationNativeControls;
 };
+
+export interface SavedValuationNativeControls {
+  readonly expected: ValuationAssumptionEntry;
+  readonly getSnapshot: () => Readonly<{
+    load: number;
+    save: number;
+    resolve: number;
+  }>;
+  readonly subscribe: (listener: () => void) => () => void;
+  readonly saved: () => ManagedValuationAssumptionsDto;
+}
+const savedValuationInputs = parseValuationAssumptionEntry({
+  catalogSnapshotSha256: digest,
+  listing: identity,
+  cik: null,
+  dcf: {
+    modelVersion: MANAGED_VALUATION_DCF_MODEL_VERSION,
+    inputs: {
+      startingUnleveredCashFlowUsd: "100.00",
+      enterpriseToEquityBridgeUsd: "100.00",
+      dilutedShares: "10.00",
+      forecastYears: "5",
+      waccPercent: "10.00",
+      terminalGrowthPercent: "0.00",
+      scenarios: {
+        conservative: { annualCashFlowGrowthPercent: "0.00" },
+        base: { annualCashFlowGrowthPercent: "10.00" },
+        expansion: { annualCashFlowGrowthPercent: "20.00" },
+      },
+    },
+  },
+  exit: {
+    modelVersion: MANAGED_VALUATION_EXIT_MODEL_VERSION,
+    inputs: {
+      baseRevenue: "1000.00",
+      cash: "100.00",
+      debt: "200.00",
+      dilutedShares: "100.00",
+      horizonYears: "5",
+      discountRatePercent: "10.00",
+      scenarios: {
+        conservative: {
+          annualRevenueGrowthPercent: "0.00",
+          targetEbitdaMarginPercent: "20.00",
+          exitMultiple: "10.00",
+        },
+        base: {
+          annualRevenueGrowthPercent: "10.00",
+          targetEbitdaMarginPercent: "20.00",
+          exitMultiple: "10.00",
+        },
+        expansion: {
+          annualRevenueGrowthPercent: "20.00",
+          targetEbitdaMarginPercent: "20.00",
+          exitMultiple: "10.00",
+        },
+      },
+    },
+  },
+});
+if (!savedValuationInputs)
+  throw new Error("Invalid invented saved valuation inputs");
+
+function refuseSavedValuation(): never {
+  throw new Error("Unexpected invented saved valuation operation");
+}
+class SavedValuationNativeStore implements SavedValuationNativeControls {
+  readonly expected = savedValuationInputs!;
+  private stored: ManagedValuationAssumptionsDto = {
+    version: 0,
+    payload: { schemaVersion: 1, entries: [] },
+  };
+  private state: Readonly<{ load: number; save: number; resolve: number }> =
+    Object.freeze({ load: 0, save: 0, resolve: 0 });
+  private readonly listeners = new Set<() => void>();
+  readonly getSnapshot = () => this.state;
+  readonly saved = () => structuredClone(this.stored);
+  readonly subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+  private count(key: keyof SavedValuationNativeStore["state"]) {
+    this.state = Object.freeze({ ...this.state, [key]: this.state[key] + 1 });
+    for (const listener of [...this.listeners]) listener();
+  }
+  readonly load: ManagedApi["loadValuationAssumptions"] = (signal) => {
+    if (signal.aborted || this.state.load >= 2) return refuseSavedValuation();
+    if (this.state.load !== this.state.save) return refuseSavedValuation();
+    this.count("load");
+    return Promise.resolve(this.saved());
+  };
+  private captureSave(
+    input: Parameters<ManagedApi["saveValuationAssumptions"]>[0],
+    signal: AbortSignal,
+  ) {
+    const command = parseManagedValuationAssumptionsCommand(input);
+    if (signal.aborted || !command) return refuseSavedValuation();
+    if (this.state.load !== 1 || this.state.save !== 0)
+      return refuseSavedValuation();
+    if (this.state.resolve !== 1 || command.expectedVersion !== 0)
+      return refuseSavedValuation();
+    if (
+      JSON.stringify(command.payload.entries) !==
+      JSON.stringify([this.expected])
+    )
+      return refuseSavedValuation();
+    return command;
+  }
+  readonly save: ManagedApi["saveValuationAssumptions"] = (input, signal) => {
+    const command = this.captureSave(input, signal);
+    const receipt = parseManagedValuationAssumptionsReceipt(
+      { version: 1, payload: command.payload, replayed: false },
+      command,
+    );
+    if (!receipt) return refuseSavedValuation();
+    this.stored = { version: receipt.version, payload: receipt.payload };
+    this.count("save");
+    return Promise.resolve(receipt);
+  };
+  resolve(
+    request: Parameters<ManagedApi["resolve"]>[0],
+    signal: AbortSignal,
+    fallback: ManagedApi["resolve"],
+  ) {
+    if (request.listingIds.join("|") !== identity.listingId)
+      return fallback(request, signal);
+    if (signal.aborted || request.snapshotSha256 !== digest)
+      return refuseSavedValuation();
+    if (this.state.resolve !== 0 || this.state.load !== 1)
+      return refuseSavedValuation();
+    const resolved = parseManagedCatalogResolveResponse(
+      {
+        snapshotSha256: digest,
+        results: [{ listingId: identity.listingId, listing: identity }],
+      },
+      request,
+    );
+    if (!resolved) return refuseSavedValuation();
+    this.count("resolve");
+    return Promise.resolve(resolved);
+  }
+}
+function createSavedValuationNativeFixture(
+  base: SharedNativeFixture,
+): ManagedNativeFixture {
+  const store = new SavedValuationNativeStore();
+  return {
+    ...base,
+    api: {
+      ...base.api,
+      loadValuationAssumptions: store.load,
+      saveValuationAssumptions: store.save,
+      resolve: (request, signal) =>
+        store.resolve(request, signal, base.api.resolve),
+    },
+    financialReview: null,
+    savedValuation: store,
+  };
+}
+
+const nativeFixtureFactories = new Map<
+  string,
+  () => Promise<ManagedNativeFixture>
+>([
+  [
+    "screen-comparison",
+    async () =>
+      createScreenComparisonNativeFixture(await createSharedFixture()),
+  ],
+  [
+    "valuation-price",
+    async () =>
+      createValuationPriceNativeFixture(
+        await createSharedFixture("price-comparison-note"),
+      ),
+  ],
+  [
+    "financial-screen",
+    async () => createFinancialScreenNativeFixture(await createSharedFixture()),
+  ],
+  [
+    "price-studies",
+    async () =>
+      createPriceStudiesNativeFixture(
+        await createSharedFixture("price-comparison-note"),
+      ),
+  ],
+  [
+    "annual-statements",
+    async () =>
+      createAnnualStatementsNativeFixture(
+        await createSharedFixture("annual-note"),
+      ),
+  ],
+  [
+    "portfolio-ledger",
+    async () =>
+      createPortfolioNativeFixture(
+        await createSharedFixture("research-followups"),
+      ),
+  ],
+  [
+    "annual-financial-review",
+    async () =>
+      createFinancialReviewNativeFixture(
+        await createSharedFixture("annual-note"),
+      ),
+  ],
+  [
+    "saved-valuation",
+    async () => createSavedValuationNativeFixture(await createSharedFixture()),
+  ],
+]);
 
 /** Dispatch only the new fixed journey; all existing scenario bodies remain unchanged. */
 export async function createFixture(
@@ -2028,32 +2259,15 @@ export async function createFixture(
     | "screen-comparison"
     | "financial-screen"
     | "valuation-price"
+    | "saved-valuation"
     | "portfolio-ledger" = "default",
 ): Promise<ManagedNativeFixture> {
-  if (scenario === "screen-comparison")
-    return createScreenComparisonNativeFixture(await createSharedFixture());
-  if (scenario === "valuation-price")
-    return createValuationPriceNativeFixture(
-      await createSharedFixture("price-comparison-note"),
-    );
-  if (scenario === "financial-screen")
-    return createFinancialScreenNativeFixture(await createSharedFixture());
-  if (scenario === "price-studies")
-    return createPriceStudiesNativeFixture(
-      await createSharedFixture("price-comparison-note"),
-    );
-  if (scenario === "annual-statements")
-    return createAnnualStatementsNativeFixture(
-      await createSharedFixture("annual-note"),
-    );
-  if (scenario === "portfolio-ledger")
-    return createPortfolioNativeFixture(
-      await createSharedFixture("research-followups"),
-    );
-  if (scenario === "annual-financial-review") {
-    return createFinancialReviewNativeFixture(
-      await createSharedFixture("annual-note"),
-    );
-  }
-  return { ...(await createSharedFixture(scenario)), financialReview: null };
+  const create = nativeFixtureFactories.get(scenario);
+  if (create) return create();
+  return {
+    ...(await createSharedFixture(
+      scenario as Parameters<typeof createSharedFixture>[0],
+    )),
+    financialReview: null,
+  };
 }

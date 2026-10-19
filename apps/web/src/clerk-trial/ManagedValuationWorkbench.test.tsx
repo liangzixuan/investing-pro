@@ -163,7 +163,9 @@ describe("authored valuation workbench", () => {
     const html = renderToStaticMarkup(<ManagedValuationWorkbench {...props} />);
     expect(html).toContain("Authored valuation workbench");
     expect(html).toContain("Starting unlevered cash flow (full USD)");
-    expect(html).toContain("temporary until sign-out or reload");
+    expect(html).toContain(
+      "Save editable inputs separately in Saved valuation inputs",
+    );
     expect(html).toContain("A negative bridge adds net cash");
     expect(html).not.toContain("<details open");
     expect(html.match(/value=""/gu)).toHaveLength(22);

@@ -31,6 +31,8 @@ import {
   type ManagedValuationNoteActions,
 } from "./ManagedValuationWorkbench";
 import type { ManagedValuationWorkbench as ValuationModel } from "./managed-valuation-workbench";
+import type { ManagedValuationAssumptions as AssumptionsModel } from "./managed-valuation-assumptions";
+import { ManagedValuationAssumptions } from "./ManagedValuationAssumptions";
 
 export function ManagedCompanyResearch({
   research,
@@ -55,6 +57,7 @@ export function ManagedCompanyResearch({
   financialReviewActions,
   annualStatementsActions,
   valuation,
+  valuationAssumptions,
   valuationNoteActions,
   priceNoteActions,
   priceStudiesActions,
@@ -87,6 +90,7 @@ export function ManagedCompanyResearch({
   financialReviewActions?: ManagedFinancialReviewActions;
   annualStatementsActions?: ManagedAnnualStatementsReviewActions;
   valuation?: ValuationModel;
+  valuationAssumptions: AssumptionsModel;
   valuationNoteActions?: ManagedValuationNoteActions;
   priceNoteActions: ManagedPriceNoteActions;
   priceStudiesActions?: ManagedPriceStudiesActions;
@@ -167,15 +171,22 @@ export function ManagedCompanyResearch({
         onSection={onSection}
       />
       {valuation && valuationNoteActions && (
-        <ManagedValuationWorkbench
-          model={valuation}
-          selection={research.selection}
-          navigationPending={navigationPending}
-          noteActions={valuationNoteActions}
-          watchlist={watchlist}
-          price={eod}
-          onOpenPrice={() => onSection("eod")}
-        />
+        <>
+          <ManagedValuationWorkbench
+            model={valuation}
+            selection={research.selection}
+            navigationPending={navigationPending}
+            noteActions={valuationNoteActions}
+            watchlist={watchlist}
+            price={eod}
+            onOpenPrice={() => onSection("eod")}
+          />
+          <ManagedValuationAssumptions
+            model={valuationAssumptions}
+            workbench={valuation}
+            navigationPending={navigationPending}
+          />
+        </>
       )}
       <div className="managed-research-body">
         <div>

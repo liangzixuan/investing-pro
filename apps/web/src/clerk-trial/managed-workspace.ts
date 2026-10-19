@@ -17,6 +17,7 @@ import {
   type PreparedManagedAnnualStatementsNote,
 } from "./managed-annual-statements-note";
 import { ManagedValuationWorkbench } from "./managed-valuation-workbench";
+import { ManagedValuationAssumptions } from "./managed-valuation-assumptions";
 import {
   ManagedFinancialScreen,
   type ManagedFinancialScreenReportCapture,
@@ -273,6 +274,7 @@ export class ManagedWorkspace {
   readonly portfolio: ManagedPortfolio;
   readonly sessionOwner: ManagedSessionOwner;
   readonly valuation = new ManagedValuationWorkbench();
+  readonly valuationAssumptions: ManagedValuationAssumptions;
   readonly annual: ManagedAnnualReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
   readonly financialScreen: ManagedFinancialScreen;
@@ -368,11 +370,25 @@ export class ManagedWorkspace {
         ),
       ...(newKey ? { newKey } : {}),
     });
+    this.valuationAssumptions = new ManagedValuationAssumptions(
+      api,
+      resourceSession,
+      this.valuation,
+      {
+        getCatalogSnapshot: () => this.state.snapshot,
+        onRetire: () =>
+          this.sessionOwner.retire(
+            this.valuationAssumptions.coordinator.getSnapshot().message,
+          ),
+        ...(newKey ? { newKey } : {}),
+      },
+    );
     this.sessionOwner = new ManagedSessionOwner(
       {
         watchlist: this.coordinator,
         followups: this.followups.coordinator,
         portfolio: this.portfolio.sessionResource,
+        valuationAssumptions: this.valuationAssumptions.sessionResource,
       },
       session,
       () => this.clear(),
@@ -519,6 +535,7 @@ export class ManagedWorkspace {
     this.state = { ...this.state, ...next };
     this.followups.syncCatalog(this.state.snapshot?.snapshotSha256 ?? null);
     this.portfolio.syncCatalog();
+    this.valuationAssumptions.syncCatalog();
     this.syncAnnouncements();
     this.syncWatchlistPrices();
     this.syncAnnualComparison();
@@ -634,6 +651,7 @@ export class ManagedWorkspace {
     this.followupResearch = null;
     this.followups.retire();
     this.portfolio.retire();
+    this.valuationAssumptions.retire();
     this.valuation.retire();
     this.closeResearch();
     this.annual.retire();

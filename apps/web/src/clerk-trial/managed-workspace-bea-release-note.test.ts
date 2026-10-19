@@ -95,6 +95,14 @@ function deferred<T>() {
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    loadValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions read"),
+      ),
+    saveValuationAssumptions: () =>
+      Promise.reject(
+        new Error("Unexpected invented valuation assumptions write"),
+      ),
     loadPortfolio: () =>
       Promise.reject(
         new Error("Portfolio requires an explicit fixture action"),

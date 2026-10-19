@@ -43,6 +43,7 @@ if (
   scenario !== "annual-financial-review" &&
   scenario !== "annual-statements" &&
   scenario !== "authored-valuation" &&
+  scenario !== "saved-valuation" &&
   scenario !== "annual-balance-sheet" &&
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
@@ -381,6 +382,40 @@ function PortfolioFixtureControls({
   );
 }
 
+function SavedValuationFixtureDiagnostics({
+  workspace,
+}: {
+  workspace: ManagedWorkspace;
+}) {
+  const controls = fixture.savedValuation!;
+  const counts = useSyncExternalStore(controls.subscribe, controls.getSnapshot);
+  const editor = useSyncExternalStore(
+    workspace.valuation.subscribe,
+    workspace.valuation.getSnapshot,
+  );
+  const resource = useSyncExternalStore(
+    workspace.valuationAssumptions.coordinator.subscribe,
+    workspace.valuationAssumptions.coordinator.getSnapshot,
+  );
+  return (
+    <aside aria-label="Invented saved valuation diagnostics">
+      <pre id="fixture-saved-valuation-store" hidden>
+        {JSON.stringify({
+          counts,
+          expected: controls.expected,
+          saved: controls.saved(),
+        })}
+      </pre>
+      <pre id="fixture-valuation-draft" hidden>
+        {JSON.stringify(editor)}
+      </pre>
+      <pre id="fixture-saved-valuation-resource" hidden>
+        {JSON.stringify(resource)}
+      </pre>
+    </aside>
+  );
+}
+
 function FixtureDraftDiagnostics({
   workspace,
 }: {
@@ -396,6 +431,9 @@ function FixtureDraftDiagnostics({
   );
   return (
     <aside aria-label="Invented draft diagnostics">
+      {fixture.savedValuation && (
+        <SavedValuationFixtureDiagnostics workspace={workspace} />
+      )}
       {scenario === "authored-valuation" && (
         <>
           <pre

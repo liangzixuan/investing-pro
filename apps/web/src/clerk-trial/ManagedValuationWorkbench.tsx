@@ -14,7 +14,6 @@ import {
   type ManagedValuationSnapshot,
   type DcfField,
   type ExitField,
-  type ExitScenarioField,
 } from "./managed-valuation-workbench";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import type { ManagedEodHistory } from "./managed-eod-history";
@@ -57,30 +56,11 @@ export interface ManagedValuationWorkbenchProps {
 }
 const subscribeWithoutPrice = () => () => {};
 const snapshotWithoutPrice = () => null;
-const dcfFields: readonly (readonly [DcfField, string])[] = [
-  ["startingUnleveredCashFlowUsd", "Starting unlevered cash flow (full USD)"],
-  [
-    "enterpriseToEquityBridgeUsd",
-    "Enterprise-to-equity bridge (signed full USD)",
-  ],
-  ["dilutedShares", "Diluted shares (share count)"],
-  ["forecastYears", "Forecast years (whole number, 5–10)"],
-  ["waccPercent", "WACC (%)"],
-  ["terminalGrowthPercent", "Terminal growth (%)"],
-];
-const exitFields: readonly (readonly [ExitField, string])[] = [
-  ["baseRevenue", "Starting revenue (full USD)"],
-  ["cash", "Cash (full USD)"],
-  ["debt", "Debt (full USD)"],
-  ["dilutedShares", "Diluted shares (share count)"],
-  ["horizonYears", "Horizon years (whole number, 1–10)"],
-  ["discountRatePercent", "Discount rate (%)"],
-];
-const exitScenarioFields: readonly (readonly [ExitScenarioField, string])[] = [
-  ["annualRevenueGrowthPercent", "Annual revenue growth (%)"],
-  ["targetEbitdaMarginPercent", "Target EBITDA margin (%)"],
-  ["exitMultiple", "Exit EBITDA multiple (times)"],
-];
+import {
+  dcfFields,
+  exitFields,
+  exitScenarioFields,
+} from "./valuation-input-labels";
 
 export function ValuationInput({
   id,
@@ -347,9 +327,10 @@ export function ManagedValuationWorkbench({
       <h3>My valuation assumptions</h3>
       <p>{AUTHORED_VALUATION_EXPLANATION}</p>
       <p>
-        Inputs and calculations are temporary until sign-out or reload. To keep
-        a selected result, preview it and add it to the note draft, then use the
-        existing Review and Save actions.
+        Save editable inputs separately in Saved valuation inputs. Reload and
+        sign-out clear the local editor and calculated results. To keep a
+        selected result in a note, preview and append it, then Review and Save
+        the Watchlist.
       </p>
       {state.retired ? (
         <p role="status">

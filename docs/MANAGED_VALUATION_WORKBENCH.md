@@ -63,9 +63,58 @@ company retains the draft with editing paused. **Discard inputs and use SYMBOL**
 explicitly replaces its ownership. **Discard valuation inputs** clears the current
 company's temporary draft. A changed catalog or share class cannot inherit it.
 
-These inputs are held in memory. Reload, session retirement or sign-out clears
-them. They join the existing leave warning and sign-out review, without adding a
-fourth saved resource. Saving the watchlist does not save the editable workbench.
+The editor is held in memory. Reload, session retirement or sign-out clears it.
+The source candidate adds a separate saved-input resource described below.
+The published client still has session-only inputs. Saving a Watchlist note or
+capturing a report does not save an editable workbench.
+
+## Save and reopen editable inputs
+
+The source candidate adds an initially closed **Saved valuation inputs** panel
+below the workbench. Its storage is disabled by default. Source tests do not
+establish provisioned storage, real-account persistence or a published release.
+
+1. Select **Load saved inputs**. This reads the independent saved resource and
+   preserves the current editor. It makes no Price, Annual or Filings request.
+2. Select **Review current inputs for staging**. Inspect both complete raw input
+   maps, model versions and full company/catalog identity against the previous
+   draft entry. The explicit catalog identity read does not load financial data.
+3. Select **Stage reviewed inputs**. This replaces only that listing's entry in
+   the valuation draft. It does not save, calculate or change a note.
+4. Select **Review valuation draft**, inspect all complete entries, then select
+   **Save valuation inputs**. This saves independently of Watchlist, Follow-ups
+   and Portfolio. A later editor change cannot be acknowledged by an older save.
+5. In a fresh session, load saved inputs explicitly. Open the matching company,
+   select **Review saved inputs for SYMBOL**, and compare the complete current
+   editor and confirmed saved entry. Select **Use reviewed saved inputs** to
+   replace the editor. Calculated results are cleared; select **Calculate authored
+   scenarios** separately.
+
+One entry stores both current model versions for an exact listing, with at most
+20 unique listings. Each input retains its exact accepted text, including empty
+or invalid numeric text, up to 512 Unicode code points. A rejected oversized
+paste blocks staging until corrected or discarded. Numeric calculator limits
+remain separate. The payload limit is 256 KiB; overflow refuses the whole change.
+Source evidence, prices, calculated outputs and preview actions are excluded.
+Unsupported model versions and extra fields are refused without conversion.
+
+The draft-entry disclosure supports complete inspection and explicit removal.
+Removal needs its own Review and Save. A changed catalog requires complete
+identity review and an explicit apply, followed by Save before the updated saved
+entry can be used. Stable listing/share-class changes and conflicting issuer
+claims are refused. An unspecified CIK does not grant source-read eligibility.
+
+A conflict retains both complete versions for comparison. Load latest, then use
+the saved version or keep the valuation draft; keeping the draft still needs
+Review and Save. An uncertain save exposes **Reconcile original valuation save**,
+which reuses the original command. It does not issue a replacement command.
+Stale actions after navigation, cancellation, catalog change or session
+retirement cannot apply an earlier proposal. Back preserves the editor.
+
+Both the valuation draft and unsaved editor join leave and sign-out review.
+Sign-out clears all local resource copies and results before the SDK call.
+Confirmed saved inputs remain in the saved resource; this is not automatic
+draft storage or a backup service.
 
 To keep one model/scenario, open **Add a valuation result to the note draft**.
 Select the model and scenario, then **Preview valuation note**. The complete note
@@ -99,5 +148,6 @@ the old report invalid. Exported copies do not update with later edits.
 
 Source checks, rendered desktop geometry, packaged native execution and release
 acceptance are separate. This workflow does not add a provider feed,
-automatic financial conversion, historical multiples or a saved
-assumption record.
+automatic financial conversion or historical multiples. Saved-input storage
+provisioning and real persistence qualification remain separate from this source
+workflow.

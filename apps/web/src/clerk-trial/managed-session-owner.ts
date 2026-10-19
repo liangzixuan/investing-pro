@@ -17,6 +17,7 @@ export interface ManagedSessionState {
   readonly watchlist: Readonly<ManagedResourceSaveSummary>;
   readonly followups: Readonly<ManagedResourceSaveSummary>;
   readonly portfolio: Readonly<ManagedResourceSaveSummary>;
+  readonly valuationAssumptions: Readonly<ManagedResourceSaveSummary>;
   readonly valuationInputs: boolean;
   readonly needsLeaveReview: boolean;
   readonly signOutFailed: boolean;
@@ -41,7 +42,7 @@ export function resourceNeedsLeaveReview(resource: ManagedResourceSaveSummary) {
   );
 }
 
-/** One session lifetime owns all three independent save resources and the SDK sign-out. */
+/** One session lifetime owns the independent save resources and the SDK sign-out. */
 export class ManagedSessionOwner {
   private phase: ManagedSessionState["phase"] = "active";
   private state: Readonly<ManagedSessionState>;
@@ -60,6 +61,7 @@ export class ManagedSessionOwner {
       watchlist: Resource;
       followups: Resource;
       portfolio: Resource;
+      valuationAssumptions: Resource;
     }>,
     private readonly session: Pick<TrialSession, "signOut">,
     private readonly clearResearch: () => void,
@@ -74,6 +76,7 @@ export class ManagedSessionOwner {
       resources.watchlist,
       resources.followups,
       resources.portfolio,
+      resources.valuationAssumptions,
     ].map((resource) =>
       resource.subscribe(() => {
         if (this.retiring || this.disposed) return;
@@ -101,18 +104,20 @@ export class ManagedSessionOwner {
     const watchlist = summary(this.resources.watchlist);
     const followups = summary(this.resources.followups);
     const portfolio = summary(this.resources.portfolio);
+    const valuationAssumptions = summary(this.resources.valuationAssumptions);
     const valuationInputs = this.valuation?.hasDraft() ?? false;
     return Object.freeze({
       phase: this.phase,
       watchlist,
       followups,
       portfolio,
+      valuationAssumptions,
       valuationInputs,
       needsLeaveReview:
         this.phase === "active" &&
-        (resourceNeedsLeaveReview(watchlist) ||
-          resourceNeedsLeaveReview(followups) ||
-          resourceNeedsLeaveReview(portfolio) ||
+        ([watchlist, followups, portfolio, valuationAssumptions].some(
+          resourceNeedsLeaveReview,
+        ) ||
           valuationInputs),
       signOutFailed: this.signOutFailed,
       cleanupFailed: this.cleanupFailed,
@@ -141,6 +146,7 @@ export class ManagedSessionOwner {
         () => this.resources.watchlist.retire(message),
         () => this.resources.followups.retire(message),
         () => this.resources.portfolio.retire(message),
+        () => this.resources.valuationAssumptions.retire(message),
         () => this.valuation?.retire(),
         this.clearResearch,
       ]) {
@@ -182,7 +188,7 @@ export class ManagedSessionOwner {
           if (this.disposed || generation !== this.generation) return;
           this.message = this.cleanupFailed
             ? "Signed out. Local cleanup could not be fully confirmed."
-            : "Signed out. All three local drafts have been cleared.";
+            : "Signed out. Local drafts and valuation inputs have been cleared.";
         },
         () => {
           if (this.disposed || generation !== this.generation) return;

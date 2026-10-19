@@ -1283,6 +1283,34 @@
   }
   .managed-frame #managed-signout-review {
     margin-top: 8px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .managed-frame #managed-signout-review h2 {
+    margin: 0 0 8px;
+  }
+  .managed-frame #managed-signout-review p {
+    margin: 8px 0;
+    line-height: 1.45;
+  }
+  .managed-frame #managed-signout-review dl {
+    margin: 12px 0;
+  }
+  .managed-frame #managed-signout-review dl > div + div {
+    margin-top: 6px;
+  }
+  .managed-frame #managed-signout-review dd {
+    margin: 0;
+    color: var(--managed-muted);
+  }
+  .managed-frame #managed-signout-review .trial-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 12px;
+  }
+  .managed-frame #managed-signout-review .trial-actions button {
+    width: 100%;
+    font-size: 14px;
   }
   .managed-frame .managed-workspace-content {
     padding: 12px 20px 24px;
