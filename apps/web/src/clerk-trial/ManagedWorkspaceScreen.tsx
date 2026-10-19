@@ -31,6 +31,7 @@ import {
   type FollowupReview,
 } from "./managed-workspace";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
+import { managedValuationResearchProps } from "./managed-valuation-research-props";
 import {
   ManagedWatchlistEditor,
   type ManagedWatchlistEditorHandle,
@@ -1072,20 +1073,10 @@ export function ManagedWorkspaceScreen({
                   annual={workspace.annual}
                   filings={workspace.filings}
                   eod={workspace.eod}
-                  valuation={workspace.valuation}
-                  valuationAssumptions={workspace.valuationAssumptions}
-                  valuationNoteActions={{
-                    prepare: (model, scenario, includePriceComparison) =>
-                      workspace.prepareValuationNote(
-                        discovery.research!.selection,
-                        model,
-                        scenario,
-                        includePriceComparison,
-                      ),
-                    isCurrent: (preview) =>
-                      workspace.valuationNotePreviewIsCurrent(preview),
-                    append: (preview) => workspace.appendValuationNote(preview),
-                  }}
+                  {...managedValuationResearchProps(
+                    workspace,
+                    discovery.research.selection,
+                  )}
                   companyNavigationState={workspace.getResearchCompanyNavigation(
                     discovery.research,
                   )}

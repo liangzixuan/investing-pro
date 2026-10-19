@@ -187,9 +187,16 @@ function createFixtureWorkspace(
   workspace.setView("discover");
   return workspace;
 }
-function fixture(initial = empty) {
-  let stored = { version: 1, payload: structuredClone(initial) };
-  const api: ManagedApi = {
+function explicitResourceApiRefusals(): Pick<
+  ManagedApi,
+  | "loadValuationAssumptions"
+  | "saveValuationAssumptions"
+  | "loadPortfolio"
+  | "savePortfolio"
+  | "loadFollowups"
+  | "saveFollowups"
+> {
+  return {
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),
@@ -216,6 +223,12 @@ function fixture(initial = empty) {
       .mockRejectedValue(
         new Error("Follow-ups require an explicit fixture action"),
       ),
+  };
+}
+function fixture(initial = empty) {
+  let stored = { version: 1, payload: structuredClone(initial) };
+  const api: ManagedApi = {
+    ...explicitResourceApiRefusals(),
     monetaryAnnouncements: vi
       .fn<ManagedApi["monetaryAnnouncements"]>()
       .mockRejectedValue(new Error("Unexpected announcements read")),

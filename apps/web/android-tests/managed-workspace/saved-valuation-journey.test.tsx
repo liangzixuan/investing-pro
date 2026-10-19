@@ -47,20 +47,18 @@ async function setup() {
 }
 function author(f: Awaited<ReturnType<typeof setup>>) {
   const { dcf, exit } = f.controls.expected;
-  for (const [key, value] of Object.entries(dcf.inputs)) {
-    if (key !== "scenarios")
-      f.workspace.valuation.setDcfField(key as DcfField, value as string);
-  }
-  for (const [key, value] of Object.entries(exit.inputs)) {
-    if (key !== "scenarios")
-      f.workspace.valuation.setExitField(key as ExitField, value as string);
-  }
+  const { scenarios: dcfScenarios, ...dcfFields } = dcf.inputs;
+  for (const [key, value] of Object.entries(dcfFields))
+    f.workspace.valuation.setDcfField(key as DcfField, value);
+  const { scenarios: exitScenarios, ...exitFields } = exit.inputs;
+  for (const [key, value] of Object.entries(exitFields))
+    f.workspace.valuation.setExitField(key as ExitField, value);
   for (const scenario of ["conservative", "base", "expansion"] as const) {
     f.workspace.valuation.setDcfScenario(
       scenario,
-      dcf.inputs.scenarios[scenario].annualCashFlowGrowthPercent,
+      dcfScenarios[scenario].annualCashFlowGrowthPercent,
     );
-    for (const [key, value] of Object.entries(exit.inputs.scenarios[scenario]))
+    for (const [key, value] of Object.entries(exitScenarios[scenario]))
       f.workspace.valuation.setExitScenario(
         scenario,
         key as ExitScenarioField,

@@ -4,16 +4,15 @@ export function ValuationLoadStageActions({
 }: {
   readonly view: ValuationAssumptionsView;
 }) {
-  const { model, saved, editor, ready, idle, editable, pendingReview } = view;
+  const { model, ready, canLoad, canStage } = view;
   return (
     <>
       <button
         id="managed-valuation-load"
         className="trial-secondary"
-        disabled={!idle || saved.uncertain || Boolean(pendingReview)}
+        disabled={!canLoad}
         onClick={() => {
-          if (ready() && idle && !saved.uncertain && !pendingReview)
-            void model.coordinator.load();
+          if (ready() && canLoad) void model.coordinator.load();
         }}
       >
         Load saved inputs
@@ -21,14 +20,9 @@ export function ValuationLoadStageActions({
       <button
         id="managed-valuation-stage-review"
         className="trial-secondary"
-        disabled={
-          !editable ||
-          !editor.editable ||
-          Boolean(editor.inputIssue) ||
-          !saved.draft
-        }
+        disabled={!canStage}
         onClick={() => {
-          if (ready() && editable) void model.prepareStage();
+          if (ready() && canStage) void model.prepareStage();
         }}
       >
         Review current inputs for staging
@@ -41,22 +35,14 @@ export function ValuationSaveActions({
 }: {
   readonly view: ValuationAssumptionsView;
 }) {
-  const {
-    model,
-    saved,
-    ready,
-    idle,
-    editable,
-    pendingReview,
-    canSave,
-    reviewDraft,
-  } = view;
+  const { model, saved, ready, canSave, canReview, canRecover, reviewDraft } =
+    view;
   return (
     <>
       <button
         id="managed-valuation-review"
         className="trial-secondary"
-        disabled={!editable || !saved.dirty || !model.canSavePayload()}
+        disabled={!canReview}
         onClick={() => {
           reviewDraft();
         }}
@@ -67,8 +53,10 @@ export function ValuationSaveActions({
         id="managed-valuation-save"
         disabled={!canSave}
         onClick={() => {
-          if (ready() && canSave && model.canSavePayload())
-            void model.coordinator.save();
+          if (!ready()) return;
+          if (!canSave) return;
+          if (!model.canSavePayload()) return;
+          void model.coordinator.save();
         }}
       >
         Save valuation inputs
@@ -76,10 +64,9 @@ export function ValuationSaveActions({
       {saved.uncertain && (
         <button
           id="managed-valuation-reconcile"
-          disabled={!idle || Boolean(pendingReview)}
+          disabled={!canRecover}
           onClick={() => {
-            if (ready() && idle && !pendingReview)
-              void model.coordinator.reconcile();
+            if (ready() && canRecover) void model.coordinator.reconcile();
           }}
         >
           Reconcile original valuation save

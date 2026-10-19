@@ -101,65 +101,55 @@ export function parseValuationAssumptionEntry(
   value: unknown,
 ): ValuationAssumptionEntry | null {
   try {
-    if (
-      !hasKeys(value, [
-        "catalogSnapshotSha256",
-        "listing",
-        "cik",
-        "dcf",
-        "exit",
-      ])
-    )
-      return null;
-    const context = captureEntryContext(value);
-    const dcf = captureModel(
-      value.dcf,
-      MANAGED_VALUATION_DCF_MODEL_VERSION,
-      dcfFields,
-      dcfScenarioFields,
-    );
-    const exit = captureModel(
-      value.exit,
-      MANAGED_VALUATION_EXIT_MODEL_VERSION,
-      exitFields,
-      exitScenarioFields,
-    );
-    if (context === null || dcf === null || exit === null) return null;
-    return Object.freeze({ ...context, dcf, exit });
+    return captureEntry(value);
   } catch {
     return null;
   }
 }
 
+function invalid(): never {
+  throw new TypeError("Invalid valuation assumptions");
+}
+function captureEntry(value: unknown): ValuationAssumptionEntry {
+  const entry = record(value, [
+    "catalogSnapshotSha256",
+    "listing",
+    "cik",
+    "dcf",
+    "exit",
+  ]);
+  const context = captureEntryContext(entry);
+  const dcf = captureModel(
+    entry.dcf,
+    MANAGED_VALUATION_DCF_MODEL_VERSION,
+    dcfFields,
+    dcfScenarioFields,
+  );
+  const exit = captureModel(
+    entry.exit,
+    MANAGED_VALUATION_EXIT_MODEL_VERSION,
+    exitFields,
+    exitScenarioFields,
+  );
+  return Object.freeze({ ...context, dcf, exit });
+}
+
 function captureEntryContext(
   value: Record<"catalogSnapshotSha256" | "listing" | "cik", unknown>,
-): Pick<
-  ValuationAssumptionEntry,
-  "catalogSnapshotSha256" | "listing" | "cik"
-> | null {
-  if (
-    typeof value.catalogSnapshotSha256 !== "string" ||
-    !/^sha256:[0-9a-f]{64}$/u.test(value.catalogSnapshotSha256)
-  )
-    return null;
-  if (
-    !hasKeys(value.listing, listingKeys) ||
-    !isWatchlistListingIdentity(value.listing)
-  )
-    return null;
-  if (!(
-    value.cik === null ||
-    (typeof value.cik === "string" && /^[0-9]{10}$/u.test(value.cik))
-  ))
-    return null;
-  const listingValue = value.listing;
+): Pick<ValuationAssumptionEntry, "catalogSnapshotSha256" | "listing" | "cik"> {
+  const digest = patternedString(
+    value.catalogSnapshotSha256,
+    /^sha256:[0-9a-f]{64}$/u,
+  );
+  const listingValue = record(value.listing, listingKeys);
+  if (!isWatchlistListingIdentity(listingValue)) invalid();
   const listing = Object.freeze(
     Object.fromEntries(listingKeys.map((key) => [key, listingValue[key]])),
   ) as ValuationAssumptionEntry["listing"];
   return {
-    catalogSnapshotSha256: value.catalogSnapshotSha256 as `sha256:${string}`,
+    catalogSnapshotSha256: digest as `sha256:${string}`,
     listing,
-    cik: value.cik,
+    cik: nullableCik(value.cik),
   };
 }
 
@@ -167,30 +157,22 @@ export function parseValuationAssumptionsPayload(
   value: unknown,
 ): ValuationAssumptionsPayload | null {
   try {
-    if (
-      !hasKeys(value, ["schemaVersion", "entries"]) ||
-      value.schemaVersion !== 1 ||
-      !isEntryArray(value.entries)
-    )
-      return null;
-    const entries: ValuationAssumptionEntry[] = [];
-    for (const item of value.entries) {
-      const entry = parseValuationAssumptionEntry(item);
-      if (entry === null) return null;
-      entries.push(entry);
-    }
-    if (
-      new Set(entries.map((entry) => entry.listing.listingId)).size !==
-      entries.length
-    )
-      return null;
-    return bounded(
-      { schemaVersion: 1 as const, entries: Object.freeze(entries) },
-      MANAGED_VALUATION_ASSUMPTIONS_LIMITS.payloadBytes,
-    );
+    return capturePayload(value);
   } catch {
     return null;
   }
+}
+
+function capturePayload(value: unknown): ValuationAssumptionsPayload {
+  const payload = record(value, ["schemaVersion", "entries"]);
+  if (payload.schemaVersion !== 1) invalid();
+  const entries = entryItems(payload.entries).map(captureEntry);
+  const identities = new Set(entries.map((entry) => entry.listing.listingId));
+  if (identities.size !== entries.length) invalid();
+  return bounded(
+    { schemaVersion: 1 as const, entries: Object.freeze(entries) },
+    MANAGED_VALUATION_ASSUMPTIONS_LIMITS.payloadBytes,
+  );
 }
 
 /** Canonical field order and entry order bind the captured save command. */
@@ -207,49 +189,50 @@ export function parseManagedValuationAssumptionsCommand(
   value: unknown,
 ): ManagedValuationAssumptionsCommand | null {
   try {
-    if (
-      !hasKeys(value, ["expectedVersion", "idempotencyKey", "payload"]) ||
-      !isVersion(value.expectedVersion) ||
-      value.expectedVersion >= Number.MAX_SAFE_INTEGER ||
-      typeof value.idempotencyKey !== "string" ||
-      !commandKey.test(value.idempotencyKey)
-    )
-      return null;
-    const payload = parseValuationAssumptionsPayload(value.payload);
-    return payload === null
-      ? null
-      : bounded(
-          {
-            expectedVersion: value.expectedVersion,
-            idempotencyKey: value.idempotencyKey,
-            payload,
-          },
-          MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
-        );
+    return captureCommand(value);
   } catch {
     return null;
   }
+}
+
+function captureCommand(value: unknown): ManagedValuationAssumptionsCommand {
+  const command = record(value, [
+    "expectedVersion",
+    "idempotencyKey",
+    "payload",
+  ]);
+  const expectedVersion = version(command.expectedVersion);
+  if (expectedVersion >= Number.MAX_SAFE_INTEGER) invalid();
+  const idempotencyKey = patternedString(command.idempotencyKey, commandKey);
+  const payload = capturePayload(command.payload);
+  return bounded(
+    { expectedVersion, idempotencyKey, payload },
+    MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
+  );
 }
 
 export function parseManagedValuationAssumptions(
   value: unknown,
 ): ManagedValuationAssumptionsDto | null {
   try {
-    if (!hasKeys(value, ["version", "payload"]) || !isVersion(value.version))
-      return null;
-    const payload = parseValuationAssumptionsPayload(value.payload);
-    if (
-      payload === null ||
-      (value.version === 0 && payload.entries.length !== 0)
-    )
-      return null;
-    return bounded(
-      { version: value.version, payload },
-      MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
-    );
+    return captureRead(value);
   } catch {
     return null;
   }
+}
+
+function captureRead(value: unknown): ManagedValuationAssumptionsDto {
+  const saved = record(value, ["version", "payload"]);
+  const savedVersion = version(saved.version);
+  const payload = capturePayload(saved.payload);
+  if (savedVersion === 0) requireEmptyPayload(payload);
+  return bounded(
+    { version: savedVersion, payload },
+    MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
+  );
+}
+function requireEmptyPayload(payload: ValuationAssumptionsPayload): void {
+  if (payload.entries.length !== 0) invalid();
 }
 
 export function parseManagedValuationAssumptionsReceipt(
@@ -257,25 +240,18 @@ export function parseManagedValuationAssumptionsReceipt(
   capturedCommand: ManagedValuationAssumptionsCommand,
 ): ManagedValuationAssumptionsReceiptDto | null {
   try {
-    const command = parseManagedValuationAssumptionsCommand(capturedCommand);
-    if (
-      command === null ||
-      !hasKeys(value, ["version", "payload", "replayed"]) ||
-      typeof value.replayed !== "boolean"
-    )
-      return null;
-    const saved = parseManagedValuationAssumptions({
-      version: value.version,
-      payload: value.payload,
+    const command = captureCommand(capturedCommand);
+    const receipt = record(value, ["version", "payload", "replayed"]);
+    if (typeof receipt.replayed !== "boolean") invalid();
+    const saved = captureRead({
+      version: receipt.version,
+      payload: receipt.payload,
     });
-    if (
-      saved === null ||
-      saved.version !== command.expectedVersion + 1 ||
-      JSON.stringify(saved.payload) !== JSON.stringify(command.payload)
-    )
-      return null;
+    if (saved.version !== command.expectedVersion + 1) invalid();
+    if (JSON.stringify(saved.payload) !== JSON.stringify(command.payload))
+      invalid();
     return bounded(
-      { ...saved, replayed: value.replayed },
+      { ...saved, replayed: receipt.replayed },
       MANAGED_VALUATION_ASSUMPTIONS_LIMITS.envelopeBytes,
     );
   } catch {
@@ -283,25 +259,23 @@ export function parseManagedValuationAssumptionsReceipt(
   }
 }
 
-function raw(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length <= 1024 &&
-    [...value].length <= MANAGED_VALUATION_ASSUMPTIONS_LIMITS.inputCodePoints &&
-    !/[\uD800-\uDFFF]/u.test(value)
-  );
+function raw(value: unknown): string {
+  if (typeof value !== "string") invalid();
+  if (value.length > 1024) invalid();
+  if ([...value].length > MANAGED_VALUATION_ASSUMPTIONS_LIMITS.inputCodePoints)
+    invalid();
+  if (/[\uD800-\uDFFF]/u.test(value)) invalid();
+  return value;
 }
 function captureRawMap<const Keys extends readonly string[]>(
   value: unknown,
   keys: Keys,
-): Readonly<Record<Keys[number], string>> | null {
-  if (
-    !hasKeys(value, keys) ||
-    !keys.every((key) => raw(value[key as Keys[number]]))
-  )
-    return null;
+): Readonly<Record<Keys[number], string>> {
+  const source = record(value, keys);
   return Object.freeze(
-    Object.fromEntries(keys.map((key) => [key, value[key as Keys[number]]])),
+    Object.fromEntries(
+      keys.map((key) => [key, raw(source[key as Keys[number]])]),
+    ),
   ) as Readonly<Record<Keys[number], string>>;
 }
 function captureModel<
@@ -316,20 +290,18 @@ function captureModel<
 ): Readonly<{
   modelVersion: Version;
   inputs: Inputs<Fields[number], ScenarioFields[number]>;
-}> | null {
-  if (
-    !hasKeys(value, ["modelVersion", "inputs"]) ||
-    value.modelVersion !== version ||
-    !hasKeys(value.inputs, [...fields, "scenarios"])
-  )
-    return null;
-  const inputs = value.inputs as Record<string, unknown>;
+}> {
+  const model = record(value, ["modelVersion", "inputs"]);
+  if (model.modelVersion !== version) invalid();
+  const inputs: Record<string, unknown> = record(model.inputs, [
+    ...fields,
+    "scenarios",
+  ]);
   const fieldsOnly = Object.fromEntries(
     fields.map((key) => [key, inputs[key]]),
   );
   const captured = captureRawMap(fieldsOnly, fields);
   const nested = captureScenarios(inputs.scenarios, scenarioFields);
-  if (captured === null || nested === null) return null;
   return Object.freeze({
     modelVersion: version,
     inputs: Object.freeze({ ...captured, scenarios: nested }),
@@ -338,57 +310,60 @@ function captureModel<
 function captureScenarios<const Keys extends readonly string[]>(
   value: unknown,
   keys: Keys,
-): Readonly<Record<Scenario, Readonly<Record<Keys[number], string>>>> | null {
-  if (!hasKeys(value, scenarios)) return null;
-  const captured = scenarios.map((name) => captureRawMap(value[name], keys));
-  if (captured.some((item) => item === null)) return null;
+): Readonly<Record<Scenario, Readonly<Record<Keys[number], string>>>> {
+  const source = record(value, scenarios);
+  const captured = scenarios.map((name) => captureRawMap(source[name], keys));
   return Object.freeze(
     Object.fromEntries(scenarios.map((name, index) => [name, captured[index]])),
   ) as Readonly<Record<Scenario, Readonly<Record<Keys[number], string>>>>;
 }
-function hasKeys<const Keys extends readonly string[]>(
+function record<const Keys extends readonly string[]>(
   value: unknown,
   keys: Keys,
-): value is Record<Keys[number], unknown> {
-  if (
-    !value ||
-    typeof value !== "object" ||
-    Object.getPrototypeOf(value) !== Object.prototype
-  )
-    return false;
-  return (
-    Reflect.ownKeys(value).length === keys.length &&
-    keys.every((key) => {
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      return (
-        descriptor?.enumerable === true && Object.hasOwn(descriptor, "value")
-      );
-    })
+): Record<Keys[number], unknown> {
+  const source = ordinaryRecord(value);
+  if (Reflect.ownKeys(source).length !== keys.length) invalid();
+  for (const key of keys) dataProperty(source, key);
+  return source as Record<Keys[number], unknown>;
+}
+function ordinaryRecord(value: unknown): object {
+  if (value === null) invalid();
+  if (typeof value !== "object") invalid();
+  if (Object.getPrototypeOf(value) !== Object.prototype) invalid();
+  return value;
+}
+function dataProperty(value: object, key: PropertyKey): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  if (descriptor?.enumerable !== true) invalid();
+  if (!Object.hasOwn(descriptor, "value")) invalid();
+  return descriptor.value;
+}
+function entryItems(value: unknown): readonly unknown[] {
+  if (!Array.isArray(value)) invalid();
+  if (Object.getPrototypeOf(value) !== Array.prototype) invalid();
+  if (value.length > MANAGED_VALUATION_ASSUMPTIONS_LIMITS.entries) invalid();
+  if (Reflect.ownKeys(value).length !== value.length + 1) invalid();
+  return Array.from({ length: value.length }, (_, index) =>
+    dataProperty(value, String(index)),
   );
 }
-function isEntryArray(value: unknown): value is readonly unknown[] {
-  if (
-    !Array.isArray(value) ||
-    Object.getPrototypeOf(value) !== Array.prototype ||
-    value.length > MANAGED_VALUATION_ASSUMPTIONS_LIMITS.entries ||
-    Reflect.ownKeys(value).length !== value.length + 1
-  )
-    return false;
-  for (let index = 0; index < value.length; index++) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, index);
-    if (!descriptor?.enumerable || !Object.hasOwn(descriptor, "value"))
-      return false;
-  }
-  return true;
+function patternedString(value: unknown, pattern: RegExp): string {
+  if (typeof value !== "string") invalid();
+  if (!pattern.test(value)) invalid();
+  return value;
 }
-function isVersion(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+function nullableCik(value: unknown): string | null {
+  if (value === null) return null;
+  return patternedString(value, /^[0-9]{10}$/u);
 }
-function bounded<T extends object>(
-  value: T,
-  maximum: number,
-): Readonly<T> | null {
-  return new TextEncoder().encode(JSON.stringify(value)).byteLength <= maximum
-    ? Object.freeze(value)
-    : null;
+function version(value: unknown): number {
+  if (typeof value !== "number") invalid();
+  if (!Number.isSafeInteger(value)) invalid();
+  if (value < 0) invalid();
+  return value;
+}
+function bounded<T extends object>(value: T, maximum: number): Readonly<T> {
+  if (new TextEncoder().encode(JSON.stringify(value)).byteLength > maximum)
+    invalid();
+  return Object.freeze(value);
 }

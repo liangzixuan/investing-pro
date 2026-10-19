@@ -159,6 +159,33 @@ function catalogEntry(
   });
 }
 
+function stageResponseMatches(
+  value: unknown,
+  request: Parameters<ManagedApi["resolve"]>[0],
+  entry: Entry,
+): boolean {
+  const resolved = parseManagedCatalogResolveResponse(value, request);
+  if (!resolved) return false;
+  const listing = resolved.results[0]?.listing;
+  if (!listing) return false;
+  return sameListing(entry.listing, listing);
+}
+function catalogReviewFromResponse(
+  value: unknown,
+  request: Parameters<ManagedApi["resolve"]>[0],
+  draft: Payload,
+  catalog: ManagedCatalogSnapshotDto,
+): ValuationCatalogReview | null {
+  const result = parseManagedCatalogResolveResponse(value, request);
+  if (!result) return null;
+  const entries = Object.freeze(
+    result.results.map((row, index) =>
+      catalogEntry(draft.entries[index]!, row.listing, catalog),
+    ),
+  );
+  return Object.freeze({ draft, catalog, entries });
+}
+
 /** Explicit authored-input persistence; source reads and calculation stay independent. */
 export class ManagedValuationAssumptions {
   readonly coordinator: SaveCoordinator<Payload>;
@@ -462,9 +489,7 @@ export class ManagedValuationAssumptions {
       if (!this.reviewCurrent(operation, draft, catalog)) return;
       const result = await this.api.resolve(request, operation.signal);
       if (!this.reviewCurrent(operation, draft, catalog)) return;
-      const resolved = parseManagedCatalogResolveResponse(result, request);
-      const listing = resolved?.results[0]?.listing;
-      if (!listing || !sameListing(capture.entry.listing, listing)) {
+      if (!stageResponseMatches(result, request, capture.entry)) {
         this.update({
           message:
             "This listing no longer matches the current catalog identity. Your drafts are unchanged.",
@@ -577,16 +602,9 @@ export class ManagedValuationAssumptions {
         ? await this.api.resolve(request, operation.signal)
         : { snapshotSha256: catalog.snapshotSha256, results: [] };
       if (!this.reviewCurrent(operation, draft, catalog)) return;
-      const result = parseManagedCatalogResolveResponse(raw, request);
-      if (!result) throw new TrialApiError("invalid_response");
-      const entries = Object.freeze(
-        result.results.map((row, index) =>
-          catalogEntry(draft.entries[index]!, row.listing, catalog),
-        ),
-      );
-      this.update({
-        catalogReview: Object.freeze({ draft, catalog, entries }),
-      });
+      const review = catalogReviewFromResponse(raw, request, draft, catalog);
+      if (!review) throw new TrialApiError("invalid_response");
+      this.update({ catalogReview: review });
     } catch (error) {
       if (this.reviewCurrent(operation, draft, catalog))
         this.reviewError(error);

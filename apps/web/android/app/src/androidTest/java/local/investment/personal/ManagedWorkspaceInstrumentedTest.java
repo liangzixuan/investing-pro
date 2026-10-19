@@ -109,9 +109,10 @@ public class ManagedWorkspaceInstrumentedTest {
         "fed-announcements",
         "annual-comparison",
         "watchlist-draft-file");
-    private static final java.util.Map<String, String> DRAFT_FILE_SCENARIOS = java.util.Map.of(
+    private static final java.util.Map<String, String> ADDITIONAL_FIXTURE_SCENARIOS = java.util.Map.of(
         "watchlistDraftFileUsesSystemExportImportAndExplicitRestore", "watchlist-draft-file",
-        "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file");
+        "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file",
+        "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation");
     private static final String ANNUAL_COMPARISON_NOTE =
         "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
         "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
@@ -319,8 +320,6 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("annual-financial-review");
         if (testName.getMethodName().equals("authoredValuationPreviewSaveReportAndRetirementPreserveBoundaries"))
             selectFixtureScenario("authored-valuation");
-        if (testName.getMethodName().equals("savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation"))
-            selectFixtureScenario("saved-valuation");
         if (testName.getMethodName().equals("valuationPriceComparisonPreviewSaveFreshReadAndReportPreserveSources"))
             selectFixtureScenario("valuation-price");
         if (testName.getMethodName().equals("annualBalanceSheetCapturesExactTotalsAndRetiresLateRefresh"))
@@ -370,7 +369,7 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("markets-day-view");
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("watchlist-export");
-        selectDraftFileFixtureScenario();
+        selectAdditionalFixtureScenario();
         if (testName.getMethodName().equals("researchFollowupsSaveResearchAndCompleteAcrossSessions") ||
             testName.getMethodName().equals("dailyResearchReviewKeepsDraftAndCompletesThroughResearch") ||
             testName.getMethodName().equals("researchFollowupsReplayAndSessionRetirementFenceLateReplies"))
@@ -8669,8 +8668,8 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     /** Fixed metadata in this test's copied HTML is read before the fixture's sole React mount. */
-    private void selectDraftFileFixtureScenario() throws IOException {
-        String selected = DRAFT_FILE_SCENARIOS.getOrDefault(testName.getMethodName(), "");
+    private void selectAdditionalFixtureScenario() throws IOException {
+        String selected = ADDITIONAL_FIXTURE_SCENARIOS.getOrDefault(testName.getMethodName(), "");
         if (!selected.isEmpty()) selectFixtureScenario(selected);
     }
 

@@ -25,6 +25,12 @@ export interface ValuationAssumptionsView {
   readonly navigationPending: boolean;
   readonly reviewCurrent: boolean;
   readonly canSave: boolean;
+  readonly canLoad: boolean;
+  readonly canStage: boolean;
+  readonly canReview: boolean;
+  readonly canRecover: boolean;
+  readonly canChooseConflict: boolean;
+  readonly canReviewCatalog: boolean;
   readonly reviewDraft: () => void;
 }
 type Review = {
@@ -57,13 +63,60 @@ function useCommittedRender() {
   });
   return () => live.current === rendered;
 }
-function saveEnabled(
+function reviewAllowed(
   model: ManagedValuationAssumptions,
   saved: ValuationAssumptionsView["saved"],
   editable: boolean,
-  reviewed: boolean,
 ): boolean {
-  return editable && reviewed && saved.dirty && model.canSavePayload();
+  return editable && saved.dirty && model.canSavePayload();
+}
+function loadAllowed(
+  view: Pick<ValuationAssumptionsView, "idle" | "saved" | "pendingReview">,
+): boolean {
+  return view.idle && !view.saved.uncertain && !view.pendingReview;
+}
+function stageAllowed(
+  view: Pick<ValuationAssumptionsView, "editable" | "editor" | "saved">,
+): boolean {
+  return (
+    view.editable &&
+    view.editor.editable &&
+    !view.editor.inputIssue &&
+    view.saved.draft !== null
+  );
+}
+function resourceIdle(
+  saved: ValuationAssumptionsView["saved"],
+  state: ValuationAssumptionsView["state"],
+  navigationPending: boolean,
+): boolean {
+  return saved.phase === "idle" && !navigationPending && !state.reviewing;
+}
+function currentViewGuard(
+  props: ManagedValuationAssumptionsProps,
+  snapshots: Pick<ValuationAssumptionsView, "state" | "saved" | "editor">,
+  committed: () => boolean,
+): () => boolean {
+  return () =>
+    committed() &&
+    !props.navigationPending &&
+    props.model.getSnapshot() === snapshots.state &&
+    props.model.coordinator.getSnapshot() === snapshots.saved &&
+    props.workbench.getSnapshot() === snapshots.editor;
+}
+function useDraftReview(
+  model: ManagedValuationAssumptions,
+  saved: ValuationAssumptionsView["saved"],
+  ready: () => boolean,
+) {
+  const [reviewed, setReviewed] = useState<Review>(null);
+  const reviewDraft = () => {
+    if (!ready()) return;
+    if (!model.canSavePayload()) return;
+    if (!saved.draft) return;
+    setReviewed({ draft: saved.draft, baseVersion: saved.baseVersion });
+  };
+  return { reviewDraft, reviewCurrent: isReviewed(saved, reviewed) };
 }
 
 export function useValuationAssumptionsView({
@@ -87,16 +140,16 @@ export function useValuationAssumptionsView({
     workbench.getSnapshot,
   );
   const committed = useCommittedRender();
-  const [reviewed, setReviewed] = useState<Review>(null);
-  const ready = () =>
-    committed() &&
-    !navigationPending &&
-    model.getSnapshot() === state &&
-    model.coordinator.getSnapshot() === saved &&
-    workbench.getSnapshot() === editor;
-  const idle = saved.phase === "idle" && !navigationPending && !state.reviewing;
+  const ready = currentViewGuard(
+    { model, workbench, navigationPending },
+    { state, saved, editor },
+    committed,
+  );
+  const review = useDraftReview(model, saved, ready);
+  const idle = resourceIdle(saved, state, navigationPending);
   const editable = idle && model.canEdit();
-  const reviewCurrent = isReviewed(saved, reviewed);
+  const hasReview = pendingReview(state);
+  const canReview = reviewAllowed(model, saved, editable);
   return {
     model,
     state,
@@ -106,12 +159,14 @@ export function useValuationAssumptionsView({
     idle,
     editable,
     navigationPending,
-    reviewCurrent,
-    pendingReview: pendingReview(state),
-    canSave: saveEnabled(model, saved, editable, reviewCurrent),
-    reviewDraft: () => {
-      if (ready() && model.canSavePayload() && saved.draft)
-        setReviewed({ draft: saved.draft, baseVersion: saved.baseVersion });
-    },
+    ...review,
+    pendingReview: hasReview,
+    canSave: review.reviewCurrent && canReview,
+    canLoad: loadAllowed({ idle, saved, pendingReview: hasReview }),
+    canStage: stageAllowed({ editable, editor, saved }),
+    canReview,
+    canRecover: idle && !hasReview,
+    canChooseConflict: idle && saved.latestLoaded,
+    canReviewCatalog: editable && !hasReview,
   };
 }

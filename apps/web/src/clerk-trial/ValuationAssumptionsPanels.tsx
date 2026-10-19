@@ -1,12 +1,15 @@
-import {
-  membershipMatchesResult,
-  type ValuationAssumptionsPayload,
-} from "@research-cockpit/contracts";
+import { type ValuationAssumptionsPayload } from "@research-cockpit/contracts";
 import {
   ValuationAssumptionReview,
   ValuationEditorReview,
 } from "./ValuationAssumptionReview";
 import type { ValuationAssumptionsView } from "./useValuationAssumptionsView";
+import {
+  ValuationConflictChoices,
+  ValuationDraftEntry,
+  ValuationCatalogIdentityRow,
+  ValuationConfirmedEntry,
+} from "./ValuationAssumptionsEntries";
 export function CompletePayload({
   payload,
   label,
@@ -36,7 +39,7 @@ export function ValuationConflictReview({
 }: {
   readonly view: ValuationAssumptionsView;
 }) {
-  const { model, saved, idle, ready } = view;
+  const { saved } = view;
   return (
     <>
       {saved.conflict && (
@@ -61,28 +64,7 @@ export function ValuationConflictReview({
               payload={saved.draft}
             />
           )}
-          <div className="trial-actions">
-            <button
-              id="managed-valuation-use-saved-version"
-              disabled={!idle || !saved.latestLoaded}
-              onClick={() => {
-                if (ready() && idle && saved.latestLoaded)
-                  model.coordinator.useSaved();
-              }}
-            >
-              Use saved version
-            </button>
-            <button
-              id="managed-valuation-keep-draft"
-              disabled={!idle || !saved.latestLoaded}
-              onClick={() => {
-                if (ready() && idle && saved.latestLoaded)
-                  model.coordinator.keepDraft();
-              }}
-            >
-              Keep valuation draft
-            </button>
-          </div>
+          <ValuationConflictChoices view={view} />
         </section>
       )}
     </>
@@ -184,33 +166,10 @@ export function ValuationCatalogReview({
       {state.catalogReview && (
         <section aria-label="Valuation catalog identity review">
           {state.catalogReview.entries.map((row) => (
-            <section key={row.previous.listing.listingId}>
-              <p>
-                {row.status === "current"
-                  ? "Current identity"
-                  : row.status === "update"
-                    ? "Metadata update available"
-                    : "Identity refused"}{" "}
-                · {row.status}
-              </p>
-              <div className="managed-valuation-comparison">
-                <section>
-                  <h5>Previous entry</h5>
-                  <ValuationAssumptionReview entry={row.previous} />
-                </section>
-                <section>
-                  <h5>Reviewed entry</h5>
-                  {row.entry ? (
-                    <ValuationAssumptionReview entry={row.entry} />
-                  ) : (
-                    <p>
-                      No accepted current identity. Remove this draft entry to
-                      continue.
-                    </p>
-                  )}
-                </section>
-              </div>
-            </section>
+            <ValuationCatalogIdentityRow
+              key={row.previous.listing.listingId}
+              row={row}
+            />
           ))}
           <button
             id="managed-valuation-apply-catalog"
@@ -233,7 +192,7 @@ export function ValuationDraftEntries({
 }: {
   readonly view: ValuationAssumptionsView;
 }) {
-  const { model, saved, editable, pendingReview, ready } = view;
+  const { model, saved, ready, canReviewCatalog } = view;
   return (
     <>
       {saved.draft && (
@@ -245,31 +204,18 @@ export function ValuationDraftEntries({
             then Save before using the updated saved inputs.
           </p>
           {saved.draft.entries.map((entry) => (
-            <section key={entry.listing.listingId}>
-              <details>
-                <summary>
-                  {entry.listing.symbol} · {entry.listing.listingId}
-                </summary>
-                <ValuationAssumptionReview entry={entry} />
-              </details>
-              <button
-                className="trial-secondary"
-                disabled={!editable}
-                onClick={() => {
-                  if (ready()) model.remove(entry);
-                }}
-              >
-                Remove {entry.listing.symbol} from valuation draft
-              </button>
-            </section>
+            <ValuationDraftEntry
+              key={entry.listing.listingId}
+              entry={entry}
+              view={view}
+            />
           ))}
           <button
             id="managed-valuation-catalog-review"
             className="trial-secondary"
-            disabled={!editable || Boolean(pendingReview)}
+            disabled={!canReviewCatalog}
             onClick={() => {
-              if (ready() && editable && !pendingReview)
-                void model.reviewCatalog();
+              if (ready() && canReviewCatalog) void model.reviewCatalog();
             }}
           >
             Review valuation catalog identities
@@ -285,7 +231,7 @@ export function ValuationSavedEntries({
 }: {
   readonly view: ValuationAssumptionsView;
 }) {
-  const { model, state, saved, editor, editable, ready } = view;
+  const { saved } = view;
   return (
     <>
       {saved.saved && (
@@ -299,34 +245,13 @@ export function ValuationSavedEntries({
           {saved.saved.payload.entries.length === 0 && (
             <p>No confirmed saved inputs.</p>
           )}
-          {saved.saved.payload.entries.map((entry) => {
-            const matching =
-              editor.context !== null &&
-              entry.catalogSnapshotSha256 === state.catalogSnapshotSha256 &&
-              membershipMatchesResult(
-                { ...entry.listing, note: "" },
-                editor.context.listing,
-              );
-            return (
-              <section key={entry.listing.listingId}>
-                <details>
-                  <summary>
-                    Saved {entry.listing.symbol} · {entry.listing.listingId}
-                  </summary>
-                  <ValuationAssumptionReview entry={entry} />
-                </details>
-                <button
-                  className="trial-secondary"
-                  disabled={!editable || !matching}
-                  onClick={() => {
-                    if (ready() && matching) model.reviewSavedInputs(entry);
-                  }}
-                >
-                  Review saved inputs for {entry.listing.symbol}
-                </button>
-              </section>
-            );
-          })}
+          {saved.saved.payload.entries.map((entry) => (
+            <ValuationConfirmedEntry
+              key={entry.listing.listingId}
+              entry={entry}
+              view={view}
+            />
+          ))}
         </section>
       )}
     </>
