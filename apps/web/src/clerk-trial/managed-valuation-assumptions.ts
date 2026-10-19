@@ -175,9 +175,9 @@ function catalogReviewFromResponse(
   request: Parameters<ManagedApi["resolve"]>[0],
   draft: Payload,
   catalog: ManagedCatalogSnapshotDto,
-): ValuationCatalogReview | null {
+): ValuationCatalogReview {
   const result = parseManagedCatalogResolveResponse(value, request);
-  if (!result) return null;
+  if (!result) throw new TrialApiError("invalid_response");
   const entries = Object.freeze(
     result.results.map((row, index) =>
       catalogEntry(draft.entries[index]!, row.listing, catalog),
@@ -603,7 +603,6 @@ export class ManagedValuationAssumptions {
         : { snapshotSha256: catalog.snapshotSha256, results: [] };
       if (!this.reviewCurrent(operation, draft, catalog)) return;
       const review = catalogReviewFromResponse(raw, request, draft, catalog);
-      if (!review) throw new TrialApiError("invalid_response");
       this.update({ catalogReview: review });
     } catch (error) {
       if (this.reviewCurrent(operation, draft, catalog))
