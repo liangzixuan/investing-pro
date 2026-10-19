@@ -503,6 +503,41 @@ describe("cancel and file reselection", () => {
 });
 
 describe("synchronous review-clear observers", () => {
+  it.each(["cancel", "read_then_cancel"] as const)(
+    "does not restore after a newer %s during the idle notification",
+    async (action) => {
+      const f = await fixture();
+      await inspect(f);
+      const before = draft(f),
+        selected = file((await document(f, "Cancelled newer file")).text);
+      let cancelled = false;
+      const pending: Promise<void>[] = [];
+      cleanup.push(
+        f.recovery.subscribe(() => {
+          const state = f.recovery.getSnapshot();
+          if (cancelled) return;
+          if (state.phase !== "idle") return;
+          if (state.preview !== null) return;
+          cancelled = true;
+          if (action === "read_then_cancel")
+            pending.push(f.recovery.readFile(selected));
+          f.recovery.cancel();
+        }),
+      );
+      expect(f.recovery.restoreDraft()).toBe(false);
+      expect(cancelled).toBe(true);
+      await Promise.all(pending);
+      expect(draft(f)).toBe(before);
+      expect(f.recovery.getSnapshot()).toMatchObject({
+        phase: "idle",
+        preview: null,
+      });
+      expect(f.store.saved.payload).toEqual(payload());
+      expect(f.save).not.toHaveBeenCalled();
+      expect(f.api.load).toHaveBeenCalledOnce();
+      expect(f.api.resolve).not.toHaveBeenCalled();
+    },
+  );
   it("refuses restoration when an idle notification authors a newer draft", async () => {
     const f = await fixture();
     await inspect(f);

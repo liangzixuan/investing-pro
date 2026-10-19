@@ -1506,8 +1506,11 @@ public class ManagedWorkspaceInstrumentedTest {
             new WatchlistSystemPicker().saveToInventedRoot();
             awaitPage("retirement fences the late native chooser and clears local notes",
                 DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && " +
+                DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false && " +
+                "JSON.parse(document.querySelector('#fixture-draft-file-protocol').textContent).choices === 2 && " +
                 "JSON.parse(document.querySelector('#fixture-draft-file-protocol').textContent).writes === 1 && " +
-                "document.querySelector('#managed-watchlist-draft-files input[type=file]')?.disabled === true");
+                "document.querySelector('#managed-watchlist-draft-files') === null && " +
+                "document.querySelector('[data-managed-note-listing-id]') === null");
             WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
             assertEquals(2, outputs.length);
             long empty = java.util.Arrays.stream(outputs).filter(item -> item.size == 0).count();

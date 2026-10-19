@@ -75,6 +75,7 @@ export class ManagedWatchlistDraftRecovery {
   private readonly unsubscribers: (() => void)[];
   private scope: string | null = null;
   private operation: Operation | null = null;
+  private transition = {};
   private disposed = false;
 
   constructor(private readonly options: Options) {
@@ -166,6 +167,8 @@ export class ManagedWatchlistDraftRecovery {
     return this.operation === null || phase === "review";
   }
   private clear(message: string, retired = false) {
+    const transition = {};
+    this.transition = transition;
     const operation = this.operation;
     this.operation = null;
     operation?.controller.abort();
@@ -176,6 +179,7 @@ export class ManagedWatchlistDraftRecovery {
       currentSavedVersion: null,
       message,
     });
+    return transition;
   }
   reconcile = () => {
     if (!this.live()) {
@@ -188,8 +192,9 @@ export class ManagedWatchlistDraftRecovery {
       );
     } else this.publish({});
   };
-  cancel = () =>
+  cancel = () => {
     this.clear("File review cancelled. Your current draft is unchanged.");
+  };
   private begin(kind: Operation["kind"]): Operation | null {
     const context = this.context(kind === "read");
     if (!context || !this.scope || this.operation) return null;
@@ -322,7 +327,8 @@ export class ManagedWatchlistDraftRecovery {
       this.reconcile();
       return false;
     }
-    this.clear("");
+    const transition = this.clear("");
+    if (this.transition !== transition) return false;
     if (this.operation) return this.changedBeforeRestore();
     if (!this.sameContext(operation)) return this.changedBeforeRestore();
     const accepted = this.options.workspace.restoreWatchlistFileDraft(
@@ -338,6 +344,7 @@ export class ManagedWatchlistDraftRecovery {
     return restored;
   }
   dispose() {
+    this.transition = {};
     this.operation?.controller.abort();
     this.operation = null;
     this.scope = null;

@@ -115,6 +115,21 @@ function fixture() {
   };
 }
 
+function holdNativeChoice(plugin: InvestmentWatchlistDraftFilePlugin) {
+  let resolve!: (value: Awaited<ReturnType<typeof plugin.choose>>) => void;
+  const pending = new Promise<Awaited<ReturnType<typeof plugin.choose>>>(
+    (done) => {
+      resolve = done;
+    },
+  );
+  vi.mocked(plugin.choose).mockReturnValueOnce(pending);
+  return () =>
+    resolve({
+      status: "chosen",
+      handle: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    });
+}
+
 describe("native draft file fixture observes the real adapter contract", () => {
   it("records only a completed exact write and bounded call counts", async () => {
     const f = fixture();
@@ -185,6 +200,67 @@ describe("native draft file fixture observes the real adapter contract", () => {
     ).resolves.toBe("cancelled");
     expect(f.native.getSnapshot()).toEqual({ choices: 2, writes: 0, text: "" });
     expect(f.plugin.write).toHaveBeenCalledOnce();
+  });
+  it("keeps the first captured write when the real workspace session retires during a second chooser", async () => {
+    const f = fixture();
+    const api = await createFixture("watchlist-draft-file");
+    const workspace = await startDraftWorkspace(
+      api,
+      "invented-retirement-session",
+    );
+    workspace.setView("watchlist");
+    workspace.note("listing-zero", "Unconfirmed file draft");
+    const controller = new ManagedWatchlistDraftRecovery({
+      workspace,
+      accountScope: Promise.resolve(f.document.accountScope),
+      delivery: f.native.delivery,
+      routeActive: () => true,
+      now: () => f.document.capturedAt,
+    });
+    try {
+      await vi.waitFor(() =>
+        expect(controller.getSnapshot().canExport).toBe(true),
+      );
+      await controller.exportDraft();
+      const first = f.native.getSnapshot();
+      expect(first).toMatchObject({ choices: 1, writes: 1 });
+      expect(first.text).toContain("Unconfirmed file draft");
+      workspace.note("listing-zero", "Other account local draft");
+      const settleChoice = holdNativeChoice(f.plugin);
+      f.native.armRetirement(() => workspace.coordinator.retire());
+      const pending = controller.exportDraft();
+      expect(workspace.coordinator.getSnapshot()).toMatchObject({
+        phase: "retired",
+        draft: null,
+        baseVersion: null,
+        dirty: false,
+      });
+      expect(workspace.sessionOwner.getSnapshot().phase).toBe("retired");
+      expect(controller.getSnapshot()).toMatchObject({
+        phase: "retired",
+        canExport: false,
+        canImport: false,
+      });
+      settleChoice();
+      await pending;
+      expect(f.native.getSnapshot()).toEqual({
+        choices: 2,
+        writes: 1,
+        text: first.text,
+      });
+      expect(f.plugin.write).toHaveBeenCalledOnce();
+      expect(f.plugin.cancel).toHaveBeenCalledTimes(2);
+      expect(api.getSnapshot()).toMatchObject({
+        load: 1,
+        status: 1,
+        marketsResolve: 1,
+        resolve: 0,
+        save: 0,
+        token: 0,
+      });
+    } finally {
+      controller.dispose();
+    }
   });
 });
 

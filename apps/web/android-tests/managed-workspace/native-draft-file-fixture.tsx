@@ -60,7 +60,10 @@ export function createNativeDraftFileFixture(
         <p>
           Invented data only. File selection uses the external system picker.
         </p>
-        <pre id="fixture-draft-file-protocol">
+        <pre
+          id="fixture-draft-file-protocol"
+          style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+        >
           {JSON.stringify(diagnostics)}
         </pre>
         <button
