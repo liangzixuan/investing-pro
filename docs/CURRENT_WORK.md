@@ -51,12 +51,21 @@ Coherent company research is merged through PR199 at `abf1646`. Its PR and main 
 were reviewed and reused for the identical main tree. Expanded Filings delivery
 remains separate; the live API still admits three Filings issuers.
 
-The active source candidate adds explicit saved valuation inputs: Load,
+PR200 merges explicit saved valuation inputs at `aa27ebdd`: Load,
 complete input review, Stage, independent Review and Save, then fresh-session
-read, complete comparison, explicit Use and Calculate. The
+read, complete comparison, explicit Use and Calculate. Its PR checks pass,
+including 59 synthetic Android cases and review of four retained screens.
+Automatic main checks and their source proof remain under review. The
 [valuation guide](MANAGED_VALUATION_WORKBENCH.md) defines the workflow and bounds.
 The fourth saved resource defaults to disabled on the server. No new live
 storage, provisioning, persistence qualification or release is accepted yet.
+
+The [private valuation storage proof](MANAGED_VALUATION_STORAGE_PROOF.md) prepares
+the next storage layer with invented identities and inputs. Its fixed phases
+check schema readiness, competing saves, replay, rollback, uncertain commits,
+the exact payload ceiling and fresh reads. Local tests and a reviewed private
+bundle pass within their recorded scopes. Cloud provisioning and execution
+remain separate; the application storage switch stays disabled.
 
 The website draft-file release, matching Android artifact and owner-reported
 earlier Android upgrade/checklist are accepted within their recorded scopes.

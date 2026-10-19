@@ -64,15 +64,17 @@ explicitly replaces its ownership. **Discard valuation inputs** clears the curre
 company's temporary draft. A changed catalog or share class cannot inherit it.
 
 The editor is held in memory. Reload, session retirement or sign-out clears it.
-The source candidate adds a separate saved-input resource described below.
+Merged source adds a separate saved-input resource described below.
 The published client still has session-only inputs. Saving a Watchlist note or
 capturing a report does not save an editable workbench.
 
 ## Save and reopen editable inputs
 
-The source candidate adds an initially closed **Saved valuation inputs** panel
+Merged source adds an initially closed **Saved valuation inputs** panel
 below the workbench. Its storage is disabled by default. Source tests do not
 establish provisioned storage, real-account persistence or a published release.
+The [private storage proof](MANAGED_VALUATION_STORAGE_PROOF.md) defines the
+separate schema, fixed test phases and evidence needed before storage activation.
 
 1. Select **Load saved inputs**. This reads the independent saved resource and
    preserves the current editor. It makes no Price, Annual or Filings request.
