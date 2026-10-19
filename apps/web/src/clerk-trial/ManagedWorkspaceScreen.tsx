@@ -51,9 +51,8 @@ import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
 import { ManagedUnsavedWatchlistReview } from "./ManagedUnsavedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
 import { ThirdPartyNotices } from "./ThirdPartyNotices";
-import { ManagedWatchlistExport } from "./ManagedWatchlistExport";
 import {
-  ManagedWatchlistDraftFilesEntry,
+  ManagedWatchlistFiles,
   useWatchlistDraftFileSession,
 } from "./ManagedWatchlistDraftFilesEntry";
 import type { ManagedWatchlistDraftFileDeliveryAdapter } from "./managed-watchlist-draft-file-delivery";
@@ -78,6 +77,19 @@ interface SessionProps {
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
+}
+
+interface WorkspaceProps {
+  workspace: ManagedWorkspace;
+  androidBack?: AndroidBackAdapter;
+  exportDelivery?: WatchlistExportDeliveryAdapter;
+  draftFileScope?: Promise<string>;
+  draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
+  reportDelivery?: CompanyReportDeliveryAdapter;
+}
+
+interface WorkspaceScreenProps extends WorkspaceProps {
+  navigation?: ManagedCompanyNavigation;
 }
 
 interface NoteReviewRequest {
@@ -224,14 +236,7 @@ function SessionWorkspace(props: SessionProps) {
   );
 }
 
-export function ManagedWorkspaceRouter(props: {
-  workspace: ManagedWorkspace;
-  androidBack?: AndroidBackAdapter;
-  exportDelivery?: WatchlistExportDeliveryAdapter;
-  draftFileScope?: Promise<string>;
-  draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
-  reportDelivery?: CompanyReportDeliveryAdapter;
-}) {
+export function ManagedWorkspaceRouter(props: WorkspaceProps) {
   return (
     <BrowserRouter>
       <RoutedWorkspace {...props} />
@@ -239,14 +244,7 @@ export function ManagedWorkspaceRouter(props: {
   );
 }
 
-function RoutedWorkspace(props: {
-  workspace: ManagedWorkspace;
-  androidBack?: AndroidBackAdapter;
-  exportDelivery?: WatchlistExportDeliveryAdapter;
-  draftFileScope?: Promise<string>;
-  draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
-  reportDelivery?: CompanyReportDeliveryAdapter;
-}) {
+function RoutedWorkspace(props: WorkspaceProps) {
   const navigation = useManagedCompanyNavigation(props.workspace);
   return <ManagedWorkspaceScreen {...props} navigation={navigation} />;
 }
@@ -433,15 +431,7 @@ export function ManagedWorkspaceScreen({
   draftFileScope,
   draftFileDelivery,
   reportDelivery,
-}: {
-  workspace: ManagedWorkspace;
-  androidBack?: AndroidBackAdapter;
-  navigation?: ManagedCompanyNavigation;
-  exportDelivery?: WatchlistExportDeliveryAdapter;
-  draftFileScope?: Promise<string>;
-  draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
-  reportDelivery?: CompanyReportDeliveryAdapter;
-}) {
+}: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
   const watchlistNavigation = useRef<HTMLButtonElement | null>(null);
@@ -1643,13 +1633,9 @@ export function ManagedWorkspaceScreen({
                     ? "Load your watchlist to begin."
                     : `Version ${saved.baseVersion} · ${saved.dirty ? "Unsaved changes" : "Saved"}`}
                 </p>
-                <ManagedWatchlistExport
+                <ManagedWatchlistFiles
                   workspace={workspace}
-                  delivery={exportDelivery}
-                  routeActive={watchlistRouteActive}
-                />
-                <ManagedWatchlistDraftFilesEntry
-                  workspace={workspace}
+                  exportDelivery={exportDelivery}
                   scope={draftFileScope}
                   delivery={draftFileDelivery}
                   routeActive={watchlistRouteActive}

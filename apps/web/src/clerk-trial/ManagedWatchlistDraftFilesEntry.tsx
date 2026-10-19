@@ -1,9 +1,11 @@
 import { useState, type RefObject } from "react";
 import { ManagedWatchlistDraftFiles } from "./ManagedWatchlistDraftFiles";
+import { ManagedWatchlistExport } from "./ManagedWatchlistExport";
 import { createManagedWatchlistDraftAccountScope } from "./managed-watchlist-draft-recovery";
 import type { ManagedWatchlistDraftFileDeliveryAdapter } from "./managed-watchlist-draft-file-delivery";
 import type { ManagedWorkspace } from "./managed-workspace";
 import type { TrialSession } from "./session";
+import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
 
 interface SessionOptions {
   apiOrigin: string;
@@ -40,7 +42,7 @@ function focusRestoredWatchlist({ workspace, heading }: EntryProps) {
   heading.current?.focus();
 }
 
-export function ManagedWatchlistDraftFilesEntry(props: EntryProps) {
+function ManagedWatchlistDraftFilesEntry(props: EntryProps) {
   if (!props.scope) return null;
   return (
     <ManagedWatchlistDraftFiles
@@ -50,5 +52,23 @@ export function ManagedWatchlistDraftFilesEntry(props: EntryProps) {
       routeActive={props.routeActive}
       onRestored={() => focusRestoredWatchlist(props)}
     />
+  );
+}
+
+interface FilesProps extends EntryProps {
+  exportDelivery: WatchlistExportDeliveryAdapter | undefined;
+}
+
+/** Keep confirmed-record export and unconfirmed draft transfer distinct within the file tools. */
+export function ManagedWatchlistFiles(props: FilesProps) {
+  return (
+    <>
+      <ManagedWatchlistExport
+        workspace={props.workspace}
+        delivery={props.exportDelivery}
+        routeActive={props.routeActive}
+      />
+      <ManagedWatchlistDraftFilesEntry {...props} />
+    </>
   );
 }
