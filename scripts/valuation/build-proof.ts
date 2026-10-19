@@ -356,7 +356,7 @@ const bundlePolicy = {
   pin,
 };
 const bundle = (outDir: string, buildProof: string) =>
-  bundleValuationProof(outDir, buildProof, bundlePolicy);
+  bundleValuationProof({ outDir, buildProof, policy: bundlePolicy });
 async function verifySourcePins() {
   for (const expected of sources) {
     if (JSON.stringify(await pin(expected.path)) !== JSON.stringify(expected))
