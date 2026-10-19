@@ -55,7 +55,7 @@ PR200 merges explicit saved valuation inputs at `aa27ebdd`: Load,
 complete input review, Stage, independent Review and Save, then fresh-session
 read, complete comparison, explicit Use and Calculate. Its PR checks pass,
 including 59 synthetic Android cases and review of four retained screens.
-Automatic main checks and their source proof remain under review. The
+Automatic main checks and their source proof pass for that revision. The
 [valuation guide](MANAGED_VALUATION_WORKBENCH.md) defines the workflow and bounds.
 The fourth saved resource defaults to disabled on the server. No new live
 storage, provisioning, persistence qualification or release is accepted yet.

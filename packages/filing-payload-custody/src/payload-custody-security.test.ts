@@ -445,47 +445,54 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
     });
   });
 
-  it("hardens every entropy byte result before using caller-controlled metadata", async () => {
-    for (const carrierKind of [
-      "shared",
-      "oversized",
-      "reproto_shared",
-      "reproto_int8",
-      "reproto_uint8_clamped",
-      "reproto_wider",
-      "proxy",
-      "subclass",
-      "detached",
-    ] as const) {
-      for (let targetCall = 0; targetCall < 5; targetCall += 1) {
-        await withEmptyParent(async (parent) => {
-          let prototypeTrapCalls = 0;
-          const entropy = entropyCarrierHarness((source, call) =>
-            call === targetCall
-              ? hostileDependencyCarrier(source, carrierKind, () => {
-                  prototypeTrapCalls += 1;
-                })
-              : source,
-          );
-          const harness = await createBoundaryHarness(parent, { entropy });
-          await expectCustodyFailure(
-            () =>
-              harness.boundary.stage(
-                stageCommand(createSyntheticFilingPayloadFixture()),
-              ),
-            "invalid_input",
-          );
-          expect(
-            prototypeTrapCalls,
-            `${carrierKind}:${String(targetCall)}`,
-          ).toBe(0);
-          expect(entropy.calls()).toHaveLength(targetCall + 1);
-          await harness.boundary.close();
-        });
-      }
-    }
+  it.each(
+    (
+      [
+        "shared",
+        "oversized",
+        "reproto_shared",
+        "reproto_int8",
+        "reproto_uint8_clamped",
+        "reproto_wider",
+        "proxy",
+        "subclass",
+        "detached",
+      ] as const
+    ).flatMap((carrierKind) =>
+      [0, 1, 2, 3, 4].map((targetCall) => ({ carrierKind, targetCall })),
+    ),
+  )(
+    "hardens entropy carrier $carrierKind at call $targetCall before using caller-controlled metadata",
+    async ({ carrierKind, targetCall }) => {
+      await withEmptyParent(async (parent) => {
+        let prototypeTrapCalls = 0;
+        const entropy = entropyCarrierHarness((source, call) =>
+          call === targetCall
+            ? hostileDependencyCarrier(source, carrierKind, () => {
+                prototypeTrapCalls += 1;
+              })
+            : source,
+        );
+        const harness = await createBoundaryHarness(parent, { entropy });
+        await expectCustodyFailure(
+          () =>
+            harness.boundary.stage(
+              stageCommand(createSyntheticFilingPayloadFixture()),
+            ),
+          "invalid_input",
+        );
+        expect(prototypeTrapCalls, `${carrierKind}:${String(targetCall)}`).toBe(
+          0,
+        );
+        expect(entropy.calls()).toHaveLength(targetCall + 1);
+        await harness.boundary.close();
+      });
+    },
+  );
 
-    for (const hook of BYTE_HOOKS) {
+  it.each(BYTE_HOOKS)(
+    "ignores entropy allocation hook %s while retaining usable bytes",
+    async (hook) => {
       await withEmptyParent(async (parent) => {
         let hookCalls = 0;
         const entropy = entropyCarrierHarness((source) =>
@@ -504,8 +511,8 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
         expect(hookCalls, hook).toBe(0);
         await harness.boundary.close();
       });
-    }
-  }, 10_000);
+    },
+  );
 
   it("hardens every key-store read byte result before decryption", async () => {
     for (const carrierKind of [
