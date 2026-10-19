@@ -34,12 +34,18 @@ acceptance.
 
 The merged research-source increment aligns Price, Annual and Filings eligibility across
 the existing named company universe, from screening through cited evidence,
-normal Save and retained Back state. Its delivery remains separate. The active
-source increment is editable valuation persistence: explicit saved-input read,
+normal Save and retained Back state. Its delivery remains separate. PR200 merges
+the editable valuation workflow: explicit saved-input read,
 complete comparison, independent Review/Save, fresh-session restore and explicit
-Calculate. Then complete managed Portfolio storage/recovery. Defer new portfolio-history features while these
+Calculate. Complete its storage qualification and delivery, then managed Portfolio
+storage/recovery. Defer new portfolio-history features while these
 delivery and persistence gaps remain. Coverage fixes and selected metric rows do
 not complete a milestone.
+
+The [private valuation storage proof](MANAGED_VALUATION_STORAGE_PROOF.md) prepares
+fixed invented-data checks for this persistence layer. Its local evidence and
+bundle do not establish cloud storage or a published saved-input workflow.
+Qualify the fixed storage scope before enabling it or preparing matching clients.
 
 The integrated M2/M4 source connects two loaded financial-screen results through
 [all three Annual statement groups](MANAGED_SCREEN_COMPARISON.md), independent

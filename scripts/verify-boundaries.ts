@@ -11469,6 +11469,21 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/valuation-assumptions-proof-data.ts",
+      [
+        "admitManagedSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/valuation-assumptions-proof-data.test.ts",
+      [
+        "admitManagedSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
+      ],
+    ],
+    [
       "apps/api/src/portfolio-proof-data.ts",
       [
         "admitManagedSecurityMasterSnapshot",
@@ -11760,6 +11775,8 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       "scripts/verify-boundaries.ts: managed filings security-master import classifier regressed",
     );
   for (const portfolioProofDataPath of [
+    "apps/api/src/valuation-assumptions-proof-data.ts",
+    "apps/api/src/valuation-assumptions-proof-data.test.ts",
     "apps/api/src/portfolio-proof-data.ts",
     "apps/api/src/portfolio-proof-data.test.ts",
     "apps/api/src/watchlist-restore-proof-data.ts",
