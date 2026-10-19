@@ -7,6 +7,8 @@ import { eodSelection } from "./eod-history-fixture";
 import type { ManagedApi } from "./managed-api";
 import { ManagedWorkspace } from "./managed-workspace";
 import type { TrialSession } from "./session";
+import { captureWatchlistDraftFileContext } from "./managed-watchlist-draft-context";
+import type { SaveState } from "./save-coordinator";
 
 const TIME = "2026-10-18T23:01:02.345Z";
 const SNAPSHOT: ManagedCatalogSnapshotDto = {
@@ -290,6 +292,68 @@ describe("imported Watchlist catalog provenance", () => {
       shareClassName: second.shareClassName,
     });
     expect(unexpected).not.toHaveBeenCalled();
+  });
+
+  it("captures actual references and distinguishes fresh import from unconfirmed export", async () => {
+    const { workspace } = await fixture();
+    const state = workspace.coordinator.getSnapshot();
+    const view = workspace.getSnapshot();
+    const context = workspace.getWatchlistDraftFileContext()!;
+    expect(context.saved).toBe(state.saved);
+    expect(context.draft).toBe(state.draft);
+    expect(context.catalog).toBe(view.snapshot);
+    expect(context.baseVersion).toBe(state.baseVersion);
+    for (const patch of [{ latestLoaded: false }, { baseVersion: 2 }]) {
+      const changed = { ...state, ...patch };
+      expect(captureWatchlistDraftFileContext(changed, view, true)).toBeNull();
+      expect(
+        captureWatchlistDraftFileContext(changed, view, false),
+      ).not.toBeNull();
+    }
+    workspace.setNavigationBlocked(true);
+    expect(workspace.getWatchlistDraftFileContext()).toBeNull();
+    expect(workspace.getWatchlistDraftFileContext(false)).toBeNull();
+    workspace.setNavigationBlocked(false);
+    expect(workspace.getWatchlistDraftFileContext()).not.toBeNull();
+  });
+
+  it("refuses unsettled saved state and competing view activity for import and export", async () => {
+    const { workspace } = await fixture();
+    const state = workspace.coordinator.getSnapshot();
+    const view = workspace.getSnapshot();
+    const patches: Partial<SaveState<MainWatchlistPayload>>[] = [
+      { phase: "loading" },
+      { saved: null },
+      { draft: null },
+      { baseVersion: null },
+      { conflict: true },
+      { uncertain: true },
+      { replayPending: true },
+    ];
+    for (const patch of patches) {
+      const changed = { ...state, ...patch };
+      expect(captureWatchlistDraftFileContext(changed, view, true)).toBeNull();
+      expect(captureWatchlistDraftFileContext(changed, view, false)).toBeNull();
+    }
+    const views = [
+      { ...view, view: "markets" as const },
+      { ...view, read: "status" as const },
+      { ...view, reviewing: true },
+      {
+        ...view,
+        review: {
+          draft: state.draft!,
+          snapshotSha256: state.draft!.snapshotSha256,
+          results: [],
+        },
+      },
+    ];
+    for (const changed of views) {
+      expect(captureWatchlistDraftFileContext(state, changed, true)).toBeNull();
+      expect(
+        captureWatchlistDraftFileContext(state, changed, false),
+      ).toBeNull();
+    }
   });
 
   it("rejects competing catalog review and clears imported authority on session disposal", async () => {

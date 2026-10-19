@@ -69,6 +69,48 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
+    private static final java.util.Set<String> ALLOWED_FIXTURE_SCENARIOS = java.util.Set.of(
+        "catalog-startup-recovery",
+        "company-direct-entry",
+        "markets-selected-price",
+        "annual-note",
+        "annual-statements",
+        "annual-cash-history",
+        "annual-operating-results",
+        "annual-operating-history",
+        "annual-liquidity-history",
+        "annual-balance-sheet",
+        "annual-financial-review",
+        "annual-operating-comparison",
+        "markets-price-handoff",
+        "watchlist-recovery",
+        "signout-save-review",
+        "signout-uncertain-review",
+        "raw-close-comparison",
+        "price-comparison-note",
+        "price-studies",
+        "financial-screen",
+        "screen-comparison",
+        "thesis-review",
+        "company-snapshot",
+        "authored-valuation",
+        "valuation-price",
+        "research-followups",
+        "portfolio-ledger",
+        "markets-day-view",
+        "company-price-ranges",
+        "bea-agenda",
+        "bea-agenda-comparison",
+        "bea-session-retirement",
+        "watchlist-comparison",
+        "watchlist-export",
+        "company-filings",
+        "fed-announcements",
+        "annual-comparison",
+        "watchlist-draft-file");
+    private static final java.util.Map<String, String> DRAFT_FILE_SCENARIOS = java.util.Map.of(
+        "watchlistDraftFileUsesSystemExportImportAndExplicitRestore", "watchlist-draft-file",
+        "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file");
     private static final String ANNUAL_COMPARISON_NOTE =
         "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
         "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
@@ -325,9 +367,7 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("markets-day-view");
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("watchlist-export");
-        if (testName.getMethodName().equals("watchlistDraftFileUsesSystemExportImportAndExplicitRestore") ||
-            testName.getMethodName().equals("watchlistDraftFileRejectsAnotherAccountAndRetiresChooser"))
-            selectFixtureScenario("watchlist-draft-file");
+        selectDraftFileFixtureScenario();
         if (testName.getMethodName().equals("researchFollowupsSaveResearchAndCompleteAcrossSessions") ||
             testName.getMethodName().equals("dailyResearchReviewKeepsDraftAndCompletesThroughResearch") ||
             testName.getMethodName().equals("researchFollowupsReplayAndSessionRetirementFenceLateReplies"))
@@ -8501,21 +8541,14 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     /** Fixed metadata in this test's copied HTML is read before the fixture's sole React mount. */
+    private void selectDraftFileFixtureScenario() throws IOException {
+        String selected = DRAFT_FILE_SCENARIOS.getOrDefault(testName.getMethodName(), "");
+        if (!selected.isEmpty()) selectFixtureScenario(selected);
+    }
+
     private void selectFixtureScenario(String scenarioName) throws IOException {
         assertTrue("Only fixed invented fixture scenarios are allowed",
-            scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
-            scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") || scenarioName.equals("annual-statements") ||
-            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-financial-review") || scenarioName.equals("annual-operating-comparison") ||
-            scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
-            scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
-            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") || scenarioName.equals("price-studies") || scenarioName.equals("financial-screen") || scenarioName.equals("screen-comparison") ||
-            scenarioName.equals("thesis-review") ||
-            scenarioName.equals("company-snapshot") || scenarioName.equals("authored-valuation") || scenarioName.equals("valuation-price") ||
-            scenarioName.equals("research-followups") || scenarioName.equals("portfolio-ledger") ||
-            scenarioName.equals("markets-day-view") ||
-            scenarioName.equals("company-price-ranges") ||
-            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
-            scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
+            ALLOWED_FIXTURE_SCENARIOS.contains(scenarioName));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

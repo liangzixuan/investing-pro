@@ -511,7 +511,9 @@ describe("synchronous review-clear observers", () => {
     cleanup.push(
       f.recovery.subscribe(() => {
         const state = f.recovery.getSnapshot();
-        if (edited || state.phase !== "idle" || state.preview !== null) return;
+        if (edited) return;
+        if (state.phase !== "idle") return;
+        if (state.preview !== null) return;
         edited = true;
         f.workspace.note(
           eodSelection.listing.listingId,
@@ -538,7 +540,9 @@ describe("synchronous review-clear observers", () => {
     cleanup.push(
       f.recovery.subscribe(() => {
         const state = f.recovery.getSnapshot();
-        if (started || state.phase !== "idle" || state.preview !== null) return;
+        if (started) return;
+        if (state.phase !== "idle") return;
+        if (state.preview !== null) return;
         started = true;
         pending.push(f.recovery.readFile(selected));
       }),

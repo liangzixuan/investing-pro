@@ -1,13 +1,14 @@
 import type { MainWatchlistPayload } from "@research-cockpit/contracts";
 import { validateApiOrigin } from "./api";
 import type { ManagedWorkspace } from "./managed-workspace";
-import type { VersionedPayload } from "./save-coordinator";
 import {
   formatManagedWatchlistDraftFile,
-  MANAGED_WATCHLIST_DRAFT_FILE_MAX_BYTES,
-  parseManagedWatchlistDraftFile,
   type ManagedWatchlistDraftFileContent,
 } from "./managed-watchlist-draft-file";
+import {
+  assertWatchlistDraftFileSize,
+  decodeWatchlistDraftFile,
+} from "./managed-watchlist-draft-file-reader";
 import type { ManagedWatchlistDraftFileDeliveryAdapter } from "./managed-watchlist-draft-file-delivery";
 
 /** A file scope joins the configured backend and verified account, never a token/session. */
@@ -16,7 +17,10 @@ export async function createManagedWatchlistDraftAccountScope(
   userId: string,
 ) {
   const origin = validateApiOrigin(apiOrigin);
-  if (origin.length > 2048 || !userId || userId.length > 512)
+  if (origin.length > 2048)
+    throw new Error("Draft file account scope unavailable.");
+  if (!userId) throw new Error("Draft file account scope unavailable.");
+  if (userId.length > 512)
     throw new Error("Draft file account scope unavailable.");
   const bytes = new TextEncoder().encode(
     JSON.stringify(["investment-watchlist-draft-scope-v1", origin, userId]),
@@ -30,12 +34,9 @@ export async function createManagedWatchlistDraftAccountScope(
   );
 }
 
-interface DraftContext {
-  saved: VersionedPayload<MainWatchlistPayload>;
-  draft: MainWatchlistPayload;
-  baseVersion: number;
-  catalog: ReturnType<ManagedWorkspace["getSnapshot"]>["snapshot"];
-}
+type DraftContext = NonNullable<
+  ReturnType<ManagedWorkspace["getWatchlistDraftFileContext"]>
+>;
 interface Operation {
   readonly kind: "export" | "read";
   readonly context: DraftContext;
@@ -109,32 +110,9 @@ export class ManagedWatchlistDraftRecovery {
     );
   }
   private context(requireFresh = true): DraftContext | null {
-    const { workspace, routeActive } = this.options;
-    const saved = workspace.coordinator.getSnapshot(),
-      view = workspace.getSnapshot();
-    if (!this.live() || !routeActive() || !workspace.canEdit()) return null;
-    if (
-      saved.phase !== "idle" ||
-      !saved.saved ||
-      !saved.draft ||
-      saved.baseVersion === null
-    )
-      return null;
-    if (saved.conflict || saved.uncertain || saved.replayPending) return null;
-    if (
-      requireFresh &&
-      (!saved.latestLoaded || saved.baseVersion !== saved.saved.version)
-    )
-      return null;
-    if (view.view !== "watchlist" || view.research || view.companyRoute)
-      return null;
-    if (view.read || view.review || view.reviewing) return null;
-    return {
-      saved: saved.saved,
-      draft: saved.draft,
-      baseVersion: saved.baseVersion,
-      catalog: view.snapshot,
-    };
+    if (!this.live()) return null;
+    if (!this.options.routeActive()) return null;
+    return this.options.workspace.getWatchlistDraftFileContext(requireFresh);
   }
   private sameContext(operation: Operation) {
     const context = this.context(operation.kind === "read"),
@@ -157,23 +135,12 @@ export class ManagedWatchlistDraftRecovery {
   }
   private publish(patch: Partial<WatchlistDraftRecoveryState>) {
     if (this.disposed) return;
-    const context = this.context(),
-      exportContext = this.context(false),
-      busy = this.operation !== null;
     const phase = patch.phase ?? this.state.phase;
     const next = Object.freeze({
       ...this.state,
       ...patch,
-      canExport:
-        !!exportContext &&
-        !!this.scope &&
-        !!this.options.delivery &&
-        !busy &&
-        this.options.workspace.coordinator.getSnapshot().dirty,
-      canImport:
-        !!context &&
-        !!this.scope &&
-        (this.operation === null || phase === "review"),
+      canExport: this.canExport(),
+      canImport: this.canImport(phase),
     });
     if (
       Object.keys(next).every(
@@ -185,6 +152,18 @@ export class ManagedWatchlistDraftRecovery {
       return;
     this.state = next;
     for (const listener of this.listeners) listener();
+  }
+  private canExport() {
+    if (!this.scope) return false;
+    if (!this.options.delivery) return false;
+    if (this.operation) return false;
+    if (!this.options.workspace.coordinator.getSnapshot().dirty) return false;
+    return this.context(false) !== null;
+  }
+  private canImport(phase: WatchlistDraftRecoveryState["phase"]) {
+    if (!this.scope) return false;
+    if (!this.context()) return false;
+    return this.operation === null || phase === "review";
   }
   private clear(message: string, retired = false) {
     const operation = this.operation;
@@ -230,16 +209,19 @@ export class ManagedWatchlistDraftRecovery {
     }
     this.clear(message);
   }
-  async exportDraft() {
-    if (!this.state.canExport || !this.options.delivery) return;
-    const operation = this.begin("export");
-    if (!operation) return;
-    const document = formatManagedWatchlistDraftFile({
+  private captureDraftFile(operation: Operation) {
+    return formatManagedWatchlistDraftFile({
       accountScope: operation.scope,
       capturedAt: this.options.now?.() ?? new Date().toISOString(),
       baseVersion: operation.context.baseVersion,
       draft: operation.context.draft,
     });
+  }
+  async exportDraft() {
+    if (!this.state.canExport || !this.options.delivery) return;
+    const operation = this.begin("export");
+    if (!operation) return;
+    const document = this.captureDraftFile(operation);
     if (!document) {
       this.finish(
         operation,
@@ -275,37 +257,19 @@ export class ManagedWatchlistDraftRecovery {
     if (!operation) return;
     this.publish({ phase: "reading", preview: null, message: "" });
     try {
-      if (
-        !Number.isSafeInteger(file.size) ||
-        file.size <= 0 ||
-        file.size > MANAGED_WATCHLIST_DRAFT_FILE_MAX_BYTES
-      )
-        throw new Error("size");
+      assertWatchlistDraftFileSize(file.size);
       const bytes = await file.arrayBuffer();
       if (!this.current(operation)) {
         this.reconcile();
         return;
       }
-      if (
-        bytes.byteLength !== file.size ||
-        bytes.byteLength > MANAGED_WATCHLIST_DRAFT_FILE_MAX_BYTES
-      )
-        throw new Error("size");
-      const text = new TextDecoder("utf-8", {
-        fatal: true,
-        ignoreBOM: true,
-      }).decode(bytes);
-      const preview = parseManagedWatchlistDraftFile(text, operation.scope);
+      const preview = decodeWatchlistDraftFile(
+        bytes,
+        file.size,
+        operation.scope,
+      );
       if (!preview) throw new Error("document");
-      if (this.current(operation))
-        this.publish({
-          phase: "review",
-          preview,
-          currentDraft: operation.context.draft,
-          currentSavedVersion: operation.context.baseVersion,
-          message:
-            "File loaded locally. Review the complete draft before replacing your current draft.",
-        });
+      this.reviewFile(operation, preview);
     } catch {
       this.finish(
         operation,
@@ -313,31 +277,59 @@ export class ManagedWatchlistDraftRecovery {
       );
     }
   }
+  private reviewFile(
+    operation: Operation,
+    preview: ManagedWatchlistDraftFileContent,
+  ) {
+    if (!this.current(operation)) return;
+    this.publish({
+      phase: "review",
+      preview,
+      currentDraft: operation.context.draft,
+      currentSavedVersion: operation.context.baseVersion,
+      message:
+        "File loaded locally. Review the complete draft before replacing your current draft.",
+    });
+  }
+  private reviewedFile() {
+    const operation = this.operation;
+    if (!operation) return null;
+    if (this.state.phase !== "review") return null;
+    const preview = this.state.preview;
+    if (!preview) return null;
+    return { operation, preview };
+  }
+  private restored(accepted: boolean, operation: Operation) {
+    const after = this.options.workspace.coordinator.getSnapshot();
+    return (
+      accepted &&
+      after.saved === operation.context.saved &&
+      after.draft !== operation.context.draft &&
+      after.dirty
+    );
+  }
+  private changedBeforeRestore() {
+    this.publish({
+      message: "The draft changed before restoration. Select the file again.",
+    });
+    return false;
+  }
   restoreDraft() {
-    const operation = this.operation,
-      preview = this.state.preview;
-    if (!operation || !preview || this.state.phase !== "review") return false;
+    const reviewed = this.reviewedFile();
+    if (!reviewed) return false;
+    const { operation, preview } = reviewed;
     if (!this.current(operation)) {
       this.reconcile();
       return false;
     }
     this.clear("");
-    if (this.operation || !this.sameContext(operation)) {
-      this.publish({
-        message: "The draft changed before restoration. Select the file again.",
-      });
-      return false;
-    }
+    if (this.operation) return this.changedBeforeRestore();
+    if (!this.sameContext(operation)) return this.changedBeforeRestore();
     const accepted = this.options.workspace.restoreWatchlistFileDraft(
       preview.draft,
     );
     if (!this.live()) return false;
-    const after = this.options.workspace.coordinator.getSnapshot();
-    const restored =
-      accepted &&
-      after.saved === operation.context.saved &&
-      after.draft !== operation.context.draft &&
-      after.dirty;
+    const restored = this.restored(accepted, operation);
     this.publish({
       message: restored
         ? "File restored to your local draft. Review catalog changes, then Review and Save watchlist to save it online."

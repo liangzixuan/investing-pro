@@ -1,4 +1,10 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from "react";
 import {
   normalizeWatchlistNote,
   type MainWatchlistPayload,
@@ -89,30 +95,186 @@ function useDraftFiles(props: Props) {
   return { controller, state };
 }
 
-export function ManagedWatchlistDraftFiles(props: Props) {
-  const { controller, state } = useDraftFiles(props);
+function focusCompletedReview(
+  previous: WatchlistDraftRecoveryState["phase"],
+  state: WatchlistDraftRecoveryState,
+  input: RefObject<HTMLInputElement | null>,
+  heading: RefObject<HTMLHeadingElement | null>,
+) {
+  if (previous !== "reading") return;
+  if (state.phase !== "review") return;
+  if (document.activeElement !== input.current) return;
+  heading.current?.focus();
+}
+
+function focusCancelledInput(
+  requested: RefObject<boolean>,
+  state: WatchlistDraftRecoveryState,
+  input: RefObject<HTMLInputElement | null>,
+) {
+  if (!requested.current) return;
+  if (state.phase === "retired") requested.current = false;
+  if (state.phase !== "idle") return;
+  requested.current = false;
+  if (state.canImport) input.current?.focus();
+}
+
+function useDraftFileFocus(state: WatchlistDraftRecoveryState) {
   const input = useRef<HTMLInputElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
   const previousPhase = useRef(state.phase);
   const restoreInputFocus = useRef(false);
   useLayoutEffect(() => {
-    if (restoreInputFocus.current && state.phase === "idle") {
-      restoreInputFocus.current = false;
-      if (state.canImport) input.current?.focus();
-    }
-    if (state.phase === "retired") restoreInputFocus.current = false;
-    if (
-      previousPhase.current === "reading" &&
-      state.phase === "review" &&
-      document.activeElement === input.current
-    )
-      heading.current?.focus();
+    focusCancelledInput(restoreInputFocus, state, input);
+    focusCompletedReview(previousPhase.current, state, input, heading);
     previousPhase.current = state.phase;
   }, [state.phase, state.canImport]);
-  const preview = state.preview;
+  return {
+    input,
+    heading,
+    requestInputFocus: () => {
+      restoreInputFocus.current = true;
+    },
+  };
+}
+
+interface ActionsProps {
+  state: WatchlistDraftRecoveryState;
+  controller: ManagedWatchlistDraftRecovery | null;
+  input: RefObject<HTMLInputElement | null>;
+  cancel: () => void;
+}
+
+function DraftFileInput({ state, controller, input }: ActionsProps) {
+  return (
+    <label className="managed-draft-file-input">
+      Select a Watchlist draft file
+      <input
+        ref={input}
+        type="file"
+        accept="application/json,.json"
+        disabled={!state.canImport}
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = "";
+          if (file) void controller?.readFile(file);
+        }}
+      />
+    </label>
+  );
+}
+
+function DraftFileAvailability({ state }: Pick<ActionsProps, "state">) {
+  if (state.canImport) {
+    if (state.canExport) return null;
+    return <p>Edit your Watchlist to save an unconfirmed draft file.</p>;
+  }
+  if (state.preview) return null;
+  return (
+    <p>
+      Load the saved Watchlist and finish any save or catalog recovery before
+      selecting a file.
+    </p>
+  );
+}
+
+function DraftFileCancel({
+  state,
+  cancel,
+}: Pick<ActionsProps, "state" | "cancel">) {
+  if (state.phase !== "reading" && state.phase !== "exporting") return null;
+  return (
+    <button type="button" className="trial-secondary" onClick={cancel}>
+      Cancel file operation
+    </button>
+  );
+}
+
+function DraftFileControls(props: ActionsProps) {
+  const { state, controller } = props;
+  return (
+    <>
+      <button
+        type="button"
+        className="trial-secondary"
+        disabled={!state.canExport}
+        aria-busy={state.phase === "exporting"}
+        onClick={() => void controller?.exportDraft()}
+      >
+        {state.phase === "exporting" ? "Saving draft file…" : "Save draft file"}
+      </button>
+      <DraftFileInput {...props} />
+      <DraftFileAvailability state={state} />
+      <DraftFileCancel state={state} cancel={props.cancel} />
+    </>
+  );
+}
+
+interface ReviewProps {
+  state: WatchlistDraftRecoveryState;
+  heading: RefObject<HTMLHeadingElement | null>;
+  restore: () => void;
+  cancel: () => void;
+}
+
+function DraftFileReview({ state, heading, restore, cancel }: ReviewProps) {
+  const preview = state.preview,
+    current = state.currentDraft;
+  if (!preview) return null;
+  if (!current) return null;
+  return (
+    <section
+      className="trial-review"
+      aria-labelledby="managed-draft-file-review-heading"
+    >
+      <h3 id="managed-draft-file-review-heading" ref={heading} tabIndex={-1}>
+        Review the complete file draft
+      </h3>
+      <p>
+        File reports capture time {preview.capturedAt} and base version{" "}
+        {preview.baseVersion}. Loaded saved version {state.currentSavedVersion}{" "}
+        will remain unchanged.
+      </p>
+      <p>
+        Restoring replaces all current draft listings, notes and order. Another
+        device can still save a newer version; the normal Save conflict checks
+        apply.
+      </p>
+      <p>
+        File metadata does not verify its contents or capture time. After
+        restoration, use Review catalog changes to check every listing against
+        the current catalog before Save.
+      </p>
+      <h4>File draft · {preview.draft.memberships.length} listings</h4>
+      <DraftListings draft={preview.draft} />
+      <details>
+        <summary>
+          Current draft that will be replaced · {current.memberships.length}{" "}
+          listings
+        </summary>
+        <DraftListings draft={current} />
+      </details>
+      <div className="trial-toolbar">
+        <button type="button" onClick={restore}>
+          Restore file to current draft
+        </button>
+        <button type="button" className="trial-secondary" onClick={cancel}>
+          Keep current draft
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export function ManagedWatchlistDraftFiles(props: Props) {
+  const { controller, state } = useDraftFiles(props);
+  const { input, heading, requestInputFocus } = useDraftFileFocus(state);
   function cancel() {
-    restoreInputFocus.current = true;
+    requestInputFocus();
     controller?.cancel();
+  }
+  function restore() {
+    if (controller?.restoreDraft()) props.onRestored();
   }
   return (
     <details id="managed-watchlist-draft-files">
@@ -125,94 +287,18 @@ export function ManagedWatchlistDraftFiles(props: Props) {
         Selecting a file reads it locally. Restoring it replaces only this
         screen&apos;s draft. Review and Save watchlist remain separate.
       </p>
-      <button
-        type="button"
-        className="trial-secondary"
-        disabled={!state.canExport}
-        aria-busy={state.phase === "exporting"}
-        onClick={() => void controller?.exportDraft()}
-      >
-        {state.phase === "exporting" ? "Saving draft file…" : "Save draft file"}
-      </button>
-      <label className="managed-draft-file-input">
-        Select a Watchlist draft file
-        <input
-          ref={input}
-          type="file"
-          accept="application/json,.json"
-          disabled={!state.canImport}
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            event.currentTarget.value = "";
-            if (file) void controller?.readFile(file);
-          }}
-        />
-      </label>
-      {!state.canImport && !preview && (
-        <p>
-          Load the saved Watchlist and finish any save or catalog recovery
-          before selecting a file.
-        </p>
-      )}
-      {!state.canExport && state.canImport && (
-        <p>Edit your Watchlist to save an unconfirmed draft file.</p>
-      )}
-      {(state.phase === "reading" || state.phase === "exporting") && (
-        <button type="button" className="trial-secondary" onClick={cancel}>
-          Cancel file operation
-        </button>
-      )}
-      {preview && state.currentDraft && (
-        <section
-          className="trial-review"
-          aria-labelledby="managed-draft-file-review-heading"
-        >
-          <h3
-            id="managed-draft-file-review-heading"
-            ref={heading}
-            tabIndex={-1}
-          >
-            Review the complete file draft
-          </h3>
-          <p>
-            File reports capture time {preview.capturedAt} and base version{" "}
-            {preview.baseVersion}. Loaded saved version{" "}
-            {state.currentSavedVersion} will remain unchanged.
-          </p>
-          <p>
-            Restoring replaces all current draft listings, notes and order.
-            Another device can still save a newer version; the normal Save
-            conflict checks apply.
-          </p>
-          <p>
-            File metadata does not verify its contents or capture time. After
-            restoration, use Review catalog changes to check every listing
-            against the current catalog before Save.
-          </p>
-          <h4>File draft · {preview.draft.memberships.length} listings</h4>
-          <DraftListings draft={preview.draft} />
-          <details>
-            <summary>
-              Current draft that will be replaced ·{" "}
-              {state.currentDraft.memberships.length} listings
-            </summary>
-            <DraftListings draft={state.currentDraft} />
-          </details>
-          <div className="trial-toolbar">
-            <button
-              type="button"
-              onClick={() => {
-                if (controller?.restoreDraft()) props.onRestored();
-              }}
-            >
-              Restore file to current draft
-            </button>
-            <button type="button" className="trial-secondary" onClick={cancel}>
-              Keep current draft
-            </button>
-          </div>
-        </section>
-      )}
+      <DraftFileControls
+        state={state}
+        controller={controller}
+        input={input}
+        cancel={cancel}
+      />
+      <DraftFileReview
+        state={state}
+        heading={heading}
+        restore={restore}
+        cancel={cancel}
+      />
       <p role="status">
         {state.phase === "reading"
           ? "Reading the selected file locally…"

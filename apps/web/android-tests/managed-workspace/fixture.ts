@@ -20,6 +20,7 @@ import {
   type PortfolioNativeControls,
 } from "./portfolio-fixture";
 import { createFinancialReviewNativeFixture } from "./financial-review-native-fixture";
+import { withDraftFileCatalogFixture } from "./draft-file-catalog-fixture";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { liquidityHistoryPacket } from "./liquidity-history-fixture";
 import { operatingHistoryPacket } from "./operating-history-fixture";
@@ -1299,30 +1300,6 @@ async function createSharedFixture(
       });
     },
     resolve: (request, signal) => {
-      if (
-        scenario === "watchlist-draft-file" &&
-        request.listingIds.join("|") === "listing-zero|listing-one"
-      ) {
-        if (
-          signal.aborted ||
-          state.resolve !== 0 ||
-          request.snapshotSha256 !== digest
-        )
-          return unexpected("resolve");
-        const results = savedWatchlist.payload.memberships.map(
-          ({ note: discardedNote, ...listing }) => {
-            void discardedNote;
-            return { listingId: listing.listingId, listing };
-          },
-        );
-        const resolved = parseManagedCatalogResolveResponse(
-          { snapshotSha256: digest, results },
-          request,
-        );
-        if (!resolved) throw new Error("Invalid invented draft catalog review");
-        count("resolve");
-        return Promise.resolve(resolved);
-      }
       if (balanceScenario && state.marketsResolve !== 0)
         return unexpected("resolve");
       if (scenario === "watchlist-comparison" && state.marketsResolve !== 0)
@@ -1768,7 +1745,15 @@ async function createSharedFixture(
     },
   };
   return {
-    api,
+    api: withDraftFileCatalogFixture({
+      api,
+      scenario,
+      snapshotSha256: digest,
+      savedDraft: () => savedWatchlist.payload,
+      resolveCount: () => state.resolve,
+      recordResolve: () => count("resolve"),
+      refuseResolve: () => unexpected("resolve"),
+    }),
     session,
     followups,
     marketsCohort,

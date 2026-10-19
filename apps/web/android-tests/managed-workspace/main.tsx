@@ -18,7 +18,7 @@ import {
 } from "./operating-comparison-fixture";
 import { createNativeExportFixture } from "./native-export-fixture";
 import { createNativeDraftFileFixture } from "./native-draft-file-fixture";
-import { createManagedWatchlistDraftAccountScope } from "../../src/clerk-trial/managed-watchlist-draft-recovery";
+import { createNativeDraftFileSession } from "./native-draft-file-session";
 import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
 import type { TrialSession } from "../../src/clerk-trial/session";
 
@@ -95,13 +95,8 @@ function FixtureSession({
   onFreshSession: (session: TrialSession) => void;
 }) {
   const [workspace, setWorkspace] = useState<ManagedWorkspace | null>(null);
-  const [draftFileScope] = useState(() =>
-    nativeDraftFile
-      ? createManagedWatchlistDraftAccountScope(
-          "https://fixture.invalid",
-          session.userId,
-        )
-      : undefined,
+  const [draftFileSession] = useState(() =>
+    createNativeDraftFileSession(nativeDraftFile, session),
   );
   useLayoutEffect(() => {
     const current = new ManagedWorkspace(fixture.api, session, undefined, {
@@ -128,9 +123,7 @@ function FixtureSession({
             androidBack={App}
             {...(nativeReport ? { reportDelivery: nativeReport.delivery } : {})}
             {...(nativeExport ? { exportDelivery: nativeExport.delivery } : {})}
-            {...(nativeDraftFile && draftFileScope
-              ? { draftFileDelivery: nativeDraftFile.delivery, draftFileScope }
-              : {})}
+            {...draftFileSession.routerProps}
           />
         ) : (
           <p role="status">Loading your workspace…</p>
@@ -143,13 +136,10 @@ function FixtureSession({
       {workspace && nativeExport && (
         <nativeExport.Controls workspace={workspace} />
       )}
-      {workspace && nativeDraftFile && (
-        <nativeDraftFile.Controls
-          workspace={workspace}
-          session={session}
-          onFreshSession={onFreshSession}
-        />
-      )}
+      <draftFileSession.Controls
+        workspace={workspace}
+        onFreshSession={onFreshSession}
+      />
       {workspace && fixture.portfolio && (
         <PortfolioFixtureControls
           workspace={workspace}

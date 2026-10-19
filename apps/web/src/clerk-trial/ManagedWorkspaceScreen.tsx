@@ -52,8 +52,10 @@ import { ManagedUnsavedWatchlistReview } from "./ManagedUnsavedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
 import { ThirdPartyNotices } from "./ThirdPartyNotices";
 import { ManagedWatchlistExport } from "./ManagedWatchlistExport";
-import { ManagedWatchlistDraftFiles } from "./ManagedWatchlistDraftFiles";
-import { createManagedWatchlistDraftAccountScope } from "./managed-watchlist-draft-recovery";
+import {
+  ManagedWatchlistDraftFilesEntry,
+  useWatchlistDraftFileSession,
+} from "./ManagedWatchlistDraftFilesEntry";
 import type { ManagedWatchlistDraftFileDeliveryAdapter } from "./managed-watchlist-draft-file-delivery";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
@@ -170,14 +172,7 @@ export function ManagedSessionScreen(props: SessionProps) {
 
 function SessionWorkspace(props: SessionProps) {
   const [initial] = useState(props);
-  const [draftFileScope] = useState(() =>
-    initial.draftFileDelivery
-      ? createManagedWatchlistDraftAccountScope(
-          initial.apiOrigin,
-          initial.session.userId,
-        )
-      : undefined,
-  );
+  const draftFileSession = useWatchlistDraftFileSession(initial);
   const [workspace, setWorkspace] = useState<ManagedWorkspace | null>(null);
   useLayoutEffect(() => {
     const current = new ManagedWorkspace(
@@ -210,10 +205,7 @@ function SessionWorkspace(props: SessionProps) {
   return workspace ? (
     <ManagedWorkspaceRouter
       workspace={workspace}
-      {...(draftFileScope ? { draftFileScope } : {})}
-      {...(initial.draftFileDelivery
-        ? { draftFileDelivery: initial.draftFileDelivery }
-        : {})}
+      {...draftFileSession}
       {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
       {...(initial.reportDelivery
         ? { reportDelivery: initial.reportDelivery }
@@ -465,6 +457,8 @@ export function ManagedWorkspaceScreen({
   const [localReturnFocus, setLocalReturnFocus] = useState(0);
   const routeBack = navigation?.back;
   const hasCompanyRoute = navigation?.hasCompanyRoute;
+  const watchlistRouteActive = () =>
+    !navigation?.invalid && !hasCompanyRoute?.();
   const restoreFocus = useCallback(() => {
     const returned = workspace.getSnapshot();
     const target = panelOrigin.current?.isConnected
@@ -1652,27 +1646,15 @@ export function ManagedWorkspaceScreen({
                 <ManagedWatchlistExport
                   workspace={workspace}
                   delivery={exportDelivery}
-                  routeActive={() =>
-                    !navigation?.invalid && !hasCompanyRoute?.()
-                  }
+                  routeActive={watchlistRouteActive}
                 />
-                {draftFileScope && (
-                  <ManagedWatchlistDraftFiles
-                    workspace={workspace}
-                    accountScope={draftFileScope}
-                    delivery={draftFileDelivery}
-                    routeActive={() =>
-                      !navigation?.invalid && !hasCompanyRoute?.()
-                    }
-                    onRestored={() => {
-                      if (
-                        workspace.getSnapshot().view === "watchlist" &&
-                        workspace.sessionOwner.getSnapshot().phase === "active"
-                      )
-                        watchlistHeading.current?.focus();
-                    }}
-                  />
-                )}
+                <ManagedWatchlistDraftFilesEntry
+                  workspace={workspace}
+                  scope={draftFileScope}
+                  delivery={draftFileDelivery}
+                  routeActive={watchlistRouteActive}
+                  heading={watchlistHeading}
+                />
                 {saved.uncertain && (
                   <div className="trial-review">
                     <p>

@@ -67,16 +67,18 @@ vi.mock("react", async (original) => ({
   ) => {
     const index = hooks.effectIndex++,
       previous = hooks.effects[index];
-    if (
-      !previous ||
-      !deps ||
-      deps.some((value, position) => value !== previous.deps?.[position])
-    ) {
-      hooks.tasks.push(() => {
-        previous?.cleanup?.();
-        hooks.effects[index] = { deps, cleanup: effect() };
-      });
+    if (previous) {
+      if (deps) {
+        if (
+          !deps.some((value, position) => value !== previous.deps?.[position])
+        )
+          return;
+      }
     }
+    hooks.tasks.push(() => {
+      previous?.cleanup?.();
+      hooks.effects[index] = { deps, cleanup: effect() };
+    });
   },
 }));
 
@@ -149,6 +151,10 @@ function review(candidate = draft([unchanged, member("file-only", raw)])) {
 type Element = React.ReactElement<Record<string, unknown>>;
 function elements(node: React.ReactNode): Element[] {
   if (!React.isValidElement<Record<string, unknown>>(node)) return [];
+  if (typeof node.type === "function")
+    return elements(
+      (node.type as (props: unknown) => React.ReactNode)(node.props),
+    );
   return [
     node,
     ...React.Children.toArray(node.props.children as React.ReactNode).flatMap(

@@ -118,6 +118,10 @@ import {
   type ManagedCompanyRoute,
 } from "./managed-company-route";
 import type { TrialSession } from "./session";
+import {
+  captureWatchlistDraftFileContext,
+  type WatchlistDraftFileContext,
+} from "./managed-watchlist-draft-context";
 
 type ResolvedListing = ManagedCatalogResolveResponse["results"][number];
 export interface CatalogReview {
@@ -340,9 +344,7 @@ export class ManagedWorkspace {
     this.followups = new ManagedResearchFollowups(api, resourceSession, {
       getCreationContext: () => ({
         draft: this.coordinator.getSnapshot().draft,
-        catalogSnapshotSha256: this.fileCatalogReviewRequired
-          ? null
-          : (this.state.snapshot?.snapshotSha256 ?? null),
+        catalogSnapshotSha256: this.currentWatchlistCatalogDigest(),
       }),
       onRetire: () =>
         this.sessionOwner.retire(
@@ -524,9 +526,7 @@ export class ManagedWorkspace {
     }
     this.watchlistFilings.reconcile(
       this.coordinator.getSnapshot().draft,
-      this.fileCatalogReviewRequired
-        ? null
-        : (this.state.snapshot?.snapshotSha256 ?? null),
+      this.currentWatchlistCatalogDigest(),
       !this.navigationBlocked &&
         !this.state.research &&
         !this.state.companyRoute,
@@ -575,9 +575,7 @@ export class ManagedWorkspace {
       !this.state.companyRoute;
     this.annualComparison.reconcile(
       this.coordinator.getSnapshot().draft,
-      this.fileCatalogReviewRequired
-        ? null
-        : (this.state.snapshot?.snapshotSha256 ?? null),
+      this.currentWatchlistCatalogDigest(),
       active,
       this.canEdit(),
     );
@@ -601,9 +599,7 @@ export class ManagedWorkspace {
       return;
     }
     const draft = this.coordinator.getSnapshot().draft;
-    const digest = this.fileCatalogReviewRequired
-      ? null
-      : (this.state.snapshot?.snapshotSha256 ?? null);
+    const digest = this.currentWatchlistCatalogDigest();
     const canRead =
       this.canEdit() &&
       !this.state.research &&
@@ -820,11 +816,11 @@ export class ManagedWorkspace {
   }
   canOpenWatchlistAnnual(member: WatchlistMembership) {
     const draft = this.coordinator.getSnapshot().draft;
+    const digest = this.currentWatchlistCatalogDigest();
     return (
       !this.retired &&
-      !this.fileCatalogReviewRequired &&
-      this.state.snapshot !== null &&
-      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
+      digest !== null &&
+      draft?.snapshotSha256 === digest &&
       draft.memberships.includes(member)
     );
   }
@@ -844,15 +840,15 @@ export class ManagedWorkspace {
     capture: ManagedAnnualComparisonReportCapture,
   ) {
     const draft = this.coordinator.getSnapshot().draft;
+    const digest = this.currentWatchlistCatalogDigest();
     return (
       !this.retired &&
-      !this.fileCatalogReviewRequired &&
       !this.navigationBlocked &&
       this.state.view === "watchlist" &&
       !this.state.research &&
       !this.state.companyRoute &&
-      this.state.snapshot !== null &&
-      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
+      digest !== null &&
+      draft?.snapshotSha256 === digest &&
       draft.memberships.some((member) =>
         membershipMatchesResult(member, capture.member.listing),
       ) &&
@@ -892,15 +888,15 @@ export class ManagedWorkspace {
   }
   private canOpenWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
     const draft = this.coordinator.getSnapshot().draft;
+    const digest = this.currentWatchlistCatalogDigest();
     return (
       !this.retired &&
-      !this.fileCatalogReviewRequired &&
       !this.navigationBlocked &&
       this.state.view === "watchlist" &&
       !this.state.research &&
       !this.state.companyRoute &&
-      this.state.snapshot !== null &&
-      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
+      digest !== null &&
+      draft?.snapshotSha256 === digest &&
       draft.memberships.some((member) =>
         membershipMatchesResult(member, capture.member.listing),
       ) &&
@@ -1355,12 +1351,11 @@ export class ManagedWorkspace {
         )
       );
     }
-    if (selection.origin !== "watchlist" || this.fileCatalogReviewRequired)
-      return false;
+    if (selection.origin !== "watchlist") return false;
     const draft = this.coordinator.getSnapshot().draft;
     return (
       selection.cik === null &&
-      draft?.snapshotSha256 === selection.catalogSnapshotSha256 &&
+      draft?.snapshotSha256 === this.currentWatchlistCatalogDigest() &&
       draft.memberships.some((member) =>
         membershipMatchesResult(member, selection.listing),
       )
@@ -2763,28 +2758,27 @@ export class ManagedWorkspace {
       message: `Release reference added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
   }
+  private currentWatchlistCatalogDigest() {
+    if (this.fileCatalogReviewRequired) return null;
+    return this.state.snapshot?.snapshotSha256 ?? null;
+  }
   watchlistFileCatalogReviewRequired() {
     return this.fileCatalogReviewRequired;
   }
+  getWatchlistDraftFileContext(
+    requireFresh = true,
+  ): WatchlistDraftFileContext | null {
+    if (!this.canEdit()) return null;
+    if (this.navigationBlocked) return null;
+    if (this.sessionOwner.getSnapshot().phase !== "active") return null;
+    return captureWatchlistDraftFileContext(
+      this.coordinator.getSnapshot(),
+      this.state,
+      requireFresh,
+    );
+  }
   restoreWatchlistFileDraft(payload: MainWatchlistPayload) {
-    const saved = this.coordinator.getSnapshot();
-    if (
-      !this.canEdit() ||
-      this.navigationBlocked ||
-      this.state.view !== "watchlist" ||
-      this.state.research ||
-      this.state.companyRoute ||
-      this.state.read ||
-      this.state.review ||
-      this.state.reviewing ||
-      saved.phase !== "idle" ||
-      !saved.saved ||
-      !saved.latestLoaded ||
-      saved.baseVersion !== saved.saved.version ||
-      saved.uncertain ||
-      saved.replayPending
-    )
-      return false;
+    if (!this.getWatchlistDraftFileContext()) return false;
     this.fileCatalogReviewRequired = true;
     this.validation = null;
     this.coordinator.replaceDraft(payload);
