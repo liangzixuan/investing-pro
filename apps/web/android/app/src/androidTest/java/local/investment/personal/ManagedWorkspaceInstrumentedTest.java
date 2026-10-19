@@ -686,7 +686,7 @@ public class ManagedWorkspaceInstrumentedTest {
         retainAnnualNoteFrame("authoredValuationReport", "#managed-prepared-report-heading", "#managed-prepared-report-heading", 1);
         click("#managed-signout-open");
         awaitPage("sign-out review names temporary valuation inputs even after note Save",
-            "document.querySelector('#managed-signout-review')?.textContent.includes('Valuation inputs are temporary.')" +
+            "document.querySelector('#managed-signout-review')?.textContent.includes('Signing out discards valuation inputs that are not confirmed as saved, and clears calculated results. A saved note or report does not save the editable inputs.')" +
             " && [...document.querySelectorAll('#managed-signout-review dt')].find(e => e.textContent === 'Valuation inputs')?.nextElementSibling?.textContent === 'Temporary inputs will be discarded.'" +
             " && document.activeElement?.id === 'managed-signout-stay' && " + DRAFT + ".dirty === false");
         // This review includes the valuation warning as its third paragraph.
@@ -3267,7 +3267,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertSignOutCleared() throws Exception {
         awaitPage("signed-out workspace stays cleared without a sign-out review",
-            "document.body.textContent.includes('Signed out. All three local drafts have been cleared.')" +
+            "document.body.textContent.includes('Signed out. Local drafts and valuation inputs have been cleared.')" +
             " && document.querySelector('.managed-navigation') === null && document.querySelector('.managed-search-bar') === null" +
             " && document.querySelector('#managed-note-0') === null && document.querySelector('#managed-note-1') === null" +
             " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
