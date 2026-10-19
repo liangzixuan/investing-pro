@@ -8,6 +8,7 @@ import { ManagedSessionScreen } from "./ManagedWorkspaceScreen";
 import { TrialFrame } from "./TrialFrame";
 import { ManagedEntry } from "./ManagedEntry";
 import { browserWatchlistExportAdapter } from "./browser-watchlist-export";
+import { browserWatchlistDraftFileAdapter } from "./browser-watchlist-draft-file";
 import {
   managedCompanyHref,
   parseManagedCompanyRoute,
@@ -104,6 +105,7 @@ function ClerkSession({
           ? {
               warnOnBrowserLeave: true,
               exportDelivery: browserWatchlistExportAdapter,
+              draftFileDelivery: browserWatchlistDraftFileAdapter,
               reportDelivery: browserCompanyReportAdapter,
             }
           : {})}

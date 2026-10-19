@@ -157,7 +157,9 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
             && displayName.matches("Investment-watchlist-v[0-9]{1,16}\\.txt");
         boolean report = "application/json".equals(mimeType) && displayName != null
             && displayName.matches(REPORT_NAME);
-        if (!ROOT_ID.equals(parent) || (!watchlist && !report))
+        boolean draft = "application/json".equals(mimeType) && displayName != null
+            && displayName.matches("Investment-watchlist-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json");
+        if (!ROOT_ID.equals(parent) || (!watchlist && !report && !draft))
             throw new FileNotFoundException();
         String id = UUID.randomUUID().toString();
         try {

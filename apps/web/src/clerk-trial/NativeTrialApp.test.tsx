@@ -16,6 +16,7 @@ import type {
 import type { TrialSession } from "./session";
 import type { AndroidBackAdapter } from "../mobile/android-back";
 import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
+import type { ManagedWatchlistDraftFileDeliveryAdapter } from "./managed-watchlist-draft-file-delivery";
 
 // Controlled hook calls inspect composition and cleanup; the real session store runs below.
 const hooks = vi.hoisted(() => ({
@@ -120,12 +121,15 @@ async function mount(
   };
   const exportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   const reportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
+  const draftFilePlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   hooks.register.mockImplementation((name: string) =>
     name === "InvestmentAuth"
       ? plugin
       : name === "InvestmentWatchlistExport"
         ? exportPlugin
-        : reportPlugin,
+        : name === "InvestmentWatchlistDraftFile"
+          ? draftFilePlugin
+          : reportPlugin,
   );
   const loading = NativeTrialApp({ config });
   const loadingHtml = renderToStaticMarkup(loading);
@@ -155,6 +159,7 @@ async function mount(
     remove,
     exportPlugin,
     reportPlugin,
+    draftFilePlugin,
     emit: (value: NativeAuthState) => emit(value),
   };
 }
@@ -166,6 +171,7 @@ function findScreen(node: ReactNode):
       androidBack?: AndroidBackAdapter;
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
+      draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     }>
   | undefined {
@@ -185,6 +191,7 @@ function findScreen(node: ReactNode):
         androidBack?: AndroidBackAdapter;
         warnOnBrowserLeave?: boolean;
         exportDelivery?: WatchlistExportDeliveryAdapter;
+        draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
         reportDelivery?: CompanyReportDeliveryAdapter;
       }>;
     }
@@ -228,8 +235,14 @@ describe("native shared workspace composition", () => {
   ] as const)(
     "selects the existing screen and owns one listener %#",
     async (config, screenType) => {
-      const { frame, plugin, remove, exportPlugin, reportPlugin } =
-        await mount(config);
+      const {
+        frame,
+        plugin,
+        remove,
+        exportPlugin,
+        reportPlugin,
+        draftFilePlugin,
+      } = await mount(config);
       const screen = findScreen(frame());
       expect(screen?.type).toBe(screenType);
       expect(screen?.key).toBe("1");
@@ -245,6 +258,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentAuth"],
               ["InvestmentWatchlistExport"],
               ["InvestmentCompanyReport"],
+              ["InvestmentWatchlistDraftFile"],
             ]
           : [["InvestmentAuth"]],
       );
@@ -263,6 +277,14 @@ describe("native shared workspace composition", () => {
         screen?.props.exportDelivery,
       );
       for (const method of Object.values(exportPlugin))
+        expect(method).not.toHaveBeenCalled();
+      expect(typeof screen?.props.draftFileDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.draftFileDelivery).toBe(
+        screen?.props.draftFileDelivery,
+      );
+      for (const method of Object.values(draftFilePlugin))
         expect(method).not.toHaveBeenCalled();
       expect(plugin.addListener).toHaveBeenCalledTimes(1);
       expect(plugin.getState).toHaveBeenCalledTimes(1);

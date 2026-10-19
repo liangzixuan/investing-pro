@@ -46,7 +46,13 @@ requirements; the update report does not close these remaining checks.
 
 The [isolated Watchlist restore proof](MANAGED_WATCHLIST_RESTORE_PROOF.md)
 prepares fixed invented-data checks around Appwrite's native backup service.
-Its local evidence does not establish an executed cloud restore or owner backup.
+The owner deferred this optional cloud drill on October 18. Its execution stays
+disabled; source checks do not establish an executed restore or owner backup.
+The active independent increment is [Watchlist draft files](MANAGED_WATCHLIST_DRAFT_FILES.md):
+explicit file capture, complete review and local restoration, followed by
+independent catalog review and the normal online Save. This does not provide
+automatic draft storage or confirmed-record recovery. Source and native
+qualification remain in progress.
 
 Staging run `39112966766`, attempt 1, passed its deployed-origin BrowserStack
 checks. Production promoted that exact accepted archive without rebuilding or

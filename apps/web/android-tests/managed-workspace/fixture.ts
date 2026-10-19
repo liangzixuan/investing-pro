@@ -20,6 +20,7 @@ import {
   type PortfolioNativeControls,
 } from "./portfolio-fixture";
 import { createFinancialReviewNativeFixture } from "./financial-review-native-fixture";
+import { withDraftFileCatalogFixture } from "./draft-file-catalog-fixture";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { liquidityHistoryPacket } from "./liquidity-history-fixture";
 import { operatingHistoryPacket } from "./operating-history-fixture";
@@ -295,6 +296,7 @@ async function createSharedFixture(
     | "markets-selected-price"
     | "watchlist-comparison"
     | "watchlist-export"
+    | "watchlist-draft-file"
     | "authored-valuation" = "default",
 ) {
   // These journeys reuse the one-read Annual source behavior. The snapshot
@@ -658,7 +660,7 @@ async function createSharedFixture(
     return Promise.reject(new Error(`Unexpected fixture operation: ${key}`));
   };
   let savedWatchlist = { version: 1, payload: structuredClone(payload) };
-  if (scenario === "watchlist-export")
+  if (scenario === "watchlist-export" || scenario === "watchlist-draft-file")
     savedWatchlist = {
       ...savedWatchlist,
       payload: {
@@ -1743,7 +1745,15 @@ async function createSharedFixture(
     },
   };
   return {
-    api,
+    api: withDraftFileCatalogFixture({
+      api,
+      scenario,
+      snapshotSha256: digest,
+      savedDraft: () => savedWatchlist.payload,
+      resolveCount: () => state.resolve,
+      recordResolve: () => count("resolve"),
+      refuseResolve: () => unexpected("resolve"),
+    }),
     session,
     followups,
     marketsCohort,

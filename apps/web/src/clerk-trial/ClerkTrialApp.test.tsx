@@ -7,6 +7,8 @@ import { ClerkTrialApp } from "./ClerkTrialApp";
 import type { TrialSession } from "./session";
 import { browserWatchlistExportAdapter } from "./browser-watchlist-export";
 import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
+import { browserWatchlistDraftFileAdapter } from "./browser-watchlist-draft-file";
+import type { ManagedWatchlistDraftFileDeliveryAdapter } from "./managed-watchlist-draft-file-delivery";
 
 const sdk = vi.hoisted(() => ({
   auth: vi.fn(),
@@ -145,11 +147,13 @@ describe("official Clerk browser adapter", () => {
       apiOrigin: string;
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
+      draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.apiOrigin).toBe(config.apiOrigin);
     expect(props.warnOnBrowserLeave).toBeUndefined();
     expect(props.exportDelivery).toBeUndefined();
+    expect(props.draftFileDelivery).toBeUndefined();
     expect(props.reportDelivery).toBeUndefined();
     expect(await props.session.getToken()).toBe("synthetic-token");
     await props.session.signOut();
@@ -219,10 +223,12 @@ describe("official Clerk browser adapter", () => {
       session: TrialSession;
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
+      draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.warnOnBrowserLeave).toBe(true);
     expect(props.exportDelivery).toBe(browserWatchlistExportAdapter);
+    expect(props.draftFileDelivery).toBe(browserWatchlistDraftFileAdapter);
     expect(props.reportDelivery).toBe(browserCompanyReportAdapter);
     expect(props.session).toMatchObject({
       userId: "user_owner",

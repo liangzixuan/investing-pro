@@ -59,6 +59,22 @@ final class WatchlistSystemPicker {
         awaitReturnToApp();
     }
 
+    /** OPEN uses the same real provider root, with one exact observed document label. */
+    void openInventedDocument(String displayName) throws Exception {
+        assertTrue("Only an exact invented draft document can be selected",
+            displayName.matches("Investment-watchlist-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json"));
+        AccessibilityNodeInfo navigation = await(node -> isRootsList(node)
+            || "Show roots".contentEquals(string(node.getContentDescription())));
+        if (!isRootsList(navigation)) click(navigation);
+        clickInventedRoot();
+        await(node -> string(node.getViewIdResourceName()).endsWith(":id/toolbar")
+            && find(node, child -> SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(child.getText())), 0) != null);
+        AccessibilityNodeInfo document = await(node -> displayName.equals(string(node.getText()))
+            && !hasAncestor(node, ":id/roots_list"));
+        click(document);
+        awaitReturnToApp();
+    }
+
     /** Reacquire after drawer events settle; a rejected action is never retried. */
     private void clickInventedRoot() throws Exception {
         long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;

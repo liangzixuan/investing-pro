@@ -69,6 +69,48 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
+    private static final java.util.Set<String> ALLOWED_FIXTURE_SCENARIOS = java.util.Set.of(
+        "catalog-startup-recovery",
+        "company-direct-entry",
+        "markets-selected-price",
+        "annual-note",
+        "annual-statements",
+        "annual-cash-history",
+        "annual-operating-results",
+        "annual-operating-history",
+        "annual-liquidity-history",
+        "annual-balance-sheet",
+        "annual-financial-review",
+        "annual-operating-comparison",
+        "markets-price-handoff",
+        "watchlist-recovery",
+        "signout-save-review",
+        "signout-uncertain-review",
+        "raw-close-comparison",
+        "price-comparison-note",
+        "price-studies",
+        "financial-screen",
+        "screen-comparison",
+        "thesis-review",
+        "company-snapshot",
+        "authored-valuation",
+        "valuation-price",
+        "research-followups",
+        "portfolio-ledger",
+        "markets-day-view",
+        "company-price-ranges",
+        "bea-agenda",
+        "bea-agenda-comparison",
+        "bea-session-retirement",
+        "watchlist-comparison",
+        "watchlist-export",
+        "company-filings",
+        "fed-announcements",
+        "annual-comparison",
+        "watchlist-draft-file");
+    private static final java.util.Map<String, String> DRAFT_FILE_SCENARIOS = java.util.Map.of(
+        "watchlistDraftFileUsesSystemExportImportAndExplicitRestore", "watchlist-draft-file",
+        "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file");
     private static final String ANNUAL_COMPARISON_NOTE =
         "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
         "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
@@ -325,6 +367,7 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("markets-day-view");
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("watchlist-export");
+        selectDraftFileFixtureScenario();
         if (testName.getMethodName().equals("researchFollowupsSaveResearchAndCompleteAcrossSessions") ||
             testName.getMethodName().equals("dailyResearchReviewKeepsDraftAndCompletesThroughResearch") ||
             testName.getMethodName().equals("researchFollowupsReplayAndSessionRetirementFenceLateReplies"))
@@ -1394,6 +1437,221 @@ public class ManagedWorkspaceInstrumentedTest {
         } finally {
             WatchlistTestDocuments.clear(appContext);
         }
+    }
+
+    @Test
+    public void watchlistDraftFileUsesSystemExportImportAndExplicitRestore() throws Exception {
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        WatchlistTestDocuments.clear(context);
+        try {
+            WatchlistTestDocuments.Output output = exportInventedDraftFile(context);
+            double timeOrigin = readDocumentTimeOrigin();
+            click("#fixture-draft-file-fresh-session");
+            awaitFreshDraftFileSession();
+            openDraftFileControls();
+            selectInventedDraftFile(output);
+            assertCompleteDraftFileComparison();
+            retainDraftFileFrame("watchlistDraftFileCandidateReview", "#managed-draft-file-review-heading ~ .managed-draft-file-list");
+            clickDraftFileAction("Keep current draft");
+            awaitPage("cancel commits idle state before returning focus to the enabled input",
+                "!document.querySelector('#managed-draft-file-review-heading') && " +
+                "document.activeElement === document.querySelector('#managed-watchlist-draft-files input[type=file]') && " +
+                "document.activeElement.disabled === false && " + DRAFT + ".dirty === false");
+            selectInventedDraftFile(output);
+            assertCompleteDraftFileComparison();
+            clickDraftFileAction("Restore file to current draft");
+            awaitPage("explicit restore changes only the local draft and requires a catalog review",
+                DRAFT + ".dirty === true && " + DRAFT + ".baseVersion === 1 && " +
+                DRAFT + ".memberships[0].note === 'Unconfirmed file draft' && " +
+                "document.activeElement === document.querySelector('#managed-watchlist-heading') && " +
+                "document.querySelector('#managed-save-issue')?.textContent.includes('Review imported file listings') && " +
+                "[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Save watchlist' && b.disabled)");
+            retainDraftFileFrame("watchlistDraftFileRestoredCatalogRequired", "#managed-save-issue");
+            clickDraftCatalogAction("Review catalog changes");
+            awaitPage("all imported listings require explicit catalog acceptance",
+                "document.querySelector('#managed-review-heading')?.parentElement.textContent.includes('2 of 2 listings reviewed') && " +
+                "[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Apply reviewed catalog' && !b.disabled)");
+            clickDraftCatalogAction("Apply reviewed catalog");
+            awaitPage("catalog acceptance enables a separate Save without sending it",
+                "[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Save watchlist' && !b.disabled) && " +
+                DRAFT + ".memberships[0].note === 'Unconfirmed file draft' && " + DIAGNOSTICS + ".save === 0");
+            assertDraftFileNoAutomaticSave(2, 1);
+            assertEquals("Fresh session keeps the current WebView document", timeOrigin, readDocumentTimeOrigin(), 0.0);
+            assertEquals(1, WatchlistTestDocuments.outputs(context).length);
+        } finally {
+            WatchlistTestDocuments.clear(context);
+        }
+    }
+
+    @Test
+    public void watchlistDraftFileRejectsAnotherAccountAndRetiresChooser() throws Exception {
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        WatchlistTestDocuments.clear(context);
+        try {
+            WatchlistTestDocuments.Output output = exportInventedDraftFile(context);
+            click("#fixture-draft-file-other-account");
+            awaitFreshDraftFileSession();
+            openDraftFileControls();
+            selectInventedDraftFile(output);
+            awaitPage("a different account cannot review or restore the selected file",
+                "!document.querySelector('#managed-draft-file-review-heading') && " +
+                "document.querySelector('#managed-watchlist-draft-files')?.textContent.includes('belongs to another account or backend') && " +
+                DRAFT + ".dirty === false && " + DRAFT + ".memberships[0].note === 'Invented saved note: café 東京 📈'");
+            selectWatchlistNote(0);
+            touchInput("managed-note-0");
+            replaceFocusedInput("managed-note-0", "Invented saved note: café 東京 📈", "Other account local draft");
+            closeSoftKeyboard();
+            click("#fixture-draft-file-retire");
+            clickDraftFileAction("Save draft file");
+            new WatchlistSystemPicker().saveToInventedRoot();
+            awaitPage("retirement fences the late native chooser and clears local notes",
+                DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && " +
+                DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false && " +
+                "JSON.parse(document.querySelector('#fixture-draft-file-protocol').textContent).choices === 2 && " +
+                "JSON.parse(document.querySelector('#fixture-draft-file-protocol').textContent).writes === 1 && " +
+                "document.querySelector('#managed-watchlist-draft-files') === null && " +
+                "document.querySelector('[data-managed-note-listing-id]') === null");
+            WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
+            assertEquals(2, outputs.length);
+            long empty = java.util.Arrays.stream(outputs).filter(item -> item.size == 0).count();
+            assertEquals("The retired chooser may create a destination but must not write text", 1L, empty);
+            assertDraftFileNoAutomaticSave(2);
+        } finally {
+            WatchlistTestDocuments.clear(context);
+        }
+    }
+
+    private WatchlistTestDocuments.Output exportInventedDraftFile(android.content.Context context) throws Exception {
+        scenario.onActivity(activity -> {
+            InvestmentWatchlistDraftFilePlugin plugin = (InvestmentWatchlistDraftFilePlugin)
+                activity.getBridge().getPlugin("InvestmentWatchlistDraftFile").getInstance();
+            assertNull("Draft files must not enter saved Activity options", plugin.saveInstanceState());
+        });
+        selectWorkspaceView("My Watchlist");
+        selectWatchlistNote(0);
+        touchInput("managed-note-0");
+        replaceFocusedInput("managed-note-0", "Invented saved note: café 東京 📈", "Unconfirmed file draft");
+        closeSoftKeyboard();
+        openDraftFileControls();
+        clickDraftFileAction("Save draft file");
+        new WatchlistSystemPicker().saveToInventedRoot();
+        awaitPage("the real native writer completes the unconfirmed draft file",
+            "document.querySelector('#managed-watchlist-draft-files')?.textContent.includes('Draft file saved.') && " +
+            "JSON.parse(document.querySelector('#fixture-draft-file-protocol').textContent).writes === 1");
+        WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
+        assertEquals(1, outputs.length);
+        String text = readFixtureString("JSON.parse(document.querySelector('#fixture-draft-file-protocol').textContent).text");
+        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+        assertTrue(bytes.length <= 266240);
+        assertArrayEquals(bytes, WatchlistTestDocuments.read(context, outputs[0]));
+        JSONObject file = new JSONObject(text);
+        assertEquals("investment-watchlist-draft", file.getString("format"));
+        assertEquals(1, file.getInt("version"));
+        assertEquals(1, file.getInt("baseVersion"));
+        assertEquals("Unconfirmed file draft", file.getJSONObject("draft").getJSONArray("memberships").getJSONObject(0).getString("note"));
+        assertEquals("Investment-watchlist-draft-" + file.getString("capturedAt").replace(':', '-').replace('.', '-') + ".json", outputs[0].name);
+        assertDraftFileNoAutomaticSave(1);
+        return outputs[0];
+    }
+
+    private void awaitFreshDraftFileSession() throws Exception {
+        awaitPage("fresh verified account session reads its saved Watchlist before importing",
+            DIAGNOSTICS + ".load === 2 && " + DIAGNOSTICS + ".status === 2 && " +
+            DRAFT + ".phase === 'idle' && " + DRAFT + ".dirty === false && " +
+            DRAFT + ".memberships[0].note === 'Invented saved note: café 東京 📈'");
+        selectWorkspaceView("My Watchlist");
+    }
+
+    private void openDraftFileControls() throws Exception {
+        click("#managed-watchlist-draft-files > summary");
+        awaitPage("draft controls become ready only after scope and saved read",
+            "document.querySelector('#managed-watchlist-draft-files')?.open === true && " +
+            "document.querySelector('#managed-watchlist-draft-files input[type=file]')?.disabled === false");
+    }
+
+    private void selectInventedDraftFile(WatchlistTestDocuments.Output output) throws Exception {
+        touchDraftFileChooserLabel();
+        new WatchlistSystemPicker().openInventedDocument(output.name);
+    }
+
+    /** A real gesture activates the file chooser again after Cancel returns DOM focus. */
+    private void touchDraftFileChooserLabel() throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { const input=document.querySelector('#managed-watchlist-draft-files input[type=file]'),label=input?.closest('label');" +
+            " if(!input || input.disabled || !label)return null;" +
+            " if(label.control!==input || !input.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return null;" +
+            " const text=[...label.childNodes].find(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim()==='Select a Watchlist draft file');" +
+            " if(!text)return null; label.scrollIntoView({block:'center',inline:'center',behavior:'instant'});" +
+            " const range=document.createRange();range.selectNodeContents(text);const r=range.getBoundingClientRect(),ir=input.getBoundingClientRect(),v=visualViewport;" +
+            " const x=r.left+r.width/2,y=r.top+r.height/2;" +
+            " return {x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:v.width,height:v.height," +
+            " offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio," +
+            " finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,ir.left,ir.top,ir.right,ir.bottom,ir.width,ir.height,v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio].every(Number.isFinite)" +
+            " &&r.width>0&&r.height>0&&ir.width>0&&ir.height>0&&v.width>0&&v.height>0&&v.scale>0&&devicePixelRatio>0," +
+            " visible:r.left>=v.offsetLeft&&r.top>=v.offsetTop&&r.right<=v.offsetLeft+v.width&&r.bottom<=v.offsetTop+v.height" +
+            " &&ir.left>=v.offsetLeft&&ir.top>=v.offsetTop&&ir.right<=v.offsetLeft+v.width&&ir.bottom<=v.offsetTop+v.height," +
+            " hit:label.contains(document.elementFromPoint(x,y))}; })()",
+            value -> { observed.set(value); returned.countDown(); }));
+        assertTrue("Draft file chooser label geometry returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        touchEditorGeometry("Watchlist draft file chooser label", observed.get());
+    }
+
+    private void assertCompleteDraftFileComparison() throws Exception {
+        awaitPage("full candidate and current drafts precede every restore choice",
+            "(() => { const review = document.querySelector('#managed-draft-file-review-heading')?.parentElement;" +
+            " const lists = review?.querySelectorAll('.managed-draft-file-list');" +
+            " return lists?.length === 2 && lists[0].children.length === 2 && lists[1].children.length === 2" +
+            " && [...lists[0].querySelectorAll('.trial-saved-note')].map(e => e.textContent).join('|') === 'Unconfirmed file draft|Invented second note'" +
+            " && [...lists[1].querySelectorAll('.trial-saved-note')].map(e => e.textContent).join('|') === 'Invented saved note: café 東京 📈|Invented second note'" +
+            " && review.textContent.includes('File metadata does not verify')" +
+            " && " + DRAFT + ".dirty === false && " + DIAGNOSTICS + ".save === 0" +
+            " && document.querySelector('#managed-watchlist-draft-files input[type=file]').value === ''; })()");
+    }
+
+    private void clickDraftFileAction(String label) {
+        assertTrue(label.equals("Save draft file") || label.equals("Keep current draft") || label.equals("Restore file to current draft"));
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//details[@id='managed-watchlist-draft-files']//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void retainDraftFileFrame(String name, String selector) throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector(" + JSONObject.quote(selector) + ")?.scrollIntoView({block:'center',inline:'center',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Draft file frame target scroll completed", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const target=document.querySelector(" + JSONObject.quote(selector) + "),v=visualViewport;" +
+            " if(!target || !v || !target.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}) || document.documentElement.scrollWidth>innerWidth+1)return false;" +
+            " const controls=[...document.querySelectorAll('#managed-watchlist-draft-files button,#managed-watchlist-draft-files input')].filter(e=>e.getClientRects().length);" +
+            " if(!controls.length || controls.some(e=>{const r=e.getBoundingClientRect();return r.width<=0 || r.left<v.offsetLeft || r.right>v.offsetLeft+v.width;}))return false;" +
+            " const r=target.getBoundingClientRect();return r.width>0 && r.height>0 && r.left>=v.offsetLeft && r.right<=v.offsetLeft+v.width" +
+            " && r.top>=v.offsetTop && r.bottom<=v.offsetTop+v.height && target.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)); })()";
+        awaitPage("Draft file target and complete control widths are visible without horizontal overflow: " + name, visible);
+        retainScreenshot(name);
+        awaitPage("Draft file target remains committed after PixelCopy: " + name, visible);
+    }
+
+    private void clickDraftCatalogAction(String label) {
+        assertTrue(label.equals("Review catalog changes") || label.equals("Apply reviewed catalog"));
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertDraftFileNoAutomaticSave(int sessions) throws Exception {
+        assertDraftFileNoAutomaticSave(sessions, 0);
+    }
+
+    private void assertDraftFileNoAutomaticSave(int sessions, int expectedResolves) throws Exception {
+        awaitPage("draft files make no saved mutation, authentication or research request",
+            DIAGNOSTICS + ".load === " + sessions + " && " + DIAGNOSTICS + ".status === " + sessions +
+            " && " + DIAGNOSTICS + ".marketsResolve === " + sessions +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".search === 0" +
+            " && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0");
+        assertFixtureBoundary(expectedResolves);
     }
 
     private void startInvalidExportProbe(String kind, int sequence) throws Exception {
@@ -8310,21 +8568,14 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     /** Fixed metadata in this test's copied HTML is read before the fixture's sole React mount. */
+    private void selectDraftFileFixtureScenario() throws IOException {
+        String selected = DRAFT_FILE_SCENARIOS.getOrDefault(testName.getMethodName(), "");
+        if (!selected.isEmpty()) selectFixtureScenario(selected);
+    }
+
     private void selectFixtureScenario(String scenarioName) throws IOException {
         assertTrue("Only fixed invented fixture scenarios are allowed",
-            scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
-            scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") || scenarioName.equals("annual-statements") ||
-            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-balance-sheet") || scenarioName.equals("annual-financial-review") || scenarioName.equals("annual-operating-comparison") ||
-            scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
-            scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
-            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") || scenarioName.equals("price-studies") || scenarioName.equals("financial-screen") || scenarioName.equals("screen-comparison") ||
-            scenarioName.equals("thesis-review") ||
-            scenarioName.equals("company-snapshot") || scenarioName.equals("authored-valuation") || scenarioName.equals("valuation-price") ||
-            scenarioName.equals("research-followups") || scenarioName.equals("portfolio-ledger") ||
-            scenarioName.equals("markets-day-view") ||
-            scenarioName.equals("company-price-ranges") ||
-            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
-            scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
+            ALLOWED_FIXTURE_SCENARIOS.contains(scenarioName));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);
