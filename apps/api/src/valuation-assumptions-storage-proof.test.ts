@@ -319,6 +319,20 @@ function commitConflict(store: AtomicStore, code: 400 | 409) {
     return original(input);
   };
 }
+async function historicalEditWithChangedReceiptTime() {
+  const phase = "historical-edit-and-catalog-review";
+  const f = await seeded(phase);
+  phaseClock(phase);
+  const get = f.store.getRow.bind(f.store);
+  const edited = valuationProofLocation("a", "historical-edit");
+  const changedTime = "2000-01-01T00:00:00.000Z";
+  f.store.getRow = async (input) => {
+    const row = await get(input);
+    if (input.rowId === edited.rowId) row.committedAt = changedTime;
+    return row;
+  };
+  return { f, edited, changedTime };
+}
 describe("real conflict and transaction outcomes", () => {
   it.each([
     ["prestage", 400],
@@ -389,16 +403,8 @@ describe("real conflict and transaction outcomes", () => {
   });
   it("refuses a valid but changed intermediate historical-edit receipt time despite a correct v7 commit", async () => {
     const phase = "historical-edit-and-catalog-review";
-    const f = await seeded(phase);
-    phaseClock(phase);
-    const get = f.store.getRow.bind(f.store);
-    const edited = valuationProofLocation("a", "historical-edit");
-    const changedTime = "2000-01-01T00:00:00.000Z";
-    f.store.getRow = async (input) => {
-      const row = await get(input);
-      if (input.rowId === edited.rowId) row.committedAt = changedTime;
-      return row;
-    };
+    const { f, edited, changedTime } =
+      await historicalEditWithChangedReceiptTime();
     const report = await runValuationAssumptionsStorageProof(
       phase,
       BUILD,

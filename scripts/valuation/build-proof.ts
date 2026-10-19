@@ -357,21 +357,31 @@ const bundlePolicy = {
 };
 const bundle = (outDir: string, buildProof: string) =>
   bundleValuationProof(outDir, buildProof, bundlePolicy);
-async function verifySources() {
+async function verifySourcePins() {
   for (const expected of sources) {
     if (JSON.stringify(await pin(expected.path)) !== JSON.stringify(expected))
       throw new Error("Proof source changed during build");
   }
-  for (const expected of [
+}
+async function verifyToolPins() {
+  const expectedPins = [
     ...tools,
     ...toolCode,
     ...dependencyLicenses.flatMap((item) => [item.manifest, ...item.files]),
-  ]) {
+  ];
+  for (const expected of expectedPins) {
     if ((await pin(expected.path)).sha256 !== expected.sha256)
       throw new Error("Proof tool changed during build");
   }
+}
+async function verifyNodePin() {
   if (hash(await readFile(process.execPath)) !== sourceMarker.node.sha256)
     throw new Error("Proof Node executable changed during build");
+}
+async function verifySources() {
+  await verifySourcePins();
+  await verifyToolPins();
+  await verifyNodePin();
 }
 const parent = resolve(root, "dist/managed-valuation-proof");
 await mkdir(parent, { recursive: true });

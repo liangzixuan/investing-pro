@@ -76,31 +76,42 @@ async function compileGraph(root: string, outDir: string, buildProof: string) {
 
 async function requireSingleOutput(graph: Graph, root: string, outDir: string) {
   const paths = Object.keys(graph.outputs);
-  if (
-    paths.length !== 1 ||
-    resolve(root, paths[0]!) !== resolve(outDir, "main.js")
-  )
+  if (paths.length !== 1) throw new Error("Unexpected proof build output");
+  if (resolve(root, paths[0]!) !== resolve(outDir, "main.js"))
     throw new Error("Unexpected proof build output");
+  await requireMainOutputMember(outDir);
+}
+
+async function requireMainOutputMember(outDir: string) {
   const entries = await readdir(outDir, { withFileTypes: true });
-  if (
-    entries.length !== 1 ||
-    entries[0]?.name !== "main.js" ||
-    !entries[0].isFile()
-  )
+  if (entries.length !== 1)
+    throw new Error("Unexpected proof output directory member");
+  if (entries[0]?.name !== "main.js")
+    throw new Error("Unexpected proof output directory member");
+  if (!entries[0].isFile())
     throw new Error("Unexpected proof output directory member");
 }
 
-function admitModule(path: string, policy: BundlePolicy) {
+function requireExecutionModule(path: string) {
+  if (path.startsWith("scripts/"))
+    throw new Error("Unrelated execution module in proof bundle");
   if (
-    path.startsWith("scripts/") ||
     /(?:\.test\.|\/test-|(?:^|\/)(?:clerk-trial-proof-entry|managed-workspace-handler|managed-workspace-function)\.)/u.test(
       path,
     )
   )
     throw new Error("Unrelated execution module in proof bundle");
+}
+
+function requireDependencyModule(path: string, roots: readonly string[]) {
+  if (!roots.some((root) => path.startsWith(root + "/")))
+    throw new Error("Unreviewed third-party proof module");
+}
+
+function admitModule(path: string, policy: BundlePolicy) {
+  requireExecutionModule(path);
   if (path.startsWith("node_modules/")) {
-    if (!policy.dependencyRoots.some((root) => path.startsWith(root + "/")))
-      throw new Error("Unreviewed third-party proof module");
+    requireDependencyModule(path, policy.dependencyRoots);
   } else if (!policy.sourcePaths.has(path)) {
     throw new Error("Unbound application module in proof bundle");
   }
