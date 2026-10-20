@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 19, 2026. This document defines the durable product goals and
+Updated October 20, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -13,40 +13,49 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-## Current priority after the October 17 review
+## Current priority after the October 20 release
 
-The October 18 website/API release publishes product `f4379679`. The owner
-reported a successful 1.27-to-1.28 Android update and passes for all four requested
-physical checks. This closes that upgrade/checklist within its reported scope.
-The website now publishes explicit Watchlist draft-file capture and restoration
-from product `6ca5e0db`, with independent catalog review and normal Save. Matching
-Android 1.29 artifact review passed; its physical upgrade and new file workflow
-remain separate acceptance steps.
-The owner deferred the optional cloud backup drill. Sustained use, controlled
-account recovery and screen-reader acceptance remain open.
-Use the single capability and delivery table in
-[Current work](CURRENT_WORK.md) and the [release readiness plan](MANAGED_RELEASE_READINESS.md).
-Keep all existing release gates intact and use the current task's browser
-authorization. The owner resumed browser testing on October 18; older stop labels
-are historical. Record actual tool restrictions separately from owner permission.
-Offline preparation does not establish staging, production or physical-device
-acceptance.
+The website and API publish source
+`61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The
+[production promotion](https://github.com/liangzixuan/investing-pro/actions/runs/39469586266)
+passed all 12 steps on its original attempt and reused the exact accepted archive
+from staging run `39454170915`, attempt 1. Fresh metadata and the served public
+entry page/source marker match that release.
 
-The merged research-source increment aligns Price, Annual and Filings eligibility across
-the existing named company universe, from screening through cited evidence,
-normal Save and retained Back state. Its delivery remains separate. PR200 merges
-the editable valuation workflow: explicit saved-input read,
-complete comparison, independent Review/Save, fresh-session restore and explicit
-Calculate. Complete its storage qualification and delivery, then managed Portfolio
-storage/recovery. Defer new portfolio-history features while these
-delivery and persistence gaps remain. Coverage fixes and selected metric rows do
-not complete a milestone.
+Editable valuation inputs are now published with enabled, qualified storage:
+explicit Load, complete Stage/Review/Save, then fresh-session load, comparison,
+Use and Calculate. The [private storage proof](MANAGED_VALUATION_STORAGE_PROOF.md)
+passed with invented data. No authenticated owner Save or owner-row QA ran during
+the release. Unsaved editor state remains in memory; default source configuration
+still disables storage for other deployments. Filings now admits 17 issuers in
+production. Annual 6, report format 5 and Price coverage of three listings for two
+issuers remain unchanged.
 
-The [private valuation storage proof](MANAGED_VALUATION_STORAGE_PROOF.md) prepares
-fixed invented-data checks for this persistence layer. Its local evidence and
-bundle do not establish cloud storage or a published saved-input workflow.
-Qualify the fixed storage scope before enabling it or preparing matching clients.
+The next complete outcome is a usable [managed Portfolio](MANAGED_PORTFOLIO.md):
+opening balances, an authored ledger and manual splits, exact holdings and cash,
+independent Review and Save, recovery, and return from company research. Reuse
+the schema-3 ledger and calculation engine. Production Portfolio storage remains
+disabled pending persistence qualification, configuration and delivery. Defer
+portfolio history, additional metrics, cosmetic work and tooling increments
+until this basic workflow is usable. Coverage fixes do not complete a milestone.
 
+Android 1.28 and the prepared 1.29 retain their earlier feature sets. The owner
+reported the 1.27-to-1.28 upgrade and four requested physical checks passed; that
+report does not cover new saved-input delivery. Android 1.29 artifact review
+passed, but its physical upgrade/file workflow remains open. Matching phone
+delivery and acceptance of saved valuation inputs are separate work.
+
+A November personal release depends on completing the Portfolio workflow,
+matching phone delivery and acceptance, and sustained daily use. Current release
+evidence does not establish those outcomes. Controlled account recovery and
+screen-reader acceptance also remain open. The optional cloud backup drill
+remains deferred. Use the capability table in [Current work](CURRENT_WORK.md)
+and the [release readiness plan](MANAGED_RELEASE_READINESS.md) for separate
+source, publication and physical-device acceptance.
+
+The dated implementation notes below preserve their original scope. Earlier
+"next" labels do not override this Portfolio priority or the current delivery
+record.
 The integrated M2/M4 source connects two loaded financial-screen results through
 [all three Annual statement groups](MANAGED_SCREEN_COMPARISON.md), independent
 source inspection, either company's research and Back to the retained screen.
