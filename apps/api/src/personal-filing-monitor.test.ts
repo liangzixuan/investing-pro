@@ -743,9 +743,22 @@ describe("daily filing monitor", () => {
     f.configure();
     await f.monitor.tick();
     const cik = f.monitor.get().issuers[0]!.cik;
-    f.rows.set(cik, [filing(cik, "2026-03-05", 1)]);
-    let accepted = 0;
-    for (let n = 2; n <= 55; n++) {
+    f.next();
+    // Fill the ordinary history in one acquisition; approach the byte limit
+    // one filing at a time so delivery and acknowledgement still exercise it.
+    f.rows.set(cik, [
+      filing(cik, "2026-03-05", 1),
+      ...Array.from({ length: 31 }, (_, n) =>
+        filing(cik, f.now().toISOString().slice(0, 10), n + 2),
+      ),
+    ]);
+    await f.monitor.tick();
+    const filled = f.monitor.get();
+    expect(isPersonalFilingMonitorDto(filled)).toBe(true);
+    expect(filled.issuers[0]!.status).toBe("complete");
+    expect(filled.inbox).toHaveLength(31);
+    let accepted = filled.inbox.length;
+    for (let n = 33; n <= 55; n++) {
       f.next();
       f.rows.get(cik)!.push(filing(cik, f.now().toISOString().slice(0, 10), n));
       await f.monitor.tick();
