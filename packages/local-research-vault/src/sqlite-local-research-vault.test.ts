@@ -30,6 +30,7 @@ afterEach(async () => {
 });
 
 describe("SQLite local research vault", () => {
+  // FULL-synchronous writes use the same disk-I/O budget as the other durability cases.
   it("persists every personal record namespace across restart", async () => {
     const databasePath = await freshDatabasePath();
     const vault = SqliteLocalResearchVault.createNew(
@@ -67,7 +68,7 @@ describe("SQLite local research vault", () => {
       LOCAL_RESEARCH_RECORD_KINDS.length,
     );
     reopened.close();
-  });
+  }, 30_000);
 
   it("commits CAS, durable idempotency, audit, and tombstones atomically", async () => {
     const databasePath = await freshDatabasePath();
