@@ -31,19 +31,23 @@ still disables storage for other deployments. Filings now admits 17 issuers in
 production. Annual 6, report format 5 and Price coverage of three listings for two
 issuers remain unchanged.
 
-The next complete outcome is a usable [managed Portfolio](MANAGED_PORTFOLIO.md):
+The website/API now enable the [managed Portfolio](MANAGED_PORTFOLIO.md):
 opening balances, an authored ledger and manual splits, exact holdings and cash,
 independent Review and Save, recovery, and return from company research. Reuse
-the schema-3 ledger and calculation engine. Production Portfolio storage remains
-disabled pending persistence qualification, configuration and delivery. Defer
+the schema-3 ledger and calculation engine. Production storage is enabled after
+private persistence and recovery qualification with invented data. The active
+API is ready and live; its downloaded source matches the accepted archive. No
+authenticated owner Portfolio Save was exercised. Defer
 portfolio history, additional metrics, cosmetic work and tooling increments
-until this basic workflow is usable. Coverage fixes do not complete a milestone.
+until phone acceptance completes this workflow. Coverage
+fixes do not complete a milestone.
 
-Android 1.28 and the prepared 1.29 retain their earlier feature sets. The owner
-reported the 1.27-to-1.28 upgrade and four requested physical checks passed; that
-report does not cover new saved-input delivery. Android 1.29 artifact review
-passed, but its physical upgrade/file workflow remains open. Matching phone
-delivery and acceptance of saved valuation inputs are separate work.
+Android 1.30.0, code 31, now packages the same accepted product with the existing
+production signer. The single offline build and complete packaged-asset checks
+passed; the verified APK is provided locally. Prior 1.28 and 1.29 APKs are
+unchanged. The earlier reported 1.27-to-1.28 upgrade does not establish 1.30 use.
+Physical acceptance of saved valuation inputs, Portfolio and Watchlist draft
+files, followed by recorded daily use, is the selected next outcome.
 
 A November personal release depends on completing the Portfolio workflow,
 matching phone delivery and acceptance, and sustained daily use. Current release

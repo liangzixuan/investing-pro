@@ -1,11 +1,31 @@
 # Coordinated managed release readiness
 
-Updated October 18, 2026. The selected outcome is one matching API, website and
-Android release followed by explicit daily-use qualification. This plan does not
+Updated October 20, 2026. The selected outcome is physical acceptance of Android
+1.30 and recorded daily use of the matching managed workflows. This plan does not
 authorize deployment, browser work, signing-key access, resource provisioning or
 installation. Use the actual task authorization for each operation.
 
-## Candidate and current release
+## Current delivery and remaining acceptance
+
+The website/API and verified Android 1.30.0, code 31, contain accepted product
+`61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. Saved valuation inputs and Portfolio
+storage are enabled after their private invented-data persistence qualification.
+The active API is ready and live. The APK's package, version, production signer,
+source marker, configuration and complete asset set passed verification. Prior
+APKs remain unchanged. These accepted checks do not need another run.
+
+Physical installation, wanted saved-work checks and sustained use remain open.
+Use the [current capability record](CURRENT_WORK.md) and
+[Android guide](ANDROID_CLIENT.md) for the current scope. Save wanted drafts
+before updating; do not uninstall or clear data. Use wanted owner records for
+physical workflow acceptance, and keep invented QA data out of owner resources.
+Screen-reader acceptance and controlled account recovery remain separate. The
+optional cloud backup drill is deferred.
+
+The October 18 release record below preserves its original scope. Its old
+candidate, artifact and follow-on labels do not describe current delivery.
+
+## October 18 release record
 
 The product candidate is merged source
 `f43796794320286fd9c1ce02d7472c454519953e` (PR188), tree
@@ -36,7 +56,7 @@ establish independent device inspection, sustained provider health, controlled
 persistence recovery, backup/restore or screen-reader use. Keep older clients
 closed while they remain on Annual 5.
 
-## Acceptance matrix
+## October 18 acceptance matrix
 
 | Stage                                  | Required result                                                                                                                                  | Current limit and next action                                                                                                                              |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -72,7 +92,7 @@ rollback is needed. After upgrade, an old API alone can be incompatible with the
 new client. Keep all prior artifacts and the actual rollback identities. Never
 equate a retained old APK with a safe automatic downgrade.
 
-## Follow-on product work
+## October 18 follow-on plan
 
 After the delivery and daily-use outcome, align one useful named universe across
 Price, Annual and Filings, with independent eligibility, dates and refusals. Then
