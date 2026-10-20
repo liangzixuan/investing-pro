@@ -6,12 +6,23 @@ production package is `app.investingpro.android`.
 [Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) records the accepted
 version, source revision and physical-device status.
 
-Android 1.29.0, code 30, is prepared from product `6ca5e0db` with the existing
-production signer. Artifact checks confirm the package, version, signer and
-bundled source marker. It adds explicit Watchlist draft-file capture and local
-restoration with independent catalog review and normal Save. It has not been
-installed or physically accepted. It retains Annual 6/report 5 compatibility
-with the current API; the prior 1.28 APK remains preserved.
+Android 1.30.0, code 31, is provided from accepted product
+`61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9` with the existing production signer.
+One offline build and package/version/signature checks passed. Verification also
+checked the complete packaged asset set, source marker, public configuration and
+each asset hash against the build. It delivers saved valuation inputs, enabled
+managed Portfolio and expanded Filings, and retains Watchlist draft-file capture
+and restoration. It has not been installed or physically accepted. Annual 6 and
+report format 5 remain compatible with the live API. Prior 1.28 and 1.29 APKs are
+unchanged; the earlier 1.29 physical file-workflow acceptance remains unclaimed.
+
+Before updating, save wanted work. A higher version code and the same production
+signer permit an in-place update; successful installation still needs a device
+check. Do not uninstall or clear app data. Saved valuation inputs require explicit
+Load, comparison and Use before Calculate in a fresh session. Portfolio has its
+own Load, Review and Save. Unsaved forms and editor state remain in memory and
+clear on reload, session retirement or sign-out. Use records the owner intends to
+keep for physical acceptance; do not write invented QA records into owner storage.
 
 On October 18 the owner reported a successful update from production 1.27 to
 matching 1.28 and passes for all four requested checks: version/sign-in/reopen,

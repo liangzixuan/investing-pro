@@ -1,9 +1,11 @@
 # Managed Portfolio
 
-This candidate adds one authored USD portfolio to the managed workspace. It is
-under development. Production storage, deployment, rendered layout and packaged
-Android acceptance remain separate. The local encrypted My Portfolio record is
-a separate product profile and is not imported or changed by this workflow.
+The published managed website supports one authored USD portfolio. Production
+storage is enabled after private persistence and recovery qualification with
+invented data. Android 1.30 packages the matching workflow with verified source,
+assets and the existing production signer. Physical acceptance and authenticated
+owner Save remain open. The local encrypted My Portfolio record is a separate
+product profile and is not imported or changed by this workflow.
 
 ## Record holdings and activity
 
@@ -96,10 +98,18 @@ and `receipts` tables in the configured Appwrite project. Clients cannot choose
 another database, table, account or endpoint. An unavailable Portfolio target
 does not enable fallback writes to Watchlist or Follow-ups.
 
-No target was provisioned or enabled by the source work. Configuration, schema
-provisioning, isolated persistence/recovery checks and matching API, web and
-Android delivery must be reviewed before live use. Historical source evidence,
-synthetic tests and successful compilation do not replace those checks.
+The configured production target is provisioned and enabled. Private
+invented-data checks passed isolation, competing and stale saves, rollback,
+uncertain commits, fresh reopen, capacity and domain guards. The API-only
+enablement reused the accepted source archive and confirmed the active API was
+ready and live with matching downloaded source. The website already contains the
+matching workflow. Default source configuration keeps Portfolio disabled for
+other deployments.
+
+Capacity qualification covered 20 registered identities, 250 activities and a
+132,270-byte payload; it did not exercise the full 256 KiB ceiling. No owner
+records were used. These results do not establish an authenticated owner Save,
+physical Android acceptance, market values or portfolio returns.
 
 The internal [storage qualification guide](MANAGED_PORTFOLIO_STORAGE_PROOF.md)
 defines the fixed invented-data recovery phases and their operational limits.
