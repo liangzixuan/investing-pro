@@ -40,6 +40,15 @@ export function parseManagedBlsCalendar(
 ): ManagedBlsCalendarDto | null {
   const header = readHeader(value);
   if (!header) return null;
+  const events = readEvents(header);
+  if (!events) return null;
+  return calendarSnapshot(header, events);
+}
+
+/** Validate the entire ordered sequence before admitting any of its entries. */
+function readEvents(
+  header: CalendarHeader,
+): ManagedBlsCalendarEventDto[] | null {
   const events: ManagedBlsCalendarEventDto[] = [];
   let previous: ManagedBlsCalendarEventDto | undefined;
   for (const value of header.events) {
@@ -48,6 +57,13 @@ export function parseManagedBlsCalendar(
     previous = Object.freeze(event);
     events.push(previous);
   }
+  return events;
+}
+
+function calendarSnapshot(
+  header: CalendarHeader,
+  events: ManagedBlsCalendarEventDto[],
+): ManagedBlsCalendarDto {
   return Object.freeze({
     schemaVersion: "1.0.0",
     source: MANAGED_BLS_CALENDAR_SOURCE,

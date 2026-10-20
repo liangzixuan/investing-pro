@@ -53,22 +53,20 @@ function useLoadFocus(busy: boolean) {
   }, [busy]);
   return { load, restore };
 }
-function useCalendarView(model: Model) {
-  const state = useSyncExternalStore(
-    model.subscribe,
-    model.getSnapshot,
-    model.getSnapshot,
-  );
+function useCalendarSelection(
+  model: Model,
+  calendar: ManagedBlsCalendarDto | null,
+) {
   const [choice, setChoice] = useState({
     model,
-    calendar: state.calendar,
+    calendar: calendar,
     query: "",
     date: "",
   });
-  const matches = choice.model === model && choice.calendar === state.calendar;
+  const matches = choice.model === model && choice.calendar === calendar;
   const selection = matches
     ? choice
-    : { model, calendar: state.calendar, query: "", date: "" };
+    : { model, calendar: calendar, query: "", date: "" };
   if (selection !== choice) setChoice(selection);
   const committed = useRef<typeof selection | null>(null);
   useLayoutEffect(() => {
@@ -80,17 +78,8 @@ function useCalendarView(model: Model) {
   const current = () =>
     committed.current === selection &&
     model.getSnapshot().calendar === selection.calendar;
-  const groups = groupBeaReleaseDates(state.calendar);
+  const groups = groupBeaReleaseDates(calendar);
   const visible = filteredGroups(groups, selection.date, selection.query);
-  const focus = useLoadFocus(state.busy);
-  const onLoad = () => {
-    if (!current()) return;
-    focus.restore.current = true;
-    void model.load();
-  };
-  const onCancel = () => {
-    if (current()) model.cancel();
-  };
   const onQuery = (query: string) => {
     if (current()) setChoice({ ...selection, query });
   };
@@ -99,17 +88,26 @@ function useCalendarView(model: Model) {
     if (date !== "" && !groups.some((group) => group.key === date)) return;
     setChoice({ ...selection, date });
   };
-  return {
-    state,
-    selection,
-    groups,
-    visible,
-    load: focus.load,
-    onLoad,
-    onCancel,
-    onQuery,
-    onDate,
+  return { selection, groups, visible, current, onQuery, onDate };
+}
+
+function useCalendarView(model: Model) {
+  const state = useSyncExternalStore(
+    model.subscribe,
+    model.getSnapshot,
+    model.getSnapshot,
+  );
+  const selection = useCalendarSelection(model, state.calendar);
+  const focus = useLoadFocus(state.busy);
+  const onLoad = () => {
+    if (!selection.current()) return;
+    focus.restore.current = true;
+    void model.load();
   };
+  const onCancel = () => {
+    if (selection.current()) model.cancel();
+  };
+  return { ...selection, state, load: focus.load, onLoad, onCancel };
 }
 
 function CalendarDescription() {

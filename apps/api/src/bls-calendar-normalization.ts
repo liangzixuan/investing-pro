@@ -57,6 +57,7 @@ const CALENDAR_FIELDS = new Map<string, readonly string[] | null>([
   ["X-WR-TIMEZONE", ["US-Eastern", ZONE, "UTC"]],
 ]);
 interface CalendarProperty {
+  name: string;
   header: string;
   value: string;
 }
@@ -69,6 +70,14 @@ interface EventInventory extends AdmittedDate {
   uid: string;
   cancelled: boolean;
   parserLines: readonly string[];
+}
+interface SourceProfile {
+  readonly lines: readonly string[];
+  readonly calendarFields: Set<string>;
+  readonly uids: Set<string>;
+  readonly events: EventInventory[];
+  position: number;
+  legacyEasternAdmitted: boolean;
 }
 type CalendarEvent = ManagedBlsCalendarDto["events"][number];
 
@@ -115,16 +124,18 @@ function calendarLines(text: string): string[] {
   return lines;
 }
 
-function admitCalendarProperty(line: string, seen: Set<string>): void {
+function admitCalendarProperty(profile: SourceProfile): void {
+  const line = profile.lines[profile.position];
+  requireValue(line !== undefined);
   const match = /^([A-Z][A-Z0-9-]*):(.*)$/u.exec(line);
   requireValue(match !== null);
   const name = match[1],
     value = match[2];
   requireValue(name !== undefined && value !== undefined);
-  requireValue(!seen.has(name) && CALENDAR_FIELDS.has(name));
+  requireValue(!profile.calendarFields.has(name) && CALENDAR_FIELDS.has(name));
   const allowed = CALENDAR_FIELDS.get(name);
   if (allowed) requireValue(allowed.includes(value));
-  seen.add(name);
+  profile.calendarFields.add(name);
 }
 
 function admitEventProperty(line: string, fields: EventFields): void {
@@ -137,33 +148,35 @@ function admitEventProperty(line: string, fields: EventFields): void {
   requireValue(EVENT_FIELDS.has(name) && !fields.has(name));
   // Only DTSTART/DTEND support parameters in this publisher profile.
   if (parameters) requireValue(["DTSTART", "DTEND"].includes(name));
-  fields.set(name, { header: name + (parameters ?? ""), value });
+  fields.set(name, { name, header: name + (parameters ?? ""), value });
 }
 
-function eventFields(lines: readonly string[], start: number) {
+function eventFields(profile: SourceProfile): EventFields {
   const fields: EventFields = new Map();
-  let end = start + 1;
-  while (lines[end] !== "END:VEVENT") {
-    const line = lines[end];
+  profile.position++;
+  while (profile.lines[profile.position] !== "END:VEVENT") {
+    const line = profile.lines[profile.position];
     requireValue(line !== undefined);
     admitEventProperty(line, fields);
-    end++;
+    profile.position++;
   }
-  return { fields, end };
+  return fields;
 }
 
 function admitDate(
-  name: string,
   date: CalendarProperty,
-  aliasAdmitted: boolean,
+  profile: SourceProfile,
 ): AdmittedDate {
+  const name = date.name;
   const utc = date.header === name && /^\d{8}T\d{6}Z$/u.test(date.value);
   if (utc) return { utc, wall: wallTime(date.value.slice(0, -1)) };
   requireValue(["DTSTART", "DTEND"].includes(name));
   const legacy = date.header === `${name};TZID=US-Eastern`;
   requireValue(legacy || date.header === `${name};TZID=${ZONE}`);
   if (legacy)
-    requireValue(aliasAdmitted && Number(date.value.slice(0, 4)) >= 2007);
+    requireValue(
+      profile.legacyEasternAdmitted && Number(date.value.slice(0, 4)) >= 2007,
+    );
   return { utc, wall: wallTime(date.value) };
 }
 
@@ -178,20 +191,19 @@ function admitUid(fields: EventFields, seen: Set<string>): string {
 
 function admitEvent(
   fields: EventFields,
-  aliasAdmitted: boolean,
-  uids: Set<string>,
+  profile: SourceProfile,
 ): EventInventory {
-  const uid = admitUid(fields, uids);
+  const uid = admitUid(fields, profile.uids);
   const summary = fields.get("SUMMARY")?.value,
     start = fields.get("DTSTART");
   requireValue(summary !== undefined && start !== undefined);
   const status = fields.get("STATUS")?.value;
   if (status !== undefined)
     requireValue(["CONFIRMED", "CANCELLED"].includes(status));
-  const date = admitDate("DTSTART", start, aliasAdmitted);
+  const date = admitDate(start, profile);
   for (const name of ["DTEND", "DTSTAMP", "CREATED", "LAST-MODIFIED"]) {
     const property = fields.get(name);
-    if (property) admitDate(name, property, aliasAdmitted);
+    if (property) admitDate(property, profile);
   }
   const startLine = date.utc
     ? `DTSTART:${start.value}`
@@ -212,35 +224,43 @@ function admitEvent(
 }
 
 function sourceInventory(text: string): EventInventory[] {
-  const lines = calendarLines(text),
-    inventory: EventInventory[] = [];
-  const uids = new Set<string>(),
-    fields = new Set<string>();
-  let aliasAdmitted = false;
-  for (let n = 0; n < lines.length; n++) {
-    const line = lines[n];
+  const profile: SourceProfile = {
+    lines: calendarLines(text),
+    calendarFields: new Set(),
+    uids: new Set(),
+    events: [],
+    position: 0,
+    legacyEasternAdmitted: false,
+  };
+  while (profile.position < profile.lines.length) {
+    const line = profile.lines[profile.position];
     requireValue(line !== undefined);
     if (line === "BEGIN:VTIMEZONE") {
-      requireValue(!aliasAdmitted && inventory.length === 0);
+      requireValue(
+        !profile.legacyEasternAdmitted && profile.events.length === 0,
+      );
       requireValue(
         PUBLISHER_ZONE.every(
-          (expected, offset) => lines[n + offset] === expected,
+          (expected, offset) =>
+            profile.lines[profile.position + offset] === expected,
         ),
       );
-      n += PUBLISHER_ZONE.length - 1;
-      aliasAdmitted = true;
+      profile.position += PUBLISHER_ZONE.length - 1;
+      profile.legacyEasternAdmitted = true;
     } else if (line === "BEGIN:VEVENT") {
-      const event = eventFields(lines, n);
-      requireValue(inventory.length < MAX_INPUT_EVENTS);
-      inventory.push(admitEvent(event.fields, aliasAdmitted, uids));
-      n = event.end;
+      const fields = eventFields(profile);
+      requireValue(profile.events.length < MAX_INPUT_EVENTS);
+      profile.events.push(admitEvent(fields, profile));
     } else {
-      requireValue(inventory.length === 0);
-      admitCalendarProperty(line, fields);
+      requireValue(profile.events.length === 0);
+      admitCalendarProperty(profile);
     }
+    profile.position++;
   }
-  requireValue(fields.has("VERSION") && inventory.length > 0);
-  return inventory;
+  requireValue(
+    profile.calendarFields.has("VERSION") && profile.events.length > 0,
+  );
+  return profile.events;
 }
 
 async function parseInventory(
@@ -291,9 +311,12 @@ function parsedInstant(event: VEvent, input: EventInventory): string {
   return instant;
 }
 
-function compareText(left: string, right: string): number {
-  if (left < right) return -1;
-  return left > right ? 1 : 0;
+function compareEvents(left: CalendarEvent, right: CalendarEvent): number {
+  for (const field of ["scheduledAt", "series"] as const) {
+    if (left[field] < right[field]) return -1;
+    if (left[field] > right[field]) return 1;
+  }
+  return 0;
 }
 
 function windowEvents(
@@ -317,11 +340,7 @@ function windowEvents(
     events.push({ series, scheduledAt });
     requireValue(events.length <= MANAGED_BLS_CALENDAR_LIMITS.events);
   }
-  return events.sort(
-    (left, right) =>
-      compareText(left.scheduledAt, right.scheduledAt) ||
-      compareText(left.series, right.series),
-  );
+  return events.sort(compareEvents);
 }
 
 /** Validate BLS's publisher profile; node-ical remains the date/text parser. */
