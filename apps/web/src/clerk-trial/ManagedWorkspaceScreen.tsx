@@ -43,7 +43,10 @@ import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedPortfolio } from "./ManagedPortfolio";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
-import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
+import {
+  ManagedMarketsNavigation,
+  useManagedMarketsSections,
+} from "./ManagedMarketsNavigation";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
 import type { AnnualComparisonNoteCapture } from "./managed-watchlist-annual-comparison-note";
@@ -587,13 +590,6 @@ export function ManagedWorkspaceScreen({
     opener: HTMLButtonElement;
   } | null>(null);
   const workspaceContent = useRef<HTMLElement | null>(null);
-  const marketsContent = useRef<HTMLDivElement | null>(null);
-  const marketsHeading = useRef<HTMLHeadingElement | null>(null);
-  const blsHeading = useRef<HTMLHeadingElement | null>(null);
-  const agendaHeading = useRef<HTMLHeadingElement | null>(null);
-  const announcementsHeading = useRef<HTMLHeadingElement | null>(null);
-  const dailyReviewHeading = useRef<HTMLHeadingElement | null>(null);
-  const dayViewHeading = useRef<HTMLHeadingElement | null>(null);
   const [noteReview, setNoteReview] = useState<NoteReviewRequest | null>(null);
   const [noteReviewNotice, setNoteReviewNotice] = useState<string | null>(null);
   const [followupReview, setFollowupReview] = useState<FollowupReview | null>(
@@ -777,21 +773,7 @@ export function ManagedWorkspaceScreen({
       !hasCompanyRoute?.()
     );
   };
-  const marketsSectionNavigation = {
-    containerRef: marketsContent,
-    targets: {
-      board: { id: "managed-markets-heading", ref: marketsHeading },
-      review: { id: "managed-daily-research-heading", ref: dailyReviewHeading },
-      day: { id: "managed-markets-day-heading", ref: dayViewHeading },
-      bls: { id: "bls-calendar-title", ref: blsHeading },
-      calendar: { id: "bea-agenda-title", ref: agendaHeading },
-      announcements: {
-        id: "fed-announcements-title",
-        ref: announcementsHeading,
-      },
-    },
-    isCurrent: isMarketsCurrent,
-  };
+  const marketsSectionNavigation = useManagedMarketsSections(isMarketsCurrent);
   const currentCatalog =
     discovery.snapshot?.snapshotSha256 === saved.draft?.snapshotSha256;
   const canReviewWatchlistMember = (member: WatchlistMembership) => {
@@ -1341,7 +1323,7 @@ export function ManagedWorkspaceScreen({
               )}
               {discovery.view === "markets" && (
                 <div
-                  ref={marketsContent}
+                  ref={marketsSectionNavigation.containerRef}
                   className="managed-markets-content"
                   hidden={Boolean(
                     discovery.research ||
@@ -1352,7 +1334,7 @@ export function ManagedWorkspaceScreen({
                   <ManagedMarkets
                     navigationPending={navigationPending}
                     model={workspace.markets}
-                    headingRef={marketsHeading}
+                    headingRef={marketsSectionNavigation.targets.board.ref}
                     sectionNavigation={
                       <ManagedMarketsNavigation {...marketsSectionNavigation} />
                     }
@@ -1369,7 +1351,7 @@ export function ManagedWorkspaceScreen({
                   <ManagedDailyResearchReview
                     workspace={workspace}
                     navigationPending={navigationPending}
-                    headingRef={dailyReviewHeading}
+                    headingRef={marketsSectionNavigation.targets.review.ref}
                     isCurrent={isMarketsCurrent}
                     onReview={(entry) => {
                       const request = workspace.reviewFollowup(entry, () =>
@@ -1388,11 +1370,11 @@ export function ManagedWorkspaceScreen({
                     agenda={workspace.agenda}
                     announcements={workspace.announcements}
                     navigation={marketsSectionNavigation}
-                    headingRef={dayViewHeading}
+                    headingRef={marketsSectionNavigation.targets.day.ref}
                   />
                   <ManagedBeaReleaseAgenda
                     model={workspace.agenda}
-                    headingRef={agendaHeading}
+                    headingRef={marketsSectionNavigation.targets.calendar.ref}
                     noteContext={{
                       members: saved.draft?.memberships ?? [],
                       active: isMarketsCurrent(),
@@ -1434,11 +1416,13 @@ export function ManagedWorkspaceScreen({
                   />
                   <ManagedBlsCalendar
                     model={workspace.blsCalendar}
-                    headingRef={blsHeading}
+                    headingRef={marketsSectionNavigation.targets.bls.ref}
                   />
                   <ManagedFedAnnouncements
                     model={workspace.announcements}
-                    headingRef={announcementsHeading}
+                    headingRef={
+                      marketsSectionNavigation.targets.announcements.ref
+                    }
                     noteContext={{
                       members: saved.draft?.memberships ?? [],
                       active: isMarketsCurrent(),

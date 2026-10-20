@@ -23,6 +23,29 @@ export interface ManagedMarketsNavigationProps {
   readonly isCurrent: () => boolean;
 }
 
+/** One mounted Markets surface owns every section target and its container. */
+export function useManagedMarketsSections(isCurrent: () => boolean) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const board = useRef<HTMLHeadingElement | null>(null);
+  const review = useRef<HTMLHeadingElement | null>(null);
+  const day = useRef<HTMLHeadingElement | null>(null);
+  const calendar = useRef<HTMLHeadingElement | null>(null);
+  const bls = useRef<HTMLHeadingElement | null>(null);
+  const announcements = useRef<HTMLHeadingElement | null>(null);
+  return {
+    containerRef,
+    isCurrent,
+    targets: {
+      board: { id: "managed-markets-heading", ref: board },
+      review: { id: "managed-daily-research-heading", ref: review },
+      day: { id: "managed-markets-day-heading", ref: day },
+      calendar: { id: "bea-agenda-title", ref: calendar },
+      bls: { id: "bls-calendar-title", ref: bls },
+      announcements: { id: "fed-announcements-title", ref: announcements },
+    },
+  };
+}
+
 function rendered(element: HTMLElement): boolean {
   return (
     element.isConnected &&

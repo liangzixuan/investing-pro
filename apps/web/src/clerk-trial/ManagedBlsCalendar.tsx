@@ -5,10 +5,16 @@ import {
   useSyncExternalStore,
   type Ref,
 } from "react";
-import { MANAGED_BLS_CALENDAR_SOURCE } from "@research-cockpit/contracts";
+import {
+  MANAGED_BLS_CALENDAR_SOURCE,
+  type ManagedBlsCalendarDto,
+} from "@research-cockpit/contracts";
 import { groupBeaReleaseDates } from "../features/markets/bea-release-dates";
+import type {
+  ManagedBlsCalendar as Model,
+  ManagedBlsCalendarState,
+} from "./managed-bls-calendar";
 import "./managed-bls-calendar.css";
-import type { ManagedBlsCalendar as Model } from "./managed-bls-calendar";
 
 const eastern = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
@@ -21,14 +27,33 @@ const eastern = new Intl.DateTimeFormat("en-US", {
 });
 const normalize = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/gu, " ");
-
-export function ManagedBlsCalendar({
-  model,
-  headingRef,
-}: {
-  readonly model: Model;
-  readonly headingRef?: Ref<HTMLHeadingElement>;
-}) {
+type DateGroups = ReturnType<typeof groupBeaReleaseDates>;
+function filteredGroups(
+  groups: DateGroups,
+  date: string,
+  query: string,
+): DateGroups {
+  const matchingDate = date
+    ? groups.filter((group) => group.key === date)
+    : groups;
+  return matchingDate.flatMap((group) => {
+    const events = group.events.filter((event) =>
+      normalize(event.series).includes(normalize(query)),
+    );
+    return events.length ? [{ ...group, events }] : [];
+  });
+}
+function useLoadFocus(busy: boolean) {
+  const load = useRef<HTMLButtonElement>(null);
+  const restore = useRef(false);
+  useLayoutEffect(() => {
+    if (busy || !restore.current) return;
+    restore.current = false;
+    load.current?.focus();
+  }, [busy]);
+  return { load, restore };
+}
+function useCalendarView(model: Model) {
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -40,10 +65,10 @@ export function ManagedBlsCalendar({
     query: "",
     date: "",
   });
-  const selection =
-    choice.model === model && choice.calendar === state.calendar
-      ? choice
-      : { model, calendar: state.calendar, query: "", date: "" };
+  const matches = choice.model === model && choice.calendar === state.calendar;
+  const selection = matches
+    ? choice
+    : { model, calendar: state.calendar, query: "", date: "" };
   if (selection !== choice) setChoice(selection);
   const committed = useRef<typeof selection | null>(null);
   useLayoutEffect(() => {
@@ -56,29 +81,40 @@ export function ManagedBlsCalendar({
     committed.current === selection &&
     model.getSnapshot().calendar === selection.calendar;
   const groups = groupBeaReleaseDates(state.calendar);
-  const visible = groups.flatMap((group) => {
-    if (selection.date && selection.date !== group.key) return [];
-    const events = group.events.filter((event) =>
-      normalize(event.series).includes(normalize(selection.query)),
-    );
-    return events.length ? [{ ...group, events }] : [];
-  });
-  const load = useRef<HTMLButtonElement>(null);
-  const restore = useRef(false);
-  useLayoutEffect(() => {
-    if (!state.busy && restore.current) {
-      restore.current = false;
-      load.current?.focus();
-    }
-  }, [state.busy]);
+  const visible = filteredGroups(groups, selection.date, selection.query);
+  const focus = useLoadFocus(state.busy);
+  const onLoad = () => {
+    if (!current()) return;
+    focus.restore.current = true;
+    void model.load();
+  };
+  const onCancel = () => {
+    if (current()) model.cancel();
+  };
+  const onQuery = (query: string) => {
+    if (current()) setChoice({ ...selection, query });
+  };
+  const onDate = (date: string) => {
+    if (!current()) return;
+    if (date !== "" && !groups.some((group) => group.key === date)) return;
+    setChoice({ ...selection, date });
+  };
+  return {
+    state,
+    selection,
+    groups,
+    visible,
+    load: focus.load,
+    onLoad,
+    onCancel,
+    onQuery,
+    onDate,
+  };
+}
+
+function CalendarDescription() {
   return (
-    <section
-      className="trial-panel managed-bls-calendar"
-      aria-labelledby="bls-calendar-title"
-    >
-      <h2 id="bls-calendar-title" tabIndex={-1} ref={headingRef}>
-        BLS release calendar
-      </h2>
+    <>
       <p>
         Scheduled labor, employment and inflation releases from the U.S. Bureau
         of Labor Statistics. Load the next 30 days explicitly.
@@ -94,31 +130,17 @@ export function ManagedBlsCalendar({
         . Dates can change. This calendar does not include released values,
         forecasts or company earnings.
       </p>
-      <div className="trial-actions">
-        <button
-          type="button"
-          ref={load}
-          disabled={state.busy}
-          onClick={() => {
-            if (current()) {
-              restore.current = true;
-              void model.load();
-            }
-          }}
-        >
-          {state.calendar ? "Refresh BLS calendar" : "Load BLS calendar"}
-        </button>
-        {state.busy && (
-          <button
-            type="button"
-            onClick={() => {
-              if (current()) model.cancel();
-            }}
-          >
-            Cancel BLS load
-          </button>
-        )}
-      </div>
+    </>
+  );
+}
+function CalendarStatus({
+  state,
+}: {
+  readonly state: ManagedBlsCalendarState;
+}) {
+  const previous = state.showingPrevious && state.calendar !== null;
+  return (
+    <>
       {state.message && <p role="status">{state.message}</p>}
       {state.error && (
         <p role="alert">
@@ -127,25 +149,116 @@ export function ManagedBlsCalendar({
             : "The BLS calendar could not be loaded."}
         </p>
       )}
-      {state.showingPrevious && state.calendar && (
+      {previous && (
         <p>
           Previous calendar. This attempt has not confirmed a newer schedule.
         </p>
       )}
+    </>
+  );
+}
+function CalendarProvenance({
+  calendar,
+}: {
+  readonly calendar: ManagedBlsCalendarDto;
+}) {
+  return (
+    <>
+      <p>
+        Retrieved{" "}
+        <time dateTime={calendar.fetchedAt}>
+          {eastern.format(new Date(calendar.fetchedAt))}
+        </time>
+        . UTC: {calendar.fetchedAt}
+      </p>
+      <p>
+        Loaded window: {calendar.window.fromInclusive} (inclusive) to{" "}
+        {calendar.window.toExclusive} (exclusive). Release times use Eastern
+        time, including daylight time.
+      </p>
+    </>
+  );
+}
+function CalendarRows({
+  groups,
+  empty,
+}: {
+  readonly groups: DateGroups;
+  readonly empty: boolean;
+}) {
+  if (empty)
+    return (
+      <p>
+        No scheduled BLS releases in this loaded window. Other economic events
+        may exist.
+      </p>
+    );
+  if (groups.length === 0)
+    return <p>No releases match this search and date.</p>;
+  return (
+    <>
+      {groups.map((group) => (
+        <section key={group.key} aria-label={`BLS ${group.label}`}>
+          <h3>
+            <time dateTime={group.key}>{group.label}</time>
+          </h3>
+          <ul>
+            {group.events.map((event) => (
+              <li key={JSON.stringify([event.series, event.scheduledAt])}>
+                <p>{event.series}</p>
+                <p>
+                  <time dateTime={event.scheduledAt}>
+                    {eastern.format(new Date(event.scheduledAt))}
+                  </time>
+                  <br />
+                  UTC: {event.scheduledAt}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </>
+  );
+}
+
+export function ManagedBlsCalendar({
+  model,
+  headingRef,
+}: {
+  readonly model: Model;
+  readonly headingRef?: Ref<HTMLHeadingElement>;
+}) {
+  const view = useCalendarView(model);
+  const { state, selection } = view;
+  return (
+    <section
+      className="trial-panel managed-bls-calendar"
+      aria-labelledby="bls-calendar-title"
+    >
+      <h2 id="bls-calendar-title" tabIndex={-1} ref={headingRef}>
+        BLS release calendar
+      </h2>
+      <CalendarDescription />
+      <div className="trial-actions">
+        <button
+          type="button"
+          ref={view.load}
+          disabled={state.busy}
+          onClick={view.onLoad}
+        >
+          {state.calendar ? "Refresh BLS calendar" : "Load BLS calendar"}
+        </button>
+        {state.busy && (
+          <button type="button" onClick={view.onCancel}>
+            Cancel BLS load
+          </button>
+        )}
+      </div>
+      <CalendarStatus state={state} />
       {state.calendar && (
         <>
-          <p>
-            Retrieved{" "}
-            <time dateTime={state.calendar.fetchedAt}>
-              {eastern.format(new Date(state.calendar.fetchedAt))}
-            </time>
-            . UTC: {state.calendar.fetchedAt}
-          </p>
-          <p>
-            Loaded window: {state.calendar.window.fromInclusive} (inclusive) to{" "}
-            {state.calendar.window.toExclusive} (exclusive). Release times use
-            Eastern time, including daylight time.
-          </p>
+          <CalendarProvenance calendar={state.calendar} />
           <div className="trial-fields">
             <label>
               Search BLS releases
@@ -154,13 +267,7 @@ export function ManagedBlsCalendar({
                 type="search"
                 value={selection.query}
                 maxLength={256}
-                onChange={(event) => {
-                  if (current())
-                    setChoice({
-                      ...selection,
-                      query: event.currentTarget.value,
-                    });
-                }}
+                onChange={(event) => view.onQuery(event.currentTarget.value)}
               />
             </label>
             <label>
@@ -168,17 +275,10 @@ export function ManagedBlsCalendar({
               <select
                 id="bls-calendar-date"
                 value={selection.date}
-                onChange={(event) => {
-                  const date = event.currentTarget.value;
-                  if (
-                    current() &&
-                    (date === "" || groups.some((group) => group.key === date))
-                  )
-                    setChoice({ ...selection, date });
-                }}
+                onChange={(event) => view.onDate(event.currentTarget.value)}
               >
                 <option value="">All loaded dates</option>
-                {groups.map((group) => (
+                {view.groups.map((group) => (
                   <option key={group.key} value={group.key}>
                     {group.label}
                   </option>
@@ -187,39 +287,16 @@ export function ManagedBlsCalendar({
             </label>
           </div>
           <p role="status">
-            {visible.reduce((count, group) => count + group.events.length, 0)}{" "}
+            {view.visible.reduce(
+              (count, group) => count + group.events.length,
+              0,
+            )}{" "}
             of {state.calendar.events.length} loaded releases.
           </p>
-          {state.calendar.events.length === 0 ? (
-            <p>
-              No scheduled BLS releases in this loaded window. Other economic
-              events may exist.
-            </p>
-          ) : visible.length === 0 ? (
-            <p>No releases match this search and date.</p>
-          ) : (
-            visible.map((group) => (
-              <section key={group.key} aria-label={`BLS ${group.label}`}>
-                <h3>
-                  <time dateTime={group.key}>{group.label}</time>
-                </h3>
-                <ul>
-                  {group.events.map((event) => (
-                    <li key={JSON.stringify([event.series, event.scheduledAt])}>
-                      <p>{event.series}</p>
-                      <p>
-                        <time dateTime={event.scheduledAt}>
-                          {eastern.format(new Date(event.scheduledAt))}
-                        </time>
-                        <br />
-                        UTC: {event.scheduledAt}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))
-          )}
+          <CalendarRows
+            groups={view.visible}
+            empty={state.calendar.events.length === 0}
+          />
         </>
       )}
     </section>

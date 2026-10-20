@@ -28,12 +28,11 @@ export function createManagedBlsCalendarService(options: {
   const elapsed = () => monotonic() - options.startedAt;
   const active = (signal: AbortSignal) => {
     const duration = elapsed();
-    if (
-      signal.aborted ||
-      !Number.isFinite(duration) ||
-      duration < 0 ||
-      duration >= MANAGED_BLS_CALENDAR_LIMITS.operationMs
-    )
+    if (signal.aborted)
+      throw new ManagedEconomicCalendarServiceError("request_timeout");
+    if (!Number.isFinite(duration))
+      throw new ManagedEconomicCalendarServiceError("request_timeout");
+    if (duration < 0 || duration >= MANAGED_BLS_CALENDAR_LIMITS.operationMs)
       throw new ManagedEconomicCalendarServiceError("request_timeout");
   };
   let used = false;

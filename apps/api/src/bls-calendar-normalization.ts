@@ -47,12 +47,31 @@ const EVENT_FIELDS = new Set([
   "URL",
   "X-ALT-DESC",
 ]);
-interface EventInventory {
-  uid: string;
+const CALENDAR_FIELDS = new Map<string, readonly string[] | null>([
+  ["PRODID", null],
+  ["VERSION", ["2.0"]],
+  ["CALSCALE", ["GREGORIAN"]],
+  ["METHOD", ["PUBLISH"]],
+  ["SUMMARY", null],
+  ["X-WR-CALNAME", null],
+  ["X-WR-TIMEZONE", ["US-Eastern", ZONE, "UTC"]],
+]);
+interface CalendarProperty {
+  header: string;
+  value: string;
+}
+type EventFields = Map<string, CalendarProperty>;
+interface AdmittedDate {
   wall: string;
   utc: boolean;
-  cancelled: boolean;
 }
+interface EventInventory extends AdmittedDate {
+  uid: string;
+  cancelled: boolean;
+  parserLines: readonly string[];
+}
+type CalendarEvent = ManagedBlsCalendarDto["events"][number];
+
 function requireValue(condition: unknown): asserts condition {
   if (!condition) throw new Error("Invalid BLS schedule");
 }
@@ -82,11 +101,7 @@ function localWall(date: Date): string {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
-/** Validate BLS's publisher profile; node-ical remains the date/text parser. */
-export async function normalizeBlsCalendar(
-  text: string,
-  fetchedAt: string,
-): Promise<ManagedBlsCalendarDto> {
+function calendarLines(text: string): string[] {
   requireValue(Buffer.byteLength(text, "utf8") <= 256 * 1_024);
   requireValue(!/\r(?!\n)/u.test(text));
   const lines = text
@@ -97,17 +112,116 @@ export async function normalizeBlsCalendar(
   requireValue(
     lines.shift() === "BEGIN:VCALENDAR" && lines.pop() === "END:VCALENDAR",
   );
-  const inventory: EventInventory[] = [];
+  return lines;
+}
+
+function admitCalendarProperty(line: string, seen: Set<string>): void {
+  const match = /^([A-Z][A-Z0-9-]*):(.*)$/u.exec(line);
+  requireValue(match !== null);
+  const name = match[1],
+    value = match[2];
+  requireValue(name !== undefined && value !== undefined);
+  requireValue(!seen.has(name) && CALENDAR_FIELDS.has(name));
+  const allowed = CALENDAR_FIELDS.get(name);
+  if (allowed) requireValue(allowed.includes(value));
+  seen.add(name);
+}
+
+function admitEventProperty(line: string, fields: EventFields): void {
+  const match = /^([A-Z][A-Z0-9-]*)(;[^:]*)?:(.*)$/u.exec(line);
+  requireValue(match !== null);
+  const name = match[1],
+    value = match[3],
+    parameters = match[2];
+  requireValue(name !== undefined && value !== undefined);
+  requireValue(EVENT_FIELDS.has(name) && !fields.has(name));
+  // Only DTSTART/DTEND support parameters in this publisher profile.
+  if (parameters) requireValue(["DTSTART", "DTEND"].includes(name));
+  fields.set(name, { header: name + (parameters ?? ""), value });
+}
+
+function eventFields(lines: readonly string[], start: number) {
+  const fields: EventFields = new Map();
+  let end = start + 1;
+  while (lines[end] !== "END:VEVENT") {
+    const line = lines[end];
+    requireValue(line !== undefined);
+    admitEventProperty(line, fields);
+    end++;
+  }
+  return { fields, end };
+}
+
+function admitDate(
+  name: string,
+  date: CalendarProperty,
+  aliasAdmitted: boolean,
+): AdmittedDate {
+  const utc = date.header === name && /^\d{8}T\d{6}Z$/u.test(date.value);
+  if (utc) return { utc, wall: wallTime(date.value.slice(0, -1)) };
+  requireValue(["DTSTART", "DTEND"].includes(name));
+  const legacy = date.header === `${name};TZID=US-Eastern`;
+  requireValue(legacy || date.header === `${name};TZID=${ZONE}`);
+  if (legacy)
+    requireValue(aliasAdmitted && Number(date.value.slice(0, 4)) >= 2007);
+  return { utc, wall: wallTime(date.value) };
+}
+
+function admitUid(fields: EventFields, seen: Set<string>): string {
+  const uid = fields.get("UID")?.value;
+  requireValue(uid !== undefined && uid.length > 0);
+  requireValue(uid.length <= 256 && !/[\s\\\p{Cc}\p{Cf}\p{Cs}]/u.test(uid));
+  requireValue(!seen.has(uid));
+  seen.add(uid);
+  return uid;
+}
+
+function admitEvent(
+  fields: EventFields,
+  aliasAdmitted: boolean,
+  uids: Set<string>,
+): EventInventory {
+  const uid = admitUid(fields, uids);
+  const summary = fields.get("SUMMARY")?.value,
+    start = fields.get("DTSTART");
+  requireValue(summary !== undefined && start !== undefined);
+  const status = fields.get("STATUS")?.value;
+  if (status !== undefined)
+    requireValue(["CONFIRMED", "CANCELLED"].includes(status));
+  const date = admitDate("DTSTART", start, aliasAdmitted);
+  for (const name of ["DTEND", "DTSTAMP", "CREATED", "LAST-MODIFIED"]) {
+    const property = fields.get(name);
+    if (property) admitDate(name, property, aliasAdmitted);
+  }
+  const startLine = date.utc
+    ? `DTSTART:${start.value}`
+    : `DTSTART;TZID=${ZONE}:${start.value}`;
+  // Ignore publisher HTML, links and non-scheduling payloads. No URL/file parser API.
+  return {
+    uid,
+    ...date,
+    cancelled: status === "CANCELLED",
+    parserLines: [
+      "BEGIN:VEVENT",
+      `UID:${uid}`,
+      startLine,
+      `SUMMARY:${summary}`,
+      "END:VEVENT",
+    ],
+  };
+}
+
+function sourceInventory(text: string): EventInventory[] {
+  const lines = calendarLines(text),
+    inventory: EventInventory[] = [];
   const uids = new Set<string>(),
-    calendarFields = new Set<string>();
-  const normalized = ["BEGIN:VCALENDAR", "VERSION:2.0"];
-  let aliasAdmitted = false,
-    inEvents = false;
+    fields = new Set<string>();
+  let aliasAdmitted = false;
   for (let n = 0; n < lines.length; n++) {
     const line = lines[n];
     requireValue(line !== undefined);
     if (line === "BEGIN:VTIMEZONE") {
-      requireValue(!aliasAdmitted && !inEvents);
+      requireValue(!aliasAdmitted && inventory.length === 0);
       requireValue(
         PUBLISHER_ZONE.every(
           (expected, offset) => lines[n + offset] === expected,
@@ -115,170 +229,118 @@ export async function normalizeBlsCalendar(
       );
       n += PUBLISHER_ZONE.length - 1;
       aliasAdmitted = true;
-      continue;
+    } else if (line === "BEGIN:VEVENT") {
+      const event = eventFields(lines, n);
+      requireValue(inventory.length < MAX_INPUT_EVENTS);
+      inventory.push(admitEvent(event.fields, aliasAdmitted, uids));
+      n = event.end;
+    } else {
+      requireValue(inventory.length === 0);
+      admitCalendarProperty(line, fields);
     }
-    if (line !== "BEGIN:VEVENT") {
-      requireValue(!inEvents);
-      const match = /^([A-Z][A-Z0-9-]*):(.*)$/u.exec(line);
-      requireValue(match && match[1] && match[2] !== undefined);
-      const [, name, value] = match;
-      requireValue(name !== undefined && !calendarFields.has(name));
-      calendarFields.add(name);
-      requireValue(
-        [
-          "PRODID",
-          "VERSION",
-          "CALSCALE",
-          "METHOD",
-          "SUMMARY",
-          "X-WR-CALNAME",
-          "X-WR-TIMEZONE",
-        ].includes(name),
-      );
-      if (name === "VERSION") requireValue(value === "2.0");
-      if (name === "CALSCALE") requireValue(value === "GREGORIAN");
-      if (name === "METHOD") requireValue(value === "PUBLISH");
-      if (name === "X-WR-TIMEZONE")
-        requireValue(
-          value === "US-Eastern" || value === ZONE || value === "UTC",
-        );
-      continue;
-    }
-    inEvents = true;
-    const fields = new Map<string, { header: string; value: string }>();
-    while (lines[++n] !== "END:VEVENT") {
-      const property = lines[n];
-      requireValue(property !== undefined);
-      const match = /^([A-Z][A-Z0-9-]*)(;[^:]*)?:(.*)$/u.exec(property);
-      requireValue(match && match[1] && match[3] !== undefined);
-      const name = match[1];
-      requireValue(EVENT_FIELDS.has(name) && !fields.has(name));
-      // Only DTSTART/DTEND support parameters in this publisher profile.
-      requireValue(!match[2] || name === "DTSTART" || name === "DTEND");
-      fields.set(name, { header: name + (match[2] ?? ""), value: match[3] });
-    }
-    requireValue(inventory.length < MAX_INPUT_EVENTS);
-    const uid = fields.get("UID")?.value,
-      summary = fields.get("SUMMARY")?.value;
-    const start = fields.get("DTSTART"),
-      status = fields.get("STATUS")?.value;
-    requireValue(
-      uid &&
-        uid.length <= 256 &&
-        !/[\s\\\p{Cc}\p{Cf}\p{Cs}]/u.test(uid) &&
-        !uids.has(uid),
-    );
-    requireValue(summary !== undefined && start !== undefined);
-    requireValue(
-      status === undefined || status === "CONFIRMED" || status === "CANCELLED",
-    );
-    uids.add(uid);
-    let wall = "",
-      utc = false,
-      startLine = "";
-    for (const name of [
-      "DTSTART",
-      "DTEND",
-      "DTSTAMP",
-      "CREATED",
-      "LAST-MODIFIED",
-    ]) {
-      const date = fields.get(name);
-      if (!date) continue;
-      const isUtc = date.header === name && /^\d{8}T\d{6}Z$/u.test(date.value);
-      const legacy = date.header === `${name};TZID=US-Eastern`;
-      const eastern = date.header === `${name};TZID=${ZONE}`;
-      requireValue(
-        isUtc ||
-          ((legacy || eastern) && (name === "DTSTART" || name === "DTEND")),
-      );
-      if (legacy)
-        requireValue(aliasAdmitted && Number(date.value.slice(0, 4)) >= 2007);
-      const dateWall = wallTime(isUtc ? date.value.slice(0, -1) : date.value);
-      if (name === "DTSTART") {
-        wall = dateWall;
-        utc = isUtc;
-        startLine = isUtc
-          ? `DTSTART:${date.value}`
-          : `DTSTART;TZID=${ZONE}:${date.value}`;
-      }
-    }
-    inventory.push({ uid, wall, utc, cancelled: status === "CANCELLED" });
-    // Ignore publisher HTML, links and non-scheduling payloads. No URL/file parser API.
-    normalized.push(
-      "BEGIN:VEVENT",
-      `UID:${uid}`,
-      startLine,
-      `SUMMARY:${summary}`,
-      "END:VEVENT",
-    );
   }
-  requireValue(calendarFields.has("VERSION") && inventory.length > 0);
-  normalized.push("END:VCALENDAR");
-  const parsed = await ical.parseICS(normalized.join("\r\n"));
-  const parsedEvents = Object.values(parsed).filter(
+  requireValue(fields.has("VERSION") && inventory.length > 0);
+  return inventory;
+}
+
+async function parseInventory(
+  inventory: readonly EventInventory[],
+): Promise<Map<string, VEvent>> {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    ...inventory.flatMap((event) => event.parserLines),
+    "END:VCALENDAR",
+  ];
+  const parsed = await ical.parseICS(lines.join("\r\n"));
+  const events = Object.values(parsed).filter(
     (event): event is VEvent => event?.type === "VEVENT",
   );
-  requireValue(parsedEvents.length === inventory.length);
-  const byUid = new Map(parsedEvents.map((event) => [event.uid, event]));
+  requireValue(events.length === inventory.length);
+  const byUid = new Map(events.map((event) => [event.uid, event]));
   requireValue(byUid.size === inventory.length);
-  const from = new Date(fetchedAt),
-    to = new Date(
-      from.getTime() + MANAGED_BLS_CALENDAR_LIMITS.windowDays * 86_400_000,
+  return byUid;
+}
+
+function parsedSeries(event: VEvent): string {
+  requireValue(typeof event.summary === "string");
+  requireValue(
+    event.summary.length <= MANAGED_BLS_CALENDAR_LIMITS.seriesLength,
+  );
+  requireValue(!/[\p{Cc}\p{Cf}\p{Cs}]/u.test(event.summary));
+  const series = event.summary.trim();
+  requireValue(series.length > 0);
+  return series;
+}
+
+function parsedInstant(event: VEvent, input: EventInventory): string {
+  requireValue(event.start instanceof Date);
+  requireValue(!event.start.dateOnly && event.datetype === "date-time");
+  const instant = event.start.toISOString();
+  if (input.utc) requireValue(instant.slice(0, 19) === input.wall);
+  else {
+    requireValue(localWall(event.start) === input.wall);
+    // An ambiguous fall-back local time has two instants; do not guess which.
+    requireValue(
+      [-3_600_000, 3_600_000].every(
+        (delta) =>
+          localWall(new Date(event.start.getTime() + delta)) !== input.wall,
+      ),
     );
-  const events: { series: string; scheduledAt: string }[] = [],
+  }
+  return instant;
+}
+
+function compareText(left: string, right: string): number {
+  if (left < right) return -1;
+  return left > right ? 1 : 0;
+}
+
+function windowEvents(
+  inventory: readonly EventInventory[],
+  parsed: ReadonlyMap<string, VEvent>,
+  from: Date,
+  to: Date,
+): CalendarEvent[] {
+  const events: CalendarEvent[] = [],
     seen = new Set<string>();
   for (const input of inventory) {
-    const event = byUid.get(input.uid);
-    requireValue(
-      event &&
-        event.start instanceof Date &&
-        !event.start.dateOnly &&
-        event.datetype === "date-time",
-    );
-    requireValue(
-      typeof event.summary === "string" &&
-        event.summary.length <= MANAGED_BLS_CALENDAR_LIMITS.seriesLength &&
-        !/[\p{Cc}\p{Cf}\p{Cs}]/u.test(event.summary),
-    );
-    const series = event.summary.trim();
-    requireValue(series.length > 0);
-    const scheduledAt = event.start.toISOString();
-    if (input.utc) requireValue(scheduledAt.slice(0, 19) === input.wall);
-    else {
-      requireValue(localWall(event.start) === input.wall);
-      // An ambiguous fall-back local time has two instants; do not guess which.
-      requireValue(
-        [-3_600_000, 3_600_000].every(
-          (delta) =>
-            localWall(new Date(event.start.getTime() + delta)) !== input.wall,
-        ),
-      );
-    }
-    if (input.cancelled || event.start < from || event.start >= to) continue;
+    const event = parsed.get(input.uid);
+    requireValue(event !== undefined);
+    const series = parsedSeries(event),
+      scheduledAt = parsedInstant(event, input);
+    if (input.cancelled) continue;
+    if (event.start < from || event.start >= to) continue;
     const key = JSON.stringify([series, scheduledAt]);
     if (seen.has(key)) continue;
     seen.add(key);
     events.push({ series, scheduledAt });
     requireValue(events.length <= MANAGED_BLS_CALENDAR_LIMITS.events);
   }
-  events.sort((left, right) =>
-    left.scheduledAt < right.scheduledAt
-      ? -1
-      : left.scheduledAt > right.scheduledAt
-        ? 1
-        : left.series < right.series
-          ? -1
-          : left.series > right.series
-            ? 1
-            : 0,
+  return events.sort(
+    (left, right) =>
+      compareText(left.scheduledAt, right.scheduledAt) ||
+      compareText(left.series, right.series),
   );
+}
+
+/** Validate BLS's publisher profile; node-ical remains the date/text parser. */
+export async function normalizeBlsCalendar(
+  text: string,
+  fetchedAt: string,
+): Promise<ManagedBlsCalendarDto> {
+  const inventory = sourceInventory(text),
+    parsed = await parseInventory(inventory);
+  const from = new Date(fetchedAt),
+    to = new Date(
+      from.getTime() + MANAGED_BLS_CALENDAR_LIMITS.windowDays * 86_400_000,
+    );
   const result = parseManagedBlsCalendar({
     schemaVersion: "1.0.0",
     source: MANAGED_BLS_CALENDAR_SOURCE,
     fetchedAt,
     window: { fromInclusive: fetchedAt, toExclusive: to.toISOString() },
-    events,
+    events: windowEvents(inventory, parsed, from, to),
   });
   requireValue(result);
   return result;
