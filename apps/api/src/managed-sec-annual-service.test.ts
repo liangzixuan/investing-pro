@@ -12,6 +12,7 @@ import {
 } from "@research-cockpit/personal-financial-analytics";
 import { ManagedSecAdmissionError } from "./managed-sec-admission";
 import { createManagedSecAnnualService } from "./managed-sec-annual-service";
+import * as canonicalResponse from "./personal-sec-annual-canonical-response";
 import {
   createManagedCatalogService,
   getManagedWorkspaceCatalog,
@@ -407,55 +408,71 @@ describe("managed annual evidence service", () => {
     expect(f.reserve).not.toHaveBeenCalled();
     expect(f.fetch).not.toHaveBeenCalled();
   });
-  it.each([50, 100])(
-    "encodes all 32 concepts with %d selected rows or refuses the entire escaped packet",
-    async (rowsPerConcept) => {
-      const f = fixture();
-      const text = capacityBody(rowsPerConcept, rowsPerConcept === 100);
-      f.fetch.mockImplementation((input) =>
-        Promise.resolve(
-          input === "https://data.sec.gov/submissions/CIK0000320193.json"
-            ? Response.json(packets()[0])
-            : new Response(text),
-        ),
-      );
-      const operation = f.service.load(
-        command(),
-        PRINCIPAL,
-        new AbortController().signal,
-      );
-      if (rowsPerConcept === 100) {
-        await expect(operation).rejects.toMatchObject({
-          code: "unavailable",
-          message: "unavailable",
-        });
-      } else {
-        const result = await operation;
-        expect(result.evidence.facts.observations).toHaveLength(1600);
-        expect(result.evidence.facts.scans.map((item) => item.concept)).toEqual(
-          PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.map((item) => item.concept),
+  it("encodes all 32 concepts with 50 selected rows without clipping", async () => {
+    const f = fixture();
+    const text = capacityBody(50, false);
+    f.fetch.mockImplementation((input) =>
+      Promise.resolve(
+        input === "https://data.sec.gov/submissions/CIK0000320193.json"
+          ? Response.json(packets()[0])
+          : new Response(text),
+      ),
+    );
+    const result = await f.service.load(
+      command(),
+      PRINCIPAL,
+      new AbortController().signal,
+    );
+    expect(result.evidence.facts.observations).toHaveLength(1600);
+    expect(result.evidence.facts.scans.map((item) => item.concept)).toEqual(
+      PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY.map((item) => item.concept),
+    );
+    for (const item of result.evidence.facts.scans)
+      expect(item.scan).toMatchObject({
+        coverage: { selected: 50, returned: 50, omittedSelected: 0 },
+      });
+    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(
+      2_097_152,
+    );
+    expect(Object.keys(result.evidence)).toEqual([
+      "cik",
+      "generation",
+      "target",
+      "targetScan",
+      "facts",
+    ]);
+    expect(Buffer.byteLength(text)).toBeLessThan(8 * 1024 * 1024);
+    expect(f.fetch).toHaveBeenCalledTimes(2);
+    expect(f.reserve).toHaveBeenCalledOnce();
+    expect(f.close).toHaveBeenCalledOnce();
+  });
+  it("maps an oversized encoder packet to unavailable after source admission", async () => {
+    const f = fixture();
+    const encode = vi
+      .spyOn(canonicalResponse, "encodePersonalSecAnnualCanonicalResponse")
+      .mockImplementation(() => {
+        throw new canonicalResponse.PersonalSecAnnualCanonicalResponseError(
+          "response_too_large",
         );
-        for (const item of result.evidence.facts.scans)
-          expect(item.scan).toMatchObject({
-            coverage: { selected: 50, returned: 50, omittedSelected: 0 },
-          });
-        expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(
-          2_097_152,
-        );
-        expect(Object.keys(result.evidence)).toEqual([
-          "cik",
-          "generation",
-          "target",
-          "targetScan",
-          "facts",
-        ]);
-      }
-      expect(Buffer.byteLength(text)).toBeLessThan(8 * 1024 * 1024);
-      expect(f.fetch).toHaveBeenCalledTimes(2);
+      });
+    try {
+      await expect(
+        f.service.load(command(), PRINCIPAL, new AbortController().signal),
+      ).rejects.toMatchObject({
+        code: "unavailable",
+        message: "unavailable",
+      });
+      expect(encode).toHaveBeenCalledOnce();
+      expect(f.fetch.mock.calls.map(([url]) => url)).toEqual([
+        "https://data.sec.gov/submissions/CIK0000320193.json",
+        "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+      ]);
       expect(f.reserve).toHaveBeenCalledOnce();
       expect(f.close).toHaveBeenCalledOnce();
-    },
-  );
+    } finally {
+      encode.mockRestore();
+    }
+  });
   it.each(["deadline", "retirement"] as const)(
     "does not return a packet after %s during final encoding",
     async (kind) => {
