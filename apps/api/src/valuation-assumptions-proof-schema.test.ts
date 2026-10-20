@@ -134,6 +134,45 @@ function ordered(value: unknown): unknown {
 }
 
 describe("fixed valuation schema admission", () => {
+  it("admits empty cloud descriptions and retains them in the metadata fingerprint", () => {
+    const f = fixture();
+    const baseline = inspect(f)!;
+    f.database.description = "";
+    for (const table of f.tableList.tables) {
+      table.description = "";
+      for (const item of table.columns) item.description = "";
+    }
+    const result = inspect(f)!;
+    expect(result).not.toBeNull();
+    expect(result.schemaSha256).toBe(baseline.schemaSha256);
+    expect(result.metadataSha256).not.toBe(baseline.metadataSha256);
+    expect(JSON.stringify(result)).not.toContain("description");
+    f.tableList.tables.reverse();
+    f.assumptions.columns.reverse();
+    expect(inspect(f)).toEqual(result);
+  });
+  it.each(["database", "table", "column"] as const)(
+    "refuses changed or malformed %s descriptions without invoking accessors",
+    (location) => {
+      const f = fixture();
+      const target = {
+        database: f.database,
+        table: f.assumptions,
+        column: column(f, "ownerId"),
+      }[location];
+      for (const value of ["changed", null, false, 0, [], {}]) {
+        target.description = value;
+        expect(inspect(f)).toBeNull();
+      }
+      const getter = vi.fn(() => "");
+      Object.defineProperty(target, "description", {
+        enumerable: true,
+        get: getter,
+      });
+      expect(inspect(f)).toBeNull();
+      expect(getter).not.toHaveBeenCalled();
+    },
+  );
   it("admits the complete SDK29 shape and returns frozen finite digests only", () => {
     const f = fixture();
     const result = inspect(f)!;

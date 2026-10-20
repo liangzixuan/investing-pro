@@ -67,6 +67,13 @@ the exact payload ceiling and fresh reads. Local tests and a reviewed private
 bundle pass within their recorded scopes. Cloud provisioning and execution
 remain separate; the application storage switch stays disabled.
 
+The first authorized storage attempt created the isolated schema, then stopped
+at metadata admission before function deployment or row writes. The service
+returned empty description fields that the strict inspector did not recognize.
+The source correction accepts those empty fields at database, table and column
+level while retaining all schema and access checks. The retained cloud metadata
+passes the corrected inspector locally; an executed persistence proof remains open.
+
 The website draft-file release, matching Android artifact and owner-reported
 earlier Android upgrade/checklist are accepted within their recorded scopes.
 Controlled storage recovery and accessibility remain open. Use the
