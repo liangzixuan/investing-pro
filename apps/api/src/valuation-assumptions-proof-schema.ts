@@ -198,6 +198,7 @@ interface Budget {
 const DATABASE_FIELDS = [
   "$id",
   "name",
+  "description",
   "$createdAt",
   "$updatedAt",
   "enabled",
@@ -219,6 +220,7 @@ const TABLE_FIELDS = [
   "$permissions",
   "databaseId",
   "name",
+  "description",
   "enabled",
   "rowSecurity",
   "columns",
@@ -228,6 +230,7 @@ const TABLE_FIELDS = [
 ];
 const COLUMN_FIELDS = [
   "key",
+  "description",
   "type",
   "status",
   "error",
@@ -280,6 +283,7 @@ export function inspectValuationProofSchema(
 }
 function validateDatabase(value: Data): void {
   knownKeys(value, DATABASE_FIELDS);
+  optional(value, "description", [""]);
   assert.equal(value.$id, VALUATION_PROOF_TARGET.databaseId);
   assert.equal(value.name, VALUATION_PROOF_SCHEMA.database.name);
   assert.equal(value.enabled, true);
@@ -308,6 +312,7 @@ function validateTables(value: Json | undefined): Data[] {
 }
 function validateTable(value: Data, expected: Table): Data {
   knownKeys(value, TABLE_FIELDS);
+  optional(value, "description", [""]);
   assert.equal(value.$id, expected.id);
   assert.equal(value.databaseId, VALUATION_PROOF_TARGET.databaseId);
   assert.equal(value.name, expected.name);
@@ -335,6 +340,7 @@ function validateColumns(value: Json | undefined, expected: Table): Data[] {
 }
 function validateColumn(value: Data, expected: Column): void {
   knownKeys(value, [...COLUMN_FIELDS, ...COLUMN_EXTRA_FIELDS[expected.type]]);
+  optional(value, "description", [""]);
   assert.equal(value.key, expected.key);
   assert.equal(value.type, expected.type);
   assert.equal(value.required, true);

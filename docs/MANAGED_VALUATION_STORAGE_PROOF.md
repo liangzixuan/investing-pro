@@ -66,6 +66,9 @@ The schema inspector accepts bounded SDK metadata only when the two tables and
 all columns are ready, enabled and exact. Unexpected shapes, accessors, grants,
 indexes or incomplete columns cause refusal. Optional backup metadata does not
 create a backup requirement or grant backup authority.
+Empty database, table and column descriptions are accepted when returned by the
+service and remain part of the metadata fingerprint. Nonempty or malformed
+descriptions are refused because the fixed creation plan does not set them.
 
 ## Local artifact
 
