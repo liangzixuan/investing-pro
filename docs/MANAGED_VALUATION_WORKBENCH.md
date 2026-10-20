@@ -64,17 +64,18 @@ explicitly replaces its ownership. **Discard valuation inputs** clears the curre
 company's temporary draft. A changed catalog or share class cannot inherit it.
 
 The editor is held in memory. Reload, session retirement or sign-out clears it.
-Merged source adds a separate saved-input resource described below.
-The published client still has session-only inputs. Saving a Watchlist note or
-capturing a report does not save an editable workbench.
+Confirmed saved inputs remain in the separate resource described below. Load and
+compare them explicitly before replacing the editor. Saving a Watchlist note or
+capturing a report does not save editable workbench inputs.
 
 ## Save and reopen editable inputs
 
-Merged source adds an initially closed **Saved valuation inputs** panel
-below the workbench. Its storage is disabled by default. Source tests do not
-establish provisioned storage, real-account persistence or a published release.
-The [private storage proof](MANAGED_VALUATION_STORAGE_PROOF.md) defines the
-separate schema, fixed test phases and evidence needed before storage activation.
+The published website has an initially closed **Saved valuation inputs** panel
+below the workbench. Production storage is enabled. The
+[private storage proof](MANAGED_VALUATION_STORAGE_PROOF.md) passed its fixed cloud
+phases with invented data. Default source configuration keeps storage disabled
+for other deployments. Release checks did not exercise an authenticated owner
+Save or owner records. Matching Android saved-input delivery remains separate.
 
 1. Select **Load saved inputs**. This reads the independent saved resource and
    preserves the current editor. It makes no Price, Annual or Filings request.
@@ -150,6 +151,7 @@ the old report invalid. Exported copies do not update with later edits.
 
 Source checks, rendered desktop geometry, packaged native execution and release
 acceptance are separate. This workflow does not add a provider feed,
-automatic financial conversion or historical multiples. Saved-input storage
-provisioning and real persistence qualification remain separate from this source
-workflow.
+automatic financial conversion or historical multiples. Saved-input storage is
+enabled on the published website/API after private
+invented-data qualification. Authenticated owner use and matching Android
+physical acceptance remain separate.
