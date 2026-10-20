@@ -187,6 +187,7 @@ function fixture(initial: ManagedPortfolioPayload | null = null) {
     annualReport: vi.fn(),
     recentFilings: vi.fn(),
     monetaryAnnouncements: vi.fn(),
+    blsCalendar: vi.fn(),
     economicCalendar: vi.fn(),
   };
   const session = {

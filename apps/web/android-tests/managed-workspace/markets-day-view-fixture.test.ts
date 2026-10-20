@@ -16,10 +16,9 @@ const navigation: ManagedMarketsNavigationProps = {
   containerRef: { current: null },
   isCurrent: () => true,
   targets: Object.fromEntries(
-    ["board", "review", "day", "calendar", "announcements"].map((key) => [
-      key,
-      { id: key, ref: { current: null } },
-    ]),
+    ["board", "review", "day", "calendar", "bls", "announcements"].map(
+      (key) => [key, { id: key, ref: { current: null } }],
+    ),
   ) as ManagedMarketsNavigationProps["targets"],
 };
 
@@ -58,6 +57,7 @@ it("composes both admitted sources with two real dirty drafts and fences each fa
   const html = () =>
     renderToStaticMarkup(
       createElement(ManagedMarketsDayView, {
+        blsCalendar: workspace.blsCalendar,
         agenda: workspace.agenda,
         announcements: workspace.announcements,
         navigation,
@@ -79,7 +79,7 @@ it("composes both admitted sources with two real dirty drafts and fences each fa
   const requests = fixture.getSnapshot();
   const followupRequests = controls.getSnapshot();
   const view = (source: "all" | "bea" | "fed") =>
-    projectMarketsDayView(agenda, fed, "2026-10-29", source);
+    projectMarketsDayView(null, agenda, fed, "2026-10-29", source);
   expect(
     view("all").visibleGroups[0]!.entries.map((entry) => [
       entry.source,

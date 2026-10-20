@@ -7312,6 +7312,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       if (
         path !== providerPath &&
         path !== secProviderPath &&
+        path !== "apps/api/src/bls-release-provider.ts" &&
         path !== "apps/api/src/bea-release-provider.ts" &&
         path !== "apps/api/src/fed-monetary-announcements-provider.ts" &&
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
@@ -7324,7 +7325,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
-          `${path}: only the reviewed Tiingo, SEC, BEA and Fed providers may use the API runtime fetch capability`,
+          `${path}: only the reviewed Tiingo, SEC, BEA, BLS and Fed providers may use the API runtime fetch capability`,
         );
       }
       if (path !== providerPath && content.includes(providerHost)) {
@@ -8459,6 +8460,7 @@ function personalMarketDataRuntimeBoundaryViolation(
     if (
       path !== providerPath &&
       path !== secProviderPath &&
+      path !== "apps/api/src/bls-release-provider.ts" &&
       path !== "apps/api/src/bea-release-provider.ts" &&
       path !== "apps/api/src/fed-monetary-announcements-provider.ts" &&
       path !== "apps/api/src/personal-sec-filings-provider.ts" &&
@@ -8468,10 +8470,11 @@ function personalMarketDataRuntimeBoundaryViolation(
       path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
       personalMarketDataUsesGlobalFetch(source)
     ) {
-      return `${path}: only the reviewed Tiingo, SEC, BEA and Fed providers may use the API runtime fetch capability`;
+      return `${path}: only the reviewed Tiingo, SEC, BEA, BLS and Fed providers may use the API runtime fetch capability`;
     }
     if (
       (path === providerPath ||
+        path === "apps/api/src/bls-release-provider.ts" ||
         path === "apps/api/src/bea-release-provider.ts" ||
         path === "apps/api/src/fed-monetary-announcements-provider.ts" ||
         path === "apps/api/src/workspace-monetary-announcements-routes.ts" ||

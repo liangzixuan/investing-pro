@@ -7,6 +7,9 @@ import {
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_BLS_CALENDAR_LIMITS,
+  MANAGED_BLS_CALENDAR_PATH,
+  MANAGED_BLS_CALENDAR_SOURCE,
   MANAGED_ECONOMIC_CALENDAR_LIMITS,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   type ManagedCatalogSnapshotDto,
@@ -180,6 +183,82 @@ describe("managed browser transport", () => {
     abort.abort();
     await expect(pending).rejects.toMatchObject({ code: "aborted" });
     held.resolve(Response.json(economicCalendarFixture()));
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+  });
+  it("requests the BLS calendar explicitly with the session bearer and returns an owned frozen dated packet", async () => {
+    const { api, fetcher, abort } = fixture();
+    const wire = blsCalendarFixture();
+    fetcher.mockResolvedValue(Response.json(wire));
+    const result = await api.blsCalendar(abort.signal);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0]?.[0]).toBe(
+      `${origin}${MANAGED_BLS_CALENDAR_PATH}`,
+    );
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+      method: "GET",
+      headers: { Authorization: "Bearer synthetic-token" },
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error",
+    });
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBeUndefined();
+    expect(result).toEqual(wire);
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.window)).toBe(true);
+    expect(Object.isFrozen(result.events[0])).toBe(true);
+  });
+
+  it.each([
+    [408, { error: "request_timeout" }, "unavailable"],
+    [503, { error: "unavailable" }, "unavailable"],
+    [401, { error: "unauthenticated" }, "unauthenticated"],
+    [403, { error: "access_denied" }, "access_denied"],
+    [503, { error: "commit_unknown" }, "invalid_response"],
+    [409, { error: "catalog_changed" }, "invalid_response"],
+    [408, { error: "request_timeout", extra: true }, "invalid_response"],
+  ] as const)(
+    "maps calendar status %s with its exact error body %j",
+    async (status, error, code) => {
+      const { api, fetcher, abort } = fixture();
+      fetcher.mockResolvedValue(Response.json(error, { status }));
+      await expect(api.blsCalendar(abort.signal)).rejects.toMatchObject({
+        code,
+      });
+    },
+  );
+
+  it("rejects invalid calendar provenance and oversized calendar responses", async () => {
+    const { api, fetcher, abort } = fixture();
+    const wire = blsCalendarFixture();
+    fetcher.mockResolvedValueOnce(
+      Response.json({
+        ...wire,
+        source: { ...wire.source, scheduleUrl: "https://unreviewed.invalid" },
+      }),
+    );
+    await expect(api.blsCalendar(abort.signal)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+    fetcher.mockResolvedValueOnce(
+      new Response(" ".repeat(MANAGED_BLS_CALENDAR_LIMITS.responseBytes + 1), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    await expect(api.blsCalendar(abort.signal)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+  });
+
+  it("aborts a held calendar request and ignores its late valid packet", async () => {
+    const { api, fetcher, abort } = fixture();
+    const held = deferred<Response>();
+    fetcher.mockReturnValue(held.promise);
+    const pending = api.blsCalendar(abort.signal);
+    await Promise.resolve();
+    abort.abort();
+    await expect(pending).rejects.toMatchObject({ code: "aborted" });
+    held.resolve(Response.json(blsCalendarFixture()));
     expect(fetcher).toHaveBeenCalledOnce();
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
   });
@@ -1011,3 +1090,7 @@ describe("managed company filings transport", () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
 });
+
+function blsCalendarFixture() {
+  return { ...economicCalendarFixture(), source: MANAGED_BLS_CALENDAR_SOURCE };
+}

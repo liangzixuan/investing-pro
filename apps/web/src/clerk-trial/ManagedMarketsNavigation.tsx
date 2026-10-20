@@ -5,6 +5,7 @@ const sections = {
   review: "Research checks due",
   day: "Markets day view",
   calendar: "Economic calendar",
+  bls: "BLS release calendar",
   announcements: "Fed announcements",
 } as const;
 

@@ -40,6 +40,7 @@ const sections = [
   "review",
   "day",
   "calendar",
+  "bls",
   "announcements",
 ] as const;
 type Section = (typeof sections)[number];
@@ -83,6 +84,7 @@ function harness() {
     day: target("managed-markets-day-heading"),
     calendar: target("bea-agenda-title"),
     announcements: target("fed-announcements-title"),
+    bls: target("bls-calendar-title"),
   };
   const targets = Object.fromEntries(
     sections.map((section) => [
@@ -137,7 +139,7 @@ function harness() {
 }
 
 describe("managed Markets section navigation", () => {
-  it("renders five named native links without running guards or moving focus", () => {
+  it("renders six named native links without running guards or moving focus", () => {
     const h = harness();
     const html = renderToStaticMarkup(
       <ManagedMarketsNavigation {...h.props} />,

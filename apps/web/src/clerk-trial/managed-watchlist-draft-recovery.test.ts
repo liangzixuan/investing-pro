@@ -110,6 +110,7 @@ function server() {
     saveFollowups: unexpected,
     recentFilings: unexpected,
     monetaryAnnouncements: unexpected,
+    blsCalendar: unexpected,
     economicCalendar: unexpected,
     eodHistory: unexpected,
     annualReport: unexpected,

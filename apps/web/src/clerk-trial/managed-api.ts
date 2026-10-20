@@ -35,6 +35,10 @@ import {
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
   parseManagedMonetaryAnnouncements,
   type PersonalMonetaryAnnouncementsDto,
+  MANAGED_BLS_CALENDAR_LIMITS,
+  MANAGED_BLS_CALENDAR_PATH,
+  parseManagedBlsCalendar,
+  type ManagedBlsCalendarDto,
   MANAGED_ECONOMIC_CALENDAR_LIMITS,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   parseManagedEconomicCalendar,
@@ -103,6 +107,7 @@ export interface ManagedApi {
   monetaryAnnouncements: (
     signal: AbortSignal,
   ) => Promise<PersonalMonetaryAnnouncementsDto>;
+  blsCalendar: (signal: AbortSignal) => Promise<ManagedBlsCalendarDto>;
   economicCalendar: (
     signal: AbortSignal,
   ) => Promise<PersonalEconomicCalendarDto>;
@@ -524,6 +529,15 @@ export function createManagedApi(
         parseManagedMonetaryAnnouncements,
         undefined,
         "announcements",
+      ),
+    blsCalendar: (signal) =>
+      request(
+        MANAGED_BLS_CALENDAR_PATH,
+        signal,
+        MANAGED_BLS_CALENDAR_LIMITS.responseBytes,
+        parseManagedBlsCalendar,
+        undefined,
+        "calendar",
       ),
     economicCalendar: (signal) =>
       request(

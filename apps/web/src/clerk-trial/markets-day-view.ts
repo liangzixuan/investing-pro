@@ -1,13 +1,14 @@
 import type {
+  ManagedBlsCalendarDto,
   PersonalEconomicCalendarDto,
   PersonalMonetaryAnnouncementsDto,
 } from "@research-cockpit/contracts";
 import { formatBeaReleaseDate } from "../features/markets/bea-release-dates";
 
-export type MarketsDaySource = "all" | "bea" | "fed";
+export type MarketsDaySource = "all" | "bea" | "bls" | "fed";
 export interface MarketsDayEntry {
   readonly key: string;
-  readonly source: "bea" | "fed";
+  readonly source: "bea" | "bls" | "fed";
   readonly title: string;
   readonly instant: string | null;
   readonly url: string;
@@ -27,12 +28,22 @@ function dateKey(instant: string) {
 
 /** A local view of already admitted packets, not a raw response validator. */
 export function projectMarketsDayView(
+  bls: ManagedBlsCalendarDto | null,
   agenda: PersonalEconomicCalendarDto | null,
   announcements: PersonalMonetaryAnnouncementsDto | null,
   selectedDate: string,
   source: MarketsDaySource,
 ) {
   const entries: Readonly<MarketsDayEntry>[] = [
+    ...(bls?.events ?? []).map((event) =>
+      Object.freeze({
+        key: `bls:${JSON.stringify([event.series, event.scheduledAt])}`,
+        source: "bls" as const,
+        title: event.series,
+        instant: event.scheduledAt,
+        url: bls!.source.scheduleUrl,
+      }),
+    ),
     ...(agenda?.events ?? []).map((event) =>
       Object.freeze({
         key: `bea:${JSON.stringify([event.series, event.scheduledAt])}`,

@@ -37,6 +37,7 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
+import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedPortfolio } from "./ManagedPortfolio";
@@ -588,6 +589,7 @@ export function ManagedWorkspaceScreen({
   const workspaceContent = useRef<HTMLElement | null>(null);
   const marketsContent = useRef<HTMLDivElement | null>(null);
   const marketsHeading = useRef<HTMLHeadingElement | null>(null);
+  const blsHeading = useRef<HTMLHeadingElement | null>(null);
   const agendaHeading = useRef<HTMLHeadingElement | null>(null);
   const announcementsHeading = useRef<HTMLHeadingElement | null>(null);
   const dailyReviewHeading = useRef<HTMLHeadingElement | null>(null);
@@ -781,6 +783,7 @@ export function ManagedWorkspaceScreen({
       board: { id: "managed-markets-heading", ref: marketsHeading },
       review: { id: "managed-daily-research-heading", ref: dailyReviewHeading },
       day: { id: "managed-markets-day-heading", ref: dayViewHeading },
+      bls: { id: "bls-calendar-title", ref: blsHeading },
       calendar: { id: "bea-agenda-title", ref: agendaHeading },
       announcements: {
         id: "fed-announcements-title",
@@ -1381,6 +1384,7 @@ export function ManagedWorkspaceScreen({
                     }}
                   />
                   <ManagedMarketsDayView
+                    blsCalendar={workspace.blsCalendar}
                     agenda={workspace.agenda}
                     announcements={workspace.announcements}
                     navigation={marketsSectionNavigation}
@@ -1427,6 +1431,10 @@ export function ManagedWorkspaceScreen({
                         reviewWatchlistNote(member);
                       },
                     }}
+                  />
+                  <ManagedBlsCalendar
+                    model={workspace.blsCalendar}
+                    headingRef={blsHeading}
                   />
                   <ManagedFedAnnouncements
                     model={workspace.announcements}

@@ -120,6 +120,7 @@ async function fixture(
       .fn<ManagedApi["recentFilings"]>()
       .mockResolvedValue(filingsResponse()),
     monetaryAnnouncements: vi.fn(),
+    blsCalendar: vi.fn(),
     economicCalendar: vi.fn(),
     resolve: vi.fn(),
     save: vi.fn(),

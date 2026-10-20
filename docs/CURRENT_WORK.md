@@ -82,6 +82,17 @@ website release and earlier phone checklist do not establish those outcomes.
 Use the [release readiness plan](MANAGED_RELEASE_READINESS.md) for their separate
 acceptance requirements.
 
+## Independent source candidate: BLS release calendar
+
+While phone acceptance is pending, the [BLS calendar candidate](MANAGED_BLS_CALENDAR.md)
+extends roadmap M3 with explicit loading of scheduled labor, employment and
+inflation releases. It adds loaded search/date filters, an official source link
+and BLS entries in the existing Markets day view. It retains prior accepted
+data on failed refresh or Cancel and makes no navigation-triggered request or
+saved-record write. It is not deployed or included in the delivered Android 1.30
+package. This independent work does not accept or replace the selected phone
+and daily-use outcome.
+
 ## Delivered saved valuation inputs
 
 The [valuation guide](MANAGED_VALUATION_WORKBENCH.md) describes the published

@@ -1,0 +1,35 @@
+.clerk-trial.managed-frame .managed-bls-calendar {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-bls-calendar .trial-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+  margin-block: 16px;
+}
+.clerk-trial.managed-frame .managed-bls-calendar label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-bls-calendar :is(input, select, button, a) {
+  min-height: 44px;
+  max-width: 100%;
+}
+.clerk-trial.managed-frame .managed-bls-calendar :is(input, select) {
+  width: 100%;
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-bls-calendar a {
+  display: inline-flex;
+  align-items: center;
+}
+.clerk-trial.managed-frame .managed-bls-calendar ul {
+  list-style: none;
+  padding: 0;
+}
+.clerk-trial.managed-frame .managed-bls-calendar li {
+  border-top: 1px solid var(--managed-line);
+  padding-block: 12px;
+}

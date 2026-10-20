@@ -47,6 +47,11 @@ const exactVersion =
   /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 const noticeGroups: readonly NoticeGroup[] = Object.freeze([
   Object.freeze({
+    label: "node-ical",
+    packages: Object.freeze(["node-ical"]),
+    use: "BLS calendar parsing",
+  }),
+  Object.freeze({
     label: "Clerk React SDK",
     packages: Object.freeze(["@clerk/react"]),
     use: "Isolated browser sign-in trial",

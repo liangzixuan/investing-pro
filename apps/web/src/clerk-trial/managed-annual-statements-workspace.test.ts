@@ -168,6 +168,7 @@ async function fixture(
     recentFilings: vi
       .fn<ManagedApi["recentFilings"]>()
       .mockImplementation(unexpected),
+    blsCalendar: vi.fn(),
     economicCalendar: vi
       .fn<ManagedApi["economicCalendar"]>()
       .mockImplementation(unexpected),

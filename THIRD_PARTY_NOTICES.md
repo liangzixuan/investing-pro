@@ -9,6 +9,7 @@ This file tracks direct runtime packages. The lockfile and automated SBOM will r
 
 | Package                  | Version | License      | Use                                |
 | ------------------------ | ------: | ------------ | ---------------------------------- |
+| node-ical                |  0.27.3 | Apache-2.0   | BLS calendar parsing               |
 | Next.js                  |  16.3.1 | MIT          | Web framework                      |
 | React / React DOM        |  19.2.8 | MIT          | UI runtime                         |
 | Apache ECharts           |   6.1.0 | Apache-2.0   | Analytical chart rendering         |

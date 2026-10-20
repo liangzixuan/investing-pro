@@ -711,6 +711,8 @@ async function createSharedFixture(
     state.save === 1 &&
     state.load === 2;
   const api: ManagedApi = {
+    blsCalendar: () =>
+      Promise.reject(new Error("BLS requires an explicit fixture action")),
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),

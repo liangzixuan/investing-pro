@@ -3,6 +3,8 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
 import {
+  MANAGED_BLS_CALENDAR_SOURCE,
+  parseManagedBlsCalendar,
   parseManagedEconomicCalendar,
   parseManagedMonetaryAnnouncements,
   type PersonalEconomicCalendarDto,
@@ -12,6 +14,7 @@ import { createFixture } from "../../android-tests/managed-workspace/fixture";
 import { ManagedWorkspace } from "./managed-workspace";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
+import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
@@ -137,6 +140,11 @@ async function fixture() {
   const agenda = parseManagedEconomicCalendar(economicCalendarFixture());
   const feed = parseManagedMonetaryAnnouncements(fedAnnouncementsFixture());
   if (!agenda || !feed) throw new Error("Invalid fixture packets");
+  const bls = parseManagedBlsCalendar({
+    ...economicCalendarFixture(),
+    source: MANAGED_BLS_CALENDAR_SOURCE,
+  })!;
+  const readBls = vi.fn<ManagedApi["blsCalendar"]>().mockResolvedValue(bls);
   const readAgenda = vi
     .fn<ManagedApi["economicCalendar"]>()
     .mockResolvedValue(agenda);
@@ -146,6 +154,7 @@ async function fixture() {
   const workspace = new ManagedWorkspace(
     {
       ...original.api,
+      blsCalendar: readBls,
       economicCalendar: readAgenda,
       monetaryAnnouncements: readFeed,
     },
@@ -185,6 +194,7 @@ async function fixture() {
     day: target("managed-markets-day-heading"),
     calendar: target("bea-agenda-title"),
     announcements: target("fed-announcements-title"),
+    bls: target("bls-calendar-title"),
   };
   const targets = Object.fromEntries(
     Object.entries(headings).map(([key, node]) => [
@@ -208,6 +218,7 @@ async function fixture() {
   const props = {
     agenda: workspace.agenda,
     announcements: workspace.announcements,
+    blsCalendar: workspace.blsCalendar,
     navigation,
   };
   const day = () => render("day", ManagedMarketsDayView, props);
@@ -254,6 +265,10 @@ async function fixture() {
     original,
     agenda,
     feed,
+    readBls,
+    bls,
+    blsPanel: () =>
+      render("bls", ManagedBlsCalendar, { model: workspace.blsCalendar }),
     readAgenda,
     readFeed,
     props,
@@ -439,4 +454,68 @@ it("keeps both dirty drafts and source call counts through filters/Inspect and f
   expect(f.workspace.followups.coordinator.getSnapshot().draft).toBeNull();
   expect(f.html()).not.toContain("Invented October release");
   expect(f.original.followups!.getSnapshot().save).toBe(0);
+});
+
+it("loads BLS explicitly, filters and inspects retained schedules in day view while preserving drafts and rejecting late refresh", async () => {
+  const f = await fixture();
+  await f.workspace.followups.coordinator.load();
+  f.workspace.note("listing-zero", "Wanted unsaved note");
+  const draft = f.workspace.coordinator.getSnapshot().draft;
+  const followups = f.workspace.followups.coordinator.getSnapshot().draft;
+  expect(f.html()).toContain("BLS schedule not loaded");
+  void f.blsPanel();
+  click(f.day(), "Inspect BLS calendar");
+  expect(f.headings.bls.focus).toHaveBeenCalledOnce();
+  expect(f.readBls).not.toHaveBeenCalled();
+  click(f.blsPanel(), "Load BLS calendar");
+  await vi.waitFor(() =>
+    expect(f.workspace.blsCalendar.getSnapshot().busy).toBe(false),
+  );
+  expect(f.html()).toContain("Scheduled · BLS");
+  const html = renderToStaticMarkup(f.blsPanel());
+  expect(html).toContain('href="https://www.bls.gov/schedule/"');
+  expect(html).toContain("8:30 AM EDT");
+  expect(html).toContain("8:30 AM EST");
+  const title = f.bls.events[0]!.series;
+  change(f.blsPanel(), "bls-calendar-search", title);
+  expect(renderToStaticMarkup(f.blsPanel())).toContain(title);
+  change(f.blsPanel(), "bls-calendar-search", "no such invented release");
+  expect(renderToStaticMarkup(f.blsPanel())).toContain("No releases match");
+  change(f.blsPanel(), "bls-calendar-search", "");
+  change(f.blsPanel(), "bls-calendar-date", "2026-11-02");
+  const filtered = renderToStaticMarkup(f.blsPanel());
+  expect(filtered).toContain("1 of 2 loaded releases");
+  expect(filtered).toContain("Invented November release");
+  expect(filtered).not.toContain("<p>Invented October release</p>");
+  change(f.day(), "managed-day-source", "bls");
+  expect(f.html()).toContain("Scheduled · BLS");
+  expect(f.readAgenda).not.toHaveBeenCalled();
+  expect(f.readFeed).not.toHaveBeenCalled();
+  f.workspace.setView("followups");
+  f.workspace.setView("markets");
+  expect(f.workspace.blsCalendar.getSnapshot().calendar).toBe(f.bls);
+  expect(f.readBls).toHaveBeenCalledOnce();
+  expect(f.workspace.coordinator.getSnapshot().draft).toBe(draft);
+  expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(followups);
+  const held = deferred<typeof f.bls>();
+  f.readBls.mockReturnValueOnce(held.promise);
+  click(f.blsPanel(), "Refresh BLS calendar");
+  click(f.blsPanel(), "Cancel BLS load");
+  expect(f.readBls.mock.calls[1]![0].aborted).toBe(true);
+  held.resolve({ ...f.bls, events: [] });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(f.workspace.blsCalendar.getSnapshot()).toMatchObject({
+    calendar: f.bls,
+    showingPrevious: true,
+  });
+  expect(f.html()).toContain("Previous BLS schedule");
+  f.workspace.sessionOwner.retire("Invented expiry");
+  expect(f.workspace.blsCalendar.getSnapshot().calendar).toBeNull();
+  expect(f.original.getSnapshot()).toMatchObject({
+    save: 0,
+    annual: 0,
+    eod: 0,
+    filings: 0,
+  });
 });

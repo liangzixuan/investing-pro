@@ -92,6 +92,7 @@ async function fixture() {
     monetaryAnnouncements: vi
       .fn<ManagedApi["monetaryAnnouncements"]>()
       .mockRejectedValue(unexpected),
+    blsCalendar: vi.fn(),
     economicCalendar: vi
       .fn<ManagedApi["economicCalendar"]>()
       .mockRejectedValue(unexpected),

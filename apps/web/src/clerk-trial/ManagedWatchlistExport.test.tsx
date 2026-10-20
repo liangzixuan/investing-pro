@@ -190,6 +190,7 @@ function fixture(initial = payload) {
     monetaryAnnouncements: vi
       .fn<ManagedApi["monetaryAnnouncements"]>()
       .mockRejectedValue(new Error("Unexpected announcements read")),
+    blsCalendar: vi.fn(),
     economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
     recentFilings: vi.fn<ManagedApi["recentFilings"]>(),

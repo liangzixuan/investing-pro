@@ -1,11 +1,38 @@
 import { expect, it } from "vitest";
 import {
+  MANAGED_BLS_CALENDAR_SOURCE,
+  parseManagedBlsCalendar,
   parseManagedEconomicCalendar,
   parseManagedMonetaryAnnouncements,
 } from "@research-cockpit/contracts";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { projectMarketsDayView } from "./markets-day-view";
+
+it("keeps matching BLS and BEA names and instants separate with source-specific filters and links", () => {
+  const { agenda, fed } = packets();
+  const bls = parseManagedBlsCalendar({
+    ...agenda,
+    source: MANAGED_BLS_CALENDAR_SOURCE,
+  })!;
+  const all = projectMarketsDayView(bls, agenda, fed, "", "all");
+  expect(all.loadedCount).toBe(7);
+  expect(
+    new Set(
+      all.groups.flatMap((group) => group.entries.map((entry) => entry.key)),
+    ).size,
+  ).toBe(6);
+  const onlyBls = projectMarketsDayView(bls, agenda, fed, "2026-10-30", "bls");
+  expect(onlyBls.visibleDatedCount).toBe(2);
+  expect(onlyBls.unknown).toEqual([]);
+  expect(
+    onlyBls.visibleGroups[0]!.entries.every(
+      (entry) =>
+        entry.source === "bls" &&
+        entry.url === MANAGED_BLS_CALENDAR_SOURCE.scheduleUrl,
+    ),
+  ).toBe(true);
+});
 
 function packets() {
   const agenda = parseManagedEconomicCalendar({
@@ -44,7 +71,7 @@ function packets() {
 }
 it("joins Eastern dates without conflating scheduled series, publication URLs or unknown times", () => {
   const { agenda, fed } = packets();
-  const view = projectMarketsDayView(agenda, fed, "", "all");
+  const view = projectMarketsDayView(null, agenda, fed, "", "all");
   expect(view.groups.map((g) => g.date)).toEqual(["2026-10-30"]);
   expect(
     view.groups[0]!.entries.map((e) => [e.source, e.title, e.instant]),
@@ -95,7 +122,7 @@ it.each([
       ],
     });
     if (!agenda) throw new Error("Invalid DST fixture");
-    const view = projectMarketsDayView(agenda, null, "", "all");
+    const view = projectMarketsDayView(null, agenda, null, "", "all");
     expect(view.groups.map((g) => g.date)).toEqual([date]);
     expect(view.groups[0]!.entries.map((e) => e.instant)).toEqual([
       first,
@@ -105,15 +132,15 @@ it.each([
 );
 it("intersects source/date filters and keeps unknown times outside the selected date", () => {
   const { agenda, fed } = packets();
-  const view = projectMarketsDayView(agenda, fed, "2026-10-30", "fed");
+  const view = projectMarketsDayView(null, agenda, fed, "2026-10-30", "fed");
   expect(view.visibleDatedCount).toBe(2);
   expect(view.unknown).toHaveLength(1);
   expect(view.groups[0]!.entries).toHaveLength(4);
   expect(
-    projectMarketsDayView(agenda, fed, "2026-10-30", "bea").unknown,
+    projectMarketsDayView(null, agenda, fed, "2026-10-30", "bea").unknown,
   ).toEqual([]);
   expect(
-    projectMarketsDayView(agenda, fed, "invalid", "all").selectedDate,
+    projectMarketsDayView(null, agenda, fed, "invalid", "all").selectedDate,
   ).toBe("");
 });
 it("keeps all 512 schedule entries and ten feed items without silent truncation", () => {
@@ -135,7 +162,7 @@ it("keeps all 512 schedule entries and ten feed items without silent truncation"
     })),
   });
   if (!agenda || !fed) throw new Error("Maximum packets refused");
-  const view = projectMarketsDayView(agenda, fed, "", "all");
+  const view = projectMarketsDayView(null, agenda, fed, "", "all");
   expect(view.loadedCount).toBe(522);
   expect(view.visibleDatedCount).toBe(522);
   expect(
@@ -147,7 +174,7 @@ it("owns its frozen projection without freezing or sorting mutable typed inputs"
   const a = { ...agenda, events: agenda.events.map((row) => ({ ...row })) };
   const f = { ...fed, items: fed.items.map((row) => ({ ...row })) };
   const before = JSON.stringify([a, f]);
-  const view = projectMarketsDayView(a, f, "", "all");
+  const view = projectMarketsDayView(null, a, f, "", "all");
   expect(JSON.stringify([a, f])).toBe(before);
   expect(Object.isFrozen(a.events)).toBe(false);
   expect(Object.isFrozen(f.items)).toBe(false);
@@ -159,12 +186,13 @@ it("owns its frozen projection without freezing or sorting mutable typed inputs"
   expect(view.groups[0]!.entries[0]!.title).toBe("Invented output release");
 });
 it("keeps null and verified empty inputs safely empty without inventing source rows", () => {
-  const view = projectMarketsDayView(null, null, "", "all");
+  const view = projectMarketsDayView(null, null, null, "", "all");
   expect(view.loadedCount).toBe(0);
   expect(view.groups).toEqual([]);
   expect(view.unknown).toEqual([]);
   expect(
     projectMarketsDayView(
+      null,
       { ...economicCalendarFixture(), events: [] },
       null,
       "",

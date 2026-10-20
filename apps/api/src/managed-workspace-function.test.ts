@@ -5,6 +5,8 @@ import {
   encodeResearchFollowupsPayload,
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
   MANAGED_RESEARCH_FOLLOWUPS_PATH,
+  MANAGED_BLS_CALENDAR_PATH,
+  parseManagedBlsCalendar,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
   PERSONAL_SEC_ANNUAL_CANONICAL_VERSION,
@@ -30,6 +32,7 @@ import * as versionedStoreModule from "./appwrite-versioned-row-store";
 import * as catalogModule from "./managed-workspace-catalog";
 import * as secAdmissionModule from "./managed-sec-admission";
 import * as eodAdmissionModule from "./managed-eod-admission";
+import * as blsProviderModule from "./bls-release-provider";
 import * as beaProviderModule from "./bea-release-provider";
 import * as fedProviderModule from "./fed-monetary-announcements-provider";
 import * as annualServiceModule from "./managed-sec-annual-service";
@@ -2632,6 +2635,256 @@ describe("managed follow-up composed function", () => {
       expect(f.repository).toHaveBeenCalledTimes(1);
       expect(method === "POST" ? f.put : f.get).toHaveBeenCalledTimes(1);
       assertIsolatedAndClosed(f);
+    },
+  );
+});
+
+describe("managed BLS calendar composed function", () => {
+  const path = MANAGED_BLS_CALENDAR_PATH;
+  const schedule = () =>
+    [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Invented test//EN",
+      "BEGIN:VEVENT",
+      "UID:invented-employment",
+      `DTSTART:${new Date(Date.now() + 86_400_000)
+        .toISOString()
+        .replace(/[-:]/gu, "")
+        .replace(/\.\d{3}Z$/u, "Z")}`,
+      "SUMMARY:Invented employment",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "loads one fixed public request for the signed %s caller without execution credentials or storage",
+    async (origin) => {
+      const f = memoryRepository();
+      const annual = vi.spyOn(
+        annualServiceModule,
+        "createManagedSecAnnualService",
+      );
+      const eod = vi.spyOn(eodServiceModule, "createManagedEodService");
+      const provider = vi.spyOn(blsProviderModule, "createBlsReleaseProvider");
+      const fetch = vi.fn(() =>
+        Promise.resolve(
+          new Response(schedule(), {
+            headers: { "content-type": "text/calendar" },
+          }),
+        ),
+      );
+      vi.stubGlobal("fetch", fetch);
+      const run = createManagedWorkspaceFunction(configuration(), null, null);
+      expect(provider).not.toHaveBeenCalled();
+      const answer = (await run(
+        context({
+          path,
+          headers: {
+            origin,
+            authorization: `Bearer ${token({ azp: origin })}`,
+          },
+        }),
+      )) as { status: number; body: unknown; headers: Record<string, string> };
+      expect(answer.status).toBe(200);
+      expect(parseManagedBlsCalendar(answer.body)?.events[0]?.series).toBe(
+        "Invented employment",
+      );
+      expect(answer.headers["cache-control"]).toBe("no-store");
+      expect(fetch).toHaveBeenCalledExactlyOnceWith(
+        "https://www.bls.gov/schedule/news_release/bls.ics",
+        {
+          method: "GET",
+          headers: { Accept: "text/calendar" },
+          credentials: "omit",
+          redirect: "error",
+          referrerPolicy: "no-referrer",
+          cache: "no-store",
+          signal: expect.any(AbortSignal) as AbortSignal,
+        },
+      );
+      expect(provider).toHaveBeenCalledOnce();
+      expect(annual).not.toHaveBeenCalled();
+      expect(eod).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+      expect(f.repository).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    { method: "POST", bodyBinary: Buffer.from("{}") },
+    { method: "HEAD" },
+    { bodyBinary: Buffer.from("x") },
+    { queryString: "days=365" },
+    { headers: { origin: ORIGIN } },
+    { headers: { origin: "https://untrusted.example" } },
+  ])(
+    "denies an unadmitted calendar request before upstream or repository work %#",
+    async (patch) => {
+      const f = memoryRepository();
+      const provider = vi.spyOn(blsProviderModule, "createBlsReleaseProvider");
+      const answer = (await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path, ...patch }))) as { status: number };
+      expect([400, 401, 403, 405]).toContain(answer.status);
+      expect(provider).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
+  it("includes default-entry configuration work in its total deadline before BLS can start", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    const validate = configModule.validateClerkTrialFunctionConfiguration;
+    vi.spyOn(
+      configModule,
+      "validateClerkTrialFunctionConfiguration",
+    ).mockImplementation((input) => {
+      elapsed = 10_000;
+      return validate(input);
+    });
+    vi.stubGlobal("__MANAGED_WORKSPACE_SERVER_CONFIG__", configuration());
+    vi.stubGlobal("__MANAGED_SEC_CONFIG__", null);
+    const f = memoryRepository();
+    expect(await main(context({ path }))).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it("bounds stalled authentication and rejects its late acceptance without creating a provider", async () => {
+    vi.useFakeTimers();
+    let finish!: (value: authModule.ClerkTrialAuthResult) => void;
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const provider = vi.spyOn(blsProviderModule, "createBlsReleaseProvider");
+    const f = memoryRepository();
+    const pending = createManagedWorkspaceFunction(
+      configuration(),
+      null,
+      null,
+    )(context({ path }));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await pending).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    finish({
+      status: "allowed",
+      principal: { userId: "invented-calendar-owner" },
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(provider).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("bounds provider work by time left after auth, closes it, and makes no retry", async () => {
+    vi.useFakeTimers();
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(() => {
+      elapsed = 4_000;
+      return Promise.resolve({
+        status: "allowed",
+        principal: { userId: "invented-calendar-owner" },
+      });
+    });
+    const original = blsProviderModule.createBlsReleaseProvider;
+    const close = vi.fn();
+    vi.spyOn(blsProviderModule, "createBlsReleaseProvider").mockImplementation(
+      () => {
+        const provider = original();
+        return {
+          load: provider.load.bind(provider),
+          close: () => {
+            close();
+            provider.close();
+          },
+        };
+      },
+    );
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      () => new Promise(() => undefined),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const f = memoryRepository();
+    const pending = createManagedWorkspaceFunction(
+      configuration(),
+      null,
+      null,
+    )(context({ path }));
+    await vi.advanceTimersByTimeAsync(5_999);
+    expect(close).not.toHaveBeenCalled();
+    elapsed = 10_000;
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await pending).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch.mock.calls[0]![1]!.signal!.aborted).toBe(true);
+    expect(close).toHaveBeenCalledOnce();
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("checks the total deadline after reading the serialized response body", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(schedule(), {
+            headers: { "content-type": "text/calendar" },
+          }),
+        ),
+      ),
+    );
+    vi.spyOn(Response.prototype, "text").mockImplementation(() => {
+      elapsed = 10_000;
+      return Promise.resolve("{}");
+    });
+    const f = memoryRepository();
+    expect(
+      await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path })),
+    ).toMatchObject({ status: 408, body: { error: "request_timeout" } });
+    expect(globalThis.fetch).toHaveBeenCalledOnce();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it.each(["invalid", "failure"] as const)(
+    "returns generic unavailable for %s provider output without a source body",
+    async (failure) => {
+      const f = memoryRepository();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() =>
+          failure === "failure"
+            ? Promise.reject(new Error("private-provider-body"))
+            : Promise.resolve(Response.json({ "private-provider-body": {} })),
+        ),
+      );
+      const answer = await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path }));
+      expect(answer).toMatchObject({
+        status: 503,
+        body: { error: "unavailable" },
+      });
+      expect(JSON.stringify(answer)).not.toContain("private-provider-body");
+      expect(globalThis.fetch).toHaveBeenCalledOnce();
+      expect(f.transport).not.toHaveBeenCalled();
     },
   );
 });

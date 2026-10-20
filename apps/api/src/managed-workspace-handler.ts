@@ -38,9 +38,12 @@ import {
   parseManagedSecFilingsError,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
   MANAGED_ECONOMIC_CALENDAR_LIMITS,
+  parseManagedBlsCalendar,
+  MANAGED_BLS_CALENDAR_LIMITS,
   parseManagedEconomicCalendar,
   MANAGED_MONETARY_ANNOUNCEMENTS_LIMITS,
   parseManagedMonetaryAnnouncements,
@@ -91,6 +94,7 @@ import {
   ManagedEodServiceError,
   type ManagedEodService,
 } from "./managed-eod-service";
+import type { ManagedBlsCalendarService } from "./managed-bls-calendar-service";
 import {
   ManagedEconomicCalendarServiceError,
   type ManagedEconomicCalendarService,
@@ -122,12 +126,14 @@ export interface ManagedValuationAssumptionsRepositoryOperation {
   readonly repository: ValuationAssumptionsRepository;
   close(): Promise<void>;
 }
+
 export interface ManagedWorkspaceHandlerOptions {
   readonly auth: ClerkTrialAuth;
   readonly catalog: ManagedCatalogService;
   readonly annual?: ManagedSecAnnualService;
   readonly filings?: ManagedSecFilingsService;
   readonly eod?: ManagedEodService;
+  readonly blsCalendar?: ManagedBlsCalendarService;
   readonly calendar?: ManagedEconomicCalendarService;
   readonly announcements?: ManagedMonetaryAnnouncementsService;
   readonly openRepository: (
@@ -165,6 +171,7 @@ const PATHS: readonly string[] = [
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
+  MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
 ];
@@ -656,6 +663,19 @@ export function createManagedWorkspaceHandler(
       if (auth.status !== "allowed")
         return fail(auth.status === "access_denied" ? 403 : 401, auth.status);
       requireActiveRequest(request);
+      if (route.path === MANAGED_BLS_CALENDAR_PATH) {
+        if (!options.blsCalendar)
+          throw new Error("Calendar service unavailable");
+        const result = await options.blsCalendar.load(request.signal);
+        options.blsCalendar.assertActive(request.signal);
+        response = jsonResponse(
+          parseManagedBlsCalendar(result),
+          MANAGED_BLS_CALENDAR_LIMITS.responseBytes,
+          headers,
+        );
+        options.blsCalendar.assertActive(request.signal);
+        return response;
+      }
       if (route.path === MANAGED_ECONOMIC_CALENDAR_PATH) {
         if (!options.calendar) throw new Error("Calendar service unavailable");
         const result = await options.calendar.load(request.signal);

@@ -112,6 +112,7 @@ import {
   getFedAnnouncementNoteEvidence,
   type FedAnnouncementNoteCapture,
 } from "./managed-fed-announcement-note";
+import { ManagedBlsCalendar } from "./managed-bls-calendar";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import { ManagedResearchFollowups } from "./managed-research-followups";
@@ -284,6 +285,7 @@ export class ManagedWorkspace {
   readonly eod: ManagedEodHistory;
   readonly markets: ManagedMarkets;
   readonly watchlistPrices: ManagedWatchlistPrices;
+  readonly blsCalendar: ManagedBlsCalendar;
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
   private navigationBlocked = false;
@@ -448,6 +450,10 @@ export class ManagedWorkspace {
       (signal) => api.monetaryAnnouncements(signal),
       (error) => this.coordinator.readError(error),
     );
+    this.blsCalendar = new ManagedBlsCalendar(
+      (signal) => api.blsCalendar(signal),
+      (error) => this.coordinator.readError(error),
+    );
     this.agenda = new ManagedBeaReleaseAgenda(
       (signal) => api.economicCalendar(signal),
       (error) => this.coordinator.readError(error),
@@ -595,9 +601,13 @@ export class ManagedWorkspace {
       this.state.view !== "markets" ||
       this.state.research ||
       this.state.companyRoute
-    )
+    ) {
       this.announcements.leave();
-    else this.announcements.enter();
+      this.blsCalendar.leave();
+    } else {
+      this.announcements.enter();
+      this.blsCalendar.enter();
+    }
   }
   private syncAnnualComparison() {
     const active =
@@ -663,6 +673,7 @@ export class ManagedWorkspace {
     this.eod.retire();
     this.markets.retire();
     this.watchlistPrices.retire();
+    this.blsCalendar.retire();
     this.agenda.retire();
     this.announcements.retire();
     this.searchOperation?.abort();
@@ -732,9 +743,11 @@ export class ManagedWorkspace {
     if (view === this.state.view) return;
     if (view === "markets") {
       this.markets.enter(this.state.snapshot?.snapshotSha256 ?? null);
+      this.blsCalendar.enter();
       this.agenda.enter();
     } else {
       this.markets.leave();
+      this.blsCalendar.leave();
       this.agenda.leave();
     }
     this.update({ view });

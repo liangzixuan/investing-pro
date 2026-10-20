@@ -689,6 +689,11 @@ M3 source discovery can run alongside M1/M2. A supported multi-asset feed can en
 earlier; M5 does not permanently defer broader markets. Do not hold an available
 calendar or market module hostage to unrelated SEC interpretation work.
 
+The [BLS calendar source candidate](MANAGED_BLS_CALENDAR.md) adds explicit
+scheduled labor and inflation releases, loaded filters and the Markets day view.
+It remains separate from production delivery and the pending Android 1.30
+physical acceptance.
+
 ### Selecting the next product outcome
 
 PR 55 and signed Android 1.15 deliver same-filing adjacent annual revenue and
