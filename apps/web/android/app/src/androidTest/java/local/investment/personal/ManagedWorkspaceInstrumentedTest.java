@@ -1021,7 +1021,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelectorAll('.managed-markets-day-view [data-day-source=fed]').length === 2" +
             " && document.querySelector('.managed-markets-day-view [aria-label=\"Unknown publication time\"] time') === null" +
             " && document.querySelector('#managed-day-date')?.value === '2026-10-29'");
-        chooseNativeSelectOption("#managed-day-source", "all", "Both sources");
+        chooseNativeSelectOption("#managed-day-source", "all", "All sources");
         click("nav[aria-label='On Markets'] [data-markets-jump=day]");
         awaitPage("Day view jump focuses its owned visible heading and keeps local filters",
             "document.activeElement?.id === 'managed-markets-day-heading' && document.activeElement.checkVisibility()" +
@@ -2989,16 +2989,17 @@ public class ManagedWorkspaceInstrumentedTest {
             " source:document.querySelector('.bea-agenda-source a')?.href," +
             " busy:document.querySelector('.bea-release-agenda [aria-busy]')?.getAttribute('aria-busy')})";
         String originalPacket = readFixtureString(packet);
-        awaitPage("Markets offers five labelled native-sized section links",
+        awaitPage("Markets offers six labelled native-sized section links",
             "(() => { const links = [...document.querySelectorAll('nav[aria-label=\"On Markets\"] > a')];" +
-            " return links.length === 5 && links.map(a => a.textContent).join('|') === 'Company board|Research checks due|Markets day view|Economic calendar|Fed announcements'" +
+            " return links.length === 6 && links.map(a => a.textContent).join('|') === 'Company board|Research checks due|Markets day view|Economic calendar|BLS release calendar|Fed announcements'" +
             " && links.every(a => { const r = a.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }); })()");
-        for (String section : new String[] {"board", "review", "day", "calendar", "announcements"}) {
+        for (String section : new String[] {"board", "review", "day", "calendar", "bls", "announcements"}) {
             String selector = "nav[aria-label='On Markets'] > a[data-markets-jump='" + section + "']";
             String targetId = section.equals("board") ? "managed-markets-heading" :
                 section.equals("review") ? "managed-daily-research-heading" :
                 section.equals("day") ? "managed-markets-day-heading" :
-                section.equals("calendar") ? "bea-agenda-title" : "fed-announcements-title";
+                section.equals("calendar") ? "bea-agenda-title" :
+                section.equals("bls") ? "bls-calendar-title" : "fed-announcements-title";
             String geometry = readFixtureString(
                 "(() => { const link = document.querySelector(" + JSONObject.quote(selector) + ");" +
                 " if (!link) return JSON.stringify(null); link.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
