@@ -79,6 +79,7 @@ jobs:
         run: |
           bash ./gradlew --no-daemon --console=plain \
             -PinvestmentClientProfile=disconnected \
+            -Pandroid.experimental.androidTest.numManagedDeviceShards=2 \
             -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
             -Pandroid.testInstrumentationRunnerArguments.expectedSourceSha="$GITHUB_SHA" \
             :app:pixel2Api36DebugAndroidTest
