@@ -77,7 +77,7 @@ const disposals: (() => void)[] = [];
 afterEach(() => {
   for (const close of disposals.splice(0).reverse()) close();
 });
-async function fixture(empty = false) {
+function portfolioApi(empty: boolean) {
   let stored: ManagedPortfolioDto = empty
     ? { version: 0, payload: null }
     : { version: 3, payload: ledger() };
@@ -121,6 +121,10 @@ async function fixture(empty = false) {
       });
     }),
   };
+  return { api, unexpected };
+}
+async function fixture(empty = false) {
+  const { api, unexpected } = portfolioApi(empty);
   const workspace = new ManagedWorkspace(
     api,
     {

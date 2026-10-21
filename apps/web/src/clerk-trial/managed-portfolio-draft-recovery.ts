@@ -90,13 +90,9 @@ export class ManagedPortfolioDraftRecovery {
     if (!this.live()) return null;
     if (!this.options.routeActive()) return null;
     const view = this.options.workspace.getSnapshot();
-    if (
-      view.view !== "portfolio" ||
-      view.research ||
-      view.companyRoute ||
-      view.read
-    )
-      return null;
+    if (view.view !== "portfolio") return null;
+    if (view.research || view.companyRoute) return null;
+    if (view.read) return null;
     return this.options.workspace.portfolio.getDraftFileContext(requireFresh);
   }
   private sameContext(operation: Operation) {

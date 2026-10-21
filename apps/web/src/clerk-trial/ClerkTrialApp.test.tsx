@@ -1,3 +1,7 @@
+import {
+  browserPortfolioDraftFileAdapter,
+  type ManagedPortfolioDraftFileDeliveryAdapter,
+} from "./portfolio-draft-file-delivery";
 import { browserCompanyReportAdapter } from "./browser-company-report";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ReactNode } from "react";
@@ -148,12 +152,14 @@ describe("official Clerk browser adapter", () => {
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
+      portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.apiOrigin).toBe(config.apiOrigin);
     expect(props.warnOnBrowserLeave).toBeUndefined();
     expect(props.exportDelivery).toBeUndefined();
     expect(props.draftFileDelivery).toBeUndefined();
+    expect(props.portfolioDraftFileDelivery).toBeUndefined();
     expect(props.reportDelivery).toBeUndefined();
     expect(await props.session.getToken()).toBe("synthetic-token");
     await props.session.signOut();
@@ -224,11 +230,15 @@ describe("official Clerk browser adapter", () => {
       warnOnBrowserLeave?: boolean;
       exportDelivery?: WatchlistExportDeliveryAdapter;
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
+      portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.warnOnBrowserLeave).toBe(true);
     expect(props.exportDelivery).toBe(browserWatchlistExportAdapter);
     expect(props.draftFileDelivery).toBe(browserWatchlistDraftFileAdapter);
+    expect(props.portfolioDraftFileDelivery).toBe(
+      browserPortfolioDraftFileAdapter,
+    );
     expect(props.reportDelivery).toBe(browserCompanyReportAdapter);
     expect(props.session).toMatchObject({
       userId: "user_owner",

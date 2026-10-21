@@ -3,8 +3,9 @@
 The published managed website supports one authored USD portfolio. Production
 storage is enabled after private persistence and recovery qualification with
 invented data. Android 1.30 packages the matching workflow with verified source,
-assets and the existing production signer. Physical acceptance and authenticated
-owner Save remain open. The local encrypted My Portfolio record is a separate
+assets and the existing production signer. The owner reported that the overall
+1.30 phone checklist passed; it provides no per-feature results or independent
+device inspection. Authenticated owner Save was not exercised during release. The local encrypted My Portfolio record is a separate
 product profile and is not imported or changed by this workflow.
 
 ## Record holdings and activity

@@ -41,7 +41,7 @@ import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
 import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
-import { ManagedPortfolio } from "./ManagedPortfolio";
+import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import {
@@ -1283,28 +1283,19 @@ export function ManagedWorkspaceScreen({
                   }}
                 />
               )}
-              {discovery.view === "portfolio" && (
-                <div
-                  hidden={Boolean(
-                    discovery.research ||
-                    discovery.companyRoute ||
-                    navigation?.invalid,
-                  )}
-                >
-                  <ManagedPortfolio
-                    workspace={workspace}
-                    navigationPending={navigationPending}
-                    draftFileScope={draftFileScope}
-                    draftFileDelivery={portfolioDraftFileDelivery}
-                    draftFileRouteActive={watchlistRouteActive}
-                    onResearch={(draft, listing, opener) =>
-                      openResearch(opener, () =>
-                        workspace.openPortfolioResearch(draft, listing),
-                      )
-                    }
-                  />
-                </div>
-              )}
+              <ManagedPortfolioEntry
+                workspace={workspace}
+                discovery={discovery}
+                navigationPending={navigationPending}
+                draftFileScope={draftFileScope}
+                draftFileDelivery={portfolioDraftFileDelivery}
+                routeActive={watchlistRouteActive}
+                onResearch={(draft, listing, opener) =>
+                  openResearch(opener, () =>
+                    workspace.openPortfolioResearch(draft, listing),
+                  )
+                }
+              />
               {discovery.view === "followups" && (
                 <div
                   hidden={Boolean(

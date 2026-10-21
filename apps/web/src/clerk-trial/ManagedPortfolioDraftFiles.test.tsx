@@ -5,6 +5,8 @@ import type { ManagedPortfolioPayload } from "@research-cockpit/contracts";
 import type { PortfolioDraftRecoveryState } from "./managed-portfolio-draft-recovery";
 import type { ManagedWorkspace } from "./managed-workspace";
 import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
+import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
+import { ManagedPortfolio } from "./ManagedPortfolio";
 
 // Command/render checks only; actual browser focus and native IO remain separate.
 const harness = vi.hoisted(() => ({
@@ -171,4 +173,42 @@ it("disables file controls until the controller admits the current session and d
   expect(elements(tree).find((n) => n.type === "input")!.props.disabled).toBe(
     true,
   );
+});
+
+it("keeps the Portfolio entry hidden on invalid roots and passes the same live route check to file tools", () => {
+  let valid = false;
+  const routeActive = () => valid;
+  const props = {
+    workspace: {} as ManagedWorkspace,
+    discovery: {
+      view: "portfolio" as const,
+      research: null,
+      companyRoute: null,
+    },
+    navigationPending: false,
+    onResearch: vi.fn(),
+    routeActive,
+  };
+  type EntryElement = React.ReactElement<{
+    hidden: boolean;
+    children: React.ReactNode;
+  }>;
+  const hidden = ManagedPortfolioEntry(props)! as EntryElement;
+  expect(hidden.props.hidden).toBe(true);
+  const panel = hidden.props.children as React.ReactElement<
+    React.ComponentProps<typeof ManagedPortfolio>
+  >;
+  expect(panel.type).toBe(ManagedPortfolio);
+  expect(panel.props.draftFileRouteActive).toBe(routeActive);
+  valid = true;
+  expect(panel.props.draftFileRouteActive!()).toBe(true);
+  expect((ManagedPortfolioEntry(props) as EntryElement).props.hidden).toBe(
+    false,
+  );
+  expect(
+    ManagedPortfolioEntry({
+      ...props,
+      discovery: { view: "markets", research: null, companyRoute: null },
+    }),
+  ).toBeNull();
 });
