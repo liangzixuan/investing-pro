@@ -129,6 +129,29 @@ export class ManagedFilingsReview {
       !this.retired && !this.changing && this.active && this.state === captured
     );
   }
+  private planning(captured: ManagedFilingsReviewState) {
+    return (
+      this.accepts(captured) &&
+      this.entries.length === 0 &&
+      !this.catalogChanged
+    );
+  }
+  canChoose(
+    captured: ManagedFilingsReviewState,
+    member: ManagedWatchlistFilingsMember,
+  ) {
+    return (
+      this.planning(captured) &&
+      this.memberships.includes(member) &&
+      (this.chosen.includes(member) ||
+        this.chosen.length < FILINGS_REVIEW_LIMIT)
+    );
+  }
+  canStart(captured: ManagedFilingsReviewState) {
+    return (
+      this.planning(captured) && this.digest !== null && this.chosen.length > 0
+    );
+  }
   private clearReview() {
     const entries = this.entries;
     this.entries = [];
@@ -181,68 +204,55 @@ export class ManagedFilingsReview {
     captured: ManagedFilingsReviewState,
     member: ManagedWatchlistFilingsMember,
   ) {
-    if (
-      !this.accepts(captured) ||
-      this.entries.length ||
-      this.catalogChanged ||
-      !this.memberships.includes(member)
-    )
-      return;
+    if (!this.canChoose(captured, member)) return;
     if (this.chosen.includes(member))
       this.chosen = Object.freeze(
         this.chosen.filter((item) => item !== member),
       );
-    else if (this.chosen.length < FILINGS_REVIEW_LIMIT)
-      this.chosen = Object.freeze([...this.chosen, member]);
+    else this.chosen = Object.freeze([...this.chosen, member]);
     this.publish();
   }
   start(captured: ManagedFilingsReviewState) {
-    if (
-      !this.accepts(captured) ||
-      this.entries.length ||
-      !this.digest ||
-      this.catalogChanged ||
-      !this.chosen.length
-    )
-      return;
+    if (!this.canStart(captured)) return;
     this.changing = true;
     try {
-      this.entries = this.chosen.map((member) => {
-        const selection: ManagedResearchSelection = Object.freeze({
-          listing: member.listing,
-          catalogSnapshotSha256: this.digest!,
-          cik: null,
-          origin: "watchlist",
-        });
-        const model = new ManagedCompanyFilings(
-          (request, signal) =>
-            this.current(entry) && this.canRead && !signal.aborted
-              ? this.read(request, signal)
-              : Promise.reject(new TrialApiError("aborted")),
-          (error) => {
-            this.retire();
-            this.readError(error);
-          },
-          this.access,
-          { ...this.options, compareRefresh: true },
-        );
-        model.open(selection);
-        const entry: Entry = {
-          member,
-          model,
-          selection,
-          unsubscribe: model.subscribe(() => {
-            if (model.getSnapshot().catalogChanged) this.catalogChanged = true;
-            this.publish();
-          }),
-        };
-        return entry;
-      });
+      this.entries = this.chosen.map((member) => this.createEntry(member));
       this.selected = this.chosen[0]!;
     } finally {
       this.changing = false;
       this.publish();
     }
+  }
+  private createEntry(member: ManagedWatchlistFilingsMember): Entry {
+    const selection: ManagedResearchSelection = Object.freeze({
+      listing: member.listing,
+      catalogSnapshotSha256: this.digest!,
+      cik: null,
+      origin: "watchlist",
+    });
+    const model = new ManagedCompanyFilings(
+      (request, signal) =>
+        this.current(entry) && this.canRead && !signal.aborted
+          ? this.read(request, signal)
+          : Promise.reject(new TrialApiError("aborted")),
+      (error) => {
+        this.retire();
+        this.readError(error);
+      },
+      this.access,
+      { ...this.options, compareRefresh: true },
+    );
+    model.open(selection);
+    const entry: Entry = {
+      member,
+      model,
+      selection,
+      unsubscribe: model.subscribe(() => {
+        if (model.getSnapshot().catalogChanged) this.catalogChanged = true;
+        this.publish();
+      }),
+    };
+    return entry;
   }
   select(
     captured: ManagedFilingsReviewState,
@@ -250,13 +260,8 @@ export class ManagedFilingsReview {
   ) {
     const entry = this.entries.find((item) => item.member === member);
     const previous = this.selected;
-    if (
-      !this.accepts(captured) ||
-      this.catalogChanged ||
-      this.selected === member ||
-      !entry
-    )
-      return;
+    if (!this.accepts(captured) || this.catalogChanged) return;
+    if (!entry || this.selected === member) return;
     this.changing = true;
     try {
       this.cancel();
@@ -281,16 +286,23 @@ export class ManagedFilingsReview {
       this.digest === entry.selection.catalogSnapshotSha256
     );
   }
-  async load(captured: ManagedFilingsReviewState) {
+  canLoad(captured: ManagedFilingsReviewState) {
     const entry = this.entries.find((item) => item.member === this.selected);
-    if (
-      !this.accepts(captured) ||
-      !entry ||
-      !this.current(entry) ||
-      !this.canRead
-    )
-      return;
-    await entry.model.load();
+    if (!entry) return false;
+    const filings = entry.model.getSnapshot();
+    return (
+      this.accepts(captured) &&
+      this.current(entry) &&
+      this.canRead &&
+      filings.supported &&
+      !filings.running
+    );
+  }
+  async load(captured: ManagedFilingsReviewState) {
+    if (!this.canLoad(captured)) return;
+    await this.entries
+      .find((item) => item.member === this.selected)!
+      .model.load();
   }
   cancel() {
     this.entries

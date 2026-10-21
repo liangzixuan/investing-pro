@@ -960,20 +960,30 @@ export class ManagedWorkspace {
     });
   }
   private canOpenWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
-    const draft = this.coordinator.getSnapshot().draft;
-    const digest = this.currentWatchlistCatalogDigest();
+    return (
+      this.watchlistResearchVisitActive() &&
+      this.currentWatchlistContains(capture.member.listing) &&
+      this.watchlistFilings.canAdmitFilings(capture)
+    );
+  }
+  private watchlistResearchVisitActive() {
     return (
       !this.retired &&
       !this.navigationBlocked &&
       this.state.view === "watchlist" &&
       !this.state.research &&
-      !this.state.companyRoute &&
+      !this.state.companyRoute
+    );
+  }
+  private currentWatchlistContains(listing: ManagedEodIdentity) {
+    const draft = this.coordinator.getSnapshot().draft;
+    const digest = this.currentWatchlistCatalogDigest();
+    return (
       digest !== null &&
       draft?.snapshotSha256 === digest &&
       draft.memberships.some((member) =>
-        membershipMatchesResult(member, capture.member.listing),
-      ) &&
-      this.watchlistFilings.canAdmitFilings(capture)
+        membershipMatchesResult(member, listing),
+      )
     );
   }
   openWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
@@ -986,19 +996,9 @@ export class ManagedWorkspace {
     });
   }
   canOpenFilingsReview(capture: ManagedFilingsReviewCapture) {
-    const draft = this.coordinator.getSnapshot().draft;
-    const digest = this.currentWatchlistCatalogDigest();
     return (
-      !this.retired &&
-      !this.navigationBlocked &&
-      this.state.view === "watchlist" &&
-      !this.state.research &&
-      !this.state.companyRoute &&
-      digest !== null &&
-      draft?.snapshotSha256 === digest &&
-      draft.memberships.some((member) =>
-        membershipMatchesResult(member, capture.member.listing),
-      ) &&
+      this.watchlistResearchVisitActive() &&
+      this.currentWatchlistContains(capture.member.listing) &&
       this.filingsReview.canAdmit(capture)
     );
   }

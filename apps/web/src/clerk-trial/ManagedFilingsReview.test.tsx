@@ -2,6 +2,9 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ManagedFilingsReview as Panel } from "./ManagedFilingsReview";
+import { ManagedFilingsReviewPicker } from "./ManagedFilingsReviewPicker";
+import { ManagedFilingsReviewVisit } from "./ManagedFilingsReviewVisit";
+import { ManagedFilingsReviewSource } from "./ManagedFilingsReviewSource";
 import {
   ManagedFilingsReview,
   type ManagedFilingsReviewCapture,
@@ -64,6 +67,27 @@ function elements(
   node: React.ReactNode,
   kind: string,
 ): React.ReactElement<ControlProps>[] {
+  if (
+    React.isValidElement<
+      React.ComponentProps<typeof ManagedFilingsReviewPicker>
+    >(node) &&
+    node.type === ManagedFilingsReviewPicker
+  )
+    return elements(ManagedFilingsReviewPicker(node.props), kind);
+  if (
+    React.isValidElement<
+      React.ComponentProps<typeof ManagedFilingsReviewVisit>
+    >(node) &&
+    node.type === ManagedFilingsReviewVisit
+  )
+    return elements(ManagedFilingsReviewVisit(node.props), kind);
+  if (
+    React.isValidElement<
+      React.ComponentProps<typeof ManagedFilingsReviewSource>
+    >(node) &&
+    node.type === ManagedFilingsReviewSource
+  )
+    return elements(ManagedFilingsReviewSource(node.props), kind);
   if (!React.isValidElement<ControlProps>(node)) return [];
   return [
     ...(node.type === kind ? [node] : []),
