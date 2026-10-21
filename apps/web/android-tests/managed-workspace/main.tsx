@@ -1,4 +1,5 @@
 import { createNativeReportFixture } from "./native-report-fixture";
+import { NativeFilingsFixtureControls } from "./native-filings-fixture-controls";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { useLayoutEffect, useState, useSyncExternalStore } from "react";
@@ -550,16 +551,11 @@ function Fixture() {
             Settle cancelled invented calendar response
           </button>
         )}
-        {(scenario === "company-filings" ||
-          scenario === "watchlist-filings-review") && (
-          <button
-            id="settle-cancelled-filings"
-            disabled={state.filingsAborted !== state.filingsLateResolved + 1}
-            onClick={fixture.settleCancelledFilings}
-          >
-            Settle cancelled invented filings response
-          </button>
-        )}
+        <NativeFilingsFixtureControls
+          scenario={scenario}
+          fixture={fixture}
+          state={state}
+        />
         {(scenario === "annual-comparison" ||
           scenario === "annual-operating-comparison") && (
           <button
@@ -655,11 +651,6 @@ function Fixture() {
         {fixture.financialReview && (
           <pre id="fixture-financial-review" hidden>
             {JSON.stringify(fixture.financialReview)}
-          </pre>
-        )}
-        {fixture.filingsReview && (
-          <pre id="fixture-filings-review" hidden>
-            {JSON.stringify(fixture.filingsReview)}
           </pre>
         )}
         {scenario === "annual-operating-comparison" && (
