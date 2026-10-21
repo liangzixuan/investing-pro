@@ -58,13 +58,19 @@ function focusVisible(target: HTMLElement | null) {
   if (!target.getClientRects().length) return;
   target.focus();
 }
+function canRestoreFocus(
+  request: { control: HTMLButtonElement },
+  action: Action,
+) {
+  return action.active && action.state.active && ownsFocus(request.control);
+}
 function restoreCancelledCheck(
   request: FocusRequest | null,
   action: Action,
   focus: FocusBindings,
 ) {
-  if (!request || !action.active) return;
-  if (!action.state.active || !ownsFocus(request.control)) return;
+  if (!request) return;
+  if (!canRestoreFocus(request, action)) return;
   if (action.state.selected?.handle !== request.member) return;
   const button = focus.load.current;
   if (!button || button.disabled) return;
@@ -86,8 +92,8 @@ function restoreTransition(
   action: Action,
   focus: FocusBindings,
 ) {
-  if (!request || !action.active) return;
-  if (!action.state.active || !ownsFocus(request.control)) return;
+  if (!request) return;
+  if (!canRestoreFocus(request, action)) return;
   focusVisible(transitionTarget(request, action.state, focus));
 }
 function rememberTransition(

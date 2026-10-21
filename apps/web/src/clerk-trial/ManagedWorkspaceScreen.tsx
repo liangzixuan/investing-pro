@@ -38,7 +38,10 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
-import { ManagedFilingsReviewEntry } from "./ManagedFilingsReviewEntry";
+import {
+  ManagedFilingsReviewEntry,
+  watchlistFilingsActions,
+} from "./ManagedFilingsReviewEntry";
 import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
@@ -1689,23 +1692,11 @@ export function ManagedWorkspaceScreen({
                       memberships={saved.draft.memberships}
                       prices={watchlistPrices}
                       filings={workspace.watchlistFilings}
-                      onSelectedMember={(member) => {
-                        if (
-                          !navigation?.invalid &&
-                          !navigation?.hasCompanyRoute()
-                        )
-                          workspace.selectWatchlistFilingsMember(member);
-                      }}
-                      onViewFilings={(capture, opener) => {
-                        if (
-                          navigation?.invalid ||
-                          navigation?.hasCompanyRoute()
-                        )
-                          return;
-                        openResearch(opener, () =>
-                          workspace.openWatchlistFilings(capture),
-                        );
-                      }}
+                      {...watchlistFilingsActions({
+                        workspace,
+                        navigation,
+                        openResearch,
+                      })}
                       comparisonNoteActions={{
                         review: (capture, member, isCurrentChoice) => {
                           const isCurrent = () =>
