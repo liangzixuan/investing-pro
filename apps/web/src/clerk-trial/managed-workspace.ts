@@ -97,6 +97,10 @@ import {
   type ManagedWatchlistFilingsCapture,
 } from "./managed-watchlist-filings";
 import { ManagedSecAccess } from "./managed-sec-access";
+import {
+  ManagedFilingsReview,
+  type ManagedFilingsReviewCapture,
+} from "./managed-filings-review";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
 import {
@@ -281,6 +285,7 @@ export class ManagedWorkspace {
   readonly financialScreen: ManagedFinancialScreen;
   readonly filings: ManagedCompanyFilings;
   readonly watchlistFilings: ManagedWatchlistFilings;
+  readonly filingsReview: ManagedFilingsReview;
   private readonly secAccess = new ManagedSecAccess();
   readonly eod: ManagedEodHistory;
   readonly markets: ManagedMarkets;
@@ -446,6 +451,16 @@ export class ManagedWorkspace {
       if (this.watchlistFilings.getSnapshot().catalogChanged)
         this.invalidateCatalog();
     });
+    this.filingsReview = new ManagedFilingsReview(
+      (request, signal) => api.recentFilings(request, signal),
+      (error) => this.coordinator.readError(error),
+      this.secAccess,
+      researchOptions,
+    );
+    this.filingsReview.subscribe(() => {
+      if (this.filingsReview.getSnapshot().catalogChanged)
+        this.invalidateCatalog();
+    });
     this.announcements = new ManagedFedAnnouncements(
       (signal) => api.monetaryAnnouncements(signal),
       (error) => this.coordinator.readError(error),
@@ -561,9 +576,18 @@ export class ManagedWorkspace {
   private syncWatchlistFilings() {
     if (this.retired || this.state.view !== "watchlist") {
       this.watchlistFilings.leave();
+      this.filingsReview.leave();
       return;
     }
     this.watchlistFilings.reconcile(
+      this.coordinator.getSnapshot().draft,
+      this.currentWatchlistCatalogDigest(),
+      !this.navigationBlocked &&
+        !this.state.research &&
+        !this.state.companyRoute,
+      this.canEdit(),
+    );
+    this.filingsReview.reconcile(
       this.coordinator.getSnapshot().draft,
       this.currentWatchlistCatalogDigest(),
       !this.navigationBlocked &&
@@ -669,6 +693,7 @@ export class ManagedWorkspace {
     this.financialScreen.retire();
     this.filings.retire();
     this.watchlistFilings.retire();
+    this.filingsReview.retire();
     this.secAccess.retire();
     this.eod.retire();
     this.markets.retire();
@@ -761,6 +786,7 @@ export class ManagedWorkspace {
     this.markets.leave();
     this.watchlistPrices.leave();
     this.watchlistFilings.leave();
+    this.filingsReview.leave();
     this.closeResearch();
     this.update({
       snapshot: null,
@@ -934,20 +960,30 @@ export class ManagedWorkspace {
     });
   }
   private canOpenWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
-    const draft = this.coordinator.getSnapshot().draft;
-    const digest = this.currentWatchlistCatalogDigest();
+    return (
+      this.watchlistResearchVisitActive() &&
+      this.currentWatchlistContains(capture.member.listing) &&
+      this.watchlistFilings.canAdmitFilings(capture)
+    );
+  }
+  private watchlistResearchVisitActive() {
     return (
       !this.retired &&
       !this.navigationBlocked &&
       this.state.view === "watchlist" &&
       !this.state.research &&
-      !this.state.companyRoute &&
+      !this.state.companyRoute
+    );
+  }
+  private currentWatchlistContains(listing: ManagedEodIdentity) {
+    const draft = this.coordinator.getSnapshot().draft;
+    const digest = this.currentWatchlistCatalogDigest();
+    return (
       digest !== null &&
       draft?.snapshotSha256 === digest &&
       draft.memberships.some((member) =>
-        membershipMatchesResult(member, capture.member.listing),
-      ) &&
-      this.watchlistFilings.canAdmitFilings(capture)
+        membershipMatchesResult(member, listing),
+      )
     );
   }
   openWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
@@ -957,6 +993,22 @@ export class ManagedWorkspace {
     this.openResearch(handoff.selection, "filings", {
       filingsSeed: handoff.seed,
       admit: () => this.canOpenWatchlistFilings(capture),
+    });
+  }
+  canOpenFilingsReview(capture: ManagedFilingsReviewCapture) {
+    return (
+      this.watchlistResearchVisitActive() &&
+      this.currentWatchlistContains(capture.member.listing) &&
+      this.filingsReview.canAdmit(capture)
+    );
+  }
+  openFilingsReview(capture: ManagedFilingsReviewCapture) {
+    if (!this.canOpenFilingsReview(capture)) return;
+    const handoff = this.filingsReview.admit(capture);
+    if (!handoff || !this.canOpenFilingsReview(capture)) return;
+    this.openResearch(handoff.selection, "filings", {
+      filingsSeed: handoff.seed,
+      admit: () => this.canOpenFilingsReview(capture),
     });
   }
   openDiscoveryEod(result: PersonalSecurityMasterSearchResultDto) {
@@ -1282,6 +1334,8 @@ export class ManagedWorkspace {
     this.watchlistPrices.cancel();
     if (!owns() || !admitted()) return;
     this.watchlistFilings.cancel();
+    if (!owns() || !admitted()) return;
+    this.filingsReview.cancel();
     if (!owns() || !admitted()) return;
     phase = "after-clear";
     this.clearResearch(operation);

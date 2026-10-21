@@ -86,6 +86,26 @@ recovery and sustained use remain open. The full goal still includes broader
 company discovery, news and calendars, quarterly/TTM financials, peer research
 and comparable portfolio returns.
 
+## Watchlist filing review source
+
+The client source adds [Watchlist filing review](MANAGED_FILINGS_REVIEW.md):
+choose up to five exact listings, check the current company explicitly, inspect
+its admitted packet in company research, append a cited note and return with
+Back before saving the Watchlist draft separately. Each listing retains its own
+packet, original clocks and source limits. Switching cancels an unfinished
+check; no batch or background check starts automatically.
+
+This advances daily research review within existing Filings coverage. It reuses
+source eligibility, validation and the shared SEC cooldown. Note edits, order
+and ordinary Save preserve the group. Finish, leaving My Watchlist, a chosen
+member's removal or identity change, catalog invalidation and session retirement
+clear its temporary evidence. Source tests cover cancellation, reentry, stale
+controls, the company-note-Save-Back route and guarded keyboard focus.
+
+This is client source work. The published website and provided Android 1.31
+remain at their recorded sources above; this review group has no new client
+delivery, browser-layout or physical-device acceptance.
+
 ## Selected next outcome: sustained daily use and coherent company coverage
 
 Continue daily use of the delivered Android 1.31 Portfolio draft files, BLS calendar, saved valuation and enabled [managed Portfolio workflow](MANAGED_PORTFOLIO.md). The owner reported installed version 1.31 and the requested overall phone checklist passed on October 21. This provides no per-item or independent device inspection. Align a useful named universe across independently eligible Price, Annual and Filings sources; retain each source's separate admission and provenance.

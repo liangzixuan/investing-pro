@@ -175,6 +175,55 @@
   margin-block: 20px 24px;
 }
 
+.clerk-trial.managed-frame .managed-filings-review {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--managed-line, #2c2f36);
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame .managed-filings-review summary,
+.clerk-trial.managed-frame .managed-filings-review button,
+.clerk-trial.managed-frame .managed-filings-review-choice {
+  min-height: 44px;
+}
+
+.clerk-trial.managed-frame .managed-filings-review-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.clerk-trial.managed-frame .managed-filings-review-choice input {
+  width: 1.25rem;
+  flex: 0 0 auto;
+}
+
+.clerk-trial.managed-frame .managed-filings-review-companies {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.clerk-trial.managed-frame .managed-filings-review-companies button {
+  width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+
+.clerk-trial.managed-frame .managed-filings-review-companies span {
+  display: block;
+}
+
+.clerk-trial.managed-frame
+  .managed-filings-review-companies
+  [aria-current="true"] {
+  outline: 2px solid var(--managed-action, #8796ff);
+  outline-offset: 2px;
+}
+
 .clerk-trial.managed-frame .managed-watchlist-filings {
   min-width: 0;
   margin-block: 16px;

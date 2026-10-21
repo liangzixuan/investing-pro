@@ -7250,6 +7250,124 @@ describe("selected watchlist filings handoff", () => {
   );
 });
 
+describe("watchlist group filing review", () => {
+  async function reviewFixture() {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        { ...listingMembership(result), note: "First authored thesis" },
+        { ...listingMembership(second), note: "Other class thesis" },
+      ],
+    });
+    await ready(setup.workspace);
+    setup.workspace.setView("watchlist");
+    const model = setup.workspace.filingsReview;
+    for (const member of model.getSnapshot().memberships)
+      model.choose(model.getSnapshot(), member);
+    model.start(model.getSnapshot());
+    const load = async () => {
+      const selection = model
+        .getSnapshot()
+        .rows.find((row) => row.member === model.getSnapshot().selected)!
+        .filings.selection!;
+      vi.mocked(setup.api.recentFilings).mockResolvedValueOnce(
+        filingsResponse(2, "available", selection),
+      );
+      await model.load(model.getSnapshot());
+    };
+    return { ...setup, model, load };
+  }
+  it("checks two companies explicitly, visits captured research, appends a citation and returns to both packets before an independent Save", async () => {
+    const { workspace, api, model, load, saved } = await reviewFixture();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    await load();
+    const first = model.getSnapshot().rows[0]!;
+    const secondRow = model.getSnapshot().rows[1]!;
+    model.select(model.getSnapshot(), secondRow.member);
+    await load();
+    const secondPacket = model.getSnapshot().rows[1]!.filings.response;
+    model.select(model.getSnapshot(), first.member);
+    workspace.note(result.listingId, "Latest authored thesis");
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const capture = { member: first.member, response: first.filings.response! };
+    workspace.openFilingsReview(capture);
+    expect(workspace.getSnapshot().research?.section).toBe("filings");
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    const selection = workspace.getSnapshot().research!.selection;
+    const response = workspace.filings.getSnapshot().response!;
+    expect(response).toEqual(capture.response);
+    expect(response).not.toBe(capture.response);
+    const row = response.issuer.filings[0]!;
+    const excerpt = filingReferenceNoteExcerpt(response, row, false)!;
+    expect(
+      workspace.appendFilingReferenceToResearchNote(selection, response, row)
+        .appended,
+    ).toBe(true);
+    expect(api.save).not.toHaveBeenCalled();
+    workspace.closeResearch();
+    expect(model.getSnapshot().rows[0]!.filings.response).toBe(
+      capture.response,
+    );
+    expect(model.getSnapshot().rows[1]!.filings.response).toBe(secondPacket);
+    expect(model.getSnapshot().selected).toBe(first.member);
+    await workspace.coordinator.save();
+    expect(saved().payload.memberships[0]!.note).toBe(
+      "Latest authored thesis " + excerpt,
+    );
+    expect(saved().payload.memberships[1]!.note).toBe("Other class thesis");
+    expect(model.getSnapshot().rows[1]!.filings.response).toBe(secondPacket);
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+  it.each(["view", "removed", "catalog", "retired"] as const)(
+    "clears or retires group evidence on %s and refuses the captured opener",
+    async (boundary) => {
+      const { workspace, api, model, load } = await reviewFixture();
+      await load();
+      const row = model.getSnapshot().rows[0]!;
+      const capture = { member: row.member, response: row.filings.response! };
+      if (boundary === "view") workspace.setView("markets");
+      if (boundary === "removed") workspace.remove(result.listingId);
+      if (boundary === "catalog") {
+        vi.mocked(api.recentFilings).mockRejectedValueOnce(
+          new ManagedCatalogChangedError(),
+        );
+        await model.load(model.getSnapshot());
+      }
+      if (boundary === "retired") workspace.coordinator.retire();
+      workspace.openFilingsReview(capture);
+      expect(workspace.getSnapshot().research).toBeNull();
+      expect(model.getSnapshot().rows).toEqual([]);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+  it("refuses a reentrant captured handoff when another visit opens during company publication", async () => {
+    const { workspace, api, model, load } = await reviewFixture();
+    await load();
+    const row = model.getSnapshot().rows[0]!;
+    let ran = false;
+    const unsubscribe = workspace.filings.subscribe(() => {
+      if (ran || !workspace.filings.getSnapshot().selection) return;
+      ran = true;
+      workspace.openWatchlistAnnual(
+        workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+      );
+    });
+    workspace.openFilingsReview({
+      member: row.member,
+      response: row.filings.response!,
+    });
+    unsubscribe();
+    expect(ran).toBe(true);
+    expect(workspace.getSnapshot().research?.section).toBe("annual");
+    expect(workspace.filings.getSnapshot().selection).toBeNull();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+});
+
 describe("workspace persisted follow-up research", () => {
   const zero: PersonalSecurityMasterSearchResultDto = {
     ...eodSelection.listing,
