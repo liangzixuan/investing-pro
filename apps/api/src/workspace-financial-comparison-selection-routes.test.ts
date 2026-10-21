@@ -333,6 +333,8 @@ describe("saved financial comparison selection routes", () => {
       expect(putRecord).not.toHaveBeenCalled();
       expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
     },
+    // Includes real encrypted-vault creation and session setup on hosted Windows.
+    10_000,
   );
 
   it("requires exact payloads, nonnull save context and null clear context", async () => {
