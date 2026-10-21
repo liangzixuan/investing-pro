@@ -49,10 +49,11 @@ draft-file capture/review/restoration and the BLS release calendar. Independent
 complete APK checks and fresh API/site admission passed. The owner accepted the
 exact retained APK's two generated Gradle dependency-path changes after the
 final source-preservation check failed; the original failure remains recorded
-and future release checks are unchanged. Phone installation and physical
-acceptance are pending. The website retains its prior client. Keep 1.31
-acceptance and sustained daily use ahead of additional metrics or portfolio
-history.
+and future release checks are unchanged. The owner reported "Installed version
+1.31. Passed." for the requested checklist on October 21. This is overall
+owner-reported acceptance, without per-item results or independent device
+inspection. The website retains its prior client. Keep sustained daily use and
+coherent coverage ahead of additional metrics or portfolio history.
 
 Android 1.30.0, code 31, previously packaged source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9` with the existing production signer. The single offline build and complete packaged-asset checks

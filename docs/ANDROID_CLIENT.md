@@ -20,8 +20,12 @@ files matched the accepted source archive. The owner accepted this exact
 retained APK and the two-path exception before delivery. The original failed
 result is retained; this does not waive future release checks. Fresh API/site
 checks and the exclusive delivery copy passed without another build or signing
-operation. Prior APKs are unchanged. Android 1.31 installation and physical
-acceptance remain open.
+operation. Prior APKs are unchanged. On October 21 the owner reported "Installed
+version 1.31. Passed." for the requested checklist. This accepts the reported
+installed version and overall checklist only. No per-item results or independent
+version, signer or device inspection were provided. Conditional file and
+wanted-record Save steps are not separately evidenced. Sustained daily use
+remains open.
 
 Android 1.30.0, code 31, was provided from accepted product
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9` with the existing production signer.

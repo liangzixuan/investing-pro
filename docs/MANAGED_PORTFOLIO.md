@@ -91,10 +91,11 @@ does not establish offline editing or restoration after process death.
 
 ## Draft files
 
-Android 1.31 provides **Portfolio draft files** for applied, unsaved ledger edits.
-The website and Android 1.30 do not include this client feature. It provides
-manual file capture and restoration, with no automatic storage or restoration
-after process death. Physical 1.31 use remains open.
+Android 1.31 provides **Portfolio draft files** for applied, unsaved ledger
+edits. The website and Android 1.30 do not include this client feature. It
+provides manual file capture and restoration, with no automatic storage or
+restoration after process death. The overall 1.31 phone checklist passed by
+owner report; conditional file and Save steps were not separately reported.
 
 1. Apply or reset any open form, then choose **Save draft file**. Choose a private
    destination. The JSON file contains holdings, cash, complete listing identities

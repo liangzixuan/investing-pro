@@ -1,8 +1,6 @@
 # Coordinated managed release readiness
 
-Updated October 21, 2026. Android 1.31 is provided; installation and physical
-acceptance remain open. The earlier Android 1.30 checklist passed overall by
-owner report. The selected outcome is sustained daily use of the
+Updated October 21, 2026. Android 1.31 is provided and its requested phone checklist passed overall by owner report. The earlier 1.30 report remains its own scope. The selected outcome is sustained daily use of the
 matching managed workflows. This plan does not authorize deployment, browser
 work, signing-key access, resource provisioning or installation. Use the actual task authorization for each operation.
 
@@ -20,8 +18,12 @@ dependency paths followed the installed module junctions. All other tracked
 files matched the accepted archive. The owner accepted that exact retained APK
 and documented exception before one exclusive local delivery. The original
 failure remains recorded; future build/source gates are unchanged. No additional
-build or signing occurred during delivery. Physical 1.31 acceptance and
-sustained use remain open. Reuse unchanged passing evidence.
+build or signing occurred during delivery. On October 21 the owner reported
+"Installed version 1.31. Passed." for the requested checklist. This accepts the
+reported installed version and overall checklist only, without per-item results
+or independent version, signer or device inspection. Conditional file/Save steps
+are not separately evidenced; sustained daily use remains open. Reuse unchanged
+passing evidence.
 
 The owner reported "Phone check passed" for the requested 1.30 checklist. No
 per-item results or independent installed-version, signer or device inspection
