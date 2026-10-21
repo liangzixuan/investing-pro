@@ -224,8 +224,8 @@ ordered timestamps, including duplicates. Price rows are never stored there.
 The shared limits are 24 attempts per hour, 128 per day and 256 per 31 days. Each
 rolling window includes a four-second clock margin. Only a timely acknowledged
 transaction commit allows one provider request. Unknown commit outcomes grant
-no request and receive no automatic retry, read-back recovery or refund. The source
-candidate stages the guarded version increment and reservation update together
+no request and receive no automatic retry, read-back recovery or refund. The live
+API stages the guarded version increment and reservation update together
 with Appwrite's `createOperations` method, then checks the transaction ID, pending
 status and two-operation count before commit. This removes one network round trip:
 four normal calls instead of five. The two-second deadline and six-request ceiling

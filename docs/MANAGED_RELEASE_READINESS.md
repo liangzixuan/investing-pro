@@ -1,23 +1,33 @@
 # Coordinated managed release readiness
 
-Updated October 20, 2026. The requested Android 1.30 phone checklist passed
-overall by owner report. The selected outcome is sustained daily use of the
+Updated October 21, 2026. Android 1.31 is provided; installation and physical
+acceptance remain open. The earlier Android 1.30 checklist passed overall by
+owner report. The selected outcome is sustained daily use of the
 matching managed workflows. This plan does not authorize deployment, browser
 work, signing-key access, resource provisioning or installation. Use the actual task authorization for each operation.
 
 ## Current delivery and remaining acceptance
 
-The website/API and verified Android 1.30.0, code 31, contain accepted product
-`61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. Saved valuation inputs and Portfolio
-storage are enabled after their private invented-data persistence qualification.
-The active API is ready and live. The APK's package, version, production signer,
-source marker, configuration and complete asset set passed verification. Prior
-APKs remain unchanged. These accepted checks do not need another run.
+The website retains source `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The API
+and provided Android 1.31.0, code 32, use accepted source
+`ce7bc1025d1bd67fc55e841375a92770f7e20190`. Saved valuation and Portfolio
+storage remain enabled. Fresh API/site metadata passed; the APK's package,
+version, production signer, source marker, configuration and complete asset set
+were independently verified. Prior APKs are unchanged.
+
+The final build guard failed source preservation after two generated Gradle
+dependency paths followed the installed module junctions. All other tracked
+files matched the accepted archive. The owner accepted that exact retained APK
+and documented exception before one exclusive local delivery. The original
+failure remains recorded; future build/source gates are unchanged. No additional
+build or signing occurred during delivery. Physical 1.31 acceptance and
+sustained use remain open. Reuse unchanged passing evidence.
 
 The owner reported "Phone check passed" for the requested 1.30 checklist. No
 per-item results or independent installed-version, signer or device inspection
 were provided. Conditional file and wanted-record operations are not separately
-evidenced. Sustained daily use remains open. Use the
+evidenced. That report does not accept the later 1.31 package. Sustained daily
+use remains open. Use the
 [current capability record](CURRENT_WORK.md) and
 [Android guide](ANDROID_CLIENT.md) for the current scope. Save wanted drafts
 before updating; do not uninstall or clear data. Use wanted owner records for

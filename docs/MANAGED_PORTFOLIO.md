@@ -89,11 +89,12 @@ including unapplied portfolio forms. Ordinary leave review does not save any
 resource. Explicit sign-out can discard the drafts. This source implementation
 does not establish offline editing or restoration after process death.
 
-## Draft files source candidate
+## Draft files
 
-The development source adds **Portfolio draft files** for applied, unsaved ledger
-edits. This candidate is not published or included in Android 1.30. It does not
-provide automatic storage or restoration after process death.
+Android 1.31 provides **Portfolio draft files** for applied, unsaved ledger edits.
+The website and Android 1.30 do not include this client feature. It provides
+manual file capture and restoration, with no automatic storage or restoration
+after process death. Physical 1.31 use remains open.
 
 1. Apply or reset any open form, then choose **Save draft file**. Choose a private
    destination. The JSON file contains holdings, cash, complete listing identities

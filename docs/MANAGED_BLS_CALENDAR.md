@@ -1,9 +1,10 @@
 # BLS release calendar
 
-The source candidate adds an explicit BLS calendar to managed Markets. It is not
-yet deployed or bundled into a delivered APK. The owner-reported Android 1.30
-phone checklist in [Current work](CURRENT_WORK.md) does not accept this later
-BLS candidate. Sustained daily use remains separate.
+Android 1.31 and the live API provide the explicit BLS calendar in managed
+Markets. The website retains its prior client. The owner-reported Android 1.30
+phone checklist in [Current work](CURRENT_WORK.md) does not accept the later
+1.31 calendar workflow. Physical 1.31 acceptance and sustained daily use remain
+open.
 
 ## Read scheduled releases
 
@@ -58,5 +59,5 @@ lifetimes, complete packet admission, transport, explicit UI loading, filtering,
 day view, retained return and cancellation without saved-record writes. One
 retained public calendar capture was checked offline across the November DST
 change. That capture establishes only its source format and covered dates.
-Browser layout, authenticated production use, deployment and phone acceptance
-remain separate checks.
+API/source and complete APK acceptance are recorded in Current work. Browser
+layout, authenticated production use and physical 1.31 acceptance remain open.
