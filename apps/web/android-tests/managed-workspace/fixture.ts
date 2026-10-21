@@ -21,6 +21,7 @@ import {
   type PortfolioNativeControls,
 } from "./portfolio-fixture";
 import { createFinancialReviewNativeFixture } from "./financial-review-native-fixture";
+import { createFilingsReviewNativeFixture } from "./filings-review-fixture";
 import { withDraftFileCatalogFixture } from "./draft-file-catalog-fixture";
 import { balanceSheetPacket } from "./balance-sheet-fixture";
 import { liquidityHistoryPacket } from "./liquidity-history-fixture";
@@ -2027,6 +2028,10 @@ export type NativeFinancialReviewMetadata = {
   readonly generation: SharedNativeFixture["generations"]["initial"];
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
+  readonly filingsReview?: {
+    readonly prefix: string;
+    readonly expectedNote: string;
+  };
   readonly financialReview: NativeFinancialReviewMetadata | null;
   readonly portfolio?: PortfolioNativeControls;
   readonly annualStatements?: NativeAnnualStatementsMetadata;
@@ -2202,6 +2207,10 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "watchlist-filings-review",
+    async () => createFilingsReviewNativeFixture(await createSharedFixture()),
+  ],
+  [
     "screen-comparison",
     async () =>
       createScreenComparisonNativeFixture(await createSharedFixture()),
@@ -2262,7 +2271,8 @@ export async function createFixture(
     | "financial-screen"
     | "valuation-price"
     | "saved-valuation"
-    | "portfolio-ledger" = "default",
+    | "portfolio-ledger"
+    | "watchlist-filings-review" = "default",
 ): Promise<ManagedNativeFixture> {
   const create = nativeFixtureFactories.get(scenario);
   if (create) return create();

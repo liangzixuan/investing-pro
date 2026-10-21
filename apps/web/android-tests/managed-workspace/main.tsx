@@ -58,6 +58,7 @@ if (
   scenario !== "financial-screen" &&
   scenario !== "valuation-price" &&
   scenario !== "company-filings" &&
+  scenario !== "watchlist-filings-review" &&
   scenario !== "markets-price-handoff" &&
   scenario !== "watchlist-recovery" &&
   scenario !== "signout-save-review" &&
@@ -549,7 +550,8 @@ function Fixture() {
             Settle cancelled invented calendar response
           </button>
         )}
-        {scenario === "company-filings" && (
+        {(scenario === "company-filings" ||
+          scenario === "watchlist-filings-review") && (
           <button
             id="settle-cancelled-filings"
             disabled={state.filingsAborted !== state.filingsLateResolved + 1}
@@ -653,6 +655,11 @@ function Fixture() {
         {fixture.financialReview && (
           <pre id="fixture-financial-review" hidden>
             {JSON.stringify(fixture.financialReview)}
+          </pre>
+        )}
+        {fixture.filingsReview && (
+          <pre id="fixture-filings-review" hidden>
+            {JSON.stringify(fixture.filingsReview)}
           </pre>
         )}
         {scenario === "annual-operating-comparison" && (

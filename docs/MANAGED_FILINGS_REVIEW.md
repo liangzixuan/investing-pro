@@ -73,3 +73,15 @@ Company research suspends the review and preserves its accepted packets for Back
 Leaving **My Watchlist**, finishing the review or ending the session clears the
 temporary group and cancels pending work. Reload and process death do not restore
 it. Watchlist draft files and saved-record recovery remain separate workflows.
+
+## Isolated Android journey
+
+The test fixture defines a group-review journey with two independently admitted
+invented packets, a complete cited note, explicit Save, hardware Back, cancelled
+refreshes, Finish and session retirement. Its API admits only the fixed sequence
+and one exact complete Watchlist save in memory. Changed late packets must not
+replace retained evidence or revive the retired group.
+
+The native gate keeps all 59 baseline cases and requires this additional journey.
+Source checks, a passing hosted native run and client delivery remain separate
+acceptance events. None establishes owner-account or physical-device acceptance.
