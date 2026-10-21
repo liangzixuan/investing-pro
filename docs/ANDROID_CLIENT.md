@@ -6,7 +6,28 @@ production package is `app.investingpro.android`.
 [Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) records the accepted
 version, source revision and physical-device status.
 
-Android 1.30.0, code 31, is provided from accepted product
+Android 1.31.0, code 32, is provided from accepted product
+`ce7bc1025d1bd67fc55e841375a92770f7e20190` with the existing production signer.
+It adds Portfolio draft files and the explicit BLS release calendar. Independent
+package/version/non-debug, actual v2/single-signer, source/configuration and all
+eight packaged assets passed verification. Its SHA-256 is
+`46f323a79a17af490d9fb661e6e6aa4ac94b151265dd26ede299f1acf73aad92` (6,915,391
+bytes).
+
+The final guarded source-preservation check failed after two generated Gradle
+dependency paths followed the installed module junctions. The remaining tracked
+files matched the accepted source archive. The owner accepted this exact
+retained APK and the two-path exception before delivery. The original failed
+result is retained; this does not waive future release checks. Fresh API/site
+checks and the exclusive delivery copy passed without another build or signing
+operation. Prior APKs are unchanged. On October 21 the owner reported "Installed
+version 1.31. Passed." for the requested checklist. This accepts the reported
+installed version and overall checklist only. No per-item results or independent
+version, signer or device inspection were provided. Conditional file and
+wanted-record Save steps are not separately evidenced. Sustained daily use
+remains open.
+
+Android 1.30.0, code 31, was provided from accepted product
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9` with the existing production signer.
 One offline build and package/version/signature checks passed. Verification also
 checked the complete packaged asset set, source marker, public configuration and

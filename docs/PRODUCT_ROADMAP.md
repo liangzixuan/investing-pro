@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 20, 2026. This document defines the durable product goals and
+Updated October 21, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -13,14 +13,16 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-## Current priority after the October 20 release
+## Current priority after the October 21 Android delivery
 
-The website and API publish source
+The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The
 [production promotion](https://github.com/liangzixuan/investing-pro/actions/runs/39469586266)
 passed all 12 steps on its original attempt and reused the exact accepted archive
 from staging run `39454170915`, attempt 1. Fresh metadata and the served public
-entry page/source marker match that release.
+entry page/source marker match that website release. The API now publishes
+accepted source `ce7bc1025d1bd67fc55e841375a92770f7e20190`, with the same
+settings and enabled Portfolio and valuation storage.
 
 Editable valuation inputs are now published with enabled, qualified storage:
 explicit Load, complete Stage/Review/Save, then fresh-session load, comparison,
@@ -41,15 +43,28 @@ authenticated owner Portfolio Save was exercised. Defer
 portfolio history, additional metrics, cosmetic work and tooling increments
 while completing daily-use readiness. Coverage fixes do not complete a milestone.
 
-Android 1.30.0, code 31, now packages the same accepted product with the existing
-production signer. The single offline build and complete packaged-asset checks
+Android 1.31.0, code 32, is now provided from accepted source
+`ce7bc1025d1bd67fc55e841375a92770f7e20190`. It adds explicit Portfolio
+draft-file capture/review/restoration and the BLS release calendar. Independent
+complete APK checks and fresh API/site admission passed. The owner accepted the
+exact retained APK's two generated Gradle dependency-path changes after the
+final source-preservation check failed; the original failure remains recorded
+and future release checks are unchanged. The owner reported "Installed version
+1.31. Passed." for the requested checklist on October 21. This is overall
+owner-reported acceptance, without per-item results or independent device
+inspection. The website retains its prior client. Keep sustained daily use and
+coherent coverage ahead of additional metrics or portfolio history.
+
+Android 1.30.0, code 31, previously packaged source
+`61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9` with the existing production signer. The single offline build and complete packaged-asset checks
 passed; the verified APK is provided locally. Prior 1.28 and 1.29 APKs are
 unchanged. The earlier reported 1.27-to-1.28 upgrade does not establish 1.30 use.
 On October 20 the owner reported "Phone check passed" for the requested 1.30
 checklist. This accepts the overall checklist by owner report, without per-item
 results or independent device inspection. Conditional file and wanted-record
-operations are not separately evidenced. Sustained daily use and coherent,
-independently eligible company coverage are the next outcomes.
+operations are not separately evidenced. That report does not accept the later
+1.31 package. Sustained daily use and coherent, independently eligible company
+coverage remain open.
 
 A November personal release depends on completing the Portfolio workflow,
 matching phone delivery and acceptance, and sustained daily use. Current release
