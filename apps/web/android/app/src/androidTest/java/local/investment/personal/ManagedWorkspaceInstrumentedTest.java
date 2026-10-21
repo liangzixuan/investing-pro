@@ -380,6 +380,10 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("research-followups");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
+        launchManagedFixture(coldCompanyLink);
+    }
+
+    private void launchManagedFixture(boolean coldCompanyLink) throws Exception {
         scenario = ActivityScenario.launch(MainActivity.class);
         scenario.onActivity(activity -> {
             observeImeAnimations(activity);
@@ -9158,6 +9162,11 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitHiddenIme();
     }
 
+    private boolean hasHiddenIme(View view) {
+        WindowInsets insets = view.getRootWindowInsets();
+        return insets != null && !insets.isVisible(WindowInsets.Type.ime());
+    }
+
     private void awaitHiddenIme() {
         onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
             @Override public Matcher<View> getConstraints() { return isDisplayed(); }
@@ -9167,8 +9176,7 @@ public class ManagedWorkspaceInstrumentedTest {
                 long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
                 String diagnostic;
                 do {
-                    WindowInsets insets = view.getRootWindowInsets();
-                    boolean hidden = insets != null && !insets.isVisible(WindowInsets.Type.ime());
+                    boolean hidden = hasHiddenIme(view);
                     boolean focused = view.hasWindowFocus();
                     boolean resumed = observedImeLifecycle.getCurrentState() == Lifecycle.State.RESUMED;
                     diagnostic = "hidden=" + hidden + ", animations=" + imeAnimations.size() +
