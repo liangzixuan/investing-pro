@@ -117,7 +117,7 @@ function fakeGitHub(data: Map<string, unknown>) {
 }
 
 describe("main-push source proof", () => {
-  it("derives the actual seven workflows and eight explicit jobs for a root manifest change", () => {
+  it("derives the actual seven workflows and ten explicit jobs for a root manifest change", () => {
     const proof = proofFor();
     expect(proof.workflows.every((workflow) => workflow.required)).toBe(true);
     expect(proof.workflows.flatMap((workflow) => workflow.jobs)).toEqual([
@@ -129,6 +129,8 @@ describe("main-push source proof", () => {
       "Cross-engine parser execution (Ubuntu 24.04)",
       "Synthetic filing payload custody (Ubuntu 24.04)",
       "Android emulator (API 36)",
+      "Android emulator (API 36, shard 0)",
+      "Android emulator (API 36, shard 1)",
     ]);
     expect(
       proof.workflows.every((workflow) =>
@@ -162,7 +164,11 @@ describe("main-push source proof", () => {
     );
     expect(workflow).toMatchObject({
       required: true,
-      jobs: ["Android emulator (API 36)"],
+      jobs: [
+        "Android emulator (API 36)",
+        "Android emulator (API 36, shard 0)",
+        "Android emulator (API 36, shard 1)",
+      ],
     });
   });
 
@@ -306,7 +312,7 @@ describe("GitHub exact-revision completed checks", () => {
     const request = fakeGitHub(responses(proof));
     await expect(
       verifyGitHubChecks(proof, "synthetic-token", request),
-    ).resolves.toEqual({ verifiedWorkflows: 7, verifiedJobs: 8 });
+    ).resolves.toEqual({ verifiedWorkflows: 7, verifiedJobs: 10 });
     expect(request).toHaveBeenCalledTimes(15);
   });
 
@@ -315,7 +321,7 @@ describe("GitHub exact-revision completed checks", () => {
     const request = fakeGitHub(responses(proof));
     await expect(
       verifyGitHubChecks(proof, "synthetic-token", request),
-    ).resolves.toEqual({ verifiedWorkflows: 3, verifiedJobs: 4 });
+    ).resolves.toEqual({ verifiedWorkflows: 3, verifiedJobs: 6 });
     expect(request).toHaveBeenCalledTimes(7);
   });
 
@@ -334,7 +340,7 @@ describe("GitHub exact-revision completed checks", () => {
     });
     await expect(
       verifyGitHubChecks(proof, "synthetic-token", fakeGitHub(data)),
-    ).resolves.toEqual({ verifiedWorkflows: 7, verifiedJobs: 8 });
+    ).resolves.toEqual({ verifiedWorkflows: 7, verifiedJobs: 10 });
   });
 
   it.each([
