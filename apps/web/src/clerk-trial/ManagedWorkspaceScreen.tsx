@@ -38,6 +38,7 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
+import { ManagedFilingsReview } from "./ManagedFilingsReview";
 import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
@@ -1678,6 +1679,22 @@ export function ManagedWorkspaceScreen({
                 )}
                 {saved.draft && (
                   <>
+                    <ManagedFilingsReview
+                      model={workspace.filingsReview}
+                      active={
+                        !navigation?.invalid && !navigation?.hasCompanyRoute()
+                      }
+                      onView={(capture, opener) => {
+                        if (
+                          navigation?.invalid ||
+                          navigation?.hasCompanyRoute()
+                        )
+                          return;
+                        openResearch(opener, () =>
+                          workspace.openFilingsReview(capture),
+                        );
+                      }}
+                    />
                     <ManagedWatchlistEditor
                       ref={watchlistEditor}
                       memberships={saved.draft.memberships}

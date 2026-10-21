@@ -13,6 +13,13 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
+The M3/M4 source increment adds [Watchlist filing review](MANAGED_FILINGS_REVIEW.md).
+The owner chooses up to five exact listings, checks one company explicitly and
+retains each packet through company research, a cited note, Back and independent
+Watchlist Save. It connects daily filing review across companies using current
+source admission and dates. It adds no background monitoring, source coverage or
+saved reviewed flag. Client delivery remains separate from this source work.
+
 ## Current priority after the October 21 Android delivery
 
 The website retains source

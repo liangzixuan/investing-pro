@@ -42,7 +42,7 @@ interface Operation {
   readonly pending: { readonly cancel: () => void };
 }
 
-function identity(
+export function watchlistFilingsIdentity(
   member: MainWatchlistPayload["memberships"][number],
 ): ManagedEodIdentity {
   return Object.freeze({
@@ -181,7 +181,7 @@ export class ManagedWatchlistFilings {
           ? previous
           : Object.freeze({
               handle: Symbol(member.listingId),
-              listing: identity(member),
+              listing: watchlistFilingsIdentity(member),
             });
       });
       if (

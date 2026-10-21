@@ -5,14 +5,21 @@ it makes no SEC request. **Load filings** reads metadata from the issuer's
 current SEC Submissions object for the last 90 UTC calendar dates, including the
 original request date. **Refresh filings** starts another explicit request.
 
-The initial managed cohort is AAPL, GOOG, GOOGL and MSFT. GOOG and GOOGL retain
-their separate listing identities while sharing Alphabet's CIK. Catalog identity
-determines the issuer; a ticker alone cannot select another issuer or expand
-coverage. The next [source eligibility candidate](MANAGED_RESEARCH_ELIGIBILITY.md)
-independently qualifies Filings for the named 18-listing screening cohort. That
-requires separate API admission and compatible client delivery; the initial scope
-above remains the deployed baseline. [Current work](CURRENT_WORK.md) records
-verification and release status.
+The managed API independently admits Filings for the named 18-listing,
+17-issuer [source eligibility cohort](MANAGED_RESEARCH_ELIGIBILITY.md). GOOG and
+GOOGL retain their separate listing identities while sharing Alphabet's CIK.
+Catalog identity determines the issuer; a ticker alone cannot select another
+issuer or expand coverage. Annual and Price keep their own admission rules.
+[Current work](CURRENT_WORK.md) records verification and client delivery.
+
+## Review a watchlist group
+
+[Watchlist filing review](MANAGED_FILINGS_REVIEW.md) retains separate packets for
+up to five chosen listings. Each company check is explicit. Inspect opens the
+checked packet in company research for the existing citation, note and separate
+Review/Save workflow; Back retains the group. This source increment does not
+change the published client or source coverage. The selected-listing check below
+remains independent.
 
 ## Check a selected watchlist company
 
