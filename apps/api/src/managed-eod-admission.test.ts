@@ -39,17 +39,23 @@ function fixture(times: number[] = []) {
       pending.set($id, {});
       return Promise.resolve({ $id, status: "pending" });
     }),
-    incrementRowColumn: vi.fn<ManagedEodAdmissionStore["incrementRowColumn"]>(
+    createOperations: vi.fn<ManagedEodAdmissionStore["createOperations"]>(
       (input) => {
-        pending.get(input.transactionId)!.maximum = input.max;
-        return Promise.resolve({});
+        const increment = input.operations[0] as { data: { max: number } };
+        const update = input.operations[1] as {
+          data: { reservationsJson: string };
+        };
+        pending.set(input.transactionId, {
+          maximum: increment.data.max,
+          json: update.data.reservationsJson,
+        });
+        return Promise.resolve({
+          $id: input.transactionId,
+          status: "pending",
+          operations: 2,
+        });
       },
     ),
-    updateRow: vi.fn<ManagedEodAdmissionStore["updateRow"]>((input) => {
-      pending.get(input.transactionId)!.json = input.data
-        .reservationsJson as string;
-      return Promise.resolve({});
-    }),
     updateTransaction: vi.fn<ManagedEodAdmissionStore["updateTransaction"]>(
       (input) => {
         if (input.rollback)
@@ -93,7 +99,7 @@ const reserve = (f: ReturnType<typeof fixture>, at = ENTRY) =>
   f.make().reserve(principal, at, signal());
 
 describe("managed EOD fixed shared reservations", () => {
-  it("uses five typed CAS calls, counts duplicate timestamps and never refunds", async () => {
+  it("uses four typed CAS calls, counts duplicate timestamps and never refunds", async () => {
     const f = fixture([NOW]);
     expect(await reserve(f)).toEqual({ version: 2, reservedAt: ENTRY });
     expect(await reserve(f)).toEqual({ version: 3, reservedAt: ENTRY });
@@ -102,13 +108,24 @@ describe("managed EOD fixed shared reservations", () => {
       NOW,
       NOW,
     ]);
-    expect(f.store.incrementRowColumn).toHaveBeenNthCalledWith(1, {
-      ...location,
+    expect(f.store.createOperations).toHaveBeenNthCalledWith(1, {
       transactionId: "tx-1",
-      column: "version",
-      value: 1,
-      max: 2,
+      operations: [
+        {
+          ...location,
+          action: "increment",
+          data: { column: "version", value: 1, max: 2 },
+        },
+        {
+          ...location,
+          action: "update",
+          data: { reservationsJson: JSON.stringify([NOW, NOW]) },
+        },
+      ],
     });
+    expect(f.store.getRow).toHaveBeenCalledTimes(2);
+    expect(f.store.createTransaction).toHaveBeenCalledTimes(2);
+    expect(f.store.createOperations).toHaveBeenCalledTimes(2);
     expect(f.store.updateTransaction).toHaveBeenCalledTimes(2);
     expect(MANAGED_EOD_ADMISSION_LIMITS.maxRequests).toBe(6);
     expect(MANAGED_EOD_ADMISSION_LIMITS.reservationChargeBytes * 256).toBe(
@@ -227,7 +244,7 @@ describe("managed EOD fixed shared reservations", () => {
   });
   it("uses the remaining rollback slot on a precommit failure", async () => {
     const f = fixture();
-    f.store.updateRow = vi.fn(() =>
+    f.store.createOperations = vi.fn(() =>
       Promise.reject(new Error("Invented failed update")),
     );
     await expect(reserve(f)).rejects.toMatchObject({ code: "unavailable" });
@@ -237,6 +254,50 @@ describe("managed EOD fixed shared reservations", () => {
     });
     expect(f.row().version).toBe(1);
   });
+  it.each([
+    null,
+    {},
+    { $id: "other", status: "pending", operations: 2 },
+    { $id: "tx-1", status: "committed", operations: 2 },
+    { $id: "tx-1", status: "pending", operations: 1 },
+    { $id: "tx-1", status: "pending", operations: "2" },
+  ])(
+    "rolls back an invalid staging acknowledgment %# without a permit",
+    async (value) => {
+      const f = fixture();
+      f.store.createOperations = vi.fn(() => Promise.resolve(value));
+      await expect(reserve(f)).rejects.toMatchObject({ code: "unavailable" });
+      expect(f.store.updateTransaction).toHaveBeenCalledExactlyOnceWith({
+        transactionId: "tx-1",
+        rollback: true,
+      });
+      expect(f.row().version).toBe(1);
+    },
+  );
+  it.each(["late", "abort"])(
+    "denies %s staging before commit",
+    async (reason) => {
+      const f = fixture();
+      const controller = new AbortController();
+      const stage = f.store.createOperations;
+      f.store.createOperations = vi.fn<
+        ManagedEodAdmissionStore["createOperations"]
+      >(async (input) => {
+        const value = await stage(input);
+        if (reason === "late") f.clock(NOW + 2000);
+        else controller.abort();
+        return value;
+      });
+      await expect(
+        f.make().reserve(principal, ENTRY, controller.signal),
+      ).rejects.toMatchObject({ code: "unavailable" });
+      expect(f.store.updateTransaction).toHaveBeenCalledExactlyOnceWith({
+        transactionId: "tx-1",
+        rollback: true,
+      });
+      expect(f.row().version).toBe(1);
+    },
+  );
   it("denies before storage for expired, retired or backwards clocks", async () => {
     const f = fixture();
     f.clock(NOW + 2000);

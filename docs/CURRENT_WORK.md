@@ -91,6 +91,16 @@ website release and overall phone-check report do not establish sustained use.
 Use the [release readiness plan](MANAGED_RELEASE_READINESS.md) for their separate
 acceptance requirements.
 
+## EOD admission source candidate
+
+A source correction stages the existing guarded version increment and reservation
+update together through Appwrite's transaction operations API. Normal admission
+uses four calls instead of five. It retains the two-second deadline, quota limits,
+acknowledged commit requirement and uncertain-outcome refusal. This source change
+is not deployed and does not expand Price eligibility. Source tests do not
+establish hosted timing or additional provider qualification. See the
+[EOD guide](MANAGED_EOD_HISTORY.md#shared-request-budget).
+
 ## Independent source candidate: BLS release calendar
 
 The independent [BLS calendar candidate](MANAGED_BLS_CALENDAR.md)

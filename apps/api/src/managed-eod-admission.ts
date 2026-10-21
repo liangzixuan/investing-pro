@@ -16,12 +16,13 @@ const WINDOWS = [
 ] as const;
 export type ManagedEodAdmissionStore = Pick<
   AppwriteVersionedRowStore,
-  | "getRow"
-  | "createTransaction"
-  | "incrementRowColumn"
-  | "updateRow"
-  | "updateTransaction"
->;
+  "getRow" | "createTransaction" | "updateTransaction"
+> & {
+  createOperations: (input: {
+    transactionId: string;
+    operations: object[];
+  }) => Promise<unknown>;
+};
 export class ManagedEodAdmissionError extends Error {
   constructor(
     readonly code: "rate_limited" | "unavailable",
@@ -210,20 +211,25 @@ export function createManagedEodAdmission(options: {
         transactionId = transaction.$id;
         active();
         if (transaction.status !== "pending") fail();
-        await store.incrementRowColumn({
-          ...location,
+        const staged = await store.createOperations({
           transactionId,
-          column: "version",
-          value: 1,
-          max: version + 1,
+          operations: [
+            {
+              ...location,
+              action: "increment",
+              data: { column: "version", value: 1, max: version + 1 },
+            },
+            { ...location, action: "update", data: { reservationsJson } },
+          ],
         });
         active();
-        await store.updateRow({
-          ...location,
-          transactionId,
-          data: { reservationsJson },
-        });
-        active();
+        if (
+          !object(staged) ||
+          staged.$id !== transactionId ||
+          staged.status !== "pending" ||
+          staged.operations !== 2
+        )
+          fail();
         commitStarted = true;
         const committed = await store.updateTransaction({
           transactionId,
