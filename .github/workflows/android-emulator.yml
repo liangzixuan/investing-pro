@@ -15,10 +15,17 @@ concurrency:
 
 jobs:
   android-emulator:
-    name: Android emulator (API 36)
+    name: Android emulator (API 36, shard ${{ matrix.shard }})
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: "0"
+          - shard: "1"
     env:
+      ANDROID_TEST_SHARD: ${{ matrix.shard }}
       INVESTMENT_CLIENT_PROFILE: disconnected
       INVESTMENT_BUILD_SHA: ${{ github.sha }}
 
@@ -79,6 +86,8 @@ jobs:
         run: |
           bash ./gradlew --no-daemon --console=plain \
             -PinvestmentClientProfile=disconnected \
+            -Pandroid.testInstrumentationRunnerArguments.numShards=2 \
+            -Pandroid.testInstrumentationRunnerArguments.shardIndex="$ANDROID_TEST_SHARD" \
             -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
             -Pandroid.testInstrumentationRunnerArguments.expectedSourceSha="$GITHUB_SHA" \
             :app:pixel2Api36DebugAndroidTest
@@ -87,12 +96,115 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import json
+          import os
           import xml.etree.ElementTree as ET
           from zipfile import ZipFile
 
           reports = sorted(Path("apps/web/android/app/build/outputs/androidTest-results/managedDevice").rglob("TEST-*.xml"))
           if not reports:
               raise SystemExit("No managed-device JUnit reports were produced.")
+          executed = set()
+          for report in reports:
+              result = ET.parse(report).getroot()
+              for suite in result.iter("testsuite"):
+                  if any(int(suite.get(field, "0")) != 0 for field in ("failures", "errors", "skipped")):
+                      raise SystemExit("Native tests reported a failure, error or skip.")
+              for case in result.iter("testcase"):
+                  if any(case.find(field) is not None for field in ("failure", "error", "skipped")):
+                      raise SystemExit("A native test did not pass.")
+                  identity = (case.get("classname"), case.get("name"))
+                  if not all(identity):
+                      raise SystemExit("A native test has no class or method identity.")
+                  executed.add(identity)
+          if not executed:
+              raise SystemExit("The native shard did not execute any tests.")
+          apk_root = Path("apps/web/android/app/build/outputs/apk")
+          fixture_prefix = "assets/managed-workspace/"
+          test_providers = (
+              "local.investment.personal.SavedWatchlistTestDocumentsProvider",
+              "local.investment.personal.SavedWatchlistTestObservationProvider",
+          )
+          test_authorities = (
+              "local.investment.personal.test.watchlist-export",
+              "local.investment.personal.test.watchlist-export-observer",
+          )
+          provider_descriptors = [("L" + provider.replace(".", "/") + ";").encode("utf-8") for provider in test_providers]
+          def manifest_contains(contents, marker):
+              return any((marker + "\0").encode(encoding) in contents for encoding in ("utf-8", "utf-16le"))
+          def dex_files(archive):
+              return [archive.read(name) for name in archive.namelist() if "/" not in name and name.startswith("classes") and name.endswith(".dex")]
+          with ZipFile(apk_root / "debug/app-debug.apk") as app:
+              if any(name.startswith(fixture_prefix) for name in app.namelist()):
+                  raise SystemExit("Synthetic managed fixture entered the app APK.")
+              if any(manifest_contains(app.read("AndroidManifest.xml"), marker) for marker in test_providers + test_authorities) or any(descriptor in contents for descriptor in provider_descriptors for contents in dex_files(app)):
+                  raise SystemExit("Synthetic export provider entered the app APK.")
+          with ZipFile(apk_root / "androidTest/debug/app-debug-androidTest.apk") as tests:
+              if fixture_prefix + "index.html" not in tests.namelist():
+                  raise SystemExit("Synthetic managed fixture is missing from the test APK.")
+              if not all(manifest_contains(tests.read("AndroidManifest.xml"), marker) for marker in test_providers + test_authorities) or not all(any(descriptor in contents for contents in dex_files(tests)) for descriptor in provider_descriptors):
+                  raise SystemExit("Synthetic export provider is missing from the test APK.")
+          receipt = {
+              "sourceSha": os.environ["GITHUB_SHA"],
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "shard": os.environ["ANDROID_TEST_SHARD"],
+              "numShards": 2,
+              "profile": "disconnected",
+              "apkCustody": True,
+              "cases": sorted(executed),
+          }
+          receipt_path = Path("apps/web/android/app/build/outputs/androidTest-results/managedDevice/shard-verification.json")
+          receipt_path.write_text(json.dumps(receipt, sort_keys=True), encoding="utf-8")
+          print(f"Verified {len(executed)} native shard tests with no failures, errors or skips and isolated APK fixtures.")
+          PY
+
+      - name: Retain Android test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-emulator-shard-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: |
+            apps/web/android/app/build/reports/androidTests/**
+            apps/web/android/app/build/outputs/androidTest-results/**
+            apps/web/android/app/build/outputs/managed_device_android_test_additional_output/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  verify-android-emulator:
+    name: Android emulator (API 36)
+    needs: android-emulator
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require both native shard jobs to succeed
+        env:
+          SHARD_JOBS_RESULT: ${{ needs.android-emulator.result }}
+        run: test "$SHARD_JOBS_RESULT" = success
+
+      - name: Download native shard 0 results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-emulator-shard-0-${{ github.run_attempt }}
+          path: android-shards/shard-0
+          digest-mismatch: error
+
+      - name: Download native shard 1 results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-emulator-shard-1-${{ github.run_attempt }}
+          path: android-shards/shard-1
+          digest-mismatch: error
+
+      - name: Verify the complete native test union
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import os
+          import xml.etree.ElementTree as ET
+
           expected_tests = {
               "local.investment.personal.WatchlistDraftFilePolicyInstrumentedTest": {
                   "derivesOnlyTheFixedFilenameAndMimeFromCaptureMetadata",
@@ -162,55 +274,45 @@ jobs:
                   "portfolioLedgerKeepsExactFifoAndIndependentSave",
               },
           }
-          executed = set()
-          for report in reports:
-              result = ET.parse(report).getroot()
-              for suite in result.iter("testsuite"):
-                  if any(int(suite.get(field, "0")) != 0 for field in ("failures", "errors", "skipped")):
-                      raise SystemExit("Native tests reported a failure, error or skip.")
-              for case in result.iter("testcase"):
-                  if any(case.find(field) is not None for field in ("failure", "error", "skipped")):
-                      raise SystemExit("A native test did not pass.")
-                  executed.add((case.get("classname"), case.get("name")))
           required = {(class_name, method) for class_name, methods in expected_tests.items() for method in methods}
-          if not required.issubset(executed):
-              raise SystemExit("The required native tests did not all execute.")
-          apk_root = Path("apps/web/android/app/build/outputs/apk")
-          fixture_prefix = "assets/managed-workspace/"
-          test_providers = (
-              "local.investment.personal.SavedWatchlistTestDocumentsProvider",
-              "local.investment.personal.SavedWatchlistTestObservationProvider",
-          )
-          test_authorities = (
-              "local.investment.personal.test.watchlist-export",
-              "local.investment.personal.test.watchlist-export-observer",
-          )
-          provider_descriptors = [("L" + provider.replace(".", "/") + ";").encode("utf-8") for provider in test_providers]
-          def manifest_contains(contents, marker):
-              return any((marker + "\0").encode(encoding) in contents for encoding in ("utf-8", "utf-16le"))
-          def dex_files(archive):
-              return [archive.read(name) for name in archive.namelist() if "/" not in name and name.startswith("classes") and name.endswith(".dex")]
-          with ZipFile(apk_root / "debug/app-debug.apk") as app:
-              if any(name.startswith(fixture_prefix) for name in app.namelist()):
-                  raise SystemExit("Synthetic managed fixture entered the app APK.")
-              if any(manifest_contains(app.read("AndroidManifest.xml"), marker) for marker in test_providers + test_authorities) or any(descriptor in contents for descriptor in provider_descriptors for contents in dex_files(app)):
-                  raise SystemExit("Synthetic export provider entered the app APK.")
-          with ZipFile(apk_root / "androidTest/debug/app-debug-androidTest.apk") as tests:
-              if fixture_prefix + "index.html" not in tests.namelist():
-                  raise SystemExit("Synthetic managed fixture is missing from the test APK.")
-              if not all(manifest_contains(tests.read("AndroidManifest.xml"), marker) for marker in test_providers + test_authorities) or not all(any(descriptor in contents for contents in dex_files(tests)) for descriptor in provider_descriptors):
-                  raise SystemExit("Synthetic export provider is missing from the test APK.")
-          print(f"Verified {len(executed)} native tests with no failures, errors or skips.")
+          if len(required) != 59:
+              raise SystemExit("The original 59 native test requirements changed.")
+          combined = set()
+          for shard in ("0", "1"):
+              root = Path("android-shards") / ("shard-" + shard)
+              receipts = list(root.rglob("shard-verification.json"))
+              reports = sorted(root.rglob("TEST-*.xml"))
+              if len(receipts) != 1 or not reports:
+                  raise SystemExit("A distinct native shard receipt or JUnit report is missing.")
+              executed = set()
+              for report in reports:
+                  result = ET.parse(report).getroot()
+                  for suite in result.iter("testsuite"):
+                      if any(int(suite.get(field, "0")) != 0 for field in ("failures", "errors", "skipped")):
+                          raise SystemExit("A native shard reported a failure, error or skip.")
+                  for case in result.iter("testcase"):
+                      if any(case.find(field) is not None for field in ("failure", "error", "skipped")):
+                          raise SystemExit("A native shard test did not pass.")
+                      identity = (case.get("classname"), case.get("name"))
+                      if not all(identity):
+                          raise SystemExit("A native shard test identity is missing.")
+                      executed.add(identity)
+              if not executed or combined.intersection(executed):
+                  raise SystemExit("Native shard case sets are empty or overlap.")
+              expected_receipt = {
+                  "sourceSha": os.environ["GITHUB_SHA"],
+                  "runId": os.environ["GITHUB_RUN_ID"],
+                  "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+                  "shard": shard,
+                  "numShards": 2,
+                  "profile": "disconnected",
+                  "apkCustody": True,
+                  "cases": [list(identity) for identity in sorted(executed)],
+              }
+              if json.loads(receipts[0].read_text(encoding="utf-8")) != expected_receipt:
+                  raise SystemExit("Native shard source, run, attempt, partition or APK custody receipt does not match.")
+              combined.update(executed)
+          if combined != required:
+              raise SystemExit("The native shard union is not the complete original 59 tests.")
+          print("Verified two distinct passing native shards, APK custody and all 59 required tests.")
           PY
-
-      - name: Retain Android test results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: android-emulator-${{ github.run_attempt }}
-          path: |
-            apps/web/android/app/build/reports/androidTests/**
-            apps/web/android/app/build/outputs/androidTest-results/**
-            apps/web/android/app/build/outputs/managed_device_android_test_additional_output/**
-          if-no-files-found: warn
-          retention-days: 14
