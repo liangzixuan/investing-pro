@@ -274,6 +274,8 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String PORTFOLIO_DRAFT =
         "JSON.parse(document.querySelector('#fixture-portfolio-draft').textContent)";
     private static final long PAGE_TIMEOUT_MS = 10_000;
+    // Cold WebView initialization is setup; ordinary page interactions keep their ten-second limit.
+    private static final long FIXTURE_STARTUP_TIMEOUT_MS = 30_000;
     private static final long MAX_ASSET_BYTES = 4 * 1024 * 1024;
 
     @Rule public final TestName testName = new TestName();
@@ -399,7 +401,7 @@ public class ManagedWorkspaceInstrumentedTest {
         });
         awaitPage("managed fixture ready", "document.querySelector('#fixture-diagnostics') !== null" +
             " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1" +
-            " && document.querySelector('#managed-note-0')?.disabled === false", true);
+            " && document.querySelector('#managed-note-0')?.disabled === false", true, null, FIXTURE_STARTUP_TIMEOUT_MS);
         if (coldCompanyLink)
             awaitPage("cold company metadata admitted without research",
                 DIAGNOSTICS + ".resolve === 1 && document.querySelector('#managed-annual-heading') !== null");
@@ -9423,7 +9425,11 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void awaitPage(String description, String predicate, boolean requireNativeReady, View dismissedDialog) throws Exception {
-        long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
+        awaitPage(description, predicate, requireNativeReady, dismissedDialog, PAGE_TIMEOUT_MS);
+    }
+
+    private void awaitPage(String description, String predicate, boolean requireNativeReady, View dismissedDialog, long timeoutMs) throws Exception {
+        long deadline = SystemClock.uptimeMillis() + timeoutMs;
         int missedCallbacks = 0;
         AtomicReference<String> nativeState = new AtomicReference<>("not checked");
         while (SystemClock.uptimeMillis() < deadline) {
