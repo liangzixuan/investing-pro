@@ -33,6 +33,35 @@ import {
   pnpmLockfileHeaderViolation,
 } from "./boundaries/dependency-policy";
 
+// Exact reviewed transport owners; route-only process restrictions remain separate.
+const publicMarketDataFetchOwners = new Set([
+  "apps/api/src/personal-market-data-provider.ts",
+  "apps/api/src/personal-sec-financial-provider.ts",
+  "apps/api/src/bls-release-provider.ts",
+  "apps/api/src/bea-release-provider.ts",
+  "apps/api/src/fed-monetary-announcements-provider.ts",
+  "apps/api/src/personal-sec-filings-provider.ts",
+  "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
+  "apps/api/src/personal-sec-annual-evidence-provider.ts",
+  "apps/api/src/personal-sec-filing-context-provider.ts",
+  "apps/api/src/personal-sec-quarter-assessment-provider.ts",
+]);
+const marketDataProcessFreeRoutes = new Set([
+  "apps/api/src/workspace-monetary-announcements-routes.ts",
+  "apps/api/src/workspace-economic-calendar-routes.ts",
+  "apps/api/src/workspace-market-data-routes.ts",
+  "apps/api/src/workspace-sec-quarter-assessment-routes.ts",
+  "apps/api/src/workspace-sec-filing-context-routes.ts",
+  "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
+  "apps/api/src/workspace-sec-annual-evidence-routes.ts",
+  "apps/api/src/workspace-watchlist-filings-routes.ts",
+  "apps/api/src/workspace-filing-monitor-routes.ts",
+  "apps/api/src/personal-filing-monitor.ts",
+  "apps/api/src/workspace-financial-screen-routes.ts",
+  "apps/api/src/workspace-saved-dcf-routes.ts",
+  "apps/api/src/workspace-saved-manual-peer-routes.ts",
+]);
+
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const sourceRoots = [
   ".github",
@@ -7310,21 +7339,13 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         ts.ScriptKind.TSX,
       );
       if (
-        path !== providerPath &&
-        path !== secProviderPath &&
-        path !== "apps/api/src/bea-release-provider.ts" &&
-        path !== "apps/api/src/fed-monetary-announcements-provider.ts" &&
-        path !== "apps/api/src/personal-sec-filings-provider.ts" &&
-        path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
-        path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
+        !publicMarketDataFetchOwners.has(path) &&
         path !== managedAnnualPath &&
         path !== managedFilingsPath &&
-        path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
-        path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
-          `${path}: only the reviewed Tiingo, SEC, BEA and Fed providers may use the API runtime fetch capability`,
+          `${path}: only the reviewed Tiingo, SEC, BEA, BLS and Fed providers may use the API runtime fetch capability`,
         );
       }
       if (path !== providerPath && content.includes(providerHost)) {
@@ -8457,42 +8478,14 @@ function personalMarketDataRuntimeBoundaryViolation(
       return `${path}: personal workspace market data must not use console logging`;
     }
     if (
-      path !== providerPath &&
-      path !== secProviderPath &&
-      path !== "apps/api/src/bea-release-provider.ts" &&
-      path !== "apps/api/src/fed-monetary-announcements-provider.ts" &&
-      path !== "apps/api/src/personal-sec-filings-provider.ts" &&
-      path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
-      path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
-      path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
-      path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
+      !publicMarketDataFetchOwners.has(path) &&
       personalMarketDataUsesGlobalFetch(source)
     ) {
-      return `${path}: only the reviewed Tiingo, SEC, BEA and Fed providers may use the API runtime fetch capability`;
+      return `${path}: only the reviewed Tiingo, SEC, BEA, BLS and Fed providers may use the API runtime fetch capability`;
     }
     if (
-      (path === providerPath ||
-        path === "apps/api/src/bea-release-provider.ts" ||
-        path === "apps/api/src/fed-monetary-announcements-provider.ts" ||
-        path === "apps/api/src/workspace-monetary-announcements-routes.ts" ||
-        path === "apps/api/src/workspace-economic-calendar-routes.ts" ||
-        path === routesPath ||
-        path === secProviderPath ||
-        path === "apps/api/src/personal-sec-filings-provider.ts" ||
-        path === "apps/api/src/personal-sec-quarterly-evidence-provider.ts" ||
-        path === "apps/api/src/personal-sec-annual-evidence-provider.ts" ||
-        path === "apps/api/src/personal-sec-filing-context-provider.ts" ||
-        path === "apps/api/src/personal-sec-quarter-assessment-provider.ts" ||
-        path === "apps/api/src/workspace-sec-quarter-assessment-routes.ts" ||
-        path === "apps/api/src/workspace-sec-filing-context-routes.ts" ||
-        path === "apps/api/src/workspace-sec-quarterly-evidence-routes.ts" ||
-        path === "apps/api/src/workspace-sec-annual-evidence-routes.ts" ||
-        path === "apps/api/src/workspace-watchlist-filings-routes.ts" ||
-        path === "apps/api/src/workspace-filing-monitor-routes.ts" ||
-        path === "apps/api/src/personal-filing-monitor.ts" ||
-        path === "apps/api/src/workspace-financial-screen-routes.ts" ||
-        path === "apps/api/src/workspace-saved-dcf-routes.ts" ||
-        path === "apps/api/src/workspace-saved-manual-peer-routes.ts") &&
+      (publicMarketDataFetchOwners.has(path) ||
+        marketDataProcessFreeRoutes.has(path)) &&
       findIdentifiers(source, new Set(["process"])).length > 0
     ) {
       return `${path}: provider and market-data routes must not read process state`;

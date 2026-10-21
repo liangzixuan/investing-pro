@@ -155,6 +155,7 @@ async function fixture(loadPrice = true) {
     recentFilings: vi
       .fn<ManagedApi["recentFilings"]>()
       .mockImplementation(unexpected),
+    blsCalendar: vi.fn(),
     economicCalendar: vi
       .fn<ManagedApi["economicCalendar"]>()
       .mockImplementation(unexpected),

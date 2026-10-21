@@ -78,6 +78,7 @@ describe("managed session browser warning lifetime", () => {
         monetaryAnnouncements: vi
           .fn<ManagedApi["monetaryAnnouncements"]>()
           .mockRejectedValue(new Error("Unexpected announcements read")),
+        blsCalendar: vi.fn(),
         economicCalendar: vi.fn(),
         load: vi.fn().mockResolvedValue({ version: 1, payload }),
         save: vi.fn(),

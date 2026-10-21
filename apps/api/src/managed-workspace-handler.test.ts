@@ -1,3 +1,4 @@
+import type { ManagedBlsCalendarService } from "./managed-bls-calendar-service";
 import { createHash } from "node:crypto";
 import * as contracts from "@research-cockpit/contracts";
 import type {
@@ -1933,3 +1934,169 @@ describe("managed company filings POST boundary", () => {
     expect(f.openRepository).not.toHaveBeenCalled();
   });
 });
+
+describe("managed BLS calendar request boundary", () => {
+  const path = contracts.MANAGED_BLS_CALENDAR_PATH;
+  function setup() {
+    const f = fixture();
+    const load = vi
+      .fn<ManagedBlsCalendarService["load"]>()
+      .mockResolvedValue(inventedBlsCalendar());
+    const assertActive = vi.fn<ManagedBlsCalendarService["assertActive"]>();
+    const handler = createManagedWorkspaceHandler({
+      auth: f.auth,
+      catalog: { status: f.status, search: f.search, resolve: f.resolve },
+      openRepository: f.openRepository,
+      openFollowupsRepository,
+      blsCalendar: { load, assertActive },
+    });
+    return { ...f, handler, load, assertActive };
+  }
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "loads the calendar after %s authentication without storage or catalog work",
+    async (origin) => {
+      const f = setup();
+      const response = await f.handler(request(path, { origin }));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual(inventedBlsCalendar());
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(f.auth.mock.invocationCallOrder[0]).toBeLessThan(
+        f.load.mock.invocationCallOrder[0]!,
+      );
+      expect(f.load).toHaveBeenCalledOnce();
+      expect(f.assertActive).toHaveBeenCalledTimes(2);
+      expect(f.openRepository).not.toHaveBeenCalled();
+      expect(f.status).not.toHaveBeenCalled();
+      expect(f.search).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    ["HEAD", path, ORIGIN, undefined, 405],
+    ["POST", path, ORIGIN, "{}", 400],
+    ["GET", `${path}?days=1`, ORIGIN, undefined, 400],
+    ["GET", path, "https://untrusted.example", undefined, 403],
+  ] as const)(
+    "rejects %s %s before authentication or source work",
+    async (method, url, origin, body, code) => {
+      const f = setup();
+      const response = await f.handler(
+        new Request(`https://api.example.invalid${url}`, {
+          method,
+          headers: { origin },
+          ...(body === undefined ? {} : { body }),
+        }),
+      );
+      expect(response.status).toBe(code);
+      expect(f.auth).not.toHaveBeenCalled();
+      expect(f.load).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["unauthenticated", "access_denied"] as const)(
+    "rejects %s before source or storage",
+    async (status) => {
+      const f = setup();
+      f.auth.mockResolvedValue({ status });
+      const response = await f.handler(request(path));
+      expect(response.status).toBe(status === "unauthenticated" ? 401 : 403);
+      expect(f.load).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
+    },
+  );
+  it("admits only GET preflight and never loads the source during preflight", async () => {
+    const f = setup();
+    expect(
+      (
+        await f.handler(
+          request(path, {
+            method: "OPTIONS",
+            headers: {
+              "access-control-request-method": "GET",
+              "access-control-request-headers": "authorization",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await f.handler(
+          request(path, {
+            method: "OPTIONS",
+            headers: {
+              "access-control-request-method": "POST",
+              "access-control-request-headers": "authorization",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(403);
+    expect(f.auth).not.toHaveBeenCalled();
+    expect(f.load).not.toHaveBeenCalled();
+  });
+  it.each([
+    [
+      new ManagedEconomicCalendarServiceError("request_timeout"),
+      408,
+      "request_timeout",
+    ],
+    [
+      new ManagedEconomicCalendarServiceError("unavailable"),
+      503,
+      "unavailable",
+    ],
+    [new Error("private-provider-body"), 503, "unavailable"],
+  ] as const)(
+    "returns bounded calendar errors %#",
+    async (error, status, code) => {
+      const f = setup();
+      f.load.mockRejectedValue(error);
+      const response = await f.handler(request(path));
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ error: code });
+    },
+  );
+  it("rejects malformed data and enforces the serialized byte cap independently of parser admission", async () => {
+    const f = setup();
+    f.load.mockResolvedValue({
+      ...inventedBlsCalendar(),
+      extra: "private",
+    } as contracts.ManagedBlsCalendarDto);
+    expect((await f.handler(request(path))).status).toBe(503);
+    const oversized = {
+      ...inventedBlsCalendar(),
+      events: [
+        {
+          series: "x".repeat(
+            contracts.MANAGED_BLS_CALENDAR_LIMITS.responseBytes,
+          ),
+          scheduledAt: "2026-10-12T12:30:00.000Z",
+        },
+      ],
+    };
+    vi.spyOn(contracts, "parseManagedBlsCalendar").mockReturnValue(oversized);
+    f.load.mockResolvedValue(oversized);
+    const response = await f.handler(request(path));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+  });
+  it("checks lifetime after serialization before returning a calendar", async () => {
+    const f = setup();
+    f.assertActive
+      .mockImplementationOnce(() => undefined)
+      .mockImplementationOnce(() => {
+        throw new ManagedEconomicCalendarServiceError("request_timeout");
+      });
+    const response = await f.handler(request(path));
+    expect(response.status).toBe(408);
+    expect(await response.json()).toEqual({ error: "request_timeout" });
+    expect(f.assertActive).toHaveBeenCalledTimes(2);
+  });
+});
+
+function inventedBlsCalendar(): contracts.ManagedBlsCalendarDto {
+  return {
+    ...inventedCalendar(),
+    source: contracts.MANAGED_BLS_CALENDAR_SOURCE,
+  };
+}

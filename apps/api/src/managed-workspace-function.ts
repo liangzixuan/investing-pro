@@ -18,6 +18,7 @@ import {
   MANAGED_SEC_FILINGS_LIMITS,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
 } from "@research-cockpit/contracts";
@@ -72,6 +73,7 @@ import {
   awaitManagedEod,
   ManagedEodServiceError,
 } from "./managed-eod-service";
+import { createManagedBlsCalendarService } from "./managed-bls-calendar-service";
 import {
   createManagedEconomicCalendarService,
   awaitManagedEconomicCalendar,
@@ -118,6 +120,7 @@ export interface ManagedWorkspaceFunctionContext {
 declare const __MANAGED_WORKSPACE_SERVER_CONFIG__: unknown;
 declare const __MANAGED_SEC_CONFIG__: unknown;
 declare const __MANAGED_EOD_CONFIG__: unknown;
+
 const PATHS: readonly string[] = [
   MANAGED_VALUATION_ASSUMPTIONS_PATH,
   MANAGED_PORTFOLIO_PATH,
@@ -129,6 +132,7 @@ const PATHS: readonly string[] = [
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
+  MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
 ];
@@ -246,7 +250,8 @@ export function createManagedWorkspaceFunction(
     const annual = req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH;
     const filings = req.path === MANAGED_SEC_FILINGS_PATH;
     const eod = req.path === MANAGED_EOD_HISTORY_PATH;
-    const calendar = req.path === MANAGED_ECONOMIC_CALENDAR_PATH;
+    const blsCalendar = req.path === MANAGED_BLS_CALENDAR_PATH;
+    const calendar = req.path === MANAGED_ECONOMIC_CALENDAR_PATH || blsCalendar;
     const announcements = req.path === MANAGED_MONETARY_ANNOUNCEMENTS_PATH;
     const sourceController =
       annual || filings || eod || calendar || announcements
@@ -336,7 +341,11 @@ export function createManagedWorkspaceFunction(
             }),
         ...(!calendar
           ? {}
-          : { calendar: createManagedEconomicCalendarService({ startedAt }) }),
+          : blsCalendar
+            ? { blsCalendar: createManagedBlsCalendarService({ startedAt }) }
+            : {
+                calendar: createManagedEconomicCalendarService({ startedAt }),
+              }),
         ...(!announcements
           ? {}
           : {

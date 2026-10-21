@@ -100,6 +100,7 @@ async function fixture(withPrice = false) {
     annualReport: vi.fn().mockImplementation(unexpected),
     eodHistory: vi.fn().mockImplementation(unexpected),
     recentFilings: vi.fn().mockImplementation(unexpected),
+    blsCalendar: vi.fn(),
     economicCalendar: vi.fn().mockImplementation(unexpected),
     monetaryAnnouncements: vi.fn().mockImplementation(unexpected),
     search: vi.fn().mockImplementation(unexpected),

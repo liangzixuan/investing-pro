@@ -5,6 +5,7 @@ import {
   useSyncExternalStore,
   type Ref,
 } from "react";
+import type { ManagedBlsCalendar } from "./managed-bls-calendar";
 import type { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import type { ManagedFedAnnouncements } from "./managed-fed-announcements";
 import {
@@ -48,7 +49,9 @@ function Entries({
           <p className="managed-day-kind">
             {entry.source === "bea"
               ? "Scheduled · BEA"
-              : "Published · Federal Reserve"}
+              : entry.source === "bls"
+                ? "Scheduled · BLS"
+                : "Published · Federal Reserve"}
           </p>
           <a href={entry.url} target="_blank" rel="noopener noreferrer">
             {entry.title}
@@ -67,11 +70,13 @@ function Entries({
 }
 
 export function ManagedMarketsDayView({
+  blsCalendar: blsModel,
   agenda: agendaModel,
   announcements: feedModel,
   navigation,
   headingRef,
 }: {
+  readonly blsCalendar: ManagedBlsCalendar;
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
   readonly navigation: ManagedMarketsNavigationProps;
@@ -87,14 +92,21 @@ export function ManagedMarketsDayView({
     feedModel.getSnapshot,
     feedModel.getSnapshot,
   );
+  const bls = useSyncExternalStore(
+    blsModel.subscribe,
+    blsModel.getSnapshot,
+    blsModel.getSnapshot,
+  );
   const jump = useManagedMarketsJump(navigation);
   const [choice, setChoice] = useState<{
+    bls: typeof bls.calendar;
     agenda: typeof agenda.agenda;
     feed: typeof feed.announcements;
     date: string;
     source: MarketsDaySource;
     reset: boolean;
   }>(() => ({
+    bls: bls.calendar,
     agenda: agenda.agenda,
     feed: feed.announcements,
     date: "",
@@ -102,14 +114,20 @@ export function ManagedMarketsDayView({
     reset: false,
   }));
   const selection: typeof choice =
-    choice.agenda === agenda.agenda && choice.feed === feed.announcements
+    choice.bls === bls.calendar &&
+    choice.agenda === agenda.agenda &&
+    choice.feed === feed.announcements
       ? choice
       : {
+          bls: bls.calendar,
           agenda: agenda.agenda,
           feed: feed.announcements,
           date: "",
           source: "all",
-          reset: choice.agenda !== null || choice.feed !== null,
+          reset:
+            choice.bls !== null ||
+            choice.agenda !== null ||
+            choice.feed !== null,
         };
   if (selection !== choice) setChoice(selection);
   const committedSelection = useRef<typeof selection | null>(null);
@@ -120,6 +138,7 @@ export function ManagedMarketsDayView({
     };
   }, [selection]);
   const view = projectMarketsDayView(
+    bls.calendar,
     agenda.agenda,
     feed.announcements,
     selection.date,
@@ -128,6 +147,7 @@ export function ManagedMarketsDayView({
   const current = () =>
     committedSelection.current === selection &&
     navigation.isCurrent() &&
+    blsModel.getSnapshot().calendar === bls.calendar &&
     agendaModel.getSnapshot().agenda === agenda.agenda &&
     feedModel.getSnapshot().announcements === feed.announcements;
   return (
@@ -140,12 +160,57 @@ export function ManagedMarketsDayView({
           Markets day view
         </h2>
         <p>
-          Loaded BEA schedules and Federal Reserve announcements, grouped by
-          Eastern date. Scheduled releases do not confirm publication or
-          released values.
+          Loaded BEA and BLS schedules and Federal Reserve announcements,
+          grouped by Eastern date. Scheduled releases do not confirm publication
+          or released values.
         </p>
       </header>
       <div className="managed-day-sources">
+        <section aria-label="BLS source status">
+          <h3>BLS schedule</h3>
+          <a
+            href="#bls-calendar-title"
+            onClick={(event) => {
+              event.preventDefault();
+              jump("bls");
+            }}
+          >
+            Inspect BLS calendar
+          </a>
+          <p>
+            {bls.calendar
+              ? `${bls.calendar.events.length} scheduled releases in this loaded 30-day window.`
+              : "BLS schedule not loaded. Load it explicitly in BLS release calendar."}
+          </p>
+          {bls.calendar && (
+            <>
+              <p>
+                Retrieved <SourceTime instant={bls.calendar.fetchedAt} />
+              </p>
+              <p>
+                Window: {bls.calendar.window.fromInclusive} (inclusive) to{" "}
+                {bls.calendar.window.toExclusive} (exclusive).
+              </p>
+              {bls.calendar.events.length === 0 && (
+                <p>No scheduled BLS releases in this loaded window.</p>
+              )}
+            </>
+          )}
+          {bls.message && <p role="status">{bls.message}</p>}
+          {bls.showingPrevious && bls.calendar && (
+            <p className="managed-day-warning">
+              Previous BLS schedule. This attempt has not confirmed a newer
+              calendar.
+            </p>
+          )}
+          {bls.error && (
+            <p role="alert">
+              {bls.error === "invalid_response"
+                ? "The BLS response could not be verified."
+                : "The BLS schedule could not be loaded."}
+            </p>
+          )}
+        </section>
         <section aria-label="BEA source status">
           <h3>BEA schedule</h3>
           <a
@@ -239,7 +304,7 @@ export function ManagedMarketsDayView({
           )}
         </section>
       </div>
-      {(agenda.agenda || feed.announcements) && (
+      {(bls.calendar || agenda.agenda || feed.announcements) && (
         <>
           <div className="managed-day-filters">
             <label htmlFor="managed-day-date">
@@ -274,12 +339,16 @@ export function ManagedMarketsDayView({
                   const source = event.currentTarget.value;
                   if (
                     current() &&
-                    (source === "all" || source === "bea" || source === "fed")
+                    (source === "all" ||
+                      source === "bea" ||
+                      source === "bls" ||
+                      source === "fed")
                   )
                     setChoice({ ...selection, source, reset: false });
                 }}
               >
-                <option value="all">Both sources</option>
+                <option value="all">All sources</option>
+                <option value="bls">BLS schedule</option>
                 <option value="bea">BEA schedule</option>
                 <option value="fed">Federal Reserve announcements</option>
               </select>
@@ -289,12 +358,12 @@ export function ManagedMarketsDayView({
             {view.visibleDatedCount} dated items shown · {view.unknown.length}{" "}
             unknown-time items shown · {view.loadedCount} total loaded items.
             {selection.reset &&
-              " Accepted source data changed; showing both sources and all loaded dates."}
+              " Accepted source data changed; showing all sources and all loaded dates."}
           </p>
           <p>
             Unknown publication times stay separate even when a date is
-            selected. Coverage is limited to these two loaded sources; no
-            company relevance or alert is inferred.
+            selected. Coverage is limited to these loaded sources; no company
+            relevance or alert is inferred.
           </p>
           {view.loadedCount > 0 && view.visibleDatedCount === 0 && (
             <p>No dated items match this date and source selection.</p>

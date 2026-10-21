@@ -122,6 +122,7 @@ function fixture(initial = empty) {
         new Error("Follow-ups require an explicit fixture action"),
       ),
     monetaryAnnouncements: vi.fn<ManagedApi["monetaryAnnouncements"]>(),
+    blsCalendar: vi.fn(),
     economicCalendar: vi
       .fn<ManagedApi["economicCalendar"]>()
       .mockRejectedValue(new Error("Unexpected agenda read")),

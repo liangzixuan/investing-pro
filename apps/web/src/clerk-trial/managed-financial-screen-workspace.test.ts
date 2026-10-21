@@ -206,6 +206,7 @@ async function fixture(
     monetaryAnnouncements: vi
       .fn<ManagedApi["monetaryAnnouncements"]>()
       .mockImplementation(unexpected),
+    blsCalendar: vi.fn(),
     economicCalendar: vi
       .fn<ManagedApi["economicCalendar"]>()
       .mockImplementation(unexpected),

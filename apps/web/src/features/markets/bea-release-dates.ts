@@ -22,7 +22,7 @@ export const formatBeaReleaseDate = (instant: string) =>
   date.format(new Date(instant));
 
 export function groupBeaReleaseDates(
-  agenda: PersonalEconomicCalendarDto | null,
+  agenda: Pick<PersonalEconomicCalendarDto, "events"> | null,
 ) {
   const groups = new Map<
     string,
