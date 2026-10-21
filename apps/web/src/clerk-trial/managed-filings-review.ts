@@ -57,7 +57,7 @@ export class ManagedFilingsReview {
   private canRead = false;
   private catalogChanged = false;
   private retired = false;
-  private changing = false;
+  private mutationDepth = 0;
   private state: ManagedFilingsReviewState = this.snapshot();
 
   constructor(
@@ -99,7 +99,7 @@ export class ManagedFilingsReview {
     });
   }
   private publish() {
-    if (this.changing) return;
+    if (this.mutationDepth !== 0) return;
     const next = this.snapshot();
     if (
       Object.keys(next).every(
@@ -115,7 +115,7 @@ export class ManagedFilingsReview {
   private current(entry: Entry) {
     return (
       !this.retired &&
-      !this.changing &&
+      this.mutationDepth === 0 &&
       this.active &&
       !this.catalogChanged &&
       this.selected === entry.member &&
@@ -126,7 +126,10 @@ export class ManagedFilingsReview {
   }
   private accepts(captured: ManagedFilingsReviewState) {
     return (
-      !this.retired && !this.changing && this.active && this.state === captured
+      !this.retired &&
+      this.mutationDepth === 0 &&
+      this.active &&
+      this.state === captured
     );
   }
   private planning(captured: ManagedFilingsReviewState) {
@@ -169,7 +172,7 @@ export class ManagedFilingsReview {
     canRead: boolean,
   ) {
     if (this.retired) return;
-    this.changing = true;
+    this.mutationDepth += 1;
     try {
       const admitted =
         digest && draft?.snapshotSha256 === digest ? draft : null;
@@ -196,7 +199,7 @@ export class ManagedFilingsReview {
         this.clearReview();
       if (!this.canRead) this.cancel();
     } finally {
-      this.changing = false;
+      this.mutationDepth -= 1;
       this.publish();
     }
   }
@@ -214,12 +217,12 @@ export class ManagedFilingsReview {
   }
   start(captured: ManagedFilingsReviewState) {
     if (!this.canStart(captured)) return;
-    this.changing = true;
+    this.mutationDepth += 1;
     try {
       this.entries = this.chosen.map((member) => this.createEntry(member));
       this.selected = this.chosen[0]!;
     } finally {
-      this.changing = false;
+      this.mutationDepth -= 1;
       this.publish();
     }
   }
@@ -262,13 +265,13 @@ export class ManagedFilingsReview {
     const previous = this.selected;
     if (!this.accepts(captured) || this.catalogChanged) return;
     if (!entry || this.selected === member) return;
-    this.changing = true;
+    this.mutationDepth += 1;
     try {
       this.cancel();
       if (!this.currentSelectionAfterCancel(entry, previous)) return;
       this.selected = member;
     } finally {
-      this.changing = false;
+      this.mutationDepth -= 1;
       this.publish();
     }
   }
@@ -340,22 +343,27 @@ export class ManagedFilingsReview {
   }
   finish(captured: ManagedFilingsReviewState) {
     if (!this.accepts(captured)) return;
-    this.changing = true;
+    this.mutationDepth += 1;
     try {
       this.clearReview();
     } finally {
-      this.changing = false;
+      this.mutationDepth -= 1;
       this.publish();
     }
   }
   leave() {
-    this.active = false;
-    this.canRead = false;
-    this.clearReview();
-    this.memberships = [];
-    this.digest = null;
-    this.catalogChanged = false;
-    this.publish();
+    this.mutationDepth += 1;
+    try {
+      this.clearReview();
+      this.active = false;
+      this.canRead = false;
+      this.memberships = [];
+      this.digest = null;
+      this.catalogChanged = false;
+    } finally {
+      this.mutationDepth -= 1;
+      this.publish();
+    }
   }
   retire() {
     if (this.retired) return;

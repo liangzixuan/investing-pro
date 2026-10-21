@@ -247,12 +247,15 @@ describe("watchlist filings review visit", () => {
       const stale = f.model.getSnapshot().rows[1]!.member;
       f.model.select(f.model.getSnapshot(), stale);
       expect(f.model.getSnapshot().selected).not.toBe(stale);
+      expect(f.model.getSnapshot().rows).toEqual([]);
       if (boundary === "restart") {
+        // Nested commands are refused; a fresh command can start after the switch.
+        f.start(0, 1);
         expect(f.model.getSnapshot().rows).toHaveLength(2);
         expect(f.model.getSnapshot().selected).toBe(
           f.model.getSnapshot().rows[0]!.member,
         );
-      } else expect(f.model.getSnapshot().rows).toEqual([]);
+      }
       pending.resolve(f.wire(0));
       await load;
       expect(f.read).toHaveBeenCalledOnce();
@@ -305,6 +308,66 @@ describe("watchlist filings review visit", () => {
     pending.resolve(f.wire(0));
     await load;
     expect(f.model.getSnapshot().selected).toBe(second);
+  });
+  it("keeps nested reconciliation inside the outer switch so no previous-company request can start", async () => {
+    const f = fixture();
+    f.start(0, 1);
+    const first = f.model.getSnapshot().selected!;
+    const second = f.model.getSnapshot().rows[1]!.member;
+    const original = deferred<ManagedSecFilingsResponseDto>();
+    const replacement = deferred<ManagedSecFilingsResponseDto>();
+    f.read
+      .mockImplementationOnce((_request, signal) => {
+        signal.addEventListener(
+          "abort",
+          () => f.model.reconcile(draft(), digest, true, true),
+          { once: true },
+        );
+        return original.promise;
+      })
+      .mockReturnValueOnce(replacement.promise);
+    const pending = f.model.load(f.model.getSnapshot());
+    const stop = f.model.subscribe(() => {
+      const state = f.model.getSnapshot();
+      if (state.selected === first && f.model.canLoad(state))
+        void f.model.load(state);
+    });
+    f.model.select(f.model.getSnapshot(), second);
+    stop();
+    expect(f.model.getSnapshot().selected).toBe(second);
+    expect(f.read).toHaveBeenCalledOnce();
+    expect(f.model.getSnapshot().rows[0]!.filings.running).toBe(false);
+    original.resolve(f.wire(0));
+    replacement.resolve(f.wire(0));
+    await pending;
+    expect(f.model.getSnapshot().rows[0]!.filings.response).toBeNull();
+    expect(f.model.canLoad(f.model.getSnapshot())).toBe(true);
+  });
+  it("leaving wins over nested reconciliation during its cancellation", async () => {
+    const f = fixture();
+    f.start(0);
+    const pending = deferred<ManagedSecFilingsResponseDto>();
+    f.read.mockImplementationOnce((_request, signal) => {
+      signal.addEventListener(
+        "abort",
+        () => f.model.reconcile(draft(), digest, true, true),
+        { once: true },
+      );
+      return pending.promise;
+    });
+    const load = f.model.load(f.model.getSnapshot());
+    f.model.leave();
+    expect(f.model.getSnapshot()).toMatchObject({
+      active: false,
+      canRead: false,
+      memberships: [],
+      rows: [],
+      selected: null,
+    });
+    pending.resolve(f.wire(0));
+    await load;
+    expect(f.model.getSnapshot().rows).toEqual([]);
+    expect(f.read).toHaveBeenCalledOnce();
   });
 
   it.each(["finish", "leave", "retire", "suspend"])(
