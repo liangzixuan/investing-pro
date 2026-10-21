@@ -5579,12 +5579,12 @@ public class ManagedWorkspaceInstrumentedTest {
             " return select instanceof HTMLSelectElement && !select.disabled && document.activeElement === select" +
             " && select === document.querySelector(" + JSONObject.quote(selector) + ")" +
             " && [...select.options].some(option => option.value === " + JSONObject.quote(optionValue) + " && !option.disabled); })()");
-        // Native Space opens the picker without a tap becoming a long press under load.
+        // F4 opens Chromium's picker on keydown without a printable key passing through the IME.
         onView(isAssignableFrom(WebView.class)).check((view, noViewFoundException) -> {
             if (noViewFoundException != null) throw noViewFoundException;
             assertTrue("Select WebView must have focus", view.hasFocus());
             assertTrue("Select window must have focus", view.hasWindowFocus());
-        }).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        }).perform(pressKey(KeyEvent.KEYCODE_F4));
         // Wait for WebView's native dialog instead of searching the Activity root.
         AtomicReference<View> dialogDecor = new AtomicReference<>();
         onView(androidx.test.espresso.matcher.ViewMatchers.withText(label))
