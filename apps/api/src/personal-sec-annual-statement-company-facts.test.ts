@@ -555,7 +555,7 @@ describe("fixed annual statement Company Facts normalization", () => {
     expect(rows(result, "StockholdersEquity")).toHaveLength(1);
   });
 
-  it("counts 10000 candidates completely per concept and refuses overflow without claiming inspection", () => {
+  it("counts 10000 candidates completely for each concept in the same source", () => {
     const candidates = Array.from({ length: 10_000 }, () => fact());
     const result = normalize({
       Revenues: usd(candidates),
@@ -575,8 +575,12 @@ describe("fixed annual statement Company Facts normalization", () => {
           returned: 1,
         },
       });
+  });
+
+  it("refuses candidate overflow without claiming inspection or hiding a valid sibling", () => {
+    const candidates = Array.from({ length: 10_001 }, () => fact());
     const overflow = normalize({
-      Revenues: usd([...candidates, fact()]),
+      Revenues: usd(candidates),
       [OCF]: usd(),
     });
     expect(scan(overflow, "Revenues")).toEqual({
