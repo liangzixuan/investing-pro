@@ -1,6 +1,5 @@
 package local.investment.personal;
 
-import static androidx.test.espresso.Espresso.closeSoftKeyboard;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.pressKey;
@@ -27,6 +26,8 @@ import android.view.PixelCopy;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsAnimation;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -277,6 +278,9 @@ public class ManagedWorkspaceInstrumentedTest {
 
     @Rule public final TestName testName = new TestName();
     private ActivityScenario<MainActivity> scenario;
+    private View observedImeDecor;
+    private Lifecycle observedImeLifecycle;
+    private final java.util.Set<WindowInsetsAnimation> imeAnimations = new java.util.HashSet<>();
     private File fixtureDirectory;
     private final List<File> createdFixturePaths = new ArrayList<>();
     private String expectedSourceSha;
@@ -378,6 +382,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
         scenario = ActivityScenario.launch(MainActivity.class);
         scenario.onActivity(activity -> {
+            observeImeAnimations(activity);
             assertEquals("local.investment.personal", activity.getPackageName());
             assertNotNull(activity.getBridge().getPlugin("App"));
             assertNull("No native authentication in this fixture", activity.getBridge().getPlugin("InvestmentAuth"));
@@ -1833,6 +1838,7 @@ public class ManagedWorkspaceInstrumentedTest {
             assertNull(((InvestmentWatchlistExportPlugin) previous.get()).saveInstanceState());
         });
         scenario.recreate();
+        scenario.onActivity(activity -> observeImeAnimations(activity));
         CompletableFuture<String> result = new CompletableFuture<>();
         com.getcapacitor.JSObject options = new com.getcapacitor.JSObject()
             .put("operationId", choice.getString("operationId"))
@@ -3518,18 +3524,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.activeElement.value === " + JSONObject.quote(expectedBefore) + " && " +
             "document.activeElement.selectionStart === 0 && document.activeElement.selectionEnd === " + expectedBefore.length());
         awaitNativeEditor("managed-research-note");
-        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
-            @Override public Matcher<View> getConstraints() { return isDisplayed(); }
-            @Override public String getDescription() { return "commit the exact invented report note through native IME"; }
-            @Override public void perform(UiController controller, View view) {
-                assertTrue(view.hasFocus() && view.hasWindowFocus());
-                android.view.inputmethod.InputConnection input = ((WebView) view).onCreateInputConnection(
-                    new android.view.inputmethod.EditorInfo());
-                assertNotNull("The actual WebView editor must supply a native connection", input);
-                assertTrue("Native IME commit must dispatch", input.commitText(note, 1));
-                controller.loopMainThreadUntilIdle();
-            }
-        });
+        commitNativeText(note);
         awaitPage("native Unicode input preserves the raw authored note and trailing whitespace",
             "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(note) + " && " +
             DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(note));
@@ -3625,6 +3620,7 @@ public class ManagedWorkspaceInstrumentedTest {
             assertNull(((InvestmentCompanyReportPlugin) previous.get()).saveInstanceState());
         });
         scenario.recreate();
+        scenario.onActivity(activity -> observeImeAnimations(activity));
         CompletableFuture<String> result = new CompletableFuture<>();
         com.getcapacitor.JSObject options = new com.getcapacitor.JSObject()
             .put("operationId", choice.getString("operationId"))
@@ -5492,6 +5488,7 @@ public class ManagedWorkspaceInstrumentedTest {
         clickEodAction("Load one-year close history");
         awaitPage("year refresh is held with the range disabled",
             DIAGNOSTICS + ".eod === 4 && document.querySelector('#managed-eod-range')?.disabled === true");
+        awaitHiddenIme();
         pressBack();
         awaitPage("native Back closes the pending visit and preserves the exact draft",
             "document.querySelector('.managed-eod-history') === null && " +
@@ -5595,6 +5592,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("native option selected and exact dialog dismissed",
             "document.getElementById(" + JSONObject.quote(actualId) + ")?.value === " + JSONObject.quote(optionValue),
             true, dialogDecor.get());
+        closeSoftKeyboard();
     }
 
     private void retainComparisonFrame(String name, String scope) throws Exception {
@@ -9133,6 +9131,79 @@ public class ManagedWorkspaceInstrumentedTest {
             " && input.value === member.note && input.getClientRects().length > 0; })()");
     }
 
+    /** Observe real IME transitions without consuming or changing dispatched insets. */
+    private void observeImeAnimations(MainActivity activity) {
+        View decor = activity.getWindow().getDecorView();
+        observedImeLifecycle = activity.getLifecycle();
+        observedImeDecor = decor;
+        imeAnimations.clear();
+        decor.setWindowInsetsAnimationCallback(new WindowInsetsAnimation.Callback(
+                WindowInsetsAnimation.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+            @Override public void onPrepare(WindowInsetsAnimation animation) {
+                if (observedImeDecor == decor && (animation.getTypeMask() & WindowInsets.Type.ime()) != 0)
+                    imeAnimations.add(animation);
+            }
+            @Override public WindowInsets onProgress(WindowInsets insets, List<WindowInsetsAnimation> running) {
+                return insets;
+            }
+            @Override public void onEnd(WindowInsetsAnimation animation) {
+                if (observedImeDecor == decor) imeAnimations.remove(animation);
+            }
+        });
+    }
+
+    /** A hide result can precede animation completion and the IME's Back callback removal. */
+    private void closeSoftKeyboard() {
+        androidx.test.espresso.Espresso.closeSoftKeyboard();
+        awaitHiddenIme();
+    }
+
+    private void awaitHiddenIme() {
+        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
+            @Override public Matcher<View> getConstraints() { return isDisplayed(); }
+            @Override public String getDescription() { return "wait for hidden, settled native IME"; }
+            @Override public void perform(UiController uiController, View view) {
+                assertSame("IME observer belongs to this Activity window", observedImeDecor, view.getRootView());
+                long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
+                String diagnostic;
+                do {
+                    WindowInsets insets = view.getRootWindowInsets();
+                    boolean hidden = insets != null && !insets.isVisible(WindowInsets.Type.ime());
+                    boolean focused = view.hasWindowFocus();
+                    boolean resumed = observedImeLifecycle.getCurrentState() == Lifecycle.State.RESUMED;
+                    diagnostic = "hidden=" + hidden + ", animations=" + imeAnimations.size() +
+                        ", windowFocus=" + focused + ", resumed=" + resumed;
+                    if (hidden && imeAnimations.isEmpty() && focused && resumed) {
+                        Log.i("ManagedIme", diagnostic);
+                        return;
+                    }
+                    long remaining = deadline - SystemClock.uptimeMillis();
+                    if (remaining <= 0) break;
+                    uiController.loopMainThreadForAtLeast(Math.min(50, remaining));
+                } while (SystemClock.uptimeMillis() < deadline);
+                throw new PerformException.Builder().withActionDescription(getDescription())
+                    .withViewDescription("Managed fixture IME: " + diagnostic)
+                    .withCause(new IllegalStateException("Native IME did not settle")).build();
+            }
+        });
+    }
+
+    /** Commit once through the actual WebView editor; exact DOM/model checks remain at the caller. */
+    private void commitNativeText(String text) {
+        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
+            @Override public Matcher<View> getConstraints() { return isDisplayed(); }
+            @Override public String getDescription() { return "commit invented text through native IME"; }
+            @Override public void perform(UiController controller, View view) {
+                assertTrue(view.hasFocus() && view.hasWindowFocus());
+                android.view.inputmethod.InputConnection input = ((WebView) view).onCreateInputConnection(
+                    new android.view.inputmethod.EditorInfo());
+                assertNotNull("The actual WebView editor must supply a native connection", input);
+                assertTrue("Native IME commit must dispatch", input.commitText(text, 1));
+                controller.loopMainThreadUntilIdle();
+            }
+        });
+    }
+
     private void typeIntoInput(String id, String text) throws Exception {
         if (id.matches("managed-note-[0-9]+"))
             selectWatchlistNote(Integer.parseInt(id.substring("managed-note-".length())));
@@ -9140,9 +9211,9 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("input focused: " + id,
             "document.activeElement === document.getElementById(" + JSONObject.quote(id) + ")");
         awaitNativeEditor(id);
-        // Native keyboard events exercise React's controlled onChange path.
-        // This action requires an already focused editor and does not tap the WebView center.
-        onView(isAssignableFrom(WebView.class)).perform(typeTextIntoFocusedView(text));
+        // One native IME edit exercises React's controlled onChange path without
+        // routing individual hardware characters through a restarting soft keyboard.
+        commitNativeText(text);
         awaitPage("native input value: " + id,
             "document.getElementById(" + JSONObject.quote(id) + ")?.value === " + JSONObject.quote(text));
         closeSoftKeyboard();
