@@ -1,3 +1,4 @@
+import { browserPortfolioDraftFileAdapter } from "./portfolio-draft-file-delivery";
 import { browserCompanyReportAdapter } from "./browser-company-report";
 import { ClerkProvider, SignIn, useAuth, useSession } from "@clerk/react";
 import { useState } from "react";
@@ -106,6 +107,7 @@ function ClerkSession({
               warnOnBrowserLeave: true,
               exportDelivery: browserWatchlistExportAdapter,
               draftFileDelivery: browserWatchlistDraftFileAdapter,
+              portfolioDraftFileDelivery: browserPortfolioDraftFileAdapter,
               reportDelivery: browserCompanyReportAdapter,
             }
           : {})}

@@ -1,3 +1,4 @@
+import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import {
   useCallback,
   useEffect,
@@ -76,6 +77,7 @@ interface SessionProps extends ManagedSessionWorkspaceOptions {
   warnOnBrowserLeave?: boolean;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
+  portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
 
@@ -85,6 +87,7 @@ interface WorkspaceProps {
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileScope?: Promise<string>;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
+  portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
 
@@ -203,6 +206,9 @@ function SessionWorkspace(props: SessionProps) {
     <ManagedWorkspaceRouter
       workspace={workspace}
       {...draftFileSession}
+      {...(initial.portfolioDraftFileDelivery
+        ? { portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery }
+        : {})}
       {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
       {...(initial.reportDelivery
         ? { reportDelivery: initial.reportDelivery }
@@ -415,6 +421,7 @@ export function ManagedWorkspaceScreen({
   exportDelivery,
   draftFileScope,
   draftFileDelivery,
+  portfolioDraftFileDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -1287,6 +1294,9 @@ export function ManagedWorkspaceScreen({
                   <ManagedPortfolio
                     workspace={workspace}
                     navigationPending={navigationPending}
+                    draftFileScope={draftFileScope}
+                    draftFileDelivery={portfolioDraftFileDelivery}
+                    draftFileRouteActive={watchlistRouteActive}
                     onResearch={(draft, listing, opener) =>
                       openResearch(opener, () =>
                         workspace.openPortfolioResearch(draft, listing),

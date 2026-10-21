@@ -4,10 +4,17 @@ import type {
   PersonalPortfolioIdentity,
 } from "@research-cockpit/contracts";
 import { PersonalPortfolioLedgerEditor } from "../features/research/PersonalPortfolioLedgerEditor";
-import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
+import { ListingIdentity } from "./ManagedListingIdentity";
 import type { PortfolioDraft } from "./managed-portfolio";
 import { listingIdentity, type ManagedWorkspace } from "./managed-workspace";
 import "./managed-portfolio.css";
+import {
+  PortfolioIdentity as Identity,
+  PortfolioActivityRows as ActivityRows,
+  PortfolioLedgerDetails,
+} from "./ManagedPortfolioLedgerDetails";
+import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
+import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 
 const usd = (value: string | null) =>
   value === null ? "Unknown" : `USD ${value}`;
@@ -18,90 +25,6 @@ const reviewLabels = {
   rebound: "Different stable identity; update refused",
 } as const;
 
-function Identity({ listing }: { listing: PersonalPortfolioIdentity }) {
-  return (
-    <details>
-      <summary>
-        <ListingIdentity member={listing} />
-      </summary>
-      <dl>
-        {Object.entries(identityLabels).map(([key, label]) => (
-          <div key={key}>
-            <dt>{label}</dt>
-            <dd>{listing[key as keyof PersonalPortfolioIdentity]}</dd>
-          </div>
-        ))}
-      </dl>
-    </details>
-  );
-}
-
-function LedgerListing({
-  ledger,
-  listingId,
-}: {
-  ledger: ManagedPortfolioPayload;
-  listingId: string | null;
-}) {
-  const listing = ledger.identities.find(
-    (entry) => entry.listingId === listingId,
-  );
-  return listing ? <ListingIdentity member={listing} /> : <span>Cash</span>;
-}
-function ActivityRows({
-  ledger,
-  query = "",
-  type = "all",
-}: {
-  ledger: ManagedPortfolioPayload;
-  query?: string;
-  type?: string;
-}) {
-  const term = query.trim().toLowerCase();
-  const rows = ledger.transactions
-    .map((entry, index) => ({ entry, index }))
-    .filter(({ entry }) => {
-      const listing = ledger.identities.find(
-        (item) => item.listingId === entry.listingId,
-      );
-      return (
-        (type === "all" || entry.type === type) &&
-        `${entry.date} ${entry.type} ${listing?.symbol ?? "Cash"} ${listing?.issuerName ?? ""}`
-          .toLowerCase()
-          .includes(term)
-      );
-    });
-  return (
-    <>
-      {rows.length === 0 ? (
-        <p>No matching activities.</p>
-      ) : (
-        <ol>
-          {rows.map(({ entry, index }) => (
-            <li key={entry.id} value={index + 1}>
-              <p>
-                {entry.date} · {entry.type}
-              </p>
-              <LedgerListing ledger={ledger} listingId={entry.listingId} />
-              <p>
-                {entry.type === "split"
-                  ? `${entry.ratioNumerator} for ${entry.ratioDenominator}`
-                  : `${entry.shares === null ? "No share amount" : `${entry.shares} shares`}; gross ${usd(entry.grossUsd)}; fee ${usd(entry.feeUsd)}`}
-              </p>
-              <details>
-                <summary>Activity identifiers</summary>
-                <p>
-                  Activity ID: {entry.id}. Listing ID:{" "}
-                  {entry.listingId ?? "Cash activity"}.
-                </p>
-              </details>
-            </li>
-          ))}
-        </ol>
-      )}
-    </>
-  );
-}
 function ActivityHistory({ ledger }: { ledger: ManagedPortfolioPayload }) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
@@ -162,46 +85,8 @@ function PortfolioReview({ ledger }: { ledger: ManagedPortfolioPayload }) {
       <h3 ref={heading} tabIndex={-1}>
         Review this portfolio draft
       </h3>
-      <p>
-        Opening balances at the end of {ledger.opening.asOfDate}. Opening cash:{" "}
-        {usd(ledger.opening.cashUsd)}. {ledger.identities.length} registered
-        listings and {ledger.transactions.length} authored activities. Save
-        sends this complete draft.
-      </p>
-      {ledger.identities.map((listing) => (
-        <Identity key={listing.listingId} listing={listing} />
-      ))}
-      <details>
-        <summary>Catalog reference</summary>
-        <p>{ledger.snapshotSha256}</p>
-      </details>
-      <h4>Opening holdings</h4>
-      {ledger.opening.holdings.length === 0 ? (
-        <p>No opening holdings.</p>
-      ) : (
-        <ul>
-          {ledger.opening.holdings.map((holding) => (
-            <li key={holding.listingId}>
-              <LedgerListing ledger={ledger} listingId={holding.listingId} />
-              <p>
-                {holding.shares} shares; basis {usd(holding.totalCostBasisUsd)};
-                confirmed {holding.confirmedOn}.
-              </p>
-              <details>
-                <summary>Holding identifier</summary>
-                <p>Listing ID: {holding.listingId}</p>
-              </details>
-            </li>
-          ))}
-        </ul>
-      )}
-      <h4>Complete authored activity order</h4>
-      <ActivityRows ledger={ledger} />
-      <p>
-        FIFO uses an opening pool where earlier lots are unknown. Missing cash
-        or basis stays unknown. This ledger does not calculate market value,
-        investment returns or tax liability.
-      </p>
+      <p>Save sends this complete draft.</p>
+      <PortfolioLedgerDetails ledger={ledger} />
     </section>
   );
 }
@@ -289,9 +174,15 @@ export function ManagedPortfolio({
   workspace,
   navigationPending,
   onResearch,
+  draftFileScope,
+  draftFileDelivery,
+  draftFileRouteActive = () => true,
 }: {
   workspace: ManagedWorkspace;
   navigationPending: boolean;
+  draftFileScope?: Promise<string> | undefined;
+  draftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter | undefined;
+  draftFileRouteActive?: () => boolean;
   onResearch: (
     draft: PortfolioDraft,
     listing: PersonalPortfolioIdentity,
@@ -499,6 +390,17 @@ export function ManagedPortfolio({
             </button>
           </div>
         </section>
+      )}
+      {draftFileScope && (
+        <ManagedPortfolioDraftFiles
+          workspace={workspace}
+          accountScope={draftFileScope}
+          delivery={draftFileDelivery}
+          routeActive={() =>
+            draftFileRouteActive() && !navigationPending && current()
+          }
+          onRestored={() => heading.current?.focus()}
+        />
       )}
       {draft && ledger === null && (
         <StartPortfolio workspace={workspace} draft={draft} active={current} />

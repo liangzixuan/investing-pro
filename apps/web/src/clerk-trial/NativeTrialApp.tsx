@@ -1,4 +1,8 @@
 import {
+  createNativePortfolioDraftFileAdapter,
+  type InvestmentPortfolioDraftFilePlugin,
+} from "./portfolio-draft-file-delivery";
+import {
   createNativeCompanyReportAdapter,
   type InvestmentCompanyReportPlugin,
 } from "./native-company-report";
@@ -103,6 +107,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const portfolioDraftFileDelivery = useMemo(
+    () =>
+      managed
+        ? createNativePortfolioDraftFileAdapter(
+            registerPlugin<InvestmentPortfolioDraftFilePlugin>(
+              "InvestmentPortfolioDraftFile",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const signInMessage =
     state.message ||
     (state.auth.status === "loading"
@@ -141,6 +156,9 @@ function NativeSession({
               androidBack={App}
               {...(exportDelivery ? { exportDelivery } : {})}
               {...(draftFileDelivery ? { draftFileDelivery } : {})}
+              {...(portfolioDraftFileDelivery
+                ? { portfolioDraftFileDelivery }
+                : {})}
               {...(reportDelivery ? { reportDelivery } : {})}
             />
           ) : (

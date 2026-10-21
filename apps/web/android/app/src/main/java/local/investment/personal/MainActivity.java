@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(InvestmentWatchlistExportPlugin.class);
         registerPlugin(InvestmentWatchlistDraftFilePlugin.class);
+        registerPlugin(InvestmentPortfolioDraftFilePlugin.class);
         registerPlugin(InvestmentCompanyReportPlugin.class);
         if (BuildConfig.CLERK_AUTH_ENABLED) {
             registerPlugin(InvestmentAuthPlugin.class);

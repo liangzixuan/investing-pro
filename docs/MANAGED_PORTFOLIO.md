@@ -88,6 +88,44 @@ including unapplied portfolio forms. Ordinary leave review does not save any
 resource. Explicit sign-out can discard the drafts. This source implementation
 does not establish offline editing or restoration after process death.
 
+## Draft files source candidate
+
+The development source adds **Portfolio draft files** for applied, unsaved ledger
+edits. This candidate is not published or included in Android 1.30. It does not
+provide automatic storage or restoration after process death.
+
+1. Apply or reset any open form, then choose **Save draft file**. Choose a private
+   destination. The JSON file contains holdings, cash, complete listing identities
+   and activity in plain text. Unapplied form text is not included.
+2. In a later session, sign in to the same account and backend and explicitly load
+   Portfolio. Finish conflict, uncertain-save and catalog reviews first.
+3. Select the file. Review every opening balance, registered identity and activity
+   in its original order. The complete current draft is available for comparison.
+   **Keep current draft** cancels without replacing it.
+4. Select **Restore file to current draft** to replace the local ledger. This makes
+   no source request or online Save and preserves the current loaded save base.
+   Use **Review catalog identities**, apply the accepted review, then **Review
+   portfolio** and **Save Portfolio** as separate actions.
+
+A file's catalog digest never establishes identity approval, even when it claims
+the current catalog. File capture time and base version are unverified claims.
+The account scope is a digest of the configured API origin and verified user ID;
+it prevents accidental account/backend mix-ups and does not authenticate a file.
+Normal identity, date, ledger and conflict checks remain in force before Save.
+
+The reader accepts only the current schema-3 ledger and distinct Portfolio file
+format. It rejects unknown fields, duplicate JSON keys, invalid identities or
+ledger data, invalid UTF-8, mismatched byte counts and files over 266,240 bytes.
+Exact decimal spellings, unknown cash or basis, splits and activity order remain
+unchanged. It does not upgrade older files or import the local encrypted profile.
+
+Draft, form, saved-version, catalog, route and session changes withdraw active
+file review or delivery. Cancelled and late reads cannot restore a draft.
+Browser delivery requests a download; check its destination. Android uses the
+existing chosen-document writer. A download request alone does not establish a
+durable file. Keep exported files private; no automatic backup, confirmed-record
+recovery, cloud request or saved-resource transfer follows from this workflow.
+
 ## Server configuration and acceptance
 
 The closed managed route is `/v1/managed/portfolio`. It uses the existing owner
