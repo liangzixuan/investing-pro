@@ -5,6 +5,7 @@ import { AppwriteException, TablesDB } from "node-appwrite";
 import { Agent, MockAgent } from "undici";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { createManagedEodAdmission } from "./managed-eod-admission";
 import { createAppwriteTransport } from "./appwrite-transport";
 import { appwriteWatchlistStore } from "./appwrite-watchlist-repository";
 
@@ -98,6 +99,99 @@ function closeServer(server: Server) {
 }
 
 describe("Appwrite bounded SDK transport", () => {
+  it("stages the guarded EOD budget pair through the SDK in one bounded POST", async () => {
+    const f = fixture({
+      timeoutMs: 2000,
+      mutationWindowMs: 2000,
+      requestTimeoutMs: 2000,
+      maxRequests: 6,
+    });
+    const enteredAt = new Date().toISOString();
+    const location = { databaseId: "db", tableId: "budget", rowId: "shared" };
+    const captured: AsyncIterable<Uint8Array>[] = [];
+    f.pool
+      .intercept({
+        path: "/v1/tablesdb/db/tables/budget/rows/shared",
+        method: "GET",
+      })
+      .reply(
+        200,
+        JSON.stringify({
+          $id: "shared",
+          $databaseId: "db",
+          $tableId: "budget",
+          $sequence: "1",
+          $createdAt: enteredAt,
+          $updatedAt: enteredAt,
+          $permissions: [],
+          ownerId: "invented-owner",
+          version: 7,
+          reservationsJson: "[]",
+        }),
+        { headers: HEADERS },
+      );
+    f.pool
+      .intercept({ path: "/v1/tablesdb/transactions", method: "POST" })
+      .reply(201, JSON.stringify({ $id: "tx-batch", status: "pending" }), {
+        headers: HEADERS,
+      });
+    f.pool
+      .intercept({
+        path: "/v1/tablesdb/transactions/tx-batch/operations",
+        method: "POST",
+      })
+      .reply((options) => {
+        captured.push(options.body as AsyncIterable<Uint8Array>);
+        return {
+          statusCode: 201,
+          data: JSON.stringify({
+            $id: "tx-batch",
+            status: "pending",
+            operations: 2,
+          }),
+          responseOptions: { headers: HEADERS },
+        };
+      });
+    f.pool
+      .intercept({
+        path: "/v1/tablesdb/transactions/tx-batch",
+        method: "PATCH",
+      })
+      .reply(200, JSON.stringify({ $id: "tx-batch", status: "committed" }), {
+        headers: HEADERS,
+      });
+    const permit = await createManagedEodAdmission({
+      store: f.tables,
+      ...location,
+      now: () => new Date(enteredAt),
+    }).reserve(
+      { userId: "invented-owner" },
+      enteredAt,
+      new AbortController().signal,
+    );
+    expect(permit).toEqual({ version: 8, reservedAt: enteredAt });
+    expect(captured).toHaveLength(1);
+    const chunks: Buffer[] = [];
+    for await (const chunk of captured[0]!) chunks.push(Buffer.from(chunk));
+    expect([JSON.parse(Buffer.concat(chunks).toString("utf8"))]).toEqual([
+      {
+        operations: [
+          {
+            ...location,
+            action: "increment",
+            data: { column: "version", value: 1, max: 8 },
+          },
+          {
+            ...location,
+            action: "update",
+            data: { reservationsJson: JSON.stringify([Date.parse(enteredAt)]) },
+          },
+        ],
+      },
+    ]);
+    expect(f.snapshot().requests).toBe(4);
+    f.agent.assertNoPendingInterceptors();
+  });
   it.each(["", "-invalid", "../db", "db/other", "x".repeat(37)])(
     "refuses an invalid trusted absence scope %s",
     (expectedAbsentDatabaseId) => {

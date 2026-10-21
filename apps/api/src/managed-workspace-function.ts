@@ -381,9 +381,7 @@ export function createManagedWorkspaceFunction(
                       .setKey(executionKey);
                     return {
                       admission: createManagedEodAdmission({
-                        store: appwriteWatchlistStore(
-                          new TablesDB(transport.client),
-                        ),
+                        store: new TablesDB(transport.client),
                         ...MANAGED_EOD_BUDGET,
                       }),
                       close: () => transport.close(),

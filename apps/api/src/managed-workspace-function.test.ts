@@ -1185,6 +1185,9 @@ describe("managed EOD composed function", () => {
           rowId: "managed-eod-v1",
         }),
       );
+      expect(typeof admission.mock.calls[0]![0].store.createOperations).toBe(
+        "function",
+      );
       expect(reserve).toHaveBeenCalledTimes(1);
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(fetch.mock.calls[0]![0]).toEqual(
