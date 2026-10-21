@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 20, 2026. This is the current capability and delivery record.
+Updated October 21, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
@@ -90,6 +90,16 @@ matching phone delivery and acceptance, and sustained daily use. The current
 website release and overall phone-check report do not establish sustained use.
 Use the [release readiness plan](MANAGED_RELEASE_READINESS.md) for their separate
 acceptance requirements.
+
+## Portfolio draft files source candidate
+
+The [Portfolio draft-file candidate](MANAGED_PORTFOLIO.md#draft-files-source-candidate)
+adds explicit file capture, complete local review and restoration of applied,
+unsaved ledger edits. It keeps the current online save base and requires independent
+catalog review before normal Review and Save. It shares the existing schema-3
+validator, complete ledger readout and Android chosen-document writer. This supports
+daily-use draft recovery; it is not automatic storage, confirmed-record recovery,
+a published feature or part of Android 1.30. Focused local source tests, types, lint and format pass. Native compilation and runtime acceptance remain pending CI.
 
 ## EOD admission source candidate
 

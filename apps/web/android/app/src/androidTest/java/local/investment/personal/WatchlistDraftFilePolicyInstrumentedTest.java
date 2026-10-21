@@ -15,6 +15,7 @@ import org.junit.runner.RunWith;
 public class WatchlistDraftFilePolicyInstrumentedTest {
     private static final String TIME = "2026-10-18T18:00:00.000Z";
     private static final String FILENAME = "Investment-watchlist-draft-2026-10-18T18-00-00-000Z.json";
+    private static final String PORTFOLIO_FILENAME = "Investment-portfolio-draft-2026-10-18T18-00-00-000Z.json";
     private static final String SCOPE = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     private JSONObject metadata() throws Exception {
@@ -28,6 +29,12 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
             + "\"baseVersion\":3,\"draft\":{\"rawNote\":\"  Raw unconfirmed note\\n零 café 😀  \"}}\n";
     }
 
+    private String portfolioContent() {
+        // Native framing deliberately leaves the whole raw ledger to the shared codec.
+        return content().replace("investment-watchlist-draft", "investment-portfolio-draft")
+            .replace("rawNote", "rawLedger");
+    }
+
     @Test
     public void derivesOnlyTheFixedFilenameAndMimeFromCaptureMetadata() throws Exception {
         assertEquals(FILENAME, WatchlistDraftFilePolicy.INSTANCE.filename(metadata()));
@@ -36,14 +43,26 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
         assertTrue(WatchlistDraftFilePolicy.INSTANCE.acceptsText(FILENAME, content()));
         assertEquals(FILENAME, WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", 0)));
         assertEquals(FILENAME, WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", 9007199254740991L)));
+        assertEquals(PORTFOLIO_FILENAME, PortfolioDraftFilePolicy.INSTANCE.filename(metadata()));
+        assertEquals("application/json", PortfolioDraftFilePolicy.INSTANCE.getMimeType());
+        assertEquals(266240, PortfolioDraftFilePolicy.INSTANCE.getMaxBytes());
+        assertTrue(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, portfolioContent()));
+        assertEquals(PORTFOLIO_FILENAME, PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", 0)));
+        assertEquals(PORTFOLIO_FILENAME, PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", 9007199254740991L)));
     }
 
     @Test
     public void rejectsCallerFilenameUnknownMetadataAndInvalidBaseVersions() throws Exception {
         assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("filename", "private.json")));
         assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("version", 3)));
+        assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("filename", "private.json")));
+        assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("version", 3)));
+        JSONObject missingOperation = metadata();
+        missingOperation.remove("operationId");
+        assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(missingOperation));
         for (Object value : new Object[] { -1, 0.5, 9007199254740992L, "3", JSONObject.NULL }) {
             assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", value)));
+            assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", value)));
         }
     }
 
@@ -55,9 +74,12 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
             "2026-10-18T18:00:00Z", "2026-10-18T18:00:00.000+00:00", "../private"
         }) {
             assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", value)));
+            assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", value)));
         }
         assertEquals("Investment-watchlist-draft-2028-02-29T18-00-00-000Z.json",
             WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", "2028-02-29T18:00:00.000Z")));
+        assertEquals("Investment-portfolio-draft-2028-02-29T18-00-00-000Z.json",
+            PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", "2028-02-29T18:00:00.000Z")));
     }
 
     @Test
@@ -74,13 +96,37 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
             current.replace("\"version\":1", "\"version\":1,\"extra\":true"), current + "{}"
         }) {
             assertFalse(WatchlistDraftFilePolicy.INSTANCE.acceptsText(FILENAME, value));
+            assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME,
+                value.replace("investment-watchlist-draft", "investment-portfolio-draft")));
         }
         assertFalse(WatchlistDraftFilePolicy.INSTANCE.acceptsText("../private.json", current));
+        assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText("../private.json", portfolioContent()));
+        assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, current));
+        for (String draft : new String[] { "[]", "null", "\"raw\"", "1" }) {
+            String value = "{\"format\":\"investment-portfolio-draft\",\"version\":1,"
+                + "\"accountScope\":\"" + SCOPE + "\",\"capturedAt\":\"" + TIME + "\","
+                + "\"baseVersion\":3,\"draft\":" + draft + "}";
+            assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, value));
+        }
     }
 
     @Test
     public void inheritedWriterEncodingRejectsOversizeAndMalformedUtf16() {
         assertEquals(3, ChosenDocumentPolicyKt.strictDocumentBytes("零", 3).length);
+        int maximum = PortfolioDraftFilePolicy.INSTANCE.getMaxBytes();
+        String ascii = portfolioContent().replace("零 café 😀", "raw");
+        String exactLimit = ascii + " ".repeat(maximum - ascii.length());
+        assertTrue(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, exactLimit));
+        assertEquals(maximum, ChosenDocumentPolicyKt.strictDocumentBytes(exactLimit, maximum).length);
+        assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, exactLimit + " "));
+        for (String value : new String[] { exactLimit + " ", "零".repeat(maximum / 3 + 1), "\ud800" }) {
+            try {
+                ChosenDocumentPolicyKt.strictDocumentBytes(value, maximum);
+                fail("Expected Portfolio writer byte or UTF-16 refusal");
+            } catch (Exception expected) {
+                // The common writer rejects these bytes before opening the chosen stream.
+            }
+        }
         for (String value : new String[] { "零零", "\ud800" }) {
             try {
                 ChosenDocumentPolicyKt.strictDocumentBytes(value, 3);

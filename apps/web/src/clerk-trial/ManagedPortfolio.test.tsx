@@ -8,6 +8,7 @@ import type {
   ManagedPortfolioPayload,
 } from "@research-cockpit/contracts";
 import { ManagedPortfolio } from "./ManagedPortfolio";
+import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
 import { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedApi } from "./managed-api";
 import { bindManagedBrowserUnload } from "./managed-browser-unload";
@@ -206,13 +207,20 @@ function fixture(initial: ManagedPortfolioPayload | null = null) {
   const research = vi.fn<
     React.ComponentProps<typeof ManagedPortfolio>["onResearch"]
   >((draft, listing) => workspace.openPortfolioResearch(draft, listing));
-  const render = (navigationPending = false) => {
+  const render = (
+    navigationPending = false,
+    draftFiles?: {
+      draftFileScope: Promise<string>;
+      draftFileRouteActive: () => boolean;
+    },
+  ) => {
     hooks.index = 0;
     hooks.direct = true;
     const tree = ManagedPortfolio({
       workspace,
       navigationPending,
       onResearch: research,
+      ...draftFiles,
     });
     hooks.direct = false;
     return {
@@ -753,4 +761,32 @@ it("warns on browser leave for a clean ledger's pending form without inventing a
   expect(event().defaultPrevented).toBe(false);
   dispose();
   expect(f.api.savePortfolio).not.toHaveBeenCalled();
+});
+
+it("passes valid-root-route admission to Portfolio file tools even when workspace selection is unchanged", async () => {
+  const f = fixture(ledger());
+  await f.workspace.refreshCatalog();
+  await f.workspace.portfolio.coordinator.load();
+  let validRoot = false;
+  const draftFiles = {
+    draftFileScope: Promise.resolve(`sha256:${"c".repeat(64)}`),
+    draftFileRouteActive: () => validRoot,
+  };
+  const entry = () =>
+    nodes(f.render(false, draftFiles).tree).find(
+      (node) => node.type === ManagedPortfolioDraftFiles,
+    )!;
+  const fileProps = entry().props as unknown as React.ComponentProps<
+    typeof ManagedPortfolioDraftFiles
+  >;
+  expect(fileProps.routeActive()).toBe(false);
+  validRoot = true;
+  expect(fileProps.routeActive()).toBe(true);
+  const pending = nodes(f.render(true, draftFiles).tree).find(
+    (node) => node.type === ManagedPortfolioDraftFiles,
+  )!.props as unknown as React.ComponentProps<
+    typeof ManagedPortfolioDraftFiles
+  >;
+  expect(pending.routeActive()).toBe(false);
+  f.workspace.sessionOwner.dispose();
 });

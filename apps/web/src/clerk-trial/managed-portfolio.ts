@@ -12,13 +12,23 @@ import {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
-import { SaveCoordinator, type SaveState } from "./save-coordinator";
+import {
+  SaveCoordinator,
+  type SaveState,
+  type VersionedPayload,
+} from "./save-coordinator";
 import { MANAGED_PORTFOLIO_SAVE_COPY } from "./save-coordinator-copy";
 import type { TrialSession } from "./session";
 
 /** Null ledger is loaded-but-uninitialized; a null coordinator draft is not loaded. */
 export interface PortfolioDraft {
   readonly ledger: ManagedPortfolioPayload | null;
+}
+export interface PortfolioDraftFileContext {
+  readonly saved: VersionedPayload<PortfolioDraft>;
+  readonly draft: PortfolioDraft;
+  readonly baseVersion: number;
+  readonly catalog: ManagedCatalogSnapshotDto | null;
 }
 export interface PortfolioIdentityReview {
   readonly previous: PersonalPortfolioIdentity;
@@ -294,6 +304,54 @@ export class ManagedPortfolio {
       !state.uncertain &&
       !state.replayPending
     );
+  }
+  getDraftFileContext(requireFresh = true): PortfolioDraftFileContext | null {
+    const state = this.coordinator.getSnapshot();
+    const catalog = this.options.getCatalogSnapshot();
+    if (
+      !this.canEdit() ||
+      this.state.pendingEditor ||
+      this.operation ||
+      this.state.review ||
+      !state.saved ||
+      !state.draft ||
+      state.baseVersion === null ||
+      (catalog?.snapshotSha256 ?? null) !== this.state.catalogSnapshotSha256
+    )
+      return null;
+    if (
+      requireFresh &&
+      (!catalog ||
+        !state.latestLoaded ||
+        state.baseVersion !== state.saved.version)
+    )
+      return null;
+    return {
+      saved: state.saved,
+      draft: state.draft,
+      baseVersion: state.baseVersion,
+      catalog,
+    };
+  }
+  /** A file supplies a local ledger, never a save base or identity approval. */
+  restoreFileDraft(
+    captured: PortfolioDraftFileContext,
+    value: ManagedPortfolioPayload,
+  ) {
+    const ledger = parsePortfolioPayload(value);
+    const current = this.getDraftFileContext();
+    if (
+      !ledger ||
+      !current ||
+      current.saved !== captured.saved ||
+      current.draft !== captured.draft ||
+      current.baseVersion !== captured.baseVersion ||
+      current.catalog !== captured.catalog
+    )
+      return false;
+    this.approval = null;
+    this.coordinator.replaceDraft({ ledger });
+    return !this.retired;
   }
   getProjection() {
     const ledger = this.coordinator.getSnapshot().draft?.ledger;

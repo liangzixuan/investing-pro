@@ -49,6 +49,7 @@ import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedPortfolio } from "./ManagedPortfolio";
+import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
@@ -6481,7 +6482,11 @@ it("restores Portfolio research opener focus and retains all three drafts withou
   mounted.direct = true;
   mounted.refIndex = 0;
   const screen = ManagedWorkspaceScreen({ workspace: f.workspace });
-  const portfolio = elements(screen).find(
+  const entry = elements(screen).find(
+    (node) => node.type === ManagedPortfolioEntry,
+  ) as React.ReactElement<React.ComponentProps<typeof ManagedPortfolioEntry>>;
+  expect(entry).toBeDefined();
+  const portfolio = elements(ManagedPortfolioEntry(entry.props)).find(
     (node) => node.type === ManagedPortfolio,
   ) as React.ReactElement<React.ComponentProps<typeof ManagedPortfolio>>;
   expect(portfolio).toBeDefined();
