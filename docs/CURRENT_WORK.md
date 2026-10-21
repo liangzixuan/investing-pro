@@ -33,25 +33,30 @@ existing production signer. The single offline build, package/version/signature
 checks and complete bundled source/configuration/asset verification passed. The
 verified APK is provided locally; prior 1.28 and 1.29 APKs are unchanged. It adds
 matching saved valuation inputs, enabled Portfolio and expanded Filings while
-retaining Watchlist draft files. It has not been installed or physically accepted.
+retaining Watchlist draft files. The owner reported "Phone check passed" for the
+requested 1.30 checklist on October 20. This accepts the overall checklist by owner report. No per-item
+breakdown or independent installed-version, signer or device inspection was
+provided. Conditional file and wanted-record Save steps are not separately
+evidenced; sustained daily use remains open.
 
 On October 18 the owner reported a successful 1.27-to-1.28 update and passes for
 all four requested physical checks. This accepts that reported upgrade and
 checklist only. No independent device inspection or per-step logs were collected.
 The earlier 1.29 file workflow was not physically accepted; 1.30 carries that
-workflow forward for its own physical acceptance.
+workflow forward. The 1.30 overall phone report does not provide a separate
+per-step file-workflow result or retroactive 1.29 acceptance.
 
-| Capability                        | Current source and scope                                                                                                                                                                                                                                       | Delivery or acceptance still needed                                                                                                                            |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Markets and Price                 | AAPL, GOOG and GOOGL: three listings for two issuers. Dated raw USD closes; no adjusted-return or live-quote claim.                                                                                                                                            | Broader lawful coverage and complete market discovery.                                                                                                         |
-| Annual statements and screening   | Canonical Annual 6 explorer and explicit screening are published on the website/API. Defined cohort: 18 listings across 17 issuers.                                                                                                                            | Android 1.28 update and requested checks passed by owner report. Quarterly, TTM, custom-taxonomy and broader statement coverage remain open.                   |
-| Filings                           | The published API independently admits 17 issuers. The website and Android 1.30 connect explicit Filings reads to company research.                                                                                                                            | Android 1.30 physical acceptance remains open. Screening or Annual eligibility does not establish Filings eligibility.                                         |
-| Screening comparison              | Published website/API source connects two loaded results, three statement groups, independent sources, either company's research and retained Back.                                                                                                            | Requested Android screen/comparison/research Back check passed by owner report. Sustained use and controlled recovery remain open.                             |
-| Valuation and dated price context | Website and Android 1.30 contain authored DCF/exit models, dated raw-price comparisons and saved-input Load/Stage/Review/Save, fresh-session comparison, Use and Calculate. Production storage is enabled; private invented-data persistence proof passed.     | Authenticated owner Save was not exercised during release. Android 1.30 physical acceptance remains open. Unsaved editor inputs remain in memory.              |
-| Research studies and reports      | Website/API publish Price studies, explicit complete-note Preview/Append and company JSON/HTML capture. Report format 5 retains Annual 6 evidence.                                                                                                             | Earlier Android update passed by owner report. Export/file delivery and sustained use remain separate; the physical checklist did not test every feature.      |
-| Watchlist and Follow-ups          | Independent drafts, explicit Review/Save and conflict/uncertain-save recovery exist. The website and Android 1.30 contain Watchlist draft-file capture, review and restoration.                                                                                | Controlled real-account recovery and isolated backup/restore remain open. Android 1.30 file-workflow physical acceptance remains open.                         |
-| Managed Portfolio                 | The website/API and Android 1.30 contain opening balances, an authored schema-3 ledger and manual splits, holdings/cash, independent Review/Save/recovery and retained research return. Production storage is enabled after private persistence qualification. | Authenticated owner Save was not exercised during release. Android 1.30 physical acceptance remains open. Price history and returns are separate capabilities. |
-| Daily use and access              | Owner reports successful update, sign-in/reopen, saved-work presence, research Back, keyboard, background/reopen and force-stop/reopen checks on 1.28.                                                                                                         | Screen-reader use, durable draft restoration, sustained production use and controlled cloud recovery remain open.                                              |
+| Capability                        | Current source and scope                                                                                                                                                                                                                                       | Delivery or acceptance still needed                                                                                                                                                                                           |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Markets and Price                 | AAPL, GOOG and GOOGL: three listings for two issuers. Dated raw USD closes; no adjusted-return or live-quote claim.                                                                                                                                            | Broader lawful coverage and complete market discovery.                                                                                                                                                                        |
+| Annual statements and screening   | Canonical Annual 6 explorer and explicit screening are published on the website/API. Defined cohort: 18 listings across 17 issuers.                                                                                                                            | Android 1.28 update and requested checks passed by owner report. Quarterly, TTM, custom-taxonomy and broader statement coverage remain open.                                                                                  |
+| Filings                           | The published API independently admits 17 issuers. The website and Android 1.30 connect explicit Filings reads to company research.                                                                                                                            | The overall Android 1.30 phone checklist passed by owner report; per-feature use is not separately evidenced. Screening or Annual eligibility does not establish Filings eligibility.                                         |
+| Screening comparison              | Published website/API source connects two loaded results, three statement groups, independent sources, either company's research and retained Back.                                                                                                            | Requested Android screen/comparison/research Back check passed by owner report. Sustained use and controlled recovery remain open.                                                                                            |
+| Valuation and dated price context | Website and Android 1.30 contain authored DCF/exit models, dated raw-price comparisons and saved-input Load/Stage/Review/Save, fresh-session comparison, Use and Calculate. Production storage is enabled; private invented-data persistence proof passed.     | Authenticated owner Save was not exercised during release. The overall Android 1.30 phone checklist passed by owner report; per-feature use is not separately evidenced. Unsaved editor inputs remain in memory.              |
+| Research studies and reports      | Website/API publish Price studies, explicit complete-note Preview/Append and company JSON/HTML capture. Report format 5 retains Annual 6 evidence.                                                                                                             | Earlier Android update passed by owner report. Export/file delivery and sustained use remain separate; the physical checklist did not test every feature.                                                                     |
+| Watchlist and Follow-ups          | Independent drafts, explicit Review/Save and conflict/uncertain-save recovery exist. The website and Android 1.30 contain Watchlist draft-file capture, review and restoration.                                                                                | Controlled real-account recovery and isolated backup/restore remain open. The overall Android 1.30 checklist passed by owner report; conditional file operations are not separately evidenced.                                |
+| Managed Portfolio                 | The website/API and Android 1.30 contain opening balances, an authored schema-3 ledger and manual splits, holdings/cash, independent Review/Save/recovery and retained research return. Production storage is enabled after private persistence qualification. | Authenticated owner Save was not exercised during release. The overall Android 1.30 phone checklist passed by owner report; per-feature use is not separately evidenced. Price history and returns are separate capabilities. |
+| Daily use and access              | Owner reports successful update, sign-in/reopen, saved-work presence, research Back, keyboard, background/reopen and force-stop/reopen checks on 1.28.                                                                                                         | Screen-reader use, durable draft restoration, sustained production use and controlled cloud recovery remain open.                                                                                                             |
 
 Source and native checks establish their stated cases. The owner report adds its
 requested physical checklist only. Full InvestingPro parity, controlled account
@@ -59,17 +64,21 @@ recovery and sustained use remain open. The full goal still includes broader
 company discovery, news and calendars, quarterly/TTM financials, peer research
 and comparable portfolio returns.
 
-## Selected next outcome: phone acceptance and daily use
+## Selected next outcome: daily use and coherent company coverage
 
-Qualify saved valuation inputs and the enabled
-[managed Portfolio workflow](MANAGED_PORTFOLIO.md) on the owner's phone using the
-delivered Android 1.30 package, then record daily use.
+Continue daily use of the delivered Android 1.30 saved valuation and enabled
+[managed Portfolio workflow](MANAGED_PORTFOLIO.md). The requested phone checklist
+passed overall by owner report on October 20. Next, align a useful named universe
+across independently eligible Price, Annual and Filings sources; retain each
+source's separate admission and provenance.
 The website/API workflow includes opening balances, an authored transaction
 ledger and manual splits, exact holdings and cash, independent Review and Save,
 conflict and uncertain-save recovery, and return from company research. Reuse
 the accepted shared source and unchanged passing evidence. The signed package is
-verified. Physical upgrade, authenticated owner Save and sustained use remain
-open; artifact and website checks do not establish them.
+verified. The overall phone report adds owner-reported acceptance; it provides
+no per-step details or independent device inspection. Authenticated owner Save
+was not tested during release, and specific conditional steps are not separately
+evidenced by this concise reply. Sustained daily use remains open.
 
 Keep this outcome ahead of portfolio history, additional metrics, cosmetic work
 or tooling increments. Provider quotes, broker synchronization, market value,
@@ -78,20 +87,20 @@ additions are coverage fixes; selected metric rows do not complete this workflow
 
 A November personal release remains conditional on a usable Portfolio workflow,
 matching phone delivery and acceptance, and sustained daily use. The current
-website release and earlier phone checklist do not establish those outcomes.
+website release and overall phone-check report do not establish sustained use.
 Use the [release readiness plan](MANAGED_RELEASE_READINESS.md) for their separate
 acceptance requirements.
 
 ## Independent source candidate: BLS release calendar
 
-While phone acceptance is pending, the [BLS calendar candidate](MANAGED_BLS_CALENDAR.md)
+The independent [BLS calendar candidate](MANAGED_BLS_CALENDAR.md)
 extends roadmap M3 with explicit loading of scheduled labor, employment and
 inflation releases. It adds loaded search/date filters, an official source link
 and BLS entries in the existing Markets day view. It retains prior accepted
 data on failed refresh or Cancel and makes no navigation-triggered request or
 saved-record write. It is not deployed or included in the delivered Android 1.30
-package. This independent work does not accept or replace the selected phone
-and daily-use outcome.
+package. The 1.30 phone report does not accept this later source candidate or
+establish sustained daily use.
 
 ## Delivered saved valuation inputs
 
@@ -125,7 +134,8 @@ requested checks: normal sign-in/reopen, existing saved Watchlist and Follow-ups
 presence, Annual/screen/comparison/research Back, and native Back, keyboard,
 background/reopen and force-stop/reopen. These results are owner-reported; the
 installed code and signer were not independently read. They do not cover the
-new saved-input workflow or the physical 1.30 upgrade.
+new saved-input workflow or the physical 1.30 upgrade; the separate overall
+1.30 phone-check report is recorded above.
 
 Save wanted drafts before reloading or updating. The valuation editor and
 unsaved valuation draft remain in memory and clear on reload, session retirement

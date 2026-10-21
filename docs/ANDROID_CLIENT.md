@@ -12,7 +12,11 @@ One offline build and package/version/signature checks passed. Verification also
 checked the complete packaged asset set, source marker, public configuration and
 each asset hash against the build. It delivers saved valuation inputs, enabled
 managed Portfolio and expanded Filings, and retains Watchlist draft-file capture
-and restoration. It has not been installed or physically accepted. Annual 6 and
+and restoration. On October 20 the owner reported "Phone check passed" for the
+requested 1.30 checklist. This accepts the overall checklist by owner report; no per-item
+breakdown or independent installed-version, signer or device inspection was
+provided. Conditional file and wanted-record operations are not separately
+evidenced. Sustained daily use remains open. Annual 6 and
 report format 5 remain compatible with the live API. Prior 1.28 and 1.29 APKs are
 unchanged; the earlier 1.29 physical file-workflow acceptance remains unclaimed.
 

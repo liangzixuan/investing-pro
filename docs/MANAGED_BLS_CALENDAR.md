@@ -1,8 +1,9 @@
 # BLS release calendar
 
 The source candidate adds an explicit BLS calendar to managed Markets. It is not
-yet deployed or bundled into a delivered APK. Android 1.30 physical acceptance
-remains a separate pending outcome in [Current work](CURRENT_WORK.md).
+yet deployed or bundled into a delivered APK. The owner-reported Android 1.30
+phone checklist in [Current work](CURRENT_WORK.md) does not accept this later
+BLS candidate. Sustained daily use remains separate.
 
 ## Read scheduled releases
 

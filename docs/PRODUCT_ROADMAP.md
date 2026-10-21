@@ -39,20 +39,22 @@ private persistence and recovery qualification with invented data. The active
 API is ready and live; its downloaded source matches the accepted archive. No
 authenticated owner Portfolio Save was exercised. Defer
 portfolio history, additional metrics, cosmetic work and tooling increments
-until phone acceptance completes this workflow. Coverage
-fixes do not complete a milestone.
+while completing daily-use readiness. Coverage fixes do not complete a milestone.
 
 Android 1.30.0, code 31, now packages the same accepted product with the existing
 production signer. The single offline build and complete packaged-asset checks
 passed; the verified APK is provided locally. Prior 1.28 and 1.29 APKs are
 unchanged. The earlier reported 1.27-to-1.28 upgrade does not establish 1.30 use.
-Physical acceptance of saved valuation inputs, Portfolio and Watchlist draft
-files, followed by recorded daily use, is the selected next outcome.
+On October 20 the owner reported "Phone check passed" for the requested 1.30
+checklist. This accepts the overall checklist by owner report, without per-item
+results or independent device inspection. Conditional file and wanted-record
+operations are not separately evidenced. Sustained daily use and coherent,
+independently eligible company coverage are the next outcomes.
 
 A November personal release depends on completing the Portfolio workflow,
 matching phone delivery and acceptance, and sustained daily use. Current release
-evidence does not establish those outcomes. Controlled account recovery and
-screen-reader acceptance also remain open. The optional cloud backup drill
+evidence and the overall phone report do not establish sustained use. Controlled
+account recovery and screen-reader acceptance also remain open. The optional cloud backup drill
 remains deferred. Use the capability table in [Current work](CURRENT_WORK.md)
 and the [release readiness plan](MANAGED_RELEASE_READINESS.md) for separate
 source, publication and physical-device acceptance.
@@ -691,8 +693,8 @@ calendar or market module hostage to unrelated SEC interpretation work.
 
 The [BLS calendar source candidate](MANAGED_BLS_CALENDAR.md) adds explicit
 scheduled labor and inflation releases, loaded filters and the Markets day view.
-It remains separate from production delivery and the pending Android 1.30
-physical acceptance.
+It remains separate from production delivery. The owner-reported Android 1.30
+phone checklist does not accept this later BLS candidate.
 
 ### Selecting the next product outcome
 
