@@ -9173,7 +9173,9 @@ public class ManagedWorkspaceInstrumentedTest {
                     boolean resumed = observedImeLifecycle.getCurrentState() == Lifecycle.State.RESUMED;
                     diagnostic = "hidden=" + hidden + ", animations=" + imeAnimations.size() +
                         ", windowFocus=" + focused + ", resumed=" + resumed;
-                    if (hidden && imeAnimations.isEmpty() && focused && resumed) {
+                    boolean imeSettled = hidden && imeAnimations.isEmpty();
+                    boolean activityReady = focused && resumed;
+                    if (imeSettled && activityReady) {
                         Log.i("ManagedIme", diagnostic);
                         return;
                     }
