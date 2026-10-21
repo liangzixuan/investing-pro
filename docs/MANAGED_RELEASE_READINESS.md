@@ -1,9 +1,9 @@
 # Coordinated managed release readiness
 
-Updated October 20, 2026. The selected outcome is physical acceptance of Android
-1.30 and recorded daily use of the matching managed workflows. This plan does not
-authorize deployment, browser work, signing-key access, resource provisioning or
-installation. Use the actual task authorization for each operation.
+Updated October 20, 2026. The requested Android 1.30 phone checklist passed
+overall by owner report. The selected outcome is sustained daily use of the
+matching managed workflows. This plan does not authorize deployment, browser
+work, signing-key access, resource provisioning or installation. Use the actual task authorization for each operation.
 
 ## Current delivery and remaining acceptance
 
@@ -14,8 +14,11 @@ The active API is ready and live. The APK's package, version, production signer,
 source marker, configuration and complete asset set passed verification. Prior
 APKs remain unchanged. These accepted checks do not need another run.
 
-Physical installation, wanted saved-work checks and sustained use remain open.
-Use the [current capability record](CURRENT_WORK.md) and
+The owner reported "Phone check passed" for the requested 1.30 checklist. No
+per-item results or independent installed-version, signer or device inspection
+were provided. Conditional file and wanted-record operations are not separately
+evidenced. Sustained daily use remains open. Use the
+[current capability record](CURRENT_WORK.md) and
 [Android guide](ANDROID_CLIENT.md) for the current scope. Save wanted drafts
 before updating; do not uninstall or clear data. Use wanted owner records for
 physical workflow acceptance, and keep invented QA data out of owner resources.
