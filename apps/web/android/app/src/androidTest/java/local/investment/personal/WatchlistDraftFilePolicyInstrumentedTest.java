@@ -17,6 +17,7 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
     private static final String FILENAME = "Investment-watchlist-draft-2026-10-18T18-00-00-000Z.json";
     private static final String PORTFOLIO_FILENAME = "Investment-portfolio-draft-2026-10-18T18-00-00-000Z.json";
     private static final String FOLLOWUPS_FILENAME = "Investment-followups-draft-2026-10-18T18-00-00-000Z.json";
+    private static final String VALUATION_FILENAME = "Investment-valuation-inputs-draft-2026-10-18T18-00-00-000Z.json";
     private static final String SCOPE = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     private JSONObject metadata() throws Exception {
@@ -36,8 +37,24 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
             .replace("rawNote", "rawLedger");
     }
 
+    private JSONObject valuationMetadata() throws Exception {
+        return new JSONObject().put("operationId", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+            .put("capturedAt", TIME);
+    }
+
+    private String valuationContent() {
+        // The native policy admits framing; the shared codec validates every entry field.
+        return "{\"format\":\"investment-valuation-inputs-draft\",\"version\":1,"
+            + "\"accountScope\":\"" + SCOPE + "\",\"capturedAt\":\"" + TIME + "\","
+            + "\"entry\":{\"rawInput\":\"  1.. invalid 零 café 😀  \"}}\n";
+    }
+
     @Test
     public void derivesOnlyTheFixedFilenameAndMimeFromCaptureMetadata() throws Exception {
+        assertEquals(VALUATION_FILENAME, ValuationDraftFilePolicy.INSTANCE.filename(valuationMetadata()));
+        assertEquals("application/json", ValuationDraftFilePolicy.INSTANCE.getMimeType());
+        assertEquals(131072, ValuationDraftFilePolicy.INSTANCE.getMaxBytes());
+        assertTrue(ValuationDraftFilePolicy.INSTANCE.acceptsText(VALUATION_FILENAME, valuationContent()));
         assertEquals(FILENAME, WatchlistDraftFilePolicy.INSTANCE.filename(metadata()));
         assertEquals("application/json", WatchlistDraftFilePolicy.INSTANCE.getMimeType());
         assertEquals(266240, WatchlistDraftFilePolicy.INSTANCE.getMaxBytes());
@@ -59,6 +76,15 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
 
     @Test
     public void rejectsCallerFilenameUnknownMetadataAndInvalidBaseVersions() throws Exception {
+        assertNull(ValuationDraftFilePolicy.INSTANCE.filename(valuationMetadata().put("filename", "private.json")));
+        assertNull(ValuationDraftFilePolicy.INSTANCE.filename(valuationMetadata().put("baseVersion", 1)));
+        assertNull(ValuationDraftFilePolicy.INSTANCE.filename(valuationMetadata().put("version", 1)));
+        JSONObject missingCapture = valuationMetadata();
+        missingCapture.remove("capturedAt");
+        assertNull(ValuationDraftFilePolicy.INSTANCE.filename(missingCapture));
+        JSONObject missingValuationOperation = valuationMetadata();
+        missingValuationOperation.remove("operationId");
+        assertNull(ValuationDraftFilePolicy.INSTANCE.filename(missingValuationOperation));
         assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("filename", "private.json")));
         assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("version", 3)));
         assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("filename", "private.json")));
@@ -83,10 +109,13 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
             "2026-10-18T18:60:00.000Z", "2026-10-18T18:00:60.000Z",
             "2026-10-18T18:00:00Z", "2026-10-18T18:00:00.000+00:00", "../private"
         }) {
+            assertNull(ValuationDraftFilePolicy.INSTANCE.filename(valuationMetadata().put("capturedAt", value)));
             assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", value)));
             assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", value)));
             assertNull(FollowupsDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", value)));
         }
+        assertEquals("Investment-valuation-inputs-draft-2028-02-29T18-00-00-000Z.json",
+            ValuationDraftFilePolicy.INSTANCE.filename(valuationMetadata().put("capturedAt", "2028-02-29T18:00:00.000Z")));
         assertEquals("Investment-watchlist-draft-2028-02-29T18-00-00-000Z.json",
             WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", "2028-02-29T18:00:00.000Z")));
         assertEquals("Investment-followups-draft-2028-02-29T18-00-00-000Z.json",
@@ -97,6 +126,19 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
 
     @Test
     public void rejectsDifferentFramingAndFilenameBeforeWriting() {
+        String valuation = valuationContent();
+        for (String value : new String[] {
+            valuation.replace("investment-valuation-inputs-draft", "investment-portfolio-draft"),
+            valuation.replace("\"version\":1", "\"version\":2"),
+            valuation.replace("\"version\":1", "\"version\":1,\"version\":1"),
+            valuation.replace("\"version\":1", "\"version\":1,\"baseVersion\":3"),
+            valuation.replace("\"entry\":{", "\"entry\":[],\"extra\": {"),
+            valuation.replace("\"entry\":{", "\"draft\":{"),
+            valuation.replace(SCOPE, "foreign"), valuation.replace(TIME, "2026-10-19T18:00:00.000Z"),
+            valuation + "{}"
+        }) assertFalse(ValuationDraftFilePolicy.INSTANCE.acceptsText(VALUATION_FILENAME, value));
+        assertFalse(ValuationDraftFilePolicy.INSTANCE.acceptsText("../private.json", valuation));
+        assertFalse(ValuationDraftFilePolicy.INSTANCE.acceptsText(VALUATION_FILENAME, content()));
         String current = content();
         for (String value : new String[] {
             current.replace("investment-watchlist-draft", "saved-watchlist"),
@@ -133,6 +175,18 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
 
     @Test
     public void inheritedWriterEncodingRejectsOversizeAndMalformedUtf16() {
+        String valuation = valuationContent().replace("零 café 😀", "raw");
+        int valuationMax = ValuationDraftFilePolicy.INSTANCE.getMaxBytes();
+        String valuationLimit = valuation + " ".repeat(valuationMax - valuation.length());
+        assertTrue(ValuationDraftFilePolicy.INSTANCE.acceptsText(VALUATION_FILENAME, valuationLimit));
+        assertEquals(valuationMax, ChosenDocumentPolicyKt.strictDocumentBytes(valuationLimit, valuationMax).length);
+        assertFalse(ValuationDraftFilePolicy.INSTANCE.acceptsText(VALUATION_FILENAME, valuationLimit + " "));
+        try {
+            ChosenDocumentPolicyKt.strictDocumentBytes(valuationLimit + " ", valuationMax);
+            fail("Expected valuation writer byte refusal");
+        } catch (Exception expected) {
+            // No destination is opened before the shared byte guard succeeds.
+        }
         assertEquals(3, ChosenDocumentPolicyKt.strictDocumentBytes("零", 3).length);
         int maximum = PortfolioDraftFilePolicy.INSTANCE.getMaxBytes();
         String ascii = portfolioContent().replace("零 café 😀", "raw");

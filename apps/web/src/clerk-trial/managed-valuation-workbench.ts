@@ -355,11 +355,26 @@ export class ManagedValuationWorkbench {
     value: ValuationAssumptionEntry,
     expectedSnapshot: ManagedValuationSnapshot,
   ): boolean {
+    return this.applyReviewedInputs(value, expectedSnapshot, true);
+  }
+  restoreDraftInputs(
+    value: ValuationAssumptionEntry,
+    expectedSnapshot: ManagedValuationSnapshot,
+  ): boolean {
+    return this.applyReviewedInputs(value, expectedSnapshot, false);
+  }
+  private applyReviewedInputs(
+    value: ValuationAssumptionEntry,
+    expectedSnapshot: ManagedValuationSnapshot,
+    confirmed: boolean,
+  ): boolean {
     if (this.snapshot !== expectedSnapshot || this.snapshot.retired)
       return false;
     const entry = parseValuationAssumptionEntry(value);
     const context = this.snapshot.context;
     if (!entry || !context) return false;
+    if (!confirmed && (!this.snapshot.editable || entry.cik !== context.cik))
+      return false;
     const owner = copySelection({
       catalogSnapshotSha256: entry.catalogSnapshotSha256,
       listing: entry.listing,
@@ -369,13 +384,13 @@ export class ManagedValuationWorkbench {
     if (!sameSelection(owner, context)) return false;
     this.calculation = null;
     this.editorRevision = Symbol();
-    this.savedInputRevision = this.editorRevision;
+    this.savedInputRevision = confirmed ? this.editorRevision : null;
     this.retainedInputs = true;
     this.rejectedFields.clear();
     const published = this.publish({
       ...this.snapshot,
       owner: context,
-      dirty: false,
+      dirty: !confirmed,
       dcfDraft: entry.dcf.inputs,
       exitDraft: entry.exit.inputs,
       calculation: null,

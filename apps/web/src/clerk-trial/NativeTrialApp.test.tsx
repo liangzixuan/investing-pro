@@ -1,3 +1,4 @@
+import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
@@ -124,6 +125,11 @@ async function mount(
   const exportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   const reportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   const draftFilePlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
+  const valuationDraftFilePlugin = {
+    choose: vi.fn(),
+    write: vi.fn(),
+    cancel: vi.fn(),
+  };
   const followupsDraftFilePlugin = {
     choose: vi.fn(),
     write: vi.fn(),
@@ -141,6 +147,7 @@ async function mount(
     ["InvestmentCompanyReport", reportPlugin],
     ["InvestmentPortfolioDraftFile", portfolioDraftFilePlugin],
     ["InvestmentFollowupsDraftFile", followupsDraftFilePlugin],
+    ["InvestmentValuationDraftFile", valuationDraftFilePlugin],
   ]);
   hooks.register.mockImplementation((name: string) => plugins.get(name));
   const loading = NativeTrialApp({ config });
@@ -174,6 +181,7 @@ async function mount(
     draftFilePlugin,
     portfolioDraftFilePlugin,
     followupsDraftFilePlugin,
+    valuationDraftFilePlugin,
     emit: (value: NativeAuthState) => emit(value),
   };
 }
@@ -188,6 +196,7 @@ function findScreen(node: ReactNode):
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+      valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     }>
   | undefined {
@@ -210,6 +219,7 @@ function findScreen(node: ReactNode):
         draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
         portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
         followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+        valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
         reportDelivery?: CompanyReportDeliveryAdapter;
       }>;
     }
@@ -262,6 +272,7 @@ describe("native shared workspace composition", () => {
         draftFilePlugin,
         portfolioDraftFilePlugin,
         followupsDraftFilePlugin,
+        valuationDraftFilePlugin,
       } = await mount(config);
       const screen = findScreen(frame());
       expect(screen?.type).toBe(screenType);
@@ -281,6 +292,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentWatchlistDraftFile"],
               ["InvestmentPortfolioDraftFile"],
               ["InvestmentFollowupsDraftFile"],
+              ["InvestmentValuationDraftFile"],
             ]
           : [["InvestmentAuth"]],
       );
@@ -323,6 +335,14 @@ describe("native shared workspace composition", () => {
         screen?.props.followupsDraftFileDelivery,
       );
       for (const method of Object.values(followupsDraftFilePlugin))
+        expect(method).not.toHaveBeenCalled();
+      expect(typeof screen?.props.valuationDraftFileDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.valuationDraftFileDelivery).toBe(
+        screen?.props.valuationDraftFileDelivery,
+      );
+      for (const method of Object.values(valuationDraftFilePlugin))
         expect(method).not.toHaveBeenCalled();
       expect(plugin.addListener).toHaveBeenCalledTimes(1);
       expect(plugin.getState).toHaveBeenCalledTimes(1);

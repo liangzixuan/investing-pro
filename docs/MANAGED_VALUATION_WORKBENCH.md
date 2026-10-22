@@ -68,6 +68,39 @@ Confirmed saved inputs remain in the separate resource described below. Load and
 compare them explicitly before replacing the editor. Saving a Watchlist note or
 capturing a report does not save editable workbench inputs.
 
+## Draft files for one valuation editor
+
+The source candidate adds explicit file recovery for the current company's
+valuation editor. Open **Valuation inputs files** to capture both complete raw
+input maps, model versions, full listing identity, CIK and catalog digest. The
+browser requests a download; Android uses the existing chosen-document writer.
+The plain-text JSON file contains private authored assumptions. Store it privately.
+It excludes prices, source packets and calculated results and is not a backup of
+the saved valuation resource.
+
+1. Capture the current editor explicitly. Invalid numeric text, whitespace and
+   empty fields stay exact within the existing 512-code-point field limit. A
+   rejected oversized input blocks capture until corrected or discarded.
+2. Select a file to read it locally. No saved-resource Load is required. The file
+   must match the current account/backend scope and the exact current company,
+   listing, CIK and catalog. Unsupported format/model versions, duplicate keys,
+   malformed UTF-8, extra fields and files over 128 KiB are refused.
+3. Review the complete file inputs against the complete current editor, including
+   any rejected-field issue. Restore replaces both editor maps only after this
+   explicit comparison. It marks the editor dirty and clears calculated results.
+4. Calculate separately. To save online, use the existing explicit Load, Stage,
+   Review and Save workflow. File restoration changes neither the saved-resource
+   draft nor its current online save base.
+
+Changes to the editor, company/catalog, route, session or saved-assumptions
+operation withdraw stale file controls. Returning to an earlier value cannot
+revive them. A rejected file, cancellation or stale completion leaves newer work
+unchanged. The controls reuse the complete raw-input readouts and Precision Desk
+44px actions; opening the disclosure starts no request or calculation.
+
+This candidate has no publication, browser-layout, new native chooser or phone
+acceptance. The live website, API and Android 1.32 remain unchanged.
+
 ## Save and reopen editable inputs
 
 The published website has an initially closed **Saved valuation inputs** panel

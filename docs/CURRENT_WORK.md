@@ -118,13 +118,22 @@ New browser-layout, physical-device acceptance and sustained use remain open.
 
 ## Selected next outcome: sustained daily use and coherent company coverage
 
-The next source candidate adds [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files):
-explicit capture of valid unsaved checks/results, bounded account/backend-scoped
-local file review, complete comparison and explicit local restore. It preserves
-the loaded online version and separate Save. Invalid raw input stays in the
-editor; stale file operations cannot replace newer work. The shared browser and
-Android delivery adapters add no provider, storage or dependency. This candidate
-has no publication, new chooser execution or phone acceptance yet.
+Follow-ups draft files are accepted in source at main
+`461246249c6d790a1c8bb28ab85de301b267058f`. Explicit capture, complete local
+comparison and restore preserve unsaved checks/results and the current online
+save base. This source acceptance is separate from publication and phone use.
+
+The next source candidate adds [valuation editor draft files](MANAGED_VALUATION_WORKBENCH.md#draft-files-for-one-valuation-editor).
+It captures both complete raw input maps for one exact company/catalog, reads a
+bounded account/backend-scoped file locally, compares it with the complete current
+editor and explicitly restores it. Restoration marks the editor dirty and clears
+results, while the saved-resource draft and online save base stay unchanged.
+Invalid numeric text within 512 code points stays exact; rejected oversized input
+blocks capture. The review includes current rejected-field issues. Local recovery
+requires no saved-resource Load; Calculate and online Stage/Review/Save remain
+separate actions. Malformed, foreign, unsupported or oversized files and stale
+operations cannot replace newer work. The live website, API and Android 1.32 are
+unchanged; browser-layout, new chooser and phone acceptance remain open.
 
 The current source increment connects an authored thesis **Next check** to a dated
 [Follow-up](MANAGED_RESEARCH_FOLLOWUPS.md). Both thesis editors offer an explicit

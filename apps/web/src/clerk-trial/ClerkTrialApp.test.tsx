@@ -1,4 +1,8 @@
 import {
+  browserValuationDraftFileAdapter,
+  type ManagedValuationDraftFileDeliveryAdapter,
+} from "./valuation-draft-file-delivery";
+import {
   browserFollowupsDraftFileAdapter,
   type ManagedFollowupsDraftFileDeliveryAdapter,
 } from "./followups-draft-file-delivery";
@@ -158,6 +162,7 @@ describe("official Clerk browser adapter", () => {
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+      valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.apiOrigin).toBe(config.apiOrigin);
@@ -166,6 +171,7 @@ describe("official Clerk browser adapter", () => {
     expect(props.draftFileDelivery).toBeUndefined();
     expect(props.portfolioDraftFileDelivery).toBeUndefined();
     expect(props.followupsDraftFileDelivery).toBeUndefined();
+    expect(props.valuationDraftFileDelivery).toBeUndefined();
     expect(props.reportDelivery).toBeUndefined();
     expect(await props.session.getToken()).toBe("synthetic-token");
     await props.session.signOut();
@@ -238,6 +244,7 @@ describe("official Clerk browser adapter", () => {
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+      valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.warnOnBrowserLeave).toBe(true);
@@ -248,6 +255,9 @@ describe("official Clerk browser adapter", () => {
     );
     expect(props.followupsDraftFileDelivery).toBe(
       browserFollowupsDraftFileAdapter,
+    );
+    expect(props.valuationDraftFileDelivery).toBe(
+      browserValuationDraftFileAdapter,
     );
     expect(props.reportDelivery).toBe(browserCompanyReportAdapter);
     expect(props.session).toMatchObject({

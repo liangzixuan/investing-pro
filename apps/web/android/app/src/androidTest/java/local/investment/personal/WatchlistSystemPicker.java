@@ -63,8 +63,14 @@ final class WatchlistSystemPicker {
 
     /** OPEN uses the same real provider root, with one exact observed document label. */
     void openInventedDocument(String displayName) throws Exception {
+        openInventedDocument(displayName, "watchlist-draft");
+    }
+
+    void openInventedDocument(String displayName, String family) throws Exception {
+        assertTrue("Only existing invented draft file families can be selected",
+            family.equals("watchlist-draft") || family.equals("valuation-inputs-draft"));
         assertTrue("Only an exact invented draft document can be selected",
-            displayName.matches("Investment-watchlist-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json"));
+            displayName.matches("Investment-" + family + "-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json"));
         AccessibilityNodeInfo navigation = await(node -> isRootsList(node)
             || "Show roots".contentEquals(string(node.getContentDescription())));
         if (!isRootsList(navigation)) click(navigation);

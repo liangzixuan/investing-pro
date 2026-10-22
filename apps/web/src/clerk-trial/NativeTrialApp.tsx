@@ -1,4 +1,8 @@
 import {
+  createNativeValuationDraftFileAdapter,
+  type InvestmentValuationDraftFilePlugin,
+} from "./valuation-draft-file-delivery";
+import {
   createNativePortfolioDraftFileAdapter,
   type InvestmentPortfolioDraftFilePlugin,
 } from "./portfolio-draft-file-delivery";
@@ -133,6 +137,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const valuationDraftFileDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeValuationDraftFileAdapter(
+            registerPlugin<InvestmentValuationDraftFilePlugin>(
+              "InvestmentValuationDraftFile",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const signInMessage =
     state.message ||
     (state.auth.status === "loading"
@@ -176,6 +191,9 @@ function NativeSession({
                 : {})}
               {...(followupsDraftFileDelivery
                 ? { followupsDraftFileDelivery }
+                : {})}
+              {...(valuationDraftFileDelivery
+                ? { valuationDraftFileDelivery }
                 : {})}
               {...(reportDelivery ? { reportDelivery } : {})}
             />

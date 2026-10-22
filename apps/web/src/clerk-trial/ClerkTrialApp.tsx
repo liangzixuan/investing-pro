@@ -1,3 +1,4 @@
+import { browserValuationDraftFileAdapter } from "./valuation-draft-file-delivery";
 import { browserPortfolioDraftFileAdapter } from "./portfolio-draft-file-delivery";
 import { browserFollowupsDraftFileAdapter } from "./followups-draft-file-delivery";
 import { browserCompanyReportAdapter } from "./browser-company-report";
@@ -110,6 +111,7 @@ function ClerkSession({
               draftFileDelivery: browserWatchlistDraftFileAdapter,
               portfolioDraftFileDelivery: browserPortfolioDraftFileAdapter,
               followupsDraftFileDelivery: browserFollowupsDraftFileAdapter,
+              valuationDraftFileDelivery: browserValuationDraftFileAdapter,
               reportDelivery: browserCompanyReportAdapter,
             }
           : {})}

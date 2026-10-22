@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 21, 2026. This document defines the durable product goals and
+Updated October 22, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -29,11 +29,17 @@ has no client delivery yet.
 
 ## Current priority after the October 21 Android delivery
 
-The next daily-use source increment adds [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files).
-An explicit capture, full local comparison and restore preserve unsaved authored
-checks and results through the existing browser/Android file-delivery patterns.
-The online save base stays unchanged and Save remains explicit. This extends
-research recovery without new data sources, automatic monitoring or a release.
+[Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files) are accepted in
+source at main `461246249c6d790a1c8bb28ab85de301b267058f`. The next daily-use source
+candidate adds [valuation editor file recovery](MANAGED_VALUATION_WORKBENCH.md#draft-files-for-one-valuation-editor):
+explicit capture of both complete raw model maps, full file/current-editor review
+and explicit restore for the exact account/backend/company/catalog. Invalid
+numeric text stays exact within the editor limit; rejected oversized capture is
+refused. Restore marks the editor dirty and clears results, with Calculate,
+Stage, Review and Save still separate. The online valuation draft and save base
+remain unchanged. This advances daily research recovery using existing file
+delivery, without a provider, automatic storage or release. Live website/API and
+Android 1.32 stay unchanged; browser, chooser and phone acceptance remain separate.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The
