@@ -1,37 +1,21 @@
-import type { ManagedWorkspace } from "./managed-workspace";
-import type { ManagedResearchSelection } from "./managed-research-selection";
 import type { ManagedValuationSnapshot } from "./managed-valuation-workbench";
-import type { ValuationAssumptionEntry } from "@research-cockpit/contracts";
 import {
   assertValuationDraftFileSize,
   decodeValuationDraftFile,
   formatManagedValuationDraftFile,
   type ManagedValuationDraftFileContent,
 } from "./managed-valuation-draft-file";
-import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
+import {
+  valuationDraftContext,
+  sameValuationDraftContext,
+  valuationDraftMatchesCompany,
+  type ValuationDraftContext,
+  type ValuationDraftRecoveryOptions,
+} from "./managed-valuation-draft-context";
 
-interface Options {
-  workspace: ManagedWorkspace;
-  accountScope: Promise<string>;
-  delivery: ManagedValuationDraftFileDeliveryAdapter | undefined;
-  routeActive: () => boolean;
-  selection: () => ManagedResearchSelection;
-  now?: () => string;
-}
-interface Context {
-  editor: ManagedValuationSnapshot;
-  visit: NonNullable<ReturnType<ManagedWorkspace["getSnapshot"]>["research"]>;
-  catalog: NonNullable<ReturnType<ManagedWorkspace["getSnapshot"]>["snapshot"]>;
-  assumptions: ReturnType<
-    ManagedWorkspace["valuationAssumptions"]["getSnapshot"]
-  >;
-  save: ReturnType<
-    ManagedWorkspace["valuationAssumptions"]["coordinator"]["getSnapshot"]
-  >;
-}
 interface Operation {
   kind: "export" | "read";
-  context: Context;
+  context: ValuationDraftContext;
   scope: string;
   controller: AbortController;
 }
@@ -42,25 +26,6 @@ export interface ValuationDraftRecoveryState {
   readonly canExport: boolean;
   readonly canImport: boolean;
   readonly message: string;
-}
-
-function editableInputs(editor: ManagedValuationSnapshot) {
-  return editor.editable && !editor.retired && editor.owner !== null;
-}
-function savedInputsIdle(
-  save: Context["save"],
-  assumptions: Context["assumptions"],
-) {
-  return (
-    save.phase === "idle" &&
-    !save.conflict &&
-    !save.uncertain &&
-    !save.replayPending &&
-    !assumptions.reviewing &&
-    !assumptions.stageReview &&
-    !assumptions.restoreReview &&
-    !assumptions.catalogReview
-  );
 }
 
 /** File IO replaces only the reviewed editor; online staging and Save are separate. */
@@ -79,7 +44,7 @@ export class ManagedValuationDraftRecovery {
   private operation: Operation | null = null;
   private transition = {};
   private disposed = false;
-  constructor(private readonly options: Options) {
+  constructor(private readonly options: ValuationDraftRecoveryOptions) {
     const { workspace } = options;
     this.unsubscribers = [
       workspace,
@@ -113,41 +78,14 @@ export class ManagedValuationDraftRecovery {
       this.options.workspace.sessionOwner.getSnapshot().phase === "active"
     );
   }
-  private currentVisit() {
-    if (!this.live() || !this.options.routeActive()) return null;
-    const view = this.options.workspace.getSnapshot();
-    if (!view.research || view.research.selection !== this.options.selection())
-      return null;
-    if (!view.snapshot || view.read || view.reviewing) return null;
-    if (
-      view.snapshot.snapshotSha256 !==
-      view.research.selection.catalogSnapshotSha256
-    )
-      return null;
-    return { visit: view.research, catalog: view.snapshot };
-  }
-  private context(): Context | null {
-    const visit = this.currentVisit();
-    if (!visit) return null;
-    const workspace = this.options.workspace;
-    const editor = workspace.valuation.getSnapshot();
-    if (!editableInputs(editor)) return null;
-    const assumptions = workspace.valuationAssumptions.getSnapshot();
-    const save = workspace.valuationAssumptions.coordinator.getSnapshot();
-    if (!savedInputsIdle(save, assumptions)) return null;
-    return { ...visit, editor, assumptions, save };
+  private context() {
+    if (!this.live()) return null;
+    return valuationDraftContext(this.options);
   }
   private sameContext(operation: Operation) {
-    const context = this.context(),
-      before = operation.context;
     return (
       this.scope === operation.scope &&
-      context !== null &&
-      context.editor === before.editor &&
-      context.visit === before.visit &&
-      context.catalog === before.catalog &&
-      context.assumptions === before.assumptions &&
-      context.save === before.save
+      sameValuationDraftContext(this.context(), operation.context)
     );
   }
   private current(operation: Operation) {
@@ -158,11 +96,21 @@ export class ManagedValuationDraftRecovery {
     );
   }
   private canExport() {
-    if (!this.scope || !this.options.delivery || this.operation) return false;
+    if (!this.scope) return false;
+    if (!this.options.delivery) return false;
+    if (this.operation) return false;
     const context = this.context();
-    if (!context?.editor.dirty || context.editor.inputIssue) return false;
+    if (!context) return false;
+    if (!context.editor.dirty) return false;
+    if (context.editor.inputIssue) return false;
+    return this.captureEntry(context) !== null;
+  }
+  private captureEntry(context: ValuationDraftContext) {
     const capture = this.options.workspace.valuation.captureInputs();
-    return capture !== null && this.matchesCompany(capture.entry, context);
+    if (!capture) return null;
+    return valuationDraftMatchesCompany(capture.entry, context)
+      ? capture.entry
+      : null;
   }
   private canImport(phase: ValuationDraftRecoveryState["phase"]) {
     return (
@@ -238,19 +186,20 @@ export class ManagedValuationDraftRecovery {
     }
     this.clear(message);
   }
+  private exportDocument(operation: Operation) {
+    const entry = this.captureEntry(operation.context);
+    if (!entry) return null;
+    return formatManagedValuationDraftFile({
+      accountScope: operation.scope,
+      capturedAt: this.options.now?.() ?? new Date().toISOString(),
+      entry,
+    });
+  }
   async exportInputs() {
     if (!this.state.canExport || !this.options.delivery) return;
     const operation = this.begin("export");
     if (!operation) return;
-    const capture = this.options.workspace.valuation.captureInputs();
-    const document =
-      capture &&
-      this.matchesCompany(capture.entry, operation.context) &&
-      formatManagedValuationDraftFile({
-        accountScope: operation.scope,
-        capturedAt: this.options.now?.() ?? new Date().toISOString(),
-        entry: capture.entry,
-      });
+    const document = this.exportDocument(operation);
     if (!document) {
       this.finish(
         operation,
@@ -280,18 +229,6 @@ export class ManagedValuationDraftRecovery {
       );
     }
   }
-  private matchesCompany(entry: ValuationAssumptionEntry, context: Context) {
-    const selected = context.visit.selection;
-    return (
-      entry.catalogSnapshotSha256 === selected.catalogSnapshotSha256 &&
-      entry.cik === selected.cik &&
-      Object.keys(selected.listing).every(
-        (key) =>
-          entry.listing[key as keyof typeof entry.listing] ===
-          selected.listing[key as keyof typeof selected.listing],
-      )
-    );
-  }
   async readFile(file: Pick<File, "size" | "arrayBuffer">) {
     if (!this.state.canImport) return;
     const transition = this.clear("");
@@ -303,24 +240,7 @@ export class ManagedValuationDraftRecovery {
       if (!this.current(operation)) return;
       assertValuationDraftFileSize(file.size);
       const bytes = await file.arrayBuffer();
-      if (!this.current(operation)) {
-        this.reconcile();
-        return;
-      }
-      const preview = decodeValuationDraftFile(
-        bytes,
-        file.size,
-        operation.scope,
-      );
-      if (!preview || !this.matchesCompany(preview.entry, operation.context))
-        throw new Error("document");
-      this.publish({
-        phase: "review",
-        preview,
-        currentEditor: operation.context.editor,
-        message:
-          "File loaded locally. Compare both complete input maps before replacing the editor.",
-      });
+      this.reviewFile(operation, bytes, file.size);
     } catch {
       this.finish(
         operation,
@@ -328,33 +248,62 @@ export class ManagedValuationDraftRecovery {
       );
     }
   }
-  restore() {
-    const operation = this.operation,
-      preview = this.state.preview;
-    if (!operation || this.state.phase !== "review" || !preview) return false;
+  private reviewFile(operation: Operation, bytes: ArrayBuffer, size: number) {
     if (!this.current(operation)) {
       this.reconcile();
-      return false;
+      return;
     }
-    const transition = this.clear("");
+    const preview = decodeValuationDraftFile(bytes, size, operation.scope);
     if (
-      this.transition !== transition ||
-      this.operation ||
-      !this.sameContext(operation)
+      !preview ||
+      !valuationDraftMatchesCompany(preview.entry, operation.context)
     )
-      return false;
-    const accepted = this.options.workspace.valuation.restoreDraftInputs(
-      preview.entry,
-      operation.context.editor,
-    );
+      throw new Error("document");
+    this.publish({
+      phase: "review",
+      preview,
+      currentEditor: operation.context.editor,
+      message:
+        "File loaded locally. Compare both complete input maps before replacing the editor.",
+    });
+  }
+  private reviewedOperation() {
+    const operation = this.operation;
+    const preview = this.state.preview;
+    if (!operation) return null;
+    if (this.state.phase !== "review") return null;
+    if (!preview) return null;
+    if (!this.current(operation)) {
+      this.reconcile();
+      return null;
+    }
+    return { operation, preview };
+  }
+  private unchangedTransition(transition: object) {
+    return this.transition === transition && this.operation === null;
+  }
+  private completeRestore(transition: object, accepted: boolean) {
     if (!this.live()) return false;
-    if (this.transition === transition && !this.operation)
+    if (this.unchangedTransition(transition))
       this.publish({
         message: accepted
           ? "File inputs restored to the unsaved editor. Calculate, Stage, Review and Save remain separate."
           : "The editor changed before restoration. Select the file again.",
       });
     return accepted;
+  }
+  restore() {
+    const reviewed = this.reviewedOperation();
+    if (!reviewed) return false;
+    const { operation, preview } = reviewed;
+    const transition = this.clear("");
+    if (!this.unchangedTransition(transition)) return false;
+    if (!this.sameContext(operation)) return false;
+    const accepted = this.options.workspace.valuation.restoreDraftInputs(
+      preview.entry,
+      operation.context.editor,
+    );
+    return this.completeRestore(transition, accepted);
   }
   dispose() {
     this.transition = {};

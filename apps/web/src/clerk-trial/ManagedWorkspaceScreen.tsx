@@ -214,22 +214,7 @@ function SessionWorkspace(props: SessionProps) {
     <ManagedWorkspaceRouter
       workspace={workspace}
       {...draftFileSession}
-      {...(initial.portfolioDraftFileDelivery
-        ? { portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery }
-        : {})}
-      {...(initial.followupsDraftFileDelivery
-        ? { followupsDraftFileDelivery: initial.followupsDraftFileDelivery }
-        : {})}
-      {...(initial.valuationDraftFileDelivery
-        ? { valuationDraftFileDelivery: initial.valuationDraftFileDelivery }
-        : {})}
-      {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
-      {...(initial.reportDelivery
-        ? { reportDelivery: initial.reportDelivery }
-        : {})}
-      {...(initial.exportDelivery
-        ? { exportDelivery: initial.exportDelivery }
-        : {})}
+      {...definedSessionWorkspacePorts(initial)}
     />
   ) : (
     <div className="managed-workspace-main">
@@ -239,6 +224,20 @@ function SessionWorkspace(props: SessionProps) {
       <ThirdPartyNotices />
     </div>
   );
+}
+
+function definedSessionWorkspacePorts(initial: SessionProps) {
+  const ports = {
+    portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
+    followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
+    valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
+    androidBack: initial.androidBack,
+    reportDelivery: initial.reportDelivery,
+    exportDelivery: initial.exportDelivery,
+  };
+  return Object.fromEntries(
+    Object.entries(ports).filter(([, value]) => value !== undefined),
+  ) as Pick<WorkspaceProps, keyof typeof ports>;
 }
 
 export function ManagedWorkspaceRouter(props: WorkspaceProps) {

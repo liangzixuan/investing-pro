@@ -156,7 +156,7 @@ function FixtureSession({
         workspace={workspace}
         onFreshSession={onFreshSession}
       />
-      {workspace && <valuationDraftFileSession.Controls />}
+      <valuationDraftFileSession.Controls />
       {workspace && fixture.portfolio && (
         <PortfolioFixtureControls
           workspace={workspace}

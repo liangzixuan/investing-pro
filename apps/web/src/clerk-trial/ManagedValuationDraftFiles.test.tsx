@@ -12,12 +12,9 @@ import {
   exitScenarioFields,
 } from "./valuation-input-labels";
 import { eodSelection } from "./eod-history-fixture";
+import type { ValuationTestEffectSlot as EffectSlot } from "./valuation-draft-files-test-hooks";
 
 type RecoveryState = ReturnType<ManagedValuationDraftRecovery["getSnapshot"]>;
-type EffectSlot = {
-  deps: React.DependencyList | undefined;
-  cleanup: (() => void) | undefined;
-};
 // Direct command/render and observed focus checks; no browser or native IO.
 const harness = vi.hoisted(() => ({
   index: 0,
@@ -49,46 +46,14 @@ vi.mock("./managed-valuation-draft-recovery", () => ({
     return harness.controller;
   }),
 }));
-vi.mock("react", async (original) => ({
-  ...(await original<typeof React>()),
-  useState: (initial: unknown) => {
-    const slot = harness.index++;
-    if (!(slot in harness.slots)) harness.slots[slot] = initial;
-    return [
-      harness.slots[slot],
-      (value: unknown) => {
-        harness.slots[slot] = value;
-      },
-    ];
-  },
-  useRef: (current: unknown) => {
-    const slot = harness.index++;
-    if (!(slot in harness.slots)) harness.slots[slot] = { current };
-    return harness.slots[slot];
-  },
-  useLayoutEffect: (
-    effect: () => void | (() => void),
-    deps?: React.DependencyList,
-  ) => {
-    const index = harness.index++;
-    const previous = harness.slots[index] as EffectSlot | undefined;
-    if (
-      deps &&
-      previous?.deps &&
-      deps.length === previous.deps.length &&
-      deps.every((value, i) => Object.is(value, previous.deps![i]))
-    )
-      return;
-    const slot: EffectSlot = { deps, cleanup: undefined };
-    harness.slots[index] = slot;
-    harness.effects.push(() => {
-      previous?.cleanup?.();
-      slot.cleanup = effect() ?? undefined;
-    });
-  },
-  useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) =>
-    snapshot(),
-}));
+vi.mock("react", async (original) => {
+  const { createValuationDraftTestHooks } =
+    await import("./valuation-draft-files-test-hooks");
+  return {
+    ...(await original<typeof React>()),
+    ...createValuationDraftTestHooks(harness),
+  };
+});
 
 function editor(prefix: string) {
   const model = new ManagedValuationWorkbench();
@@ -222,26 +187,37 @@ it("clears a selection before reading, exports only explicitly and never restore
     "Loading saved inputs is not required",
   );
 });
+function assertScenarioInputs(
+  markup: string,
+  prefix: string,
+  scenario: string,
+) {
+  expect(markup).toContain(`${prefix} DCF ${scenario}`);
+  for (const [key] of exitScenarioFields)
+    expect(markup).toContain(`${prefix} exit ${scenario} ${key}`);
+}
+function assertRawModelInputs(markup: string, prefix: string) {
+  for (const [key] of dcfFields)
+    expect(markup).toContain(`${prefix} DCF ${key} 1e8`);
+  for (const [key] of exitFields)
+    expect(markup).toContain(`${prefix} exit ${key} unfinished`);
+  for (const scenario of ["conservative", "base", "expansion"])
+    assertScenarioInputs(markup, prefix, scenario);
+}
+function assertFullIdentity(markup: string) {
+  for (const value of Object.values(eodSelection.listing))
+    expect(markup).toContain(value);
+  expect(markup).toContain(eodSelection.catalogSnapshotSha256);
+  expect(markup).toContain(eodSelection.cik!);
+}
 it("shows every raw field and full identity for both models before explicit replacement", () => {
   harness.state = reviewState();
   const { render } = fixture();
   const tree = render();
   const markup = renderToStaticMarkup(tree);
-  for (const prefix of ["File", "Current"]) {
-    for (const [key] of dcfFields)
-      expect(markup).toContain(`${prefix} DCF ${key} 1e8`);
-    for (const [key] of exitFields)
-      expect(markup).toContain(`${prefix} exit ${key} unfinished`);
-    for (const scenario of ["conservative", "base", "expansion"]) {
-      expect(markup).toContain(`${prefix} DCF ${scenario}`);
-      for (const [key] of exitScenarioFields)
-        expect(markup).toContain(`${prefix} exit ${scenario} ${key}`);
-    }
-  }
-  for (const value of Object.values(eodSelection.listing))
-    expect(markup).toContain(value);
-  expect(markup).toContain(eodSelection.catalogSnapshotSha256);
-  expect(markup).toContain(eodSelection.cik!);
+  assertRawModelInputs(markup, "File");
+  assertRawModelInputs(markup, "Current");
+  assertFullIdentity(markup);
   expect(markup).toContain("2026-10-22T12:00:00.000Z");
   expect(markup).toContain("does not verify");
   expect(markup).toContain("clears calculated results");
