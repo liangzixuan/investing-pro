@@ -859,9 +859,13 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void selectInventedValuationInputs(WatchlistTestDocuments.Output output) throws Exception {
-        String geometry = ValuationChooserGeometry.await(scenario, PAGE_TIMEOUT_MS);
-        touchEditorGeometry("Valuation inputs file chooser label", geometry);
-        new WatchlistSystemPicker().openInventedDocument(output.name, "valuation-inputs-draft");
+        ValuationChooserGeometry.PreparedTouch prepared = ValuationChooserGeometry.await(scenario, PAGE_TIMEOUT_MS);
+        try {
+            touchEditorGeometry("Valuation inputs file chooser label", prepared.geometry);
+            new WatchlistSystemPicker().openInventedDocument(output.name, "valuation-inputs-draft");
+        } finally {
+            prepared.logTrace(PAGE_TIMEOUT_MS);
+        }
     }
 
     private void clickValuationFileAction(String label) {

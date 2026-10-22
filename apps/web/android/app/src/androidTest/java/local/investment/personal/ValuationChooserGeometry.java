@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 /** One committed scroll and fresh geometry before the valuation file chooser's real touch. */
 final class ValuationChooserGeometry {
@@ -25,18 +26,27 @@ final class ValuationChooserGeometry {
         "if(!text)return null;";
 
     // Passive, fixed-field diagnostics in the invented test page only. A new arm retires
-    // the previous listeners; at most 32 records are logged per arm of the trace.
+    // the previous listeners; at most 32 records are retained per arm of the trace.
     private static final String TRACE =
-        "window.__valuationChooserTrace?.abort();const trace=new AbortController();window.__valuationChooserTrace=trace;let remaining=32;" +
+        "window.__valuationChooserTrace?.controller.abort();window.__valuationChooserTrace?.events.splice(0);" +
+        "const trace={controller:new AbortController(),events:[]};window.__valuationChooserTrace=trace;" +
         "for(const type of ['pointerdown','pointerup','pointercancel','click'])for(const capture of [true,false])" +
         "document.addEventListener(type,event=>{" +
         "const target=event.target,activation=navigator.userActivation;" +
-        "console.info('ValuationChooserEvent '+JSON.stringify({type:event.type,phase:capture?'capture':'bubble'," +
+        "trace.events.push({type:event.type,phase:capture?'capture':'bubble'," +
         "target:target===input?'input':target===label?'label':label.contains(target)?'label-child':'outside'," +
         "trusted:event.isTrusted,prevented:event.defaultPrevented,x:event.clientX,y:event.clientY," +
         "pointerId:event.pointerId??null,inputEnabled:!input.disabled,inputFocused:document.activeElement===input," +
-        "active:activation?.isActive??null,hasBeenActive:activation?.hasBeenActive??null}));" +
-        "if(--remaining===0)trace.abort();},{capture,passive:true,signal:trace.signal});";
+        "active:activation?.isActive??null,hasBeenActive:activation?.hasBeenActive??null});" +
+        "if(trace.events.length===32)trace.controller.abort();},{capture,passive:true,signal:trace.controller.signal});";
+
+    private static final String DRAIN =
+        "(() => {const trace=window.__valuationChooserTrace;if(!trace)return [];" +
+        "trace.controller.abort();const events=trace.events;trace.events=[];" +
+        "delete window.__valuationChooserTrace;return events;})()";
+    private static final java.util.Set<String> TRACE_FIELDS = java.util.Set.of(
+        "type", "phase", "target", "trusted", "prevented", "x", "y", "pointerId",
+        "inputEnabled", "inputFocused", "active", "hasBeenActive");
 
     private static final String SCROLL =
         "(() => {" + TARGET + TRACE + "label.scrollIntoView({block:'center',inline:'center',behavior:'instant'});return true;})()";
@@ -55,16 +65,18 @@ final class ValuationChooserGeometry {
         "&&ir.left>=v.offsetLeft&&ir.top>=v.offsetTop&&ir.right<=v.offsetLeft+v.width&&ir.bottom<=v.offsetTop+v.height," +
         "hit:label.contains(document.elementFromPoint(x,y))};})()";
 
-    static String await(ActivityScenario<MainActivity> scenario, long timeoutMs) throws Exception {
+    static PreparedTouch await(ActivityScenario<MainActivity> scenario, long timeoutMs) throws Exception {
         long deadline = SystemClock.uptimeMillis() + timeoutMs;
         Handler main = new Handler(Looper.getMainLooper());
         CompletableFuture<String> result = new CompletableFuture<>();
         AtomicReference<String> phase = new AtomicReference<>("scroll");
+        AtomicReference<WebView> page = new AtomicReference<>();
         AtomicReference<ViewTreeObserver> observer = new AtomicReference<>();
         AtomicReference<Runnable> callback = new AtomicReference<>();
         try {
             scenario.onActivity(activity -> {
                 WebView webView = activity.getBridge().getWebView();
+                page.set(webView);
                 step(result, deadline, () -> {
                     requireVisibleHardware(webView);
                     webView.evaluateJavascript(SCROLL, value -> step(result, deadline, () -> {
@@ -101,12 +113,99 @@ final class ValuationChooserGeometry {
             });
             long remaining = deadline - SystemClock.uptimeMillis();
             assertTrue("Valuation chooser geometry deadline remains", remaining > 0);
-            return result.get(remaining, TimeUnit.MILLISECONDS);
+            String geometry = result.get(remaining, TimeUnit.MILLISECONDS);
+            return new PreparedTouch(page.get(), geometry);
         } catch (Exception error) {
             throw new java.io.IOException("Valuation chooser geometry failed at " + phase.get(), error);
         } finally {
             result.cancel(false);
             main.post(() -> unregister(observer.get(), callback.get()));
+        }
+    }
+
+    static final class PreparedTouch {
+        final String geometry;
+        private final WebView page;
+        PreparedTouch(WebView page, String geometry) {
+            this.page = page;
+            this.geometry = geometry;
+        }
+        void logTrace(long timeoutMs) {
+            try {
+                logChunks(checkedTrace(readTrace(page, timeoutMs)));
+            } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt();
+                Log.w("ValuationChooserEvent", "Diagnostic read interrupted; original outcome preserved");
+            } catch (Exception | AssertionError failure) {
+                Log.w("ValuationChooserEvent", "Diagnostic read unavailable: " + failure.getClass().getSimpleName());
+            }
+        }
+    }
+
+    /** Observe the retained test WebView even when DocumentsUI has paused its Activity. */
+    private static String readTrace(WebView page, long timeoutMs) throws Exception {
+        CompletableFuture<String> result = new CompletableFuture<>();
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (result.isDone()) return;
+            try {
+                page.evaluateJavascript(DRAIN, result::complete);
+            } catch (RuntimeException | AssertionError failure) {
+                result.completeExceptionally(failure);
+            }
+        });
+        try {
+            return result.get(timeoutMs, TimeUnit.MILLISECONDS);
+        } finally {
+            result.cancel(false);
+        }
+    }
+
+    private static String checkedTrace(String raw) throws Exception {
+        assertNotNull("Chooser trace response must exist", raw);
+        assertTrue("Chooser trace response stays bounded", raw.length() <= 16384);
+        JSONArray records = new JSONArray(raw);
+        assertTrue("Chooser trace retains at most 32 records", records.length() <= 32);
+        for (int index = 0; index < records.length(); index++) checkRecord(records.getJSONObject(index));
+        return records.toString();
+    }
+
+    private static void checkRecord(JSONObject record) throws Exception {
+        assertEquals("Chooser trace has only fixed metadata fields", TRACE_FIELDS.size(), record.length());
+        for (String field : TRACE_FIELDS) assertTrue("Chooser trace field must exist", record.has(field));
+        checkEnum(record, "type", java.util.Set.of("pointerdown", "pointerup", "pointercancel", "click"));
+        checkEnum(record, "phase", java.util.Set.of("capture", "bubble"));
+        checkEnum(record, "target", java.util.Set.of("input", "label", "label-child", "outside"));
+        for (String field : new String[] { "trusted", "prevented", "inputEnabled", "inputFocused" }) {
+            assertTrue("Chooser trace flag must be boolean", record.get(field) instanceof Boolean);
+        }
+        for (String field : new String[] { "active", "hasBeenActive" }) checkOptionalFlag(record, field);
+        checkNumber(record, "x");
+        checkNumber(record, "y");
+        if (!record.isNull("pointerId")) checkNumber(record, "pointerId");
+    }
+
+    private static void checkEnum(JSONObject record, String field, java.util.Set<String> allowed) throws Exception {
+        assertTrue("Chooser trace category must be a string", record.get(field) instanceof String);
+        assertTrue("Chooser trace category must be fixed", allowed.contains(record.getString(field)));
+    }
+
+    private static void checkOptionalFlag(JSONObject record, String field) throws Exception {
+        if (record.isNull(field)) return;
+        assertTrue("Chooser activation flag must be boolean or null", record.get(field) instanceof Boolean);
+    }
+
+    private static void checkNumber(JSONObject record, String field) throws Exception {
+        Object value = record.get(field);
+        assertTrue("Chooser trace coordinate must be numeric", value instanceof Number);
+        assertTrue("Chooser trace coordinate must be finite", Double.isFinite(((Number) value).doubleValue()));
+    }
+
+    private static void logChunks(String checked) {
+        final int width = 2000;
+        int parts = Math.max(1, (checked.length() + width - 1) / width);
+        for (int start = 0; start < checked.length(); start += width) {
+            Log.i("ValuationChooserEvent", "part=" + (start / width + 1) + "/" + parts + " " +
+                checked.substring(start, Math.min(start + width, checked.length())));
         }
     }
 
