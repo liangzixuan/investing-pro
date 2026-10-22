@@ -9627,14 +9627,18 @@ public class ManagedWorkspaceInstrumentedTest {
         try {
             // Public, app-scoped injection waits for retiring window animations before DOWN.
             // Call on the instrumentation thread; never bypass Android's obscured-touch guard.
+            Log.i("ManagedEditorTouch", "DOWN dispatch uptime=" + SystemClock.uptimeMillis() + ", x=" + point[0] + ", y=" + point[1]);
             InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
+            Log.i("ManagedEditorTouch", "DOWN returned uptime=" + SystemClock.uptimeMillis());
         } finally {
             down.recycle();
         }
         MotionEvent up = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, point[0], point[1], 0);
         up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
         try {
+            Log.i("ManagedEditorTouch", "UP dispatch uptime=" + SystemClock.uptimeMillis());
             InstrumentationRegistry.getInstrumentation().sendPointerSync(up);
+            Log.i("ManagedEditorTouch", "UP returned uptime=" + SystemClock.uptimeMillis());
         } finally {
             up.recycle();
         }

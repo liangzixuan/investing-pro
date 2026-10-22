@@ -24,8 +24,22 @@ final class ValuationChooserGeometry {
         "const text=[...label.childNodes].find(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim()==='Select a valuation inputs file');" +
         "if(!text)return null;";
 
+    // Passive, fixed-field diagnostics in the invented test page only. A new arm retires
+    // the previous listeners; at most 32 records are logged per arm of the trace.
+    private static final String TRACE =
+        "window.__valuationChooserTrace?.abort();const trace=new AbortController();window.__valuationChooserTrace=trace;let remaining=32;" +
+        "for(const type of ['pointerdown','pointerup','pointercancel','click'])for(const capture of [true,false])" +
+        "document.addEventListener(type,event=>{" +
+        "const target=event.target,activation=navigator.userActivation;" +
+        "console.info('ValuationChooserEvent '+JSON.stringify({type:event.type,phase:capture?'capture':'bubble'," +
+        "target:target===input?'input':target===label?'label':label.contains(target)?'label-child':'outside'," +
+        "trusted:event.isTrusted,prevented:event.defaultPrevented,x:event.clientX,y:event.clientY," +
+        "pointerId:event.pointerId??null,inputEnabled:!input.disabled,inputFocused:document.activeElement===input," +
+        "active:activation?.isActive??null,hasBeenActive:activation?.hasBeenActive??null}));" +
+        "if(--remaining===0)trace.abort();},{capture,passive:true,signal:trace.signal});";
+
     private static final String SCROLL =
-        "(() => {" + TARGET + "label.scrollIntoView({block:'center',inline:'center',behavior:'instant'});return true;})()";
+        "(() => {" + TARGET + TRACE + "label.scrollIntoView({block:'center',inline:'center',behavior:'instant'});return true;})()";
 
     private static final String GEOMETRY =
         "(() => {" + TARGET +

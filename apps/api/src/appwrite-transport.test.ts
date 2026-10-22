@@ -68,7 +68,23 @@ function reply(
     .delay(1);
 }
 
-async function loopbackServer(handler: RequestListener) {
+async function readyLoopbackSocket(server: Server, port: number) {
+  const accepted = new Promise<void>((resolve) => {
+    server.once("connection", () => resolve());
+  });
+  const socket = connect({ host: "127.0.0.1", port });
+  const connected = new Promise<void>((resolve, reject) => {
+    socket.once("connect", () => resolve());
+    socket.once("error", reject);
+  });
+  await Promise.all([accepted, connected]);
+  return socket;
+}
+
+async function loopbackServer(
+  handler: RequestListener,
+  options: { preconnect?: boolean; onConnect?: () => void } = {},
+) {
   const server = createServer(handler);
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -78,12 +94,22 @@ async function loopbackServer(handler: RequestListener) {
   const address = server.address();
   if (address === null || typeof address === "string")
     throw new Error("Test address missing");
+  let preparedSocket = options.preconnect
+    ? await readyLoopbackSocket(server, address.port)
+    : undefined;
   return new Agent({
     pipelining: 0,
     allowH2: false,
     // Test-only connector: the SDK still targets its exact synthetic HTTPS origin.
     // This supplied dispatcher sends invented bytes to this one ephemeral socket.
     connect: (_options, callback) => {
+      options.onConnect?.();
+      if (preparedSocket) {
+        const socket = preparedSocket;
+        preparedSocket = undefined;
+        callback(null, socket);
+        return;
+      }
       const socket = connect({ host: "127.0.0.1", port: address.port });
       socket.once("connect", () => callback(null, socket));
       socket.once("error", (error) => callback(error, null));
@@ -318,12 +344,22 @@ describe("Appwrite bounded SDK transport", () => {
 
   it("rejects an abrupt native disconnect after partial JSON without retrying", async () => {
     let calls = 0;
-    const dispatcher = await loopbackServer((_request, response) => {
-      calls++;
-      response.socket?.end(
-        'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{"partial":',
-      );
-    });
+    let connectionAttempts = 0;
+    const dispatcher = await loopbackServer(
+      (_request, response) => {
+        calls++;
+        response.socket?.end(
+          'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{"partial":',
+        );
+      },
+      {
+        // Complete native TCP admission before starting this disconnect deadline.
+        preconnect: true,
+        onConnect: () => {
+          connectionAttempts++;
+        },
+      },
+    );
     const transport = createAppwriteTransport({
       endpoint: ENDPOINT,
       dispatcher,
@@ -339,6 +375,8 @@ describe("Appwrite bounded SDK transport", () => {
       ),
     ).rejects.toMatchObject({ code: 0, response: "" });
     expect(calls).toBe(1);
+    expect(connectionAttempts).toBe(1);
+    expect(transport.snapshot().requests).toBe(1);
   });
   it.each([
     "http://appwrite.example.invalid/v1",
