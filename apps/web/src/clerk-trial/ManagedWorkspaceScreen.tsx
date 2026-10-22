@@ -50,8 +50,10 @@ import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
-import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
-import { ManagedScreenShortlistWatchlist } from "./ManagedScreenShortlistWatchlist";
+import {
+  ManagedFinancialDiscovery,
+  managedFinancialDiscoveryProps,
+} from "./ManagedFinancialDiscovery";
 import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import {
   ManagedMarketsNavigation,
@@ -796,6 +798,12 @@ export function ManagedWorkspaceScreen({
   };
   const retired = sessionState.phase !== "active";
   const navigationPending = navigation?.pending ?? false;
+  const financialDiscovery = managedFinancialDiscoveryProps(
+    workspace,
+    navigationPending,
+    openResearch,
+    () => setView("watchlist"),
+  );
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();
   const isMarketsCurrent = () => {
@@ -1509,19 +1517,7 @@ export function ManagedWorkspaceScreen({
                     Discover
                   </h2>
                 </div>
-                <ManagedFinancialScreen
-                  model={workspace.financialScreen}
-                  onOpenReport={(capture, opener) =>
-                    openResearch(opener, () =>
-                      workspace.openFinancialScreenReport(capture),
-                    )
-                  }
-                />
-                <ManagedScreenShortlistWatchlist
-                  workspace={workspace}
-                  navigationPending={navigationPending}
-                  onReviewWatchlist={() => setView("watchlist")}
-                />
+                <ManagedFinancialDiscovery {...financialDiscovery} />
                 {discovery.results.length > 0 && (
                   <ul className="managed-results">
                     {discovery.results.map((result) => {

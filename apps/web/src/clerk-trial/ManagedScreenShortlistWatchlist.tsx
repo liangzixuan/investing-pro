@@ -21,7 +21,6 @@ interface Props {
   readonly navigationPending: boolean;
   readonly onReviewWatchlist: () => void;
 }
-
 interface ActionFrame {
   readonly workspace: ManagedWorkspace;
   readonly screen: ReturnType<
@@ -30,6 +29,18 @@ interface ActionFrame {
   readonly discovery: ReturnType<ManagedWorkspace["getSnapshot"]>;
   readonly saved: ReturnType<ManagedWorkspace["coordinator"]["getSnapshot"]>;
   readonly session: ReturnType<ManagedWorkspace["sessionOwner"]["getSnapshot"]>;
+}
+interface OwnedReview {
+  readonly owner: ManagedWorkspace;
+  readonly preview: ScreenShortlistWatchlistPreview;
+}
+interface CommandContext {
+  readonly frame: ActionFrame;
+  readonly committed: { current: ActionFrame | null };
+  readonly navigationPending: boolean;
+  readonly onReviewWatchlist: () => void;
+  readonly setReview: (review: OwnedReview | null) => void;
+  readonly setNotice: (notice: string) => void;
 }
 
 function frameSnapshotsCurrent(frame: ActionFrame) {
@@ -41,7 +52,6 @@ function frameSnapshotsCurrent(frame: ActionFrame) {
     workspace.sessionOwner.getSnapshot() === frame.session
   );
 }
-
 function frameHostCurrent(frame: ActionFrame, navigationPending: boolean) {
   return (
     !navigationPending &&
@@ -52,9 +62,58 @@ function frameHostCurrent(frame: ActionFrame, navigationPending: boolean) {
     frame.workspace.canNavigate()
   );
 }
+function actionCurrent(context: CommandContext) {
+  return (
+    context.committed.current === context.frame &&
+    frameSnapshotsCurrent(context.frame) &&
+    frameHostCurrent(context.frame, context.navigationPending)
+  );
+}
+function prepareReview(context: CommandContext) {
+  if (!actionCurrent(context)) return;
+  const workspace = context.frame.workspace;
+  const prepared = prepareScreenShortlistWatchlist(workspace);
+  context.setReview(
+    prepared.preview ? { owner: workspace, preview: prepared.preview } : null,
+  );
+  context.setNotice(prepared.reason);
+}
+function applyReview(
+  context: CommandContext,
+  preview: ScreenShortlistWatchlistPreview,
+) {
+  if (!actionCurrent(context)) return;
+  const applying = { ...context.frame };
+  context.committed.current = applying;
+  const result = applyScreenShortlistWatchlist(
+    context.frame.workspace,
+    preview,
+  );
+  if (context.committed.current !== applying) return;
+  context.committed.current = null;
+  context.setReview(null);
+  context.setNotice(result.message);
+}
+function cancelReview(context: CommandContext) {
+  if (context.committed.current !== context.frame) return;
+  context.committed.current = null;
+  context.setReview(null);
+  context.setNotice("");
+}
+function reviewWatchlist(context: CommandContext) {
+  if (actionCurrent(context)) context.onReviewWatchlist();
+}
+function reviewCommands(context: CommandContext) {
+  return {
+    prepare: () => prepareReview(context),
+    apply: (preview: ScreenShortlistWatchlistPreview) =>
+      applyReview(context, preview),
+    cancel: () => cancelReview(context),
+    reviewWatchlist: () => reviewWatchlist(context),
+  };
+}
 
-export function ManagedScreenShortlistWatchlist(props: Props) {
-  const { workspace, navigationPending, onReviewWatchlist } = props;
+function useActionFrame(workspace: ManagedWorkspace): ActionFrame {
   const screen = useSyncExternalStore(
     workspace.financialScreen.subscribe,
     workspace.financialScreen.getSnapshot,
@@ -75,33 +134,39 @@ export function ManagedScreenShortlistWatchlist(props: Props) {
     workspace.sessionOwner.getSnapshot,
     workspace.sessionOwner.getSnapshot,
   );
-  const id = useId();
-  const [review, setReview] = useState<{
-    owner: ManagedWorkspace;
-    preview: ScreenShortlistWatchlistPreview;
-  } | null>(null);
+  return { workspace, screen, discovery, saved, session };
+}
+function useShortlistReview(frame: ActionFrame, props: Props) {
+  const [review, setReview] = useState<OwnedReview | null>(null);
   const [notice, setNotice] = useState("");
-  const preview = review?.owner === workspace ? review.preview : null;
+  const preview = review?.owner === frame.workspace ? review.preview : null;
   const currentPreview =
-    preview !== null && isScreenShortlistWatchlistCurrent(workspace, preview);
-  const action = { workspace, screen, discovery, saved, session };
-  const committed = useRef<typeof action | null>(null);
+    preview !== null &&
+    isScreenShortlistWatchlistCurrent(frame.workspace, preview);
+  const committed = useRef<ActionFrame | null>(null);
   useLayoutEffect(() => {
-    committed.current = action;
+    committed.current = frame;
     return () => {
       committed.current = null;
     };
   });
-  const current = () =>
-    committed.current === action &&
-    frameSnapshotsCurrent(action) &&
-    frameHostCurrent(action, navigationPending);
-  const cancel = () => {
-    if (committed.current !== action) return;
-    committed.current = null;
-    setReview(null);
-    setNotice("");
-  };
+  const commands = reviewCommands({
+    frame,
+    committed,
+    setReview,
+    setNotice,
+    navigationPending: props.navigationPending,
+    onReviewWatchlist: props.onReviewWatchlist,
+  });
+  return { preview, currentPreview, notice, commands };
+}
+type ShortlistReview = ReturnType<typeof useShortlistReview>;
+type ReviewCommands = ReturnType<typeof reviewCommands>;
+
+export function ManagedScreenShortlistWatchlist(props: Props) {
+  const frame = useActionFrame(props.workspace);
+  const id = useId();
+  const review = useShortlistReview(frame, props);
   return (
     <section
       className="managed-screen-shortlist-watchlist"
@@ -112,99 +177,115 @@ export function ManagedScreenShortlistWatchlist(props: Props) {
         Review the exact listings before adding them to the My Watchlist draft.
         Existing notes and order stay intact. Save My Watchlist separately.
       </p>
-      <div className="trial-actions">
-        <button
-          type="button"
-          className="trial-secondary"
-          disabled={navigationPending || screen.shortlist.length === 0}
-          onClick={() => {
-            if (!current()) return;
-            const prepared = prepareScreenShortlistWatchlist(workspace);
-            setReview(
-              prepared.preview
-                ? { owner: workspace, preview: prepared.preview }
-                : null,
-            );
-            setNotice(prepared.reason);
-          }}
-        >
-          Review shortlist for My Watchlist
-        </button>
-        <button
-          type="button"
-          className="trial-secondary"
-          disabled={navigationPending || session.phase !== "active"}
-          onClick={() => {
-            if (current()) onReviewWatchlist();
-          }}
-        >
-          Review and save in My Watchlist
-        </button>
-      </div>
-      {notice && <p role="status">{notice}</p>}
-      {preview && session.phase === "active" && (
-        <section aria-labelledby={`${id}-review-heading`}>
-          <h4 id={`${id}-review-heading`}>Shortlist addition review</h4>
-          <p>
-            Run started {preview.runStartedAt}. Finished{" "}
-            {preview.runCompletedAt ?? "without a completion time"}. These are
-            the original run times; this review does not refresh evidence.
-          </p>
-          <p>
-            {preview.additions} new listings will be appended in shortlist order
-            with empty notes. Existing entries stay in their current positions.
-            No financial values or screening verdict will be written to a note.
-          </p>
-          <ol>
-            {preview.rows.map((row) => (
-              <li key={row.listing.listingId}>
-                <p>
-                  <ListingIdentity member={row.listing} />
-                </p>
-                <p>
-                  {row.status === "add"
-                    ? "Add to draft with an empty note."
-                    : "Already in draft. Keep its note and position."}
-                </p>
-                <ShortlistIdentity listing={row.listing} />
-              </li>
-            ))}
-          </ol>
-          {!currentPreview && (
-            <p role="status">
-              This review is out of date. Review the current shortlist and
-              Watchlist draft again before adding listings.
-            </p>
-          )}
-          <div className="trial-actions">
-            <button
-              type="button"
-              disabled={
-                navigationPending || !currentPreview || preview.additions === 0
-              }
-              onClick={() => {
-                if (!current()) return;
-                const applying = { ...action };
-                committed.current = applying;
-                const result = applyScreenShortlistWatchlist(
-                  workspace,
-                  preview,
-                );
-                if (committed.current !== applying) return;
-                committed.current = null;
-                setReview(null);
-                setNotice(result.message);
-              }}
-            >
-              Add {preview.additions} listings to Watchlist draft
-            </button>
-            <button type="button" className="trial-secondary" onClick={cancel}>
-              Keep Watchlist unchanged
-            </button>
-          </div>
-        </section>
+      {renderEntryActions(frame, props.navigationPending, review.commands)}
+      {review.notice && <p role="status">{review.notice}</p>}
+      {renderShortlistReview(id, frame, props.navigationPending, review)}
+    </section>
+  );
+}
+function renderEntryActions(
+  frame: ActionFrame,
+  navigationPending: boolean,
+  commands: ReviewCommands,
+) {
+  return (
+    <div className="trial-actions">
+      <button
+        type="button"
+        className="trial-secondary"
+        disabled={navigationPending || frame.screen.shortlist.length === 0}
+        onClick={commands.prepare}
+      >
+        Review shortlist for My Watchlist
+      </button>
+      <button
+        type="button"
+        className="trial-secondary"
+        disabled={navigationPending || frame.session.phase !== "active"}
+        onClick={commands.reviewWatchlist}
+      >
+        Review and save in My Watchlist
+      </button>
+    </div>
+  );
+}
+function renderShortlistReview(
+  id: string,
+  frame: ActionFrame,
+  navigationPending: boolean,
+  review: ShortlistReview,
+) {
+  const { preview, currentPreview, commands } = review;
+  if (!preview || frame.session.phase !== "active") return null;
+  return (
+    <section aria-labelledby={`${id}-review-heading`}>
+      <h4 id={`${id}-review-heading`}>Shortlist addition review</h4>
+      <p>
+        Run started {preview.runStartedAt}. Finished{" "}
+        {preview.runCompletedAt ?? "without a completion time"}. These are the
+        original run times; this review does not refresh evidence.
+      </p>
+      <p>
+        {preview.additions} new listings will be appended in shortlist order
+        with empty notes. Existing entries stay in their current positions. No
+        financial values or screening verdict will be written to a note.
+      </p>
+      <ol>{preview.rows.map(renderReviewRow)}</ol>
+      {!currentPreview && (
+        <p role="status">
+          This review is out of date. Review the current shortlist and Watchlist
+          draft again before adding listings.
+        </p>
+      )}
+      {renderReviewActions(
+        preview,
+        currentPreview,
+        navigationPending,
+        commands,
       )}
     </section>
+  );
+}
+function renderReviewRow(row: ScreenShortlistWatchlistPreview["rows"][number]) {
+  return (
+    <li key={row.listing.listingId}>
+      <p>
+        <ListingIdentity member={row.listing} />
+      </p>
+      <p>
+        {row.status === "add"
+          ? "Add to draft with an empty note."
+          : "Already in draft. Keep its note and position."}
+      </p>
+      <ShortlistIdentity listing={row.listing} />
+    </li>
+  );
+}
+function renderReviewActions(
+  preview: ScreenShortlistWatchlistPreview,
+  currentPreview: boolean,
+  navigationPending: boolean,
+  commands: ReviewCommands,
+) {
+  return (
+    <div className="trial-actions">
+      <button
+        type="button"
+        disabled={
+          navigationPending || !currentPreview || preview.additions === 0
+        }
+        onClick={() => commands.apply(preview)}
+      >
+        Add {preview.additions} listings to Watchlist draft
+      </button>
+      <button
+        type="button"
+        className="trial-secondary"
+        onClick={commands.cancel}
+      >
+        Keep Watchlist unchanged
+      </button>
+    </div>
   );
 }
 

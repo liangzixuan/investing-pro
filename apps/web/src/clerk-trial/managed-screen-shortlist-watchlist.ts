@@ -1,15 +1,15 @@
 import {
   membershipMatchesResult,
-  type MainWatchlistPayload,
   type ManagedEodIdentity,
+  type WatchlistMembership,
 } from "@research-cockpit/contracts";
-import type { ManagedFinancialScreenState } from "./managed-financial-screen";
-import type { ManagedSessionState } from "./managed-session-owner";
-import type {
-  ManagedDiscoveryState,
-  ManagedWorkspace,
-} from "./managed-workspace";
-import type { SaveState } from "./save-coordinator";
+import type { ManagedWorkspace } from "./managed-workspace";
+import {
+  captureScreenShortlistContext,
+  screenShortlistContextIssue,
+  isScreenShortlistContextCurrent,
+  type ScreenShortlistContext,
+} from "./managed-screen-shortlist-context";
 
 export interface ScreenShortlistWatchlistPreview {
   readonly rows: readonly {
@@ -20,97 +20,24 @@ export interface ScreenShortlistWatchlistPreview {
   readonly runStartedAt: string;
   readonly runCompletedAt: string | null;
 }
-interface Capture {
-  readonly workspace: ManagedWorkspace;
-  readonly view: ManagedDiscoveryState;
-  readonly screen: ManagedFinancialScreenState;
-  readonly saved: SaveState<MainWatchlistPayload>;
-  readonly session: Readonly<ManagedSessionState>;
-}
-const previews = new WeakMap<ScreenShortlistWatchlistPreview, Capture>();
+const previews = new WeakMap<
+  ScreenShortlistWatchlistPreview,
+  ScreenShortlistContext
+>();
 const stale =
   "Prepare a new review because the screen, Watchlist or session changed.";
 
-function capture(workspace: ManagedWorkspace): Capture {
-  return {
-    workspace,
-    view: workspace.getSnapshot(),
-    screen: workspace.financialScreen.getSnapshot(),
-    saved: workspace.coordinator.getSnapshot(),
-    session: workspace.sessionOwner.getSnapshot(),
-  };
+function reviewListing(
+  listing: ManagedEodIdentity,
+  existing: WatchlistMembership | undefined,
+): ScreenShortlistWatchlistPreview["rows"][number] | null {
+  if (existing && !membershipMatchesResult(existing, listing)) return null;
+  return Object.freeze({
+    listing: Object.freeze({ ...listing }),
+    status: existing ? "existing" : "add",
+  });
 }
-function routeIssue({ workspace, view, session }: Capture): string | null {
-  if (session.phase !== "active")
-    return "Start an active session before reviewing the shortlist.";
-  if (view.view !== "discover")
-    return "Return to the financial screen before reviewing the shortlist.";
-  if (view.research || view.companyRoute)
-    return "Close company research before reviewing the shortlist.";
-  if (!workspace.canNavigate())
-    return "Finish the current editor before reviewing the shortlist.";
-  if (view.read || view.review || view.reviewing)
-    return "Finish the catalog operation before reviewing the shortlist.";
-  return null;
-}
-function saveIssue({ workspace, saved }: Capture): string | null {
-  if (!workspace.canEdit())
-    return "Resolve the current Watchlist operation before reviewing the shortlist.";
-  if (saved.phase !== "idle")
-    return "Wait for the Watchlist operation to finish.";
-  if (saved.uncertain || saved.replayPending)
-    return "Reconcile the pending Watchlist save before reviewing the shortlist.";
-  if (!saved.latestLoaded)
-    return "Load the latest Watchlist before reviewing the shortlist.";
-  if (!saved.saved || saved.baseVersion !== saved.saved.version)
-    return "Load the latest Watchlist before reviewing the shortlist.";
-  if (!saved.draft) return "Load My Watchlist before reviewing the shortlist.";
-  return null;
-}
-function catalogIssue({
-  workspace,
-  view,
-  screen,
-  saved,
-}: Capture): string | null {
-  if (!view.snapshot)
-    return "Refresh the catalog before reviewing the shortlist.";
-  if (workspace.watchlistFileCatalogReviewRequired())
-    return "Review the imported Watchlist catalog before adding the shortlist.";
-  const digest = view.snapshot.snapshotSha256;
-  if (saved.draft?.snapshotSha256 !== digest)
-    return "Review catalog changes in My Watchlist before adding the shortlist.";
-  if (screen.catalogSnapshotSha256 !== digest)
-    return "Refresh the financial screen against the current catalog.";
-  return null;
-}
-function reportIssue({ workspace, screen }: Capture): string | null {
-  if (!screen.run || screen.shortlist.length === 0)
-    return "Shortlist at least one screened company first.";
-  for (const row of screen.shortlist) {
-    const response = row.report?.response;
-    if (!response)
-      return "Run the screen again before reviewing the shortlist.";
-    if (
-      !workspace.financialScreen.canAdmitReport({
-        run: screen.run,
-        row,
-        response,
-      })
-    )
-      return "Run the screen again with the current criteria and catalog before reviewing the shortlist.";
-  }
-  return null;
-}
-function eligibilityIssue(context: Capture): string | null {
-  return (
-    routeIssue(context) ??
-    saveIssue(context) ??
-    catalogIssue(context) ??
-    reportIssue(context)
-  );
-}
-function reviewRows({ screen, saved }: Capture) {
+function reviewRows({ screen, saved }: ScreenShortlistContext) {
   const members = new Map(
     saved.draft!.memberships.map((member) => [member.listingId, member]),
   );
@@ -122,13 +49,9 @@ function reviewRows({ screen, saved }: Capture) {
     if (seen.has(listing.listingId)) return null;
     seen.add(listing.listingId);
     const existing = members.get(listing.listingId);
-    if (existing && !membershipMatchesResult(existing, listing)) return null;
-    rows.push(
-      Object.freeze({
-        listing: Object.freeze({ ...listing }),
-        status: existing ? "existing" : "add",
-      }),
-    );
+    const reviewed = reviewListing(listing, existing);
+    if (!reviewed) return null;
+    rows.push(reviewed);
   }
   return Object.freeze(rows);
 }
@@ -138,8 +61,8 @@ export function prepareScreenShortlistWatchlist(workspace: ManagedWorkspace): {
   preview: ScreenShortlistWatchlistPreview | null;
   reason: string;
 } {
-  const context = capture(workspace);
-  const issue = eligibilityIssue(context);
+  const context = captureScreenShortlistContext(workspace);
+  const issue = screenShortlistContextIssue(context);
   if (issue) return { preview: null, reason: issue };
   const rows = reviewRows(context);
   if (!rows)
@@ -164,21 +87,14 @@ export function prepareScreenShortlistWatchlist(workspace: ManagedWorkspace): {
   previews.set(preview, context);
   return { preview, reason: "" };
 }
-function sameCapture(workspace: ManagedWorkspace, context: Capture): boolean {
-  if (workspace !== context.workspace) return false;
-  if (workspace.getSnapshot() !== context.view) return false;
-  if (workspace.financialScreen.getSnapshot() !== context.screen) return false;
-  if (workspace.coordinator.getSnapshot() !== context.saved) return false;
-  return workspace.sessionOwner.getSnapshot() === context.session;
-}
 export function isScreenShortlistWatchlistCurrent(
   workspace: ManagedWorkspace,
   preview: ScreenShortlistWatchlistPreview,
 ): boolean {
   const context = previews.get(preview);
   if (!context) return false;
-  if (!sameCapture(workspace, context)) return false;
-  return eligibilityIssue(context) === null;
+  if (!isScreenShortlistContextCurrent(workspace, context)) return false;
+  return screenShortlistContextIssue(context) === null;
 }
 
 /** Consume the review before notifying draft subscribers. Explicit Save remains separate. */
