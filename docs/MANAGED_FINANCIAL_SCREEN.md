@@ -78,9 +78,47 @@ the complete admitted Annual graph.
 
 Back returns to the original criteria, dates, results and session shortlist.
 Opening another view cancels pending screen reads and retains completed results.
-Watchlist, Follow-ups and Portfolio drafts remain independent. Shortlist choices
-do not change or save these records. Retiring the session clears this temporary
+Watchlist, Follow-ups and Portfolio drafts remain independent. Selecting a
+shortlist alone does not change or save these records. Retiring the session clears this temporary
 screen. Stale, replaced and foreign result handles cannot open research.
+
+## Keep the shortlist in My Watchlist
+
+After a run finishes or Cancel settles, shortlist the loaded companies you want
+to keep. **Review shortlist for My Watchlist** prepares a complete listing
+review without changing a draft or reading a source. The review shows each
+listing's full identity, whether it will be added or already exists, and the
+original run times. A shortlist can contain matches, nonmatches or unknowns;
+your selection does not establish an investment verdict.
+
+**Add listings to Watchlist draft** appends only missing listings, in shortlist
+order, with empty notes. Existing entries retain their exact notes and order,
+including unsaved or invalid raw note text. A changed identity or insufficient
+room refuses the whole operation. It never replaces an existing company by
+ticker or makes a partial addition. **Keep Watchlist unchanged** cancels the
+review. Financial values and criteria are not copied into notes automatically.
+
+Choose **Review and save in My Watchlist** to inspect the full draft and use its
+existing explicit Save. Returning to Discover retains the screen. Research still
+opens the exact loaded Annual report, and Back retains the original results.
+Follow-ups and Portfolio stay independent.
+
+A loaded, editable Watchlist with a current catalog is required. Pending saves,
+conflicts, uncertain receipts and imported identities needing review must be
+resolved through My Watchlist first. Changing the shortlist, run, criteria,
+catalog, draft, save state, visit or session invalidates the old review. Prepare
+a new review after the change. Applying a review consumes it before draft
+listeners run, so a captured action cannot apply twice.
+
+This candidate reuses the existing shortlist, catalog identities and Watchlist
+save coordinator. It adds no resource, provider, dependency or automatic read.
+Source, rendered layout, native execution, publication and phone acceptance
+remain separate in Current work.
+
+The interaction follows the established pattern of selecting screener results
+before explicitly adding them to a watchlist, described in the
+[TradingView help guide](https://www.tradingview.com/support/solutions/43000473930-how-to-add-the-screener-search-results-to-the-watchlist/).
+This implementation keeps Investment's full identity review and separate Save.
 
 ## Source scope and acceptance
 

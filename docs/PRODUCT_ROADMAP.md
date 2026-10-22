@@ -30,16 +30,25 @@ has no client delivery yet.
 ## Current priority after the October 21 Android delivery
 
 [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files) are accepted in
-source at main `461246249c6d790a1c8bb28ab85de301b267058f`. The next daily-use source
-candidate adds [valuation editor file recovery](MANAGED_VALUATION_WORKBENCH.md#draft-files-for-one-valuation-editor):
-explicit capture of both complete raw model maps, full file/current-editor review
-and explicit restore for the exact account/backend/company/catalog. Invalid
-numeric text stays exact within the editor limit; rejected oversized capture is
-refused. Restore marks the editor dirty and clears results, with Calculate,
-Stage, Review and Save still separate. The online valuation draft and save base
-remain unchanged. This advances daily research recovery using existing file
-delivery, without a provider, automatic storage or release. Live website/API and
-Android 1.32 stay unchanged; browser, chooser and phone acceptance remain separate.
+source at main `461246249c6d790a1c8bb28ab85de301b267058f`.
+[Valuation editor file recovery](MANAGED_VALUATION_WORKBENCH.md#draft-files-for-one-valuation-editor)
+is accepted at main `2159348420f139a55ec2c49537ca9fa81b06a6c9`, with all required
+original main checks and the native full-60 gate passing. Complete raw input
+capture, exact file/current-editor review and explicit dirty restore retain
+separate Calculate, Stage, Review and Save actions.
+
+The selected next complete workflow connects [screening shortlist review to
+My Watchlist](MANAGED_FINANCIAL_SCREEN.md#keep-the-shortlist-in-my-watchlist).
+After inspecting loaded financial results, the owner reviews the exact selected
+listings, appends missing companies to the draft, then uses the existing explicit
+Watchlist Review and Save. It preserves existing notes/order and retained
+research-and-Back navigation. Identity, catalog, draft, navigation and session
+changes invalidate the proposal. This advances M2/M4 discovery-to-research using
+the current cohort; it adds no coverage, source, storage resource or fee.
+Local workflow tests, web types, scoped lint and the architecture boundary pass.
+Current PR and hosted native acceptance are pending. Client delivery,
+browser layout and phone acceptance remain separate; the live website/API and
+provided Android 1.32 are unchanged.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The
