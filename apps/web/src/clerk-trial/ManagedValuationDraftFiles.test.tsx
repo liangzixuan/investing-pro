@@ -5,7 +5,10 @@ import type { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedValuationDraftRecovery } from "./managed-valuation-draft-recovery";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedValuationDraftFiles } from "./ManagedValuationDraftFiles";
-import { ManagedValuationWorkbench } from "./managed-valuation-workbench";
+import {
+  ManagedValuationWorkbench,
+  type ManagedValuationSnapshot,
+} from "./managed-valuation-workbench";
 import {
   dcfFields,
   exitFields,
@@ -189,20 +192,25 @@ it("clears a selection before reading, exports only explicitly and never restore
 });
 function assertScenarioInputs(
   markup: string,
-  prefix: string,
-  scenario: string,
+  expected: ManagedValuationSnapshot,
+  scenario: keyof ManagedValuationSnapshot["dcfDraft"]["scenarios"],
 ) {
-  expect(markup).toContain(`${prefix} DCF ${scenario}`);
+  expect(markup).toContain(
+    expected.dcfDraft.scenarios[scenario].annualCashFlowGrowthPercent,
+  );
   for (const [key] of exitScenarioFields)
-    expect(markup).toContain(`${prefix} exit ${scenario} ${key}`);
+    expect(markup).toContain(expected.exitDraft.scenarios[scenario][key]);
 }
-function assertRawModelInputs(markup: string, prefix: string) {
+function assertRawModelInputs(
+  markup: string,
+  expected: ManagedValuationSnapshot,
+) {
   for (const [key] of dcfFields)
-    expect(markup).toContain(`${prefix} DCF ${key} 1e8`);
+    expect(markup).toContain(expected.dcfDraft[key]);
   for (const [key] of exitFields)
-    expect(markup).toContain(`${prefix} exit ${key} unfinished`);
-  for (const scenario of ["conservative", "base", "expansion"])
-    assertScenarioInputs(markup, prefix, scenario);
+    expect(markup).toContain(expected.exitDraft[key]);
+  for (const scenario of ["conservative", "base", "expansion"] as const)
+    assertScenarioInputs(markup, expected, scenario);
 }
 function assertFullIdentity(markup: string) {
   for (const value of Object.values(eodSelection.listing))
@@ -215,8 +223,8 @@ it("shows every raw field and full identity for both models before explicit repl
   const { render } = fixture();
   const tree = render();
   const markup = renderToStaticMarkup(tree);
-  assertRawModelInputs(markup, "File");
-  assertRawModelInputs(markup, "Current");
+  assertRawModelInputs(markup, editor("File").getSnapshot());
+  assertRawModelInputs(markup, editor("Current").getSnapshot());
   assertFullIdentity(markup);
   expect(markup).toContain("2026-10-22T12:00:00.000Z");
   expect(markup).toContain("does not verify");
