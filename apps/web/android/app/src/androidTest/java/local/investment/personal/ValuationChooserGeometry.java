@@ -12,12 +12,14 @@ import androidx.test.core.app.ActivityScenario;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLong;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
 /** One committed scroll and fresh geometry before the valuation file chooser's real touch. */
 final class ValuationChooserGeometry {
     private ValuationChooserGeometry() {}
+    private static final AtomicLong NEXT_ARM = new AtomicLong();
 
     private static final String TARGET =
         "const input=document.querySelector('#managed-valuation-draft-files input[type=file]'),label=input?.closest('label');" +
@@ -29,7 +31,7 @@ final class ValuationChooserGeometry {
     // the previous listeners; at most 32 records are retained per arm of the trace.
     private static final String TRACE =
         "window.__valuationChooserTrace?.controller.abort();window.__valuationChooserTrace?.events.splice(0);" +
-        "const trace={controller:new AbortController(),events:[]};window.__valuationChooserTrace=trace;" +
+        "const trace={armId,controller:new AbortController(),events:[]};window.__valuationChooserTrace=trace;" +
         "for(const type of ['pointerdown','pointerup','pointercancel','click'])for(const capture of [true,false])" +
         "document.addEventListener(type,event=>{" +
         "const target=event.target,activation=navigator.userActivation;" +
@@ -41,22 +43,25 @@ final class ValuationChooserGeometry {
         "if(trace.events.length===32)trace.controller.abort();},{capture,passive:true,signal:trace.controller.signal});";
 
     private static final String DRAIN =
-        "(() => {const trace=window.__valuationChooserTrace;if(!trace)return [];" +
-        "trace.controller.abort();const events=trace.events;trace.events=[];" +
-        "delete window.__valuationChooserTrace;return events;})()";
+        "(() => {const armId=__VALUATION_ARM_ID__,trace=window.__valuationChooserTrace;if(!trace)return {present:false,armId:null,aborted:null,events:[]};" +
+        "const result={present:true,armId:trace.armId,aborted:trace.controller.signal.aborted,events:trace.events};" +
+        "if(trace.armId!==armId)return result;trace.controller.abort();trace.events=[];" +
+        "delete window.__valuationChooserTrace;return result;})()";
     private static final java.util.Set<String> TRACE_FIELDS = java.util.Set.of(
         "type", "phase", "target", "trusted", "prevented", "x", "y", "pointerId",
         "inputEnabled", "inputFocused", "active", "hasBeenActive");
 
     private static final String SCROLL =
-        "(() => {" + TARGET + TRACE + "label.scrollIntoView({block:'center',inline:'center',behavior:'instant'});return true;})()";
+        "(() => {const armId=__VALUATION_ARM_ID__;" + TARGET + TRACE + "label.scrollIntoView({block:'center',inline:'center',behavior:'instant'});return true;})()";
 
     private static final String GEOMETRY =
         "(() => {" + TARGET +
+        "const trace=window.__valuationChooserTrace;" +
         "const range=document.createRange();range.selectNodeContents(text);" +
         "const r=range.getBoundingClientRect(),ir=input.getBoundingClientRect(),v=visualViewport;" +
         "const x=r.left+r.width/2,y=r.top+r.height/2;" +
-        "return {x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:v.width,height:v.height," +
+        "return {traceState:{present:!!trace,armId:trace?.armId??null,aborted:trace?.controller.signal.aborted??null}," +
+        "x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:v.width,height:v.height," +
         "offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio,domScrollX:scrollX,domScrollY:scrollY," +
         "finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,ir.left,ir.top,ir.right,ir.bottom,ir.width,ir.height," +
         "v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio,scrollX,scrollY].every(Number.isFinite)" +
@@ -73,13 +78,17 @@ final class ValuationChooserGeometry {
         AtomicReference<WebView> page = new AtomicReference<>();
         AtomicReference<ViewTreeObserver> observer = new AtomicReference<>();
         AtomicReference<Runnable> callback = new AtomicReference<>();
+        AtomicReference<ValuationChooserWindowTrace> windowTrace = new AtomicReference<>();
+        long armId = NEXT_ARM.incrementAndGet();
+        boolean handedOff = false;
         try {
             scenario.onActivity(activity -> {
                 WebView webView = activity.getBridge().getWebView();
                 page.set(webView);
                 step(result, deadline, () -> {
                     requireVisibleHardware(webView);
-                    webView.evaluateJavascript(SCROLL, value -> step(result, deadline, () -> {
+                    windowTrace.set(ValuationChooserWindowTrace.install(activity.getWindow(), armId));
+                    webView.evaluateJavascript(SCROLL.replace("__VALUATION_ARM_ID__", Long.toString(armId)), value -> step(result, deadline, () -> {
                         assertEquals("The exact enabled valuation chooser must scroll", "true", value);
                         phase.set("visual-state");
                         webView.postVisualStateCallback(0, new WebView.VisualStateCallback() {
@@ -97,6 +106,7 @@ final class ValuationChooserGeometry {
                                             assertTrue("Committed chooser and input must be visible", measured.getBoolean("visible"));
                                             assertTrue("Committed chooser label must own its touch center", measured.getBoolean("hit"));
                                             assertScrollAligned(webView, measured);
+                                            logGeometryTrace(measured, armId, windowTrace.get());
                                             result.complete(geometry);
                                         }));
                                     }));
@@ -114,41 +124,68 @@ final class ValuationChooserGeometry {
             long remaining = deadline - SystemClock.uptimeMillis();
             assertTrue("Valuation chooser geometry deadline remains", remaining > 0);
             String geometry = result.get(remaining, TimeUnit.MILLISECONDS);
-            return new PreparedTouch(page.get(), geometry);
+            PreparedTouch prepared = new PreparedTouch(page.get(), geometry, windowTrace.get(), armId);
+            handedOff = true;
+            return prepared;
         } catch (Exception error) {
             throw new java.io.IOException("Valuation chooser geometry failed at " + phase.get(), error);
         } finally {
             result.cancel(false);
-            main.post(() -> unregister(observer.get(), callback.get()));
+            boolean closeWindow = !handedOff;
+            main.post(() -> {
+                try { unregister(observer.get(), callback.get()); }
+                finally { if (closeWindow) ValuationChooserWindowTrace.close(windowTrace.get()); }
+            });
         }
     }
 
     static final class PreparedTouch {
         final String geometry;
         private final WebView page;
-        PreparedTouch(WebView page, String geometry) {
+        private final ValuationChooserWindowTrace windowTrace;
+        private final long armId;
+        PreparedTouch(WebView page, String geometry, ValuationChooserWindowTrace windowTrace, long armId) {
             this.page = page;
             this.geometry = geometry;
+            this.windowTrace = windowTrace;
+            this.armId = armId;
         }
         void logTrace(long timeoutMs) {
             try {
-                logChunks(checkedTrace(readTrace(page, timeoutMs)));
+                logChunks(checkedTrace(readTrace(page, windowTrace, armId, timeoutMs)), armId);
             } catch (InterruptedException failure) {
                 Thread.currentThread().interrupt();
-                Log.w("ValuationChooserEvent", "Diagnostic read interrupted; original outcome preserved");
+                diagnosticWarning("Diagnostic read interrupted; original outcome preserved");
             } catch (Exception | AssertionError failure) {
-                Log.w("ValuationChooserEvent", "Diagnostic read unavailable: " + failure.getClass().getSimpleName());
+                diagnosticWarning("Diagnostic read unavailable; original outcome preserved");
+            } finally {
+                closeWindowLater(windowTrace);
             }
         }
     }
 
+    private static void closeWindowLater(ValuationChooserWindowTrace windowTrace) {
+        try {
+            new Handler(Looper.getMainLooper()).post(() -> ValuationChooserWindowTrace.close(windowTrace));
+        } catch (RuntimeException | AssertionError failure) {
+            diagnosticWarning("Window diagnostic cleanup unavailable; original outcome preserved");
+        }
+    }
+
+    private static void diagnosticWarning(String message) {
+        try { Log.w("ValuationChooserEvent", message); }
+        catch (RuntimeException | AssertionError ignored) { }
+    }
     /** Observe the retained test WebView even when DocumentsUI has paused its Activity. */
-    private static String readTrace(WebView page, long timeoutMs) throws Exception {
+    private static String readTrace(WebView page, ValuationChooserWindowTrace windowTrace, long armId, long timeoutMs) throws Exception {
         CompletableFuture<String> result = new CompletableFuture<>();
         new Handler(Looper.getMainLooper()).post(() -> {
             if (result.isDone()) return;
             try {
-                page.evaluateJavascript(DRAIN, result::complete);
+                page.evaluateJavascript(DRAIN.replace("__VALUATION_ARM_ID__", Long.toString(armId)), value -> {
+                    ValuationChooserWindowTrace.close(windowTrace);
+                    result.complete(value);
+                });
             } catch (RuntimeException | AssertionError failure) {
                 result.completeExceptionally(failure);
             }
@@ -163,10 +200,43 @@ final class ValuationChooserGeometry {
     private static String checkedTrace(String raw) throws Exception {
         assertNotNull("Chooser trace response must exist", raw);
         assertTrue("Chooser trace response stays bounded", raw.length() <= 16384);
-        JSONArray records = new JSONArray(raw);
+        JSONObject envelope = new JSONObject(raw);
+        checkFields(envelope, java.util.Set.of("present", "armId", "aborted", "events"));
+        checkArmState(envelope);
+        JSONArray records = envelope.getJSONArray("events");
         assertTrue("Chooser trace retains at most 32 records", records.length() <= 32);
         for (int index = 0; index < records.length(); index++) checkRecord(records.getJSONObject(index));
-        return records.toString();
+        return envelope.toString();
+    }
+
+    private static void checkFields(JSONObject value, java.util.Set<String> fields) {
+        assertEquals("Chooser diagnostics have only fixed metadata fields", fields.size(), value.length());
+        for (String field : fields) assertTrue("Chooser diagnostic field must exist", value.has(field));
+    }
+
+    private static void checkArmState(JSONObject state) throws Exception {
+        assertTrue("Trace presence must be boolean", state.get("present") instanceof Boolean);
+        if (!state.getBoolean("present")) {
+            assertTrue("Absent trace has no arm", state.isNull("armId"));
+            assertTrue("Absent trace has no abort state", state.isNull("aborted"));
+            return;
+        }
+        checkNumber(state, "armId");
+        double armId = state.getDouble("armId");
+        assertTrue("Trace arm is a positive exact integer", armId >= 1 && armId <= 9007199254740991d && armId == Math.floor(armId));
+        assertTrue("Trace abort state must be boolean", state.get("aborted") instanceof Boolean);
+    }
+
+    private static void logGeometryTrace(JSONObject geometry, long armId, ValuationChooserWindowTrace windowTrace) {
+        try {
+            JSONObject state = geometry.getJSONObject("traceState");
+            checkFields(state, java.util.Set.of("present", "armId", "aborted"));
+            checkArmState(state);
+            Log.i("ValuationChooserEvent", "nativeArm=" + armId + ", windowCallbackOwned=" +
+                ValuationChooserWindowTrace.ownsCallback(windowTrace) + ", geometry=" + state.toString());
+        } catch (Exception | AssertionError failure) {
+            diagnosticWarning("Geometry trace metadata unavailable; original guards preserved");
+        }
     }
 
     private static void checkRecord(JSONObject record) throws Exception {
@@ -200,11 +270,11 @@ final class ValuationChooserGeometry {
         assertTrue("Chooser trace coordinate must be finite", Double.isFinite(((Number) value).doubleValue()));
     }
 
-    private static void logChunks(String checked) {
+    private static void logChunks(String checked, long armId) {
         final int width = 2000;
         int parts = Math.max(1, (checked.length() + width - 1) / width);
         for (int start = 0; start < checked.length(); start += width) {
-            Log.i("ValuationChooserEvent", "part=" + (start / width + 1) + "/" + parts + " " +
+            Log.i("ValuationChooserEvent", "nativeArm=" + armId + ", part=" + (start / width + 1) + "/" + parts + " " +
                 checked.substring(start, Math.min(start + width, checked.length())));
         }
     }
