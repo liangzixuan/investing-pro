@@ -1783,17 +1783,23 @@ export class ManagedWorkspace {
         )
           return false;
         if (!this.currentWatchlistContains(member)) return false;
-        if (selection) {
-          const watchlist = this.getResearchWatchlist(selection);
-          return watchlist.canEdit && watchlist.member === member;
-        }
-        return (
-          this.watchlistResearchVisitActive() &&
-          this.coordinator.getSnapshot().draft?.memberships.includes(member) ===
-            true
-        );
+        return this.thesisFollowupHostIsCurrent(member, selection);
       },
     };
+  }
+  private thesisFollowupHostIsCurrent(
+    member: WatchlistMembership,
+    selection?: ManagedResearchSelection,
+  ) {
+    if (selection) {
+      const watchlist = this.getResearchWatchlist(selection);
+      return watchlist.canEdit && watchlist.member === member;
+    }
+    return (
+      this.watchlistResearchVisitActive() &&
+      this.coordinator.getSnapshot().draft?.memberships.includes(member) ===
+        true
+    );
   }
   getResearchWatchlist(
     selection: ManagedResearchSelection,
