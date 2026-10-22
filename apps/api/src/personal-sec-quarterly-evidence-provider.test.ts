@@ -656,7 +656,7 @@ describe("selected-company SEC quarterly evidence provider", () => {
     ).toHaveLength(100);
   });
 
-  it("accepts the exact candidate bound, then rejects excess across concepts without a partial prefix", async () => {
+  it("accepts the exact candidate bound with complete duplicate accounting", async () => {
     const rows = Array.from({ length: LIMITS.candidateRows }, () => fact());
     const good = await finish(
       setup(() => Response.json(companyFacts(rows))).provider.loadEvidence(CIK),
@@ -666,6 +666,12 @@ describe("selected-company SEC quarterly evidence provider", () => {
       duplicateRows: 19_999,
       availableObservations: 1,
     });
+    expect(good.sources.companyFacts.status).toBe("available");
+    expect(good.sources.submissions.status).toBe("available");
+  });
+
+  it("rejects excess candidate rows across concepts without a partial prefix", async () => {
+    const rows = Array.from({ length: LIMITS.candidateRows }, () => fact());
     const bad = await finish(
       setup(() =>
         Response.json(
@@ -674,6 +680,7 @@ describe("selected-company SEC quarterly evidence provider", () => {
       ).provider.loadEvidence(CIK),
     );
     expect(bad.sources.companyFacts.status).toBe("candidate_limit");
+    expect(bad.observations).toEqual([]);
     expect(bad.coverage).toMatchObject({
       inspectedRows: 0,
       returnedObservations: 0,

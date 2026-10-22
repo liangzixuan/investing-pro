@@ -131,14 +131,20 @@ restore. Calculate and online Stage/Review/Save stay separate. All five required
 original main workflows passed, including the native full-60 gate. This source
 acceptance does not establish browser layout, publication or phone acceptance.
 
-The next complete source outcome connects the [financial-screen shortlist to
+The merged source connects the [financial-screen shortlist to
 My Watchlist](MANAGED_FINANCIAL_SCREEN.md#keep-the-shortlist-in-my-watchlist).
 An exact-listing review precedes one append of missing companies to the current
 draft. Existing notes and order remain intact, and Save stays explicit. Research
 and Back retain the loaded results. Stale reviews, changed identities and save
-recovery states refuse the addition. Local workflow tests, web types, scoped lint and the architecture boundary
-pass. Current PR and hosted native acceptance are pending. This adds no source, resource, dependency or fee. The live
-website, API and provided Android 1.32 stay unchanged.
+recovery states refuse the addition. All original PR checks and the full 60-case
+native suite passed. Original main Linux, parser and Android checks passed;
+Windows timed out in an existing compound SEC capacity test. Final main acceptance
+remains open while a focused correction separates exact-capacity acceptance and
+cross-concept overflow refusal into independent provider tests. Both retain the
+20,000-row boundary, all assertions and the default five-second test timeout.
+Production limits, transport deadlines and workflows are unchanged. This adds no
+source, resource, dependency or fee. The live website, API and provided Android
+1.32 stay unchanged.
 
 The current source increment connects an authored thesis **Next check** to a dated
 [Follow-up](MANAGED_RESEARCH_FOLLOWUPS.md). Both thesis editors offer an explicit

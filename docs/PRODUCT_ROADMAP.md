@@ -37,7 +37,7 @@ original main checks and the native full-60 gate passing. Complete raw input
 capture, exact file/current-editor review and explicit dirty restore retain
 separate Calculate, Stage, Review and Save actions.
 
-The selected next complete workflow connects [screening shortlist review to
+The merged workflow connects [screening shortlist review to
 My Watchlist](MANAGED_FINANCIAL_SCREEN.md#keep-the-shortlist-in-my-watchlist).
 After inspecting loaded financial results, the owner reviews the exact selected
 listings, appends missing companies to the draft, then uses the existing explicit
@@ -45,10 +45,12 @@ Watchlist Review and Save. It preserves existing notes/order and retained
 research-and-Back navigation. Identity, catalog, draft, navigation and session
 changes invalidate the proposal. This advances M2/M4 discovery-to-research using
 the current cohort; it adds no coverage, source, storage resource or fee.
-Local workflow tests, web types, scoped lint and the architecture boundary pass.
-Current PR and hosted native acceptance are pending. Client delivery,
-browser layout and phone acceptance remain separate; the live website/API and
-provided Android 1.32 are unchanged.
+All original PR checks and the full native 60-case suite passed. Final main
+acceptance remains open after an existing compound SEC capacity test exceeded
+five seconds on Windows. A focused correction separates its independent
+exact-limit and overflow cases while retaining every assertion, row limit and
+test timeout. Client delivery, browser layout and phone acceptance remain
+separate; the live website/API and provided Android 1.32 are unchanged.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The
