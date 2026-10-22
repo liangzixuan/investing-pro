@@ -123,17 +123,22 @@ Follow-ups draft files are accepted in source at main
 comparison and restore preserve unsaved checks/results and the current online
 save base. This source acceptance is separate from publication and phone use.
 
-The next source candidate adds [valuation editor draft files](MANAGED_VALUATION_WORKBENCH.md#draft-files-for-one-valuation-editor).
-It captures both complete raw input maps for one exact company/catalog, reads a
-bounded account/backend-scoped file locally, compares it with the complete current
-editor and explicitly restores it. Restoration marks the editor dirty and clears
-results, while the saved-resource draft and online save base stay unchanged.
-Invalid numeric text within 512 code points stays exact; rejected oversized input
-blocks capture. The review includes current rejected-field issues. Local recovery
-requires no saved-resource Load; Calculate and online Stage/Review/Save remain
-separate actions. Malformed, foreign, unsupported or oversized files and stale
-operations cannot replace newer work. The live website, API and Android 1.32 are
-unchanged; browser-layout, new chooser and phone acceptance remain open.
+[Valuation editor draft files](MANAGED_VALUATION_WORKBENCH.md#draft-files-for-one-valuation-editor)
+are accepted in source at main `2159348420f139a55ec2c49537ca9fa81b06a6c9`.
+Both complete raw input maps retain exact company, catalog and account/backend
+scope through local file capture, full comparison and explicit dirty-editor
+restore. Calculate and online Stage/Review/Save stay separate. All five required
+original main workflows passed, including the native full-60 gate. This source
+acceptance does not establish browser layout, publication or phone acceptance.
+
+The next complete source outcome connects the [financial-screen shortlist to
+My Watchlist](MANAGED_FINANCIAL_SCREEN.md#keep-the-shortlist-in-my-watchlist).
+An exact-listing review precedes one append of missing companies to the current
+draft. Existing notes and order remain intact, and Save stays explicit. Research
+and Back retain the loaded results. Stale reviews, changed identities and save
+recovery states refuse the addition. Local workflow tests, web types, scoped lint and the architecture boundary
+pass. Current PR and hosted native acceptance are pending. This adds no source, resource, dependency or fee. The live
+website, API and provided Android 1.32 stay unchanged.
 
 The current source increment connects an authored thesis **Next check** to a dated
 [Follow-up](MANAGED_RESEARCH_FOLLOWUPS.md). Both thesis editors offer an explicit

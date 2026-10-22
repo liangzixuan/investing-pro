@@ -6361,6 +6361,92 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true");
         assertEquals("The screening journey retains one document", origin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary(1, 0);
+
+        exerciseFinancialScreenShortlistSave();
+    }
+
+    private void exerciseFinancialScreenShortlistSave() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String row = ".managed-financial-screen .managed-screen-table tbody > tr";
+        String exact = financialScreenExact();
+        selectWorkspaceView("My Watchlist");
+        selectWatchlistNote(0);
+        click("button[aria-label='Remove ZERO']");
+        awaitPage("removing ZERO keeps the unrelated exact listing and note in the unsaved draft",
+            DRAFT + ".memberships?.length === 1 && " + DRAFT + ".memberships[0].listingId === 'listing-one'" +
+            " && " + DRAFT + ".memberships[0].note === 'Unrelated screen draft' && " + DRAFT + ".dirty === true");
+        String beforeAddition = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        selectWorkspaceView("Discover");
+        String shortlist = ".managed-screen-shortlist-watchlist";
+        String prepare = shortlist + " > .trial-actions > button:first-child";
+        String review = shortlist + " > section";
+        String add = review + " > .trial-actions > button:first-child";
+        String cancel = review + " > .trial-actions > button:last-child";
+        awaitPage("the same completed screen and explicit shortlist return before any draft addition",
+            exact + " && document.querySelector(" + JSONObject.quote(row + " > th > label input") + ")?.checked === true" +
+            " && document.querySelector(" + JSONObject.quote(prepare) + ")?.textContent === 'Review shortlist for My Watchlist'" +
+            " && document.querySelector(" + JSONObject.quote(prepare) + ")?.disabled === false");
+        click(prepare);
+        String exactAdditionReview = "(() => { const review = document.querySelector(" + JSONObject.quote(review) + ")," +
+            " row = review?.querySelector('li'), fields = Object.fromEntries([...(row?.querySelectorAll('dl > div') ?? [])].map(e => [e.querySelector('dt')?.textContent,e.querySelector('dd')?.textContent]));" +
+            " return review?.querySelector('h4')?.textContent === 'Shortlist addition review' && review.querySelectorAll('li').length === 1" +
+            " && row.textContent.includes('ZERO') && row.textContent.includes('Zero Company') && row.textContent.includes('XNAS') && row.textContent.includes('Class A')" +
+            " && JSON.stringify(fields) === JSON.stringify({'Security name':'Zero Class A','Country':'US','Instrument type':'common_stock','Listing ID':'listing-zero','Issuer ID':'issuer-zero','Security ID':'security-zero','Share class ID':'class-zero'})" +
+            " && row.textContent.includes('Add to draft with an empty note.') && review.textContent.includes('original run times')" +
+            " && document.querySelector(" + JSONObject.quote(add) + ")?.textContent === 'Add 1 listings to Watchlist draft'" +
+            " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false; })()";
+        awaitPage("the complete exact-listing review precedes any draft write", exactAdditionReview +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(beforeAddition));
+        assertFinancialScreenCounts(1, 1);
+        click(cancel);
+        awaitPage("Cancel consumes the displayed review and preserves the complete current draft",
+            "document.querySelector(" + JSONObject.quote(review) + ") === null && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(beforeAddition));
+        click(prepare);
+        awaitPage("a new complete review is required before the explicit append", exactAdditionReview);
+        click(add);
+        String exactMemberships = "[{listingId:'listing-one',symbol:'ONE',note:'Unrelated screen draft'},{listingId:'listing-zero',symbol:'ZERO',note:''}]";
+        String exactAddedDraft = "JSON.stringify(" + DRAFT + ".memberships) === JSON.stringify(" + exactMemberships + ")";
+        awaitPage("one append retains ONE first and adds only the exact ZERO listing with an empty note",
+            exactAddedDraft + " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true" +
+            " && document.querySelector(" + JSONObject.quote(review) + ") === null");
+        assertFinancialScreenCounts(1, 1);
+        click(prepare);
+        awaitPage("the retained shortlist cannot append a duplicate or overwrite either note",
+            "document.querySelector(" + JSONObject.quote(add) + ")?.textContent === 'Add 0 listings to Watchlist draft'" +
+            " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === true" +
+            " && document.querySelector(" + JSONObject.quote(review) + ")?.textContent.includes('Already in draft. Keep its note and position.')" +
+            " && " + exactAddedDraft);
+        click(cancel);
+        click(shortlist + " > .trial-actions > button:last-child");
+        awaitPage("the explicit review-and-save route shows the unchanged complete Watchlist draft",
+            "document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist' && " + exactAddedDraft +
+            " && " + DIAGNOSTICS + ".save === 0");
+        clickWatchlistAction("Save watchlist");
+        awaitPage("only explicit Save persists the exact ordered payload at version two",
+            exactAddedDraft + " && " + DRAFT + ".baseVersion === 2 && " + DRAFT + ".dirty === false && " + DIAGNOSTICS + ".save === 1");
+        clickWatchlistAction("Load saved watchlist");
+        awaitPage("one explicit saved read restores both complete saved memberships and notes",
+            exactAddedDraft + " && " + DRAFT + ".baseVersion === 2 && " + DRAFT + ".dirty === false && " + DIAGNOSTICS + ".load === 2");
+        selectWorkspaceView("Discover");
+        awaitPage("the saved shortlist handoff retains the original screened evidence", exact +
+            " && document.querySelector(" + JSONObject.quote(row + " > th > label input") + ")?.checked === true");
+        click(row + " > th > button");
+        awaitPage("saved ZERO reopens the original screening report with its blank saved note and no source refresh",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('#managed-research-note')?.value === ''" +
+            " && document.querySelector('.managed-annual-origin')?.textContent === 'Showing the report loaded for financial screening. Original source and observation times are unchanged.'");
+        assertFinancialScreenBackReady();
+        pressBack();
+        awaitPage("native Back after saving retains the captured run, shortlist and complete saved Watchlist",
+            exact + " && document.querySelector('.managed-company-visit') === null && " + exactAddedDraft +
+            " && document.querySelector(" + JSONObject.quote(row + " > th > label input") + ")?.checked === true" +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(row + " > th > button") + ")");
+        awaitPage("shortlist review, save, saved read and Research Back introduce no additional source requests",
+            "(() => { const d = " + DIAGNOSTICS + "; return d.load === 2 && d.status === 1 && d.marketsResolve === 1" +
+            " && d.resolve === 1 && d.annual === 1 && d.save === 1 && d.eod === 0 && d.filings === 0" +
+            " && d.search === 0 && d.calendar === 0 && d.fed === 0 && d.token === 0 && d.signOut === 0; })()");
+        assertEquals("The complete shortlist-to-saved-Watchlist journey retains one document", origin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(1, 1);
     }
 
     @Test

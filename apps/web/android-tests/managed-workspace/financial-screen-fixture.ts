@@ -1,4 +1,8 @@
 import {
+  encodeMainWatchlistPayload,
+  parseManagedWatchlistCommand,
+  type MainWatchlistPayload,
+  type ManagedWatchlistDto,
   parseManagedCatalogResolveRequest,
   parseManagedCatalogResolveResponse,
   parseManagedSecAnnualCanonicalRequest,
@@ -63,6 +67,7 @@ export interface NativeFinancialScreenMetadata {
 }
 type State = ReturnType<SharedNativeFixture["getSnapshot"]>;
 type Counter =
+  | "load"
   | "resolve"
   | "annual"
   | "save"
@@ -72,13 +77,28 @@ type Counter =
   | "calendar"
   | "fed";
 
-/** One exact issuer, one explicit cohort resolve and one explicit Annual request. */
+/** Exact full-list save expected after removing ZERO and explicitly adding its shortlist identity. */
+export function financialScreenShortlistPayload(
+  initial: MainWatchlistPayload,
+): MainWatchlistPayload {
+  return {
+    ...initial,
+    memberships: [
+      { ...initial.memberships[1]!, note: "Unrelated screen draft" },
+      { ...initial.memberships[0]!, note: "" },
+    ],
+  };
+}
+
+/** One exact issuer, explicit screening reads and one separately reviewed Watchlist save. */
 export async function createFinancialScreenNativeFixture(
   base: SharedNativeFixture,
 ) {
   const packet = await financialScreenPacket();
   const overrides: Partial<Record<Counter, number>> = {};
   let snapshot: State = base.getSnapshot();
+  let initial: ManagedWatchlistDto | null = null;
+  let committed: ManagedWatchlistDto | null = null;
   const listeners = new Set<() => void>();
   const publish = () => {
     snapshot = { ...base.getSnapshot(), ...overrides };
@@ -93,22 +113,38 @@ export async function createFinancialScreenNativeFixture(
     Promise.reject(
       new Error(`Unexpected financial screen operation: ${operation}`),
     );
-  const unrelated = () =>
-    snapshot.save +
-      snapshot.eod +
-      snapshot.filings +
-      snapshot.search +
-      snapshot.calendar +
-      snapshot.fed +
-      snapshot.token +
-      snapshot.signOut !==
-    0;
+  const unrelatedSources = () =>
+    snapshot.eod +
+    snapshot.filings +
+    snapshot.search +
+    snapshot.calendar +
+    snapshot.fed +
+    snapshot.token +
+    snapshot.signOut;
+  const unrelated = () => snapshot.save + unrelatedSources() !== 0;
   const api: ManagedApi = {
     ...base.api,
-    load: (signal) =>
-      signal.aborted || snapshot.load !== 0
-        ? unexpected("load")
-        : base.api.load(signal),
+    load: async (signal) => {
+      if (signal.aborted) return unexpected("load");
+      if (snapshot.load === 0) {
+        const loaded = await base.api.load(signal);
+        initial = structuredClone(loaded);
+        return loaded;
+      }
+      if (
+        !committed ||
+        snapshot.load !== 1 ||
+        snapshot.save !== 1 ||
+        snapshot.status !== 1 ||
+        snapshot.marketsResolve !== 1 ||
+        snapshot.resolve !== 1 ||
+        snapshot.annual !== 1 ||
+        unrelatedSources() !== 0
+      )
+        return unexpected("load");
+      count("load");
+      return structuredClone(committed);
+    },
     status: (signal) =>
       signal.aborted || snapshot.status !== 0
         ? unexpected("status")
@@ -180,9 +216,31 @@ export async function createFinancialScreenNativeFixture(
       count("annual");
       return Promise.resolve(structuredClone(packet));
     },
-    save: () => {
+    save: (input, signal) => {
+      const command = parseManagedWatchlistCommand(input);
+      const allowed =
+        !signal.aborted &&
+        initial?.version === 1 &&
+        committed === null &&
+        snapshot.save === 0 &&
+        snapshot.load === 1 &&
+        snapshot.status === 1 &&
+        snapshot.marketsResolve === 1 &&
+        snapshot.resolve === 1 &&
+        snapshot.annual === 1 &&
+        unrelatedSources() === 0 &&
+        command?.expectedVersion === 1 &&
+        encodeMainWatchlistPayload(command.payload) ===
+          encodeMainWatchlistPayload(
+            financialScreenShortlistPayload(initial.payload),
+          );
       count("save");
-      return unexpected("save");
+      if (!allowed || !command) return unexpected("save");
+      committed = { version: 2, payload: structuredClone(command.payload) };
+      return Promise.resolve({
+        ...structuredClone(committed),
+        replayed: false,
+      });
     },
     eodHistory: () => {
       count("eod");

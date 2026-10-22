@@ -51,6 +51,7 @@ import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
+import { ManagedScreenShortlistWatchlist } from "./ManagedScreenShortlistWatchlist";
 import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import {
   ManagedMarketsNavigation,
@@ -1515,6 +1516,11 @@ export function ManagedWorkspaceScreen({
                       workspace.openFinancialScreenReport(capture),
                     )
                   }
+                />
+                <ManagedScreenShortlistWatchlist
+                  workspace={workspace}
+                  navigationPending={navigationPending}
+                  onReviewWatchlist={() => setView("watchlist")}
                 />
                 {discovery.results.length > 0 && (
                   <ul className="managed-results">

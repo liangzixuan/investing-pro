@@ -1,3 +1,10 @@
+import { TrialApiError } from "./api";
+import {
+  prepareScreenShortlistWatchlist,
+  isScreenShortlistWatchlistCurrent,
+  applyScreenShortlistWatchlist,
+  type ScreenShortlistWatchlistPreview,
+} from "./managed-screen-shortlist-watchlist";
 import type { ManagedFinancialScreenReportCapture } from "./managed-financial-screen";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -637,3 +644,366 @@ describe("financial screening through company research and Save", () => {
     expect(f.api.annualReport).toHaveBeenCalledOnce();
   });
 });
+
+async function shortlistFixture(twoCompanies = false) {
+  const f = await fixture(twoCompanies);
+  const screen = f.workspace.financialScreen;
+  await screen.loadUniverse(screen.getSnapshot());
+  if (twoCompanies) {
+    vi.useFakeTimers({
+      toFake: ["Date", "performance", "setTimeout", "clearTimeout"],
+    });
+    vi.setSystemTime(new Date("2026-09-20T00:00:00.000Z"));
+    try {
+      const running = screen.run(screen.getSnapshot());
+      await vi.advanceTimersByTimeAsync(20_000);
+      await running;
+    } finally {
+      vi.useRealTimers();
+    }
+  } else await screen.run(screen.getSnapshot());
+  const run = screen.getSnapshot().run!;
+  for (const row of [...run.rows].reverse())
+    screen.toggleShortlist(screen.getSnapshot(), row);
+  return { ...f, screen, run };
+}
+function transferRequestCounts(f: WorkflowFixture) {
+  return [
+    f.api.status,
+    f.api.resolve,
+    f.api.annualReport,
+    f.api.load,
+    f.api.save,
+    f.api.eodHistory,
+    f.api.recentFilings,
+    f.api.loadFollowups,
+    f.api.saveFollowups,
+    f.api.loadPortfolio,
+    f.api.savePortfolio,
+  ].map((call) => vi.mocked(call).mock.calls.length);
+}
+function requireShortlistPreview(workspace: ManagedWorkspace) {
+  const result = prepareScreenShortlistWatchlist(workspace);
+  expect(result.reason).toBe("");
+  expect(result.preview).not.toBeNull();
+  return result.preview!;
+}
+function assertTransferRefused(
+  workspace: ManagedWorkspace,
+  preview: ScreenShortlistWatchlistPreview,
+) {
+  const before = workspace.coordinator.getSnapshot();
+  expect(isScreenShortlistWatchlistCurrent(workspace, preview)).toBe(false);
+  expect(applyScreenShortlistWatchlist(workspace, preview).added).toBe(false);
+  expect(workspace.coordinator.getSnapshot()).toBe(before);
+}
+
+describe("financial-screen shortlist Watchlist draft transfer", () => {
+  it("reviews every exact listing, skips existing membership and requires a separate explicit Save", async () => {
+    const f = await shortlistFixture(true);
+    const before = f.workspace.coordinator.getSnapshot().draft!;
+    const otherDrafts = [
+      f.workspace.followups.coordinator.getSnapshot().draft,
+      f.workspace.portfolio.coordinator.getSnapshot().draft,
+    ];
+    const counts = transferRequestCounts(f);
+    const preview = requireShortlistPreview(f.workspace);
+    expect(preview).toEqual({
+      rows: f.screen.getSnapshot().shortlist.map((row) => ({
+        listing: row.member.listing,
+        status:
+          row.member.listing.listingId === f.listing.listingId
+            ? "existing"
+            : "add",
+      })),
+      additions: 1,
+      runStartedAt: f.run.startedAt,
+      runCompletedAt: f.run.completedAt,
+    });
+    expect(Object.isFrozen(preview)).toBe(true);
+    expect(Object.isFrozen(preview.rows)).toBe(true);
+    expect(Object.isFrozen(preview.rows[0]!.listing)).toBe(true);
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(isScreenShortlistWatchlistCurrent(f.workspace, preview)).toBe(true);
+    const replace = vi.spyOn(f.workspace.coordinator, "replaceDraft");
+    expect(applyScreenShortlistWatchlist(f.workspace, preview).added).toBe(
+      true,
+    );
+    expect(replace).toHaveBeenCalledOnce();
+    expect(f.workspace.coordinator.getSnapshot().draft!.memberships).toEqual([
+      ...before.memberships,
+      { ...preview.rows[0]!.listing, note: "" },
+    ]);
+    expect(transferRequestCounts(f)).toEqual(counts);
+    expect([
+      f.workspace.followups.coordinator.getSnapshot().draft,
+      f.workspace.portfolio.coordinator.getSnapshot().draft,
+    ]).toEqual(otherDrafts);
+    assertTransferRefused(f.workspace, preview);
+    await f.workspace.coordinator.save();
+    expect(f.api.save).toHaveBeenCalledOnce();
+    expect(f.stored().payload).toEqual(
+      f.workspace.coordinator.getSnapshot().draft,
+    );
+    expect(f.stored().version).toBe(2);
+  });
+  it("appends missing members in shortlist order and retains invalid raw notes and current order", async () => {
+    const f = await shortlistFixture(true);
+    const draft = f.workspace.coordinator.getSnapshot().draft!;
+    const raw = {
+      ...f.listing,
+      listingId: "listing-unrelated",
+      note: "  raw\u0000 note  ",
+    };
+    f.workspace.coordinator.replaceDraft({ ...draft, memberships: [raw] });
+    const preview = requireShortlistPreview(f.workspace);
+    expect(preview.additions).toBe(2);
+    expect(applyScreenShortlistWatchlist(f.workspace, preview).added).toBe(
+      true,
+    );
+    expect(f.workspace.coordinator.getSnapshot().draft!.memberships).toEqual([
+      raw,
+      ...preview.rows.map((row) => ({ ...row.listing, note: "" })),
+    ]);
+    expect(f.workspace.canSavePayload()).toBe(false);
+    expect(f.api.save).not.toHaveBeenCalled();
+  });
+  it("does not write an all-existing shortlist and consumes its review", async () => {
+    const f = await shortlistFixture();
+    const before = f.workspace.coordinator.getSnapshot();
+    const preview = requireShortlistPreview(f.workspace);
+    expect(preview.additions).toBe(0);
+    expect(preview.rows[0]!.status).toBe("existing");
+    expect(applyScreenShortlistWatchlist(f.workspace, preview).added).toBe(
+      false,
+    );
+    expect(f.workspace.coordinator.getSnapshot()).toBe(before);
+    assertTransferRefused(f.workspace, preview);
+  });
+  it.each([
+    "country",
+    "exchangeMic",
+    "instrumentType",
+    "issuerId",
+    "issuerName",
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "symbol",
+  ] as const)(
+    "refuses the whole proposal for changed existing %s identity",
+    async (field) => {
+      const f = await shortlistFixture(true);
+      const draft = f.workspace.coordinator.getSnapshot().draft!;
+      f.workspace.coordinator.replaceDraft({
+        ...draft,
+        memberships: [{ ...draft.memberships[0]!, [field]: "changed" }],
+      });
+      const before = f.workspace.coordinator.getSnapshot();
+      const refused = prepareScreenShortlistWatchlist(f.workspace);
+      expect(refused.preview).toBeNull();
+      expect(refused.reason).toContain("identities");
+      expect(f.workspace.coordinator.getSnapshot()).toBe(before);
+      expect(f.api.save).not.toHaveBeenCalled();
+    },
+  );
+  it.each([9_999, 10_000])(
+    "applies the complete shortlist only within the 10,000 member bound from %i",
+    async (count) => {
+      const f = await shortlistFixture();
+      const draft = f.workspace.coordinator.getSnapshot().draft!;
+      const memberships = Array.from({ length: count }, (_, index) => ({
+        ...f.listing,
+        listingId: `invented-other-${index}`,
+        note: `${index}`,
+      }));
+      f.workspace.coordinator.replaceDraft({ ...draft, memberships });
+      const before = f.workspace.coordinator.getSnapshot();
+      const result = prepareScreenShortlistWatchlist(f.workspace);
+      if (count === 10_000) {
+        expect(result.preview).toBeNull();
+        expect(result.reason).toContain("10,000");
+        expect(f.workspace.coordinator.getSnapshot()).toBe(before);
+        return;
+      }
+      expect(result.preview!.additions).toBe(1);
+      expect(
+        applyScreenShortlistWatchlist(f.workspace, result.preview!).added,
+      ).toBe(true);
+      expect(f.workspace.coordinator.getSnapshot().draft!.memberships).toEqual([
+        ...memberships,
+        { ...f.listing, note: "" },
+      ]);
+      expect(f.api.save).not.toHaveBeenCalled();
+    },
+  );
+  it("denies forged and foreign reviews without consuming the genuine review", async () => {
+    const f = await shortlistFixture();
+    const foreign = await fixture();
+    const preview = requireShortlistPreview(f.workspace);
+    assertTransferRefused(f.workspace, { ...preview });
+    assertTransferRefused(foreign.workspace, preview);
+    expect(isScreenShortlistWatchlistCurrent(f.workspace, preview)).toBe(true);
+  });
+  it("consumes a review before synchronous draft subscribers can reenter", async () => {
+    const f = await shortlistFixture();
+    f.workspace.remove(f.listing.listingId);
+    const preview = requireShortlistPreview(f.workspace);
+    const reenter = vi.fn(() =>
+      applyScreenShortlistWatchlist(f.workspace, preview),
+    );
+    const unsubscribe = f.workspace.coordinator.subscribe(reenter);
+    try {
+      expect(applyScreenShortlistWatchlist(f.workspace, preview).added).toBe(
+        true,
+      );
+    } finally {
+      unsubscribe();
+    }
+    expect(reenter).toHaveBeenCalledOnce();
+    expect(reenter).toHaveReturnedWith({
+      added: false,
+      message:
+        "Prepare a new review because the screen, Watchlist or session changed.",
+    });
+    expect(f.workspace.coordinator.getSnapshot().draft!.memberships).toEqual([
+      { ...f.listing, note: "" },
+    ]);
+  });
+  it.each([
+    "draft",
+    "criteria",
+    "shortlist",
+    "navigation",
+    "catalog",
+    "session",
+    "save",
+    "other-resource",
+  ] as const)(
+    "rejects an authorized review after %s changes",
+    async (change) => {
+      const f = await shortlistFixture();
+      const preview = requireShortlistPreview(f.workspace);
+      await shortlistChanges[change](f);
+      assertTransferRefused(f.workspace, preview);
+    },
+  );
+  it("does not revive a review after visiting a screened company and returning Back", async () => {
+    const f = await shortlistFixture();
+    const preview = requireShortlistPreview(f.workspace);
+    const row = f.run.rows[0]!;
+    const report = { run: f.run, row, response: row.report!.response! };
+    f.workspace.openFinancialScreenReport(report);
+    await vi.waitFor(() =>
+      expect(f.workspace.annual.getSnapshot().checkingSeed).toBe(false),
+    );
+    expect(prepareScreenShortlistWatchlist(f.workspace).preview).toBeNull();
+    f.workspace.closeResearch();
+    expect(f.screen.canAdmitReport(report)).toBe(true);
+    assertTransferRefused(f.workspace, preview);
+    expect(requireShortlistPreview(f.workspace)).not.toBe(preview);
+  });
+  it("requires shortlist reports, matching catalog and the imported-file catalog review", async () => {
+    const f = await fixture();
+    expect(prepareScreenShortlistWatchlist(f.workspace).preview).toBeNull();
+    const { screen, capture } = await runScreen(f);
+    screen.toggleShortlist(screen.getSnapshot(), capture.row);
+    const draft = f.workspace.coordinator.getSnapshot().draft!;
+    f.workspace.coordinator.replaceDraft({
+      ...draft,
+      snapshotSha256: `sha256:${"b".repeat(64)}`,
+    });
+    expect(prepareScreenShortlistWatchlist(f.workspace).reason).toContain(
+      "catalog",
+    );
+    f.workspace.coordinator.replaceDraft(draft);
+    f.workspace.setView("watchlist");
+    expect(f.workspace.restoreWatchlistFileDraft(draft)).toBe(true);
+    f.workspace.setView("discover");
+    const refused = prepareScreenShortlistWatchlist(f.workspace);
+    expect(refused.preview).toBeNull();
+    expect(refused.reason).toContain("imported");
+  });
+  it.each(["conflict", "unavailable"] as const)(
+    "refuses a %s save recovery state before preparing another review",
+    async (code) => {
+      const f = await shortlistFixture();
+      const preview = requireShortlistPreview(f.workspace);
+      vi.mocked(f.api.save).mockRejectedValueOnce(new TrialApiError(code));
+      await f.workspace.coordinator.save();
+      expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
+        phase: "idle",
+        conflict: code === "conflict",
+        uncertain: code === "unavailable",
+      });
+      assertTransferRefused(f.workspace, preview);
+      expect(prepareScreenShortlistWatchlist(f.workspace).preview).toBeNull();
+      expect(f.api.save).toHaveBeenCalledOnce();
+    },
+  );
+  it("refuses both pending writes and original-receipt replay until the normal saved-version review", async () => {
+    const f = await shortlistFixture();
+    const draft = f.workspace.coordinator.getSnapshot().draft!;
+    let finish!: (value: Awaited<ReturnType<ManagedApi["save"]>>) => void;
+    vi.mocked(f.api.save).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const preview = requireShortlistPreview(f.workspace);
+    const saving = f.workspace.coordinator.save();
+    expect(f.workspace.coordinator.getSnapshot().phase).toBe("saving");
+    assertTransferRefused(f.workspace, preview);
+    expect(prepareScreenShortlistWatchlist(f.workspace).preview).toBeNull();
+    finish({ version: 2, payload: draft, replayed: true });
+    await saving;
+    expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "idle",
+      replayPending: true,
+      conflict: true,
+      latestLoaded: false,
+    });
+    expect(prepareScreenShortlistWatchlist(f.workspace).preview).toBeNull();
+    expect(f.api.save).toHaveBeenCalledOnce();
+  });
+  it("refuses duplicate draft identities and staged criteria before issuing a review", async () => {
+    const f = await shortlistFixture();
+    const draft = f.workspace.coordinator.getSnapshot().draft!;
+    f.workspace.coordinator.replaceDraft({
+      ...draft,
+      memberships: [...draft.memberships, ...draft.memberships],
+    });
+    expect(prepareScreenShortlistWatchlist(f.workspace).preview).toBeNull();
+    f.workspace.coordinator.replaceDraft(draft);
+    f.screen.stageCriteria(f.screen.getSnapshot());
+    expect(prepareScreenShortlistWatchlist(f.workspace).preview).toBeNull();
+  });
+});
+
+type ShortlistFixture = Awaited<ReturnType<typeof shortlistFixture>>;
+const shortlistChanges = {
+  draft: (f) => f.workspace.note(f.listing.listingId, "Changed after review"),
+  criteria: (f) => {
+    f.screen.stageCriteria(f.screen.getSnapshot());
+    f.screen.setCriteria(f.screen.getSnapshot(), f.run.criteria);
+  },
+  shortlist: (f) => {
+    const row = f.run.rows[0]!;
+    f.screen.toggleShortlist(f.screen.getSnapshot(), row);
+    f.screen.toggleShortlist(f.screen.getSnapshot(), row);
+  },
+  navigation: (f) => {
+    f.workspace.setView("watchlist");
+    f.workspace.setView("discover");
+  },
+  catalog: (f) => f.workspace.refreshCatalog(),
+  session: (f) => f.workspace.sessionOwner.signOut(),
+  save: (f) => f.workspace.coordinator.save(),
+  "other-resource": (f) => {
+    const entry =
+      f.workspace.followups.coordinator.getSnapshot().draft!.entries[0]!;
+    f.workspace.followups.edit(entry, "check", "Changed independent follow-up");
+  },
+} satisfies Record<string, (f: ShortlistFixture) => void | Promise<void>>;

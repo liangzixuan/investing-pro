@@ -9,7 +9,13 @@ import { createFixture } from "./fixture";
 import {
   financialScreenListingIds,
   financialScreenPins,
+  financialScreenShortlistPayload,
 } from "./financial-screen-fixture";
+
+import {
+  prepareScreenShortlistWatchlist,
+  applyScreenShortlistWatchlist,
+} from "../../src/clerk-trial/managed-screen-shortlist-watchlist";
 
 const owners: ManagedWorkspace[] = [];
 afterEach(() => {
@@ -33,6 +39,20 @@ async function setup() {
   await workspace.refreshCatalog();
   return { fixture, workspace, screen: workspace.financialScreen };
 }
+
+async function completedScreen() {
+  const f = await setup();
+  f.workspace.setView("discover");
+  await f.screen.loadUniverse(f.screen.getSnapshot());
+  f.screen.stageCriteria(f.screen.getSnapshot());
+  f.screen.setCriteria(f.screen.getSnapshot(), {
+    clauses: [{ field: "operatingCashFlow", operator: "gte", value: "0" }],
+    sort: { field: "symbol", direction: "asc" },
+  });
+  await f.screen.run(f.screen.getSnapshot());
+  return f;
+}
+
 const digest = `sha256:${"a".repeat(64)}` as const;
 const request = {
   schemaVersion: "6.0.0" as const,
@@ -308,4 +328,157 @@ describe("invented native financial screen fixture", () => {
       annual: 0,
     });
   });
+  it("reviews and appends the missing exact shortlist listing, then saves and reloads the complete ordered Watchlist without source reads", async () => {
+    const f = await completedScreen();
+    f.workspace.setView("watchlist");
+    f.workspace.note("listing-zero", "Screening research draft");
+    f.workspace.note("listing-one", "Unrelated screen draft");
+    f.workspace.remove("listing-zero");
+    const retained = f.workspace.coordinator.getSnapshot().draft!;
+    const saved = f.workspace.coordinator.getSnapshot().saved!;
+    const expected = financialScreenShortlistPayload(saved.payload);
+    f.workspace.setView("discover");
+    const run = f.screen.getSnapshot().run!;
+    const row = run.rows[0]!;
+    f.screen.toggleShortlist(f.screen.getSnapshot(), row);
+    const shortlisted = f.screen.getSnapshot();
+    const counts = f.fixture.getSnapshot();
+    const cancelled = prepareScreenShortlistWatchlist(f.workspace);
+    expect(cancelled.preview?.additions).toBe(1);
+    expect(cancelled.preview?.rows).toEqual([
+      { listing: row.member.listing, status: "add" },
+    ]);
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(retained);
+    expect(f.fixture.getSnapshot()).toBe(counts);
+
+    // Leaving the first review unapplied models Cancel; only the next review is applied.
+    const prepared = prepareScreenShortlistWatchlist(f.workspace).preview!;
+    expect(applyScreenShortlistWatchlist(f.workspace, prepared).added).toBe(
+      true,
+    );
+    expect(f.workspace.coordinator.getSnapshot().draft).toEqual(expected);
+    expect(f.workspace.coordinator.getSnapshot().saved).toBe(saved);
+    expect(f.fixture.getSnapshot()).toBe(counts);
+    expect(applyScreenShortlistWatchlist(f.workspace, prepared).added).toBe(
+      false,
+    );
+    const duplicate = prepareScreenShortlistWatchlist(f.workspace).preview!;
+    expect(duplicate.additions).toBe(0);
+    expect(duplicate.rows.map((entry) => entry.status)).toEqual(["existing"]);
+    expect(applyScreenShortlistWatchlist(f.workspace, duplicate).added).toBe(
+      false,
+    );
+    expect(f.workspace.coordinator.getSnapshot().draft).toEqual(expected);
+
+    f.workspace.setView("watchlist");
+    await f.workspace.coordinator.save();
+    expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 2,
+      dirty: false,
+      saved: { version: 2, payload: expected },
+    });
+    await f.workspace.coordinator.load();
+    expect(f.workspace.coordinator.getSnapshot().draft).toEqual(expected);
+    expect(f.workspace.coordinator.getSnapshot().saved).toEqual({
+      version: 2,
+      payload: expected,
+    });
+    f.workspace.setView("discover");
+    expect(f.screen.getSnapshot().run).toBe(shortlisted.run);
+    expect(f.screen.getSnapshot().shortlist).toBe(shortlisted.shortlist);
+    f.workspace.openFinancialScreenReport({
+      run,
+      row,
+      response: row.report!.response!,
+    });
+    await vi.waitFor(() =>
+      expect(f.workspace.annual.getSnapshot().checkingSeed).toBe(false),
+    );
+    expect(
+      f.workspace.getSnapshot().research?.selection.listing.listingId,
+    ).toBe("listing-zero");
+    expect(f.workspace.annual.getSnapshot().response).toEqual(
+      row.report!.response,
+    );
+    f.workspace.closeResearch();
+    expect(f.workspace.getSnapshot().view).toBe("discover");
+    expect(f.screen.getSnapshot().run).toBe(run);
+    expect(f.workspace.coordinator.getSnapshot().draft).toEqual(expected);
+    expect(f.fixture.getSnapshot()).toMatchObject({
+      load: 2,
+      status: 1,
+      marketsResolve: 1,
+      resolve: 1,
+      annual: 1,
+      save: 1,
+      eod: 0,
+      filings: 0,
+      search: 0,
+      calendar: 0,
+      fed: 0,
+      token: 0,
+      signOut: 0,
+    });
+    await expect(f.fixture.api.load(signal())).rejects.toThrow("load");
+    await expect(
+      f.fixture.api.save(
+        {
+          expectedVersion: 2,
+          idempotencyKey: "00000000-0000-4000-8000-000000000002",
+          payload: expected,
+        },
+        signal(),
+      ),
+    ).rejects.toThrow("save");
+  });
+
+  it.each([
+    "wrong version",
+    "changed note",
+    "wrong order",
+    "foreign identity",
+    "duplicate member",
+    "extra field",
+    "aborted",
+  ] as const)(
+    "refuses a %s shortlist save and cannot expose it as persisted",
+    async (change) => {
+      const f = await completedScreen();
+      const expected = financialScreenShortlistPayload(
+        f.workspace.coordinator.getSnapshot().saved!.payload,
+      );
+      let memberships = [...expected.memberships];
+      if (change === "changed note")
+        memberships = memberships.map((member, index) =>
+          index === 1 ? { ...member, note: "Not an empty note" } : member,
+        );
+      if (change === "wrong order") memberships.reverse();
+      if (change === "foreign identity")
+        memberships = memberships.map((member, index) =>
+          index === 1 ? { ...member, shareClassId: "class-one" } : member,
+        );
+      if (change === "duplicate member")
+        memberships = [...memberships, { ...memberships[1]! }];
+      const payload = { ...expected, memberships };
+      const expectedVersion = change === "wrong version" ? 2 : 1;
+      const command = {
+        expectedVersion,
+        idempotencyKey: "00000000-0000-4000-8000-000000000001",
+        payload,
+        ...(change === "extra field" ? { extra: true } : {}),
+      };
+      const controller = new AbortController();
+      if (change === "aborted") controller.abort();
+      await expect(
+        f.fixture.api.save(command, controller.signal),
+      ).rejects.toThrow("save");
+      await expect(f.fixture.api.load(signal())).rejects.toThrow("load");
+      expect(f.fixture.getSnapshot()).toMatchObject({
+        load: 1,
+        save: 1,
+        annual: 1,
+        resolve: 1,
+      });
+    },
+  );
 });
