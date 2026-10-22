@@ -107,10 +107,12 @@ public class ManagedWorkspaceInstrumentedTest {
         "watchlist-comparison",
         "watchlist-export",
         "company-filings",
+        "watchlist-filings-review",
         "fed-announcements",
         "annual-comparison",
         "watchlist-draft-file");
     private static final java.util.Map<String, String> ADDITIONAL_FIXTURE_SCENARIOS = java.util.Map.of(
+        "watchlistFilingsReviewKeepsPacketsNotesAndRetiresLateChecks", "watchlist-filings-review",
         "watchlistDraftFileUsesSystemExportImportAndExplicitRestore", "watchlist-draft-file",
         "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file",
         "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation");
@@ -4399,6 +4401,134 @@ public class ManagedWorkspaceInstrumentedTest {
         assertReturnedRootHistory("listing-zero", "price");
         assertFixtureBoundary();
         Log.i("ManagedEod", "phase=late-discarded-back-root, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+    }
+
+    @Test
+    public void watchlistFilingsReviewKeepsPacketsNotesAndRetiresLateChecks() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String metadata = "JSON.parse(document.querySelector('#fixture-filings-review').textContent)";
+        String expected = readFixtureString(metadata + ".expectedNote");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", readFixtureString(metadata + ".prefix"));
+        startNativeFilingsReview();
+        saveNativeFilingsReviewNote(expected);
+        cancelNativeFilingsReviewChecks();
+        retireNativeFilingsReview(expected);
+        assertEquals("Filing review keeps its document", origin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(0, 1);
+    }
+
+    private void startNativeFilingsReview() throws Exception {
+        openNativeFilingsReview();
+        click(".managed-filings-review-choice:nth-of-type(1)");
+        click(".managed-filings-review-choice:nth-of-type(2)");
+        clickNativeFilingsReviewAction("Start filing review");
+        awaitPage("Start focuses the selected listing without reading",
+            "document.activeElement === document.querySelector('.managed-filings-review h4')" +
+            " && document.querySelectorAll('.managed-filings-review-companies > li').length === 2");
+        assertNativeFilingsReviewCounts(0, 0, 0, 0);
+        clickNativeFilingsReviewAction("Load review filings");
+        assertNativeFilingsReviewPacket("ZERO", 26, "2026-09-20T00:00:02.000Z");
+        click(".managed-filings-review-companies > li:nth-child(2) > button");
+        assertNativeFilingsReviewCounts(1, 0, 0, 0);
+        clickNativeFilingsReviewAction("Load review filings");
+        assertNativeFilingsReviewPacket("ONE", 2, "2026-09-21T00:00:02.000Z");
+        click(".managed-filings-review-companies > li:first-child > button");
+        assertNativeFilingsReviewPacket("ZERO", 26, "2026-09-20T00:00:02.000Z");
+        assertNativeFilingsReviewCounts(2, 0, 0, 0);
+    }
+
+    private void saveNativeFilingsReviewNote(String expected) throws Exception {
+        clickNativeFilingsReviewAction("Inspect filings and write note");
+        awaitPage("Inspect reuses ZERO's admitted source and focuses Filings",
+            "document.activeElement?.id === 'managed-filings-heading'" +
+            " && document.querySelector('.managed-filings-count')?.textContent.includes('26 of 26 loaded filings')");
+        assertNativeFilingsReviewCounts(2, 0, 0, 0);
+        click(".managed-filings-list > li:first-child .managed-filings-note-action > button");
+        awaitPage("Append retains the exact complete Unicode citation without saving",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expected));
+        assertNativeFilingsReviewCounts(2, 0, 0, 0);
+        click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
+        awaitPage("Review returns to the independent unsaved Watchlist",
+            "document.querySelector('.managed-company-visit') === null && " + DRAFT + ".dirty === true");
+        clickWatchlistAction("Save watchlist");
+        awaitPage("Only explicit Save confirms the full note at version two",
+            DRAFT + ".baseVersion === 2 && " + DRAFT + ".dirty === false && " +
+            DRAFT + ".memberships[0].note === " + JSONObject.quote(expected));
+        assertNativeFilingsReviewCounts(2, 1, 0, 0);
+        clickNativeFilingsReviewAction("Inspect filings and write note");
+        awaitPage("Saved review can reopen its existing packet", "document.querySelector('.managed-company-visit') !== null");
+        pressBack();
+        assertNativeFilingsReviewPacket("ZERO", 26, "2026-09-20T00:00:02.000Z");
+        assertNativeFilingsReviewCounts(2, 1, 0, 0);
+    }
+
+    private void cancelNativeFilingsReviewChecks() throws Exception {
+        clickNativeFilingsReviewAction("Refresh review filings");
+        awaitPage("ZERO refresh is held",
+            "document.querySelector('.managed-filings-review section')?.getAttribute('aria-busy') === 'true'");
+        click(".managed-filings-review-companies > li:nth-child(2) > button");
+        click("#settle-cancelled-filings");
+        assertNativeFilingsReviewCounts(3, 1, 1, 1);
+        click(".managed-filings-review-companies > li:first-child > button");
+        assertNativeFilingsReviewPacket("ZERO", 26, "2026-09-20T00:00:02.000Z");
+        click(".managed-filings-review-companies > li:nth-child(2) > button");
+        clickNativeFilingsReviewAction("Refresh review filings");
+        awaitPage("ONE refresh is held", "document.querySelector('.managed-filings-review section')?.getAttribute('aria-busy') === 'true'");
+        clickNativeFilingsReviewAction("Cancel review check");
+        awaitPage("Cancel returns focus to the current enabled refresh control",
+            "document.activeElement?.textContent === 'Refresh review filings' && document.activeElement.disabled === false");
+        click("#settle-cancelled-filings");
+        assertNativeFilingsReviewCounts(4, 1, 2, 2);
+        assertNativeFilingsReviewPacket("ONE", 2, "2026-09-21T00:00:02.000Z");
+    }
+
+    private void retireNativeFilingsReview(String expected) throws Exception {
+        clickNativeFilingsReviewAction("Finish filing review");
+        awaitPage("Finish clears temporary packets and preserves the authored saved note",
+            "document.querySelector('.managed-filings-review-companies') === null && " +
+            DRAFT + ".memberships[0].note === " + JSONObject.quote(expected));
+        clickWatchlistAction("Load saved watchlist");
+        awaitPage("A separate saved read restores the exact acknowledged note",
+            DIAGNOSTICS + ".load === 2 && " + DRAFT + ".dirty === false && " +
+            DRAFT + ".memberships[0].note === " + JSONObject.quote(expected));
+        openNativeFilingsReview();
+        click(".managed-filings-review-choice:nth-of-type(2)");
+        clickNativeFilingsReviewAction("Start filing review");
+        clickNativeFilingsReviewAction("Load review filings");
+        awaitPage("The new ONE visit requires a fresh explicit check", DIAGNOSTICS + ".filings === 5");
+        click(CATALOG_REFRESH);
+        awaitPage("An actual source auth refusal retires the pending group and draft",
+            "document.querySelector('.managed-filings-review') === null && " + DRAFT + ".memberships === null");
+        click("#settle-cancelled-filings");
+        assertNativeFilingsReviewCounts(5, 1, 3, 3);
+        awaitPage("Late completion cannot revive a retired review", "document.querySelector('.managed-filings-review') === null && " + DRAFT + ".memberships === null");
+    }
+
+    private void assertNativeFilingsReviewPacket(String symbol, int count, String completed) throws Exception {
+        openNativeFilingsReview();
+        String panel = ".managed-filings-review section[aria-label='Filing review for " + symbol + "']";
+        awaitPage("Exact retained " + symbol + " packet and original completion",
+            "document.querySelector(" + JSONObject.quote(panel + " .managed-watchlist-filings-summary") + ")?.textContent.includes(" + JSONObject.quote(count + " loaded filings") + ")" +
+            " && document.querySelector(" + JSONObject.quote(panel + " .managed-watchlist-filings-source") + ")?.textContent.includes(" + JSONObject.quote(completed) + ")");
+    }
+
+    private void assertNativeFilingsReviewCounts(int reads, int saves, int aborted, int late) throws Exception {
+        awaitPage("Only explicit filing-review operations occurred",
+            "(() => { const d = " + DIAGNOSTICS + "; return d.filings === " + reads + " && d.save === " + saves +
+            " && d.filingsAborted === " + aborted + " && d.filingsLateResolved === " + late +
+            " && d.annual === 0 && d.eod === 0 && d.calendar === 0 && d.fed === 0 && d.search === 0 && d.resolve === 0 && d.token === 0 && d.signOut === 0; })()");
+    }
+
+    private void openNativeFilingsReview() throws Exception {
+        if (!"true".equals(readFixtureString("String(document.querySelector('.managed-filings-review')?.open)")))
+            click(".managed-filings-review > summary");
+    }
+
+    private void clickNativeFilingsReviewAction(String label) throws Exception {
+        openNativeFilingsReview();
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//details[contains(@class,'managed-filings-review')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
     }
 
     @Test

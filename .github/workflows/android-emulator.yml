@@ -277,6 +277,13 @@ jobs:
           required = {(class_name, method) for class_name, methods in expected_tests.items() for method in methods}
           if len(required) != 59:
               raise SystemExit("The original 59 native test requirements changed.")
+          # Keep every original requirement and require the new group journey too.
+          required.add((
+              "local.investment.personal.ManagedWorkspaceInstrumentedTest",
+              "watchlistFilingsReviewKeepsPacketsNotesAndRetiresLateChecks",
+          ))
+          if len(required) != 60:
+              raise SystemExit("The filing-review journey must extend the original 59 tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -314,5 +321,5 @@ jobs:
               combined.update(executed)
           if combined != required:
               raise SystemExit("The native shard union is not the complete original 59 tests.")
-          print("Verified two distinct passing native shards, APK custody and all 59 required tests.")
+          print("Verified two distinct passing native shards, APK custody, all original 59 tests and the filing-review journey.")
           PY
