@@ -5,13 +5,15 @@ import {
   emptyThesisReview,
   proposeThesisReview,
 } from "../../src/clerk-trial/managed-thesis-review";
+import { groupResearchFollowupsByDueDate } from "../../src/clerk-trial/managed-research-followups-date";
 
 async function setup() {
   const fixture = await createFixture("thesis-review");
+  let key = 0;
   const workspace = new ManagedWorkspace(
     fixture.api,
     fixture.session,
-    () => "invented-thesis-command",
+    () => `invented-thesis-command-${++key}`,
     {
       researchCoverage: fixture.researchCoverage,
       marketsCohort: fixture.marketsCohort,
@@ -86,5 +88,113 @@ describe("bounded native thesis-review Save fixture", () => {
     const stored = await fixture.api.load(new AbortController().signal);
     expect(stored).toEqual({ version: 1, payload: initial });
     expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+  });
+
+  it("creates the next check, keeps both saves independent and reloads its completed result", async () => {
+    const { fixture, workspace } = await setup();
+    workspace.note("listing-zero", thesisReviewNoteDraft);
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const check = "Read the next filed report";
+    expect(
+      workspace.followups.prepareNextCheck(member, check, "2020-01-01").capture,
+    ).toBeNull();
+    expect(fixture.followups!.getSnapshot().load).toBe(0);
+    await workspace.followups.coordinator.load();
+    const proposal = workspace.followups.prepareNextCheck(
+      member,
+      check,
+      "2020-01-01",
+    );
+    expect(proposal.reason).toBeNull();
+    const created = workspace.followups.createNextCheck(
+      proposal.capture!,
+      () => true,
+    )!;
+    expect(created).toMatchObject({
+      check,
+      dueOn: "2020-01-01",
+      status: "open",
+      completedOn: null,
+      result: "",
+    });
+    expect(created.listing).not.toHaveProperty("note");
+    expect(
+      groupResearchFollowupsByDueDate(
+        [created],
+        new Date("2026-10-21T00:00:00Z"),
+      )!.overdue,
+    ).toEqual([created]);
+    expect(fixture.followups!.getSnapshot()).toMatchObject({
+      load: 1,
+      save: 0,
+      commits: 0,
+    });
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot().dirty).toBe(false);
+    expect(workspace.followups.coordinator.getSnapshot()).toMatchObject({
+      dirty: true,
+      baseVersion: 0,
+    });
+    await workspace.followups.coordinator.save();
+    const current =
+      workspace.followups.coordinator.getSnapshot().draft!.entries[0]!;
+    workspace.followups.edit(current, "result", "Checked the authored thesis");
+    workspace.followups.complete(
+      workspace.followups.currentEntry(current.id)!,
+      new Date("2026-10-21T00:00:00Z"),
+    );
+    await workspace.followups.coordinator.save();
+    await workspace.followups.coordinator.load();
+    expect(workspace.followups.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 2,
+      dirty: false,
+      draft: {
+        entries: [
+          {
+            id: current.id,
+            check,
+            result: "Checked the authored thesis",
+            status: "completed",
+            completedOn: "2026-10-21",
+          },
+        ],
+      },
+    });
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe(thesisReviewNoteDraft);
+    expect(fixture.followups!.getSnapshot()).toMatchObject({
+      load: 2,
+      save: 2,
+      commits: 2,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      load: 1,
+      save: 1,
+      annual: 0,
+      eod: 0,
+      filings: 0,
+      resolve: 0,
+      token: 0,
+    });
+  });
+
+  it("refuses an undeclared next check without a RAM commit", async () => {
+    const { fixture, workspace } = await setup();
+    await workspace.followups.coordinator.load();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const proposal = workspace.followups.prepareNextCheck(
+      member,
+      "Undeclared check",
+      "2020-01-01",
+    );
+    workspace.followups.createNextCheck(proposal.capture!, () => true);
+    await workspace.followups.coordinator.save();
+    expect(workspace.followups.coordinator.getSnapshot().dirty).toBe(true);
+    expect(fixture.followups!.getSnapshot()).toMatchObject({
+      save: 0,
+      commits: 0,
+      version: 0,
+    });
   });
 });

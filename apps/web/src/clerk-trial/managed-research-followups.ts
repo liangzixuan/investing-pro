@@ -15,7 +15,10 @@ import {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
-import { groupResearchFollowupsByDueDate } from "./managed-research-followups-date";
+import {
+  groupResearchFollowupsByDueDate,
+  isResearchFollowupDueDate,
+} from "./managed-research-followups-date";
 import { SaveCoordinator } from "./save-coordinator";
 import { MANAGED_FOLLOWUPS_SAVE_COPY } from "./save-coordinator-copy";
 import type { TrialSession } from "./session";
@@ -44,6 +47,19 @@ export interface ManagedResearchFollowupsState {
 export interface FollowupsCreationContext {
   readonly draft: MainWatchlistPayload | null;
   readonly catalogSnapshotSha256: string | null;
+}
+export interface NextCheckCapture {
+  readonly member: WatchlistMembership;
+  readonly listing: Listing;
+  readonly watchlist: MainWatchlistPayload;
+  readonly followups: ResearchFollowupsPayload;
+  readonly digest: `sha256:${string}`;
+  readonly check: string;
+  readonly dueOn: string;
+}
+export interface NextCheckPreparation {
+  readonly capture: NextCheckCapture | null;
+  readonly reason: string | null;
 }
 
 function catalogDigest(value: string | null): `sha256:${string}` | null {
@@ -89,6 +105,21 @@ function sameStableIdentity(previous: Listing, current: Listing) {
     previous.instrumentType === current.instrumentType
   );
 }
+function listingIdentity(member: WatchlistMembership): Listing {
+  return Object.freeze({
+    country: member.country,
+    exchangeMic: member.exchangeMic,
+    instrumentType: member.instrumentType,
+    issuerId: member.issuerId,
+    issuerName: member.issuerName,
+    listingId: member.listingId,
+    securityId: member.securityId,
+    securityName: member.securityName,
+    shareClassId: member.shareClassId,
+    shareClassName: member.shareClassName,
+    symbol: member.symbol,
+  });
+}
 
 /** Independent authored plans; no watchlist save or financial source request. */
 export class ManagedResearchFollowups {
@@ -100,6 +131,9 @@ export class ManagedResearchFollowups {
   private operation: AbortController | null = null;
   private observedDraft: ResearchFollowupsPayload | null = null;
   private readonly newEntryId: () => string;
+  private readonly nextChecks = new WeakSet<NextCheckCapture>();
+  private creatingNextCheck = false;
+  private initialNextCheckLoad: (() => boolean) | null = null;
 
   constructor(
     private readonly api: Pick<
@@ -133,6 +167,8 @@ export class ManagedResearchFollowups {
         copy: copyDraft,
         capture,
         load: async (signal) => {
+          if (this.initialNextCheckLoad && !this.initialNextCheckLoad())
+            throw new TrialApiError("aborted");
           if (this.retired || signal.aborted)
             throw new TrialApiError("aborted");
           const result = parseManagedResearchFollowups(
@@ -277,7 +313,157 @@ export class ManagedResearchFollowups {
       ),
     });
   }
+  prepareNextCheck(
+    member: WatchlistMembership,
+    rawCheck: string,
+    dueOn: string,
+  ): NextCheckPreparation {
+    const followups = this.coordinator.getSnapshot().draft;
+    const context = this.options.getCreationContext();
+    const digest = this.state.catalogSnapshotSha256;
+    let reason: string | null = null;
+    if (!followups)
+      reason =
+        "Load follow-ups for this check before creation. This explicit initial read keeps your thesis fields here.";
+    else if (!this.canEdit())
+      reason =
+        "Follow-ups editing is paused. Finish its load, save or recovery decision first.";
+    else if (
+      !digest ||
+      context.catalogSnapshotSha256 !== digest ||
+      context.draft?.snapshotSha256 !== digest ||
+      !context.draft.memberships.includes(member)
+    )
+      reason =
+        "Use the exact company in the current watchlist draft and catalog.";
+    else if (
+      followups.entries.some(
+        (entry) => entry.listing.listingId === member.listingId,
+      )
+    )
+      reason =
+        "This listing already has a follow-up. Open Follow-ups to review it; creation will not replace it.";
+    else if (
+      followups.entries.length >= MANAGED_RESEARCH_FOLLOWUPS_LIMITS.entries
+    )
+      reason =
+        "Follow-ups already has 20 entries. Remove an entry there before creating another.";
+    const check = normalizeResearchFollowupCheck(rawCheck);
+    if (!reason && check === null)
+      reason =
+        "Next check needs 1–500 characters on one line, without unsupported characters. Shorten it here; no text is clipped.";
+    if (!reason && !isResearchFollowupDueDate(dueOn))
+      reason = "Choose a valid due date for this check.";
+    if (reason) return { capture: null, reason };
+    const capture: NextCheckCapture = Object.freeze({
+      member,
+      listing: listingIdentity(member),
+      watchlist: context.draft!,
+      followups: followups!,
+      digest: digest!,
+      check: check!,
+      dueOn,
+    });
+    this.nextChecks.add(capture);
+    return { capture, reason: null };
+  }
+  private nextCheckIsCurrent(capture: NextCheckCapture) {
+    const context = this.options.getCreationContext();
+    return (
+      this.nextChecks.has(capture) &&
+      this.canEdit() &&
+      this.coordinator.getSnapshot().draft === capture.followups &&
+      context.draft === capture.watchlist &&
+      context.catalogSnapshotSha256 === capture.digest &&
+      this.state.catalogSnapshotSha256 === capture.digest &&
+      context.draft.memberships.includes(capture.member) &&
+      context.draft.snapshotSha256 === capture.digest &&
+      membershipMatchesResult(capture.member, capture.listing)
+    );
+  }
+  canLoadForNextCheck(member: WatchlistMembership) {
+    const saved = this.coordinator.getSnapshot();
+    const context = this.options.getCreationContext();
+    const digest = this.state.catalogSnapshotSha256;
+    return (
+      !this.retired &&
+      this.coordinator.canEdit() &&
+      saved.phase === "idle" &&
+      saved.draft === null &&
+      !saved.uncertain &&
+      !saved.conflict &&
+      digest !== null &&
+      context.catalogSnapshotSha256 === digest &&
+      context.draft?.snapshotSha256 === digest &&
+      context.draft.memberships.includes(member)
+    );
+  }
+  async loadForNextCheck(
+    member: WatchlistMembership,
+    isCurrent: () => boolean,
+  ) {
+    if (
+      !this.canLoadForNextCheck(member) ||
+      !isCurrent() ||
+      !this.canLoadForNextCheck(member)
+    )
+      return;
+    const context = this.options.getCreationContext();
+    const current = () => {
+      if (!isCurrent()) return false;
+      const fresh = this.options.getCreationContext();
+      return (
+        !this.retired &&
+        fresh.draft === context.draft &&
+        fresh.catalogSnapshotSha256 === context.catalogSnapshotSha256 &&
+        this.state.catalogSnapshotSha256 === context.catalogSnapshotSha256 &&
+        fresh.draft?.memberships.includes(member) === true
+      );
+    };
+    this.initialNextCheckLoad = current;
+    try {
+      await this.coordinator.load();
+    } finally {
+      if (this.initialNextCheckLoad === current)
+        this.initialNextCheckLoad = null;
+    }
+  }
+  createNextCheck(
+    capture: NextCheckCapture,
+    isCurrent: () => boolean,
+  ): ResearchFollowup | null {
+    if (this.creatingNextCheck) return null;
+    this.creatingNextCheck = true;
+    try {
+      if (
+        !this.nextCheckIsCurrent(capture) ||
+        !isCurrent() ||
+        !this.nextCheckIsCurrent(capture)
+      )
+        return null;
+      return this.create(
+        capture.member,
+        capture.dueOn,
+        capture.check,
+        () =>
+          this.nextCheckIsCurrent(capture) &&
+          isCurrent() &&
+          this.nextCheckIsCurrent(capture),
+      );
+    } finally {
+      this.creatingNextCheck = false;
+    }
+  }
   add(member: WatchlistMembership, dueOn: string) {
+    this.create(member, dueOn, "", () => true);
+  }
+  private create(
+    member: WatchlistMembership,
+    dueOn: string,
+    check: string,
+    admit: () => boolean,
+  ): ResearchFollowup | null {
+    if (!admit()) return null;
     const draft = this.coordinator.getSnapshot().draft;
     const context = this.options.getCreationContext();
     const creationDraft = context.draft;
@@ -294,27 +480,15 @@ export class ManagedResearchFollowups {
         (entry) => entry.listing.listingId === member.listingId,
       )
     )
-      return;
-    const listing: Listing = {
-      country: member.country,
-      exchangeMic: member.exchangeMic,
-      instrumentType: member.instrumentType,
-      issuerId: member.issuerId,
-      issuerName: member.issuerName,
-      listingId: member.listingId,
-      securityId: member.securityId,
-      securityName: member.securityName,
-      shareClassId: member.shareClassId,
-      shareClassName: member.shareClassName,
-      symbol: member.symbol,
-    };
+      return null;
+    const listing = listingIdentity(member);
     if (
       !isMainWatchlistPayload({
         ...creationDraft,
         memberships: [{ ...member, note: "" }],
       })
     )
-      return;
+      return null;
     const id = this.newEntryId();
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
@@ -322,7 +496,8 @@ export class ManagedResearchFollowups {
       ) ||
       draft.entries.some((entry) => entry.id === id)
     )
-      return;
+      return null;
+    if (!admit()) return null;
     const current = this.options.getCreationContext();
     if (
       !this.canEdit() ||
@@ -334,7 +509,7 @@ export class ManagedResearchFollowups {
       current.catalogSnapshotSha256 !== digest ||
       this.state.catalogSnapshotSha256 !== digest
     )
-      return;
+      return null;
     this.coordinator.replaceDraft({
       ...draft,
       entries: [
@@ -343,7 +518,7 @@ export class ManagedResearchFollowups {
           id,
           listing,
           catalogSnapshotSha256: digest,
-          check: "",
+          check,
           dueOn,
           status: "open",
           completedOn: null,
@@ -352,6 +527,7 @@ export class ManagedResearchFollowups {
       ],
     });
     if (this.currentEntry(id)) this.update({ selectedId: id, message: "" });
+    return this.currentEntry(id);
   }
   edit(
     entry: ResearchFollowup,

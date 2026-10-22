@@ -1,6 +1,7 @@
 import type { ResearchWatchlistState } from "./managed-workspace";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedThesisReview } from "./ManagedThesisReview";
+import type { ThesisFollowupContext } from "./managed-thesis-followup";
 
 /** Edits the watchlist draft; the existing watchlist screen owns explicit saves. */
 export function ManagedResearchNote({
@@ -10,6 +11,7 @@ export function ManagedResearchNote({
   onAdd,
   onNote,
   onReview,
+  followup,
 }: {
   state: ResearchWatchlistState;
   navigationPending: boolean;
@@ -17,6 +19,7 @@ export function ManagedResearchNote({
   onAdd: () => void;
   onNote: (note: string, expectedNote?: string) => void;
   onReview: () => void;
+  followup?: ThesisFollowupContext | undefined;
 }) {
   return (
     <section aria-labelledby="managed-research-note-heading">
@@ -60,8 +63,9 @@ export function ManagedResearchNote({
           id="managed-research-note"
           symbol={symbol}
           note={state.member.note}
-          disabled={!state.canEdit}
+          disabled={!state.canEdit || navigationPending}
           onChange={onNote}
+          {...(followup ? { followup } : {})}
         />
       )}
       {state.reason && <p role="status">{state.reason}</p>}

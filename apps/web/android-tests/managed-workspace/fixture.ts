@@ -46,9 +46,11 @@ import type {
 import { createResearchFollowupsFixture } from "./followups-fixture";
 import {
   encodeMainWatchlistPayload,
+  encodeResearchFollowupsPayload,
   parseManagedCatalogResolveResponse,
   parseManagedEodHistoryResponse,
   parseManagedWatchlistCommand,
+  parseManagedResearchFollowupsCommand,
   parseManagedEconomicCalendar,
   parseManagedSecFilingsRequest,
   PERSONAL_BEA_CALENDAR_SOURCE,
@@ -602,6 +604,9 @@ async function createSharedFixture(
     scenarioName === "research-followups" || scenarioName === "markets-day-view"
       ? createResearchFollowupsFixture()
       : null;
+  const thesisFollowups =
+    scenario === "thesis-review" ? createResearchFollowupsFixture() : null;
+  const followupStorage = followups ?? thesisFollowups;
   let state = {
     load: 0,
     status: 0,
@@ -731,15 +736,57 @@ async function createSharedFixture(
         new Error("Portfolio requires an explicit fixture action"),
       ),
     loadFollowups: (signal) =>
-      followups?.api.loadFollowups(signal) ??
+      followupStorage?.api.loadFollowups(signal) ??
       Promise.reject(
         new Error("Follow-ups require an explicit fixture action"),
       ),
-    saveFollowups: (command, signal) =>
-      followups?.api.saveFollowups(command, signal) ??
-      Promise.reject(
-        new Error("Follow-ups require an explicit fixture action"),
-      ),
+    saveFollowups: (command, signal) => {
+      if (thesisFollowups) {
+        const captured = parseManagedResearchFollowupsCommand(command);
+        const entry = captured?.payload.entries[0];
+        const saves = thesisFollowups.getSnapshot().save;
+        const { note, ...listing } = payload.memberships[0]!;
+        void note;
+        if (
+          !captured ||
+          !entry ||
+          saves > 1 ||
+          captured.expectedVersion !== saves ||
+          (saves === 1 && entry.completedOn === null) ||
+          encodeResearchFollowupsPayload(captured.payload) !==
+            encodeResearchFollowupsPayload({
+              schemaVersion: 1,
+              entries: [
+                {
+                  ...entry,
+                  listing,
+                  catalogSnapshotSha256: digest,
+                  check: "Read the next filed report",
+                  dueOn: "2020-01-01",
+                  result: saves === 0 ? "" : "Checked the authored thesis",
+                  ...(saves === 0
+                    ? { status: "open" as const, completedOn: null }
+                    : {
+                        status: "completed" as const,
+                        completedOn: entry.completedOn!,
+                      }),
+                },
+              ],
+            })
+        )
+          return Promise.reject(
+            new Error(
+              "Only the declared thesis follow-up commands are admitted",
+            ),
+          );
+      }
+      return (
+        followupStorage?.api.saveFollowups(command, signal) ??
+        Promise.reject(
+          new Error("Follow-ups require an explicit fixture action"),
+        )
+      );
+    },
     recentFilings: (input, signal) => {
       if (balanceScenario) {
         count("filings");
@@ -1774,7 +1821,7 @@ async function createSharedFixture(
       refuseResolve: () => unexpected("resolve"),
     }),
     session,
-    followups,
+    followups: followupStorage,
     marketsCohort,
     researchCoverage: inventedManagedResearchCoverage,
     priceCoverage:

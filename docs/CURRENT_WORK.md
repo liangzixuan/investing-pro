@@ -31,7 +31,17 @@ enablement reused its accepted source archive. The current API is ready and live
 and its downloaded source matches the accepted ce7 archive. The website already contains the matching Portfolio
 workflow. No authenticated owner Portfolio Save was exercised during release.
 
-Android 1.31.0, code 32, is provided from accepted source
+Android 1.32.0, code 33, is provided from accepted source
+`273f09dbeb056a6196c3c6b73dd37eb06432bb54` with the existing production signer.
+It adds the [Watchlist filing-review workflow](MANAGED_FILINGS_REVIEW.md).
+The single guarded offline build, package/version/non-debug and v2/single-signer
+checks, complete configuration and asset checks, and final source-preservation
+check passed. All tracked source and immutable dependency inputs stayed unchanged.
+The current API and website remained unchanged; prior APKs are preserved.
+Installation, physical-device acceptance and sustained use of 1.32 remain open.
+The dated thesis Next-check source work is not included in this package.
+
+Android 1.31.0, code 32, was provided from accepted source
 `ce7bc1025d1bd67fc55e841375a92770f7e20190` with the existing production signer.
 It adds Portfolio draft files and the explicit BLS release calendar. The API
 supports this client; the website remains at its prior accepted version.
@@ -102,11 +112,20 @@ member's removal or identity change, catalog invalidation and session retirement
 clear its temporary evidence. Source tests cover cancellation, reentry, stale
 controls, the company-note-Save-Back route and guarded keyboard focus.
 
-This is client source work. The published website and provided Android 1.31
-remain at their recorded sources above; this review group has no new client
-delivery, browser-layout or physical-device acceptance.
+Android 1.32 provides this workflow. Its source checks include the required
+60-case native suite. The published website retains its recorded source above.
+New browser-layout, physical-device acceptance and sustained use remain open.
 
 ## Selected next outcome: sustained daily use and coherent company coverage
+
+The current source increment connects an authored thesis **Next check** to a dated
+[Follow-up](MANAGED_RESEARCH_FOLLOWUPS.md). Both thesis editors offer an explicit
+initial Follow-ups Load that retains their fields, a complete check preview and
+an explicit draft-creation action. Existing checks are not overwritten; Watchlist
+and Follow-ups still save separately. The new entry uses the existing Markets
+due queue, company research and Back, result and completion workflow. No note
+parsing, automatic source request, Save or monitoring is added. This source work
+is separate from provided Android 1.32 and has no client or phone acceptance yet.
 
 Continue daily use of the delivered Android 1.31 Portfolio draft files, BLS calendar, saved valuation and enabled [managed Portfolio workflow](MANAGED_PORTFOLIO.md). The owner reported installed version 1.31 and the requested overall phone checklist passed on October 21. This provides no per-item or independent device inspection. Align a useful named universe across independently eligible Price, Annual and Filings sources; retain each source's separate admission and provenance.
 

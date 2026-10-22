@@ -120,6 +120,7 @@ import { ManagedBlsCalendar } from "./managed-bls-calendar";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import { ManagedResearchFollowups } from "./managed-research-followups";
+import type { ThesisFollowupContext } from "./managed-thesis-followup";
 import { ManagedPortfolio, type PortfolioDraft } from "./managed-portfolio";
 import { ManagedSessionOwner } from "./managed-session-owner";
 import { MANAGED_WATCHLIST_SAVE_COPY } from "./save-coordinator-copy";
@@ -1760,6 +1761,36 @@ export class ManagedWorkspace {
       this[section].getSnapshot().selection === targetSelection
       ? switched
       : null;
+  }
+  thesisFollowupContext(
+    member: WatchlistMembership,
+    selection?: ManagedResearchSelection,
+  ): ThesisFollowupContext {
+    const navigation = this.navigationRevision;
+    const view = this.viewRevision;
+    return {
+      model: this.followups,
+      member,
+      isCurrent: () => {
+        if (
+          !this.canNavigate() ||
+          !this.canEdit() ||
+          this.navigationRevision !== navigation ||
+          this.viewRevision !== view ||
+          !this.currentWatchlistContains(member)
+        )
+          return false;
+        if (selection) {
+          const watchlist = this.getResearchWatchlist(selection);
+          return watchlist.canEdit && watchlist.member === member;
+        }
+        return (
+          this.watchlistResearchVisitActive() &&
+          this.coordinator.getSnapshot().draft?.memberships.includes(member) ===
+            true
+        );
+      },
+    };
   }
   getResearchWatchlist(
     selection: ManagedResearchSelection,

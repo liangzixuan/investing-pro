@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ManagedThesisFollowup } from "./ManagedThesisFollowup";
+import type { ThesisFollowupContext } from "./managed-thesis-followup";
 import {
   emptyThesisReview,
   proposeThesisReview,
@@ -15,6 +17,7 @@ export interface ThesisReviewFormProps {
   review: ThesisReview;
   onReview: (review: ThesisReview) => void;
   onChange: (note: string, expectedNote?: string) => void;
+  followup?: ThesisFollowupContext;
 }
 
 export function ThesisReviewForm({
@@ -25,6 +28,7 @@ export function ThesisReviewForm({
   review,
   onReview,
   onChange,
+  followup,
 }: ThesisReviewFormProps) {
   const proposal = proposeThesisReview(note, review);
   return (
@@ -108,6 +112,14 @@ export function ThesisReviewForm({
           : (proposal.reason ??
             "Adds to the current note. Save all changes in My Watchlist.")}
       </p>
+      {followup && (
+        <ManagedThesisFollowup
+          id={id}
+          next={review.next}
+          disabled={disabled}
+          context={followup}
+        />
+      )}
     </details>
   );
 }
@@ -116,5 +128,24 @@ export function ManagedThesisReview(
   props: Omit<ThesisReviewFormProps, "review" | "onReview">,
 ) {
   const [review, setReview] = useState<ThesisReview>(emptyThesisReview);
-  return <ThesisReviewForm {...props} review={review} onReview={setReview} />;
+  const current = useRef(review);
+  current.current = review;
+  const followup = props.followup
+    ? {
+        ...props.followup,
+        isCurrent: () =>
+          current.current === review && props.followup!.isCurrent(),
+      }
+    : undefined;
+  return (
+    <ThesisReviewForm
+      {...props}
+      {...(followup ? { followup } : {})}
+      review={review}
+      onReview={(next) => {
+        current.current = next;
+        setReview(next);
+      }}
+    />
+  );
 }

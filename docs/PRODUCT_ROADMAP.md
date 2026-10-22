@@ -20,6 +20,13 @@ Watchlist Save. It connects daily filing review across companies using current
 source admission and dates. It adds no background monitoring, source coverage or
 saved reviewed flag. Client delivery remains separate from this source work.
 
+Android 1.32.0, code 33, now provides this filing-review workflow from accepted
+source `273f09dbeb056a6196c3c6b73dd37eb06432bb54`. The guarded offline build,
+complete package/configuration/asset verification and final source preservation
+passed. The existing API and website stayed unchanged. Phone acceptance and
+sustained use remain open. The later dated thesis Next-check source increment
+has no client delivery yet.
+
 ## Current priority after the October 21 Android delivery
 
 The website retains source
