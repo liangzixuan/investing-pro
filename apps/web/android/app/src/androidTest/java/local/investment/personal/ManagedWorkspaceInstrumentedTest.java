@@ -877,7 +877,8 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertCompleteValuationFileComparison(String editor) throws Exception {
         awaitPage("the actual selected local file reaches a complete review before restoration",
             "document.querySelector('#managed-valuation-file-review-heading')!==null && document.querySelector('#managed-valuation-draft-files input[type=file]')?.value===''");
-        click("#managed-valuation-file-review-heading ~ details > summary");
+        touchEditorGeometry("Valuation file complete comparison summary",
+            ValuationReviewSummaryGeometry.await(scenario, java.time.Duration.ofMillis(PAGE_TIMEOUT_MS)));
         awaitPage("the file and current editor expose all model operands and full identities without any editor replacement",
             "(() => { const review=document.querySelector('#managed-valuation-file-review-heading')?.parentElement," +
             "groups=review?.querySelectorAll('section[aria-label=\"Complete assumptions for ZERO\"]'),f=JSON.parse(" + valuationFileProtocol() + ".text),before=" + editor + ";" +
