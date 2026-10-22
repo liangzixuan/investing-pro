@@ -1102,14 +1102,9 @@ export function ManagedWorkspaceScreen({
                   watchlist={workspace.getResearchWatchlist(
                     discovery.research.selection,
                   )}
-                  thesisFollowup={(() => {
-                    const selection = discovery.research.selection;
-                    const member =
-                      workspace.getResearchWatchlist(selection).member;
-                    return member
-                      ? workspace.thesisFollowupContext(member, selection)
-                      : undefined;
-                  })()}
+                  thesisFollowup={workspace.researchThesisFollowupContext(
+                    discovery.research.selection,
+                  )}
                   onAdd={() =>
                     workspace.addResearchToWatchlist(
                       discovery.research!.selection,

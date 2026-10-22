@@ -1762,6 +1762,10 @@ export class ManagedWorkspace {
       ? switched
       : null;
   }
+  researchThesisFollowupContext(selection: ManagedResearchSelection) {
+    const member = this.getResearchWatchlist(selection).member;
+    return member ? this.thesisFollowupContext(member, selection) : undefined;
+  }
   thesisFollowupContext(
     member: WatchlistMembership,
     selection?: ManagedResearchSelection,
@@ -1772,9 +1776,8 @@ export class ManagedWorkspace {
       model: this.followups,
       member,
       isCurrent: () => {
+        if (!this.canNavigate() || !this.canEdit()) return false;
         if (
-          !this.canNavigate() ||
-          !this.canEdit() ||
           this.navigationRevision !== navigation ||
           this.viewRevision !== view ||
           !this.currentWatchlistContains(member)

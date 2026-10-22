@@ -275,6 +275,44 @@ const snapshot: ManagedCatalogSnapshotDto = {
 };
 
 /** Test-APK-only data port. There is no fetch, credential, storage, or native-auth fallback. */
+
+/** Exact two-command allowlist for the existing native thesis journey. */
+function isDeclaredThesisFollowup(
+  command: Parameters<ManagedApi["saveFollowups"]>[0],
+  saves: number,
+  watchlist: MainWatchlistPayload,
+) {
+  const captured = parseManagedResearchFollowupsCommand(command);
+  const entry = captured?.payload.entries[0];
+  if (!captured || !entry) return false;
+  if (saves > 1 || captured.expectedVersion !== saves) return false;
+  if (saves === 1 && entry.completedOn === null) return false;
+  const { note, ...listing } = watchlist.memberships[0]!;
+  void note;
+  return (
+    encodeResearchFollowupsPayload(captured.payload) ===
+    encodeResearchFollowupsPayload({
+      schemaVersion: 1,
+      entries: [
+        {
+          ...entry,
+          listing,
+          catalogSnapshotSha256: digest,
+          check: "Read the next filed report",
+          dueOn: "2020-01-01",
+          result: saves === 0 ? "" : "Checked the authored thesis",
+          ...(saves === 0
+            ? { status: "open" as const, completedOn: null }
+            : {
+                status: "completed" as const,
+                completedOn: entry.completedOn!,
+              }),
+        },
+      ],
+    })
+  );
+}
+
 async function createSharedFixture(
   scenarioName:
     | "default"
@@ -741,45 +779,17 @@ async function createSharedFixture(
         new Error("Follow-ups require an explicit fixture action"),
       ),
     saveFollowups: (command, signal) => {
-      if (thesisFollowups) {
-        const captured = parseManagedResearchFollowupsCommand(command);
-        const entry = captured?.payload.entries[0];
-        const saves = thesisFollowups.getSnapshot().save;
-        const { note, ...listing } = payload.memberships[0]!;
-        void note;
-        if (
-          !captured ||
-          !entry ||
-          saves > 1 ||
-          captured.expectedVersion !== saves ||
-          (saves === 1 && entry.completedOn === null) ||
-          encodeResearchFollowupsPayload(captured.payload) !==
-            encodeResearchFollowupsPayload({
-              schemaVersion: 1,
-              entries: [
-                {
-                  ...entry,
-                  listing,
-                  catalogSnapshotSha256: digest,
-                  check: "Read the next filed report",
-                  dueOn: "2020-01-01",
-                  result: saves === 0 ? "" : "Checked the authored thesis",
-                  ...(saves === 0
-                    ? { status: "open" as const, completedOn: null }
-                    : {
-                        status: "completed" as const,
-                        completedOn: entry.completedOn!,
-                      }),
-                },
-              ],
-            })
+      if (
+        thesisFollowups &&
+        !isDeclaredThesisFollowup(
+          command,
+          thesisFollowups.getSnapshot().save,
+          payload,
         )
-          return Promise.reject(
-            new Error(
-              "Only the declared thesis follow-up commands are admitted",
-            ),
-          );
-      }
+      )
+        return Promise.reject(
+          new Error("Only the declared thesis follow-up commands are admitted"),
+        );
       return (
         followupStorage?.api.saveFollowups(command, signal) ??
         Promise.reject(
