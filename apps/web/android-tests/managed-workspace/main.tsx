@@ -20,6 +20,10 @@ import {
 import { createNativeExportFixture } from "./native-export-fixture";
 import { createNativeDraftFileFixture } from "./native-draft-file-fixture";
 import { createNativeDraftFileSession } from "./native-draft-file-session";
+import {
+  createNativeValuationDraftFileFixture,
+  createNativeValuationDraftFileSession,
+} from "./native-valuation-draft-file-fixture";
 import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
 import type { TrialSession } from "../../src/clerk-trial/session";
 
@@ -88,6 +92,10 @@ const nativeExport =
   scenario === "watchlist-export" ? createNativeExportFixture() : null;
 const nativeDraftFile =
   scenario === "watchlist-draft-file" ? createNativeDraftFileFixture() : null;
+const nativeValuationDraftFile =
+  scenario === "saved-valuation"
+    ? createNativeValuationDraftFileFixture()
+    : null;
 
 /** Own the real session model so diagnostics can observe invented drafts without a production bridge. */
 function FixtureSession({
@@ -100,6 +108,9 @@ function FixtureSession({
   const [workspace, setWorkspace] = useState<ManagedWorkspace | null>(null);
   const [draftFileSession] = useState(() =>
     createNativeDraftFileSession(nativeDraftFile, session),
+  );
+  const [valuationDraftFileSession] = useState(() =>
+    createNativeValuationDraftFileSession(nativeValuationDraftFile, session),
   );
   useLayoutEffect(() => {
     const current = new ManagedWorkspace(fixture.api, session, undefined, {
@@ -128,6 +139,7 @@ function FixtureSession({
             {...(nativeReport ? { reportDelivery: nativeReport.delivery } : {})}
             {...(nativeExport ? { exportDelivery: nativeExport.delivery } : {})}
             {...draftFileSession.routerProps}
+            {...valuationDraftFileSession.routerProps}
           />
         ) : (
           <p role="status">Loading your workspace…</p>
@@ -144,6 +156,7 @@ function FixtureSession({
         workspace={workspace}
         onFreshSession={onFreshSession}
       />
+      <valuationDraftFileSession.Controls />
       {workspace && fixture.portfolio && (
         <PortfolioFixtureControls
           workspace={workspace}

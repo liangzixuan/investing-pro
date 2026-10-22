@@ -1,3 +1,5 @@
+import { managedResearchCompanyNavigationProps } from "./managed-research-company-navigation-props";
+import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import {
@@ -78,25 +80,23 @@ import {
   type AndroidBackAdapter,
 } from "../mobile/android-back";
 
-interface SessionProps extends ManagedSessionWorkspaceOptions {
-  androidBack?: AndroidBackAdapter;
-  warnOnBrowserLeave?: boolean;
+interface ManagedFileDeliveries {
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
   followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+  valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
-
-interface WorkspaceProps {
+interface SessionProps
+  extends ManagedSessionWorkspaceOptions, ManagedFileDeliveries {
+  androidBack?: AndroidBackAdapter;
+  warnOnBrowserLeave?: boolean;
+}
+interface WorkspaceProps extends ManagedFileDeliveries {
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
-  exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileScope?: Promise<string>;
-  draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
-  portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
-  followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
-  reportDelivery?: CompanyReportDeliveryAdapter;
 }
 
 interface WorkspaceScreenProps extends WorkspaceProps {
@@ -214,19 +214,7 @@ function SessionWorkspace(props: SessionProps) {
     <ManagedWorkspaceRouter
       workspace={workspace}
       {...draftFileSession}
-      {...(initial.portfolioDraftFileDelivery
-        ? { portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery }
-        : {})}
-      {...(initial.followupsDraftFileDelivery
-        ? { followupsDraftFileDelivery: initial.followupsDraftFileDelivery }
-        : {})}
-      {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
-      {...(initial.reportDelivery
-        ? { reportDelivery: initial.reportDelivery }
-        : {})}
-      {...(initial.exportDelivery
-        ? { exportDelivery: initial.exportDelivery }
-        : {})}
+      {...definedSessionWorkspacePorts(initial)}
     />
   ) : (
     <div className="managed-workspace-main">
@@ -236,6 +224,20 @@ function SessionWorkspace(props: SessionProps) {
       <ThirdPartyNotices />
     </div>
   );
+}
+
+function definedSessionWorkspacePorts(initial: SessionProps) {
+  const ports = {
+    portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
+    followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
+    valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
+    androidBack: initial.androidBack,
+    reportDelivery: initial.reportDelivery,
+    exportDelivery: initial.exportDelivery,
+  };
+  return Object.fromEntries(
+    Object.entries(ports).filter(([, value]) => value !== undefined),
+  ) as Pick<WorkspaceProps, keyof typeof ports>;
 }
 
 export function ManagedWorkspaceRouter(props: WorkspaceProps) {
@@ -449,6 +451,7 @@ export function ManagedWorkspaceScreen({
   draftFileDelivery,
   portfolioDraftFileDelivery,
   followupsDraftFileDelivery,
+  valuationDraftFileDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -1095,26 +1098,21 @@ export function ManagedWorkspaceScreen({
                   {...managedValuationResearchProps(
                     workspace,
                     discovery.research.selection,
+                    {
+                      accountScope: draftFileScope,
+                      delivery: valuationDraftFileDelivery,
+                      navigationPending,
+                      routeActive: () =>
+                        !navigation?.invalid && !navigation?.isPending(),
+                    },
                   )}
                   companyNavigationState={workspace.getResearchCompanyNavigation(
                     discovery.research,
                   )}
-                  canOpenCompany={(visit, member) =>
-                    !navigation?.invalid &&
-                    workspace.canOpenResearchCompany(visit, member)
-                  }
-                  onOpenCompany={(visit, member) => {
-                    if (
-                      navigation?.invalid ||
-                      !workspace.canOpenResearchCompany(visit, member)
-                    )
-                      return;
-                    const open = () =>
-                      workspace.openResearchCompany(visit, member);
-                    // Keep the original workspace opener for the final Back.
-                    if (navigation) navigation.open(open);
-                    else open();
-                  }}
+                  {...managedResearchCompanyNavigationProps(
+                    workspace,
+                    navigation,
+                  )}
                   onBack={() => {
                     if (
                       workspace.getSnapshot().research?.selection ===

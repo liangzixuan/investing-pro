@@ -52,8 +52,7 @@ final class WatchlistSystemPicker {
             || "Show roots".contentEquals(string(node.getContentDescription())));
         if (!isRootsList(navigation)) click(navigation);
         clickInventedRoot();
-        await(node -> string(node.getViewIdResourceName()).endsWith(":id/toolbar")
-            && find(node, child -> SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(child.getText())), 0) != null);
+        await(WatchlistSystemPicker::readySaveDirectory);
         AccessibilityNodeInfo save = await(node -> "android:id/button1".equals(node.getViewIdResourceName())
             && node.isEnabled() && hasAncestor(node, ":id/container_save"));
         assertTrue("Unexpected native Save control", "Save".equalsIgnoreCase(string(save.getText())));
@@ -61,10 +60,35 @@ final class WatchlistSystemPicker {
         awaitReturnToApp();
     }
 
+    /** The CREATE picker exposes this action only after a writable current directory exists. */
+    private static boolean readySaveDirectory(AccessibilityNodeInfo toolbar) {
+        if (!toolbar.isVisibleToUser()) return false;
+        if (!string(toolbar.getViewIdResourceName()).endsWith(":id/toolbar")) return false;
+        AccessibilityWindowInfo window = toolbar.getWindow();
+        if (window == null) return false;
+        if (window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) return false;
+        if (!window.isActive() || !window.isFocused()) return false;
+        AccessibilityNodeInfo title = find(toolbar, node -> node.isVisibleToUser()
+            && SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(node.getText())), 0);
+        if (title == null) return false;
+        return find(toolbar, WatchlistSystemPicker::isDirectoryCreateAction, 0) != null;
+    }
+
+    private static boolean isDirectoryCreateAction(AccessibilityNodeInfo node) {
+        if (!node.isVisibleToUser() || !node.isEnabled()) return false;
+        return string(node.getViewIdResourceName()).endsWith(":id/option_menu_create_dir");
+    }
+
     /** OPEN uses the same real provider root, with one exact observed document label. */
     void openInventedDocument(String displayName) throws Exception {
+        openInventedDocument(displayName, "watchlist-draft");
+    }
+
+    void openInventedDocument(String displayName, String family) throws Exception {
+        assertTrue("Only existing invented draft file families can be selected",
+            family.equals("watchlist-draft") || family.equals("valuation-inputs-draft"));
         assertTrue("Only an exact invented draft document can be selected",
-            displayName.matches("Investment-watchlist-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json"));
+            displayName.matches("Investment-" + family + "-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json"));
         AccessibilityNodeInfo navigation = await(node -> isRootsList(node)
             || "Show roots".contentEquals(string(node.getContentDescription())));
         if (!isRootsList(navigation)) click(navigation);

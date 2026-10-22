@@ -767,6 +767,132 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("only explicit Calculate runs both restored authored models", savedValuationEditor() + ".calculation?.dcfResult.scenarios.base.valuePerShareUsd === '140.00' && " + savedValuationEditor() + ".calculation?.exitResult.scenarios.base.valuePerShare === '19.00'");
         assertSavedValuationIsolation(watchlist);
         assertEquals("saved assumptions journey preserves the mounted document", origin, readDocumentTimeOrigin(), 0.0);
+        exerciseValuationDraftFileRecovery(watchlist);
+        assertSavedValuationIsolation(watchlist);
+        assertEquals("valuation draft files preserve the original mounted document", origin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    private void exerciseValuationDraftFileRecovery(String watchlist) throws Exception {
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        WatchlistTestDocuments.clear(context);
+        String resource = readFixtureString("JSON.stringify(" + savedValuationResource() + ")");
+        try {
+            WatchlistTestDocuments.Output output = exportInventedValuationInputs(context);
+            replaceValuationFileOperand("dcf-startingUnleveredCashFlowUsd", "100.00", "200.00");
+            replaceValuationFileOperand("exit-cash", "101.00", "102.00");
+            String editor = readFixtureString("JSON.stringify(" + savedValuationEditor() + ")");
+            selectInventedValuationInputs(output);
+            assertCompleteValuationFileComparison(editor);
+            clickValuationFileAction("Keep current editor");
+            awaitPage("Cancel retains every current operand and leaves the saved resource unchanged",
+                "document.querySelector('#managed-valuation-file-review-heading')===null && JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(editor) +
+                " && document.activeElement===document.querySelector('#managed-valuation-draft-files input[type=file]') && document.activeElement.disabled===false" +
+                " && JSON.stringify(" + savedValuationResource() + ")===" + JSONObject.quote(resource));
+            selectInventedValuationInputs(output);
+            assertCompleteValuationFileComparison(editor);
+            clickValuationFileAction("Restore file to current editor");
+            awaitPage("explicit file restore replaces both complete maps, marks the editor dirty and clears calculations",
+                "(() => { const e=" + savedValuationEditor() + ",f=JSON.parse(" + valuationFileProtocol() + ".text).entry;" +
+                "return e.dirty && e.editable && !e.retired && e.inputIssue===null && e.calculation===null" +
+                " && JSON.stringify(e.dcfDraft)===JSON.stringify(f.dcf.inputs) && JSON.stringify(e.exitDraft)===JSON.stringify(f.exit.inputs)" +
+                " && JSON.stringify(e.owner.listing)===JSON.stringify(f.listing) && e.owner.catalogSnapshotSha256===f.catalogSnapshotSha256 && e.owner.cik===f.cik" +
+                " && e.owner.origin==='watchlist' && e.context.origin==='watchlist' && document.querySelector('#managed-valuation-file-review-heading')===null" +
+                " && JSON.stringify(" + savedValuationResource() + ")===" + JSONObject.quote(resource) + "; })()");
+            assertSavedValuationIsolation(watchlist);
+            click(".managed-valuation-workbench:not(.managed-valuation-assumptions) > button:first-of-type");
+            awaitPage("file restoration calculates both models only on the separate explicit Calculate action",
+                savedValuationEditor() + ".calculation?.dcfResult.scenarios.base.valuePerShareUsd==='140.00' && " +
+                savedValuationEditor() + ".calculation?.exitResult.scenarios.base.valuePerShare==='19.01' && " +
+                savedValuationEditor() + ".dirty===true && JSON.stringify(" + savedValuationResource() + ")===" + JSONObject.quote(resource) +
+                " && " + valuationFileProtocol() + ".choices===1 && " + valuationFileProtocol() + ".writes===1");
+            assertEquals("The existing native destination is reused for both explicit reads", 1, WatchlistTestDocuments.outputs(context).length);
+        } finally {
+            WatchlistTestDocuments.clear(context);
+        }
+    }
+
+    private String valuationFileProtocol() {
+        return "JSON.parse(document.querySelector('#fixture-valuation-file-protocol').textContent)";
+    }
+
+    private void replaceValuationFileOperand(String suffix, String before, String after) throws Exception {
+        String id = readFixtureString("document.querySelector(" + JSONObject.quote(".managed-valuation-workbench:not(.managed-valuation-assumptions) input[id$='-" + suffix + "']") + ").id");
+        touchInput(id);
+        replaceFocusedInput(id, before, after);
+        closeSoftKeyboard();
+    }
+
+    private WatchlistTestDocuments.Output exportInventedValuationInputs(android.content.Context context) throws Exception {
+        scenario.onActivity(activity -> {
+            InvestmentValuationDraftFilePlugin plugin = (InvestmentValuationDraftFilePlugin)
+                activity.getBridge().getPlugin("InvestmentValuationDraftFile").getInstance();
+            assertNull("Valuation input files must not enter saved Activity options", plugin.saveInstanceState());
+        });
+        replaceValuationFileOperand("exit-cash", "100.00", "101.00");
+        click("#managed-valuation-draft-files > summary");
+        awaitPage("the matching dirty editor enables explicit native input-file capture",
+            "document.querySelector('#managed-valuation-draft-files')?.open===true && " + savedValuationEditor() + ".dirty===true" +
+            " && [...document.querySelectorAll('#managed-valuation-draft-files button')].some(e=>e.textContent==='Save inputs file' && !e.disabled)");
+        clickValuationFileAction("Save inputs file");
+        new WatchlistSystemPicker().saveToInventedRoot();
+        awaitPage("the real valuation writer completes one exact input-file write",
+            "document.querySelector('#managed-valuation-draft-files')?.textContent.includes('Valuation input file saved.') && " +
+            valuationFileProtocol() + ".choices===1 && " + valuationFileProtocol() + ".writes===1");
+        WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
+        assertEquals(1, outputs.length);
+        String text = readFixtureString(valuationFileProtocol() + ".text");
+        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+        assertTrue(bytes.length <= 131072);
+        assertArrayEquals(bytes, WatchlistTestDocuments.read(context, outputs[0]));
+        JSONObject file = new JSONObject(text);
+        assertEquals(5, file.length());
+        assertEquals("investment-valuation-inputs-draft", file.getString("format"));
+        assertEquals(1, file.getInt("version"));
+        assertTrue(file.getString("accountScope").matches("sha256:[0-9a-f]{64}"));
+        assertEquals("Investment-valuation-inputs-draft-" + file.getString("capturedAt").replace(':', '-').replace('.', '-') + ".json", outputs[0].name);
+        awaitPage("the file retains the entire exact authored entry without changing confirmed saved inputs",
+            "(() => { const f=JSON.parse(" + valuationFileProtocol() + ".text).entry,s=" + savedValuationStore() +
+            ",expected=JSON.parse(JSON.stringify(s.expected));expected.exit.inputs.cash='101.00';" +
+            "return JSON.stringify(f)===JSON.stringify(expected) && s.saved.payload.entries[0].exit.inputs.cash==='100.00'" +
+            " && " + savedValuationEditor() + ".calculation===null; })()");
+        return outputs[0];
+    }
+
+    private void selectInventedValuationInputs(WatchlistTestDocuments.Output output) throws Exception {
+        ValuationChooserGeometry.PreparedTouch prepared = ValuationChooserGeometry.await(scenario, PAGE_TIMEOUT_MS);
+        try {
+            touchEditorGeometry("Valuation inputs file chooser label", prepared.geometry);
+            new WatchlistSystemPicker().openInventedDocument(output.name, "valuation-inputs-draft");
+        } finally {
+            prepared.logTrace();
+        }
+    }
+
+    private void clickValuationFileAction(String label) {
+        assertTrue(label.equals("Save inputs file") || label.equals("Keep current editor") || label.equals("Restore file to current editor"));
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//details[@id='managed-valuation-draft-files']//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertCompleteValuationFileComparison(String editor) throws Exception {
+        awaitPage("the actual selected local file reaches a complete review before restoration",
+            "document.querySelector('#managed-valuation-file-review-heading')!==null && document.querySelector('#managed-valuation-draft-files input[type=file]')?.value===''");
+        touchEditorGeometry("Valuation file complete comparison summary",
+            ValuationReviewSummaryGeometry.await(scenario, java.time.Duration.ofMillis(PAGE_TIMEOUT_MS)));
+        awaitPage("the file and current editor expose all model operands and full identities without any editor replacement",
+            "(() => { const review=document.querySelector('#managed-valuation-file-review-heading')?.parentElement," +
+            "groups=review?.querySelectorAll('section[aria-label=\"Complete assumptions for ZERO\"]'),f=JSON.parse(" + valuationFileProtocol() + ".text),before=" + editor + ";" +
+            "const raw=e=>[...['startingUnleveredCashFlowUsd','enterpriseToEquityBridgeUsd','dilutedShares','forecastYears','waccPercent','terminalGrowthPercent'].map(k=>e.dcf.inputs[k])," +
+            "...['conservative','base','expansion'].map(k=>e.dcf.inputs.scenarios[k].annualCashFlowGrowthPercent)," +
+            "...['baseRevenue','cash','debt','dilutedShares','horizonYears','discountRatePercent'].map(k=>e.exit.inputs[k])," +
+            "...['conservative','base','expansion'].flatMap(s=>['annualRevenueGrowthPercent','targetEbitdaMarginPercent','exitMultiple'].map(k=>e.exit.inputs.scenarios[s][k]))];" +
+            "const maps=[f.entry,{dcf:{inputs:before.dcfDraft},exit:{inputs:before.exitDraft}}];" +
+            "return groups?.length===2 && review.querySelector('details').open" +
+            " && [...groups].every((g,i)=>JSON.stringify([...g.querySelectorAll('.managed-valuation-raw')].map(n=>n.textContent))===JSON.stringify(raw(maps[i]).map(v=>v===''?'Empty':v)))" +
+            " && Object.values(f.entry.listing).every(value=>[...groups].every(g=>g.textContent.includes(value)))" +
+            " && [...groups].every(g=>g.textContent.includes(f.entry.catalogSnapshotSha256) && g.textContent.includes(f.entry.dcf.modelVersion) && g.textContent.includes(f.entry.exit.modelVersion) && g.textContent.includes('Not specified'))" +
+            " && review.textContent.includes(f.capturedAt) && review.textContent.includes('does not verify')" +
+            " && JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(editor) + "; })()");
     }
 
     private String savedValuationEditor() {
@@ -1689,13 +1815,17 @@ public class ManagedWorkspaceInstrumentedTest {
 
     /** A real gesture activates the file chooser again after Cancel returns DOM focus. */
     private void touchDraftFileChooserLabel() throws Exception {
+        touchDraftFileChooserLabel("#managed-watchlist-draft-files", "Select a Watchlist draft file", "Watchlist draft file chooser label");
+    }
+
+    private void touchDraftFileChooserLabel(String root, String labelText, String description) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> observed = new AtomicReference<>();
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-            "(() => { const input=document.querySelector('#managed-watchlist-draft-files input[type=file]'),label=input?.closest('label');" +
+            "(() => { const input=document.querySelector(" + JSONObject.quote(root + " input[type=file]") + "),label=input?.closest('label');" +
             " if(!input || input.disabled || !label)return null;" +
             " if(label.control!==input || !input.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return null;" +
-            " const text=[...label.childNodes].find(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim()==='Select a Watchlist draft file');" +
+            " const text=[...label.childNodes].find(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim()===" + JSONObject.quote(labelText) + ");" +
             " if(!text)return null; label.scrollIntoView({block:'center',inline:'center',behavior:'instant'});" +
             " const range=document.createRange();range.selectNodeContents(text);const r=range.getBoundingClientRect(),ir=input.getBoundingClientRect(),v=visualViewport;" +
             " const x=r.left+r.width/2,y=r.top+r.height/2;" +
@@ -1708,7 +1838,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " hit:label.contains(document.elementFromPoint(x,y))}; })()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Draft file chooser label geometry returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        touchEditorGeometry("Watchlist draft file chooser label", observed.get());
+        touchEditorGeometry(description, observed.get());
     }
 
     private void assertCompleteDraftFileComparison() throws Exception {
@@ -9502,14 +9632,18 @@ public class ManagedWorkspaceInstrumentedTest {
         try {
             // Public, app-scoped injection waits for retiring window animations before DOWN.
             // Call on the instrumentation thread; never bypass Android's obscured-touch guard.
+            Log.i("ManagedEditorTouch", "DOWN dispatch uptime=" + SystemClock.uptimeMillis() + ", x=" + point[0] + ", y=" + point[1]);
             InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
+            Log.i("ManagedEditorTouch", "DOWN returned uptime=" + SystemClock.uptimeMillis());
         } finally {
             down.recycle();
         }
         MotionEvent up = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, point[0], point[1], 0);
         up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
         try {
+            Log.i("ManagedEditorTouch", "UP dispatch uptime=" + SystemClock.uptimeMillis());
             InstrumentationRegistry.getInstrumentation().sendPointerSync(up);
+            Log.i("ManagedEditorTouch", "UP returned uptime=" + SystemClock.uptimeMillis());
         } finally {
             up.recycle();
         }

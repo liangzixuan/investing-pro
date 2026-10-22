@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ManagedAnnualStatementsReviewActions } from "./ManagedAnnualStatementsReview";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ManagedResearchSelection } from "./managed-research-selection";
@@ -61,6 +62,7 @@ export function ManagedCompanyResearch({
   valuation,
   valuationAssumptions,
   valuationNoteActions,
+  valuationDraftFiles,
   priceNoteActions,
   priceStudiesActions,
   filingsNoteActions,
@@ -95,6 +97,7 @@ export function ManagedCompanyResearch({
   valuation?: ValuationModel;
   valuationAssumptions: AssumptionsModel;
   valuationNoteActions?: ManagedValuationNoteActions;
+  valuationDraftFiles?: ReactNode;
   priceNoteActions: ManagedPriceNoteActions;
   priceStudiesActions?: ManagedPriceStudiesActions;
   filingsNoteActions: ManagedFilingsNoteActions;
@@ -184,6 +187,7 @@ export function ManagedCompanyResearch({
             price={eod}
             onOpenPrice={() => onSection("eod")}
           />
+          {valuationDraftFiles}
           <ManagedValuationAssumptions
             model={valuationAssumptions}
             workbench={valuation}

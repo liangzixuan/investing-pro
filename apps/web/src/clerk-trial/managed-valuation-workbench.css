@@ -1,5 +1,6 @@
 /* Precision Desk authored assumptions; calculations also render in offline reports. */
-.managed-frame .managed-valuation-workbench {
+.managed-frame
+  :is(.managed-valuation-workbench, .managed-valuation-input-files) {
   min-width: 0;
   margin-block: 20px;
   padding: 16px;
@@ -7,17 +8,21 @@
   border-radius: 8px;
   background: var(--managed-surface);
 }
-.managed-frame .managed-valuation-workbench summary {
+.managed-frame
+  :is(.managed-valuation-workbench, .managed-valuation-input-files)
+  summary {
   min-height: 44px;
   padding-block: 10px;
   cursor: pointer;
 }
-.managed-frame .managed-valuation-workbench :is(button, input, select) {
+.managed-frame
+  :is(.managed-valuation-workbench, .managed-valuation-input-files)
+  :is(button, input, select) {
   min-height: 44px;
   max-width: 100%;
 }
 .managed-frame
-  .managed-valuation-workbench
+  :is(.managed-valuation-workbench, .managed-valuation-input-files)
   :is(button, input, select, summary, [tabindex]):focus-visible {
   outline: 3px solid var(--managed-action);
   outline-offset: 3px;
@@ -66,7 +71,7 @@
   white-space: normal;
 }
 .managed-frame
-  .managed-valuation-workbench
+  :is(.managed-valuation-workbench, .managed-valuation-input-files)
   :is(p, label, legend, h3, h4, h5, li, dt, dd, button) {
   overflow-wrap: anywhere;
 }
@@ -193,7 +198,8 @@
   .managed-frame .managed-valuation-facts {
     grid-template-columns: minmax(0, 1fr);
   }
-  .managed-frame .managed-valuation-workbench {
+  .managed-frame
+    :is(.managed-valuation-workbench, .managed-valuation-input-files) {
     padding: 12px;
   }
 }
