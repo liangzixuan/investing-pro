@@ -13,12 +13,17 @@ import {
 import type { FollowupsFilter } from "./managed-research-followups";
 import type { ManagedWorkspace, FollowupReview } from "./managed-workspace";
 import "./managed-research-followups.css";
+import { ManagedFollowupsDraftFiles } from "./ManagedFollowupsDraftFiles";
+import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 
 export interface ManagedResearchFollowupsProps {
   navigationPending: boolean;
   review?: FollowupReview | null;
   workspace: ManagedWorkspace;
   onResearch: (entry: ResearchFollowup, opener: HTMLButtonElement) => void;
+  draftFileScope?: Promise<string> | undefined;
+  draftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter | undefined;
+  draftFileRouteActive?: (() => boolean) | undefined;
 }
 
 const reviewLabels = {
@@ -33,6 +38,9 @@ export function ManagedResearchFollowups({
   review,
   workspace,
   onResearch,
+  draftFileScope,
+  draftFileDelivery,
+  draftFileRouteActive = () => true,
 }: ManagedResearchFollowupsProps) {
   const model = workspace.followups;
   const state = useSyncExternalStore(
@@ -149,6 +157,20 @@ export function ManagedResearchFollowups({
           {entries.length} / {MANAGED_RESEARCH_FOLLOWUPS_LIMITS.entries} checks
         </p>
       </header>
+      {draftFileScope && (
+        <ManagedFollowupsDraftFiles
+          workspace={workspace}
+          accountScope={draftFileScope}
+          delivery={draftFileDelivery}
+          routeActive={() => draftFileRouteActive() && !navigationPending}
+          onRestored={() => {
+            if (workspace.sessionOwner.getSnapshot().phase !== "active") return;
+            if (workspace.getSnapshot().view !== "followups") return;
+            if (!draftFileRouteActive() || navigationPending) return;
+            document.getElementById("managed-followups-heading")?.focus();
+          }}
+        />
+      )}
       <div className="trial-actions managed-followups-actions">
         <button
           id="managed-followups-load"

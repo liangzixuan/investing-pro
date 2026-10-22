@@ -619,7 +619,8 @@ describe("PersonalFcffDcfValuation", () => {
     const props = defaultProps({
       assumptionControl: { value: restored, onChange },
     });
-    const markup = render(props);
+    const tree = renderTree(props);
+    const markup = renderToStaticMarkup(tree);
     expect(calculate).toHaveBeenLastCalledWith(
       expect.objectContaining({
         assumptions: { ...restored, forecastYears: 8 },
@@ -637,7 +638,7 @@ describe("PersonalFcffDcfValuation", () => {
     ]) {
       expect(
         findHostElement(
-          renderTree(props),
+          tree,
           (element) => element.type === "input" && element.props.id === id,
         )?.props.value,
       ).toBe(value);

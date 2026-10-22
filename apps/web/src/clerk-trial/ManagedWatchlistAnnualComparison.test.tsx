@@ -1882,8 +1882,9 @@ describe("reported balance sheet totals in the existing annual comparison", () =
     const original = renderToStaticMarkup(f.render());
     f.read.mockRejectedValueOnce(new TrialApiError("unavailable"));
     await f.load("left");
+    const failed = renderToStaticMarkup(f.render());
     for (const metric of reportedMetrics)
-      expect(reportedRowHtml(renderToStaticMarkup(f.render()), metric)).toBe(
+      expect(reportedRowHtml(failed, metric)).toBe(
         reportedRowHtml(original, metric),
       );
     const next = await packet("left", {
@@ -1905,8 +1906,9 @@ describe("reported balance sheet totals in the existing annual comparison", () =
     pending.cancel();
     release(next);
     await held;
+    const cancelled = renderToStaticMarkup(f.render());
     for (const metric of reportedMetrics)
-      expect(reportedRowHtml(renderToStaticMarkup(f.render()), metric)).toBe(
+      expect(reportedRowHtml(cancelled, metric)).toBe(
         reportedRowHtml(original, metric),
       );
     expect(f.model.getSnapshot().right.report.response).toEqual(right);

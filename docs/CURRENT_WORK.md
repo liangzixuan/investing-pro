@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 21, 2026. This is the current capability and delivery record.
+Updated October 22, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
@@ -117,6 +117,14 @@ Android 1.32 provides this workflow. Its source checks include the required
 New browser-layout, physical-device acceptance and sustained use remain open.
 
 ## Selected next outcome: sustained daily use and coherent company coverage
+
+The next source candidate adds [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files):
+explicit capture of valid unsaved checks/results, bounded account/backend-scoped
+local file review, complete comparison and explicit local restore. It preserves
+the loaded online version and separate Save. Invalid raw input stays in the
+editor; stale file operations cannot replace newer work. The shared browser and
+Android delivery adapters add no provider, storage or dependency. This candidate
+has no publication, new chooser execution or phone acceptance yet.
 
 The current source increment connects an authored thesis **Next check** to a dated
 [Follow-up](MANAGED_RESEARCH_FOLLOWUPS.md). Both thesis editors offer an explicit

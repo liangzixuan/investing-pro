@@ -275,3 +275,26 @@ describe("fixed native screen comparison fixture", () => {
     });
   });
 });
+
+it.each([-60_000, 60_000])(
+  "keeps the fixture's strict twenty-second interval when the wall clock jumps by %s ms",
+  async (jump) => {
+    vi.useFakeTimers({
+      toFake: ["Date", "performance", "setTimeout", "clearTimeout"],
+    });
+    const f = await setup();
+    await f.screen.loadUniverse(f.screen.getSnapshot());
+    await f.fixture.api.annualReport(request, signal());
+    const second = { ...request, listingId: "listing-one", symbol: "ONE" };
+    vi.setSystemTime(Date.now() + jump);
+    await vi.advanceTimersByTimeAsync(19_999);
+    await expect(f.fixture.api.annualReport(second, signal())).rejects.toThrow(
+      "annualReport",
+    );
+    expect(f.fixture.getSnapshot().annual).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    const packet = await f.fixture.api.annualReport(second, signal());
+    expect(packet.security.listingId).toBe("listing-one");
+    expect(f.fixture.getSnapshot().annual).toBe(2);
+  },
+);

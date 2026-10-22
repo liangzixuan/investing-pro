@@ -6213,6 +6213,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-research-note')?.value === 'Screening research draft'" +
             " && document.querySelector('.managed-annual-statements')?.textContent.includes('2026-09-20T00:00:03.000Z')");
         assertFinancialScreenCounts(1, 1);
+        assertFinancialScreenBackReady();
         pressBack();
         awaitPage("native Back restores the exact captured screen, shortlist, applied criterion and opener",
             exact + " && document.querySelector('.managed-company-visit') === null" +
@@ -6321,6 +6322,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("exact seeded Annual visit commits before native Back", visit, true);
         assertFinancialScreenCounts(1, 2);
         awaitPage("same visit remains ready for its single Back", visit, true);
+        assertFinancialScreenBackReady();
         pressBack();
         awaitPage("single native Back retains exact pair, results, criteria and comparison opener",
             screenComparisonStatementExact("Cash flow") +
@@ -9339,6 +9341,24 @@ public class ManagedWorkspaceInstrumentedTest {
             @Override public void onEnd(WindowInsetsAnimation animation) {
                 if (observedImeDecor == decor) imeAnimations.remove(animation);
             }
+        });
+    }
+
+    private void assertFinancialScreenBackReady() {
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        scenario.onActivity(activity -> {
+            WebView webView = activity.getBridge().getWebView();
+            WindowInsets insets = webView.getRootWindowInsets();
+            assertNotNull("Screen research Back requires observed native window insets", insets);
+            boolean imeVisible = insets.isVisible(WindowInsets.Type.ime());
+            Log.i("ManagedBack", "phase=financial-screen-native-ready, activityFocus=" + activity.hasWindowFocus() +
+                ", viewFocus=" + webView.hasFocus() + ", windowFocus=" + webView.hasWindowFocus() +
+                ", imeVisible=" + imeVisible);
+            assertTrue("Screen research Activity must have focus before Back", activity.hasWindowFocus());
+            assertTrue("Screen research WebView must have focus before Back", webView.hasFocus());
+            assertTrue("Screen research window must have focus before Back", webView.hasWindowFocus());
+            assertFalse("Screen research Back requires the native keyboard to be hidden", imeVisible);
         });
     }
 

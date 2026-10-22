@@ -1,4 +1,5 @@
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
+import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import {
   useCallback,
   useEffect,
@@ -48,7 +49,7 @@ import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
-import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
+import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import {
   ManagedMarketsNavigation,
   useManagedMarketsSections,
@@ -83,6 +84,7 @@ interface SessionProps extends ManagedSessionWorkspaceOptions {
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
+  followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
 
@@ -93,6 +95,7 @@ interface WorkspaceProps {
   draftFileScope?: Promise<string>;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
+  followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
 
@@ -213,6 +216,9 @@ function SessionWorkspace(props: SessionProps) {
       {...draftFileSession}
       {...(initial.portfolioDraftFileDelivery
         ? { portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery }
+        : {})}
+      {...(initial.followupsDraftFileDelivery
+        ? { followupsDraftFileDelivery: initial.followupsDraftFileDelivery }
         : {})}
       {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
       {...(initial.reportDelivery
@@ -442,6 +448,7 @@ export function ManagedWorkspaceScreen({
   draftFileScope,
   draftFileDelivery,
   portfolioDraftFileDelivery,
+  followupsDraftFileDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -1319,32 +1326,26 @@ export function ManagedWorkspaceScreen({
                   )
                 }
               />
-              {discovery.view === "followups" && (
-                <div
-                  hidden={Boolean(
-                    discovery.research ||
-                    discovery.companyRoute ||
-                    navigation?.invalid,
-                  )}
-                >
-                  <ManagedResearchFollowups
-                    review={followupReview}
-                    navigationPending={navigationPending}
-                    workspace={workspace}
-                    onResearch={(entry, opener) => {
-                      if (navigation?.isPending()) return;
-                      void workspace
-                        .prepareFollowupResearch(entry)
-                        .then((capture) => {
-                          if (capture)
-                            openResearch(opener, () =>
-                              workspace.openFollowupResearch(capture),
-                            );
-                        });
-                    }}
-                  />
-                </div>
-              )}
+              <ManagedFollowupsEntry
+                discovery={discovery}
+                routeActive={watchlistRouteActive}
+                draftFileScope={draftFileScope}
+                draftFileDelivery={followupsDraftFileDelivery}
+                review={followupReview}
+                navigationPending={navigationPending}
+                workspace={workspace}
+                onResearch={(entry, opener) => {
+                  if (navigation?.isPending()) return;
+                  void workspace
+                    .prepareFollowupResearch(entry)
+                    .then((capture) => {
+                      if (capture)
+                        openResearch(opener, () =>
+                          workspace.openFollowupResearch(capture),
+                        );
+                    });
+                }}
+              />
               {discovery.view === "markets" && (
                 <div
                   ref={marketsSectionNavigation.containerRef}

@@ -50,7 +50,7 @@ import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedPortfolio } from "./ManagedPortfolio";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
-import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
+import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
@@ -2996,10 +2996,8 @@ describe("managed workspace screen", () => {
       React.ComponentProps<typeof ManagedCompanyResearch>
     >;
     const followups = nodes.find(
-      (node) => node.type === ManagedResearchFollowups,
-    ) as React.ReactElement<
-      React.ComponentProps<typeof ManagedResearchFollowups>
-    >;
+      (node) => node.type === ManagedFollowupsEntry,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedFollowupsEntry>>;
     const search = nodes.find(
       (node) => node.type === WorkspaceSearch,
     ) as React.ReactElement<React.ComponentProps<typeof WorkspaceSearch>>;

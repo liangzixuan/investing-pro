@@ -16,6 +16,7 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
     private static final String TIME = "2026-10-18T18:00:00.000Z";
     private static final String FILENAME = "Investment-watchlist-draft-2026-10-18T18-00-00-000Z.json";
     private static final String PORTFOLIO_FILENAME = "Investment-portfolio-draft-2026-10-18T18-00-00-000Z.json";
+    private static final String FOLLOWUPS_FILENAME = "Investment-followups-draft-2026-10-18T18-00-00-000Z.json";
     private static final String SCOPE = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     private JSONObject metadata() throws Exception {
@@ -43,6 +44,11 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
         assertTrue(WatchlistDraftFilePolicy.INSTANCE.acceptsText(FILENAME, content()));
         assertEquals(FILENAME, WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", 0)));
         assertEquals(FILENAME, WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", 9007199254740991L)));
+        assertEquals(FOLLOWUPS_FILENAME, FollowupsDraftFilePolicy.INSTANCE.filename(metadata()));
+        assertEquals("application/json", FollowupsDraftFilePolicy.INSTANCE.getMimeType());
+        assertEquals(266240, FollowupsDraftFilePolicy.INSTANCE.getMaxBytes());
+        assertTrue(FollowupsDraftFilePolicy.INSTANCE.acceptsText(FOLLOWUPS_FILENAME,
+            portfolioContent().replace("investment-portfolio-draft", "investment-followups-draft")));
         assertEquals(PORTFOLIO_FILENAME, PortfolioDraftFilePolicy.INSTANCE.filename(metadata()));
         assertEquals("application/json", PortfolioDraftFilePolicy.INSTANCE.getMimeType());
         assertEquals(266240, PortfolioDraftFilePolicy.INSTANCE.getMaxBytes());
@@ -56,13 +62,17 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
         assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("filename", "private.json")));
         assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("version", 3)));
         assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("filename", "private.json")));
+        assertNull(FollowupsDraftFilePolicy.INSTANCE.filename(metadata().put("filename", "private.json")));
+        assertNull(FollowupsDraftFilePolicy.INSTANCE.filename(metadata().put("version", 1)));
         assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("version", 3)));
         JSONObject missingOperation = metadata();
         missingOperation.remove("operationId");
         assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(missingOperation));
+        assertNull(FollowupsDraftFilePolicy.INSTANCE.filename(missingOperation));
         for (Object value : new Object[] { -1, 0.5, 9007199254740992L, "3", JSONObject.NULL }) {
             assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", value)));
             assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", value)));
+            assertNull(FollowupsDraftFilePolicy.INSTANCE.filename(metadata().put("baseVersion", value)));
         }
     }
 
@@ -75,9 +85,12 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
         }) {
             assertNull(WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", value)));
             assertNull(PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", value)));
+            assertNull(FollowupsDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", value)));
         }
         assertEquals("Investment-watchlist-draft-2028-02-29T18-00-00-000Z.json",
             WatchlistDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", "2028-02-29T18:00:00.000Z")));
+        assertEquals("Investment-followups-draft-2028-02-29T18-00-00-000Z.json",
+            FollowupsDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", "2028-02-29T18:00:00.000Z")));
         assertEquals("Investment-portfolio-draft-2028-02-29T18-00-00-000Z.json",
             PortfolioDraftFilePolicy.INSTANCE.filename(metadata().put("capturedAt", "2028-02-29T18:00:00.000Z")));
     }
@@ -98,15 +111,23 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
             assertFalse(WatchlistDraftFilePolicy.INSTANCE.acceptsText(FILENAME, value));
             assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME,
                 value.replace("investment-watchlist-draft", "investment-portfolio-draft")));
+            assertFalse(FollowupsDraftFilePolicy.INSTANCE.acceptsText(FOLLOWUPS_FILENAME,
+                value.replace("investment-watchlist-draft", "investment-followups-draft")));
         }
         assertFalse(WatchlistDraftFilePolicy.INSTANCE.acceptsText("../private.json", current));
         assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText("../private.json", portfolioContent()));
         assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, current));
+        assertFalse(FollowupsDraftFilePolicy.INSTANCE.acceptsText(FOLLOWUPS_FILENAME, current));
+        assertFalse(FollowupsDraftFilePolicy.INSTANCE.acceptsText(FOLLOWUPS_FILENAME, portfolioContent()));
+        assertFalse(FollowupsDraftFilePolicy.INSTANCE.acceptsText("../private.json",
+            portfolioContent().replace("investment-portfolio-draft", "investment-followups-draft")));
         for (String draft : new String[] { "[]", "null", "\"raw\"", "1" }) {
             String value = "{\"format\":\"investment-portfolio-draft\",\"version\":1,"
                 + "\"accountScope\":\"" + SCOPE + "\",\"capturedAt\":\"" + TIME + "\","
                 + "\"baseVersion\":3,\"draft\":" + draft + "}";
             assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, value));
+            assertFalse(FollowupsDraftFilePolicy.INSTANCE.acceptsText(FOLLOWUPS_FILENAME,
+                value.replace("investment-portfolio-draft", "investment-followups-draft")));
         }
     }
 
@@ -117,6 +138,9 @@ public class WatchlistDraftFilePolicyInstrumentedTest {
         String ascii = portfolioContent().replace("零 café 😀", "raw");
         String exactLimit = ascii + " ".repeat(maximum - ascii.length());
         assertTrue(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, exactLimit));
+        String followups = exactLimit.replace("investment-portfolio-draft", "investment-followups-draft");
+        assertTrue(FollowupsDraftFilePolicy.INSTANCE.acceptsText(FOLLOWUPS_FILENAME, followups));
+        assertFalse(FollowupsDraftFilePolicy.INSTANCE.acceptsText(FOLLOWUPS_FILENAME, followups + " "));
         assertEquals(maximum, ChosenDocumentPolicyKt.strictDocumentBytes(exactLimit, maximum).length);
         assertFalse(PortfolioDraftFilePolicy.INSTANCE.acceptsText(PORTFOLIO_FILENAME, exactLimit + " "));
         for (String value : new String[] { exactLimit + " ", "零".repeat(maximum / 3 + 1), "\ud800" }) {

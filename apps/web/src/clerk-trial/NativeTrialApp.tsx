@@ -3,6 +3,10 @@ import {
   type InvestmentPortfolioDraftFilePlugin,
 } from "./portfolio-draft-file-delivery";
 import {
+  createNativeFollowupsDraftFileAdapter,
+  type InvestmentFollowupsDraftFilePlugin,
+} from "./followups-draft-file-delivery";
+import {
   createNativeCompanyReportAdapter,
   type InvestmentCompanyReportPlugin,
 } from "./native-company-report";
@@ -118,6 +122,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const followupsDraftFileDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeFollowupsDraftFileAdapter(
+            registerPlugin<InvestmentFollowupsDraftFilePlugin>(
+              "InvestmentFollowupsDraftFile",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const signInMessage =
     state.message ||
     (state.auth.status === "loading"
@@ -158,6 +173,9 @@ function NativeSession({
               {...(draftFileDelivery ? { draftFileDelivery } : {})}
               {...(portfolioDraftFileDelivery
                 ? { portfolioDraftFileDelivery }
+                : {})}
+              {...(followupsDraftFileDelivery
+                ? { followupsDraftFileDelivery }
                 : {})}
               {...(reportDelivery ? { reportDelivery } : {})}
             />

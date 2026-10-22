@@ -91,6 +91,41 @@ resolve conflicts or uncertain saves, and persist changes. Both drafts survive
 the existing research-and-Back journey. A completed unsaved check leaves the
 Markets due queue immediately and still needs explicit Save follow-ups.
 
+## Draft files
+
+The source candidate adds an initially closed **Follow-ups draft files** section.
+After an explicit saved-version Load, edit the checks and select **Save draft
+file** to capture valid, unsaved work. The browser requests a JSON download;
+Android uses the existing chosen-document writer. The file contains checks,
+results and exact listing identities in plain text. Keep it private. This is a
+manual draft copy, separate from a saved-record backup.
+
+Select a file to read it locally. The app checks its account/backend scope,
+format, complete payload, UTF-8 bytes and size before showing a review. The
+review includes every file check and result, due date, completion state, entry
+ID and full listing identity. The current draft is available for comparison.
+File capture time and base version are reported metadata, not verified history
+or a source-freshness claim.
+
+**Restore file to current draft** replaces the whole local Follow-ups draft.
+It retains the loaded online version, even when the file reports another base.
+It does not load a source, resolve a catalog identity or save either resource.
+Use **Review identities** before company research and **Save follow-ups**
+separately to persist the restored draft. Existing server validation and save
+conflict checks still apply. **Keep current draft** cancels the review.
+
+Capture refuses invalid raw text or dates without changing, clipping or
+normalizing them. File reading requires a current loaded save base, with no
+pending save, conflict, uncertain receipt or identity review. Draft, catalog,
+route and session changes cancel file operations and invalidate a review.
+Session retirement clears private file content. A stale restore cannot replace
+a newer edit, including an edit made while the review closes.
+
+Source tests cover the complete local workflow and separate explicit Save,
+strict file refusal, cancellation, late responses and reentrant restoration.
+Browser layout, Android chooser execution, phone acceptance and publication
+remain separate and are not established by these tests.
+
 ## Keep identity changes explicit
 
 Each saved entry retains its catalog digest and full listing identity. A removed

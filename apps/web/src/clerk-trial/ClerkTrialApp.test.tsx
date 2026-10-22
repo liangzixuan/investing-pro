@@ -1,4 +1,8 @@
 import {
+  browserFollowupsDraftFileAdapter,
+  type ManagedFollowupsDraftFileDeliveryAdapter,
+} from "./followups-draft-file-delivery";
+import {
   browserPortfolioDraftFileAdapter,
   type ManagedPortfolioDraftFileDeliveryAdapter,
 } from "./portfolio-draft-file-delivery";
@@ -153,6 +157,7 @@ describe("official Clerk browser adapter", () => {
       exportDelivery?: WatchlistExportDeliveryAdapter;
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
+      followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.apiOrigin).toBe(config.apiOrigin);
@@ -160,6 +165,7 @@ describe("official Clerk browser adapter", () => {
     expect(props.exportDelivery).toBeUndefined();
     expect(props.draftFileDelivery).toBeUndefined();
     expect(props.portfolioDraftFileDelivery).toBeUndefined();
+    expect(props.followupsDraftFileDelivery).toBeUndefined();
     expect(props.reportDelivery).toBeUndefined();
     expect(await props.session.getToken()).toBe("synthetic-token");
     await props.session.signOut();
@@ -231,6 +237,7 @@ describe("official Clerk browser adapter", () => {
       exportDelivery?: WatchlistExportDeliveryAdapter;
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
+      followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.warnOnBrowserLeave).toBe(true);
@@ -238,6 +245,9 @@ describe("official Clerk browser adapter", () => {
     expect(props.draftFileDelivery).toBe(browserWatchlistDraftFileAdapter);
     expect(props.portfolioDraftFileDelivery).toBe(
       browserPortfolioDraftFileAdapter,
+    );
+    expect(props.followupsDraftFileDelivery).toBe(
+      browserFollowupsDraftFileAdapter,
     );
     expect(props.reportDelivery).toBe(browserCompanyReportAdapter);
     expect(props.session).toMatchObject({

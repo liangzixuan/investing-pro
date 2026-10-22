@@ -5,6 +5,7 @@ import { createFixture } from "./fixture";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { ManagedWorkspaceScreen } from "../../src/clerk-trial/ManagedWorkspaceScreen";
 import { ManagedResearchFollowups } from "../../src/clerk-trial/ManagedResearchFollowups";
+import { ManagedFollowupsEntry } from "../../src/clerk-trial/ManagedFollowupsEntry";
 import { ManagedWatchlistEditor } from "../../src/clerk-trial/ManagedWatchlistEditor";
 import { ManagedNoteEditor } from "../../src/clerk-trial/ManagedNoteEditor";
 import { ManagedCompanyResearch } from "../../src/clerk-trial/ManagedCompanyResearch";
@@ -168,7 +169,10 @@ async function setup() {
     render(
       `followups-${controls.getSnapshot().session}`,
       ManagedResearchFollowups,
-      child(screen(), ManagedResearchFollowups),
+      child(
+        ManagedFollowupsEntry(child(screen(), ManagedFollowupsEntry)),
+        ManagedResearchFollowups,
+      ),
     );
   const entry = () =>
     workspace.followups.coordinator.getSnapshot().draft!.entries[0]!;
