@@ -3567,7 +3567,8 @@ public class ManagedWorkspaceInstrumentedTest {
             assertArrayEquals(expectedText.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.readReport(appContext, outputs[0]));
             assertNativeReportDraftAndReads(documentTimeOrigin, note);
             retainAnnualNoteFrame("companyReportSaved", ".managed-report-delivery",
-                ".managed-report-delivery > p, .managed-report-delivery > .managed-report-delivery-actions > button", 3);
+                ".managed-report-delivery > p, .managed-report-delivery > .managed-report-delivery-actions > button:first-child", 3);
+            assertNativeHtmlReport(appContext, picker, documentTimeOrigin, note);
             for (String kind : new String[] { "maximum", "oversize", "unicode", "purpose", "filename" }) {
                 WatchlistTestDocuments.clear(appContext);
                 JSONObject started = startNativeReportProbe(kind, picker);
@@ -3641,6 +3642,114 @@ public class ManagedWorkspaceInstrumentedTest {
         }
     }
 
+    private void assertNativeHtmlReport(android.content.Context context, WatchlistSystemPicker picker,
+        double documentTimeOrigin, String originalNote) throws Exception {
+        String note = originalNote + "\n</pre><script>globalThis.__htmlReportExecuted=1</script><img src='https://invalid.example/x'> & exact  ";
+        replaceReportNoteWithNativeIme(originalNote, note);
+        prepareNativeCompanyReport(note);
+        click(".managed-report-document > summary");
+        awaitPage("HTML shares the current complete JSON report", "document.querySelector('#managed-report-document')?.readOnly === true");
+        String document = readFixtureString("document.querySelector('#managed-report-document').value");
+        String filename = "Investment-research-ZERO-XNAS-" + new JSONObject(document).getString("preparedAt").replaceAll("[-:.]", "") + ".html";
+        click(".managed-report-document > summary");
+        WatchlistTestDocuments.clear(context);
+        beginNativeHtmlReport(picker);
+        picker.cancel();
+        awaitPage("HTML picker cancellation retains the same report and both explicit formats",
+            "document.querySelector('.managed-report-delivery [role=status]')?.textContent === 'Report save cancelled.' && " +
+            "document.querySelectorAll('.managed-report-delivery button:not(:disabled)').length === 2");
+        assertEquals(0, WatchlistTestDocuments.outputs(context).length);
+        assertNativeReportDraftAndReads(documentTimeOrigin, note);
+        beginNativeHtmlReport(picker);
+        picker.saveToInventedRoot();
+        awaitPage("HTML native write confirms its exact chosen filename", "document.querySelector('.managed-report-delivery [role=status]')?.textContent === " +
+            JSONObject.quote("Saved report " + filename + " to the chosen document."));
+        WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
+        assertEquals(1, outputs.length);
+        assertEquals(filename, outputs[0].name);
+        assertEquals("text/html", context.getContentResolver().getType(outputs[0].uri));
+        assertNativeHtmlBytes(readNativeHtmlReport(context, outputs[0]), document, filename, note);
+        assertNativeReportDraftAndReads(documentTimeOrigin, note);
+        retainAnnualNoteFrame("companyReportHtmlSaved", ".managed-report-delivery",
+            ".managed-report-delivery > p, .managed-report-delivery > .managed-report-delivery-actions > button", 4);
+        assertNativeHtmlLateDraftChoice(context, picker, documentTimeOrigin);
+        replaceReportNoteWithNativeIme("Changed after report choice", originalNote);
+        prepareNativeCompanyReport(originalNote);
+        assertNativeReportDraftAndReads(documentTimeOrigin, originalNote);
+    }
+
+    private void beginNativeHtmlReport(WatchlistSystemPicker picker) throws Exception {
+        AtomicReference<WebView> page = new AtomicReference<>();
+        scenario.onActivity(activity -> page.set(activity.getBridge().getWebView()));
+        click(".managed-report-delivery button:nth-of-type(2)");
+        picker.awaitOpen();
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> page.get().evaluateJavascript(
+            "(() => {const buttons=[...document.querySelectorAll('.managed-report-delivery button')];" +
+            "return buttons.length===2 && buttons.every(button=>button.disabled && button.textContent==='Saving report…');})()",
+            value -> { observed.set(value); returned.countDown(); }));
+        assertTrue("Both report controls must report one pending HTML operation while the picker owns foreground", returned.await(2, TimeUnit.SECONDS));
+        assertEquals("true", observed.get());
+    }
+
+    private byte[] readNativeHtmlReport(android.content.Context context, WatchlistTestDocuments.Output output) throws Exception {
+        assertEquals(SavedWatchlistTestDocumentsProvider.AUTHORITY, output.uri.getAuthority());
+        assertTrue(output.name.matches("Investment-research-[A-Z0-9][A-Z0-9.-]{0,14}-[A-Z0-9]{4}-[0-9]{8}T[0-9]{9}Z\\.html"));
+        int maximum = 8 * 1024 * 1024;
+        try (java.io.InputStream input = context.getContentResolver().openInputStream(output.uri)) {
+            assertNotNull(input);
+            byte[] bytes = input.readNBytes(maximum + 1);
+            assertTrue(bytes.length <= maximum);
+            assertEquals(output.size, bytes.length);
+            return bytes;
+        }
+    }
+
+    private void assertNativeHtmlBytes(byte[] bytes, String document, String filename, String note) throws Exception {
+        String html = StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+        assertTrue(html.startsWith("<!doctype html>\n<html lang=\"en\">"));
+        assertFalse("Hostile authored tags must stay passive text", java.util.regex.Pattern.compile(
+            "<(?:script|img|iframe|object|embed|link|base|form|input|button|svg|math|video|audio|source)\\b",
+            java.util.regex.Pattern.CASE_INSENSITIVE).matcher(html).find());
+        JSONObject parsed = new JSONObject(readFixtureString("(() => {const doc=new DOMParser().parseFromString(" + JSONObject.quote(html) + ",'text/html');" +
+            "return JSON.stringify({csp:doc.querySelector('meta[http-equiv=\"Content-Security-Policy\"]')?.content," +
+            "purpose:doc.querySelector('meta[name=investment-report-purpose]')?.content,filename:doc.querySelector('meta[name=investment-report-filename]')?.content," +
+            "format:doc.querySelector('meta[name=investment-report-format]')?.content,note:doc.querySelector('.note')?.textContent," +
+            "json:doc.querySelector('details > pre')?.textContent,passive:[...doc.querySelectorAll('*')].every(node=>" +
+            "[...node.attributes].every(a=>!/^on/i.test(a.name)&&!['src','href','srcdoc','background','style'].includes(a.name)))," +
+            "executed:globalThis.__htmlReportExecuted===1});})()"));
+        assertEquals("investment.company-research-html", parsed.getString("purpose"));
+        assertEquals("1", parsed.getString("format"));
+        assertEquals(filename, parsed.getString("filename"));
+        assertEquals("default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; style-src 'sha256-0prZMY8NvuxrM52UL/gsirqQ7bU+/xP67p90kVL2EMQ='", parsed.getString("csp"));
+        assertTrue(parsed.getBoolean("passive"));
+        assertFalse(parsed.getBoolean("executed"));
+        assertEquals(note, parsed.getString("note"));
+        assertEquals("The appendix keeps every original admitted packet and raw authored character", document, parsed.getString("json"));
+        JSONObject captured = new JSONObject(parsed.getString("json"));
+        assertEquals(note, captured.getJSONObject("authoredResearch").getString("note"));
+        assertEquals("2026-09-20T00:00:02.000Z", captured.getJSONObject("sources").getJSONObject("annual")
+            .getJSONObject("response").getJSONObject("evidence").getJSONObject("generation").getString("completedAt"));
+        assertTrue(html.contains(captured.getString("preparedAt")));
+    }
+
+    private void assertNativeHtmlLateDraftChoice(android.content.Context context, WatchlistSystemPicker picker,
+        double documentTimeOrigin) throws Exception {
+        WatchlistTestDocuments.clear(context);
+        click("#fixture-report-edit");
+        beginNativeHtmlReport(picker);
+        picker.saveToInventedRoot();
+        awaitPage("an actual draft edit fences the late HTML picker before any write",
+            DRAFT + ".memberships?.[1]?.note === 'Changed after report choice' && " +
+            "document.querySelector('.managed-report-delivery') === null && document.querySelector('#managed-report-document') === null");
+        assertEmptyNativeReportDestination(context);
+        assertNativeReportDraftAndReads(documentTimeOrigin, "Changed after report choice");
+        awaitPage("HTML bookkeeping stays separate from the original JSON protocol counters",
+            "(() => {const state=JSON.parse(document.querySelector('#fixture-report-protocol').textContent);" +
+            "return state.writesSettled===1 && state.mismatchRefused===2 && state.duplicateRefused===1 && state.replayRefused===1" +
+            " && state.html.choicesStarted===3 && state.html.writesSettled===1 && !state.protocolError;})()");
+    }
     private void prepareNativeCompanyReport(String note) throws Exception {
         click(".managed-company-report .trial-actions button:first-child");
         awaitPage("explicit preparation enables a full-size native Save control for the exact current note",

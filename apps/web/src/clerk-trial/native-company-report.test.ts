@@ -52,7 +52,11 @@ function fixture() {
     abort,
     isCurrent,
     context: { signal: abort.signal, isCurrent },
-    adapter: createNativeCompanyReportAdapter(plugin),
+    adapter: createNativeCompanyReportAdapter(plugin, {
+      choose: () => Promise.resolve({ status: "cancelled" }),
+      write: () => Promise.resolve({ status: "written" }),
+      cancel: () => Promise.resolve(),
+    }),
   };
 }
 

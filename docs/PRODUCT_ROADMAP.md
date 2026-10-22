@@ -24,10 +24,10 @@ Android 1.32.0, code 33, now provides this filing-review workflow from accepted
 source `273f09dbeb056a6196c3c6b73dd37eb06432bb54`. The guarded offline build,
 complete package/configuration/asset verification and final source preservation
 passed. The existing API and website stayed unchanged. Phone acceptance and
-sustained use remain open. The later dated thesis Next-check source increment
-has no client delivery yet.
+sustained use of that release remain separate. Android 1.33 now also includes
+the dated thesis Next-check workflow.
 
-## Current priority after the October 21 Android delivery
+## Current priority after the October 22 Android delivery
 
 [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files) are accepted in
 source at main `461246249c6d790a1c8bb28ab85de301b267058f`.
@@ -45,12 +45,23 @@ Watchlist Review and Save. It preserves existing notes/order and retained
 research-and-Back navigation. Identity, catalog, draft, navigation and session
 changes invalidate the proposal. This advances M2/M4 discovery-to-research using
 the current cohort; it adds no coverage, source, storage resource or fee.
-All original PR checks and the full native 60-case suite passed. Final main
-acceptance remains open after an existing compound SEC capacity test exceeded
-five seconds on Windows. A focused correction separates its independent
-exact-limit and overflow cases while retaining every assertion, row limit and
-test timeout. Client delivery, browser layout and phone acceptance remain
-separate; the live website/API and provided Android 1.32 are unchanged.
+All original PR checks and the full native 60-case suite passed. A focused
+correction separates the existing SEC provider's independent exact-limit and
+overflow cases after the original main Windows timeout, retaining every
+assertion, row limit and test timeout. Final main
+`7873256003e02b9c44f37990c4ee512d71a7bca1` passed its original required checks
+and native gate. Android 1.33 now provides these four client workflows. The owner
+reported "Installed and verified." on October 22 for the latest update, without
+per-feature results or independent device inspection. Browser layout and sustained
+use remain separate; the live website/API are unchanged.
+
+The next complete report workflow adds an explicit Android **Save report (HTML)**
+beside JSON. It reuses the existing passive, self-contained reading view and
+complete captured JSON appendix. A system-chosen document, shared report
+currentness and cancellation, and fixed native envelope checks keep file delivery
+separate from source reads and online Save. This advances portable research
+review with existing evidence. Source verification, client delivery and physical
+offline reading are separate acceptance steps; no provider or dependency is added.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The

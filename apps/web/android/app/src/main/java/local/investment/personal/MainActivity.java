@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(InvestmentFollowupsDraftFilePlugin.class);
         registerPlugin(InvestmentValuationDraftFilePlugin.class);
         registerPlugin(InvestmentCompanyReportPlugin.class);
+        registerPlugin(InvestmentCompanyReportHtmlPlugin.class);
         if (BuildConfig.CLERK_AUTH_ENABLED) {
             registerPlugin(InvestmentAuthPlugin.class);
         }

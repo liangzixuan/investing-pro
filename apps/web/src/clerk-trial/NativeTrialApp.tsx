@@ -13,6 +13,7 @@ import {
 import {
   createNativeCompanyReportAdapter,
   type InvestmentCompanyReportPlugin,
+  type InvestmentCompanyReportHtmlPlugin,
 } from "./native-company-report";
 import { registerPlugin } from "@capacitor/core";
 import { App } from "@capacitor/app";
@@ -99,6 +100,9 @@ function NativeSession({
         ? createNativeCompanyReportAdapter(
             registerPlugin<InvestmentCompanyReportPlugin>(
               "InvestmentCompanyReport",
+            ),
+            registerPlugin<InvestmentCompanyReportHtmlPlugin>(
+              "InvestmentCompanyReportHtml",
             ),
           )
         : undefined,

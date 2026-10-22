@@ -24,6 +24,7 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
     static final String TITLE = "Investment test exports";
     private static final String ROOT_ID = "invented-exports";
     private static final String REPORT_NAME = "Investment-research-[A-Z0-9][A-Z0-9.-]{0,14}-[A-Z0-9]{4}-[0-9]{8}T[0-9]{9}Z\\.json";
+    private static final String HTML_REPORT_NAME = REPORT_NAME.replace("json", "html");
     private static final Object REPORT_OPEN_LOCK = new Object();
     private static HeldReportOpen heldReportOpen;
 
@@ -131,7 +132,7 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
         row.add(Root.COLUMN_DOCUMENT_ID, ROOT_ID);
         row.add(Root.COLUMN_TITLE, TITLE);
         row.add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE | Root.FLAG_LOCAL_ONLY);
-        row.add(Root.COLUMN_MIME_TYPES, "text/plain\napplication/json");
+        row.add(Root.COLUMN_MIME_TYPES, "text/plain\napplication/json\ntext/html");
         row.add(Root.COLUMN_AVAILABLE_BYTES, 16 * 1024 * 1024L);
         return cursor;
     }
@@ -157,9 +158,11 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
             && displayName.matches("Investment-watchlist-v[0-9]{1,16}\\.txt");
         boolean report = "application/json".equals(mimeType) && displayName != null
             && displayName.matches(REPORT_NAME);
+        boolean htmlReport = "text/html".equals(mimeType) && displayName != null
+            && displayName.matches(HTML_REPORT_NAME);
         boolean draft = "application/json".equals(mimeType) && displayName != null
             && displayName.matches("Investment-(?:watchlist|valuation-inputs)-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json");
-        if (!ROOT_ID.equals(parent) || (!watchlist && !report && !draft))
+        if (!ROOT_ID.equals(parent) || (!watchlist && !report && !htmlReport && !draft))
             throw new FileNotFoundException();
         String id = UUID.randomUUID().toString();
         try {
@@ -238,7 +241,7 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
             name = new String(Files.readAllBytes(new File(directory(getContext()), id + ".name").toPath()), StandardCharsets.UTF_8);
             row.add(Document.COLUMN_DISPLAY_NAME, name);
         } catch (IOException failure) { throw new FileNotFoundException(); }
-        row.add(Document.COLUMN_MIME_TYPE, name.endsWith(".json") ? "application/json" : "text/plain");
+        row.add(Document.COLUMN_MIME_TYPE, name.endsWith(".html") ? "text/html" : name.endsWith(".json") ? "application/json" : "text/plain");
         row.add(Document.COLUMN_FLAGS, Document.FLAG_SUPPORTS_WRITE);
         row.add(Document.COLUMN_SIZE, file.length());
     }

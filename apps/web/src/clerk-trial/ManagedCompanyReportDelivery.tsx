@@ -57,7 +57,7 @@ export function ManagedCompanyReportDelivery({
               ? "Save report (JSON)"
               : "Download report (JSON)"}
         </button>
-        {!native && delivery.html && (
+        {delivery.html && (
           <button
             type="button"
             className="trial-secondary"
@@ -67,8 +67,12 @@ export function ManagedCompanyReportDelivery({
             }}
           >
             {state.busy
-              ? "Requesting report download…"
-              : "Download report (HTML)"}
+              ? native
+                ? "Saving report…"
+                : "Requesting report download…"
+              : native
+                ? "Save report (HTML)"
+                : "Download report (HTML)"}
           </button>
         )}
       </div>

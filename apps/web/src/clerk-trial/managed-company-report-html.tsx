@@ -45,11 +45,29 @@ export function formatCompanyReportHtml(
     const policy = page.createElement("meta");
     policy.httpEquiv = "Content-Security-Policy";
     policy.content = COMPANY_REPORT_HTML_CSP;
+    const format = page.createElement("meta");
+    format.name = "investment-report-format";
+    format.content = "1";
+    const purpose = page.createElement("meta");
+    purpose.name = "investment-report-purpose";
+    purpose.content = "investment.company-research-html";
+    const identity = page.createElement("meta");
+    identity.name = "investment-report-filename";
+    identity.content = json.filename.replace(/\.json$/u, ".html");
     const title = page.createElement("title");
     title.textContent = `Company research · ${report.selection.listing.symbol}`;
     const style = page.createElement("style");
     style.textContent = COMPANY_REPORT_HTML_STYLE;
-    page.head.replaceChildren(charset, policy, viewport, title, style);
+    page.head.replaceChildren(
+      charset,
+      policy,
+      viewport,
+      format,
+      purpose,
+      identity,
+      title,
+      style,
+    );
     root = createRoot(page.body, {
       onUncaughtError: () => {
         failed = true;
