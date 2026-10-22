@@ -452,6 +452,16 @@ export class ManagedFinancialScreen {
     }
     return false;
   }
+  /** Include synchronous dispatch setup and thrown attempts in the paced interval. */
+  private dispatchAnnualReport(
+    ...args: Parameters<ManagedApi["annualReport"]>
+  ) {
+    try {
+      return this.api.annualReport(...args);
+    } finally {
+      this.lastDispatch = performance.now();
+    }
+  }
   private async waitForDispatch(
     operation: Operation,
     member: ManagedFinancialScreenMember,
@@ -553,9 +563,8 @@ export class ManagedFinancialScreen {
         const reader = new ManagedAnnualReport(
           async (request, signal) => {
             if (!this.current(operation)) throw new TrialApiError("aborted");
-            this.lastDispatch = performance.now();
             try {
-              return await this.api.annualReport(request, signal);
+              return await this.dispatchAnnualReport(request, signal);
             } catch (error) {
               failure = error;
               throw error;

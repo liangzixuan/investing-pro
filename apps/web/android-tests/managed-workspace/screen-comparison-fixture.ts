@@ -137,6 +137,7 @@ export async function createScreenComparisonNativeFixture(
       return Promise.resolve(resolved);
     },
     annualReport: (input, signal) => {
+      const dispatchedAt = performance.now();
       const request = parseManagedSecAnnualCanonicalRequest(input);
       const packet = packets[snapshot.annual];
       if (
@@ -148,10 +149,10 @@ export async function createScreenComparisonNativeFixture(
         request.symbol !== packet.security.symbol ||
         snapshot.marketsResolve !== 1 ||
         snapshot.resolve !== 1 ||
-        (firstAnnualAt !== null && Date.now() - firstAnnualAt < 20000)
+        (firstAnnualAt !== null && dispatchedAt - firstAnnualAt < 20000)
       )
         return unexpected("annualReport");
-      if (firstAnnualAt === null) firstAnnualAt = Date.now();
+      if (firstAnnualAt === null) firstAnnualAt = dispatchedAt;
       count("annual");
       return Promise.resolve(structuredClone(packet));
     },

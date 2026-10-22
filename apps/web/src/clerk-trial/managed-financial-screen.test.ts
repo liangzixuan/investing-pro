@@ -820,3 +820,50 @@ describe("screen admission and report handoff", () => {
     expect(Object.isFrozen(f.model.getSnapshot().run!.rows[0])).toBe(true);
   });
 });
+
+it("waits twenty seconds after synchronous dispatch setup without changing source clocks", async () => {
+  const f = fixture();
+  await f.universe();
+  const setupFinished: number[] = [];
+  f.read.mockImplementation((request) => {
+    if (request.listingId === first.listingId) vi.advanceTimersByTime(5);
+    setupFinished.push(performance.now());
+    return Promise.resolve(
+      request.listingId === second.listingId ? right : left,
+    );
+  });
+  const running = f.run();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(f.read).toHaveBeenCalledOnce();
+  await vi.advanceTimersByTimeAsync(19_999);
+  expect(f.read).toHaveBeenCalledOnce();
+  await vi.advanceTimersByTimeAsync(1);
+  await running;
+  expect(f.read).toHaveBeenCalledTimes(2);
+  expect(setupFinished[1]! - setupFinished[0]!).toBe(20_000);
+  expect(f.model.getSnapshot().run!.rows[0]!.report!.response).toBe(left);
+  expect(f.model.getSnapshot().run!.rows[1]!.report!.response).toBe(right);
+});
+
+it("paces a synchronous dispatch failure before the next distinct issuer without retry", async () => {
+  const f = fixture();
+  await f.universe();
+  f.read.mockImplementationOnce(() => {
+    vi.advanceTimersByTime(5);
+    throw new TrialApiError("unavailable");
+  });
+  const running = f.run();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(f.read).toHaveBeenCalledOnce();
+  await vi.advanceTimersByTimeAsync(19_999);
+  expect(f.read).toHaveBeenCalledOnce();
+  await vi.advanceTimersByTimeAsync(1);
+  await running;
+  expect(f.read).toHaveBeenCalledTimes(2);
+  expect(f.read.mock.calls.map(([input]) => input.listingId)).toEqual([
+    first.listingId,
+    second.listingId,
+  ]);
+  expect(f.model.getSnapshot().run!.rows[0]!.report!.response).toBeNull();
+  expect(f.model.getSnapshot().run!.rows[1]!.report!.response).toBe(right);
+});
