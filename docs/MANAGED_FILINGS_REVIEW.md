@@ -5,6 +5,11 @@ draft. It retains a separate Filings response for each chosen listing while the
 owner inspects company research and writes cited notes. Source acceptance and
 delivery are recorded in [Current work](CURRENT_WORK.md).
 
+Android 1.32 provides this workflow from accepted source
+`273f09dbeb056a6196c3c6b73dd37eb06432bb54`. Its guarded build, complete package
+checks and source preservation passed. The website retains its earlier client.
+Physical-device acceptance and sustained use remain open.
+
 ## Review a group of companies
 
 1. Open **My Watchlist**, then **Review a group of watchlist companies**. Choose

@@ -233,7 +233,7 @@ vi.mock("react", async (original) => {
       getSnapshot: () => unknown,
       getServerSnapshot: () => unknown,
     ) =>
-      mounted.direct
+      mounted.direct || mounted.editorDirect
         ? getSnapshot()
         : actual.useSyncExternalStore(
             subscribe,

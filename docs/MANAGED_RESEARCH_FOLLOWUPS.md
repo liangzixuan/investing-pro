@@ -49,6 +49,37 @@ invalid raw date remains visible for correction and cannot be saved or treated
 as overdue. Completion records the author's explicit action; it is not an
 immutable audit history or an automatic investment verdict.
 
+## Turn a thesis Next check into a follow-up
+
+The thesis editor in My Watchlist and company research has an initially closed
+**Make Next check a dated follow-up** disclosure. It uses the authored Next check
+field. It does not parse a saved note, generate a question or read financial data.
+The full check stays visible for correction; creation uses the existing text
+normalization and refuses more than 500 code points, invalid text or an invalid
+Gregorian due date. It never clips the check.
+
+Choose a due date. If Follow-ups has no loaded draft, **Load follow-ups for this
+check** explicitly reads its saved version without leaving the thesis editor.
+The check and date remain visible while that read runs or fails. Opening the
+disclosure makes no request. The inline action cannot reload an existing draft
+or replace unsaved Follow-ups work. Session retirement aborts the read and clears
+private drafts through the existing session boundary.
+
+**Create follow-up draft** adds the displayed complete check and chosen date for
+the exact current listing, share class and catalog to the editable Follow-ups
+draft. It refuses an existing entry for that listing, including a completed
+entry, or the 20-entry limit. It does not change or save the watchlist note.
+Review and save each resource separately. The new check uses the existing
+Markets due queue, research-and-Back journey, authored result and completion
+actions. Nothing sends a reminder or marks a check complete automatically.
+
+Cancel or closing this inner disclosure clears its chosen date. Leaving the
+thesis editor still resets unadded thesis fields. A changed draft, listing,
+catalog, session or editor lifetime invalidates captured creation actions. A
+pending load, save, conflict or uncertain receipt pauses Follow-ups creation.
+This thesis-to-follow-up increment has source checks. It has no new browser or
+physical-device acceptance.
+
 ## Start a daily review on Markets
 
 [Research checks due](MANAGED_MARKETS_HOME.md#review-research-checks-due) uses this

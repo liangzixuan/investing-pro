@@ -33,6 +33,7 @@ import {
 } from "./operating-comparison-fixture";
 import type {
   MainWatchlistPayload,
+  ResearchFollowup,
   ManagedCatalogSnapshotDto,
   ManagedEodHistoryResponseDto,
   PersonalSecurityMasterSearchResultDto,
@@ -46,9 +47,11 @@ import type {
 import { createResearchFollowupsFixture } from "./followups-fixture";
 import {
   encodeMainWatchlistPayload,
+  encodeResearchFollowupsPayload,
   parseManagedCatalogResolveResponse,
   parseManagedEodHistoryResponse,
   parseManagedWatchlistCommand,
+  parseManagedResearchFollowupsCommand,
   parseManagedEconomicCalendar,
   parseManagedSecFilingsRequest,
   PERSONAL_BEA_CALENDAR_SOURCE,
@@ -273,6 +276,56 @@ const snapshot: ManagedCatalogSnapshotDto = {
 };
 
 /** Test-APK-only data port. There is no fetch, credential, storage, or native-auth fallback. */
+
+/** Exact two-command allowlist for the existing native thesis journey. */
+function isDeclaredThesisFollowup(
+  command: Parameters<ManagedApi["saveFollowups"]>[0],
+  saves: number,
+  watchlist: MainWatchlistPayload,
+) {
+  const captured = parseManagedResearchFollowupsCommand(command);
+  const entry = captured?.payload.entries[0];
+  if (!captured || !entry) return false;
+  if (saves > 1 || captured.expectedVersion !== saves) return false;
+  if (saves === 1 && entry.completedOn === null) return false;
+  return (
+    encodeResearchFollowupsPayload(captured.payload) ===
+    encodeResearchFollowupsPayload(
+      thesisFollowupPayload(entry, saves, watchlist),
+    )
+  );
+}
+
+function thesisFollowupPayload(
+  entry: ResearchFollowup,
+  saves: number,
+  watchlist: MainWatchlistPayload,
+) {
+  const { note, ...listing } = watchlist.memberships[0]!;
+  void note;
+  const completion =
+    saves === 0
+      ? { status: "open" as const, completedOn: null, result: "" }
+      : {
+          status: "completed" as const,
+          completedOn: entry.completedOn!,
+          result: "Checked the authored thesis",
+        };
+  return {
+    schemaVersion: 1 as const,
+    entries: [
+      {
+        ...entry,
+        listing,
+        catalogSnapshotSha256: digest,
+        check: "Read the next filed report",
+        dueOn: "2020-01-01",
+        ...completion,
+      },
+    ],
+  };
+}
+
 async function createSharedFixture(
   scenarioName:
     | "default"
@@ -602,6 +655,9 @@ async function createSharedFixture(
     scenarioName === "research-followups" || scenarioName === "markets-day-view"
       ? createResearchFollowupsFixture()
       : null;
+  const thesisFollowups =
+    scenario === "thesis-review" ? createResearchFollowupsFixture() : null;
+  const followupStorage = followups ?? thesisFollowups;
   let state = {
     load: 0,
     status: 0,
@@ -731,15 +787,29 @@ async function createSharedFixture(
         new Error("Portfolio requires an explicit fixture action"),
       ),
     loadFollowups: (signal) =>
-      followups?.api.loadFollowups(signal) ??
+      followupStorage?.api.loadFollowups(signal) ??
       Promise.reject(
         new Error("Follow-ups require an explicit fixture action"),
       ),
-    saveFollowups: (command, signal) =>
-      followups?.api.saveFollowups(command, signal) ??
-      Promise.reject(
-        new Error("Follow-ups require an explicit fixture action"),
-      ),
+    saveFollowups: (command, signal) => {
+      if (
+        thesisFollowups &&
+        !isDeclaredThesisFollowup(
+          command,
+          thesisFollowups.getSnapshot().save,
+          payload,
+        )
+      )
+        return Promise.reject(
+          new Error("Only the declared thesis follow-up commands are admitted"),
+        );
+      return (
+        followupStorage?.api.saveFollowups(command, signal) ??
+        Promise.reject(
+          new Error("Follow-ups require an explicit fixture action"),
+        )
+      );
+    },
     recentFilings: (input, signal) => {
       if (balanceScenario) {
         count("filings");
@@ -1774,7 +1844,7 @@ async function createSharedFixture(
       refuseResolve: () => unexpected("resolve"),
     }),
     session,
-    followups,
+    followups: followupStorage,
     marketsCohort,
     researchCoverage: inventedManagedResearchCoverage,
     priceCoverage:

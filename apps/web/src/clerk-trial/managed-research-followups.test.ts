@@ -117,6 +117,200 @@ function fixture(initial = payload(), newEntryId?: () => string) {
 }
 
 describe("independent managed research follow-ups", () => {
+  it("admits only one explicit initial thesis load, fences a reentrant host change and retirement", async () => {
+    const f = fixture();
+    let active = true;
+    const stop = f.model.coordinator.subscribe(() => {
+      if (f.model.coordinator.getSnapshot().phase === "loading") active = false;
+    });
+    await f.model.loadForNextCheck(member, () => active);
+    stop();
+    expect(f.api.loadFollowups).not.toHaveBeenCalled();
+    const pending = deferred<ManagedResearchFollowupsDto>();
+    f.api.loadFollowups.mockReturnValueOnce(pending.promise);
+    const loading = f.model.loadForNextCheck(member, () => true);
+    expect(f.api.loadFollowups).toHaveBeenCalledOnce();
+    await f.model.loadForNextCheck(member, () => true);
+    expect(f.api.loadFollowups).toHaveBeenCalledOnce();
+    const signal = f.api.loadFollowups.mock.calls[0]![0];
+    f.model.retire();
+    expect(signal.aborted).toBe(true);
+    pending.resolve({ version: 0, payload: payload() });
+    await loading;
+    expect(f.model.coordinator.getSnapshot().draft).toBeNull();
+    const loaded = fixture();
+    await loaded.model.coordinator.load();
+    loaded.model.add(member, "2026-10-22");
+    const draft = loaded.model.coordinator.getSnapshot().draft;
+    await loaded.model.loadForNextCheck(member, () => true);
+    expect(loaded.api.loadFollowups).toHaveBeenCalledOnce();
+    expect(loaded.model.coordinator.getSnapshot().draft).toBe(draft);
+  });
+  it("creates a complete normalized next check only in an explicitly loaded follow-ups draft", async () => {
+    const f = fixture();
+    expect(
+      f.model.prepareNextCheck(
+        member,
+        "  Cafe\u0301 東京 😀 check  ",
+        "2026-10-22",
+      ),
+    ).toMatchObject({ capture: null });
+    expect(f.api.loadFollowups).not.toHaveBeenCalled();
+    await f.model.coordinator.load();
+    const watchlist = f.context.draft;
+    const prepared = f.model.prepareNextCheck(
+      member,
+      "  Cafe\u0301 東京 😀 check  ",
+      "2026-10-22",
+    );
+    expect(prepared.reason).toBeNull();
+    expect(prepared.capture?.check).toBe("Café 東京 😀 check");
+    const created = f.model.createNextCheck(prepared.capture!, () => true)!;
+    expect(created).toMatchObject({
+      listing,
+      check: "Café 東京 😀 check",
+      dueOn: "2026-10-22",
+      status: "open",
+      result: "",
+      completedOn: null,
+    });
+    expect(f.context.draft).toBe(watchlist);
+    expect(f.model.coordinator.getSnapshot()).toMatchObject({
+      dirty: true,
+      baseVersion: 0,
+    });
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    expect(f.api.resolve).not.toHaveBeenCalled();
+    expect(f.model.createNextCheck(prepared.capture!, () => true)).toBeNull();
+    expect(
+      f.model.prepareNextCheck(member, "Never overwrite", "2026-10-23").reason,
+    ).toContain("already has");
+    expect(f.current().check).toBe("Café 東京 😀 check");
+    await f.model.coordinator.save();
+    await f.model.coordinator.load();
+    expect(f.current()).toMatchObject({
+      check: "Café 東京 😀 check",
+      dueOn: "2026-10-22",
+    });
+  });
+  it.each([
+    "",
+    "x".repeat(501),
+    "😀".repeat(501),
+    "line\ncontrol",
+    "bad\ud800",
+  ])("refuses invalid captured check without clipping: %j", async (raw) => {
+    const f = fixture();
+    await f.model.coordinator.load();
+    expect(
+      f.model.prepareNextCheck(member, raw, "2026-10-22").capture,
+    ).toBeNull();
+    expect(f.model.coordinator.getSnapshot().draft?.entries).toEqual([]);
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  });
+  it("keeps the full 500-code-point check and refuses invalid date and capacity", async () => {
+    const f = fixture();
+    await f.model.coordinator.load();
+    const raw = "😀".repeat(500);
+    expect(
+      f.model.prepareNextCheck(member, raw, "2026-02-29").capture,
+    ).toBeNull();
+    expect(
+      f.model.prepareNextCheck(member, raw, "10000-01-01").capture,
+    ).toBeNull();
+    expect(
+      f.model.prepareNextCheck(member, raw, "0001-01-01").capture?.check,
+    ).toBe(raw);
+    f.model.coordinator.replaceDraft(
+      payload(...Array.from({ length: 20 }, (_, index) => entry(index + 1))),
+    );
+    expect(
+      f.model.prepareNextCheck(member, raw, "2026-10-22").reason,
+    ).toContain("20 entries");
+  });
+  it.each([
+    "watchlist",
+    "followups",
+    "catalog",
+    "retire",
+    "cancel",
+    "mutable identity",
+  ])("refuses a captured next check after %s changes", async (boundary) => {
+    const f = fixture();
+    const mutable = { ...member };
+    f.context.draft = { ...f.context.draft!, memberships: [mutable] };
+    await f.model.coordinator.load();
+    const prepared = f.model.prepareNextCheck(
+      mutable,
+      "Check",
+      "2026-10-22",
+    ).capture!;
+    if (boundary === "watchlist") f.context.draft = { ...f.context.draft };
+    if (boundary === "followups")
+      f.model.coordinator.replaceDraft(payload(entry()));
+    if (boundary === "catalog") f.model.syncCatalog(nextDigest);
+    if (boundary === "retire") f.model.retire();
+    if (boundary === "mutable identity") mutable.shareClassId = "rebound";
+    const before = f.model.coordinator.getSnapshot().draft;
+    expect(
+      f.model.createNextCheck(prepared, () => boundary !== "cancel"),
+    ).toBeNull();
+    expect(f.model.coordinator.getSnapshot().draft).toBe(before);
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    expect(f.api.resolve).not.toHaveBeenCalled();
+  });
+  it("fences reentrant creation and rechecks a changed draft after ID creation", async () => {
+    let nested: ResearchFollowup | null = null;
+    const f = fixture(payload(), () => {
+      nested = f.model.createNextCheck(capture, () => true);
+      f.context.draft = { ...f.context.draft! };
+      return id(100);
+    });
+    await f.model.coordinator.load();
+    const capture = f.model.prepareNextCheck(
+      member,
+      "Check",
+      "2026-10-22",
+    ).capture!;
+    expect(f.model.createNextCheck(capture, () => true)).toBeNull();
+    expect(nested).toBeNull();
+    expect(f.model.coordinator.getSnapshot().draft?.entries).toEqual([]);
+  });
+  it("pauses capture during load and refuses stale capture through conflict or uncertain save", async () => {
+    const f = fixture(payload(entry()));
+    await f.model.coordinator.load();
+    const prepared = f.model.prepareNextCheck(
+      member,
+      "Check",
+      "2026-10-22",
+    ).capture!;
+    const loading = deferred<ManagedResearchFollowupsDto>();
+    f.api.loadFollowups.mockReturnValueOnce(loading.promise);
+    const pending = f.model.coordinator.load();
+    expect(
+      f.model.prepareNextCheck(member, "Check", "2026-10-22").capture,
+    ).toBeNull();
+    expect(f.model.createNextCheck(prepared, () => true)).toBeNull();
+    loading.resolve({ version: 1, payload: payload(entry()) });
+    await pending;
+    f.model.edit(f.current(), "check", "Changed");
+    f.api.saveFollowups.mockRejectedValueOnce(new TrialApiError("conflict"));
+    await f.model.coordinator.save();
+    expect(
+      f.model.prepareNextCheck(member, "Check", "2026-10-22").capture,
+    ).toBeNull();
+    const uncertain = fixture(payload(entry()));
+    await uncertain.model.coordinator.load();
+    uncertain.model.edit(uncertain.current(), "check", "Changed");
+    uncertain.api.saveFollowups.mockRejectedValueOnce(
+      new TrialApiError("unavailable"),
+    );
+    await uncertain.model.coordinator.save();
+    expect(uncertain.model.coordinator.getSnapshot().uncertain).toBe(true);
+    expect(
+      uncertain.model.prepareNextCheck(member, "Check", "2026-10-22").capture,
+    ).toBeNull();
+  });
   it("requires explicit load and adds only the actual current watchlist member", async () => {
     const f = fixture();
     f.model.add(member, "2026-10-20");

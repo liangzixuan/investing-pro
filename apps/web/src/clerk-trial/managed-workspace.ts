@@ -120,6 +120,7 @@ import { ManagedBlsCalendar } from "./managed-bls-calendar";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import { ManagedResearchFollowups } from "./managed-research-followups";
+import type { ThesisFollowupContext } from "./managed-thesis-followup";
 import { ManagedPortfolio, type PortfolioDraft } from "./managed-portfolio";
 import { ManagedSessionOwner } from "./managed-session-owner";
 import { MANAGED_WATCHLIST_SAVE_COPY } from "./save-coordinator-copy";
@@ -1760,6 +1761,45 @@ export class ManagedWorkspace {
       this[section].getSnapshot().selection === targetSelection
       ? switched
       : null;
+  }
+  researchThesisFollowupContext(selection: ManagedResearchSelection) {
+    const member = this.getResearchWatchlist(selection).member;
+    return member ? this.thesisFollowupContext(member, selection) : undefined;
+  }
+  thesisFollowupContext(
+    member: WatchlistMembership,
+    selection?: ManagedResearchSelection,
+  ): ThesisFollowupContext {
+    const navigation = this.navigationRevision;
+    const view = this.viewRevision;
+    return {
+      model: this.followups,
+      member,
+      isCurrent: () => {
+        if (!this.canNavigate() || !this.canEdit()) return false;
+        if (
+          this.navigationRevision !== navigation ||
+          this.viewRevision !== view
+        )
+          return false;
+        if (!this.currentWatchlistContains(member)) return false;
+        return this.thesisFollowupHostIsCurrent(member, selection);
+      },
+    };
+  }
+  private thesisFollowupHostIsCurrent(
+    member: WatchlistMembership,
+    selection?: ManagedResearchSelection,
+  ) {
+    if (selection) {
+      const watchlist = this.getResearchWatchlist(selection);
+      return watchlist.canEdit && watchlist.member === member;
+    }
+    return (
+      this.watchlistResearchVisitActive() &&
+      this.coordinator.getSnapshot().draft?.memberships.includes(member) ===
+        true
+    );
   }
   getResearchWatchlist(
     selection: ManagedResearchSelection,

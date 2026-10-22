@@ -16,6 +16,7 @@ import type { ManagedEodHistory as EodModel } from "./managed-eod-history";
 import { ManagedAnnualReport } from "./ManagedAnnualReport";
 import { ManagedEodHistory } from "./ManagedEodHistory";
 import { ManagedResearchNote } from "./ManagedResearchNote";
+import type { ThesisFollowupContext } from "./managed-thesis-followup";
 import type { ManagedAnnualNoteActions } from "./ManagedAnnualNoteAction";
 import type { ManagedAnnualCashNoteActions } from "./ManagedAnnualCashNoteAction";
 import type { ManagedAnnualOperatingNoteActions } from "./ManagedAnnualOperatingNoteAction";
@@ -50,6 +51,7 @@ export function ManagedCompanyResearch({
   onAdd,
   onNote,
   onReview,
+  thesisFollowup,
   annualNoteActions,
   annualCashNoteActions,
   annualLiquidityNoteActions,
@@ -83,6 +85,7 @@ export function ManagedCompanyResearch({
   onAdd: () => void;
   onNote: (note: string, expectedNote?: string) => void;
   onReview: () => void;
+  thesisFollowup?: ThesisFollowupContext | undefined;
   annualNoteActions: ManagedAnnualNoteActions;
   annualCashNoteActions: ManagedAnnualCashNoteActions;
   annualLiquidityNoteActions: ManagedAnnualLiquidityNoteActions;
@@ -255,6 +258,7 @@ export function ManagedCompanyResearch({
             onAdd={onAdd}
             onNote={onNote}
             onReview={onReview}
+            followup={thesisFollowup}
           />
         </aside>
       </div>

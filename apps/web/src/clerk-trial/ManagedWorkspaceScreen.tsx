@@ -36,6 +36,7 @@ import { managedValuationResearchProps } from "./managed-valuation-research-prop
 import {
   ManagedWatchlistEditor,
   type ManagedWatchlistEditorHandle,
+  type ManagedWatchlistEditorProps,
 } from "./ManagedWatchlistEditor";
 import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
 import {
@@ -416,6 +417,21 @@ function revealReturnedTarget(target: HTMLElement, view: Window) {
       inline: "nearest",
       behavior: "instant",
     });
+}
+
+function watchlistDraftActions(
+  workspace: ManagedWorkspace,
+): Pick<
+  ManagedWatchlistEditorProps,
+  "thesisFollowup" | "onNote" | "onMove" | "onRemove"
+> {
+  return {
+    thesisFollowup: (member) => workspace.thesisFollowupContext(member),
+    onNote: (listingId, note, expectedNote) =>
+      workspace.note(listingId, note, expectedNote),
+    onMove: (listingId, direction) => workspace.move(listingId, direction),
+    onRemove: (listingId) => workspace.remove(listingId),
+  };
 }
 
 export function ManagedWorkspaceScreen({
@@ -1102,6 +1118,9 @@ export function ManagedWorkspaceScreen({
                   watchlist={workspace.getResearchWatchlist(
                     discovery.research.selection,
                   )}
+                  thesisFollowup={workspace.researchThesisFollowupContext(
+                    discovery.research.selection,
+                  )}
                   onAdd={() =>
                     workspace.addResearchToWatchlist(
                       discovery.research!.selection,
@@ -1688,6 +1707,7 @@ export function ManagedWorkspaceScreen({
                       openResearch={openResearch}
                     />
                     <ManagedWatchlistEditor
+                      {...watchlistDraftActions(workspace)}
                       ref={watchlistEditor}
                       memberships={saved.draft.memberships}
                       prices={watchlistPrices}
@@ -1748,13 +1768,6 @@ export function ManagedWorkspaceScreen({
                         !navigationPending &&
                         workspace.canOpenWatchlistEod(member)
                       }
-                      onNote={(listingId, note, expectedNote) =>
-                        workspace.note(listingId, note, expectedNote)
-                      }
-                      onMove={(listingId, direction) =>
-                        workspace.move(listingId, direction)
-                      }
-                      onRemove={(listingId) => workspace.remove(listingId)}
                       onOpenAnnual={(member, opener) =>
                         openResearch(opener, () =>
                           workspace.openWatchlistAnnual(member),

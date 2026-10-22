@@ -13,6 +13,7 @@ import {
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedThesisReview } from "./ManagedThesisReview";
+import type { ThesisFollowupContext } from "./managed-thesis-followup";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
 import {
@@ -55,6 +56,7 @@ export interface ManagedWatchlistEditorProps {
   prices: ManagedWatchlistPricesState;
   filings: FilingsModel;
   onSelectedMember: (member: WatchlistMembership | null) => void;
+  thesisFollowup?: (member: WatchlistMembership) => ThesisFollowupContext;
   onViewFilings: (
     capture: ManagedWatchlistFilingsCapture,
     opener: HTMLButtonElement,
@@ -530,6 +532,9 @@ function WatchlistDetail({
         />
         <ManagedThesisReview
           key={`review:${selected.listingId}`}
+          {...(props.thesisFollowup
+            ? { followup: props.thesisFollowup(selected) }
+            : {})}
           id={`managed-note-${selectedIndex}`}
           symbol={selected.symbol}
           note={selected.note}

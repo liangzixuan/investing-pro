@@ -10,6 +10,7 @@ import {
   proposeThesisReview,
 } from "./managed-thesis-review";
 import { filingReferenceNoteExcerpt } from "./managed-filings-note";
+import { groupResearchFollowupsByDueDate } from "./managed-research-followups-date";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -7480,6 +7481,148 @@ describe("workspace persisted follow-up research", () => {
     if (!capture) throw new Error("Expected the current follow-up capture");
     return capture;
   }
+
+  it("takes an authored thesis next check through the daily queue, research Back, result, completion and independent Save", async () => {
+    const f = await followupFixture(
+      persistence({ schemaVersion: 1, entries: [] }),
+    );
+    f.workspace.add(zero);
+    f.workspace.setView("watchlist");
+    f.workspace.note(zero.listingId, "Independent thesis note · Café");
+    const watchlist = f.workspace.coordinator.getSnapshot().draft!;
+    const member = watchlist.memberships[0]!;
+    const context = f.workspace.thesisFollowupContext(member);
+    const capture = f.workspace.followups.prepareNextCheck(
+      member,
+      "  Recheck capacity · Cafe\u0301 東京 😀  ",
+      "2026-10-22",
+    ).capture!;
+    const created = context.model.createNextCheck(capture, context.isCurrent)!;
+    expect(created.check).toBe("Recheck capacity · Café 東京 😀");
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+    f.workspace.followups.reassessDueDate(new Date("2026-10-22T01:00:00Z"));
+    expect(
+      groupResearchFollowupsByDueDate(
+        [created],
+        new Date(f.workspace.followups.getSnapshot().assessmentTime!),
+      )?.today,
+    ).toEqual([created]);
+    f.workspace.setView("markets");
+    const review = f.workspace.reviewFollowup(created, () => {
+      f.workspace.setView("followups");
+      return true;
+    });
+    expect(review?.isCurrent()).toBe(true);
+    const draft = f.workspace.followups.coordinator.getSnapshot().draft;
+    const research = await f.workspace.prepareFollowupResearch(created);
+    f.workspace.openFollowupResearch(research!);
+    expect(f.workspace.getSnapshot().research?.selection.listing).toEqual(
+      created.listing,
+    );
+    f.workspace.closeResearch();
+    expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(draft);
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+    noSources(f.api);
+    f.workspace.followups.edit(f.current(), "result", "Authored dated result");
+    f.workspace.followups.complete(
+      f.current(),
+      new Date("2026-10-22T01:00:00Z"),
+    );
+    expect(
+      groupResearchFollowupsByDueDate(
+        [f.current()],
+        new Date("2026-10-22T01:00:00Z"),
+      )?.today,
+    ).toEqual([]);
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+    await f.workspace.followups.coordinator.save();
+    expect(f.store.saved().payload.entries[0]).toMatchObject({
+      check: created.check,
+      result: "Authored dated result",
+      status: "completed",
+      completedOn: "2026-10-22",
+    });
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+    expect(f.workspace.coordinator.getSnapshot().dirty).toBe(true);
+    expect(f.saved().payload.memberships).toEqual([]);
+  });
+  it("creates from the exact company thesis context without changing its independent note, and refuses a retired visit", async () => {
+    const f = await followupFixture(
+      persistence({ schemaVersion: 1, entries: [] }),
+    );
+    f.workspace.add(zero);
+    f.workspace.setView("watchlist");
+    const member = f.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    f.workspace.openWatchlistAnnual(member);
+    const selection = f.workspace.getSnapshot().research!.selection;
+    const context = f.workspace.thesisFollowupContext(member, selection);
+    const capture = f.workspace.followups.prepareNextCheck(
+      member,
+      "Check the authored thesis",
+      "2026-10-22",
+    ).capture!;
+    expect(context.isCurrent()).toBe(true);
+    expect(
+      context.model.createNextCheck(capture, context.isCurrent)?.listing,
+    ).toEqual(member.listingId === zero.listingId ? identity(zero) : null);
+    expect(f.workspace.coordinator.getSnapshot().draft!.memberships[0]).toBe(
+      member,
+    );
+    noSources(f.api);
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    f.workspace.followups.remove(f.current());
+    const stale = f.workspace.followups.prepareNextCheck(
+      member,
+      "Stale",
+      "2026-10-23",
+    ).capture!;
+    f.workspace.closeResearch();
+    f.workspace.openWatchlistAnnual(member);
+    expect(context.model.createNextCheck(stale, context.isCurrent)).toBeNull();
+    expect(context.isCurrent()).toBe(false);
+  });
+  it.each([
+    "navigation",
+    "round trip",
+    "pending navigation",
+    "catalog",
+    "watchlist edit",
+    "session",
+  ])("refuses an old thesis host after %s changes", async (boundary) => {
+    const f = await followupFixture(
+      persistence({ schemaVersion: 1, entries: [] }),
+    );
+    f.workspace.add(zero);
+    f.workspace.setView("watchlist");
+    const member = f.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const context = f.workspace.thesisFollowupContext(member);
+    const capture = f.workspace.followups.prepareNextCheck(
+      member,
+      "Check",
+      "2026-10-22",
+    ).capture!;
+    if (boundary === "navigation") f.workspace.setView("markets");
+    if (boundary === "round trip") {
+      f.workspace.setView("markets");
+      f.workspace.setView("watchlist");
+    }
+    if (boundary === "pending navigation")
+      f.workspace.setNavigationBlocked(true);
+    if (boundary === "catalog") f.workspace.followups.syncCatalog(nextDigest);
+    if (boundary === "watchlist edit")
+      f.workspace.note(member.listingId, "Edited");
+    if (boundary === "session") f.workspace.sessionOwner.retire();
+    const draft = f.workspace.followups.coordinator.getSnapshot().draft;
+    expect(
+      context.model.createNextCheck(capture, context.isCurrent),
+    ).toBeNull();
+    expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(draft);
+    noSources(f.api);
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  });
 
   it("persists an unsaved actual member independently, researches after fresh load without that member, and completes explicitly", async () => {
     const store = persistence({ schemaVersion: 1, entries: [] });

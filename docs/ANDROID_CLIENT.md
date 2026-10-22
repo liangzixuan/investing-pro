@@ -6,7 +6,18 @@ production package is `app.investingpro.android`.
 [Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) records the accepted
 version, source revision and physical-device status.
 
-Android 1.31.0, code 32, is provided from accepted product
+Android 1.32.0, code 33, is provided from accepted product
+`273f09dbeb056a6196c3c6b73dd37eb06432bb54` with the existing production signer.
+It adds [Watchlist filing review](MANAGED_FILINGS_REVIEW.md). One guarded offline
+build passed package/version/non-debug, actual v2/single-signer, complete source
+and production configuration, all eight packaged assets and final source
+preservation checks. Its SHA-256 is
+`8b56db8fe98db14d891dad367d99182a510ba88ed35444eb44d14e9c50393839`
+(6,918,307 bytes). The existing API and website stayed unchanged, and prior APKs
+are preserved. Installation, physical-device acceptance and sustained use remain
+open. Later dated thesis Next-check source work is not in this package.
+
+Android 1.31.0, code 32, was provided from accepted product
 `ce7bc1025d1bd67fc55e841375a92770f7e20190` with the existing production signer.
 It adds Portfolio draft files and the explicit BLS release calendar. Independent
 package/version/non-debug, actual v2/single-signer, source/configuration and all

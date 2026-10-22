@@ -7767,7 +7767,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-0')?.value === 'Original thesis'" +
             " && " + DIAGNOSTICS + ".save === 0" +
             " && document.querySelector('.managed-thesis-review button')?.disabled === false" +
-            " && [...document.querySelectorAll('.managed-thesis-review input,.managed-thesis-review select')].every(e => e.getBoundingClientRect().height >= 44)");
+            " && [...document.querySelector('.managed-thesis-review').querySelectorAll(':scope > .managed-thesis-review-fields input,:scope > .managed-thesis-review-fields select')].every(e => e.getBoundingClientRect().height >= 44)");
         click(".managed-thesis-review button");
         awaitPage("one append preserves both identities and blocks an immediate duplicate",
             "document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +
@@ -7775,6 +7775,29 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && document.querySelector('.managed-thesis-review button')?.disabled === true" +
             " && " + DIAGNOSTICS + ".save === 0");
+        click(".managed-thesis-followup > summary");
+        typeIntoInput("managed-note-0-followup-date", "2020-01-01");
+        awaitPage("opening and dating the check makes no implicit follow-up request",
+            FOLLOWUPS + ".load === 0 && " + FOLLOWUPS + ".save === 0 && document.querySelector('#managed-note-0-followup-create')?.disabled === true");
+        click("#managed-note-0-followup-load");
+        awaitPage("explicit inline Load retains the authored check and date",
+            FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUP_DRAFT + ".baseVersion === 0 && " + FOLLOWUP_DRAFT + ".entries?.length === 0" +
+            " && document.querySelector('#managed-note-0-followup-date')?.value === '2020-01-01'" +
+            " && document.querySelector('#managed-note-0-followup-check')?.textContent === 'Read the next filed report'");
+        awaitPage("complete next check and explicit date precede creation without any save",
+            "document.querySelector('#managed-note-0-followup-check')?.textContent === 'Read the next filed report'" +
+            " && document.querySelector('#managed-note-0-followup-date')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-note-0-followup-create')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-note-0-followup-create')?.disabled === false" +
+            " && " + FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + DIAGNOSTICS + ".save === 0");
+        click("#managed-note-0-followup-create");
+        awaitPage("creation retains the exact independent draft and refuses duplicate listing",
+            FOLLOWUP_DRAFT + ".entries?.length === 1 && " + FOLLOWUP_DRAFT + ".entries[0].check === 'Read the next filed report'" +
+            " && " + FOLLOWUP_DRAFT + ".entries[0].dueOn === '2020-01-01' && " + FOLLOWUP_DRAFT + ".entries[0].listing.listingId === 'listing-zero'" +
+            " && " + FOLLOWUP_DRAFT + ".dirty === true && document.querySelector('#managed-note-0-followup-create')?.disabled === true" +
+            " && " + DRAFT + ".memberships[0].note === " + JSONObject.quote(expected) +
+            " && " + FOLLOWUPS + ".save === 0 && " + DIAGNOSTICS + ".save === 0");
+        String followupId = readFixtureString(FOLLOWUP_DRAFT + ".entries[0].id");
         clickWatchlistAction("Save watchlist");
         awaitPage("explicit Save keeps the complete authored review",
             DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')" +
@@ -7785,7 +7808,38 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +
             " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
         assertFixtureBoundary(0, 1);
+        completeThesisFollowup(followupId, expected);
         assertEquals("Thesis review preserves the mounted document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    private void completeThesisFollowup(String id, String expectedNote) throws Exception {
+        assertTrue("Next check has a generated v4 UUID", id.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"));
+        selectWorkspaceView("Markets");
+        String row = ".managed-daily-research-review [aria-label=Overdue] li";
+        awaitPage("the new draft appears in daily review without loading or saving either resource",
+            "document.querySelector(" + JSONObject.quote(row) + ")?.textContent.includes('Read the next filed report')" +
+            " && document.querySelector(" + JSONObject.quote(row) + ")?.textContent.includes('2020-01-01')" +
+            " && " + FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + DIAGNOSTICS + ".save === 1");
+        click("#managed-daily-review-" + id);
+        awaitPage("daily review opens the exact authored check with keyboard focus",
+            "document.activeElement === document.querySelector('#managed-followup-editor-heading') && " + FOLLOWUP_DRAFT + ".selectedId === " + JSONObject.quote(id));
+        assertFollowupEntry(id, "Read the next filed report", "2020-01-01", "", "open", null, 0, true);
+        click("#managed-followups-save");
+        awaitPage("only explicit Follow-ups Save commits its separate resource",
+            FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUP_DRAFT + ".baseVersion === 1 && " + FOLLOWUP_DRAFT + ".dirty === false" +
+            " && " + DRAFT + ".memberships[0].note === " + JSONObject.quote(expectedNote) + " && " + DIAGNOSTICS + ".save === 1");
+        typeIntoInput("managed-followup-result", "Checked the authored thesis");
+        String completedOn = readFixtureString("document.querySelector('#managed-followups-assessed-day').getAttribute('datetime')");
+        click("#managed-followup-complete");
+        assertFollowupEntry(id, "Read the next filed report", "2020-01-01", "Checked the authored thesis", "completed", completedOn, 1, true);
+        click("#managed-followups-save");
+        awaitPage("completion commits with no Watchlist or financial source action",
+            FOLLOWUPS + ".save === 2 && " + FOLLOWUPS + ".commits === 2 && " + FOLLOWUP_DRAFT + ".baseVersion === 2 && " + FOLLOWUP_DRAFT + ".dirty === false" +
+            " && " + DRAFT + ".memberships[0].note === " + JSONObject.quote(expectedNote) + " && " + DIAGNOSTICS + ".save === 1" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0");
+        selectWorkspaceView("Markets");
+        awaitPage("the completed check leaves the daily due queue",
+            "document.querySelector('#managed-daily-review-" + id + "') === null && " + FOLLOWUPS + ".save === 2 && " + FOLLOWUPS + ".load === 1");
     }
 
     @Test
