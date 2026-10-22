@@ -47,14 +47,16 @@ final class WatchlistSystemPicker {
 
     void saveToInventedRoot() throws Exception {
         awaitOpen();
+        // Do not navigate while DocumentsUI is still restoring its initial stack.
+        // New folder is enabled only after a writable current directory exists.
+        // An open roots drawer alone does not establish that initial readiness.
+        await(WatchlistSystemPicker::readyCurrentSaveDirectory);
         // The emulator uses the platform English locale. Resolve every node afresh.
         AccessibilityNodeInfo navigation = await(node -> isRootsList(node)
             || "Show roots".contentEquals(string(node.getContentDescription())));
         if (!isRootsList(navigation)) click(navigation);
         clickInventedRoot();
-        await(WatchlistSystemPicker::readySaveDirectory);
-        AccessibilityNodeInfo save = await(node -> "android:id/button1".equals(node.getViewIdResourceName())
-            && node.isEnabled() && hasAncestor(node, ":id/container_save"));
+        AccessibilityNodeInfo save = await(WatchlistSystemPicker::saveInInventedDirectory);
         assertTrue("Unexpected native Save control", "Save".equalsIgnoreCase(string(save.getText())));
         click(save);
         awaitReturnToApp();
@@ -62,16 +64,42 @@ final class WatchlistSystemPicker {
 
     /** The CREATE picker exposes this action only after a writable current directory exists. */
     private static boolean readySaveDirectory(AccessibilityNodeInfo toolbar) {
+        if (!readyCurrentSaveDirectory(toolbar)) return false;
+        return find(toolbar, node -> node.isVisibleToUser()
+            && SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(node.getText())), 0) != null;
+    }
+
+    private static boolean readyCurrentSaveDirectory(AccessibilityNodeInfo toolbar) {
         if (!toolbar.isVisibleToUser()) return false;
         if (!string(toolbar.getViewIdResourceName()).endsWith(":id/toolbar")) return false;
         AccessibilityWindowInfo window = toolbar.getWindow();
         if (window == null) return false;
         if (window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) return false;
         if (!window.isActive() || !window.isFocused()) return false;
+        if (window.getDisplayId() != Display.DEFAULT_DISPLAY) return false;
         AccessibilityNodeInfo title = find(toolbar, node -> node.isVisibleToUser()
-            && SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(node.getText())), 0);
-        if (title == null) return false;
-        return find(toolbar, WatchlistSystemPicker::isDirectoryCreateAction, 0) != null;
+            && !string(node.getText()).isEmpty(), 0);
+        return title != null && find(toolbar, WatchlistSystemPicker::isDirectoryCreateAction, 0) != null;
+    }
+
+    /** The destination and Save must belong to the same fresh hierarchy, not separate observations. */
+    private static boolean saveInInventedDirectory(AccessibilityNodeInfo save) {
+        if (!"android:id/button1".equals(save.getViewIdResourceName())
+            || !save.refresh() || !save.isVisibleToUser() || !save.isEnabled()
+            || !hasAncestor(save, ":id/container_save")) return false;
+        AccessibilityNodeInfo root = save;
+        for (int depth = 0; depth < 48; depth++) {
+            AccessibilityNodeInfo parent = root.getParent();
+            if (parent == null) {
+                if (!root.refresh() || !root.isVisibleToUser()
+                    || !string(root.getPackageName()).endsWith(".documentsui")) return false;
+                AccessibilityNodeInfo toolbar = find(root, WatchlistSystemPicker::readySaveDirectory, 0);
+                return toolbar != null && toolbar.getWindowId() == save.getWindowId()
+                    && root.getWindowId() == save.getWindowId();
+            }
+            root = parent;
+        }
+        throw new AssertionError("Unexpected system picker hierarchy depth before Save");
     }
 
     private static boolean isDirectoryCreateAction(AccessibilityNodeInfo node) {
