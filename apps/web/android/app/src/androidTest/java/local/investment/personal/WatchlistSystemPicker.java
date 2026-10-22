@@ -11,6 +11,8 @@ import android.view.Display;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.AccessibilityNodeInfoExt;
+import androidx.test.uiautomator.StableResult;
 import androidx.test.uiautomator.UiDevice;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,23 +84,37 @@ final class WatchlistSystemPicker {
             long remaining = deadline - SystemClock.uptimeMillis();
             if (remaining <= 0) break;
             automation.waitForIdle(50, remaining);
-            Rect target = readyInventedRoot();
-            if (target != null && SystemClock.uptimeMillis() < deadline) {
-                boolean dispatched = device.click(target.centerX(), target.centerY());
-                Log.i("WatchlistSystemPicker", "Invented-root touch dispatched=" + dispatched
-                    + " uptime=" + SystemClock.uptimeMillis());
-                assertTrue("System root touch must dispatch after invented-root readiness", dispatched);
-                return;
+            AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+            Rect before = readyInventedRoot(root);
+            if (before != null) {
+                remaining = deadline - SystemClock.uptimeMillis();
+                if (remaining <= 0) break;
+                // Accessibility idle can precede a roots refresh or drawer layout.
+                // Observe the whole hierarchy; do not capture an image or dispatch yet.
+                StableResult stable = AccessibilityNodeInfoExt.waitForStable(root, remaining, 500, 50, false);
+                if (stable.isTimeout()) break;
+                AccessibilityNodeInfo current = automation.getRootInActiveWindow();
+                Rect target = readyInventedRoot(current);
+                if (target != null && root.equals(current) && root.getWindowId() == current.getWindowId()
+                    && before.equals(target) && SystemClock.uptimeMillis() < deadline) {
+                    Log.i("WatchlistSystemPicker", "Invented-root hierarchy stable; touch window="
+                        + current.getWindowId() + " bounds=" + target.toShortString()
+                        + " uptime=" + SystemClock.uptimeMillis());
+                    boolean dispatched = device.click(target.centerX(), target.centerY());
+                    Log.i("WatchlistSystemPicker", "Invented-root touch dispatched=" + dispatched
+                        + " uptime=" + SystemClock.uptimeMillis());
+                    assertTrue("System root touch must dispatch after invented-root readiness", dispatched);
+                    return;
+                }
             }
             remaining = deadline - SystemClock.uptimeMillis();
             if (remaining > 0) Thread.sleep(Math.min(50, remaining));
         }
-        throw new AssertionError("Invented root did not become actionable in the active system picker");
+        throw new AssertionError("Invented root did not become stable and actionable in the active system picker");
     }
 
-    private Rect readyInventedRoot() {
+    private Rect readyInventedRoot(AccessibilityNodeInfo root) {
         Rect displayBounds = new Rect(0, 0, device.getDisplayWidth(), device.getDisplayHeight());
-        AccessibilityNodeInfo root = automation.getRootInActiveWindow();
         if (root == null || !root.refresh() || !root.isVisibleToUser()
             || !string(root.getPackageName()).endsWith(".documentsui")) return null;
         AccessibilityWindowInfo window = root.getWindow();
