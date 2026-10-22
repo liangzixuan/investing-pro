@@ -333,76 +333,74 @@ describe("SQLite local research vault", () => {
     tampered.close();
   });
 
-  it("detects missing tombstone, idempotency, and audit ledger evidence", async () => {
-    const databasePath = await freshDatabasePath();
-    const vault = SqliteLocalResearchVault.createNew(
-      databasePath,
-      KEY,
-      () => NOW,
-    );
-    vault.putRecord({
-      kind: "thesis",
-      id: "ledger-thesis",
-      expectedVersion: 0,
-      idempotencyKey: "idempotency-ledger-create",
-      payload: { thesis: "ledger protected" },
-    });
-    vault.deleteRecord({
-      kind: "thesis",
-      id: "ledger-thesis",
-      expectedVersion: 1,
-      idempotencyKey: "idempotency-ledger-delete",
-    });
-    vault.close();
-
+  it("detects a missing tombstone and blocks recreation", async () => {
+    const databasePath = await deletedLedgerDatabase();
     const raw = new DatabaseSync(databasePath);
-    raw.prepare("DELETE FROM vault_tombstones").run();
-    raw.close();
+    try {
+      raw.prepare("DELETE FROM vault_tombstones").run();
+    } finally {
+      raw.close();
+    }
     const missingTombstone = SqliteLocalResearchVault.openExisting(
       databasePath,
       KEY,
       () => NOW,
     );
-    expect(() => missingTombstone.verifyIntegrity()).toThrowError(
-      matchingCode("VAULT_CORRUPT"),
-    );
-    expect(() =>
-      missingTombstone.putRecord({
-        kind: "thesis",
-        id: "ledger-thesis",
-        expectedVersion: 0,
-        idempotencyKey: "idempotency-ledger-recreate",
-        payload: { thesis: "must remain deleted" },
-      }),
-    ).toThrowError(matchingCode("VAULT_CORRUPT"));
-    missingTombstone.close();
-
-    const rawAgain = new DatabaseSync(databasePath);
-    rawAgain
-      .prepare(
-        `INSERT INTO vault_tombstones(
-           kind, record_id, deleted_version, prior_payload_sha256, deleted_at
-         ) SELECT record_kind, record_id, to_version, result_sha256, occurred_at
-             FROM vault_audit WHERE action = 'record_deleted'`,
-      )
-      .run();
-    rawAgain
-      .prepare("DELETE FROM vault_idempotency WHERE operation = 'delete'")
-      .run();
-    rawAgain
-      .prepare("DELETE FROM vault_audit WHERE action = 'record_deleted'")
-      .run();
-    rawAgain.close();
-    const missingLedgers = SqliteLocalResearchVault.openExisting(
-      databasePath,
-      KEY,
-      () => NOW,
-    );
-    expect(() => missingLedgers.verifyIntegrity()).toThrowError(
-      matchingCode("VAULT_CORRUPT"),
-    );
-    missingLedgers.close();
+    try {
+      expect(() => missingTombstone.verifyIntegrity()).toThrowError(
+        matchingCode("VAULT_CORRUPT"),
+      );
+      expect(() =>
+        missingTombstone.putRecord({
+          kind: "thesis",
+          id: "ledger-thesis",
+          expectedVersion: 0,
+          idempotencyKey: "idempotency-ledger-recreate",
+          payload: { thesis: "must remain deleted" },
+        }),
+      ).toThrowError(matchingCode("VAULT_CORRUPT"));
+    } finally {
+      missingTombstone.close();
+    }
   });
+
+  it.each([
+    [
+      "idempotency",
+      ["DELETE FROM vault_idempotency WHERE operation = 'delete'"],
+    ],
+    ["audit", ["DELETE FROM vault_audit WHERE action = 'record_deleted'"]],
+    [
+      "idempotency and audit",
+      [
+        "DELETE FROM vault_idempotency WHERE operation = 'delete'",
+        "DELETE FROM vault_audit WHERE action = 'record_deleted'",
+      ],
+    ],
+  ] as const)(
+    "detects missing %s ledger evidence independently",
+    async (_evidence, mutations) => {
+      const databasePath = await deletedLedgerDatabase();
+      const raw = new DatabaseSync(databasePath);
+      try {
+        for (const mutation of mutations) raw.prepare(mutation).run();
+      } finally {
+        raw.close();
+      }
+      const missingLedgers = SqliteLocalResearchVault.openExisting(
+        databasePath,
+        KEY,
+        () => NOW,
+      );
+      try {
+        expect(() => missingLedgers.verifyIntegrity()).toThrowError(
+          matchingCode("VAULT_CORRUPT"),
+        );
+      } finally {
+        missingLedgers.close();
+      }
+    },
+  );
 
   it("does not place personal payload canaries in SQLite, WAL, or SHM files", async () => {
     const databasePath = await freshDatabasePath();
@@ -539,6 +537,34 @@ async function freshDatabasePath(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "local-research-vault-test-"));
   roots.push(root);
   return join(root, "vault.sqlite3");
+}
+
+/** Each corruption case starts with its own fully committed deletion evidence. */
+async function deletedLedgerDatabase(): Promise<string> {
+  const databasePath = await freshDatabasePath();
+  const vault = SqliteLocalResearchVault.createNew(
+    databasePath,
+    KEY,
+    () => NOW,
+  );
+  try {
+    vault.putRecord({
+      kind: "thesis",
+      id: "ledger-thesis",
+      expectedVersion: 0,
+      idempotencyKey: "idempotency-ledger-create",
+      payload: { thesis: "ledger protected" },
+    });
+    vault.deleteRecord({
+      kind: "thesis",
+      id: "ledger-thesis",
+      expectedVersion: 1,
+      idempotencyKey: "idempotency-ledger-delete",
+    });
+  } finally {
+    vault.close();
+  }
+  return databasePath;
 }
 
 function matchingCode(code: LocalResearchVaultError["code"]): Error {

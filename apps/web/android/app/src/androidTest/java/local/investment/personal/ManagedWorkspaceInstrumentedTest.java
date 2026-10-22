@@ -786,6 +786,7 @@ public class ManagedWorkspaceInstrumentedTest {
             clickValuationFileAction("Keep current editor");
             awaitPage("Cancel retains every current operand and leaves the saved resource unchanged",
                 "document.querySelector('#managed-valuation-file-review-heading')===null && JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(editor) +
+                " && document.activeElement===document.querySelector('#managed-valuation-draft-files input[type=file]') && document.activeElement.disabled===false" +
                 " && JSON.stringify(" + savedValuationResource() + ")===" + JSONObject.quote(resource));
             selectInventedValuationInputs(output);
             assertCompleteValuationFileComparison(editor);
