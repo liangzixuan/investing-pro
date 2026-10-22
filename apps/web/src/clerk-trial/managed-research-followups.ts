@@ -19,7 +19,7 @@ import {
   groupResearchFollowupsByDueDate,
   isResearchFollowupDueDate,
 } from "./managed-research-followups-date";
-import { SaveCoordinator } from "./save-coordinator";
+import { SaveCoordinator, type VersionedPayload } from "./save-coordinator";
 import { MANAGED_FOLLOWUPS_SAVE_COPY } from "./save-coordinator-copy";
 import type { TrialSession } from "./session";
 
@@ -47,6 +47,12 @@ export interface ManagedResearchFollowupsState {
 export interface FollowupsCreationContext {
   readonly draft: MainWatchlistPayload | null;
   readonly catalogSnapshotSha256: string | null;
+}
+export interface FollowupsDraftFileContext {
+  readonly saved: VersionedPayload<ResearchFollowupsPayload>;
+  readonly draft: ResearchFollowupsPayload;
+  readonly baseVersion: number;
+  readonly catalog: string | null;
 }
 export interface NextCheckCapture {
   readonly member: WatchlistMembership;
@@ -299,6 +305,53 @@ export class ManagedResearchFollowups {
   canSavePayload() {
     const draft = this.coordinator.getSnapshot().draft;
     return !this.retired && draft !== null && capture(draft) !== null;
+  }
+  getDraftFileContext(requireFresh = true): FollowupsDraftFileContext | null {
+    const state = this.coordinator.getSnapshot();
+    const catalog = this.options.getCreationContext().catalogSnapshotSha256;
+    if (
+      !this.canEdit() ||
+      this.operation ||
+      this.state.review ||
+      !state.saved ||
+      !state.draft ||
+      state.baseVersion === null ||
+      catalog !== this.state.catalogSnapshotSha256
+    )
+      return null;
+    if (
+      requireFresh &&
+      (!catalog ||
+        !state.latestLoaded ||
+        state.baseVersion !== state.saved.version)
+    )
+      return null;
+    return {
+      saved: state.saved,
+      draft: state.draft,
+      baseVersion: state.baseVersion,
+      catalog,
+    };
+  }
+  /** A reviewed file replaces only the local draft, never its online version. */
+  restoreFileDraft(
+    captured: FollowupsDraftFileContext,
+    value: ResearchFollowupsPayload,
+  ) {
+    const draft = parseResearchFollowupsPayload(value);
+    const current = this.getDraftFileContext();
+    if (
+      !draft ||
+      !current ||
+      current.saved !== captured.saved ||
+      current.draft !== captured.draft ||
+      current.baseVersion !== captured.baseVersion ||
+      current.catalog !== captured.catalog
+    )
+      return false;
+    this.coordinator.replaceDraft(draft);
+    this.select(null);
+    return !this.retired;
   }
   private owns(entry: ResearchFollowup) {
     return this.canEdit() && this.currentEntry(entry.id) === entry;

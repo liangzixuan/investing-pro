@@ -1,4 +1,5 @@
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
+import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import {
   useCallback,
   useEffect,
@@ -83,6 +84,7 @@ interface SessionProps extends ManagedSessionWorkspaceOptions {
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
+  followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
 
@@ -93,6 +95,7 @@ interface WorkspaceProps {
   draftFileScope?: Promise<string>;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
+  followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
 
@@ -213,6 +216,9 @@ function SessionWorkspace(props: SessionProps) {
       {...draftFileSession}
       {...(initial.portfolioDraftFileDelivery
         ? { portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery }
+        : {})}
+      {...(initial.followupsDraftFileDelivery
+        ? { followupsDraftFileDelivery: initial.followupsDraftFileDelivery }
         : {})}
       {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
       {...(initial.reportDelivery
@@ -442,6 +448,7 @@ export function ManagedWorkspaceScreen({
   draftFileScope,
   draftFileDelivery,
   portfolioDraftFileDelivery,
+  followupsDraftFileDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -1328,6 +1335,9 @@ export function ManagedWorkspaceScreen({
                   )}
                 >
                   <ManagedResearchFollowups
+                    draftFileScope={draftFileScope}
+                    draftFileDelivery={followupsDraftFileDelivery}
+                    draftFileRouteActive={watchlistRouteActive}
                     review={followupReview}
                     navigationPending={navigationPending}
                     workspace={workspace}

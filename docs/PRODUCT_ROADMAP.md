@@ -29,6 +29,12 @@ has no client delivery yet.
 
 ## Current priority after the October 21 Android delivery
 
+The next daily-use source increment adds [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files).
+An explicit capture, full local comparison and restore preserve unsaved authored
+checks and results through the existing browser/Android file-delivery patterns.
+The online save base stays unchanged and Save remains explicit. This extends
+research recovery without new data sources, automatic monitoring or a release.
+
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The
 [production promotion](https://github.com/liangzixuan/investing-pro/actions/runs/39469586266)
