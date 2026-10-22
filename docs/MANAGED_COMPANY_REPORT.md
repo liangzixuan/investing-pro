@@ -92,7 +92,8 @@ separate.
 
 ## Read the HTML copy offline
 
-The managed browser also offers **Download report (HTML)**. This delivers a
+The managed browser offers **Download report (HTML)**. The Android source candidate
+also offers **Save report (HTML)** through the system document picker. This delivers a
 self-contained reading copy of the same current prepared report. It keeps the
 full company and share-class identity, exact authored note and original
 preparation time. The Annual section shows five independent financial facts
@@ -118,6 +119,30 @@ visit and session checks. Neither starts another source request or saves the
 watchlist. **Download requested** confirms the browser handoff only. It does
 not establish that the file was saved or opened. Android continues to offer its
 JSON system save.
+
+## Readable report capture on Android
+
+The source candidate offers **Save report (HTML)** beside JSON. Prepare the report,
+choose that action and select a destination in the system picker. After a
+successful write, open the chosen file with a compatible HTML reader. The app
+does not open it automatically. The file remains at the chosen destination and
+does not update when the draft or source changes. Keep it private: it contains
+the captured note and source packets.
+
+Both buttons share one pending report operation. Cancel returns to the current
+report and draft. A draft/evidence change, research exit or retired session fences
+a late chosen destination. A cancelled or failed write can leave an empty or
+partial file; inspect that destination before trying again. File capture does
+not save the online Watchlist or request another source.
+
+The native HTML policy fixes `text/html`, the report purpose, exact listing/time
+filename, 8 MiB complete UTF-8 limit, versioned envelope, leading CSP and pinned
+stylesheet hash. The existing formatter escapes authored text and produces the
+passive report with its complete JSON appendix. Native envelope admission does
+not sanitize arbitrary HTML or authenticate content supplied by compromised app
+code. JSON retains its separate MIME/schema policy and existing byte limit.
+Synthetic checks and source review are separate from client publication, file
+opening on a physical device and sustained use.
 
 ## Save from Android
 

@@ -427,7 +427,11 @@ describe("canonical statements in captured schema5 company reports", () => {
         cancel: vi.fn().mockResolvedValue(undefined),
       };
       await expect(
-        createNativeCompanyReportAdapter(plugin).deliver(result.json, {
+        createNativeCompanyReportAdapter(plugin, {
+          choose: () => Promise.resolve({ status: "cancelled" }),
+          write: () => Promise.resolve({ status: "written" }),
+          cancel: () => Promise.resolve(),
+        }).deliver(result.json, {
           signal: new AbortController().signal,
           isCurrent: () => true,
         }),

@@ -3,6 +3,7 @@ import { useSyncExternalStore } from "react";
 import {
   createNativeCompanyReportAdapter,
   type InvestmentCompanyReportPlugin,
+  type InvestmentCompanyReportHtmlPlugin,
 } from "../../src/clerk-trial/native-company-report";
 import {
   COMPANY_REPORT_DOCUMENT_MAX_BYTES,
@@ -138,6 +139,9 @@ export function createNativeReportFixture() {
   const plugin = registerPlugin<InvestmentCompanyReportPlugin>(
     "InvestmentCompanyReport",
   );
+  const htmlPlugin = registerPlugin<InvestmentCompanyReportHtmlPlugin>(
+    "InvestmentCompanyReportHtml",
+  );
   const listeners = new Set<() => void>();
   let state = {
     mismatchRefused: 0,
@@ -146,6 +150,7 @@ export function createNativeReportFixture() {
     writesSettled: 0,
     cancelsSettled: 0,
     protocolError: false,
+    html: { choicesStarted: 0, writesSettled: 0, cancelsSettled: 0 },
     choice: null as { operationId: string; handle: string } | null,
     probe: {
       kind: null,
@@ -160,6 +165,8 @@ export function createNativeReportFixture() {
     state = { ...state, ...change };
     for (const listener of listeners) listener();
   };
+  const updateHtml = (change: Partial<typeof state.html>) =>
+    update({ html: { ...state.html, ...change } });
   let afterChoice: (() => void) | null = null;
   let lastWrite: Parameters<InvestmentCompanyReportPlugin["write"]>[0] | null =
     null;
@@ -171,67 +178,96 @@ export function createNativeReportFixture() {
       return error instanceof Object && "code" in error && error.code === code;
     }
   };
-  const delivery = createNativeCompanyReportAdapter({
-    choose: async (options) => {
-      const choice = await plugin.choose(options);
-      if (choice.status === "chosen") {
-        const wrongOperation = await refused(
-          () =>
-            plugin.write({
-              operationId: crypto.randomUUID(),
-              handle: choice.handle,
-              text: "must not write",
-            }),
-          "invalid_handle",
-        );
-        const wrongHandle = await refused(
-          () =>
-            plugin.write({
-              operationId: options.operationId,
-              handle: crypto.randomUUID(),
-              text: "must not write",
-            }),
-          "invalid_handle",
-        );
-        const duplicate = await refused(
-          () => plugin.choose({ ...options, operationId: crypto.randomUUID() }),
-          "busy",
-        );
-        update({
-          mismatchRefused:
-            state.mismatchRefused +
-            Number(wrongOperation) +
-            Number(wrongHandle),
-          duplicateRefused: state.duplicateRefused + Number(duplicate),
-          protocolError:
-            state.protocolError ||
-            !wrongOperation ||
-            !wrongHandle ||
-            !duplicate,
-        });
-        const callback = afterChoice;
-        afterChoice = null;
-        callback?.();
-      }
-      return choice;
+  const delivery = createNativeCompanyReportAdapter(
+    {
+      choose: async (options) => {
+        const choice = await plugin.choose(options);
+        if (choice.status === "chosen") {
+          const wrongOperation = await refused(
+            () =>
+              plugin.write({
+                operationId: crypto.randomUUID(),
+                handle: choice.handle,
+                text: "must not write",
+              }),
+            "invalid_handle",
+          );
+          const wrongHandle = await refused(
+            () =>
+              plugin.write({
+                operationId: options.operationId,
+                handle: crypto.randomUUID(),
+                text: "must not write",
+              }),
+            "invalid_handle",
+          );
+          const duplicate = await refused(
+            () =>
+              plugin.choose({ ...options, operationId: crypto.randomUUID() }),
+            "busy",
+          );
+          update({
+            mismatchRefused:
+              state.mismatchRefused +
+              Number(wrongOperation) +
+              Number(wrongHandle),
+            duplicateRefused: state.duplicateRefused + Number(duplicate),
+            protocolError:
+              state.protocolError ||
+              !wrongOperation ||
+              !wrongHandle ||
+              !duplicate,
+          });
+          const callback = afterChoice;
+          afterChoice = null;
+          callback?.();
+        }
+        return choice;
+      },
+      write: async (options) => {
+        try {
+          const result = await plugin.write(options);
+          lastWrite = { ...options };
+          return result;
+        } finally {
+          update({ writesSettled: state.writesSettled + 1 });
+        }
+      },
+      cancel: async (options) => {
+        try {
+          await plugin.cancel(options);
+        } finally {
+          update({ cancelsSettled: state.cancelsSettled + 1 });
+        }
+      },
     },
-    write: async (options) => {
-      try {
-        const result = await plugin.write(options);
-        lastWrite = { ...options };
-        return result;
-      } finally {
-        update({ writesSettled: state.writesSettled + 1 });
-      }
+    {
+      choose: async (options) => {
+        updateHtml({ choicesStarted: state.html.choicesStarted + 1 });
+        const choice = await htmlPlugin.choose(options);
+        if (choice.status === "chosen") {
+          const callback = afterChoice;
+          afterChoice = null;
+          callback?.();
+        }
+        return choice;
+      },
+      write: async (options) => {
+        try {
+          return await htmlPlugin.write(options);
+        } finally {
+          updateHtml({ writesSettled: state.html.writesSettled + 1 });
+        }
+      },
+      cancel: async (options) => {
+        try {
+          await htmlPlugin.cancel(options);
+        } finally {
+          updateHtml({ cancelsSettled: state.html.cancelsSettled + 1 });
+        }
+      },
     },
-    cancel: async (options) => {
-      try {
-        await plugin.cancel(options);
-      } finally {
-        update({ cancelsSettled: state.cancelsSettled + 1 });
-      }
-    },
-  });
+  );
   const probe = createNativeReportProbe(plugin, (probe) => update({ probe }));
   function Controls({ workspace }: { workspace: ManagedWorkspace }) {
     const current = useSyncExternalStore(

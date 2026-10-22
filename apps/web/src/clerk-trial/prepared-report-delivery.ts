@@ -50,10 +50,7 @@ export class PreparedReportDelivery {
 
   async start(format: "json" | "html"): Promise<void> {
     if (format !== "json" && format !== "html") return;
-    const html =
-      this.delivery.destination === "browser_download"
-        ? this.delivery.html
-        : undefined;
+    const html = this.delivery.html;
     if (format === "html" && !html) return;
     if (this.retired || this.pending || !this.isCurrent()) return;
     const operation = new AbortController();

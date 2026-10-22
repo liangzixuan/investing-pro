@@ -31,7 +31,23 @@ enablement reused its accepted source archive. The current API is ready and live
 and its downloaded source matches the accepted ce7 archive. The website already contains the matching Portfolio
 workflow. No authenticated owner Portfolio Save was exercised during release.
 
-Android 1.32.0, code 33, is provided from accepted source
+Android 1.33.0, code 34, is provided from accepted source
+`7873256003e02b9c44f37990c4ee512d71a7bca1` with the existing production signer.
+It adds dated thesis Follow-ups, Follow-up draft files, valuation editor draft
+files and financial screen shortlist review before appending to the Watchlist
+draft. The build passed package, version, non-debug, production signer,
+configuration and complete asset checks. Its final source-preservation check
+failed after two generated Gradle dependency paths changed to the pinned native
+copies. Separate retained-artifact verification admitted that exact path change
+and verified the remaining source and dependency inputs. The original failure
+is preserved; future guards remain unchanged. On October 22 the owner reported
+"Installed and verified." for the latest update. This records installation and
+overall verification by owner report; no per-feature results or independent
+device inspection were supplied. Sustained use remains open. The readable HTML
+report source work below is not included in this package. The API, website and
+prior APKs remain unchanged.
+
+Android 1.32.0, code 33, was provided from accepted source
 `273f09dbeb056a6196c3c6b73dd37eb06432bb54` with the existing production signer.
 It adds the [Watchlist filing-review workflow](MANAGED_FILINGS_REVIEW.md).
 The single guarded offline build, package/version/non-debug and v2/single-signer
@@ -96,6 +112,24 @@ recovery and sustained use remain open. The full goal still includes broader
 company discovery, news and calendars, quarterly/TTM financials, peer research
 and comparable portfolio returns.
 
+## Android readable research report candidate
+
+The source candidate adds explicit **Save report (HTML)** beside JSON after
+preparing a company report. The system picker chooses one document. The existing
+reading view includes the exact authored draft, dated source qualifications and
+complete captured JSON appendix. It needs no script, external assets or source
+request. JSON and HTML share the mounted report's pending-operation and
+retirement rules. Editing the captured draft, changing evidence, leaving research
+or retiring the session prevents a stale picker result from starting a write.
+
+The native HTML boundary fixes its purpose, calendar-valid filename, MIME type,
+8 MiB strict UTF-8 ceiling, versioned envelope, leading CSP and stylesheet hash.
+The shared formatter owns passive markup and escaping. This is an application
+export path, not a sanitizer or import API. The existing JSON policy and chosen
+document writer remain unchanged. Source/native verification is in progress;
+provided Android 1.33 and the website/API remain unchanged. Physical-device
+HTML reading is not yet established.
+
 ## Watchlist filing review source
 
 The client source adds [Watchlist filing review](MANAGED_FILINGS_REVIEW.md):
@@ -137,25 +171,32 @@ An exact-listing review precedes one append of missing companies to the current
 draft. Existing notes and order remain intact, and Save stays explicit. Research
 and Back retain the loaded results. Stale reviews, changed identities and save
 recovery states refuse the addition. All original PR checks and the full 60-case
-native suite passed. Original main Linux, parser and Android checks passed;
-Windows timed out in an existing compound SEC capacity test. Final main acceptance
-remains open while a focused correction separates exact-capacity acceptance and
-cross-concept overflow refusal into independent provider tests. Both retain the
-20,000-row boundary, all assertions and the default five-second test timeout.
-Production limits, transport deadlines and workflows are unchanged. This adds no
-source, resource, dependency or fee. The live website, API and provided Android
-1.32 stay unchanged.
+native suite passed. The original main Windows run timed out in an existing
+compound SEC capacity test. The accepted correction separates exact-capacity
+acceptance and cross-concept overflow refusal into independent provider tests.
+Both retain the 20,000-row boundary, all assertions and the default five-second
+test timeout. Final main `7873256003e02b9c44f37990c4ee512d71a7bca1` passed its
+original required checks and full native gate. Production limits, transport
+deadlines and workflows are unchanged. This adds no
+source, resource, dependency or fee. Android 1.33 now provides this workflow;
+the live website and API remain unchanged.
 
-The current source increment connects an authored thesis **Next check** to a dated
+The delivered Android 1.33 client connects an authored thesis **Next check** to a dated
 [Follow-up](MANAGED_RESEARCH_FOLLOWUPS.md). Both thesis editors offer an explicit
 initial Follow-ups Load that retains their fields, a complete check preview and
 an explicit draft-creation action. Existing checks are not overwritten; Watchlist
 and Follow-ups still save separately. The new entry uses the existing Markets
 due queue, company research and Back, result and completion workflow. No note
-parsing, automatic source request, Save or monitoring is added. This source work
-is separate from provided Android 1.32 and has no client or phone acceptance yet.
+parsing, automatic source request, Save or monitoring is added. The latest owner
+report accepts installation and overall verification, without per-feature results.
 
-Continue daily use of the delivered Android 1.31 Portfolio draft files, BLS calendar, saved valuation and enabled [managed Portfolio workflow](MANAGED_PORTFOLIO.md). The owner reported installed version 1.31 and the requested overall phone checklist passed on October 21. This provides no per-item or independent device inspection. Align a useful named universe across independently eligible Price, Annual and Filings sources; retain each source's separate admission and provenance.
+Continue daily use of Android 1.33, including Portfolio draft files, the BLS calendar,
+saved valuation and the enabled [managed Portfolio workflow](MANAGED_PORTFOLIO.md).
+The October 22 owner report records installation and overall verification of the
+latest update. Per-feature results and independent device inspection remain
+unclaimed. Portable readable reports are the current source increment. Align a
+useful named universe across independently eligible Price, Annual and Filings
+sources; retain each source's separate admission and provenance.
 
 The website/API workflow includes opening balances, an authored transaction
 ledger and manual splits, exact holdings and cash, independent Review and Save,

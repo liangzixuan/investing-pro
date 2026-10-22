@@ -6,7 +6,27 @@ production package is `app.investingpro.android`.
 [Current work](./CURRENT_WORK.md#current-capability-and-delivery-status) records the accepted
 version, source revision and physical-device status.
 
-Android 1.32.0, code 33, is provided from accepted product
+Android 1.33.0, code 34, is provided from accepted product
+`7873256003e02b9c44f37990c4ee512d71a7bca1` with the existing production signer.
+It adds dated thesis Follow-ups, Follow-up draft files, valuation editor draft
+files and financial screen shortlist review before adding companies to the
+Watchlist draft. Its SHA-256 is
+`87f23a3ec33f46a2a33ec817e8378779ee60475619f0ee06e83b1a2221a24f80`
+(6,933,183 bytes).
+
+Package, version, non-debug, actual production signer, complete configuration
+and asset checks passed. The final guarded source-preservation check failed
+after two generated Gradle dependency paths changed to the pinned native copies.
+Separate verification admitted that exact path change and checked the remaining
+source and dependency inputs before local delivery of the retained APK. The
+original failed result remains recorded and future guards remain unchanged.
+On October 22 the owner reported "Installed and verified." for the latest
+update. This accepts the owner's installation and overall verification report;
+per-feature results and independent device inspection were not supplied.
+Sustained use remains open. The readable HTML report source work is not included.
+The API, website and prior APKs remain unchanged.
+
+Android 1.32.0, code 33, was provided from accepted product
 `273f09dbeb056a6196c3c6b73dd37eb06432bb54` with the existing production signer.
 It adds [Watchlist filing review](MANAGED_FILINGS_REVIEW.md). One guarded offline
 build passed package/version/non-debug, actual v2/single-signer, complete source

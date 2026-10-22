@@ -1,6 +1,7 @@
 import {
   createNativeCompanyReportAdapter,
   type InvestmentCompanyReportPlugin,
+  type InvestmentCompanyReportHtmlPlugin,
 } from "../../src/clerk-trial/native-company-report";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -17,15 +18,18 @@ import { formatCompanyReportDocument } from "../../src/clerk-trial/managed-compa
 import type { CompanyReportDeliveryAdapter } from "../../src/clerk-trial/company-report-delivery";
 import type { CompanyReportHtmlDocument } from "../../src/clerk-trial/managed-company-report-html";
 
-type HtmlCapability = NonNullable<
-  Extract<
-    CompanyReportDeliveryAdapter,
-    {
-      destination: "browser_download";
-    }
-  >["html"]
->;
+type HtmlCapability = NonNullable<CompanyReportDeliveryAdapter["html"]>;
 
+function nativeHtmlPlugin(): InvestmentCompanyReportHtmlPlugin {
+  return {
+    choose: vi.fn().mockResolvedValue({
+      status: "chosen",
+      handle: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    }),
+    write: vi.fn().mockResolvedValue({ status: "written" }),
+    cancel: vi.fn().mockResolvedValue(undefined),
+  };
+}
 // Controller seam only; actual detached HTML rendering/ownership is browser QA.
 function htmlCapability() {
   const document: CompanyReportHtmlDocument = Object.freeze({
@@ -142,7 +146,7 @@ describe("explicit company report download in the real workspace", () => {
       };
       const model = new PreparedReportDelivery(
         f.report,
-        createNativeCompanyReportAdapter(plugin),
+        createNativeCompanyReportAdapter(plugin, nativeHtmlPlugin()),
         f.isCurrent,
       );
       const pending = model.start("json");
@@ -640,9 +644,7 @@ describe("shared JSON and HTML report ownership", () => {
         html.deliver.mockRejectedValue(new Error("private transport detail"));
       else
         html.deliver.mockResolvedValue(
-          kind === "cancelled"
-            ? "cancelled"
-            : ("written" as "download_requested"),
+          kind === "cancelled" ? "cancelled" : "written",
         );
       const model = new PreparedReportDelivery(
         f.report,
@@ -698,7 +700,7 @@ describe("shared JSON and HTML report ownership", () => {
     },
   );
 
-  it("refuses unknown, unsupported, stale and native HTML before any formatter or transport", async () => {
+  it("refuses unknown, unsupported and stale HTML before any formatter or transport", async () => {
     const f = await fixture();
     const html = htmlCapability();
     const deliver = vi.fn<CompanyReportDeliveryAdapter["deliver"]>();
@@ -715,14 +717,10 @@ describe("shared JSON and HTML report ownership", () => {
       f.isCurrent,
     );
     await unsupported.start("html");
-    // Runtime refusal also ignores a forged extra HTML property on native adapters.
+    // Either destination requires its own explicit HTML capability.
     const native = new PreparedReportDelivery(
       f.report,
-      {
-        destination: "system_document",
-        deliver,
-        html,
-      } as CompanyReportDeliveryAdapter,
+      { destination: "system_document", deliver },
       f.isCurrent,
     );
     await native.start("html");
@@ -763,4 +761,117 @@ describe("shared JSON and HTML report ownership", () => {
     expect(unsupported).not.toContain("Download report (HTML)");
     f.workspace.coordinator.retire();
   });
+});
+
+// Native destination/controller integration. The formatter/bridge are bounded doubles;
+// actual HTML serialization, plugin admission and system picker bytes have separate tests.
+describe("native HTML report ownership in the real workspace", () => {
+  it.each(["written", "cancelled", "reject", "download_requested"] as const)(
+    "reports HTML %s according to the native destination without a source request or Save",
+    async (outcome) => {
+      const f = await fixture();
+      const before = f.workspace.coordinator.getSnapshot();
+      const calls = f.source.getSnapshot();
+      const html = htmlCapability();
+      if (outcome === "reject")
+        html.deliver.mockRejectedValue(new Error("private bridge detail"));
+      else html.deliver.mockResolvedValue(outcome);
+      const deliver = vi.fn<CompanyReportDeliveryAdapter["deliver"]>();
+      const model = new PreparedReportDelivery(
+        f.report,
+        { destination: "system_document", deliver, html },
+        f.isCurrent,
+      );
+      await model.start("html");
+      const expected =
+        outcome === "written"
+          ? `Saved report ${html.document.filename} to the chosen document.`
+          : outcome === "cancelled"
+            ? "Report save cancelled."
+            : "Report could not be saved. Check the chosen destination before trying again.";
+      expect(model.getSnapshot()).toEqual({ busy: false, message: expected });
+      expect(html.format).toHaveBeenCalledExactlyOnceWith(f.report);
+      expect(html.deliver).toHaveBeenCalledOnce();
+      expect(deliver).not.toHaveBeenCalled();
+      expect(f.workspace.coordinator.getSnapshot()).toBe(before);
+      expect(f.source.getSnapshot()).toEqual(calls);
+      model.retire();
+      f.workspace.coordinator.retire();
+    },
+  );
+  it("keeps both native actions disabled before mount and shares one pending lock", async () => {
+    const f = await fixture();
+    const html = htmlCapability();
+    let settle!: (outcome: "written") => void;
+    html.deliver.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const deliver = vi.fn<CompanyReportDeliveryAdapter["deliver"]>();
+    const delivery: CompanyReportDeliveryAdapter = {
+      destination: "system_document",
+      deliver,
+      html,
+    };
+    const markup = renderToStaticMarkup(
+      <ManagedCompanyReportDelivery
+        report={f.report}
+        delivery={delivery}
+        isCurrent={f.isCurrent}
+      />,
+    );
+    expect(markup).toContain("Save report (JSON)");
+    expect(markup).toContain("Save report (HTML)");
+    expect(markup.match(/disabled=""/gu)).toHaveLength(2);
+    const model = new PreparedReportDelivery(f.report, delivery, f.isCurrent);
+    const pending = model.start("html");
+    await model.start("json");
+    await model.start("html");
+    expect(model.getSnapshot().busy).toBe(true);
+    expect(html.deliver).toHaveBeenCalledOnce();
+    expect(deliver).not.toHaveBeenCalled();
+    settle("written");
+    await pending;
+    model.retire();
+    f.workspace.coordinator.retire();
+  });
+  it.each(["note", "retire"] as const)(
+    "suppresses a late native HTML completion after actual %s state changes",
+    async (kind) => {
+      const f = await fixture();
+      const html = htmlCapability();
+      let settle!: (outcome: "written") => void;
+      html.deliver.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            settle = resolve;
+          }),
+      );
+      const model = new PreparedReportDelivery(
+        f.report,
+        { destination: "system_document", deliver: vi.fn(), html },
+        f.isCurrent,
+      );
+      const pending = model.start("html");
+      const context = html.deliver.mock.calls[0]![1];
+      if (kind === "note")
+        f.workspace.note("listing-zero", "Changed while HTML picker was open");
+      else f.workspace.coordinator.retire();
+      expect(context.isCurrent()).toBe(false);
+      settle("written");
+      await pending;
+      expect(model.getSnapshot()).toEqual({ busy: false, message: "" });
+      expect(html.deliver).toHaveBeenCalledOnce();
+      expect(f.source.getSnapshot()).toMatchObject({
+        annual: 1,
+        eod: 0,
+        filings: 0,
+        save: 0,
+      });
+      model.retire();
+      f.workspace.coordinator.retire();
+    },
+  );
 });
