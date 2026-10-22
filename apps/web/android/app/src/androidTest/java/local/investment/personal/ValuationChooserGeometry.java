@@ -4,7 +4,6 @@ import static org.junit.Assert.*;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.util.Log;
 import android.view.ViewTreeObserver;
 import android.webkit.WebView;
@@ -12,14 +11,13 @@ import androidx.test.core.app.ActivityScenario;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.Duration;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
 /** One committed scroll and fresh geometry before the valuation file chooser's real touch. */
 final class ValuationChooserGeometry {
     private ValuationChooserGeometry() {}
-    private static final AtomicLong NEXT_ARM = new AtomicLong();
 
     private static final String TARGET =
         "const input=document.querySelector('#managed-valuation-draft-files input[type=file]'),label=input?.closest('label');" +
@@ -71,7 +69,7 @@ final class ValuationChooserGeometry {
         "hit:label.contains(document.elementFromPoint(x,y))};})()";
 
     static PreparedTouch await(ActivityScenario<MainActivity> scenario, long timeoutMs) throws Exception {
-        long deadline = SystemClock.uptimeMillis() + timeoutMs;
+        ValuationChooserProbe probe = new ValuationChooserProbe(Duration.ofMillis(timeoutMs));
         Handler main = new Handler(Looper.getMainLooper());
         CompletableFuture<String> result = new CompletableFuture<>();
         AtomicReference<String> phase = new AtomicReference<>("scroll");
@@ -79,34 +77,33 @@ final class ValuationChooserGeometry {
         AtomicReference<ViewTreeObserver> observer = new AtomicReference<>();
         AtomicReference<Runnable> callback = new AtomicReference<>();
         AtomicReference<ValuationChooserWindowTrace> windowTrace = new AtomicReference<>();
-        long armId = NEXT_ARM.incrementAndGet();
         boolean handedOff = false;
         try {
             scenario.onActivity(activity -> {
                 WebView webView = activity.getBridge().getWebView();
                 page.set(webView);
-                step(result, deadline, () -> {
+                step(result, probe, () -> {
                     requireVisibleHardware(webView);
-                    windowTrace.set(ValuationChooserWindowTrace.install(activity.getWindow(), armId));
-                    webView.evaluateJavascript(SCROLL.replace("__VALUATION_ARM_ID__", Long.toString(armId)), value -> step(result, deadline, () -> {
+                    windowTrace.set(ValuationChooserWindowTrace.install(activity.getWindow(), probe));
+                    webView.evaluateJavascript(SCROLL.replace("__VALUATION_ARM_ID__", probe.armToken()), value -> step(result, probe, () -> {
                         assertEquals("The exact enabled valuation chooser must scroll", "true", value);
                         phase.set("visual-state");
                         webView.postVisualStateCallback(0, new WebView.VisualStateCallback() {
                             @Override public void onComplete(long requestId) {
-                                step(result, deadline, () -> {
+                                step(result, probe, () -> {
                                     requireVisibleHardware(webView);
                                     phase.set("frame-commit");
-                                    Runnable committed = () -> main.post(() -> step(result, deadline, () -> {
+                                    Runnable committed = () -> main.post(() -> step(result, probe, () -> {
                                         requireVisibleHardware(webView);
                                         phase.set("fresh-geometry");
-                                        webView.evaluateJavascript(GEOMETRY, geometry -> step(result, deadline, () -> {
+                                        webView.evaluateJavascript(GEOMETRY, geometry -> step(result, probe, () -> {
                                             requireVisibleHardware(webView);
                                             JSONObject measured = new JSONObject(geometry);
                                             assertTrue("Committed chooser geometry must be finite", measured.getBoolean("finite"));
                                             assertTrue("Committed chooser and input must be visible", measured.getBoolean("visible"));
                                             assertTrue("Committed chooser label must own its touch center", measured.getBoolean("hit"));
                                             assertScrollAligned(webView, measured);
-                                            logGeometryTrace(measured, armId, windowTrace.get());
+                                            logGeometryTrace(measured, probe, windowTrace.get());
                                             result.complete(geometry);
                                         }));
                                     }));
@@ -121,10 +118,10 @@ final class ValuationChooserGeometry {
                     }));
                 });
             });
-            long remaining = deadline - SystemClock.uptimeMillis();
+            long remaining = probe.remainingGeometryMillis();
             assertTrue("Valuation chooser geometry deadline remains", remaining > 0);
             String geometry = result.get(remaining, TimeUnit.MILLISECONDS);
-            PreparedTouch prepared = new PreparedTouch(page.get(), geometry, windowTrace.get(), armId);
+            PreparedTouch prepared = new PreparedTouch(page.get(), geometry, windowTrace.get(), probe);
             handedOff = true;
             return prepared;
         } catch (Exception error) {
@@ -143,16 +140,16 @@ final class ValuationChooserGeometry {
         final String geometry;
         private final WebView page;
         private final ValuationChooserWindowTrace windowTrace;
-        private final long armId;
-        PreparedTouch(WebView page, String geometry, ValuationChooserWindowTrace windowTrace, long armId) {
+        private final ValuationChooserProbe probe;
+        PreparedTouch(WebView page, String geometry, ValuationChooserWindowTrace windowTrace, ValuationChooserProbe probe) {
             this.page = page;
             this.geometry = geometry;
             this.windowTrace = windowTrace;
-            this.armId = armId;
+            this.probe = probe;
         }
-        void logTrace(long timeoutMs) {
+        void logTrace() {
             try {
-                logChunks(checkedTrace(readTrace(page, windowTrace, armId, timeoutMs)), armId);
+                logChunks(checkedTrace(readTrace(page, windowTrace, probe)), probe);
             } catch (InterruptedException failure) {
                 Thread.currentThread().interrupt();
                 diagnosticWarning("Diagnostic read interrupted; original outcome preserved");
@@ -177,12 +174,12 @@ final class ValuationChooserGeometry {
         catch (RuntimeException | AssertionError ignored) { }
     }
     /** Observe the retained test WebView even when DocumentsUI has paused its Activity. */
-    private static String readTrace(WebView page, ValuationChooserWindowTrace windowTrace, long armId, long timeoutMs) throws Exception {
+    private static String readTrace(WebView page, ValuationChooserWindowTrace windowTrace, ValuationChooserProbe probe) throws Exception {
         CompletableFuture<String> result = new CompletableFuture<>();
         new Handler(Looper.getMainLooper()).post(() -> {
             if (result.isDone()) return;
             try {
-                page.evaluateJavascript(DRAIN.replace("__VALUATION_ARM_ID__", Long.toString(armId)), value -> {
+                page.evaluateJavascript(DRAIN.replace("__VALUATION_ARM_ID__", probe.armToken()), value -> {
                     ValuationChooserWindowTrace.close(windowTrace);
                     result.complete(value);
                 });
@@ -191,7 +188,7 @@ final class ValuationChooserGeometry {
             }
         });
         try {
-            return result.get(timeoutMs, TimeUnit.MILLISECONDS);
+            return result.get(probe.diagnosticTimeoutMillis(), TimeUnit.MILLISECONDS);
         } finally {
             result.cancel(false);
         }
@@ -227,13 +224,14 @@ final class ValuationChooserGeometry {
         assertTrue("Trace abort state must be boolean", state.get("aborted") instanceof Boolean);
     }
 
-    private static void logGeometryTrace(JSONObject geometry, long armId, ValuationChooserWindowTrace windowTrace) {
+    private static void logGeometryTrace(JSONObject geometry, ValuationChooserProbe probe, ValuationChooserWindowTrace windowTrace) {
+        ValuationChooserWindowTrace.snapshot(windowTrace, ValuationChooserWindowSnapshot.Phase.FRESH_GEOMETRY);
         try {
             JSONObject state = geometry.getJSONObject("traceState");
             checkFields(state, java.util.Set.of("present", "armId", "aborted"));
             checkArmState(state);
-            Log.i("ValuationChooserEvent", "nativeArm=" + armId + ", windowCallbackOwned=" +
-                ValuationChooserWindowTrace.ownsCallback(windowTrace) + ", geometry=" + state.toString());
+            Log.i("ValuationChooserEvent", "nativeArm=" + probe.armToken() + ", windowCallbackOwned=" +
+                (ValuationChooserWindowTrace.ownership(windowTrace) == ValuationChooserWindowTrace.CallbackOwnership.OWNED) + ", geometry=" + state.toString());
         } catch (Exception | AssertionError failure) {
             diagnosticWarning("Geometry trace metadata unavailable; original guards preserved");
         }
@@ -270,11 +268,11 @@ final class ValuationChooserGeometry {
         assertTrue("Chooser trace coordinate must be finite", Double.isFinite(((Number) value).doubleValue()));
     }
 
-    private static void logChunks(String checked, long armId) {
+    private static void logChunks(String checked, ValuationChooserProbe probe) {
         final int width = 2000;
         int parts = Math.max(1, (checked.length() + width - 1) / width);
         for (int start = 0; start < checked.length(); start += width) {
-            Log.i("ValuationChooserEvent", "nativeArm=" + armId + ", part=" + (start / width + 1) + "/" + parts + " " +
+            Log.i("ValuationChooserEvent", "nativeArm=" + probe.armToken() + ", part=" + (start / width + 1) + "/" + parts + " " +
                 checked.substring(start, Math.min(start + width, checked.length())));
         }
     }
@@ -310,9 +308,9 @@ final class ValuationChooserGeometry {
 
     private interface Observation { void run() throws Exception; }
 
-    private static void step(CompletableFuture<String> result, long deadline, Observation observation) {
+    private static void step(CompletableFuture<String> result, ValuationChooserProbe probe, Observation observation) {
         if (result.isDone()) return;
-        if (SystemClock.uptimeMillis() >= deadline) {
+        if (probe.geometryExpired()) {
             result.completeExceptionally(new java.util.concurrent.TimeoutException("Valuation chooser observation deadline expired"));
             return;
         }

@@ -864,7 +864,7 @@ public class ManagedWorkspaceInstrumentedTest {
             touchEditorGeometry("Valuation inputs file chooser label", prepared.geometry);
             new WatchlistSystemPicker().openInventedDocument(output.name, "valuation-inputs-draft");
         } finally {
-            prepared.logTrace(PAGE_TIMEOUT_MS);
+            prepared.logTrace();
         }
     }
 

@@ -13,25 +13,25 @@ final class ValuationChooserWindowTrace implements InvocationHandler {
     private final Window window;
     private final Window.Callback original;
     private final Window.Callback decorated;
-    private final long armId;
+    private final ValuationChooserProbe probe;
     private boolean active = true;
     private int count;
 
-    private ValuationChooserWindowTrace(Window window, long armId) {
+    private ValuationChooserWindowTrace(Window window, ValuationChooserProbe probe) {
         this.window = window;
         this.original = window.getCallback();
-        this.armId = armId;
+        this.probe = probe;
         this.decorated = (Window.Callback) Proxy.newProxyInstance(
             Window.Callback.class.getClassLoader(), new Class<?>[] { Window.Callback.class }, this);
     }
 
-    static ValuationChooserWindowTrace install(Window window, long armId) {
+    static ValuationChooserWindowTrace install(Window window, ValuationChooserProbe probe) {
         ValuationChooserWindowTrace trace = null;
         try {
-            trace = new ValuationChooserWindowTrace(window, armId);
+            trace = new ValuationChooserWindowTrace(window, probe);
             if (trace.original == null) return null;
             window.setCallback(trace.decorated);
-            Log.i("ValuationChooserWindow", "arm=" + armId + ", installed=true");
+            Log.i("ValuationChooserWindow", "arm=" + probe.armToken() + ", installed=true");
             return trace;
         } catch (RuntimeException | AssertionError failure) {
             close(trace);
@@ -45,10 +45,10 @@ final class ValuationChooserWindowTrace implements InvocationHandler {
         Touch touch = sample(method, args);
         try {
             Object handled = forward(method, args);
-            record(touch, handled, false);
+            record(touch, DispatchOutcome.returned(handled));
             return handled;
         } catch (Throwable failure) {
-            record(touch, null, true);
+            record(touch, DispatchOutcome.THREW);
             throw failure;
         }
     }
@@ -89,45 +89,52 @@ final class ValuationChooserWindowTrace implements InvocationHandler {
             action == MotionEvent.ACTION_MOVE || action == MotionEvent.ACTION_CANCEL;
     }
 
-    private void record(Touch touch, Object handled, boolean threw) {
+    private void record(Touch touch, DispatchOutcome outcome) {
         if (touch == null) return;
         try {
-            Log.i("ValuationChooserWindow", "arm=" + armId + ", ordinal=" + touch.ordinal +
+            Log.i("ValuationChooserWindow", "arm=" + probe.armToken() + ", ordinal=" + touch.ordinal +
                 ", action=" + touch.action + ", downTime=" + touch.downTime + ", eventTime=" + touch.eventTime +
                 ", x=" + touch.x + ", y=" + touch.y + ", source=" + touch.source + ", flags=" + touch.flags +
-                ", handled=" + Boolean.TRUE.equals(handled) + ", threw=" + threw);
+                ", handled=" + (outcome == DispatchOutcome.HANDLED) + ", threw=" + (outcome == DispatchOutcome.THREW));
         } catch (RuntimeException | AssertionError failure) {
             unavailable();
         }
     }
 
-    static boolean ownsCallback(ValuationChooserWindowTrace trace) {
-        if (trace == null) return false;
+    static CallbackOwnership ownership(ValuationChooserWindowTrace trace) {
+        if (trace == null) return CallbackOwnership.UNAVAILABLE;
         try {
-            return trace.window.getCallback() == trace.decorated;
+            return trace.window.getCallback() == trace.decorated ? CallbackOwnership.OWNED : CallbackOwnership.REPLACED;
         } catch (RuntimeException | AssertionError failure) {
             unavailable();
-            return false;
+            return CallbackOwnership.UNAVAILABLE;
         }
+    }
+
+    static void snapshot(ValuationChooserWindowTrace trace, ValuationChooserWindowSnapshot.Phase phase) {
+        if (trace == null) return;
+        ValuationChooserWindowSnapshot.capture(trace.window, trace.probe, phase);
     }
 
     static void close(ValuationChooserWindowTrace trace) {
         if (trace == null) return;
         if (!trace.active) return;
         trace.active = false;
+        snapshot(trace, ValuationChooserWindowSnapshot.Phase.CLOSE);
         try {
-            boolean owned = trace.window.getCallback() == trace.decorated;
-            trace.summary(owned);
-            if (owned) trace.window.setCallback(trace.original);
+            CallbackOwnership owner = trace.window.getCallback() == trace.decorated
+                ? CallbackOwnership.OWNED : CallbackOwnership.REPLACED;
+            trace.summary(owner);
+            if (owner == CallbackOwnership.OWNED) trace.window.setCallback(trace.original);
         } catch (RuntimeException | AssertionError failure) {
             unavailable();
         }
     }
 
-    private void summary(boolean owned) {
+    private void summary(CallbackOwnership owner) {
         try {
-            Log.i("ValuationChooserWindow", "arm=" + armId + ", closed=true, receiptCount=" + count +
-                ", callbackOwned=" + owned);
+            Log.i("ValuationChooserWindow", "arm=" + probe.armToken() + ", closed=true, receiptCount=" + count +
+                ", callbackOwned=" + (owner == CallbackOwnership.OWNED));
         } catch (RuntimeException | AssertionError failure) {
             unavailable();
         }
@@ -136,6 +143,15 @@ final class ValuationChooserWindowTrace implements InvocationHandler {
         // Diagnostics must never replace a delegated callback or picker outcome.
         try { Log.w("ValuationChooserWindow", "Passive diagnostic unavailable; original outcome preserved"); }
         catch (RuntimeException | AssertionError ignored) { }
+    }
+
+    enum CallbackOwnership { OWNED, REPLACED, UNAVAILABLE }
+
+    private enum DispatchOutcome {
+        HANDLED, UNHANDLED, THREW;
+        static DispatchOutcome returned(Object result) {
+            return Boolean.TRUE.equals(result) ? HANDLED : UNHANDLED;
+        }
     }
 
     private static final class Touch {
