@@ -859,7 +859,8 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void selectInventedValuationInputs(WatchlistTestDocuments.Output output) throws Exception {
-        touchDraftFileChooserLabel("#managed-valuation-draft-files", "Select a valuation inputs file", "Valuation inputs file chooser label");
+        String geometry = ValuationChooserGeometry.await(scenario, PAGE_TIMEOUT_MS);
+        touchEditorGeometry("Valuation inputs file chooser label", geometry);
         new WatchlistSystemPicker().openInventedDocument(output.name, "valuation-inputs-draft");
     }
 
