@@ -49,7 +49,7 @@ import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
-import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
+import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import {
   ManagedMarketsNavigation,
   useManagedMarketsSections,
@@ -1326,35 +1326,26 @@ export function ManagedWorkspaceScreen({
                   )
                 }
               />
-              {discovery.view === "followups" && (
-                <div
-                  hidden={Boolean(
-                    discovery.research ||
-                    discovery.companyRoute ||
-                    navigation?.invalid,
-                  )}
-                >
-                  <ManagedResearchFollowups
-                    draftFileScope={draftFileScope}
-                    draftFileDelivery={followupsDraftFileDelivery}
-                    draftFileRouteActive={watchlistRouteActive}
-                    review={followupReview}
-                    navigationPending={navigationPending}
-                    workspace={workspace}
-                    onResearch={(entry, opener) => {
-                      if (navigation?.isPending()) return;
-                      void workspace
-                        .prepareFollowupResearch(entry)
-                        .then((capture) => {
-                          if (capture)
-                            openResearch(opener, () =>
-                              workspace.openFollowupResearch(capture),
-                            );
-                        });
-                    }}
-                  />
-                </div>
-              )}
+              <ManagedFollowupsEntry
+                discovery={discovery}
+                routeActive={watchlistRouteActive}
+                draftFileScope={draftFileScope}
+                draftFileDelivery={followupsDraftFileDelivery}
+                review={followupReview}
+                navigationPending={navigationPending}
+                workspace={workspace}
+                onResearch={(entry, opener) => {
+                  if (navigation?.isPending()) return;
+                  void workspace
+                    .prepareFollowupResearch(entry)
+                    .then((capture) => {
+                      if (capture)
+                        openResearch(opener, () =>
+                          workspace.openFollowupResearch(capture),
+                        );
+                    });
+                }}
+              />
               {discovery.view === "markets" && (
                 <div
                   ref={marketsSectionNavigation.containerRef}

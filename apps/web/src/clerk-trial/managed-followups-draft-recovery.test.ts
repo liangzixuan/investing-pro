@@ -83,7 +83,7 @@ const disposals: (() => void)[] = [];
 afterEach(() => {
   for (const close of disposals.splice(0).reverse()) close();
 });
-async function fixture(empty = false) {
+function followupsApi(empty: boolean) {
   let stored: ManagedResearchFollowupsDto = {
     version: empty ? 0 : 3,
     payload: empty ? { schemaVersion: 1, entries: [] } : payload(),
@@ -124,6 +124,10 @@ async function fixture(empty = false) {
       return Promise.resolve({ ...stored, replayed: false });
     }),
   };
+  return { api, unexpected };
+}
+async function fixture(empty = false) {
+  const { api, unexpected } = followupsApi(empty);
   const workspace = new ManagedWorkspace(
     api,
     {

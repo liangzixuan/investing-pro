@@ -6,6 +6,7 @@ import { createFixture } from "../../android-tests/managed-workspace/fixture";
 import { ManagedWorkspace } from "./managed-workspace";
 import { ManagedWorkspaceScreen } from "./ManagedWorkspaceScreen";
 import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
+import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
 import { ManagedWatchlistEditor } from "./ManagedWatchlistEditor";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
@@ -180,7 +181,10 @@ async function setup() {
     render(
       `followups-${controls.getSnapshot().session}`,
       ManagedResearchFollowups,
-      child(screen(), ManagedResearchFollowups),
+      child(
+        ManagedFollowupsEntry(child(screen(), ManagedFollowupsEntry)),
+        ManagedResearchFollowups,
+      ),
     );
   const entry = () =>
     workspace.followups.coordinator.getSnapshot().draft!.entries[0]!;

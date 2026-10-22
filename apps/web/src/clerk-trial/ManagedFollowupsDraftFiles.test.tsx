@@ -5,6 +5,8 @@ import type { ResearchFollowupsPayload } from "@research-cockpit/contracts";
 import type { FollowupsDraftRecoveryState } from "./managed-followups-draft-recovery";
 import type { ManagedWorkspace } from "./managed-workspace";
 import { ManagedFollowupsDraftFiles } from "./ManagedFollowupsDraftFiles";
+import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
+import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 
 // Command/render checks only; actual browser focus and native IO remain separate.
 const harness = vi.hoisted(() => ({
@@ -178,4 +180,43 @@ it("disables file controls until the controller admits the current session and d
   expect(elements(tree).find((n) => n.type === "input")!.props.disabled).toBe(
     true,
   );
+});
+
+it("keeps Follow-ups hidden on invalid roots and shares the live route guard with file tools", () => {
+  let valid = false;
+  const routeActive = () => valid;
+  const props = {
+    workspace: {} as ManagedWorkspace,
+    discovery: {
+      view: "followups" as const,
+      research: null,
+      companyRoute: null,
+    },
+    navigationPending: false,
+    onResearch: vi.fn(),
+    routeActive,
+  };
+  type EntryElement = React.ReactElement<{
+    hidden: boolean;
+    children: React.ReactNode;
+  }>;
+  const hidden = ManagedFollowupsEntry(props)! as EntryElement;
+  expect(hidden.props.hidden).toBe(true);
+  const panel = hidden.props.children as React.ReactElement<
+    React.ComponentProps<typeof ManagedResearchFollowups>
+  >;
+  expect(panel.type).toBe(ManagedResearchFollowups);
+  expect(panel.props.onResearch).toBe(props.onResearch);
+  expect(panel.props.draftFileRouteActive).toBe(routeActive);
+  valid = true;
+  expect(panel.props.draftFileRouteActive!()).toBe(true);
+  expect((ManagedFollowupsEntry(props) as EntryElement).props.hidden).toBe(
+    false,
+  );
+  expect(
+    ManagedFollowupsEntry({
+      ...props,
+      discovery: { view: "markets", research: null, companyRoute: null },
+    }),
+  ).toBeNull();
 });
