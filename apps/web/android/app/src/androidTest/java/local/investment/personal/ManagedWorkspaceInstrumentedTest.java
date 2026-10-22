@@ -7741,10 +7741,6 @@ public class ManagedWorkspaceInstrumentedTest {
     @Test
     public void thesisReviewPreviewAppendSaveAndReloadPreservesDraft() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
-        openFollowupsView();
-        click("#managed-followups-load");
-        awaitPage("thesis scheduling requires an explicit separate initial load",
-            FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUP_DRAFT + ".baseVersion === 0 && " + FOLLOWUP_DRAFT + ".entries?.length === 0");
         selectWorkspaceView("My Watchlist");
         typeIntoInput("managed-note-0", "Original thesis");
         click(".managed-thesis-review > summary");
@@ -7781,6 +7777,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".save === 0");
         click(".managed-thesis-followup > summary");
         typeIntoInput("managed-note-0-followup-date", "2020-01-01");
+        awaitPage("opening and dating the check makes no implicit follow-up request",
+            FOLLOWUPS + ".load === 0 && " + FOLLOWUPS + ".save === 0 && document.querySelector('#managed-note-0-followup-create')?.disabled === true");
+        click("#managed-note-0-followup-load");
+        awaitPage("explicit inline Load retains the authored check and date",
+            FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUP_DRAFT + ".baseVersion === 0 && " + FOLLOWUP_DRAFT + ".entries?.length === 0" +
+            " && document.querySelector('#managed-note-0-followup-date')?.value === '2020-01-01'" +
+            " && document.querySelector('#managed-note-0-followup-check')?.textContent === 'Read the next filed report'");
         awaitPage("complete next check and explicit date precede creation without any save",
             "document.querySelector('#managed-note-0-followup-check')?.textContent === 'Read the next filed report'" +
             " && document.querySelector('#managed-note-0-followup-date')?.getBoundingClientRect().height >= 44" +

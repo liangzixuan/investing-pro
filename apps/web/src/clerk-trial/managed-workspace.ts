@@ -1779,10 +1779,10 @@ export class ManagedWorkspace {
         if (!this.canNavigate() || !this.canEdit()) return false;
         if (
           this.navigationRevision !== navigation ||
-          this.viewRevision !== view ||
-          !this.currentWatchlistContains(member)
+          this.viewRevision !== view
         )
           return false;
+        if (!this.currentWatchlistContains(member)) return false;
         if (selection) {
           const watchlist = this.getResearchWatchlist(selection);
           return watchlist.canEdit && watchlist.member === member;

@@ -33,6 +33,7 @@ import {
 } from "./operating-comparison-fixture";
 import type {
   MainWatchlistPayload,
+  ResearchFollowup,
   ManagedCatalogSnapshotDto,
   ManagedEodHistoryResponseDto,
   PersonalSecurityMasterSearchResultDto,
@@ -287,30 +288,42 @@ function isDeclaredThesisFollowup(
   if (!captured || !entry) return false;
   if (saves > 1 || captured.expectedVersion !== saves) return false;
   if (saves === 1 && entry.completedOn === null) return false;
-  const { note, ...listing } = watchlist.memberships[0]!;
-  void note;
   return (
     encodeResearchFollowupsPayload(captured.payload) ===
-    encodeResearchFollowupsPayload({
-      schemaVersion: 1,
-      entries: [
-        {
-          ...entry,
-          listing,
-          catalogSnapshotSha256: digest,
-          check: "Read the next filed report",
-          dueOn: "2020-01-01",
-          result: saves === 0 ? "" : "Checked the authored thesis",
-          ...(saves === 0
-            ? { status: "open" as const, completedOn: null }
-            : {
-                status: "completed" as const,
-                completedOn: entry.completedOn!,
-              }),
-        },
-      ],
-    })
+    encodeResearchFollowupsPayload(
+      thesisFollowupPayload(entry, saves, watchlist),
+    )
   );
+}
+
+function thesisFollowupPayload(
+  entry: ResearchFollowup,
+  saves: number,
+  watchlist: MainWatchlistPayload,
+) {
+  const { note, ...listing } = watchlist.memberships[0]!;
+  void note;
+  const completion =
+    saves === 0
+      ? { status: "open" as const, completedOn: null, result: "" }
+      : {
+          status: "completed" as const,
+          completedOn: entry.completedOn!,
+          result: "Checked the authored thesis",
+        };
+  return {
+    schemaVersion: 1 as const,
+    entries: [
+      {
+        ...entry,
+        listing,
+        catalogSnapshotSha256: digest,
+        check: "Read the next filed report",
+        dueOn: "2020-01-01",
+        ...completion,
+      },
+    ],
+  };
 }
 
 async function createSharedFixture(

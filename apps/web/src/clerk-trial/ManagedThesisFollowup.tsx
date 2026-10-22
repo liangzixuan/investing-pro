@@ -42,33 +42,29 @@ function loadHostIsCurrent(action: Action, committed: CommittedAction) {
     live.context.isCurrent()
   );
 }
-function sourceCommands(
+function loadFollowupsForCheck(action: Action, committed: CommittedAction) {
+  if (!actionIsCurrent(action, committed)) return;
+  const { model, member } = action.context;
+  void model.loadForNextCheck(member, () =>
+    loadHostIsCurrent(action, committed),
+  );
+}
+function createFollowupDraft(
   action: Action,
   committed: CommittedAction,
   onNotice: (notice: Notice) => void,
 ) {
-  const { model, member } = action.context;
-  return {
-    load: () => {
-      if (!actionIsCurrent(action, committed)) return;
-      void model.loadForNextCheck(member, () =>
-        loadHostIsCurrent(action, committed),
-      );
-    },
-    create: () => {
-      if (!actionIsCurrent(action, committed) || !action.capture) return;
-      const created = model.createNextCheck(action.capture, () =>
-        actionIsCurrent(action, committed),
-      );
-      if (committed.current === action)
-        onNotice({
-          next: action.next,
-          message: created
-            ? "Created in the Follow-ups draft. Open Follow-ups to review and Save follow-ups. My Watchlist is unchanged."
-            : "The creation context changed. Review the current check, date and drafts before creating.",
-        });
-    },
-  };
+  if (!actionIsCurrent(action, committed) || !action.capture) return;
+  const created = action.context.model.createNextCheck(action.capture, () =>
+    actionIsCurrent(action, committed),
+  );
+  if (committed.current === action)
+    onNotice({
+      next: action.next,
+      message: created
+        ? "Created in the Follow-ups draft. Open Follow-ups to review and Save follow-ups. My Watchlist is unchanged."
+        : "The creation context changed. Review the current check, date and drafts before creating.",
+    });
 }
 function statusMessage(
   props: Props,
@@ -125,7 +121,8 @@ function useThesisFollowup(props: Props) {
       setDueOn(raw);
       setNotice(null);
     },
-    ...sourceCommands(action, committed, setNotice),
+    load: () => loadFollowupsForCheck(action, committed),
+    create: () => createFollowupDraft(action, committed, setNotice),
   };
 }
 type Controls = ReturnType<typeof useThesisFollowup>;
