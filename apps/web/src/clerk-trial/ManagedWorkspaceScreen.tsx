@@ -1,6 +1,9 @@
 import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
-import { managedResearchCompanyNavigationProps } from "./managed-research-company-navigation-props";
+import {
+  managedResearchCompanyNavigationProps,
+  managedResearchOpener,
+} from "./managed-research-company-navigation-props";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
@@ -546,15 +549,11 @@ export function ManagedWorkspaceScreen({
     workspace.setView(view);
     return true;
   };
-  const openResearch = (opener: HTMLButtonElement, action: () => void) => {
-    if (!workspace.canNavigate()) return;
-    const open = () => {
-      action();
-      if (workspace.getSnapshot().research) panelOrigin.current = opener;
-    };
-    if (navigation) navigation.open(open);
-    else open();
-  };
+  const openResearch = managedResearchOpener(
+    workspace,
+    navigation,
+    panelOrigin,
+  );
   const onNativeBack = useEffectEvent(
     ({ canGoBack }: { canGoBack: boolean }) => {
       const phase = workspace.coordinator.getSnapshot().phase;
