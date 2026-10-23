@@ -52,8 +52,8 @@ export function captureResearchFollowupContext(options: {
     model.currentEntry(owner.id) === entry;
   let retired = false;
   const isCurrent = () => {
-    if (retired || !options.isVisitCurrent() || !draftIsCurrent())
-      retired = true;
+    if (retired) return false;
+    retired = !options.isVisitCurrent() || !draftIsCurrent();
     return !retired;
   };
   if (!isCurrent()) return null;
