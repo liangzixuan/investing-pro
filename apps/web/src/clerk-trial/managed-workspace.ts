@@ -128,6 +128,7 @@ import {
 export type { ManagedResearchFollowupContext } from "./managed-research-followup-context";
 import type { ThesisFollowupContext } from "./managed-thesis-followup";
 import { ManagedPortfolio, type PortfolioDraft } from "./managed-portfolio";
+import { ManagedPortfolioCloseReview } from "./managed-portfolio-close-review";
 import { ManagedSessionOwner } from "./managed-session-owner";
 import { MANAGED_WATCHLIST_SAVE_COPY } from "./save-coordinator-copy";
 import {
@@ -305,6 +306,9 @@ export class ManagedWorkspace {
   readonly watchlistFilings: ManagedWatchlistFilings;
   readonly filingsReview: ManagedFilingsReview;
   private readonly secAccess = new ManagedSecAccess();
+  private readonly eodAccess: ManagedEodAccess;
+  private readonly portfolioPriceCoverage:
+    readonly ManagedEodIdentity[] | undefined;
   readonly eod: ManagedEodHistory;
   readonly markets: ManagedMarkets;
   readonly watchlistPrices: ManagedWatchlistPrices;
@@ -491,9 +495,14 @@ export class ManagedWorkspace {
       (signal) => api.economicCalendar(signal),
       (error) => this.coordinator.readError(error),
     );
-    const eodAccess = new ManagedEodAccess((request, signal) =>
-      api.eodHistory(request, signal),
-    );
+    this.portfolioPriceCoverage =
+      options.priceCoverage &&
+      Object.freeze(
+        options.priceCoverage.map((entry) => Object.freeze({ ...entry })),
+      );
+    const eodAccess = (this.eodAccess = new ManagedEodAccess(
+      (request, signal) => api.eodHistory(request, signal),
+    ));
     this.eod = new ManagedEodHistory(
       (request, signal) => api.eodHistory(request, signal),
       (error) => this.coordinator.readError(error),
@@ -1478,6 +1487,14 @@ export class ManagedWorkspace {
       draft.memberships.some((member) =>
         membershipMatchesResult(member, selection.listing),
       )
+    );
+  }
+  createPortfolioCloseReview() {
+    return new ManagedPortfolioCloseReview(
+      this.eodAccess,
+      (error) => this.coordinator.readError(error),
+      () => this.invalidateCatalog(),
+      this.portfolioPriceCoverage,
     );
   }
   /** A root Portfolio visit capability; navigation round trips cannot renew it. */
