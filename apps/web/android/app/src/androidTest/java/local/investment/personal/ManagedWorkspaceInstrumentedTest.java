@@ -885,7 +885,24 @@ public class ManagedWorkspaceInstrumentedTest {
         return outputs[0];
     }
 
+    private void finishValuationNativeEditing() throws Exception {
+        String editor = readFixtureString("JSON.stringify(" + savedValuationEditor() + ")");
+        String resource = readFixtureString("JSON.stringify(" + savedValuationResource() + ")");
+        scenario.onActivity(activity -> {
+            WebView page = activity.getBridge().getWebView();
+            assertTrue("Valuation editing ends in the current focused window", page.hasWindowFocus());
+            boolean focusedBefore = page.hasFocus();
+            page.clearFocus();
+            assertTrue("Ending native editing retains the Activity window", page.hasWindowFocus());
+            Log.i("ValuationNativeEditing", "viewFocusBefore=" + focusedBefore + ", viewFocusAfter=" + page.hasFocus());
+        });
+        awaitPage("ending native valuation editing preserves every current operand and the complete saved resource",
+            "JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(editor) +
+            " && JSON.stringify(" + savedValuationResource() + ")===" + JSONObject.quote(resource));
+    }
+
     private void selectInventedValuationInputs(WatchlistTestDocuments.Output output) throws Exception {
+        finishValuationNativeEditing();
         ValuationChooserGeometry.PreparedTouch prepared = ValuationChooserGeometry.await(scenario, PAGE_TIMEOUT_MS);
         try {
             scenario.onActivity(activity -> ValuationChooserTouchAdmission.require(
