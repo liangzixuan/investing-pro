@@ -185,15 +185,63 @@ interface Props {
   onResearch: Research;
 }
 /** Display only; controller callbacks retain the exact workspace capability. */
-export function PortfolioCloseReviewView({
+function LoadControls({
   ready,
   state,
-  review,
   onLoad,
   onCancel,
+}: Pick<Props, "ready" | "state" | "onLoad" | "onCancel">) {
+  const eligible = state.rows.some((row) => row.available);
+  const disabled = !ready || state.running || !eligible;
+  return (
+    <div className="ledger-actions">
+      <button disabled={disabled} onClick={onLoad}>
+        Load holding closes
+      </button>
+      {ready && state.running && (
+        <button className="trial-secondary" onClick={onCancel}>
+          Cancel holding closes
+        </button>
+      )}
+    </div>
+  );
+}
+function ObservedDate({ state, onDate }: Pick<Props, "state" | "onDate">) {
+  return (
+    <label>
+      Observed close date
+      <select
+        value={state.selectedDate}
+        disabled={state.running || !state.dates.length}
+        onChange={(event) => onDate(event.currentTarget.value)}
+      >
+        {!state.dates.length && <option value="">Load closes first</option>}
+        {state.dates.map((date) => (
+          <option key={date} value={date}>
+            {date}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+function LoadedReview({
+  state,
+  review,
   onDate,
   onResearch,
-}: Props) {
+}: Pick<Props, "state" | "review" | "onDate" | "onResearch">) {
+  return (
+    <>
+      <p role="status">{state.message}</p>
+      <ObservedDate state={state} onDate={onDate} />
+      {review && <Totals review={review} />}
+      {!state.rows.length && <p>No current positive holdings.</p>}
+      <Holdings state={state} review={review} onResearch={onResearch} />
+    </>
+  );
+}
+export function PortfolioCloseReviewView(props: Props) {
   return (
     <section aria-label="Dated Portfolio holdings review">
       <p>
@@ -202,51 +250,25 @@ export function PortfolioCloseReviewView({
         ledger, save a resource or measure returns. Price coverage remains
         limited.
       </p>
-      {!ready && (
+      {!props.ready && (
         <p>
           Load Portfolio, apply or reset pending forms, review current catalog
           identities and resolve any pending save or recovery first.
         </p>
       )}
-      <div className="ledger-actions">
-        <button
-          disabled={
-            !ready || state.running || !state.rows.some((row) => row.available)
-          }
-          onClick={onLoad}
-        >
-          Load holding closes
-        </button>
-        {ready && state.running && (
-          <button className="trial-secondary" onClick={onCancel}>
-            Cancel holding closes
-          </button>
-        )}
-      </div>
-      {ready && (
-        <>
-          <p role="status">{state.message}</p>
-          <label>
-            Observed close date
-            <select
-              value={state.selectedDate}
-              disabled={state.running || !state.dates.length}
-              onChange={(event) => onDate(event.currentTarget.value)}
-            >
-              {!state.dates.length && (
-                <option value="">Load closes first</option>
-              )}
-              {state.dates.map((date) => (
-                <option key={date} value={date}>
-                  {date}
-                </option>
-              ))}
-            </select>
-          </label>
-          {review && <Totals review={review} />}
-          {!state.rows.length && <p>No current positive holdings.</p>}
-          <Holdings state={state} review={review} onResearch={onResearch} />
-        </>
+      <LoadControls
+        ready={props.ready}
+        state={props.state}
+        onLoad={props.onLoad}
+        onCancel={props.onCancel}
+      />
+      {props.ready && (
+        <LoadedReview
+          state={props.state}
+          review={props.review}
+          onDate={props.onDate}
+          onResearch={props.onResearch}
+        />
       )}
     </section>
   );

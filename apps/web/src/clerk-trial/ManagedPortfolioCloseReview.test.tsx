@@ -216,9 +216,9 @@ describe("Dated holdings review committed UI", () => {
     let node = f.render();
     expect(f.read).not.toHaveBeenCalled();
     expect(button(node, "Load holding closes").props.disabled).toBe(false);
+    const loading = vi.spyOn(f.models[0]!, "load");
     click(button(node, "Load holding closes"));
-    await f.models[0]!.load();
-    await Promise.resolve();
+    await loading.mock.results[0]!.value;
     node = f.render();
     const html = renderToStaticMarkup(node);
     expect(html).toContain("203.00");

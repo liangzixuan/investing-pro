@@ -53,6 +53,37 @@ const empty = (): PortfolioCloseState => ({
   message: "",
 });
 
+interface CloseLoad {
+  readonly context: PortfolioCloseContext;
+  readonly operation: AbortController;
+  readonly current: () => boolean;
+}
+function stopsQueue(error: unknown) {
+  if (error instanceof ManagedEodCooldownError) return true;
+  if (!(error instanceof ManagedEodHistoryError)) return false;
+  return ["source_rate_limited", "not_configured"].includes(error.code);
+}
+function failedHistory(
+  row: PortfolioCloseRow,
+  error: unknown,
+): Partial<PortfolioCloseRow> {
+  const cooldown = error instanceof ManagedEodCooldownError;
+  const retain = cooldown || isManagedEodTransientError(error);
+  let message =
+    "Close history could not be loaded. This holding remains unpriced.";
+  if (cooldown)
+    message = `Requests are available after ${error.nextAllowedAt}. Previous source dates are unchanged.`;
+  else if (retain && row.response)
+    message =
+      "Refresh failed. Previous history retained with its original dates.";
+  return {
+    response: retain ? row.response : null,
+    running: false,
+    showingPrevious: retain && row.response !== null,
+    message,
+  };
+}
+
 /** One mounted, exact-ledger review. Reads are explicit and share the workspace cooldown. */
 export class ManagedPortfolioCloseReview {
   private state = empty();
@@ -157,8 +188,8 @@ export class ManagedPortfolioCloseReview {
     });
   }
   selectDate(date: string) {
-    if (!this.active() || this.operation || !this.state.dates.includes(date))
-      return;
+    if (!this.active() || this.operation) return;
+    if (!this.state.dates.includes(date)) return;
     this.update({ selectedDate: date });
   }
   cancel() {
@@ -186,8 +217,8 @@ export class ManagedPortfolioCloseReview {
   }
   review(): AuthoredPortfolioCloseReviewResult | null {
     const context = this.context;
-    if (!this.active(context) || !context || !this.state.selectedDate)
-      return null;
+    if (!context || !this.active(context)) return null;
+    if (!this.state.selectedDate) return null;
     const ledger = context.ledger;
     const balancesOn =
       ledger.transactions.at(-1)?.date ?? ledger.opening.asOfDate;
@@ -210,107 +241,107 @@ export class ManagedPortfolioCloseReview {
       ),
     });
   }
+  private failRow(
+    error: unknown,
+    row: PortfolioCloseRow,
+    current: () => boolean,
+  ) {
+    if (isManagedEodAuthenticationError(error)) {
+      this.clear();
+      this.readError(error);
+      return false;
+    }
+    if (error instanceof ManagedCatalogChangedError) {
+      this.clear();
+      this.catalogChanged();
+      return false;
+    }
+    this.row(row.holding.identity.listingId, failedHistory(row, error));
+    if (!current()) return false;
+    this.dates();
+    if (!current()) return false;
+    if (!stopsQueue(error)) return true;
+    this.update({
+      message:
+        "Loading stopped. Remaining holdings were not requested; review available values and original source dates.",
+    });
+    return false;
+  }
+  private async readRow(row: PortfolioCloseRow, load: CloseLoad) {
+    if (!load.current()) return false;
+    const id = row.holding.identity.listingId;
+    this.row(id, {
+      running: true,
+      showingPrevious: row.response !== null,
+      message: "Loading raw closes…",
+    });
+    if (!load.current()) return false;
+    try {
+      const catalogSnapshotSha256 = load.context.ledger
+        .snapshotSha256 as `sha256:${string}`;
+      const received = await this.access.request(
+        { catalogSnapshotSha256, listing: row.holding.identity },
+        "1m",
+        load.operation.signal,
+      );
+      if (!load.current()) return false;
+      const response = parseManagedEodHistoryResponse(received, {
+        catalogSnapshotSha256,
+        listingId: id,
+        range: "1m",
+      });
+      if (!response) throw new TrialApiError("invalid_response");
+      this.row(id, {
+        response,
+        running: false,
+        showingPrevious: false,
+        message: "One-month raw closes loaded.",
+      });
+      if (!load.current()) return false;
+      this.dates();
+      return load.current();
+    } catch (error) {
+      if (!load.current()) return false;
+      return this.failRow(error, row, load.current);
+    }
+  }
+  private finishLoad(load: CloseLoad) {
+    if (this.operation !== load.operation) return;
+    this.operation = null;
+    if (this.active(load.context)) this.update({ running: false });
+    else this.clear();
+  }
   async load() {
     const context = this.context;
-    if (!context || !this.active(context) || this.operation) return;
+    if (!context) return;
+    if (!this.active(context) || this.operation) return;
     const rows = this.state.rows.filter((row) => row.available);
     if (!rows.length) return;
     const operation = new AbortController();
     this.operation = operation;
-    const current = () =>
-      this.active(context) &&
-      this.operation === operation &&
-      !operation.signal.aborted;
+    const load = {
+      context,
+      operation,
+      current: () =>
+        this.active(context) &&
+        this.operation === operation &&
+        !operation.signal.aborted,
+    };
     this.update({
       running: true,
       message: "Loading eligible holding closes one at a time…",
     });
     try {
       for (const row of rows) {
-        if (!current()) return;
-        const id = row.holding.identity.listingId;
-        this.row(id, {
-          running: true,
-          showingPrevious: row.response !== null,
-          message: "Loading raw closes…",
-        });
-        if (!current()) return;
-        try {
-          const received = await this.access.request(
-            {
-              catalogSnapshotSha256: context.ledger
-                .snapshotSha256 as `sha256:${string}`,
-              listing: row.holding.identity,
-            },
-            "1m",
-            operation.signal,
-          );
-          if (!current()) return;
-          const response = parseManagedEodHistoryResponse(received, {
-            catalogSnapshotSha256: context.ledger
-              .snapshotSha256 as `sha256:${string}`,
-            listingId: id,
-            range: "1m",
-          });
-          if (!response) throw new TrialApiError("invalid_response");
-          this.row(id, {
-            response,
-            running: false,
-            showingPrevious: false,
-            message: "One-month raw closes loaded.",
-          });
-          if (!current()) return;
-          this.dates();
-        } catch (error) {
-          if (!current()) return;
-          if (isManagedEodAuthenticationError(error)) {
-            this.clear();
-            this.readError(error);
-            return;
-          }
-          if (error instanceof ManagedCatalogChangedError) {
-            this.clear();
-            this.catalogChanged();
-            return;
-          }
-          const cooldown = error instanceof ManagedEodCooldownError;
-          const retain = cooldown || isManagedEodTransientError(error);
-          this.row(id, {
-            response: retain ? row.response : null,
-            running: false,
-            showingPrevious: retain && row.response !== null,
-            message: cooldown
-              ? `Requests are available after ${error.nextAllowedAt}. Previous source dates are unchanged.`
-              : retain && row.response
-                ? "Refresh failed. Previous history retained with its original dates."
-                : "Close history could not be loaded. This holding remains unpriced.",
-          });
-          if (!current()) return;
-          this.dates();
-          if (
-            cooldown ||
-            (error instanceof ManagedEodHistoryError &&
-              ["source_rate_limited", "not_configured"].includes(error.code))
-          ) {
-            this.update({
-              message:
-                "Loading stopped. Remaining holdings were not requested; review available values and original source dates.",
-            });
-            return;
-          }
-        }
+        if (!(await this.readRow(row, load))) return;
       }
-      if (current())
+      if (load.current())
         this.update({
           message:
             "Loading finished. Review one observed close date; missing values stay unavailable.",
         });
     } finally {
-      if (this.operation === operation) {
-        this.operation = null;
-        if (this.active(context)) this.update({ running: false });
-        else this.clear();
-      }
+      this.finishLoad(load);
     }
   }
 }

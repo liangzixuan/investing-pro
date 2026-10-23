@@ -72,20 +72,14 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
-async function fixture(value = ledger, approve = true) {
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(new Date("2026-10-23T12:00:00.000Z"));
+function watchlistFixture() {
   let saved: MainWatchlistPayload = {
     schemaVersion: 1,
     name: "My Watchlist",
     snapshotSha256: digest,
     memberships: [{ ...other, note: "Saved separate research" }],
   };
-  const unexpected = vi.fn(() =>
-    Promise.reject(new Error("Unexpected source or resource request")),
-  );
-  const api = {
-    status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
+  return {
     load: vi.fn<ManagedApi["load"]>(() =>
       Promise.resolve({ version: 1, payload: structuredClone(saved) }),
     ),
@@ -97,6 +91,18 @@ async function fixture(value = ledger, approve = true) {
         replayed: false,
       });
     }),
+    saved: () => saved,
+  };
+}
+function fixtureApi(value: ManagedPortfolioPayload) {
+  const watchlist = watchlistFixture();
+  const unexpected = vi.fn(() =>
+    Promise.reject(new Error("Unexpected source or resource request")),
+  );
+  const api = {
+    status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
+    load: watchlist.load,
+    save: watchlist.save,
     loadPortfolio: vi
       .fn<ManagedApi["loadPortfolio"]>()
       .mockResolvedValue({ version: 1, payload: value }),
@@ -126,6 +132,12 @@ async function fixture(value = ledger, approve = true) {
     blsCalendar: unexpected,
     economicCalendar: unexpected,
   } satisfies ManagedApi;
+  return { api, unexpected, saved: watchlist.saved };
+}
+async function fixture(value = ledger, approve = true) {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-23T12:00:00.000Z"));
+  const { api, unexpected, saved } = fixtureApi(value);
   const workspace = new ManagedWorkspace(
     api,
     {
@@ -146,7 +158,7 @@ async function fixture(value = ledger, approve = true) {
     workspace.portfolio.applyReview();
   }
   vi.clearAllMocks();
-  return { workspace, api, unexpected, saved: () => saved };
+  return { workspace, api, unexpected, saved };
 }
 
 describe("Portfolio close review workspace capability", () => {

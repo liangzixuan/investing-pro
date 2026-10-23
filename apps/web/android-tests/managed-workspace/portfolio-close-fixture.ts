@@ -6,7 +6,7 @@ import {
   type ManagedEodIdentity,
 } from "@research-cockpit/contracts";
 
-/** Invented raw closes on the fixture's authored day and its previous calendar day. */
+/** Invented raw closes on the fixture's authored day and two calendar days earlier. */
 export function portfolioCloseFixturePacket(
   request: ManagedEodHistoryRequestDto,
   security: ManagedEodIdentity,
@@ -14,7 +14,9 @@ export function portfolioCloseFixturePacket(
 ) {
   const requestStartedAt = new Date(now).toISOString();
   const date = requestStartedAt.slice(0, 10);
-  const previous = new Date(Date.parse(`${date}T00:00:00.000Z`) - 86_400_000)
+  const previous = new Date(
+    Date.parse(`${date}T00:00:00.000Z`) - 2 * 86_400_000,
+  )
     .toISOString()
     .slice(0, 10);
   const packet = parseManagedEodHistoryResponse(
@@ -38,6 +40,12 @@ export function portfolioCloseFixturePacket(
   );
   if (!packet) throw new Error("Invalid invented Portfolio close packet");
   return packet;
+}
+
+function refuseRead(): Promise<never> {
+  return Promise.reject(
+    new Error("Unexpected invented Portfolio close request"),
+  );
 }
 
 /** Fixed two-read native journey; all existing fixture resources remain independent. */
@@ -75,17 +83,13 @@ export function createPortfolioCloseNativeFixture(
         return result;
       },
       eodHistory: (request, signal) => {
-        if (
-          signal.aborted ||
-          held ||
-          reads >= 2 ||
-          request.catalogSnapshotSha256 !== catalogDigest ||
-          request.listingId !== security.listingId ||
-          request.range !== "1m"
-        )
-          return Promise.reject(
-            new Error("Unexpected invented Portfolio close request"),
-          );
+        if (signal.aborted || held) return refuseRead();
+        if (reads >= 2) return refuseRead();
+        const matches =
+          request.catalogSnapshotSha256 === catalogDigest &&
+          request.listingId === security.listingId &&
+          request.range === "1m";
+        if (!matches) return refuseRead();
         const packet = portfolioCloseFixturePacket(request, security);
         reads += 1;
         publish();
@@ -110,10 +114,13 @@ export function createPortfolioCloseNativeFixture(
       return () => listeners.delete(listener);
     },
     settleCancelledEod: () => {
-      if (!held || reads !== 2 || aborted !== 1 || settled !== 0)
+      if (!held) throw new Error("No held Portfolio close refresh");
+      if (reads !== 2 || aborted !== 1)
         throw new Error(
-          "Only the cancelled Portfolio close refresh may settle",
+          "Only the cancelled second Portfolio close read may settle",
         );
+      if (settled !== 0)
+        throw new Error("The Portfolio close refresh already settled");
       const finish = held;
       held = null;
       settled += 1;

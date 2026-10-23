@@ -32,7 +32,10 @@ type Props = {
     opener: HTMLButtonElement,
   ) => void;
 };
-function Review({ workspace, navigationPending, onResearch }: Props) {
+function useCloseController(
+  workspace: ManagedWorkspace,
+  navigationPending: boolean,
+) {
   const view = useSyncExternalStore(
     workspace.subscribe,
     workspace.getSnapshot,
@@ -78,28 +81,51 @@ function Review({ workspace, navigationPending, onResearch }: Props) {
     !navigationPending &&
     controller?.context === context &&
     prices?.isCurrent(context) === true;
+  return { prices, state, current };
+}
+function loadCurrent(prices: ReviewModel | undefined, current: () => boolean) {
+  if (!prices || !current()) return;
+  void prices.load();
+}
+function selectCurrent(
+  prices: ReviewModel | undefined,
+  current: () => boolean,
+  date: string,
+) {
+  if (!prices || !current()) return;
+  prices.selectDate(date);
+}
+function researchCurrent(
+  workspace: ManagedWorkspace,
+  current: () => boolean,
+  listingId: string,
+  opener: HTMLButtonElement,
+  onResearch: Props["onResearch"],
+) {
+  if (!current()) return;
+  const draft = workspace.portfolio.coordinator.getSnapshot().draft;
+  const exact = draft?.ledger?.identities.find(
+    (item) => item.listingId === listingId,
+  );
+  if (draft && exact) onResearch(draft, exact, opener);
+}
+function Review({ workspace, navigationPending, onResearch }: Props) {
+  const { prices, state, current } = useCloseController(
+    workspace,
+    navigationPending,
+  );
   const ready = current();
-  const review = ready ? prices?.review() : null;
   return (
     <PortfolioCloseReviewView
       ready={ready}
       state={ready ? state : empty}
-      review={review}
-      onLoad={() => {
-        if (current()) void prices?.load();
-      }}
+      review={ready ? prices?.review() : null}
+      onLoad={() => loadCurrent(prices, current)}
       onCancel={() => prices?.cancel()}
-      onDate={(date) => {
-        if (current()) prices?.selectDate(date);
-      }}
-      onResearch={(listingId, opener) => {
-        if (!current()) return;
-        const draft = model.coordinator.getSnapshot().draft;
-        const exact = draft?.ledger?.identities.find(
-          (item) => item.listingId === listingId,
-        );
-        if (draft && exact) onResearch(draft, exact, opener);
-      }}
+      onDate={(date) => selectCurrent(prices, current, date)}
+      onResearch={(listingId, opener) =>
+        researchCurrent(workspace, current, listingId, opener, onResearch)
+      }
     />
   );
 }
