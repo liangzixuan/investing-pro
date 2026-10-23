@@ -35,6 +35,13 @@ ratio retain their actual balance dates. These periods can differ between
 companies. There are no invented calendar-year, Q4 or TTM labels, reconstructed
 missing values, valuation scores or automatic recommendations.
 
+## Reuse a screen definition
+
+The [portable screen recipe candidate](MANAGED_FINANCIAL_SCREEN_RECIPES.md) adds
+named local files for applied criteria, sorting and the exact selected listing
+order. Opening a file shows the full current/file comparison before Apply.
+Run remains explicit, and saved Watchlist records remain independent.
+
 ## Run and inspect
 
 **Run screen** reads only the selected finite cohort. Reads are sequential, with

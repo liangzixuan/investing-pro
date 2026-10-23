@@ -114,7 +114,7 @@ final class WatchlistSystemPicker {
 
     void openInventedDocument(String displayName, String family) throws Exception {
         assertTrue("Only existing invented draft file families can be selected",
-            family.equals("watchlist-draft") || family.equals("valuation-inputs-draft"));
+            family.equals("watchlist-draft") || family.equals("valuation-inputs-draft") || family.equals("financial-screen-recipe"));
         assertTrue("Only an exact invented draft document can be selected",
             displayName.matches("Investment-" + family + "-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json"));
         AccessibilityNodeInfo navigation = await(node -> isRootsList(node)

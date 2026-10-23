@@ -1,4 +1,8 @@
 import {
+  createNativeFinancialScreenRecipeAdapter,
+  type InvestmentFinancialScreenRecipePlugin,
+} from "./financial-screen-recipe-delivery";
+import {
   createNativeValuationDraftFileAdapter,
   type InvestmentValuationDraftFilePlugin,
 } from "./valuation-draft-file-delivery";
@@ -152,6 +156,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const financialScreenRecipeDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeFinancialScreenRecipeAdapter(
+            registerPlugin<InvestmentFinancialScreenRecipePlugin>(
+              "InvestmentFinancialScreenRecipe",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const signInMessage =
     state.message ||
     (state.auth.status === "loading"
@@ -198,6 +213,9 @@ function NativeSession({
                 : {})}
               {...(valuationDraftFileDelivery
                 ? { valuationDraftFileDelivery }
+                : {})}
+              {...(financialScreenRecipeDelivery
+                ? { financialScreenRecipeDelivery }
                 : {})}
               {...(reportDelivery ? { reportDelivery } : {})}
             />

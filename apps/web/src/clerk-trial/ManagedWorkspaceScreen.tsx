@@ -1,3 +1,4 @@
+import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import { managedResearchCompanyNavigationProps } from "./managed-research-company-navigation-props";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
@@ -84,6 +85,7 @@ import {
 } from "../mobile/android-back";
 
 interface ManagedFileDeliveries {
+  financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
@@ -231,6 +233,7 @@ function SessionWorkspace(props: SessionProps) {
 
 function definedSessionWorkspacePorts(initial: SessionProps) {
   const ports = {
+    financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
     valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
@@ -455,6 +458,7 @@ export function ManagedWorkspaceScreen({
   portfolioDraftFileDelivery,
   followupsDraftFileDelivery,
   valuationDraftFileDelivery,
+  financialScreenRecipeDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -798,11 +802,27 @@ export function ManagedWorkspaceScreen({
   };
   const retired = sessionState.phase !== "active";
   const navigationPending = navigation?.pending ?? false;
+  const recipesRouteActive = useCallback(() => {
+    const current = workspace.getSnapshot();
+    const route = reviewNavigation.current.navigation;
+    return (
+      !navigationPending &&
+      !route?.isPending() &&
+      !route?.invalid &&
+      !route?.hasCompanyRoute() &&
+      workspace.sessionOwner.getSnapshot().phase === "active" &&
+      current.view === "discover" &&
+      !current.research &&
+      !current.companyRoute
+    );
+  }, [workspace, navigationPending]);
   const financialDiscovery = managedFinancialDiscoveryProps(
     workspace,
     navigationPending,
     openResearch,
     () => setView("watchlist"),
+    financialScreenRecipeDelivery,
+    recipesRouteActive,
   );
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();

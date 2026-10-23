@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 22, 2026. This document defines the durable product goals and
+Updated October 23, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -55,13 +55,23 @@ reported "Installed and verified." on October 22 for the latest update, without
 per-feature results or independent device inspection. Browser layout and sustained
 use remain separate; the live website/API are unchanged.
 
-The next complete report workflow adds an explicit Android **Save report (HTML)**
-beside JSON. It reuses the existing passive, self-contained reading view and
-complete captured JSON appendix. A system-chosen document, shared report
-currentness and cancellation, and fixed native envelope checks keep file delivery
-separate from source reads and online Save. This advances portable research
-review with existing evidence. Source verification, client delivery and physical
-offline reading are separate acceptance steps; no provider or dependency is added.
+Android 1.34.0, code 35, now provides **Save report (HTML)** beside JSON
+from accepted source `241b0e4d61c487a561399d403b78be62443861ad`.
+It reuses the passive reading view, complete captured JSON appendix and a
+system-chosen document. Shared report currentness/cancellation and fixed native
+envelope checks keep delivery separate from source reads and online Save.
+The guarded build and complete APK verification passed. Phone installation,
+offline reading and sustained use remain separate acceptance steps.
+
+The selected next M2/M4 outcome is [reusable financial-screen recipes](MANAGED_FINANCIAL_SCREEN_RECIPES.md):
+name an applied definition, save its exact criteria and selected listing order,
+reopen it with complete current/file review, then Apply and Run explicitly.
+Research, Back, shortlist review and independent Watchlist Save complete the
+workflow. This adds repeat-use discovery with the current six fields and Annual
+cohort. It adds no provider, cloud storage or financial result cache. Source and
+native verification are in progress. Quarterly/TTM data and Portfolio history
+remain separate work; ticker and metric additions alone do not complete this
+outcome.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The

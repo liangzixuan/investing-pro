@@ -867,3 +867,69 @@ it("paces a synchronous dispatch failure before the next distinct issuer without
   expect(f.model.getSnapshot().run!.rows[0]!.report!.response).toBeNull();
   expect(f.model.getSnapshot().run!.rows[1]!.report!.response).toBe(right);
 });
+
+describe("atomic screen recipe definition admission", () => {
+  it("clears prior results, comparison and shortlist in one update without another request", async () => {
+    const f = await loaded();
+    const row = f.model.getSnapshot().run!.rows[0]!;
+    f.model.toggleShortlist(f.model.getSnapshot(), row);
+    f.model.selectComparison(f.model.getSnapshot(), "left", row);
+    const before = f.model.getSnapshot(),
+      changed = vi.fn();
+    const unsubscribe = f.model.subscribe(changed);
+    expect(
+      f.model.applyRecipeDefinition(
+        before,
+        { clauses: [], sort: { field: "symbol", direction: "desc" } },
+        before.selected,
+      ),
+    ).toBe(true);
+    expect(changed).toHaveBeenCalledOnce();
+    const next = f.model.getSnapshot();
+    expect(next.run).toBeNull();
+    expect(next.shortlist).toEqual([]);
+    expect(next.comparison).toEqual({ left: null, right: null });
+    expect(next.criteriaRevision).not.toBe(before.criteriaRevision);
+    expect(next.selectionRevision).not.toBe(before.selectionRevision);
+    expect(f.model.canAdmitReport(f.capture)).toBe(false);
+    expect(f.read).toHaveBeenCalledOnce();
+    expect(f.resolve).toHaveBeenCalledOnce();
+    expect(
+      f.model.applyRecipeDefinition(before, before.criteria, before.selected),
+    ).toBe(false);
+    unsubscribe();
+  });
+  it("refuses staged criteria, foreign members, duplicate issuers, empty selection and invalid criteria without partial changes", async () => {
+    const f = fixture([first, alternate, second]);
+    await f.universe();
+    const before = f.model.getSnapshot();
+    for (const members of [
+      [],
+      [before.memberships[0]!, before.memberships[1]!],
+      [{ ...before.memberships[0]! }],
+    ]) {
+      expect(
+        f.model.applyRecipeDefinition(before, before.criteria, members),
+      ).toBe(false);
+      expect(f.model.getSnapshot()).toBe(before);
+    }
+    expect(
+      f.model.applyRecipeDefinition(
+        before,
+        {
+          clauses: [
+            { field: "operatingCashFlow", operator: "gte", value: "1e" },
+          ],
+          sort: before.criteria.sort,
+        },
+        before.selected,
+      ),
+    ).toBe(false);
+    f.model.stageCriteria(before);
+    const staged = f.model.getSnapshot();
+    expect(
+      f.model.applyRecipeDefinition(staged, before.criteria, before.selected),
+    ).toBe(false);
+    expect(f.model.getSnapshot()).toBe(staged);
+  });
+});

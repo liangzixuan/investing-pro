@@ -1,3 +1,4 @@
+import { ManagedFinancialDiscovery } from "./ManagedFinancialDiscovery";
 import {
   createManagedResearchCoverageFixture,
   inventedManagedResearchCoverage,
@@ -2959,6 +2960,63 @@ describe("managed workspace screen", () => {
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     expect(api.annualReport).toHaveBeenCalledTimes(3);
     expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("binds recipe delivery to the current Discover route before a navigation render commits", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const delivery = { deliver: vi.fn() };
+    let pending = false;
+    let companyRoute = false;
+    const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => pending,
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => companyRoute,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn(() => false),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    const nodes = elements(
+      ManagedWorkspaceScreen({
+        workspace,
+        navigation,
+        financialScreenRecipeDelivery: delivery,
+      }),
+    );
+    const discovery = nodes.find(
+      (node) => node.type === ManagedFinancialDiscovery,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedFinancialDiscovery>
+    >;
+    expect(discovery.props.recipeDelivery).toBe(delivery);
+    const current = discovery.props.recipesRouteActive;
+    const draft = workspace.coordinator.getSnapshot().draft;
+    expect(current()).toBe(true);
+    pending = true;
+    expect(current()).toBe(false);
+    pending = false;
+    companyRoute = true;
+    expect(current()).toBe(false);
+    companyRoute = false;
+    navigation.invalid = true;
+    expect(current()).toBe(false);
+    navigation.invalid = false;
+    workspace.setView("watchlist");
+    expect(current()).toBe(false);
+    workspace.setView("discover");
+    expect(current()).toBe(true);
+    workspace.sessionOwner.dispose();
+    expect(current()).toBe(false);
+    expect(delivery.deliver).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(draft?.memberships).toEqual(payload.memberships);
+    mounted.direct = false;
   });
 
   it("refuses retained callbacks before source reads, identity resolve or local review changes while navigation is pending", async () => {

@@ -162,7 +162,9 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
             && displayName.matches(HTML_REPORT_NAME);
         boolean draft = "application/json".equals(mimeType) && displayName != null
             && displayName.matches("Investment-(?:watchlist|valuation-inputs)-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json");
-        if (!ROOT_ID.equals(parent) || (!watchlist && !report && !htmlReport && !draft))
+        boolean recipe = "application/json".equals(mimeType) && displayName != null
+            && displayName.matches("Investment-financial-screen-recipe-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json");
+        if (!ROOT_ID.equals(parent) || (!watchlist && !report && !htmlReport && !draft && !recipe))
             throw new FileNotFoundException();
         String id = UUID.randomUUID().toString();
         try {

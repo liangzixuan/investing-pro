@@ -1,3 +1,4 @@
+import { browserFinancialScreenRecipeAdapter } from "./financial-screen-recipe-delivery";
 import { browserValuationDraftFileAdapter } from "./valuation-draft-file-delivery";
 import { browserPortfolioDraftFileAdapter } from "./portfolio-draft-file-delivery";
 import { browserFollowupsDraftFileAdapter } from "./followups-draft-file-delivery";
@@ -112,6 +113,8 @@ function ClerkSession({
               portfolioDraftFileDelivery: browserPortfolioDraftFileAdapter,
               followupsDraftFileDelivery: browserFollowupsDraftFileAdapter,
               valuationDraftFileDelivery: browserValuationDraftFileAdapter,
+              financialScreenRecipeDelivery:
+                browserFinancialScreenRecipeAdapter,
               reportDelivery: browserCompanyReportAdapter,
             }
           : {})}
