@@ -1,3 +1,5 @@
+import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
+import { ManagedResearchFollowup } from "./ManagedResearchFollowup";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -84,11 +86,17 @@ function render<T>(
 function nodes(
   node: React.ReactNode,
 ): React.ReactElement<Record<string, unknown>>[] {
-  return React.Children.toArray(node).flatMap((item) =>
-    React.isValidElement<Record<string, unknown>>(item)
-      ? [item, ...nodes(item.props.children as React.ReactNode)]
-      : [],
-  );
+  return React.Children.toArray(node).flatMap((item) => {
+    if (!React.isValidElement<Record<string, unknown>>(item)) return [];
+    if (item.type === ManagedFollowupAssessment) {
+      return nodes(
+        ManagedFollowupAssessment(
+          item.props as React.ComponentProps<typeof ManagedFollowupAssessment>,
+        ),
+      );
+    }
+    return [item, ...nodes(item.props.children as React.ReactNode)];
+  });
 }
 function text(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
@@ -710,4 +718,188 @@ it("states matching versions once and keeps explicit draft and saved versions wh
   expect(text(f.daily())).toContain(
     "Open Manage follow-ups to choose which version to keep. This queue continues to show your draft.",
   );
+});
+
+function companyAndCheck(
+  f: Awaited<ReturnType<typeof setup>>,
+  options: {
+    navigationPending?: boolean;
+    routeActive?: () => boolean;
+    onReview?: () => void;
+  } = {},
+) {
+  const research = () =>
+    render(
+      "assessment-company",
+      ManagedCompanyResearch,
+      child(f.screen(), ManagedCompanyResearch),
+    );
+  const check = () => {
+    const props = child(research(), ManagedResearchFollowup);
+    return render("assessment-check", ManagedResearchFollowup, {
+      ...props,
+      ...(options.navigationPending === undefined
+        ? {}
+        : { navigationPending: options.navigationPending }),
+      ...(options.routeActive ? { routeActive: options.routeActive } : {}),
+      ...(options.onReview ? { onReview: options.onReview } : {}),
+    });
+  };
+  return { research, check };
+}
+
+async function openAssessmentCompany(f: Awaited<ReturnType<typeof setup>>) {
+  await f.create();
+  click(f.followups(), `managed-followup-research-${f.entry().id}`);
+  await vi.waitFor(() =>
+    expect(f.workspace().getSnapshot().research).not.toBeNull(),
+  );
+  return companyAndCheck(f);
+}
+
+it("authors the due check assessment beside its company evidence, then returns for completion and independent Save", async () => {
+  const f = await setup();
+  f.note("Independent Watchlist draft · 東京");
+  const c = await openAssessmentCompany(f);
+  const watchlist = f.workspace().coordinator.getSnapshot().draft;
+  const entry = f.entry();
+  const firstCheck = c.check();
+  expect(renderToStaticMarkup(firstCheck)).toContain(entry.check);
+  expect(renderToStaticMarkup(firstCheck)).toContain(
+    `Due date (UTC): ${entry.dueOn}`,
+  );
+  expect(
+    control(firstCheck, "managed-research-followup-assessment").props.open,
+  ).toBeUndefined();
+  const sourceTree = render(
+    "assessment-sources",
+    ManagedCompanyEvidenceActions,
+    child(c.research(), ManagedCompanyEvidenceActions),
+  );
+  const sourceControls = nodes(sourceTree)
+    .filter((node) => typeof node.type === "function")
+    .map((node) =>
+      (node.type as (props: Record<string, unknown>) => React.ReactNode)(
+        node.props,
+      ),
+    );
+  click(sourceControls, "Load Annual");
+  await vi.waitFor(() =>
+    expect(f.workspace().annual.getSnapshot().response).not.toBeNull(),
+  );
+  expect(
+    f.workspace().annual.getSnapshot().response?.evidence.generation
+      .completedAt,
+  ).toBe("2026-09-20T00:00:02.000Z");
+  const raw = "  My assessment · reviewed 財報 café 📈  ";
+  const stale = control(c.check(), "managed-research-followup-result");
+  change(c.check(), "managed-research-followup-result", raw);
+  expect(f.entry()).toEqual({ ...entry, result: raw });
+  expect(
+    control(c.check(), "managed-research-followup-result").props.value,
+  ).toBe(raw);
+  expect(f.workspace().coordinator.getSnapshot().draft).toBe(watchlist);
+  expect(f.controls.getSnapshot()).toMatchObject({ save: 0, commits: 0 });
+  expect(f.fixture.getSnapshot()).toMatchObject({
+    resolve: 1,
+    annual: 1,
+    eod: 0,
+    filings: 0,
+    save: 0,
+  });
+  click(c.check(), "managed-research-followup-review");
+  expect(f.workspace().getSnapshot()).toMatchObject({
+    view: "followups",
+    research: null,
+  });
+  expect(f.workspace().followups.getSnapshot()).toMatchObject({
+    selectedId: entry.id,
+    filter: "open",
+  });
+  expect(control(f.followups(), "managed-followup-result").props.value).toBe(
+    raw,
+  );
+  (
+    stale.props.onChange as (event: {
+      currentTarget: { value: string };
+    }) => void
+  )({ currentTarget: { value: "late stale result" } });
+  expect(f.entry().result).toBe(raw);
+  click(f.followups(), "managed-followup-complete");
+  click(f.followups(), "managed-followups-save");
+  await f.idle();
+  expect(f.workspace().coordinator.getSnapshot().draft).toBe(watchlist);
+  await f.mount(true);
+  click(f.daily(), "managed-daily-followups-load");
+  await f.idle();
+  expect(f.entry()).toMatchObject({
+    check: entry.check.trim(),
+    result: raw.trim(),
+    status: "completed",
+    completedOn: "2026-10-15",
+  });
+  expect(f.controls.getSnapshot()).toMatchObject({ save: 1, commits: 1 });
+  expect(f.fixture.getSnapshot()).toMatchObject({
+    resolve: 1,
+    annual: 1,
+    eod: 0,
+    filings: 0,
+    save: 0,
+  });
+});
+
+it("retains invalid contextual assessment text for correction and refuses the whole Follow-ups Save", async () => {
+  const f = await setup();
+  const c = await openAssessmentCompany(f);
+  const raw = "📈".repeat(2001);
+  change(c.check(), "managed-research-followup-result", raw);
+  expect(f.entry().result).toBe(raw);
+  const field = control(c.check(), "managed-research-followup-result");
+  expect(field.props.value).toBe(raw);
+  expect(field.props["aria-invalid"]).toBe(true);
+  click(c.check(), "managed-research-followup-review");
+  expect(control(f.followups(), "managed-followup-result").props.value).toBe(
+    raw,
+  );
+  expect(control(f.followups(), "managed-followups-save").props.disabled).toBe(
+    true,
+  );
+  expect(f.controls.getSnapshot()).toMatchObject({ save: 0, commits: 0 });
+  expect(f.fixture.getSnapshot()).toMatchObject({
+    annual: 0,
+    eod: 0,
+    filings: 0,
+    save: 0,
+  });
+});
+
+it("pauses contextual controls during external navigation and refuses retained callbacks after it stops being current", async () => {
+  const f = await setup();
+  await openAssessmentCompany(f);
+  let routeActive = true;
+  const onReview = vi.fn();
+  const c = companyAndCheck(f, { routeActive: () => routeActive, onReview });
+  const current = c.check();
+  const raw = f.entry().result;
+  routeActive = false;
+  (
+    control(current, "managed-research-followup-result").props
+      .onChange as (event: { currentTarget: { value: string } }) => void
+  )({ currentTarget: { value: "late route edit" } });
+  (
+    control(current, "managed-research-followup-review").props
+      .onClick as () => void
+  )();
+  expect(f.entry().result).toBe(raw);
+  expect(onReview).not.toHaveBeenCalled();
+  const pending = companyAndCheck(f, {
+    navigationPending: true,
+    onReview,
+  }).check();
+  expect(
+    control(pending, "managed-research-followup-result").props.readOnly,
+  ).toBe(true);
+  expect(
+    control(pending, "managed-research-followup-review").props.disabled,
+  ).toBe(true);
 });

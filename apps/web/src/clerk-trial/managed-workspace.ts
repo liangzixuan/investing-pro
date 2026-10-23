@@ -120,6 +120,11 @@ import { ManagedBlsCalendar } from "./managed-bls-calendar";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import { ManagedResearchFollowups } from "./managed-research-followups";
+import {
+  captureResearchFollowupContext,
+  type ManagedResearchFollowupContext,
+} from "./managed-research-followup-context";
+export type { ManagedResearchFollowupContext } from "./managed-research-followup-context";
 import type { ThesisFollowupContext } from "./managed-thesis-followup";
 import { ManagedPortfolio, type PortfolioDraft } from "./managed-portfolio";
 import { ManagedSessionOwner } from "./managed-session-owner";
@@ -1761,6 +1766,33 @@ export class ManagedWorkspace {
       this[section].getSnapshot().selection === targetSelection
       ? switched
       : null;
+  }
+  researchFollowupContext(
+    selection: ManagedResearchSelection,
+  ): ManagedResearchFollowupContext | null {
+    const owner = this.followupResearch;
+    const operation = this.researchOperation;
+    const navigation = this.navigationRevision;
+    const view = this.viewRevision;
+    return captureResearchFollowupContext({
+      model: this.followups,
+      selection,
+      owner,
+      isVisitCurrent: () =>
+        !this.retired &&
+        this.sessionOwner.getSnapshot().phase === "active" &&
+        this.followupResearch === owner &&
+        this.researchOperation === operation &&
+        this.navigationRevision === navigation &&
+        this.viewRevision === view &&
+        this.state.view === "followups" &&
+        this.state.research?.selection === selection &&
+        this.state.snapshot?.snapshotSha256 === selection.catalogSnapshotSha256,
+      canEditVisit: () =>
+        this.canNavigate() &&
+        this.researchSourceRouteReady(selection) &&
+        this.canUseResearchSource(selection),
+    });
   }
   researchThesisFollowupContext(selection: ManagedResearchSelection) {
     const member = this.getResearchWatchlist(selection).member;

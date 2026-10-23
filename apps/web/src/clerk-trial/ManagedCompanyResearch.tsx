@@ -53,6 +53,7 @@ export function ManagedCompanyResearch({
   onNote,
   onReview,
   thesisFollowup,
+  researchFollowup,
   annualNoteActions,
   annualCashNoteActions,
   annualLiquidityNoteActions,
@@ -88,6 +89,7 @@ export function ManagedCompanyResearch({
   onNote: (note: string, expectedNote?: string) => void;
   onReview: () => void;
   thesisFollowup?: ThesisFollowupContext | undefined;
+  researchFollowup?: ReactNode;
   annualNoteActions: ManagedAnnualNoteActions;
   annualCashNoteActions: ManagedAnnualCashNoteActions;
   annualLiquidityNoteActions: ManagedAnnualLiquidityNoteActions;
@@ -137,6 +139,7 @@ export function ManagedCompanyResearch({
           {listing.exchangeMic}
         </span>
       </p>
+      {researchFollowup}
       <ManagedResearchCompanyNavigation
         navigationPending={navigationPending}
         research={research}

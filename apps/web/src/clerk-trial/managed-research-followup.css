@@ -1,0 +1,30 @@
+.clerk-trial.managed-frame .managed-research-followup {
+  min-width: 0;
+  margin-block: 20px;
+  padding: 16px;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+  background: var(--managed-surface);
+  color: var(--managed-ink);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-research-followup :is(h3, p) {
+  margin-block: 8px 12px;
+}
+.clerk-trial.managed-frame .managed-research-followup-check {
+  white-space: pre-wrap;
+}
+.clerk-trial.managed-frame .managed-research-followup :is(summary, button) {
+  min-height: 44px;
+}
+.clerk-trial.managed-frame .managed-research-followup summary {
+  display: list-item;
+  align-content: center;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame .managed-research-followup-help,
+.clerk-trial.managed-frame .managed-research-followup .managed-followups-help {
+  color: var(--managed-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}

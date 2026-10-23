@@ -1,8 +1,8 @@
+import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
   normalizeResearchFollowupCheck,
-  normalizeResearchFollowupResult,
   type ResearchFollowup,
 } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
@@ -470,34 +470,12 @@ export function ManagedResearchFollowups({
                       }
                     />
                   </label>
-                  <label htmlFor="managed-followup-result">
-                    Your assessment
-                    <textarea
-                      id="managed-followup-result"
-                      rows={4}
-                      readOnly={!editable}
-                      value={selected.result}
-                      aria-invalid={
-                        normalizeResearchFollowupResult(selected.result) ===
-                        null
-                      }
-                      aria-describedby="managed-followup-result-help"
-                      onChange={(event) =>
-                        model.edit(
-                          selected,
-                          "result",
-                          event.currentTarget.value,
-                        )
-                      }
-                    />
-                  </label>
-                  <p
-                    id="managed-followup-result-help"
-                    className="managed-followups-help"
-                  >
-                    Optional. Up to 2,000 characters, one line. Your assessment
-                    is not a verified source fact.
-                  </p>
+                  <ManagedFollowupAssessment
+                    id="managed-followup-result"
+                    value={selected.result}
+                    readOnly={!editable}
+                    onChange={(raw) => model.edit(selected, "result", raw)}
+                  />
                   <div className="trial-actions">
                     {selected.status === "open" ? (
                       <button

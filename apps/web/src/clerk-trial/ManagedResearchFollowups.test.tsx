@@ -1,3 +1,4 @@
+import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -199,6 +200,18 @@ function view(
   ): React.ReactElement<Record<string, unknown>> | undefined {
     for (const child of React.Children.toArray(value)) {
       if (!React.isValidElement<Record<string, unknown>>(child)) continue;
+      if (child.type === ManagedFollowupAssessment) {
+        const match = find(
+          ManagedFollowupAssessment(
+            child.props as React.ComponentProps<
+              typeof ManagedFollowupAssessment
+            >,
+          ),
+          id,
+        );
+        if (match) return match;
+        continue;
+      }
       if (child.props.id === id) return child;
       const match = find(child.props.children as React.ReactNode, id);
       if (match) return match;

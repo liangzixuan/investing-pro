@@ -1,3 +1,4 @@
+import { managedResearchDraftProps } from "./managed-research-draft-props";
 import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import {
@@ -1136,11 +1137,14 @@ export function ManagedWorkspaceScreen({
                     )
                       backToWorkspace();
                   }}
-                  watchlist={workspace.getResearchWatchlist(
+                  {...managedResearchDraftProps(
+                    workspace,
                     discovery.research.selection,
-                  )}
-                  thesisFollowup={workspace.researchThesisFollowupContext(
-                    discovery.research.selection,
+                    {
+                      navigation,
+                      navigationPending,
+                      onReviewFollowups: backToWorkspace,
+                    },
                   )}
                   onAdd={() =>
                     workspace.addResearchToWatchlist(
