@@ -1,3 +1,5 @@
+import { ManagedCompanyReportRevisit } from "./ManagedCompanyReportRevisit";
+import type { CompanyReportRevisitTarget } from "./company-report-revisit";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
@@ -32,6 +34,7 @@ export function ManagedCompanyReport({
   watchlist,
   reportDelivery,
   readReportWatchlist,
+  reportRevisitTarget,
   onSection,
   valuation,
   ...models
@@ -40,6 +43,7 @@ export function ManagedCompanyReport({
   valuation?: ManagedValuationWorkbench;
   watchlist: ResearchWatchlistState;
   reportDelivery?: CompanyReportDeliveryAdapter;
+  reportRevisitTarget?: () => CompanyReportRevisitTarget | null;
   readReportWatchlist?: (
     selection: ManagedResearchSelection,
   ) => ResearchWatchlistState;
@@ -96,6 +100,16 @@ export function ManagedCompanyReport({
       }
       onClear={() => setPreview({ report: null, invalidated: false })}
       onSection={onSection}
+      revisit={
+        reportRevisitTarget && readReportWatchlist ? (
+          <ManagedCompanyReportRevisit
+            {...models}
+            {...(valuation ? { valuation } : {})}
+            readWatchlist={readReportWatchlist}
+            target={reportRevisitTarget}
+          />
+        ) : null
+      }
       download={
         report && current && reportDelivery && readReportWatchlist ? (
           <ManagedCompanyReportDelivery
@@ -129,6 +143,7 @@ export function CompanyReportView({
   current,
   invalidated,
   download,
+  revisit,
   onPrepare,
   onClear,
   onSection,
@@ -139,12 +154,17 @@ export function CompanyReportView({
   current: boolean;
   invalidated: boolean;
   download?: ReactNode;
+  revisit?: ReactNode;
   onPrepare: () => void;
   onClear: () => void;
   onSection: (section: "eod" | "annual" | "filings") => void;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <details className="managed-company-report">
+    <details
+      className="managed-company-report"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary>Research report</summary>
       <p>
         Prepare a read-only view of this company's loaded evidence and your
@@ -227,6 +247,7 @@ export function CompanyReportView({
           <CompanyReportDocument report={report} />
         </section>
       )}
+      {open && revisit}
     </details>
   );
 }

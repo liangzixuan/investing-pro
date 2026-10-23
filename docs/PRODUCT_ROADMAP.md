@@ -80,15 +80,25 @@ for completion and separate Save. Original main checks, the hosted native 72-cas
 gate and complete guarded APK verification passed. Phone installation and sustained
 use remain separate. Existing sources, storage, API and website are unchanged.
 
-The next M4 outcome connects an authored current Portfolio holding to
+Android 1.37.0, code 38, now connects an authored current Portfolio holding to
 [My Watchlist](MANAGED_PORTFOLIO.md#keep-a-current-holding-in-my-watchlist):
 choose one holding, review its complete identity and current target draft,
 append only a missing exact listing, then continue through existing research,
 thesis/Follow-ups and separate Save. Portfolio retains its ledger and independent
 Save. This advances connected portfolio review without inferring a price, return
-or transaction. Implementation and affected verification are in progress.
-Quarterly/TTM data and Portfolio history remain separate work; ticker and metric
-additions alone do not complete this outcome.
+or transaction. Accepted source `ad7d4cff42c6828ada5e81f5e7e532d7c46da57b`, its
+original main checks and native producing jobs, and the guarded APK checks support
+that delivery. Phone installation and acceptance remain owner actions.
+
+The next M3/M4 outcome is [revisit a saved company report](MANAGED_COMPANY_REPORT.md#revisit-a-saved-report).
+It connects an exact-company archived JSON report with a separate current capture,
+whole authored notes and original source provenance. The owner writes a dated
+assessment, previews the complete note, appends once and uses independent
+Watchlist Review and Save. File-reported derived calculations stay unverified and
+do not enter live models. This adds a repeatable thesis review using existing
+sources. Implementation and affected verification are in progress. Quarterly/TTM
+data and Portfolio history remain separate work; ticker and metric additions
+alone do not complete this outcome.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The

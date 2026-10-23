@@ -831,6 +831,21 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("native End collapses the valuation operand caret without changing its raw value",
             exactEditor + " && document.getElementById(" + JSONObject.quote(id) + ").selectionStart===" + after.length() +
             " && document.getElementById(" + JSONObject.quote(id) + ").selectionEnd===" + after.length());
+        String nextSuffix = java.util.Map.of(
+            "dcf-startingUnleveredCashFlowUsd", "dcf-enterpriseToEquityBridgeUsd",
+            "exit-cash", "exit-debt").get(suffix);
+        assertNotNull("Valuation file operand has one exact next native editor", nextSuffix);
+        String nextId = id.substring(0, id.length() - suffix.length()) + nextSuffix;
+        String editor = readFixtureString("JSON.stringify(" + savedValuationEditor() + ")");
+        String resource = readFixtureString("JSON.stringify(" + savedValuationResource() + ")");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_TAB));
+        awaitPage("native Tab leaves the completed operand for its exact next editor without changing any inputs or saved resource",
+            "(() => {const previous=document.getElementById(" + JSONObject.quote(id) + "),next=document.getElementById(" + JSONObject.quote(nextId) + ");" +
+            "return previous instanceof HTMLInputElement && previous.value===" + JSONObject.quote(after) +
+            " && next instanceof HTMLInputElement && next.type==='text' && !next.disabled && document.activeElement===next" +
+            " && next.labels?.length===1 && next.labels[0].control===next && next.labels[0].htmlFor===next.id" +
+            " && JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(editor) +
+            " && JSON.stringify(" + savedValuationResource() + ")===" + JSONObject.quote(resource) + ";})()");
         closeSoftKeyboard();
     }
 
@@ -870,7 +885,24 @@ public class ManagedWorkspaceInstrumentedTest {
         return outputs[0];
     }
 
+    private void finishValuationNativeEditing() throws Exception {
+        String editor = readFixtureString("JSON.stringify(" + savedValuationEditor() + ")");
+        String resource = readFixtureString("JSON.stringify(" + savedValuationResource() + ")");
+        scenario.onActivity(activity -> {
+            WebView page = activity.getBridge().getWebView();
+            assertTrue("Valuation editing ends in the current focused window", page.hasWindowFocus());
+            boolean focusedBefore = page.hasFocus();
+            page.clearFocus();
+            assertTrue("Ending native editing retains the Activity window", page.hasWindowFocus());
+            Log.i("ValuationNativeEditing", "viewFocusBefore=" + focusedBefore + ", viewFocusAfter=" + page.hasFocus());
+        });
+        awaitPage("ending native valuation editing preserves every current operand and the complete saved resource",
+            "JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(editor) +
+            " && JSON.stringify(" + savedValuationResource() + ")===" + JSONObject.quote(resource));
+    }
+
     private void selectInventedValuationInputs(WatchlistTestDocuments.Output output) throws Exception {
+        finishValuationNativeEditing();
         ValuationChooserGeometry.PreparedTouch prepared = ValuationChooserGeometry.await(scenario, PAGE_TIMEOUT_MS);
         try {
             scenario.onActivity(activity -> ValuationChooserTouchAdmission.require(

@@ -1,3 +1,4 @@
+import { createReportRevisitNativeFixture } from "./report-revisit-fixture";
 import { inventedManagedResearchCoverage } from "../../src/clerk-trial/test-managed-research-coverage-fixture";
 import {
   createScreenComparisonNativeFixture,
@@ -2277,6 +2278,13 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "report-revisit",
+    async () =>
+      createReportRevisitNativeFixture(
+        await createSharedFixture("company-snapshot"),
+      ),
+  ],
+  [
     "watchlist-filings-review",
     async () => createFilingsReviewNativeFixture(await createSharedFixture()),
   ],
@@ -2342,7 +2350,8 @@ export async function createFixture(
     | "valuation-price"
     | "saved-valuation"
     | "portfolio-ledger"
-    | "watchlist-filings-review" = "default",
+    | "watchlist-filings-review"
+    | "report-revisit" = "default",
 ): Promise<ManagedNativeFixture> {
   const create = nativeFixtureFactories.get(scenario);
   if (create) return create();

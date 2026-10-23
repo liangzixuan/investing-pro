@@ -32,7 +32,7 @@ session clears its evidence and preview. Clear report preview removes it explici
 
 In a current prepared report, open **Inspect report document (JSON)**. The
 read-only field contains a bounded UTF-8 document with purpose
-`investment.company-research`, schema `4.0.0` in the current development source,
+`investment.company-research`, schema `5.0.0` in the current development source,
 preparation time, exact listing and
 catalog identity. Its authored-research section preserves the draft's full text,
 including whitespace and Unicode. JSON escapes preserve that text when decoded;
@@ -83,9 +83,10 @@ cannot remove that file. The status says **Download requested**, because the
 application cannot establish that the file was saved or opened. There is no
 automatic retry, source read, financial calculation or watchlist Save.
 
-Downloaded copies do not update after later edits. No server-side report store,
-backup, import or restore is added. If the complete document exceeds its limit,
-it is refused without clipping. Report files have their own purpose, filename
+Downloaded copies do not update after later edits. The local
+[report revisit](#revisit-a-saved-report) reads a selected JSON copy separately.
+There is no server-side report store or report-to-draft restore. If the complete
+document exceeds its limit, it is refused without clipping. Report files have their own purpose, filename
 and byte admission. Browser report and saved-watchlist delivery share only the
 temporary Blob/anchor transport and cleanup; their document contracts stay
 separate.
@@ -172,3 +173,53 @@ Browser and Android file actions keep the same prepared-source and authored-note
 scope. Disconnected clients do not receive either delivery capability. Durable
 report storage, verified claim citations, outside opinions and AI analysis remain
 separate M4 work.
+
+## Revisit a saved report
+
+The development source adds an initially closed **Revisit a saved report**
+disclosure inside **Research report**. Select a format 5 JSON report for the exact
+current company. The file remains private to this visit. Closing either report
+disclosure, leaving the company or retiring the session clears it.
+
+The reader checks the advertised and actual UTF-8 byte counts, the complete
+current envelope, duplicate decoded JSON keys, Unicode, listing identity and CIK.
+It reuses the source packet validators, including Annual canonical hashes.
+Unsupported, malformed, foreign-company and oversized files are refused without
+changing a draft or loading a source. The complete file ceiling is 2,850,816 bytes.
+An older catalog snapshot can remain visible beside the current one when every
+listing field and CIK still match. This does not establish file authenticity.
+
+Review the whole archived note and its original report preparation time. An
+empty note and a company outside the Watchlist remain distinct. Price keeps its
+original raw-close window and request/completion times. Annual keeps its cutoff,
+canonical generation, target and source capture references. Filings keeps its
+window, original times, accession identities and source references. Loaded,
+missing, retained-previous and failed-attempt states remain visible separately.
+URLs and HTML-looking text from the file remain plain text.
+
+Use the existing explicit source controls, then select **Capture current report
+for comparison**. This requires the same admitted evidence or calculated
+valuation and verified Watchlist draft as normal report preparation. It makes no
+new request. The current full note and source provenance appear beside the
+archive, with each capture's own times. No financial delta or investment verdict
+is inferred. File-reported Annual derived views, Price studies and valuation
+fields stay in the **Unverified file appendix**; they do not enter live models,
+calculations or current eligibility decisions.
+
+Write **Your comparison assessment**, then select **Preview comparison note**.
+The preview contains the whole current destination note followed by the dated
+authored excerpt and capture references. The complete single-line note must fit
+the existing 2,000-character limit. Invalid or oversized text is refused as a
+whole, without clipping. Add a company to My Watchlist first if it has no note
+destination.
+
+**Append comparison to note draft** applies the preview once. It preserves other
+notes and listing order. Use the existing Watchlist Review and Save separately;
+the file does not restore or overwrite a saved draft. A source replacement,
+whole-draft revision, catalog, company visit, navigation, recovery or session
+change invalidates the captured comparison. An edit followed by identical-text
+restoration does not revive it. Capture and preview again after a change.
+
+This workflow is a source candidate. Hosted native acceptance, source merge and
+Android delivery remain separate from local tests. The live website and API are
+unchanged.

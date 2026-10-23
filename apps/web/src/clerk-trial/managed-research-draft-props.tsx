@@ -13,9 +13,12 @@ export function managedResearchDraftProps(
   onReviewFollowups: () => void,
 ): Pick<
   ComponentProps<typeof ManagedCompanyResearch>,
-  "watchlist" | "thesisFollowup" | "researchFollowup"
+  "watchlist" | "thesisFollowup" | "researchFollowup" | "reportRevisitTarget"
 > {
+  const routeActive = () => !navigation?.invalid && !navigation?.isPending();
   return {
+    reportRevisitTarget: () =>
+      workspace.captureCompanyReportRevisitTarget(selection, routeActive),
     watchlist: workspace.getResearchWatchlist(selection),
     thesisFollowup: workspace.researchThesisFollowupContext(selection),
     researchFollowup: (
@@ -24,7 +27,7 @@ export function managedResearchDraftProps(
         workspace={workspace}
         selection={selection}
         navigationPending={navigation?.pending ?? false}
-        routeActive={() => !navigation?.invalid && !navigation?.isPending()}
+        routeActive={routeActive}
         onReview={onReviewFollowups}
       />
     ),

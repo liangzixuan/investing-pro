@@ -1,3 +1,4 @@
+import { captureCompanyReportRevisitTargetContext } from "./company-report-revisit-target";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
   MANAGED_RESEARCH_COVERAGE,
@@ -1943,6 +1944,28 @@ export class ManagedWorkspace {
       canEdit: member !== null,
       reason: null,
     };
+  }
+  /** Capture the complete draft and visit before a local report review action. */
+  captureCompanyReportRevisitTarget(
+    selection: ManagedResearchSelection,
+    routeActive: () => boolean,
+  ) {
+    return captureCompanyReportRevisitTargetContext({
+      selection,
+      routeActive,
+      watchlist: () => this.getResearchWatchlist(selection),
+      saved: () => this.coordinator.getSnapshot(),
+      session: () => this.sessionOwner.getSnapshot(),
+      visit: () => this.state.research,
+      lifetime: () => ({
+        retired: this.retired,
+        navigationBlocked: !this.researchSourceRouteReady(selection),
+        operation: this.researchOperation,
+        navigation: this.navigationRevision,
+      }),
+      note: (note, expectedNote) =>
+        this.noteResearch(selection, note, expectedNote),
+    });
   }
   addResearchToWatchlist(selection: ManagedResearchSelection) {
     if (!this.getResearchWatchlist(selection).canAdd) return;
