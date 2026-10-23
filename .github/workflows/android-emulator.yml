@@ -319,6 +319,13 @@ jobs:
           ))
           if len(required) != 72:
               raise SystemExit("The contextual assessment journey must extend all 71 existing native tests.")
+          # Preserve every original72 requirement and add the holding handoff.
+          required.add((
+              "local.investment.personal.ManagedWorkspaceInstrumentedTest",
+              "portfolioHoldingReviewAppendsWatchlistAndKeepsLedgerThroughBack",
+          ))
+          if len(required) != 73:
+              raise SystemExit("The holding Watchlist journey must extend all 72 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

@@ -1329,6 +1329,9 @@ export function ManagedWorkspaceScreen({
                 />
               )}
               <ManagedPortfolioEntry
+                onReviewWatchlist={() => {
+                  setView("watchlist");
+                }}
                 workspace={workspace}
                 discovery={discovery}
                 navigationPending={navigationPending}

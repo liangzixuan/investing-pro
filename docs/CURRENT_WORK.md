@@ -45,11 +45,26 @@ re-signing. The original failure remains recorded. Phone installation, file
 picker and Back acceptance, and sustained use remain separate owner actions.
 The API, website and earlier APKs remain unchanged.
 
-The next M3/M4 source increment connects an exact Follow-ups company visit to
-its full question, due date and same-draft assessment beside explicit source
-actions. Review follow-ups returns to the existing editor for completion and
-independent Save. Implementation and affected verification are in progress;
-no new browser, native execution or physical acceptance is claimed yet.
+Android 1.36.0, code 37, is provided locally from accepted source
+`d6cd6a8b2e350d0a1c888c3db4d375f10f1783e6` with the existing production signer.
+It adds [assessment beside company research](MANAGED_RESEARCH_FOLLOWUPS.md#assess-a-check-during-company-research):
+open an exact due check, retain its full question and UTC date beside explicit
+evidence actions, write in the same Follow-ups draft, then return for completion
+and independent Save. All original main checks and the hosted native 72-case gate
+passed. The guarded offline build, final source preservation and complete APK
+asset, signature, manifest and native policy checks passed. A preparation checker
+initially treated valid parallel dependency versions as duplicate names; a reviewed
+retained-stage correction kept all entries and continued unrun steps. Original
+failure evidence remains. Phone installation, keyboard/Back acceptance and
+sustained use remain owner actions. The API, website and earlier APKs are unchanged.
+
+The next M4 source increment connects an authored current Portfolio holding to
+[My Watchlist research](MANAGED_PORTFOLIO.md#keep-a-current-holding-in-my-watchlist).
+Review the exact identity and current target draft, append only a missing listing
+with an empty note, then use existing research and separate Watchlist Save.
+Portfolio keeps its ledger and independent Save. Implementation and affected
+verification are in progress; no new source request, storage or browser acceptance
+is claimed.
 
 Android 1.34.0, code 35, is provided locally from accepted source
 `241b0e4d61c487a561399d403b78be62443861ad` with the existing production signer.

@@ -72,15 +72,23 @@ The original required main checks, hosted native 71-case gate and complete APK
 verification passed. Phone file/picker/Back acceptance and sustained use remain
 separate. The current six fields, Annual cohort, API and website are unchanged.
 
-The next M3/M4 increment is [assessment during company research](MANAGED_RESEARCH_FOLLOWUPS.md#assess-a-check-during-company-research).
-Markets due review or Follow-ups opens the exact company with its full authored
-question and due date beside explicit evidence actions. Record the assessment
-in the existing draft, return to full Follow-ups, then complete and Save
-explicitly. This connects the daily check to evidence and a persisted authored
-outcome without adding a private store or background request. Implementation
-and affected verification are in progress. Quarterly/TTM data and Portfolio
-history remain separate work; ticker and metric additions alone do not complete
-this outcome.
+Android 1.36.0, code 37, provides [assessment during company research](MANAGED_RESEARCH_FOLLOWUPS.md#assess-a-check-during-company-research)
+from accepted source `d6cd6a8b2e350d0a1c888c3db4d375f10f1783e6`.
+An exact Follow-ups visit retains its full question and UTC due date beside
+explicit evidence actions. The same-draft assessment returns to full Follow-ups
+for completion and separate Save. Original main checks, the hosted native 72-case
+gate and complete guarded APK verification passed. Phone installation and sustained
+use remain separate. Existing sources, storage, API and website are unchanged.
+
+The next M4 outcome connects an authored current Portfolio holding to
+[My Watchlist](MANAGED_PORTFOLIO.md#keep-a-current-holding-in-my-watchlist):
+choose one holding, review its complete identity and current target draft,
+append only a missing exact listing, then continue through existing research,
+thesis/Follow-ups and separate Save. Portfolio retains its ledger and independent
+Save. This advances connected portfolio review without inferring a price, return
+or transaction. Implementation and affected verification are in progress.
+Quarterly/TTM data and Portfolio history remain separate work; ticker and metric
+additions alone do not complete this outcome.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The

@@ -13,6 +13,7 @@ import {
   PortfolioActivityRows as ActivityRows,
   PortfolioLedgerDetails,
 } from "./ManagedPortfolioLedgerDetails";
+import { ManagedPortfolioWatchlist } from "./ManagedPortfolioWatchlist";
 import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 
@@ -174,12 +175,14 @@ export function ManagedPortfolio({
   workspace,
   navigationPending,
   onResearch,
+  onReviewWatchlist,
   draftFileScope,
   draftFileDelivery,
   draftFileRouteActive = () => true,
 }: {
   workspace: ManagedWorkspace;
   navigationPending: boolean;
+  onReviewWatchlist: () => void;
   draftFileScope?: Promise<string> | undefined;
   draftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter | undefined;
   draftFileRouteActive?: () => boolean;
@@ -486,6 +489,12 @@ export function ManagedPortfolio({
               </p>
             )}
           </section>
+          <ManagedPortfolioWatchlist
+            workspace={workspace}
+            navigationPending={navigationPending}
+            routeActive={draftFileRouteActive}
+            onReviewWatchlist={onReviewWatchlist}
+          />
           <section aria-label="Portfolio identities">
             <h3>Registered listings</h3>
             <p>

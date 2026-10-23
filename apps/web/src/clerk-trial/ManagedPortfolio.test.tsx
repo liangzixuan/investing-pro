@@ -220,6 +220,7 @@ function fixture(initial: ManagedPortfolioPayload | null = null) {
       workspace,
       navigationPending,
       onResearch: research,
+      onReviewWatchlist: () => workspace.setView("watchlist"),
       ...draftFiles,
     });
     hooks.direct = false;

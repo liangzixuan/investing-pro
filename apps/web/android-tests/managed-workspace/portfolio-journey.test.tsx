@@ -1,3 +1,8 @@
+import {
+  preparePortfolioWatchlist,
+  isPortfolioWatchlistCurrent,
+  applyPortfolioWatchlist,
+} from "../../src/clerk-trial/managed-portfolio-watchlist";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ManagedPortfolio } from "../../src/clerk-trial/ManagedPortfolio";
@@ -130,6 +135,7 @@ it("authors the exact FIFO ledger, preserves both other drafts, returns from res
     <ManagedPortfolio
       workspace={f.workspace}
       navigationPending={false}
+      onReviewWatchlist={() => f.workspace.setView("watchlist")}
       onResearch={() => {
         throw new Error("No render-time research action");
       }}
@@ -217,3 +223,111 @@ it("retains a dirty ledger on conflict and fences a captured reply after whole-s
     commits: 0,
   });
 });
+
+async function prepareHoldingTransfer() {
+  const f = await setup();
+  f.workspace.remove("listing-zero");
+  f.workspace.note("listing-one", "Holding research list note");
+  const target = f.workspace.coordinator.getSnapshot().draft!;
+  await author(f);
+  exact(f.model);
+  await f.model.reviewCatalog();
+  expect(f.model.getSnapshot().review?.entries[0]?.status).toBe("current");
+  f.model.applyReview();
+  return { ...f, target, ledger: current(f.model) };
+}
+function assertHoldingTransferCounts(
+  f: Awaited<ReturnType<typeof setup>>,
+  saves: number,
+) {
+  expect(f.fixture.getSnapshot()).toMatchObject({
+    load: 1,
+    status: 1,
+    resolve: 2,
+    save: saves,
+    eod: 0,
+    annual: 0,
+    filings: 0,
+    marketsEod: 0,
+    calendar: 0,
+    fed: 0,
+    token: 0,
+    signOut: 0,
+  });
+  expect(f.controls.getSnapshot()).toMatchObject({
+    load: 1,
+    save: 0,
+    commits: 0,
+  });
+  expect(f.fixture.followups!.getSnapshot().save).toBe(0);
+}
+it("reviews one exact current holding, saves only the explicit Watchlist draft and returns from research with the authored ledger intact", async () => {
+  const f = await prepareHoldingTransfer();
+  const before = f.fixture.getSnapshot();
+  const prepared = preparePortfolioWatchlist(f.workspace, "listing-zero");
+  expect(prepared.reason).toBe("");
+  expect(prepared.preview).toEqual({
+    listing: f.ledger.ledger!.identities[0],
+    status: "add",
+    shares: "1",
+    confirmedOn: "2026-10-03",
+  });
+  const preview = prepared.preview!;
+  expect(isPortfolioWatchlistCurrent(f.workspace, preview)).toBe(true);
+  expect(f.fixture.getSnapshot()).toBe(before);
+  expect(f.workspace.coordinator.getSnapshot().draft).toBe(f.target);
+  expect(applyPortfolioWatchlist(f.workspace, preview).added).toBe(true);
+  expect(applyPortfolioWatchlist(f.workspace, preview).added).toBe(false);
+  const combined = {
+    ...f.target,
+    memberships: [...f.target.memberships, { ...preview.listing, note: "" }],
+  };
+  expect(f.workspace.coordinator.getSnapshot().draft).toEqual(combined);
+  expect(current(f.model)).toBe(f.ledger);
+  assertHoldingTransferCounts(f, 0);
+  assertHoldingTransferMarkup(f, before);
+  f.workspace.setView("watchlist");
+  await f.workspace.coordinator.save();
+  expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
+    baseVersion: 2,
+    dirty: false,
+    draft: combined,
+  });
+  assertHoldingTransferCounts(f, 1);
+  f.workspace.setView("portfolio");
+  f.workspace.openPortfolioResearch(f.ledger, f.ledger.ledger!.identities[0]!);
+  expect(f.workspace.getSnapshot().research?.selection.listing).toEqual(
+    preview.listing,
+  );
+  expect(f.workspace.getSnapshot().research?.selection.origin).toBe(
+    "portfolio",
+  );
+  f.workspace.closeResearch();
+  expect(f.workspace.getSnapshot().view).toBe("portfolio");
+  expect(current(f.model)).toBe(f.ledger);
+  expect(f.workspace.coordinator.getSnapshot().draft).toEqual(combined);
+  exact(f.model);
+  assertHoldingTransferCounts(f, 1);
+});
+
+function assertHoldingTransferMarkup(
+  f: Awaited<ReturnType<typeof prepareHoldingTransfer>>,
+  before: ReturnType<typeof f.fixture.getSnapshot>,
+) {
+  const markup = renderToStaticMarkup(
+    <ManagedPortfolio
+      workspace={f.workspace}
+      navigationPending={false}
+      onReviewWatchlist={() => f.workspace.setView("watchlist")}
+      onResearch={() => {
+        throw new Error("No render-time research action");
+      }}
+    />,
+  );
+  expect(markup).toContain(
+    'aria-label="Portfolio holding research list"><details><summary>Keep a holding in My Watchlist</summary>',
+  );
+  expect(markup).toContain("Review holding for My Watchlist");
+  expect(markup).toContain("Review and save in My Watchlist");
+  expect(f.fixture.getSnapshot()).toBe(before);
+}

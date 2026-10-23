@@ -39,6 +39,34 @@ registered in this ledger; they do not cause source requests. Split entries use
 the explicit manual split controls described in
 [split reconciliation](PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md).
 
+## Keep a current holding in My Watchlist
+
+The current source increment connects one authored current holding to the
+existing research list. Open **Keep a holding in My Watchlist**, choose a current
+holding, then select **Review holding for My Watchlist**. Review its full listing,
+share class and venue, authored shares and confirmation date. Portfolio identities
+must have their existing current-catalog review and approval; unapplied forms or
+unresolved saves pause this action.
+
+**Add holding to Watchlist draft** appends a missing exact listing with an empty
+note. An existing entry keeps its note and position. A changed identity, invalid
+or oversized complete draft, closed holding, stale catalog, route, draft or
+session refuses the addition. The action does not copy shares, cost basis or
+financial values to the Watchlist, and makes no source request or online Save.
+
+Use **Review and save in My Watchlist** to continue through the existing editor,
+research and separate Save. Portfolio keeps its ledger and independent Save.
+If My Watchlist has not been loaded, open it and load its latest version before
+returning to review the holding. Conflicts and uncertain saves use the existing
+recovery controls. Navigation and session changes invalidate retained callbacks.
+
+The [IBKR instrument-addition guide](https://www.ibkrguides.com/ibkrdesktop/watchlist-add-instruments.htm)
+and [Infront Watchlist guide](https://infront-advisory-solution.helpcenter.infront.co/en/as/latest/add-securities-to-watchlist)
+provide established patterns for explicit instrument choice and appending to a
+research list. Investment adds its existing complete identity/draft review and
+separate Save. No upstream code or assets are copied. Source and additive native
+verification are in progress; no browser or phone acceptance is claimed.
+
 ## Exact amounts and unknown values
 
 The managed boundary accepts the existing schema-3 ledger. It reuses the exact

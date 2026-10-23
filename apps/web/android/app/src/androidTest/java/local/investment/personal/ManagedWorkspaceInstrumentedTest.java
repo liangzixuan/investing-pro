@@ -117,7 +117,8 @@ public class ManagedWorkspaceInstrumentedTest {
         "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file",
         "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation",
         "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen",
-        "followupAssessmentInCompanyReturnsToReviewAndSave", "research-followups");
+        "followupAssessmentInCompanyReturnsToReviewAndSave", "research-followups",
+        "portfolioHoldingReviewAppendsWatchlistAndKeepsLedgerThroughBack", "portfolio-ledger");
     private static final String ANNUAL_COMPARISON_NOTE =
         "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
         "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
@@ -974,6 +975,112 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertSavedValuationIsolation(String watchlist) throws Exception {
         awaitPage("saved assumptions preserve the entire independent note draft and exact source/resource counts", "(() => { const d=" + DIAGNOSTICS + ",s=" + savedValuationStore() + ";return JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist) + " && s.counts.load===2 && s.counts.save===1 && s.counts.resolve===1 && s.saved.payload.entries.length===1 && JSON.stringify(s.saved.payload.entries[0])===JSON.stringify(s.expected) && d.load===1 && d.status===1 && d.save===0 && d.annual===0 && d.eod===0 && d.filings===0 && d.marketsEod===0 && d.calendar===0 && d.fed===0 && d.search===0 && d.resolve===0 && d.token===0 && d.signOut===0; })()");
+    }
+
+    @Test
+    public void portfolioHoldingReviewAppendsWatchlistAndKeepsLedgerThroughBack() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String ledger = authorPortfolioHoldingHandoff();
+        reviewPortfolioHoldingIdentity();
+        assertPortfolioHoldingRequests(0, 1);
+        clickPortfolioButton("Add holding to Watchlist draft");
+        assertPortfolioHoldingTarget(1, true);
+        awaitPage("holding review is consumed after the one local append",
+            "document.querySelector('[aria-label=\"Holding addition review\"]') === null");
+        assertPortfolioHoldingRequests(0, 1);
+        clickPortfolioButton("Review and save in My Watchlist");
+        awaitPage("the explicit handoff opens My Watchlist without saving",
+            "document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'");
+        click("#managed-unsaved-review-summary");
+        awaitPage("the complete separate Watchlist review exposes both notes and current order",
+            "document.querySelector('#managed-unsaved-review')?.open === true" +
+            " && document.querySelector('#managed-unsaved-review').textContent.includes('Holding research list note')" +
+            " && document.querySelector('#managed-unsaved-review [data-managed-review-listing-id=listing-zero]')?.textContent.includes('No note')");
+        assertPortfolioHoldingRequests(0, 1);
+        clickWatchlistAction("Save watchlist");
+        assertPortfolioHoldingTarget(2, false);
+        assertPortfolioHoldingRequests(1, 1);
+        clickWatchlistAction("Load saved watchlist");
+        awaitPage("explicit Watchlist reload finishes before returning to Portfolio",
+            DIAGNOSTICS + ".load === 2 && " + DRAFT + ".phase === 'idle'");
+        assertPortfolioHoldingTarget(2, false);
+        returnFromPortfolioHoldingResearch(ledger);
+        assertPortfolioHoldingRequests(1, 2);
+        assertEquals("Holding handoff and native Back preserve the mounted document", origin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    private String authorPortfolioHoldingHandoff() throws Exception {
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-1", "Holding research list note");
+        click("button[aria-label='Remove ZERO']");
+        awaitPage("the missing target leaves the independent ONE note unchanged",
+            DRAFT + ".memberships.length === 1 && " + DRAFT + ".memberships[0].listingId === 'listing-one'" +
+            " && " + DRAFT + ".memberships[0].note === 'Holding research list note'");
+        openPortfolioView();
+        click("#managed-portfolio-load");
+        awaitPage("Portfolio latest version is loaded only explicitly", PORTFOLIO + ".load === 1 && " + PORTFOLIO_DRAFT + ".baseVersion === 0");
+        typeIntoInput("managed-portfolio-opening-date", "2026-10-01");
+        typeIntoInput("managed-portfolio-opening-cash", "1000.00");
+        click("#managed-portfolio-start");
+        typeIntoInput("managed-portfolio-search", "ZERO");
+        clickPortfolioButton("Search catalog");
+        awaitPage("the explicit catalog search exposes Register ZERO", DIAGNOSTICS + ".search === 1 && [...document.querySelectorAll('.managed-portfolio button')].some(e => e.textContent === 'Register ZERO' && !e.disabled)");
+        clickPortfolioButton("Register ZERO");
+        awaitPage("registration admits only the exact invented ZERO listing", PORTFOLIO_DRAFT + ".ledger?.identities.length === 1 && " + DIAGNOSTICS + ".resolve === 1");
+        addPortfolioTrade("buy", "Buy", "2.000000", "200.00");
+        addPortfolioTrade("sell", "Sell", "1.000000", "150.00");
+        assertPortfolioFifo(0, true);
+        click("#managed-portfolio-review-identities");
+        awaitPage("explicit catalog identity review is required before holding transfer", DIAGNOSTICS + ".resolve === 2 && [...document.querySelectorAll('.managed-portfolio button')].some(e => e.textContent === 'Apply reviewed identities' && !e.disabled)");
+        clickPortfolioButton("Apply reviewed identities");
+        awaitPage("the accepted identity review leaves the authored ledger local", "document.querySelector('.managed-portfolio [role=status]')?.textContent.includes('Portfolio identities reviewed') && " + PORTFOLIO + ".save === 0");
+        return readFixtureString("JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger)");
+    }
+
+    private void reviewPortfolioHoldingIdentity() throws Exception {
+        String section = "section[aria-label='Portfolio holding research list']";
+        awaitPage("holding transfer starts as a closed disclosure with no implicit Watchlist write",
+            "document.querySelector(\"" + section + " > details\")?.open === false && " + DIAGNOSTICS + ".save === 0");
+        click(section + " > details > summary");
+        chooseNativeSelectOption(section + " select", "listing-zero", "ZERO · Class A · XNAS");
+        String before = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        clickPortfolioButton("Review holding for My Watchlist");
+        awaitPage("holding review presents all eleven identity fields and authored shares before mutation",
+            "(() => { const r = document.querySelector('[aria-label=\"Holding addition review\"]');" +
+            " const fields = Object.fromEntries([...(r?.querySelectorAll('dl > div') ?? [])].map(e => [e.querySelector('dt')?.textContent,e.querySelector('dd')?.textContent]));" +
+            " return r?.textContent.includes('Authored shares: 1.') && r.textContent.includes('Append this exact listing with an empty note.')" +
+            " && JSON.stringify(fields) === JSON.stringify({Country:'US','Exchange MIC':'XNAS','Instrument type':'common_stock','Issuer ID':'issuer-zero','Company name':'Zero Company','Listing ID':'listing-zero','Security ID':'security-zero','Security name':'Zero Class A','Share class ID':'class-zero','Share class name':'Class A',Ticker:'ZERO'})" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(before) + "; })()");
+    }
+
+    private void assertPortfolioHoldingTarget(int version, boolean dirty) throws Exception {
+        awaitPage("the complete ordered Watchlist retains ONE and appends blank ZERO at version " + version,
+            "JSON.stringify(" + DRAFT + ".memberships) === JSON.stringify([{listingId:'listing-one',symbol:'ONE',note:'Holding research list note'},{listingId:'listing-zero',symbol:'ZERO',note:''}])" +
+            " && " + DRAFT + ".baseVersion === " + version + " && " + DRAFT + ".dirty === " + dirty);
+    }
+
+    private void assertPortfolioHoldingRequests(int saves, int loads) throws Exception {
+        awaitPage("only explicit Portfolio identity reads and the separate Watchlist save are counted",
+            "(() => { const d = " + DIAGNOSTICS + ", p = " + PORTFOLIO + ", f = " + FOLLOWUPS + ";" +
+            " return d.load === " + loads + " && d.save === " + saves + " && d.status === 1 && d.search === 1 && d.resolve === 2" +
+            " && d.eod === 0 && d.annual === 0 && d.filings === 0 && d.marketsEod === 0 && d.calendar === 0 && d.fed === 0 && d.token === 0 && d.signOut === 0" +
+            " && p.load === 1 && p.save === 0 && p.commits === 0 && f.load === 0 && f.save === 0; })()");
+    }
+
+    private void returnFromPortfolioHoldingResearch(String ledger) throws Exception {
+        openPortfolioView();
+        awaitPage("saved Watchlist handoff leaves the complete authored ledger intact", "JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger) === " + JSONObject.quote(ledger));
+        assertPortfolioFifo(0, true);
+        clickPortfolioButton("Research ZERO");
+        assertCompanyHistory("listing-zero", "price", false);
+        awaitPage("Portfolio holding opens its exact company without a source load", "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-research-note')?.value === ''");
+        assertPortfolioHoldingRequests(1, 2);
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("native Back retains the authored ledger and returns focus to the holding's research action", "document.querySelector('.managed-company-visit') === null && document.activeElement?.textContent === 'Research ZERO' && JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger) === " + JSONObject.quote(ledger));
+        assertReturnedRootHistory("listing-zero", "price");
+        assertPortfolioHoldingTarget(2, false);
     }
 
     @Test

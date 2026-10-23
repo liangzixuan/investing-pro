@@ -1,5 +1,8 @@
 import {
   encodePortfolioPayload,
+  encodeMainWatchlistPayload,
+  parseManagedWatchlistCommand,
+  type ManagedWatchlistDto,
   parseManagedPortfolio,
   parseManagedPortfolioCommand,
   parseManagedPortfolioReceipt,
@@ -279,9 +282,14 @@ export function createPortfolioNativeFixture(
   let snapshot = base.getSnapshot();
   const listeners = new Set<() => void>();
   const publish = () => {
-    snapshot = { ...base.getSnapshot(), resolve: resolves };
+    snapshot = {
+      ...base.getSnapshot(),
+      resolve: resolves,
+      save: base.getSnapshot().save + watchlist.saves(),
+    };
     for (const listener of listeners) listener();
   };
+  const watchlist = createHoldingWatchlist(base, publish);
   base.subscribe(publish);
   const originalNextSession = portfolio.nextSession.bind(portfolio);
   const wrapSession = (
@@ -309,6 +317,8 @@ export function createPortfolioNativeFixture(
     api: {
       ...base.api,
       ...portfolio.api,
+      load: watchlist.load,
+      save: watchlist.save,
       status: async (signal) => {
         const result = await base.api.status(signal);
         catalog = result.snapshot;
@@ -356,4 +366,58 @@ export function createPortfolioNativeFixture(
       };
     },
   };
+}
+
+function holdingWatchlistCommand(
+  original: ManagedWatchlistDto | null,
+  input: Parameters<ManagedApi["save"]>[0],
+) {
+  const command = parseManagedWatchlistCommand(input);
+  if (!command) return null;
+  if (!original) return null;
+  if (original.version !== 1) return null;
+  const members = original.payload.memberships;
+  if (
+    members.map((member) => member.listingId).join("|") !==
+    "listing-zero|listing-one"
+  )
+    return null;
+  if (command.expectedVersion !== 1) return null;
+  const expected = {
+    ...original.payload,
+    memberships: [
+      { ...members[1]!, note: "Holding research list note" },
+      { ...members[0]!, note: "" },
+    ],
+  };
+  return encodeMainWatchlistPayload(command.payload) ===
+    encodeMainWatchlistPayload(expected)
+    ? command
+    : null;
+}
+/** Admit only the declared native holding handoff; every other Watchlist write keeps the original refusal. */
+function createHoldingWatchlist(
+  base: SharedNativeFixture,
+  publish: () => void,
+) {
+  let original: ManagedWatchlistDto | null = null;
+  let stored: ManagedWatchlistDto | null = null;
+  let saves = 0;
+  const load: ManagedApi["load"] = async (signal) => {
+    const result = await base.api.load(signal);
+    original ??= structuredClone(result);
+    return structuredClone(stored ?? result);
+  };
+  const save: ManagedApi["save"] = (input, signal) => {
+    const command = holdingWatchlistCommand(original, input);
+    if (signal.aborted) return base.api.save(input, signal);
+    if (saves !== 0) return base.api.save(input, signal);
+    if (base.getSnapshot().save !== 0) return base.api.save(input, signal);
+    if (!command) return base.api.save(input, signal);
+    stored = { version: 2, payload: structuredClone(command.payload) };
+    saves += 1;
+    publish();
+    return Promise.resolve({ ...structuredClone(stored), replayed: false });
+  };
+  return { load, save, saves: () => saves };
 }
