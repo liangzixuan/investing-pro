@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 /** Finite failure-only timings; never supplies readiness or dispatch decisions. */
 final class PickerCancelObservation {
     enum Stage {
-        CANCEL_INITIAL_ROOT, CANCEL_INITIAL_SURFACE, CANCEL_STABILITY,
+        CANCEL_INITIAL_ROOT, CANCEL_INITIAL_SURFACE, CANCEL_STABILITY, CANCEL_ROOT_ZERO,
         CANCEL_FRESH_ROOT, CANCEL_FRESH_SURFACE, CANCEL_FINAL_ROOT,
         CANCEL_FINAL_SURFACE, CANCEL_IME_ROOT, CANCEL_IME_SURFACE,
         RETURN_SAMPLE, BEFORE_CACHE, BEFORE_WINDOWS, BEFORE_METADATA,

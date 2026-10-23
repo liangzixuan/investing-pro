@@ -51,8 +51,8 @@ final class WatchlistSystemPicker {
                 awaitImeDismissed(initial, deadline);
                 awaitCancelSurface(deadline, initial.pickerId);
             }
-            AccessibilityNodeInfo root = observation.measure(PickerCancelObservation.Stage.CANCEL_FINAL_ROOT, automation::getRootInActiveWindow);
-            CancelSurface current = observation.measure(PickerCancelObservation.Stage.CANCEL_FINAL_SURFACE, () -> readCancelSurface(root, initial.pickerId));
+            CancelRoot root = observation.measure(PickerCancelObservation.Stage.CANCEL_FINAL_ROOT, () -> currentCancelRoot(deadline));
+            CancelSurface current = observation.measure(PickerCancelObservation.Stage.CANCEL_FINAL_SURFACE, () -> readCurrentCancelSurface(root, initial.pickerId));
             assertNotNull("Fresh exact system Save picker must remain unambiguous before Cancel", current);
             assertEquals("A late keyboard must not consume picker cancellation", -1, current.imeId);
             dispatchCancelBack(current, deadline, "picker-cancel");
@@ -83,23 +83,57 @@ final class WatchlistSystemPicker {
     }
 
     private CancelSurface stableCancelSurface(long deadline, int expectedPickerId) {
-        AccessibilityNodeInfo root = observation.measure(PickerCancelObservation.Stage.CANCEL_INITIAL_ROOT, automation::getRootInActiveWindow);
-        CancelSurface before = observation.measure(PickerCancelObservation.Stage.CANCEL_INITIAL_SURFACE, () -> readCancelSurface(root, expectedPickerId));
+        CancelRoot root = observation.measure(PickerCancelObservation.Stage.CANCEL_INITIAL_ROOT, () -> currentCancelRoot(deadline));
+        CancelSurface before = observation.measure(PickerCancelObservation.Stage.CANCEL_INITIAL_SURFACE, () -> readCurrentCancelSurface(root, expectedPickerId));
         if (before == null) return null;
         long remaining = deadline - SystemClock.uptimeMillis();
         if (remaining <= 0) return null;
         StableResult stable = observation.measure(PickerCancelObservation.Stage.CANCEL_STABILITY,
-            () -> AccessibilityNodeInfoExt.waitForStable(root, remaining, 500, 50, false));
+            () -> AccessibilityNodeInfoExt.waitForStable(root.node, remaining, 500, 50, false));
         if (stable.isTimeout()) return null;
-        AccessibilityNodeInfo current = observation.measure(PickerCancelObservation.Stage.CANCEL_FRESH_ROOT, automation::getRootInActiveWindow);
-        CancelSurface after = observation.measure(PickerCancelObservation.Stage.CANCEL_FRESH_SURFACE, () -> readCancelSurface(current, before.pickerId));
-        if (!root.equals(current)) return null;
+        CancelRoot current = observation.measure(PickerCancelObservation.Stage.CANCEL_FRESH_ROOT, () -> currentCancelRoot(deadline));
+        CancelSurface after = observation.measure(PickerCancelObservation.Stage.CANCEL_FRESH_SURFACE, () -> readCurrentCancelSurface(current, before.pickerId));
+        if (current == null || !root.node.equals(current.node)) return null;
         return after;
     }
 
-    private CancelSurface readCancelSurface(int expectedPickerId) {
-        AccessibilityNodeInfo root = observation.measure(PickerCancelObservation.Stage.CANCEL_IME_ROOT, automation::getRootInActiveWindow);
-        return observation.measure(PickerCancelObservation.Stage.CANCEL_IME_SURFACE, () -> readCancelSurface(root, expectedPickerId));
+    private CancelSurface readCancelSurface(int expectedPickerId, long deadline) {
+        CancelRoot root = observation.measure(PickerCancelObservation.Stage.CANCEL_IME_ROOT, () -> currentCancelRoot(deadline));
+        return observation.measure(PickerCancelObservation.Stage.CANCEL_IME_SURFACE, () -> readCurrentCancelSurface(root, expectedPickerId));
+    }
+
+    private static final class CancelRoot {
+        final AccessibilityNodeInfo node;
+        final int windowId;
+        final long deadline;
+
+        CancelRoot(AccessibilityNodeInfo node, int windowId, long deadline) {
+            this.node = node;
+            this.windowId = windowId;
+            this.deadline = deadline;
+        }
+    }
+
+    /** Root-only acquisition; original full surface and hierarchy checks still apply. */
+    private CancelRoot currentCancelRoot(long deadline) {
+        if (SystemClock.uptimeMillis() >= deadline) return null;
+        AccessibilityWindowInfo selected = freshCurrentApplicationWindow(PickerCancelObservation.Selection.BEFORE);
+        if (SystemClock.uptimeMillis() >= deadline || selected == null) return null;
+        AccessibilityNodeInfo root = observation.measure(PickerCancelObservation.Stage.CANCEL_ROOT_ZERO, () -> selected.getRoot(0));
+        if (SystemClock.uptimeMillis() >= deadline) return null;
+        return new CancelRoot(root, selected.getId(), deadline);
+    }
+
+    /** Join the original admitted picker surface to fresh explicit-window evidence. */
+    private CancelSurface readCurrentCancelSurface(CancelRoot root, int expectedPickerId) {
+        if (root == null || SystemClock.uptimeMillis() >= root.deadline) return null;
+        CancelSurface surface = readCancelSurface(root.node, expectedPickerId);
+        if (SystemClock.uptimeMillis() >= root.deadline || surface == null) return null;
+        if (surface.pickerId != root.windowId) return null;
+        AccessibilityWindowInfo after = freshCurrentApplicationWindow(PickerCancelObservation.Selection.AFTER);
+        if (SystemClock.uptimeMillis() >= root.deadline || after == null) return null;
+        if (after.getId() != root.windowId) return null;
+        return surface;
     }
 
     private CancelSurface readCancelSurface(AccessibilityNodeInfo root, int expectedPickerId) {
@@ -210,7 +244,7 @@ final class WatchlistSystemPicker {
 
     private void awaitImeDismissed(CancelSurface initial, long deadline) throws InterruptedException {
         while (SystemClock.uptimeMillis() < deadline) {
-            CancelSurface current = readCancelSurface(initial.pickerId);
+            CancelSurface current = readCancelSurface(initial.pickerId, deadline);
             if (current != null) {
                 if (current.imeId == -1) return;
                 assertEquals("IME dismissal must not select another keyboard window", initial.imeId, current.imeId);
