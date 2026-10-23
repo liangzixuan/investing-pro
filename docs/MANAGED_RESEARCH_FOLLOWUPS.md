@@ -49,6 +49,35 @@ invalid raw date remains visible for correction and cannot be saved or treated
 as overdue. Completion records the author's explicit action; it is not an
 immutable audit history or an automatic investment verdict.
 
+## Assess a check during company research
+
+The current source increment keeps the full authored question, UTC due date and
+completion state beside the exact company's research sections. This context
+belongs to a visit opened through **Research company** from Follow-ups, including
+a check selected from the Markets due queue. A generic company link does not
+infer a private check from its ticker or URL.
+
+Open **Record assessment** to write **Your assessment** in the same Follow-ups
+draft. The editor shares the full screen's 2,000-code-point, single-line limit
+and authored-text guidance. Raw invalid or oversized input stays visible for
+correction. The app does not clip it or change the Watchlist draft. Price,
+Annual and Filings still need their separate explicit actions and retain their
+original source dates.
+
+Select **Review follow-ups**, or use the existing Back action, to return to the
+selected check and retained list filter. Complete the check and **Save
+follow-ups** there. The company view has no separate Save or completion action.
+Pending Save, conflict or uncertain-save recovery keeps the current check
+readable and pauses assessment edits. A changed draft, entry, identity, catalog,
+company visit, route or session invalidates captured edits and return actions.
+
+This extends Investment's existing same-draft research-note pattern. The
+[Todoist task-view guide](https://www.todoist.com/help/todoist/features/use-the-task-view-to-manage-tasks-in-todoist-eDeRDO0C)
+provides an established pattern for keeping a task's full description beside
+its details and returning to the parent list. No upstream code or visual asset
+is copied. Affected source and additive native verification are in progress;
+no new browser or physical-device acceptance is claimed.
+
 ## Turn a thesis Next check into a follow-up
 
 The thesis editor in My Watchlist and company research has an initially closed

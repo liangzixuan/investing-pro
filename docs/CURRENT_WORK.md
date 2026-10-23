@@ -31,6 +31,26 @@ enablement reused its accepted source archive. The current API is ready and live
 and its downloaded source matches the accepted ce7 archive. The website already contains the matching Portfolio
 workflow. No authenticated owner Portfolio Save was exercised during release.
 
+Android 1.35.0, code 36, is provided locally from accepted source
+`73dc74af6d72141d60a5d749ef94133b1a361ec6` with the existing production signer.
+It adds [portable financial-screen recipes](MANAGED_FINANCIAL_SCREEN_RECIPES.md):
+name and capture an applied definition, review the complete file and current
+identities, Apply and Run explicitly, then continue through research, Back,
+shortlist review and separate Watchlist Save. The original required main checks
+and hosted native 71-case gate passed. The guarded offline build, complete
+packaged assets, production signature, manifest and native policy verification
+passed. A native checker initially pinned the active checkout's line endings;
+its narrow correction verified the same completed APK without rebuilding or
+re-signing. The original failure remains recorded. Phone installation, file
+picker and Back acceptance, and sustained use remain separate owner actions.
+The API, website and earlier APKs remain unchanged.
+
+The next M3/M4 source increment connects an exact Follow-ups company visit to
+its full question, due date and same-draft assessment beside explicit source
+actions. Review follow-ups returns to the existing editor for completion and
+independent Save. Implementation and affected verification are in progress;
+no new browser, native execution or physical acceptance is claimed yet.
+
 Android 1.34.0, code 35, is provided locally from accepted source
 `241b0e4d61c487a561399d403b78be62443861ad` with the existing production signer.
 It adds **Save report (HTML)** beside JSON for prepared company research.

@@ -120,6 +120,11 @@ import { ManagedBlsCalendar } from "./managed-bls-calendar";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import { ManagedResearchFollowups } from "./managed-research-followups";
+import {
+  captureResearchFollowupContext,
+  type ManagedResearchFollowupContext,
+} from "./managed-research-followup-context";
+export type { ManagedResearchFollowupContext } from "./managed-research-followup-context";
 import type { ThesisFollowupContext } from "./managed-thesis-followup";
 import { ManagedPortfolio, type PortfolioDraft } from "./managed-portfolio";
 import { ManagedSessionOwner } from "./managed-session-owner";
@@ -202,6 +207,17 @@ export interface PreparedFollowupResearch {
   readonly draft: ResearchFollowupsPayload;
   readonly selection: ManagedResearchSelection;
   readonly navigationRevision: number;
+}
+
+interface FollowupResearchVisit {
+  readonly owner: {
+    readonly id: string;
+    readonly selection: ManagedResearchSelection;
+  } | null;
+  readonly operation: symbol;
+  readonly navigationRevision: number;
+  readonly viewRevision: number;
+  readonly selection: ManagedResearchSelection;
 }
 
 interface DraftValidation {
@@ -1761,6 +1777,47 @@ export class ManagedWorkspace {
       this[section].getSnapshot().selection === targetSelection
       ? switched
       : null;
+  }
+  researchFollowupContext(
+    selection: ManagedResearchSelection,
+  ): ManagedResearchFollowupContext | null {
+    const visit: FollowupResearchVisit = {
+      owner: this.followupResearch,
+      operation: this.researchOperation,
+      navigationRevision: this.navigationRevision,
+      viewRevision: this.viewRevision,
+      selection,
+    };
+    return captureResearchFollowupContext({
+      model: this.followups,
+      selection,
+      owner: visit.owner,
+      isVisitCurrent: () =>
+        this.followupResearchSessionIsCurrent(visit) &&
+        this.followupResearchRouteIsCurrent(visit),
+      canEditVisit: () =>
+        this.canNavigate() &&
+        this.researchSourceRouteReady(selection) &&
+        this.canUseResearchSource(selection),
+    });
+  }
+  private followupResearchSessionIsCurrent(visit: FollowupResearchVisit) {
+    return (
+      !this.retired &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.followupResearch === visit.owner &&
+      this.researchOperation === visit.operation
+    );
+  }
+  private followupResearchRouteIsCurrent(visit: FollowupResearchVisit) {
+    return (
+      this.navigationRevision === visit.navigationRevision &&
+      this.viewRevision === visit.viewRevision &&
+      this.state.view === "followups" &&
+      this.state.research?.selection === visit.selection &&
+      this.state.snapshot?.snapshotSha256 ===
+        visit.selection.catalogSnapshotSha256
+    );
   }
   researchThesisFollowupContext(selection: ManagedResearchSelection) {
     const member = this.getResearchWatchlist(selection).member;

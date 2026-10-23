@@ -7482,6 +7482,313 @@ describe("workspace persisted follow-up research", () => {
     return capture;
   }
 
+  describe("contextual follow-up assessment", () => {
+    async function opened() {
+      const f = await followupFixture();
+      f.workspace.openFollowupResearch(await prepared(f));
+      const selection = f.workspace.getSnapshot().research!.selection;
+      const context = f.workspace.researchFollowupContext(selection);
+      expect(context).not.toBeNull();
+      if (!context) throw new Error("Expected the current assessment context");
+      return { ...f, selection, context };
+    }
+
+    it("authors the same full draft, retains raw invalid text and returns for independent completion and Save", async () => {
+      const f = await opened();
+      f.workspace.add(second);
+      const watchlist = f.workspace.coordinator.getSnapshot().draft;
+      expect(f.context).toMatchObject({
+        entry: f.current(),
+        editable: true,
+        dirty: false,
+        reason: null,
+      });
+      expect(f.context.entry.check).toBe(entry().check);
+      expect(f.context.entry.dueOn).toBe("2026-12-31");
+      const raw = "  Cafe\u0301 東京 😀\n" + "x".repeat(2_001) + "\u0000";
+      f.context.editAssessment(raw);
+      expect(f.current().result).toBe(raw);
+      expect(f.workspace.followups.canSavePayload()).toBe(false);
+      expect(f.context.isCurrent()).toBe(false);
+      const fresh = f.workspace.researchFollowupContext(f.selection)!;
+      expect(fresh).toMatchObject({ editable: true, dirty: true });
+      expect(fresh.entry.result).toBe(raw);
+      f.context.editAssessment("Stale callback");
+      expect(f.current().result).toBe(raw);
+      fresh.editAssessment("Authored capacity assessment · Café 東京 😀");
+      const draft = f.workspace.followups.coordinator.getSnapshot().draft;
+      f.workspace.closeResearch();
+      expect(fresh.isCurrent()).toBe(false);
+      expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(draft);
+      noSources(f.api);
+      expect(f.api.resolve).toHaveBeenCalledOnce();
+      expect(f.api.loadFollowups).toHaveBeenCalledOnce();
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+      expect(f.api.save).not.toHaveBeenCalled();
+      f.workspace.followups.complete(
+        f.current(),
+        new Date("2026-10-22T01:00:00Z"),
+      );
+      await f.workspace.followups.coordinator.save();
+      expect(f.store.saved().payload.entries[0]).toMatchObject({
+        result: "Authored capacity assessment · Café 東京 😀",
+        status: "completed",
+        completedOn: "2026-10-22",
+      });
+      expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+      expect(f.api.save).not.toHaveBeenCalled();
+    });
+
+    it("retains every other raw entry and reports whole-draft changes", async () => {
+      const other: ResearchFollowup = {
+        ...entry(),
+        id: "00000000-0000-4000-8000-000000000002",
+        listing: identity(second),
+        result: "Other authored assessment",
+      };
+      const f = await followupFixture(
+        persistence({ schemaVersion: 1, entries: [entry(), other] }),
+      );
+      f.workspace.followups.edit(
+        f.workspace.followups.currentEntry(other.id)!,
+        "result",
+        "Other raw\u0000assessment",
+      );
+      const retained = f.workspace.followups.currentEntry(other.id)!;
+      f.workspace.openFollowupResearch(await prepared(f));
+      const selection = f.workspace.getSnapshot().research!.selection;
+      const context = f.workspace.researchFollowupContext(selection)!;
+      expect(context.dirty).toBe(true);
+      context.editAssessment("Current company assessment");
+      expect(f.workspace.followups.currentEntry(other.id)).toEqual(retained);
+      expect(f.workspace.followups.currentEntry(other.id)!.result).toBe(
+        "Other raw\u0000assessment",
+      );
+      expect(f.current().result).toBe("Current company assessment");
+      expect(f.workspace.followups.canSavePayload()).toBe(false);
+      noSources(f.api);
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    });
+
+    it("requires route readiness before editing while retaining the readable current check", async () => {
+      const f = await opened();
+      f.workspace.setNavigationBlocked(true);
+      const paused = f.workspace.researchFollowupContext(f.selection)!;
+      expect(paused).toMatchObject({ editable: false, entry: f.current() });
+      expect(paused.isCurrent()).toBe(true);
+      paused.editAssessment("Blocked route assessment");
+      expect(f.current().result).toBe("");
+      await f.workspace.setCompanyRoute({
+        kind: "company",
+        listingId: zero.listingId,
+        section: "annual",
+      });
+      const readyContext = f.workspace.researchFollowupContext(f.selection)!;
+      expect(readyContext.editable).toBe(true);
+      paused.editAssessment("Old read-only callback");
+      expect(f.current().result).toBe("");
+      readyContext.editAssessment("Current route assessment");
+      expect(f.current().result).toBe("Current route assessment");
+      noSources(f.api);
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    });
+
+    it("keeps the visit association across source sections without reading or saving", async () => {
+      const f = await opened();
+      f.workspace.switchToAnnual();
+      f.workspace.switchToFilings();
+      expect(f.context.isCurrent()).toBe(true);
+      expect(f.workspace.getSnapshot().research!.selection).toBe(f.selection);
+      f.context.editAssessment("Reviewed an existing source");
+      expect(f.current().result).toBe("Reviewed an existing source");
+      noSources(f.api);
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    });
+
+    type OpenedAssessment = Awaited<ReturnType<typeof opened>>;
+    const retirementBoundaries: readonly {
+      readonly name: string;
+      readonly retire: (f: OpenedAssessment) => void | Promise<void>;
+    }[] = [
+      {
+        name: "draft",
+        retire: (f) =>
+          f.workspace.followups.coordinator.replaceDraft({
+            ...f.workspace.followups.coordinator.getSnapshot().draft!,
+          }),
+      },
+      {
+        name: "entry",
+        retire: (f) =>
+          f.workspace.followups.edit(f.current(), "check", "Intervening check"),
+      },
+      {
+        name: "identity",
+        retire: (f) =>
+          f.workspace.followups.coordinator.replaceDraft({
+            schemaVersion: 1,
+            entries: [
+              {
+                ...f.current(),
+                listing: {
+                  ...f.current().listing,
+                  shareClassId: "other-class",
+                },
+              },
+            ],
+          }),
+      },
+      {
+        name: "catalog",
+        async retire(f) {
+          vi.mocked(f.api.status).mockResolvedValueOnce({
+            snapshot: { ...snapshot, snapshotSha256: nextDigest },
+          });
+          await f.workspace.refreshCatalog();
+        },
+      },
+      {
+        name: "model catalog",
+        retire: (f) => f.workspace.followups.syncCatalog(nextDigest),
+      },
+      {
+        name: "navigation",
+        retire(f) {
+          f.workspace.setNavigationBlocked(true);
+          f.workspace.setNavigationBlocked(false);
+        },
+      },
+      {
+        name: "view round trip",
+        retire(f) {
+          f.workspace.setView("markets");
+          f.workspace.setView("followups");
+        },
+      },
+      {
+        name: "reopen",
+        async retire(f) {
+          f.workspace.closeResearch();
+          f.workspace.openFollowupResearch(await prepared(f));
+          const currentSelection =
+            f.workspace.getSnapshot().research!.selection;
+          expect(currentSelection).toEqual(f.selection);
+          expect(
+            f.workspace.researchFollowupContext(currentSelection)?.editable,
+          ).toBe(true);
+        },
+      },
+      {
+        name: "company",
+        retire: (f) =>
+          f.workspace.setCompanyRoute({
+            kind: "company",
+            listingId: second.listingId,
+            section: "annual",
+          }),
+      },
+      { name: "session", retire: (f) => f.workspace.sessionOwner.retire() },
+    ];
+    it.each(retirementBoundaries)(
+      "retires assessment callbacks after $name changes",
+      async ({ retire }) => {
+        const f = await opened();
+        await retire(f);
+        const draft = f.workspace.followups.coordinator.getSnapshot().draft;
+        expect(f.context.isCurrent()).toBe(false);
+        f.context.editAssessment("Stale assessment");
+        expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(
+          draft,
+        );
+        noSources(f.api);
+        expect(f.api.saveFollowups).not.toHaveBeenCalled();
+        expect(f.api.save).not.toHaveBeenCalled();
+      },
+    );
+
+    it("does not infer a check for copied selections or direct routes to the same listing", async () => {
+      const f = await opened();
+      expect(
+        f.workspace.researchFollowupContext({ ...f.selection }),
+      ).toBeNull();
+      f.workspace.closeResearch();
+      await f.workspace.setCompanyRoute({
+        kind: "company",
+        listingId: zero.listingId,
+        section: "annual",
+      });
+      const selection = f.workspace.getSnapshot().research!.selection;
+      expect(selection.origin).toBe("route");
+      expect(f.workspace.researchFollowupContext(selection)).toBeNull();
+      expect(f.workspace.researchFollowupContext(f.selection)).toBeNull();
+      noSources(f.api);
+    });
+
+    it("fences an old callback before synchronous draft notifications reenter it", async () => {
+      const f = await opened();
+      let reentered = false;
+      const stop = f.workspace.followups.coordinator.subscribe(() => {
+        if (reentered) return;
+        reentered = true;
+        f.context.editAssessment("Reentrant overwrite");
+      });
+      f.context.editAssessment("First assessment");
+      stop();
+      expect(reentered).toBe(true);
+      expect(f.current().result).toBe("First assessment");
+      expect(f.context.isCurrent()).toBe(false);
+      noSources(f.api);
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    });
+
+    it.each(["conflict", "uncertain", "pending"] as const)(
+      "keeps the current check readable and pauses edits during %s Save recovery",
+      async (boundary) => {
+        const f = await opened();
+        f.context.editAssessment("Retained assessment");
+        const stale = f.workspace.researchFollowupContext(f.selection)!;
+        const held =
+          deferred<Awaited<ReturnType<ManagedApi["saveFollowups"]>>>();
+        vi.mocked(f.api.saveFollowups).mockReturnValueOnce(held.promise);
+        const saving = f.workspace.followups.coordinator.save();
+        const paused = f.workspace.researchFollowupContext(f.selection)!;
+        expect(paused.entry.check).toBe(entry().check);
+        expect(paused.entry.result).toBe("Retained assessment");
+        expect(paused).toMatchObject({ editable: false, dirty: true });
+        expect(paused.reason).toBeTruthy();
+        expect(paused.isCurrent()).toBe(true);
+        paused.editAssessment("Forbidden pending edit");
+        stale.editAssessment("Forbidden stale edit");
+        expect(f.current().result).toBe("Retained assessment");
+        if (boundary === "pending") {
+          const command = vi.mocked(f.api.saveFollowups).mock.calls[0]![0];
+          held.resolve({
+            version: command.expectedVersion + 1,
+            payload: command.payload,
+            replayed: false,
+          });
+        } else
+          held.reject(
+            new TrialApiError(
+              boundary === "conflict" ? "conflict" : "unavailable",
+            ),
+          );
+        await saving;
+        const context = f.workspace.researchFollowupContext(f.selection)!;
+        expect(context.entry.result).toBe("Retained assessment");
+        if (boundary !== "pending") {
+          expect(context.editable).toBe(false);
+          expect(context.isCurrent()).toBe(true);
+          context.editAssessment("Forbidden recovery edit");
+          expect(f.current().result).toBe("Retained assessment");
+        }
+        noSources(f.api);
+        expect(f.api.saveFollowups).toHaveBeenCalledOnce();
+        expect(f.api.save).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   it("takes an authored thesis next check through the daily queue, research Back, result, completion and independent Save", async () => {
     const f = await followupFixture(
       persistence({ schemaVersion: 1, entries: [] }),

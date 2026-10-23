@@ -312,6 +312,13 @@ jobs:
           ))
           if len(required) != 71:
               raise SystemExit("Recipe policy and system-picker journey must extend all 65 existing native tests.")
+          # Preserve all 71 existing requirements and add contextual assessment.
+          required.add((
+              "local.investment.personal.ManagedWorkspaceInstrumentedTest",
+              "followupAssessmentInCompanyReturnsToReviewAndSave",
+          ))
+          if len(required) != 72:
+              raise SystemExit("The contextual assessment journey must extend all 71 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

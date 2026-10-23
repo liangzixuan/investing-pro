@@ -1,3 +1,4 @@
+import { ManagedFollowupAssessment } from "../../src/clerk-trial/ManagedFollowupAssessment";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -78,11 +79,17 @@ function render<T>(
 function nodes(
   node: React.ReactNode,
 ): React.ReactElement<Record<string, unknown>>[] {
-  return React.Children.toArray(node).flatMap((item) =>
-    React.isValidElement<Record<string, unknown>>(item)
-      ? [item, ...nodes(item.props.children as React.ReactNode)]
-      : [],
-  );
+  return React.Children.toArray(node).flatMap((item) => {
+    if (!React.isValidElement<Record<string, unknown>>(item)) return [];
+    if (item.type === ManagedFollowupAssessment) {
+      return nodes(
+        ManagedFollowupAssessment(
+          item.props as React.ComponentProps<typeof ManagedFollowupAssessment>,
+        ),
+      );
+    }
+    return [item, ...nodes(item.props.children as React.ReactNode)];
+  });
 }
 function text(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);

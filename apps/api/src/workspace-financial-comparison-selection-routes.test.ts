@@ -115,20 +115,21 @@ describe("saved financial comparison selection routes", () => {
     ).not.toContain("private-watchlist-note");
   });
 
-  it("replaces two with three, clears with unavailable members, and saves again at the retained version", async () => {
+  it("replaces two with three and resolves the complete ordered selection", async () => {
     const f = await ready();
-    await put(f, f.payload, 0);
-    const three = {
-      ...f.payload,
-      selection: {
-        ...f.payload.selection!,
-        members: [...f.payload.selection!.members, f.rows[4]!],
-      },
-    };
+    expect((await put(f, f.payload, 0)).statusCode).toBe(201);
+    const three = threeMemberSelection(f);
     expect((await put(f, three, 1)).statusCode).toBe(200);
     expect((await resolve(f, 2)).json()).toMatchObject({
-      members: three.selection.members,
+      members: three.selection!.members,
     });
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("clears unavailable members and saves again at the retained version", async () => {
+    const f = await ready();
+    const three = threeMemberSelection(f);
+    expect((await put(f, three, 0)).statusCode).toBe(201);
     f.vault.putRecord({
       kind: "watchlist",
       id: "main",
@@ -136,12 +137,12 @@ describe("saved financial comparison selection routes", () => {
       idempotencyKey: "saved-comparison-empty-watchlist",
       payload: { ...f.watchlist, memberships: [] },
     });
-    expect((await resolve(f, 2)).statusCode).toBe(409);
+    expect((await resolve(f, 1)).statusCode).toBe(409);
     expect((await get(f)).json()).toMatchObject({ payload: three });
     expect(
-      (await put(f, { schemaVersion: 1, selection: null }, 2, null)).statusCode,
+      (await put(f, { schemaVersion: 1, selection: null }, 1, null)).statusCode,
     ).toBe(200);
-    expect((await resolve(f, 3)).statusCode).toBe(404);
+    expect((await resolve(f, 2)).statusCode).toBe(404);
     f.vault.putRecord({
       kind: "watchlist",
       id: "main",
@@ -150,11 +151,11 @@ describe("saved financial comparison selection routes", () => {
       payload: f.watchlist,
     });
     expect(
-      (await put(f, f.payload, 3, { ...f.context, watchlistVersion: 3 }))
+      (await put(f, f.payload, 2, { ...f.context, watchlistVersion: 3 }))
         .statusCode,
     ).toBe(200);
     expect((await get(f)).json()).toMatchObject({
-      version: 4,
+      version: 3,
       payload: f.payload,
     });
     expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
@@ -548,6 +549,18 @@ async function ready(existingRoot?: string, refreshed = false) {
   };
 }
 type Fixture = Awaited<ReturnType<typeof ready>>;
+function threeMemberSelection(
+  f: Fixture,
+): PersonalFinancialComparisonSelectionPayloadDto {
+  return {
+    ...f.payload,
+    selection: {
+      ...f.payload.selection!,
+      members: [...f.payload.selection!.members, f.rows[4]!],
+    },
+  };
+}
+
 let keySequence = 0;
 function mutationHeaders(
   version: number,

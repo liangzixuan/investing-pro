@@ -63,15 +63,24 @@ envelope checks keep delivery separate from source reads and online Save.
 The guarded build and complete APK verification passed. Phone installation,
 offline reading and sustained use remain separate acceptance steps.
 
-The selected next M2/M4 outcome is [reusable financial-screen recipes](MANAGED_FINANCIAL_SCREEN_RECIPES.md):
-name an applied definition, save its exact criteria and selected listing order,
-reopen it with complete current/file review, then Apply and Run explicitly.
-Research, Back, shortlist review and independent Watchlist Save complete the
-workflow. This adds repeat-use discovery with the current six fields and Annual
-cohort. It adds no provider, cloud storage or financial result cache. Source and
-native verification are in progress. Quarterly/TTM data and Portfolio history
-remain separate work; ticker and metric additions alone do not complete this
-outcome.
+Android 1.35.0, code 36, provides [reusable financial-screen recipes](MANAGED_FINANCIAL_SCREEN_RECIPES.md)
+from accepted source `73dc74af6d72141d60a5d749ef94133b1a361ec6`. Name an
+applied definition, save its exact criteria and selected listing order, reopen
+it with complete current/file review, then Apply and Run explicitly. Research,
+Back, shortlist review and independent Watchlist Save complete the workflow.
+The original required main checks, hosted native 71-case gate and complete APK
+verification passed. Phone file/picker/Back acceptance and sustained use remain
+separate. The current six fields, Annual cohort, API and website are unchanged.
+
+The next M3/M4 increment is [assessment during company research](MANAGED_RESEARCH_FOLLOWUPS.md#assess-a-check-during-company-research).
+Markets due review or Follow-ups opens the exact company with its full authored
+question and due date beside explicit evidence actions. Record the assessment
+in the existing draft, return to full Follow-ups, then complete and Save
+explicitly. This connects the daily check to evidence and a persisted authored
+outcome without adding a private store or background request. Implementation
+and affected verification are in progress. Quarterly/TTM data and Portfolio
+history remain separate work; ticker and metric additions alone do not complete
+this outcome.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The

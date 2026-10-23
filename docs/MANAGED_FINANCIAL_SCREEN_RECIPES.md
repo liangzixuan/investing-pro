@@ -1,6 +1,6 @@
 # Portable financial-screen recipes
 
-This source candidate lets an owner reuse an Annual financial-screen definition
+This workflow lets an owner reuse an Annual financial-screen definition
 through a local JSON file. It keeps the current six fields, seven-clause limit
 and defined cohort of 18 listings for 17 issuers. It adds no source coverage,
 provider, cloud storage or automatic financial request.
@@ -68,7 +68,10 @@ sorting described in [TradingView's custom-screen guide](https://www.tradingview
 Investment adds complete identity review and keeps Apply, source reads and
 Watchlist Save separate. No upstream code or visual assets are copied.
 
-Source, native execution, client delivery and physical acceptance are separate.
-Implementation and affected verification are in progress. Browser QA is paused;
-no new rendered browser or phone acceptance is claimed. See
-[Current work](CURRENT_WORK.md) for delivery status.
+Accepted main `73dc74af6d72141d60a5d749ef94133b1a361ec6` passed its original
+required checks and hosted native 71-case gate. Android 1.35.0, code 36, provides
+the workflow locally with the existing production signer after complete APK
+verification. The API and website retain their prior releases. Phone file
+picker, recipe and Back acceptance and sustained use remain separate owner
+actions. Browser QA is paused; no new rendered browser acceptance is claimed.
+See [Current work](CURRENT_WORK.md) for delivery status.
