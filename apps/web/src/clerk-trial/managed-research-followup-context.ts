@@ -45,16 +45,14 @@ export function captureResearchFollowupContext(options: {
     !membershipMatchesResult({ ...entry.listing, note: "" }, selection.listing)
   )
     return null;
+  const draftIsCurrent = () =>
+    model.getSnapshot().catalogSnapshotSha256 ===
+      selection.catalogSnapshotSha256 &&
+    model.coordinator.getSnapshot().draft === draft &&
+    model.currentEntry(owner.id) === entry;
   let retired = false;
   const isCurrent = () => {
-    if (
-      retired ||
-      !options.isVisitCurrent() ||
-      model.getSnapshot().catalogSnapshotSha256 !==
-        selection.catalogSnapshotSha256 ||
-      model.coordinator.getSnapshot().draft !== draft ||
-      model.currentEntry(owner.id) !== entry
-    )
+    if (retired || !options.isVisitCurrent() || !draftIsCurrent())
       retired = true;
     return !retired;
   };

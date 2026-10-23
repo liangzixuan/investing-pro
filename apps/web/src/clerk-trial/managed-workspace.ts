@@ -209,6 +209,17 @@ export interface PreparedFollowupResearch {
   readonly navigationRevision: number;
 }
 
+interface FollowupResearchVisit {
+  readonly owner: {
+    readonly id: string;
+    readonly selection: ManagedResearchSelection;
+  } | null;
+  readonly operation: symbol;
+  readonly navigationRevision: number;
+  readonly viewRevision: number;
+  readonly selection: ManagedResearchSelection;
+}
+
 interface DraftValidation {
   readonly payload: MainWatchlistPayload | null;
   readonly issue: string | null;
@@ -1770,29 +1781,43 @@ export class ManagedWorkspace {
   researchFollowupContext(
     selection: ManagedResearchSelection,
   ): ManagedResearchFollowupContext | null {
-    const owner = this.followupResearch;
-    const operation = this.researchOperation;
-    const navigation = this.navigationRevision;
-    const view = this.viewRevision;
+    const visit: FollowupResearchVisit = {
+      owner: this.followupResearch,
+      operation: this.researchOperation,
+      navigationRevision: this.navigationRevision,
+      viewRevision: this.viewRevision,
+      selection,
+    };
     return captureResearchFollowupContext({
       model: this.followups,
       selection,
-      owner,
+      owner: visit.owner,
       isVisitCurrent: () =>
-        !this.retired &&
-        this.sessionOwner.getSnapshot().phase === "active" &&
-        this.followupResearch === owner &&
-        this.researchOperation === operation &&
-        this.navigationRevision === navigation &&
-        this.viewRevision === view &&
-        this.state.view === "followups" &&
-        this.state.research?.selection === selection &&
-        this.state.snapshot?.snapshotSha256 === selection.catalogSnapshotSha256,
+        this.followupResearchSessionIsCurrent(visit) &&
+        this.followupResearchRouteIsCurrent(visit),
       canEditVisit: () =>
         this.canNavigate() &&
         this.researchSourceRouteReady(selection) &&
         this.canUseResearchSource(selection),
     });
+  }
+  private followupResearchSessionIsCurrent(visit: FollowupResearchVisit) {
+    return (
+      !this.retired &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.followupResearch === visit.owner &&
+      this.researchOperation === visit.operation
+    );
+  }
+  private followupResearchRouteIsCurrent(visit: FollowupResearchVisit) {
+    return (
+      this.navigationRevision === visit.navigationRevision &&
+      this.viewRevision === visit.viewRevision &&
+      this.state.view === "followups" &&
+      this.state.research?.selection === visit.selection &&
+      this.state.snapshot?.snapshotSha256 ===
+        visit.selection.catalogSnapshotSha256
+    );
   }
   researchThesisFollowupContext(selection: ManagedResearchSelection) {
     const member = this.getResearchWatchlist(selection).member;

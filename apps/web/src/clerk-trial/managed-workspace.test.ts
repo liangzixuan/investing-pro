@@ -7605,28 +7605,26 @@ describe("workspace persisted follow-up research", () => {
       expect(f.api.saveFollowups).not.toHaveBeenCalled();
     });
 
-    it.each([
-      "draft",
-      "entry",
-      "identity",
-      "catalog",
-      "model catalog",
-      "navigation",
-      "view round trip",
-      "reopen",
-      "company",
-      "session",
-    ] as const)(
-      "retires assessment callbacks after %s changes",
-      async (boundary) => {
-        const f = await opened();
-        if (boundary === "draft")
+    type OpenedAssessment = Awaited<ReturnType<typeof opened>>;
+    const retirementBoundaries: readonly {
+      readonly name: string;
+      readonly retire: (f: OpenedAssessment) => void | Promise<void>;
+    }[] = [
+      {
+        name: "draft",
+        retire: (f) =>
           f.workspace.followups.coordinator.replaceDraft({
             ...f.workspace.followups.coordinator.getSnapshot().draft!,
-          });
-        if (boundary === "entry")
-          f.workspace.followups.edit(f.current(), "check", "Intervening check");
-        if (boundary === "identity")
+          }),
+      },
+      {
+        name: "entry",
+        retire: (f) =>
+          f.workspace.followups.edit(f.current(), "check", "Intervening check"),
+      },
+      {
+        name: "identity",
+        retire: (f) =>
           f.workspace.followups.coordinator.replaceDraft({
             schemaVersion: 1,
             entries: [
@@ -7638,24 +7636,38 @@ describe("workspace persisted follow-up research", () => {
                 },
               },
             ],
-          });
-        if (boundary === "catalog") {
+          }),
+      },
+      {
+        name: "catalog",
+        async retire(f) {
           vi.mocked(f.api.status).mockResolvedValueOnce({
             snapshot: { ...snapshot, snapshotSha256: nextDigest },
           });
           await f.workspace.refreshCatalog();
-        }
-        if (boundary === "model catalog")
-          f.workspace.followups.syncCatalog(nextDigest);
-        if (boundary === "navigation") {
+        },
+      },
+      {
+        name: "model catalog",
+        retire: (f) => f.workspace.followups.syncCatalog(nextDigest),
+      },
+      {
+        name: "navigation",
+        retire(f) {
           f.workspace.setNavigationBlocked(true);
           f.workspace.setNavigationBlocked(false);
-        }
-        if (boundary === "view round trip") {
+        },
+      },
+      {
+        name: "view round trip",
+        retire(f) {
           f.workspace.setView("markets");
           f.workspace.setView("followups");
-        }
-        if (boundary === "reopen") {
+        },
+      },
+      {
+        name: "reopen",
+        async retire(f) {
           f.workspace.closeResearch();
           f.workspace.openFollowupResearch(await prepared(f));
           const currentSelection =
@@ -7664,14 +7676,24 @@ describe("workspace persisted follow-up research", () => {
           expect(
             f.workspace.researchFollowupContext(currentSelection)?.editable,
           ).toBe(true);
-        }
-        if (boundary === "company")
-          await f.workspace.setCompanyRoute({
+        },
+      },
+      {
+        name: "company",
+        retire: (f) =>
+          f.workspace.setCompanyRoute({
             kind: "company",
             listingId: second.listingId,
             section: "annual",
-          });
-        if (boundary === "session") f.workspace.sessionOwner.retire();
+          }),
+      },
+      { name: "session", retire: (f) => f.workspace.sessionOwner.retire() },
+    ];
+    it.each(retirementBoundaries)(
+      "retires assessment callbacks after $name changes",
+      async ({ retire }) => {
+        const f = await opened();
+        await retire(f);
         const draft = f.workspace.followups.coordinator.getSnapshot().draft;
         expect(f.context.isCurrent()).toBe(false);
         f.context.editAssessment("Stale assessment");

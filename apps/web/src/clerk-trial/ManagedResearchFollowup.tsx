@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { ManagedWorkspace } from "./managed-workspace";
+import type { ManagedResearchFollowupContext } from "./managed-research-followup-context";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
 import "./managed-research-followup.css";
@@ -36,8 +37,19 @@ export function ManagedResearchFollowup({
   );
   const context = workspace.researchFollowupContext(selection);
   if (!context) return null;
-  const current = () =>
-    !navigationPending && routeActive() && context.isCurrent();
+  return renderResearchFollowup(
+    context,
+    () => !navigationPending && routeActive() && context.isCurrent(),
+    onReview,
+  );
+}
+
+/** Render the current check separately from its live resource subscriptions. */
+function renderResearchFollowup(
+  context: ManagedResearchFollowupContext,
+  current: () => boolean,
+  onReview: () => void,
+) {
   const editable = context.editable && current();
   const entry = context.entry;
   return (

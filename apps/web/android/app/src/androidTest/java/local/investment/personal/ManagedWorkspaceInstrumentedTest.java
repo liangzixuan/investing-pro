@@ -116,7 +116,8 @@ public class ManagedWorkspaceInstrumentedTest {
         "watchlistDraftFileUsesSystemExportImportAndExplicitRestore", "watchlist-draft-file",
         "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file",
         "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation",
-        "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen");
+        "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen",
+        "followupAssessmentInCompanyReturnsToReviewAndSave", "research-followups");
     private static final String ANNUAL_COMPARISON_NOTE =
         "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
         "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
@@ -379,8 +380,7 @@ public class ManagedWorkspaceInstrumentedTest {
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("watchlist-export");
         selectAdditionalFixtureScenario();
-        if (testName.getMethodName().equals("followupAssessmentInCompanyReturnsToReviewAndSave") ||
-            testName.getMethodName().equals("researchFollowupsSaveResearchAndCompleteAcrossSessions") ||
+        if (testName.getMethodName().equals("researchFollowupsSaveResearchAndCompleteAcrossSessions") ||
             testName.getMethodName().equals("dailyResearchReviewKeepsDraftAndCompletesThroughResearch") ||
             testName.getMethodName().equals("researchFollowupsReplayAndSessionRetirementFenceLateReplies"))
             selectFixtureScenario("research-followups");

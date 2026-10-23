@@ -1140,11 +1140,8 @@ export function ManagedWorkspaceScreen({
                   {...managedResearchDraftProps(
                     workspace,
                     discovery.research.selection,
-                    {
-                      navigation,
-                      navigationPending,
-                      onReviewFollowups: backToWorkspace,
-                    },
+                    navigation,
+                    backToWorkspace,
                   )}
                   onAdd={() =>
                     workspace.addResearchToWatchlist(

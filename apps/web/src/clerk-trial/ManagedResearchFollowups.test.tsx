@@ -184,6 +184,15 @@ async function fixture() {
     session,
   };
 }
+function assessmentDom(
+  element: React.ReactElement<Record<string, unknown>>,
+): React.ReactElement<Record<string, unknown>> {
+  if (element.type !== ManagedFollowupAssessment) return element;
+  return ManagedFollowupAssessment(
+    element.props as React.ComponentProps<typeof ManagedFollowupAssessment>,
+  );
+}
+
 function view(
   f: Awaited<ReturnType<typeof fixture>>,
   navigationPending = false,
@@ -200,20 +209,9 @@ function view(
   ): React.ReactElement<Record<string, unknown>> | undefined {
     for (const child of React.Children.toArray(value)) {
       if (!React.isValidElement<Record<string, unknown>>(child)) continue;
-      if (child.type === ManagedFollowupAssessment) {
-        const match = find(
-          ManagedFollowupAssessment(
-            child.props as React.ComponentProps<
-              typeof ManagedFollowupAssessment
-            >,
-          ),
-          id,
-        );
-        if (match) return match;
-        continue;
-      }
-      if (child.props.id === id) return child;
-      const match = find(child.props.children as React.ReactNode, id);
+      const element = assessmentDom(child);
+      if (element.props.id === id) return element;
+      const match = find(element.props.children as React.ReactNode, id);
       if (match) return match;
     }
   }
