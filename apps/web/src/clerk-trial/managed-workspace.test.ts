@@ -325,54 +325,81 @@ describe("company report revisit Watchlist boundary", () => {
     expect(saved().payload.memberships[0]!.note).toBe(next);
     workspace.sessionOwner.dispose();
   });
-  it.each([
-    "other-note-restored",
-    "order-restored",
-    "section",
-    "navigation-restored",
-    "visit",
-    "session",
-    "pending-save",
-  ] as const)("refuses a capture after %s", async (boundary) => {
-    const { workspace, target, selection } = await open();
-    const before = workspace.coordinator.getSnapshot().draft!;
-    let saving: Promise<void> | undefined;
-    if (boundary === "other-note-restored") {
-      workspace.note(second.listingId, "Intervening other note");
-      workspace.note(second.listingId, before.memberships[1]!.note);
-    }
-    if (boundary === "order-restored") {
-      workspace.move(second.listingId, -1);
-      workspace.move(second.listingId, 1);
-    }
-    if (boundary === "section") workspace.switchToFilings();
-    if (boundary === "navigation-restored") {
-      workspace.setNavigationBlocked(true);
-      workspace.setNavigationBlocked(false);
-    }
-    if (boundary === "visit") {
-      workspace.closeResearch();
-      workspace.openWatchlistAnnual(before.memberships[0]!);
-    }
-    if (boundary === "session")
-      workspace.sessionOwner.retire("Invented expiry");
-    if (boundary === "pending-save") {
-      workspace.note(result.listingId, "A current unsaved draft");
-      saving = workspace.coordinator.save();
-    }
-    const unchanged = workspace.coordinator.getSnapshot();
-    expect(target.isCurrent()).toBe(false);
-    expect(target.append("Rejected candidate", "Current full thesis")).toBe(
-      false,
-    );
-    expect(workspace.coordinator.getSnapshot()).toBe(unchanged);
-    if (saving) await saving;
-    if (boundary !== "session")
-      expect(workspace.getResearchWatchlist(selection).member?.note).not.toBe(
-        "Rejected candidate",
+  type BoundaryContext = {
+    workspace: ManagedWorkspace;
+    before: MainWatchlistPayload;
+  };
+  interface BoundaryCase {
+    readonly boundary: string;
+    readonly mutate: (context: BoundaryContext) => Promise<void> | void;
+    readonly memberSurvives: boolean;
+  }
+  function restoreOtherNote({ workspace, before }: BoundaryContext) {
+    workspace.note(second.listingId, "Intervening other note");
+    workspace.note(second.listingId, before.memberships[1]!.note);
+  }
+  function restoreOrder({ workspace }: BoundaryContext) {
+    workspace.move(second.listingId, -1);
+    workspace.move(second.listingId, 1);
+  }
+  function restoreNavigation({ workspace }: BoundaryContext) {
+    workspace.setNavigationBlocked(true);
+    workspace.setNavigationBlocked(false);
+  }
+  function replaceVisit({ workspace, before }: BoundaryContext) {
+    workspace.closeResearch();
+    workspace.openWatchlistAnnual(before.memberships[0]!);
+  }
+  function beginSave({ workspace }: BoundaryContext) {
+    workspace.note(result.listingId, "A current unsaved draft");
+    return workspace.coordinator.save();
+  }
+  const boundaries: readonly BoundaryCase[] = [
+    {
+      boundary: "other-note-restored",
+      mutate: restoreOtherNote,
+      memberSurvives: true,
+    },
+    { boundary: "order-restored", mutate: restoreOrder, memberSurvives: true },
+    {
+      boundary: "section",
+      mutate: ({ workspace }) => workspace.switchToFilings(),
+      memberSurvives: true,
+    },
+    {
+      boundary: "navigation-restored",
+      mutate: restoreNavigation,
+      memberSurvives: true,
+    },
+    { boundary: "visit", mutate: replaceVisit, memberSurvives: true },
+    {
+      boundary: "session",
+      mutate: ({ workspace }) =>
+        workspace.sessionOwner.retire("Invented expiry"),
+      memberSurvives: false,
+    },
+    { boundary: "pending-save", mutate: beginSave, memberSurvives: true },
+  ];
+  it.each(boundaries)(
+    "refuses a capture after $boundary",
+    async ({ mutate, memberSurvives }) => {
+      const { workspace, target, selection } = await open();
+      const before = workspace.coordinator.getSnapshot().draft!;
+      const saving = mutate({ workspace, before });
+      const unchanged = workspace.coordinator.getSnapshot();
+      expect(target.isCurrent()).toBe(false);
+      expect(target.append("Rejected candidate", "Current full thesis")).toBe(
+        false,
       );
-    workspace.sessionOwner.dispose();
-  });
+      expect(workspace.coordinator.getSnapshot()).toBe(unchanged);
+      if (saving) await saving;
+      if (memberSurvives)
+        expect(workspace.getResearchWatchlist(selection).member?.note).not.toBe(
+          "Rejected candidate",
+        );
+      workspace.sessionOwner.dispose();
+    },
+  );
   it("refuses wrong expected text, invalid note and inactive route without changing the draft", async () => {
     const { workspace, selection, target } = await open();
     const before = workspace.coordinator.getSnapshot();

@@ -158,9 +158,7 @@ function FixtureSession({
         )}
       </TrialFrame>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
-      {workspace && scenario === "report-revisit" && (
-        <NativeReportRevisitFixture />
-      )}
+      <ReportRevisitFixtureControls workspace={workspace} />
       {workspace && nativeReport && (
         <nativeReport.Controls workspace={workspace} />
       )}
@@ -187,6 +185,17 @@ function FixtureSession({
       )}
     </>
   );
+}
+
+/** The fixed report scenario owns its explicit invented archive control. */
+function ReportRevisitFixtureControls({
+  workspace,
+}: {
+  workspace: ManagedWorkspace | null;
+}) {
+  if (!workspace) return null;
+  if (scenario !== "report-revisit") return null;
+  return <NativeReportRevisitFixture />;
 }
 
 function FollowupsFixtureControls({

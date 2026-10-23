@@ -47,6 +47,65 @@ async function current() {
   return { fixture, workspace, original, report };
 }
 
+async function comparisonCommand(f: Awaited<ReturnType<typeof current>>) {
+  const document = await reportRevisitDocument(
+    await createFixture("company-snapshot"),
+  );
+  const archive = (await parseCompanyReportArchive(
+    document.text,
+    new AbortController().signal,
+  ))!;
+  const proposal = prepareCompanyReportRevisitNote({
+    archive,
+    current: f.report,
+    assessment: revisitAssessment,
+    assessedAt: "2026-10-23T17:01:00.000Z",
+  });
+  expect(proposal.preview).not.toBeNull();
+  const payload = {
+    ...f.original,
+    memberships: f.original.memberships.map((member, index) =>
+      index === 0 ? { ...member, note: proposal.preview!.note } : member,
+    ),
+  };
+  const command = {
+    expectedVersion: 1,
+    idempotencyKey: "00000000-0000-4000-8000-000000000001",
+    payload,
+  };
+  expect(f.fixture.getSnapshot()).toMatchObject({
+    annual: 1,
+    resolve: 1,
+    eod: 0,
+    filings: 0,
+  });
+  expect(parseManagedWatchlistCommand(command)).not.toBeNull();
+  expect(
+    proposal.preview!.note.startsWith(
+      `${f.original.memberships[0]!.note} ZERO XNAS report revisit assessed `,
+    ),
+  ).toBe(true);
+  expect(
+    proposal.preview!.note.includes(
+      `archived report prepared ${archivedPreparedAt}; current report prepared `,
+    ),
+  ).toBe(true);
+  expect(
+    proposal.preview!.note.includes(
+      `Authored assessment: ${revisitAssessment}`,
+    ),
+  ).toBe(true);
+  expect(
+    proposal.preview!.note.endsWith(
+      "The file is not authenticated; reopening renews no source dates. Imported calculations are unverified and were not used as current evidence.",
+    ),
+  ).toBe(true);
+  expect(proposal.preview!.note.split("report revisit assessed ").length).toBe(
+    2,
+  );
+  return command;
+}
+
 describe("isolated native report-revisit fixture", () => {
   it("produces admitted format5 bytes above the old file ceiling while keeping the full note and original canonical provenance", async () => {
     const document = await reportRevisitDocument(
@@ -91,61 +150,8 @@ describe("isolated native report-revisit fixture", () => {
   });
   it("saves the exact whole comparison note only once and reloads without changing identities, the other note or order", async () => {
     const f = await current();
-    const document = await reportRevisitDocument(
-      await createFixture("company-snapshot"),
-    );
-    const archive = (await parseCompanyReportArchive(
-      document.text,
-      new AbortController().signal,
-    ))!;
-    const proposal = prepareCompanyReportRevisitNote({
-      archive,
-      current: f.report,
-      assessment: revisitAssessment,
-      assessedAt: "2026-10-23T17:01:00.000Z",
-    });
-    expect(proposal.preview).not.toBeNull();
-    const payload = {
-      ...f.original,
-      memberships: f.original.memberships.map((member, index) =>
-        index === 0 ? { ...member, note: proposal.preview!.note } : member,
-      ),
-    };
-    const command = {
-      expectedVersion: 1,
-      idempotencyKey: "00000000-0000-4000-8000-000000000001",
-      payload,
-    };
-    expect(f.fixture.getSnapshot()).toMatchObject({
-      annual: 1,
-      resolve: 1,
-      eod: 0,
-      filings: 0,
-    });
-    expect(parseManagedWatchlistCommand(command)).not.toBeNull();
-    expect(
-      proposal.preview!.note.startsWith(
-        `${f.original.memberships[0]!.note} ZERO XNAS report revisit assessed `,
-      ),
-    ).toBe(true);
-    expect(
-      proposal.preview!.note.includes(
-        `archived report prepared ${archivedPreparedAt}; current report prepared `,
-      ),
-    ).toBe(true);
-    expect(
-      proposal.preview!.note.includes(
-        `Authored assessment: ${revisitAssessment}`,
-      ),
-    ).toBe(true);
-    expect(
-      proposal.preview!.note.endsWith(
-        "The file is not authenticated; reopening renews no source dates. Imported calculations are unverified and were not used as current evidence.",
-      ),
-    ).toBe(true);
-    expect(
-      proposal.preview!.note.split("report revisit assessed ").length,
-    ).toBe(2);
+    const command = await comparisonCommand(f);
+    const payload = command.payload;
     const altered = {
       ...command,
       payload: {

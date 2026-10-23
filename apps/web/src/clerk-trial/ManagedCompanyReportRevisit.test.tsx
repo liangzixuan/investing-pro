@@ -91,10 +91,12 @@ vi.mock("react", async (original) => {
 });
 function changed(effect: Effect) {
   const old = hooks.slots[effect.index];
-  if (!old || !effect.deps || !old.deps) return true;
-  return (
-    old.deps.length !== effect.deps.length ||
-    effect.deps.some((value, index) => !Object.is(value, old.deps?.[index]))
+  if (!old) return true;
+  if (!effect.deps) return true;
+  if (!old.deps) return true;
+  if (old.deps.length !== effect.deps.length) return true;
+  return effect.deps.some(
+    (value, index) => !Object.is(value, old.deps?.[index]),
   );
 }
 function commit(effects: Effect[]) {

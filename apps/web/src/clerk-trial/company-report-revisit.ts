@@ -32,6 +32,15 @@ export interface CompanyReportRevisitState {
   readonly preview: { readonly note: string; readonly excerpt: string } | null;
   readonly message: string;
 }
+interface CompanyReportRevisitFile {
+  readonly size: number;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+interface ReportReadOperation {
+  readonly abort: AbortController;
+  readonly capture: CompanyReportRevisitCapture;
+  readonly size: number;
+}
 const initial: CompanyReportRevisitState = Object.freeze({
   phase: "idle",
   archive: null,
@@ -51,10 +60,7 @@ const invalid =
 export class CompanyReportRevisit {
   private state = initial;
   private listeners = new Set<() => void>();
-  private reading: {
-    abort: AbortController;
-    capture: CompanyReportRevisitCapture;
-  } | null = null;
+  private reading: ReportReadOperation | null = null;
   private comparison: CompanyReportRevisitCapture | null = null;
   private retired = false;
   private mutation = 0;
@@ -94,69 +100,89 @@ export class CompanyReportRevisit {
       this.update({ current: null, preview: null, message: changed });
     }
   }
-  async readFile(file: {
-    readonly size: number;
-    arrayBuffer(): Promise<ArrayBuffer>;
-  }) {
-    if (!this.active()) return;
+  /** Each read stage revalidates ownership after observable notifications. */
+  async readFile(file: CompanyReportRevisitFile) {
+    const operation = this.beginRead(file);
+    if (!operation) return;
+    try {
+      const bytes = await file.arrayBuffer();
+      await this.admitRead(operation, bytes);
+    } catch {
+      this.rejectRead(operation);
+    }
+  }
+  private resetForRead() {
+    if (!this.active()) return null;
     this.stopRead();
     this.comparison = null;
     const capture = this.options.capture();
-    const starting = this.mutation + 1;
+    const revision = this.mutation + 1;
     this.update({ ...initial, message: capture ? "" : unavailable });
-    if (
-      this.mutation !== starting ||
-      !this.active() ||
-      !capture ||
-      !capture.isCurrent()
-    )
-      return;
-    const size = file.size;
+    if (!capture) return null;
+    return this.resetIsCurrent(revision, capture) ? capture : null;
+  }
+  private resetIsCurrent(
+    revision: number,
+    capture: CompanyReportRevisitCapture,
+  ) {
+    if (this.mutation !== revision) return false;
+    if (!this.active()) return false;
+    return capture.isCurrent();
+  }
+  private beginRead(file: CompanyReportRevisitFile) {
+    const capture = this.resetForRead();
+    if (!capture) return null;
+    let size: number;
     try {
+      size = file.size;
       assertCompanyReportArchiveSize(size);
     } catch {
       this.update({ message: invalid });
-      return;
+      return null;
     }
-    const operation = { abort: new AbortController(), capture };
+    const operation = { abort: new AbortController(), capture, size };
     this.reading = operation;
     this.update({ phase: "reading", message: "Reading selected report…" });
-    if (!this.readIsCurrent(operation)) return this.finishStaleRead(operation);
-    try {
-      const bytes = await file.arrayBuffer();
-      if (!this.readIsCurrent(operation))
-        return this.finishStaleRead(operation);
-      const archive = await decodeCompanyReportArchive(
-        bytes,
-        size,
-        operation.abort.signal,
-      );
-      if (!this.readIsCurrent(operation))
-        return this.finishStaleRead(operation);
-      this.reading = null;
-      if (
-        !archive ||
-        !companyReportArchiveMatches(archive, this.options.selection)
-      ) {
-        this.update({ phase: "idle", message: invalid });
-        return;
-      }
-      this.update({
-        phase: "review",
-        archive,
-        message:
-          "File accepted for this company. Its contents and claims remain unverified.",
-      });
-    } catch {
-      if (!this.readIsCurrent(operation))
-        return this.finishStaleRead(operation);
-      this.reading = null;
-      this.update({ phase: "idle", message: invalid });
-    }
+    if (this.readIsCurrent(operation)) return operation;
+    this.finishStaleRead(operation);
+    return null;
   }
-  private readIsCurrent(
-    operation: NonNullable<CompanyReportRevisit["reading"]>,
+  private async admitRead(operation: ReportReadOperation, bytes: ArrayBuffer) {
+    if (!this.readIsCurrent(operation)) return this.finishStaleRead(operation);
+    const archive = await decodeCompanyReportArchive(
+      bytes,
+      operation.size,
+      operation.abort.signal,
+    );
+    this.completeRead(operation, archive);
+  }
+  private completeRead(
+    operation: ReportReadOperation,
+    archive: CompanyReportArchive | null,
   ) {
+    if (!this.readIsCurrent(operation)) return this.finishStaleRead(operation);
+    this.reading = null;
+    if (!this.archiveMatches(archive)) {
+      this.update({ phase: "idle", message: invalid });
+      return;
+    }
+    this.update({
+      phase: "review",
+      archive,
+      message:
+        "File accepted for this company. Its contents and claims remain unverified.",
+    });
+  }
+  private archiveMatches(archive: CompanyReportArchive | null) {
+    if (!archive) return false;
+    return companyReportArchiveMatches(archive, this.options.selection);
+  }
+  private rejectRead(operation: ReportReadOperation) {
+    if (!this.readIsCurrent(operation)) return this.finishStaleRead(operation);
+    this.reading = null;
+    this.update({ phase: "idle", message: invalid });
+  }
+  private readIsCurrent(operation: ReportReadOperation) {
     return (
       this.reading === operation &&
       !operation.abort.signal.aborted &&
@@ -164,16 +190,19 @@ export class CompanyReportRevisit {
       operation.capture.isCurrent()
     );
   }
-  private finishStaleRead(
-    operation: NonNullable<CompanyReportRevisit["reading"]>,
-  ) {
+  private finishStaleRead(operation: ReportReadOperation) {
     if (this.reading !== operation || this.retired) return;
     this.stopRead();
     if (!this.active()) this.clear();
     else this.update({ phase: "idle", message: changed });
   }
+  private canCaptureCurrent() {
+    if (!this.active()) return false;
+    if (!this.state.archive) return false;
+    return this.reading === null;
+  }
   captureCurrent() {
-    if (!this.active() || !this.state.archive || this.reading) return;
+    if (!this.canCaptureCurrent()) return;
     const capture = this.options.capture();
     if (!capture?.isCurrent()) return;
     const report = capture.report;
@@ -219,16 +248,38 @@ export class CompanyReportRevisit {
         "Review the complete note before appending. Save remains a separate action.",
     });
   }
-  append() {
+  private appendCapture() {
+    if (!this.comparisonIsCurrent()) return null;
     const { preview, current } = this.state;
-    const comparison = this.comparison;
-    if (
-      !preview ||
-      !current ||
-      current.note === null ||
-      !comparison ||
-      !this.comparisonIsCurrent()
-    ) {
+    if (!preview) return null;
+    if (!current) return null;
+    if (current.note === null) return null;
+    return {
+      comparison: this.comparison!,
+      preview,
+      previousNote: current.note,
+    };
+  }
+  private applyNote(
+    capture: NonNullable<ReturnType<CompanyReportRevisit["appendCapture"]>>,
+  ) {
+    try {
+      return capture.comparison.append(
+        capture.preview.note,
+        capture.previousNote,
+      );
+    } catch {
+      // A failed draft boundary is refused without replay.
+      return false;
+    }
+  }
+  private appendContinuationCurrent(revision: number) {
+    if (!this.active()) return false;
+    return this.mutation === revision;
+  }
+  append() {
+    const capture = this.appendCapture();
+    if (!capture) {
       this.reconcile();
       return false;
     }
@@ -236,13 +287,8 @@ export class CompanyReportRevisit {
     this.comparison = null;
     this.state = Object.freeze({ ...this.state, current: null, preview: null });
     const applying = ++this.mutation;
-    let appended = false;
-    try {
-      appended = comparison.append(preview.note, current.note);
-    } catch {
-      /* Refuse a failed draft boundary without replay. */
-    }
-    if (!this.active() || this.mutation !== applying) return appended;
+    const appended = this.applyNote(capture);
+    if (!this.appendContinuationCurrent(applying)) return appended;
     this.update({
       message: appended
         ? "Comparison added to the Watchlist note draft. Review and Save My Watchlist separately."
@@ -250,9 +296,14 @@ export class CompanyReportRevisit {
     });
     return appended;
   }
+  private hasPrivateState() {
+    if (this.state !== initial) return true;
+    if (this.reading) return true;
+    return this.comparison !== null;
+  }
   clear() {
     if (this.retired) return;
-    if (this.state === initial && !this.reading && !this.comparison) return;
+    if (!this.hasPrivateState()) return;
     this.stopRead();
     this.comparison = null;
     this.mutation++;
