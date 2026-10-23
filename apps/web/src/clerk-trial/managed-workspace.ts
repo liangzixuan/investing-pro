@@ -1959,7 +1959,7 @@ export class ManagedWorkspace {
       visit: () => this.state.research,
       lifetime: () => ({
         retired: this.retired,
-        navigationBlocked: this.navigationBlocked,
+        navigationBlocked: !this.researchSourceRouteReady(selection),
         operation: this.researchOperation,
         navigation: this.navigationRevision,
       }),

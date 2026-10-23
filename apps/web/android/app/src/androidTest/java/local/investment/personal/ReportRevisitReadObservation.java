@@ -65,6 +65,9 @@ final class ReportRevisitReadObservation {
         return {passed,observation};})()
         """;
     record Result(boolean passed, String observation) {}
+    private record IntegerRange(long minimum, long maximum) {
+        boolean contains(double value) { return value >= minimum && value <= maximum; }
+    }
     private ReportRevisitReadObservation() {}
     static String wrap(String predicate) { return "(()=>{const passed=Boolean(" + predicate + SCRIPT; }
     static Result decode(String value) {
@@ -83,10 +86,10 @@ final class ReportRevisitReadObservation {
             if (source.opt("observationFailed") == Boolean.TRUE) return "observation failed";
             JSONObject safe = new JSONObject();
             for (String key : FLAGS.split(" ")) copyBoolean(source, safe, key);
-            copyInteger(source, safe, "noteLength", 0, 16384);
-            copyInteger(source, safe, "identityMask", 0, 2047);
-            copyInteger(source, safe, "statusCode", -1, 5);
-            copyInteger(source, safe, "inputCount", 0, 8);
+            copyInteger(source, safe, "noteLength", new IntegerRange(0, 16384));
+            copyInteger(source, safe, "identityMask", new IntegerRange(0, 2047));
+            copyInteger(source, safe, "statusCode", new IntegerRange(-1, 5));
+            copyInteger(source, safe, "inputCount", new IntegerRange(0, 8));
             copyBoolean(source, safe, "inputValueEmpty");
             safe.put("counters", safeCounters(source.getJSONObject("counters")));
             safe.put("file", safeFile(source.getJSONObject("file")));
@@ -100,14 +103,14 @@ final class ReportRevisitReadObservation {
     }
     private static JSONObject safeCounters(JSONObject source) throws Exception {
         JSONObject safe = new JSONObject();
-        for (String key : COUNTERS.split(" ")) copyInteger(source, safe, key, -1, 1000000);
+        for (String key : COUNTERS.split(" ")) copyInteger(source, safe, key, new IntegerRange(-1, 1000000));
         return safe;
     }
     private static JSONObject safeFile(JSONObject source) throws Exception {
         JSONObject safe = new JSONObject();
-        copyInteger(source, safe, "events", -1, 32);
-        copyInteger(source, safe, "count", 0, 8);
-        copyInteger(source, safe, "size", -1, Integer.MAX_VALUE);
+        copyInteger(source, safe, "events", new IntegerRange(-1, 32));
+        copyInteger(source, safe, "count", new IntegerRange(0, 8));
+        copyInteger(source, safe, "size", new IntegerRange(-1, Integer.MAX_VALUE));
         copyBoolean(source, safe, "nonzero");
         Object name = source.get("name"), type = source.get("type");
         if (!NAMES.contains(name)) throw new IllegalArgumentException();
@@ -121,12 +124,13 @@ final class ReportRevisitReadObservation {
         if (!(value instanceof Boolean)) throw new IllegalArgumentException();
         target.put(key, value);
     }
-    private static void copyInteger(JSONObject source, JSONObject target, String key, long minimum, long maximum) throws Exception {
+    private static void copyInteger(JSONObject source, JSONObject target, String key, IntegerRange range) throws Exception {
         Object value = source.get(key);
         if (!(value instanceof Number)) throw new IllegalArgumentException();
         double number = ((Number)value).doubleValue();
-        if (!Double.isFinite(number) || number != Math.rint(number) || number < minimum || number > maximum)
+        if (!Double.isFinite(number) || number != Math.rint(number))
             throw new IllegalArgumentException();
+        if (!range.contains(number)) throw new IllegalArgumentException();
         target.put(key, ((Number)value).longValue());
     }
 }

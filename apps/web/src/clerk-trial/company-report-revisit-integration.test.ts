@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { parseManagedCatalogResolveResponse } from "@research-cockpit/contracts";
 import { createFixture } from "../../android-tests/managed-workspace/fixture";
 import {
   archivedPreparedAt,
@@ -32,6 +33,13 @@ async function unopenedSourceFixture() {
   const original = workspace.coordinator.getSnapshot().draft!;
   workspace.openWatchlistAnnual(original.memberships[0]!);
   const selection = workspace.getSnapshot().research!.selection;
+  workspace.setNavigationBlocked(true);
+  await workspace.setCompanyRoute({
+    kind: "company",
+    listingId: selection.listing.listingId,
+    section: "annual",
+  });
+  let routeActive = true;
   const props: CompanyReportRevisitProps = {
     selection,
     price: workspace.eod,
@@ -40,7 +48,7 @@ async function unopenedSourceFixture() {
     valuation: workspace.valuation,
     readWatchlist: (selected) => workspace.getResearchWatchlist(selected),
     target: () =>
-      workspace.captureCompanyReportRevisitTarget(selection, () => true),
+      workspace.captureCompanyReportRevisitTarget(selection, () => routeActive),
   };
   const controller = new CompanyReportRevisit({
     selection,
@@ -70,6 +78,9 @@ async function unopenedSourceFixture() {
     bytes,
     file,
     stop,
+    setRouteActive: (active: boolean) => {
+      routeActive = active;
+    },
   };
 }
 type IntegrationFixture = Awaited<ReturnType<typeof unopenedSourceFixture>>;
@@ -120,6 +131,11 @@ describe("report revisit actual workspace with unloaded current sources", () => 
   it("admits the large real archived format5 file with a current null-report capture and no implicit research read", async () => {
     const f = await unopenedSourceFixture();
     try {
+      expect(f.workspace.getSnapshot().companyRoute).toMatchObject({
+        status: "open",
+        listingId: f.props.selection.listing.listingId,
+        section: "annual",
+      });
       expect(f.document.byteLength).toBeGreaterThan(266_240);
       expect(f.document.byteLength).toBeLessThan(2_850_816);
       expectNoResearchRequests(f);
@@ -191,11 +207,12 @@ describe("report revisit actual workspace with unloaded current sources", () => 
       f.stop();
     }
   });
-  it.each(["source", "draft-restored"] as const)(
+  it.each(["source", "equal-source", "draft-restored"] as const)(
     "refuses late file completion after an actual %s replacement",
     async (boundary) => {
       const f = await unopenedSourceFixture();
       try {
+        if (boundary === "equal-source") await f.workspace.annual.load();
         let resolve!: (bytes: ArrayBuffer) => void;
         const pending = new Promise<ArrayBuffer>((complete) => {
           resolve = complete;
@@ -205,7 +222,15 @@ describe("report revisit actual workspace with unloaded current sources", () => 
           arrayBuffer: () => pending,
         });
         if (boundary === "source") await f.workspace.annual.load();
-        else {
+        else if (boundary === "equal-source") {
+          const response = f.workspace.annual.getSnapshot().response!;
+          const read = vi
+            .spyOn(f.fixture.api, "annualReport")
+            .mockResolvedValueOnce(response);
+          await f.workspace.annual.load();
+          expect(f.workspace.annual.getSnapshot().response).toBe(response);
+          read.mockRestore();
+        } else {
           const other = f.original.memberships[1]!;
           f.workspace.note(other.listingId, "Intervening note");
           f.workspace.note(other.listingId, other.note);
@@ -222,4 +247,162 @@ describe("report revisit actual workspace with unloaded current sources", () => 
       }
     },
   );
+});
+
+async function differentCompanyRoute(f: IntegrationFixture) {
+  const listing = f.fixture.marketsCohort[1];
+  const request = {
+    snapshotSha256: f.props.selection.catalogSnapshotSha256,
+    listingIds: [listing.listingId],
+  };
+  const response = parseManagedCatalogResolveResponse(
+    {
+      snapshotSha256: request.snapshotSha256,
+      results: [{ listingId: listing.listingId, listing }],
+    },
+    request,
+  )!;
+  expect(response).not.toBeNull();
+  const resolve = vi
+    .spyOn(f.fixture.api, "resolve")
+    .mockResolvedValueOnce(response);
+  try {
+    await f.workspace.setCompanyRoute({
+      kind: "company",
+      listingId: listing.listingId,
+      section: "annual",
+    });
+    expect(f.workspace.getSnapshot().companyRoute).toMatchObject({
+      status: "open",
+      listingId: listing.listingId,
+    });
+  } finally {
+    resolve.mockRestore();
+  }
+}
+function expectInactiveRead(f: IntegrationFixture) {
+  expect(f.file.arrayBuffer).not.toHaveBeenCalled();
+  expect(f.controller.getSnapshot()).toMatchObject({
+    phase: "idle",
+    archive: null,
+    current: null,
+    preview: null,
+  });
+  expect(f.workspace.coordinator.getSnapshot().draft).toBe(f.original);
+  expect(f.fixture.getSnapshot()).toMatchObject({
+    annual: 0,
+    eod: 0,
+    filings: 0,
+    save: 0,
+  });
+}
+const unavailableRouteCases = [
+  {
+    label: "invalid/cleared company route",
+    change: (f: IntegrationFixture) => f.workspace.setCompanyRoute(null),
+  },
+  { label: "different open company route", change: differentCompanyRoute },
+  {
+    label: "inactive rendered route",
+    change: (f: IntegrationFixture) => {
+      f.setRouteActive(false);
+      return Promise.resolve();
+    },
+  },
+];
+describe("report revisit real company route lifetime", () => {
+  it("invalidates captured navigation revisions even when the exact open route and all owners stay equal", async () => {
+    const f = await unopenedSourceFixture();
+    try {
+      const captured = captureCompanyReportRevisit(f.props)!;
+      const visit = f.workspace.getSnapshot().research;
+      const annual = f.workspace.annual.getSnapshot();
+      expect(captured.isCurrent()).toBe(true);
+      f.workspace.setNavigationBlocked(true);
+      expect(f.workspace.getSnapshot().research).toBe(visit);
+      expect(f.workspace.annual.getSnapshot()).toBe(annual);
+      expect(f.workspace.getSnapshot().companyRoute?.status).toBe("open");
+      expect(captured.isCurrent()).toBe(false);
+      expect(captured.append("stale note", currentRevisitNote)).toBe(false);
+      expect(captureCompanyReportRevisit(f.props)!.isCurrent()).toBe(true);
+      await f.controller.readFile(f.file);
+      expectArchiveReview(f);
+      expectNoResearchRequests(f);
+    } finally {
+      f.stop();
+    }
+  });
+  it.each(unavailableRouteCases)(
+    "refuses $label without reading the file or writing",
+    async ({ change }) => {
+      const f = await unopenedSourceFixture();
+      try {
+        const captured = captureCompanyReportRevisit(f.props)!;
+        expect(captured.isCurrent()).toBe(true);
+        await change(f);
+        expect(captured.isCurrent()).toBe(false);
+        expect(captured.append("stale note", currentRevisitNote)).toBe(false);
+        await f.controller.readFile(f.file);
+        expectInactiveRead(f);
+      } finally {
+        f.stop();
+      }
+    },
+  );
+  it("refuses while a different company route is resolving", async () => {
+    const f = await unopenedSourceFixture();
+    let reject!: (reason: Error) => void;
+    const held = new Promise<never>((_, fail) => {
+      reject = fail;
+    });
+    const resolve = vi
+      .spyOn(f.fixture.api, "resolve")
+      .mockReturnValueOnce(held);
+    let navigation: Promise<void> | undefined;
+    try {
+      const captured = captureCompanyReportRevisit(f.props)!;
+      expect(captured.isCurrent()).toBe(true);
+      navigation = f.workspace.setCompanyRoute({
+        kind: "company",
+        listingId: f.original.memberships[1]!.listingId,
+        section: "annual",
+      });
+      expect(f.workspace.getSnapshot().companyRoute?.status).toBe("resolving");
+      expect(captured.isCurrent()).toBe(false);
+      await f.controller.readFile(f.file);
+      expectInactiveRead(f);
+    } finally {
+      reject(new Error("Invented pending route ended"));
+      await navigation;
+      resolve.mockRestore();
+      f.stop();
+    }
+  });
+  it("does not revive a captured target after navigation away and back to the equal company and draft", async () => {
+    const f = await unopenedSourceFixture();
+    try {
+      const captured = captureCompanyReportRevisit(f.props)!;
+      const selected = f.props.selection;
+      expect(captured.isCurrent()).toBe(true);
+      await f.workspace.setCompanyRoute(null);
+      f.workspace.openWatchlistAnnual(f.original.memberships[0]!);
+      f.workspace.setNavigationBlocked(true);
+      await f.workspace.setCompanyRoute({
+        kind: "company",
+        listingId: selected.listing.listingId,
+        section: "annual",
+      });
+      expect(f.workspace.getSnapshot().research!.selection.listing).toEqual(
+        selected.listing,
+      );
+      expect(f.workspace.getSnapshot().research!.selection).not.toBe(selected);
+      expect(f.workspace.annual.getSnapshot().response).toBeNull();
+      expect(captured.isCurrent()).toBe(false);
+      expect(captured.append("stale note", currentRevisitNote)).toBe(false);
+      await f.controller.readFile(f.file);
+      expectInactiveRead(f);
+    } finally {
+      f.stop();
+    }
+  });
 });
