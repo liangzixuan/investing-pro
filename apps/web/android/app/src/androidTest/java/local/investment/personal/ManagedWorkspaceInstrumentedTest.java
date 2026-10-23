@@ -10183,7 +10183,7 @@ public class ManagedWorkspaceInstrumentedTest {
             focused + " && document.getElementById(" + JSONObject.quote(id) + ").selectionStart === 0" +
             " && document.getElementById(" + JSONObject.quote(id) + ").selectionEnd === " + expectedBefore.length());
         awaitNativeEditor(id);
-        onView(isAssignableFrom(WebView.class)).perform(typeTextIntoFocusedView(text));
+        commitNativeText(text);
         awaitPage("native replacement produces the exact raw note: " + id,
             "document.activeElement === document.getElementById(" + JSONObject.quote(id) + ")" +
             " && document.getElementById(" + JSONObject.quote(id) + ")?.value === " + JSONObject.quote(text));

@@ -39,7 +39,9 @@ final class WatchlistSystemPicker {
     }
 
     void cancel() throws Exception {
-        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        long startedAt = SystemClock.uptimeMillis();
+        long deadline = startedAt + TIMEOUT_MS;
+        Log.i("WatchlistSystemPicker", "Cancel start uptime=" + startedAt + " deadline=" + deadline);
         CancelSurface initial = awaitCancelSurface(deadline, -1);
         if (initial.imeId >= 0) {
             dispatchCancelBack(initial, deadline, "ime-dismiss");
@@ -411,17 +413,76 @@ final class WatchlistSystemPicker {
     }
 
     private void awaitReturnToApp(long deadline) throws InterruptedException {
+        AppReturnObservation last = new AppReturnObservation();
         while (SystemClock.uptimeMillis() < deadline) {
-            AccessibilityNodeInfo root = automation.getRootInActiveWindow();
-            if (root != null && "local.investment.personal".contentEquals(string(root.getPackageName()))
-                && root.isVisibleToUser()) {
-                AccessibilityWindowInfo window = root.getWindow();
-                if (window != null && window.getType() == AccessibilityWindowInfo.TYPE_APPLICATION
-                    && window.isActive() && window.isFocused()) return;
-            }
+            last = readAppReturn(automation.getRootInActiveWindow());
+            if (SystemClock.uptimeMillis() >= deadline) break;
+            if (last.isReady()) return;
             pauseUntil(deadline);
         }
-        throw new AssertionError("The target app did not regain the active focused window after the system picker");
+        throw new AssertionError("The target app did not regain the active focused window after the system picker; "
+            + last.details(deadline));
+    }
+
+    private static AppReturnObservation readAppReturn(AccessibilityNodeInfo root) {
+        AppReturnObservation observed = new AppReturnObservation();
+        observed.rootPresent = root != null;
+        if (root == null) return observed;
+        observed.refreshed = root.refresh();
+        if (!observed.refreshed) return observed;
+        observed.exactPackage = "local.investment.personal".contentEquals(string(root.getPackageName()));
+        observed.visible = root.isVisibleToUser();
+        observed.rootWindowId = root.getWindowId();
+        AccessibilityWindowInfo window = root.getWindow();
+        if (window == null) return observed;
+        observed.windowId = window.getId();
+        observed.type = window.getType();
+        observed.display = window.getDisplayId();
+        observed.active = window.isActive();
+        observed.focused = window.isFocused();
+        return observed;
+    }
+
+    /** Only finite window metadata is retained; no node text or other package names. */
+    private static final class AppReturnObservation {
+        boolean rootPresent;
+        boolean refreshed;
+        boolean exactPackage;
+        boolean visible;
+        int rootWindowId = -1;
+        int windowId = -1;
+        int type = -1;
+        int display = -1;
+        boolean active;
+        boolean focused;
+
+        boolean isReady() {
+            if (!rootPresent) return false;
+            if (!refreshed) return false;
+            if (!exactPackage) return false;
+            if (!visible) return false;
+            return isExactAppWindow();
+        }
+
+        private boolean isExactAppWindow() {
+            if (windowId < 0) return false;
+            if (rootWindowId != windowId) return false;
+            if (type != AccessibilityWindowInfo.TYPE_APPLICATION) return false;
+            if (display != Display.DEFAULT_DISPLAY) return false;
+            if (!active) return false;
+            return focused;
+        }
+
+        String details(long deadline) {
+            long now = SystemClock.uptimeMillis();
+            return "elapsedMs=" + (now - (deadline - TIMEOUT_MS))
+                + " remainingMs=" + Math.max(0, deadline - now)
+                + " rootPresent=" + rootPresent + " refreshed=" + refreshed
+                + " exactPackage=" + exactPackage + " visible=" + visible
+                + " rootWindowId=" + rootWindowId + " windowId=" + windowId
+                + " type=" + type + " display=" + display
+                + " active=" + active + " focused=" + focused;
+        }
     }
 
     private AccessibilityNodeInfo await(Predicate<AccessibilityNodeInfo> predicate) throws Exception {
