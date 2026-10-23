@@ -44,6 +44,7 @@ final class ReportRevisitPage {
         final Check check;
         final long deadline;
         final AtomicReference<String> nativeState = new AtomicReference<>("not checked");
+        final AtomicReference<String> readState = new AtomicReference<>("not observed");
         int missedCallbacks;
         Wait(Check check, Budget budget) { this.check = check; deadline = SystemClock.uptimeMillis() + budget.millis; }
         boolean remaining() { return SystemClock.uptimeMillis() < deadline; }
@@ -90,9 +91,11 @@ final class ReportRevisitPage {
     private Observation query(Wait wait) {
         Observation observed = new Observation();
         scenario.onActivity(activity -> {
+            if (!wait.remaining()) { observed.returned.countDown(); return; }
             WebView webView = activity.getBridge().getWebView();
             if (!nativeAdmitted(activity, webView, wait)) { observed.returned.countDown(); return; }
-            webView.evaluateJavascript("Boolean(" + wait.check.predicate.expression + ")", value -> {
+            if (!wait.remaining()) { observed.returned.countDown(); return; }
+            webView.evaluateJavascript(ReportRevisitReadObservation.wrap(wait.check.predicate.expression), value -> {
                 acceptResult(activity, webView, new Callback(wait, observed, value));
                 observed.returned.countDown();
             });
@@ -103,7 +106,10 @@ final class ReportRevisitPage {
         if (!result.waiting.remaining()) return;
         if (!nativeAdmitted(activity, webView, result.waiting)) return;
         if (!result.waiting.remaining()) return;
-        result.observed.result.set(result.value);
+        ReportRevisitReadObservation.Result decoded = ReportRevisitReadObservation.decode(result.value);
+        if (!result.waiting.remaining()) return;
+        result.waiting.readState.set(decoded.observation());
+        result.observed.result.set(decoded.passed() ? "true" : "false");
     }
     private boolean nativeAdmitted(MainActivity activity, WebView webView, Wait wait) {
         if (wait.check.readiness == Readiness.DOM) return true;
@@ -117,7 +123,7 @@ final class ReportRevisitPage {
         return !shown;
     }
     private void failWaiting(Wait wait) {
-        String diagnostic = "missed callbacks=" + wait.missedCallbacks;
+        String diagnostic = "missed callbacks=" + wait.missedCallbacks + "; read=" + wait.readState.get();
         if (wait.check.readiness == Readiness.NATIVE)
             diagnostic += "; native=" + wait.nativeState.get() + "; activeWindow=" + NativeReadinessFailureObservation.capture();
         Log.e("ManagedFixture", "Timed out waiting for " + wait.check.description + ": " + diagnostic);
