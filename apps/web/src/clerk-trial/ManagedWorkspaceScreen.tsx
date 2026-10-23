@@ -1,3 +1,4 @@
+import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import { managedResearchCompanyNavigationProps } from "./managed-research-company-navigation-props";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
@@ -802,20 +803,7 @@ export function ManagedWorkspaceScreen({
   };
   const retired = sessionState.phase !== "active";
   const navigationPending = navigation?.pending ?? false;
-  const recipesRouteActive = useCallback(() => {
-    const current = workspace.getSnapshot();
-    const route = reviewNavigation.current.navigation;
-    return (
-      !navigationPending &&
-      !route?.isPending() &&
-      !route?.invalid &&
-      !route?.hasCompanyRoute() &&
-      workspace.sessionOwner.getSnapshot().phase === "active" &&
-      current.view === "discover" &&
-      !current.research &&
-      !current.companyRoute
-    );
-  }, [workspace, navigationPending]);
+  const recipesRouteActive = useManagedScreenRecipeRoute(workspace, navigation);
   const financialDiscovery = managedFinancialDiscoveryProps(
     workspace,
     navigationPending,

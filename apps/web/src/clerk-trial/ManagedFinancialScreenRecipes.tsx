@@ -1,10 +1,19 @@
-import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  type ChangeEvent,
+  type MouseEvent,
+  type RefObject,
+} from "react";
 import type { ManagedEodIdentity } from "@research-cockpit/contracts";
 import type { ManagedFinancialScreen as ScreenModel } from "./managed-financial-screen";
 import {
   ManagedFinancialScreenRecipes as Recipes,
   type ScreenRecipeFileSelection,
   type ScreenRecipeReview,
+  type ScreenRecipesState,
 } from "./managed-financial-screen-recipes";
 import {
   browserFinancialScreenRecipeAdapter,
@@ -16,18 +25,22 @@ import {
   type ManagedFinancialScreenCriteria,
 } from "./managed-financial-screen-results";
 
+interface RecipePanelProps {
+  readonly model: ScreenModel;
+  readonly delivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+  readonly routeActive?: () => boolean;
+  readonly onApplied: () => void;
+}
+interface RecipePanelView {
+  readonly recipes: Recipes;
+  readonly state: ScreenRecipesState;
+}
 const activeRoute = () => true;
-export function ManagedFinancialScreenRecipes({
+function useScreenRecipes({
   model,
   delivery = browserFinancialScreenRecipeAdapter,
   routeActive = activeRoute,
-  onApplied,
-}: {
-  model: ScreenModel;
-  delivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
-  routeActive?: () => boolean;
-  onApplied: () => void;
-}) {
+}: RecipePanelProps): RecipePanelView {
   const recipes = useMemo(
     () => new Recipes({ model, delivery, routeActive }),
     [model, delivery, routeActive],
@@ -37,17 +50,13 @@ export function ManagedFinancialScreenRecipes({
     recipes.getSnapshot,
     recipes.getSnapshot,
   );
-  const token = useRef<ScreenRecipeFileSelection | null>(null);
-  const input = useRef<HTMLInputElement | null>(null);
-  useLayoutEffect(() => {
-    const element = input.current;
-    const cancel = () => recipes.cancelFileSelection(token.current);
-    element?.addEventListener("cancel", cancel);
-    return () => element?.removeEventListener("cancel", cancel);
-  }, [recipes]);
   useLayoutEffect(() => {
     recipes.reconcile();
   });
+  return { recipes, state };
+}
+export function ManagedFinancialScreenRecipes(props: RecipePanelProps) {
+  const view = useScreenRecipes(props);
   return (
     <details id="managed-screen-recipes" className="managed-screen-evidence">
       <summary>Portable screen recipe</summary>
@@ -56,7 +65,17 @@ export function ManagedFinancialScreenRecipes({
         no results, notes or shortlist. Load the current screening cohort first.
         Unapplied criteria edits block capture and Apply.
       </p>
-      <div className="managed-screen-clause">
+      <RecipeControls view={view} />
+      <RecipeActionStatus view={view} />
+      <RecipeReviewState view={view} onApplied={props.onApplied} />
+    </details>
+  );
+}
+function RecipeControls({ view }: { view: RecipePanelView }) {
+  const { recipes, state } = view;
+  return (
+    <>
+      <div className="managed-screen-recipe-field">
         <label>
           Recipe name
           <input
@@ -76,50 +95,95 @@ export function ManagedFinancialScreenRecipes({
       >
         Save screen recipe file
       </button>
-      <div className="managed-screen-clause">
-        <label htmlFor="managed-screen-recipe-file">
-          Open screen recipe file
-          <input
-            ref={input}
-            id="managed-screen-recipe-file"
-            type="file"
-            accept="application/json,.json"
-            disabled={!state.canImport}
-            onClick={(event) => {
-              event.currentTarget.value = "";
-              token.current = recipes.chooseFile(state);
-              if (!token.current) event.preventDefault();
-            }}
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
-              if (file) void recipes.readFile(file, token.current);
-              else recipes.cancelFileSelection(token.current);
-              event.currentTarget.value = "";
-            }}
-          />
-        </label>
-      </div>
-      {state.phase !== "idle" && (
+      <RecipeFileInput view={view} />
+    </>
+  );
+}
+function useRecipeFileChoice(recipes: Recipes) {
+  const token = useRef<ScreenRecipeFileSelection | null>(null);
+  const input = useRef<HTMLInputElement | null>(null);
+  useLayoutEffect(() => {
+    const element = input.current;
+    const cancel = () => recipes.cancelFileSelection(token.current);
+    element?.addEventListener("cancel", cancel);
+    return () => element?.removeEventListener("cancel", cancel);
+  }, [recipes]);
+  return { token, input };
+}
+function beginFileChoice(
+  view: RecipePanelView,
+  token: RefObject<ScreenRecipeFileSelection | null>,
+  event: MouseEvent<HTMLInputElement>,
+) {
+  event.currentTarget.value = "";
+  token.current = view.recipes.chooseFile(view.state);
+  if (!token.current) event.preventDefault();
+}
+function readFileChoice(
+  view: RecipePanelView,
+  token: RefObject<ScreenRecipeFileSelection | null>,
+  event: ChangeEvent<HTMLInputElement>,
+) {
+  const file = event.currentTarget.files?.[0];
+  if (file) void view.recipes.readFile(file, token.current);
+  else view.recipes.cancelFileSelection(token.current);
+  event.currentTarget.value = "";
+}
+function RecipeFileInput({ view }: { view: RecipePanelView }) {
+  const { token, input } = useRecipeFileChoice(view.recipes);
+  return (
+    <div className="managed-screen-recipe-field">
+      <label htmlFor="managed-screen-recipe-file">
+        Open screen recipe file
+        <input
+          ref={input}
+          id="managed-screen-recipe-file"
+          type="file"
+          accept="application/json,.json"
+          disabled={!view.state.canImport}
+          onClick={(event) => beginFileChoice(view, token, event)}
+          onChange={(event) => readFileChoice(view, token, event)}
+        />
+      </label>
+    </div>
+  );
+}
+function RecipeActionStatus({ view }: { view: RecipePanelView }) {
+  return (
+    <>
+      {view.state.phase !== "idle" && (
         <button
           type="button"
           className="trial-secondary"
-          onClick={() => recipes.cancel(state)}
+          onClick={() => view.recipes.cancel(view.state)}
         >
           Keep current screen definition
         </button>
       )}
       <p role="status" aria-live="polite">
-        {state.message}
+        {view.state.message}
       </p>
-      {state.review && (
-        <ScreenRecipeReviewView
-          review={state.review}
-          onApply={() => {
-            if (state.review && recipes.apply(state.review)) onApplied();
-          }}
-        />
-      )}
-    </details>
+    </>
+  );
+}
+function applyReviewedRecipe(view: RecipePanelView, onApplied: () => void) {
+  const review = view.state.review;
+  if (!review) return;
+  if (view.recipes.apply(review)) onApplied();
+}
+function RecipeReviewState({
+  view,
+  onApplied,
+}: {
+  view: RecipePanelView;
+  onApplied: () => void;
+}) {
+  if (!view.state.review) return null;
+  return (
+    <ScreenRecipeReviewView
+      review={view.state.review}
+      onApply={() => applyReviewedRecipe(view, onApplied)}
+    />
   );
 }
 export function ScreenRecipeReviewView({

@@ -104,6 +104,24 @@ function validSize(size: number) {
   );
 }
 
+function readableScreenDefinition(screen: ManagedFinancialScreenState) {
+  if (!screen.active || !screen.canRead) return false;
+  if (screen.catalogChanged || screen.criteriaStaged) return false;
+  return screen.pending === null && screen.run?.status !== "running";
+}
+function prepareRecipeReview(
+  file: ManagedFinancialScreenRecipeContent,
+  current: ManagedFinancialScreenState,
+  model: ManagedFinancialScreen,
+): ScreenRecipeReview {
+  const rows = Object.freeze(
+    file.listings.map((listing) => reviewIdentity(listing, current, model)),
+  );
+  const canApply = rows.every(
+    (row) => row.status === "same" || row.status === "metadata_changed",
+  );
+  return Object.freeze({ file, current, rows, canApply });
+}
 /** Transient recipe IO owns no source reads, saved resources or persisted definition. */
 export class ManagedFinancialScreenRecipes {
   private state: ScreenRecipesState = Object.freeze({
@@ -137,22 +155,14 @@ export class ManagedFinancialScreenRecipes {
     };
   };
   private context() {
-    const screen = this.options.model.getSnapshot();
     if (!this.listeners.size || !this.options.routeActive()) return null;
-    if (!screen.active || !screen.canRead || screen.catalogChanged) return null;
-    if (
-      screen.criteriaStaged ||
-      screen.pending ||
-      screen.run?.status === "running"
+    const screen = this.options.model.getSnapshot();
+    if (!readableScreenDefinition(screen)) return null;
+    return screen.memberships.some((member) =>
+      this.options.model.hasCoverage(member),
     )
-      return null;
-    if (
-      !screen.memberships.some((member) =>
-        this.options.model.hasCoverage(member),
-      )
-    )
-      return null;
-    return screen;
+      ? screen
+      : null;
   }
   private same(screen: ManagedFinancialScreenState) {
     return this.context() === screen;
@@ -215,11 +225,14 @@ export class ManagedFinancialScreenRecipes {
     this.publish({ phase: "idle", review: null, message, ...patch });
     return transition;
   }
+  private operationChanged() {
+    return this.operation !== null && !this.current(this.operation);
+  }
+  private selectionChanged() {
+    return this.selection !== null && !this.same(this.selection.screen);
+  }
   reconcile = () => {
-    if (
-      (this.operation && !this.current(this.operation)) ||
-      (this.selection && !this.same(this.selection.screen))
-    )
+    if (this.operationChanged() || this.selectionChanged())
       this.clear(
         "The screen or session changed. Select the recipe again to review it.",
       );
@@ -238,12 +251,15 @@ export class ManagedFinancialScreenRecipes {
   cancelFileSelection(token: ScreenRecipeFileSelection | null) {
     if (this.selection?.token === token) this.cancel();
   }
+  private settledTransition(transition: object) {
+    return this.transition === transition && this.operation === null;
+  }
   chooseFile(captured = this.state): ScreenRecipeFileSelection | null {
     if (captured !== this.state) return null;
     const transition = this.clear("");
     const screen = this.context();
-    if (!screen || this.transition !== transition || this.operation)
-      return null;
+    if (!screen) return null;
+    if (!this.settledTransition(transition)) return null;
     const token = Object.freeze({ handle: Symbol() });
     this.selection = { token, screen };
     return token;
@@ -283,20 +299,11 @@ export class ManagedFinancialScreenRecipes {
       );
     }
   }
-  async readFile(
-    file: Pick<File, "size" | "arrayBuffer">,
-    token: ScreenRecipeFileSelection | null,
-  ) {
+  private beginRead(token: ScreenRecipeFileSelection | null): Operation | null {
     const selection = this.selection;
-    if (
-      !selection ||
-      selection.token !== token ||
-      !this.same(selection.screen) ||
-      this.operation
-    ) {
-      this.reconcile();
-      return;
-    }
+    if (!selection) return null;
+    if (selection.token !== token || this.operation) return null;
+    if (!this.same(selection.screen)) return null;
     this.selection = null;
     const operation = {
       screen: selection.screen,
@@ -304,37 +311,49 @@ export class ManagedFinancialScreenRecipes {
     };
     this.operation = operation;
     this.publish({ phase: "reading", review: null, message: "" });
+    return operation;
+  }
+  private reviewBytes(operation: Operation, bytes: ArrayBuffer, size: number) {
+    if (!this.current(operation)) {
+      this.reconcile();
+      return;
+    }
+    const content = readRecipe(bytes, size);
+    if (!content) throw new Error("recipe");
+    const review = prepareRecipeReview(
+      content,
+      operation.screen,
+      this.options.model,
+    );
+    this.publish({
+      phase: "review",
+      review,
+      message: review.canApply
+        ? "Review the complete file and current definition. Applying does not run the screen."
+        : "The complete recipe cannot be applied because a listing is missing, changed or outside current Annual coverage.",
+    });
+  }
+  private async readSelectedFile(
+    operation: Operation,
+    file: Pick<File, "size" | "arrayBuffer">,
+  ) {
+    if (!this.current(operation)) return;
+    if (!validSize(file.size)) throw new Error("size");
+    const size = file.size,
+      bytes = await file.arrayBuffer();
+    this.reviewBytes(operation, bytes, size);
+  }
+  async readFile(
+    file: Pick<File, "size" | "arrayBuffer">,
+    token: ScreenRecipeFileSelection | null,
+  ) {
+    const operation = this.beginRead(token);
+    if (!operation) {
+      this.reconcile();
+      return;
+    }
     try {
-      if (!this.current(operation)) return;
-      if (!validSize(file.size)) throw new Error("size");
-      const size = file.size,
-        bytes = await file.arrayBuffer();
-      if (!this.current(operation)) {
-        this.reconcile();
-        return;
-      }
-      const content = readRecipe(bytes, size);
-      if (!content) throw new Error("recipe");
-      const rows = Object.freeze(
-        content.listings.map((listing) =>
-          reviewIdentity(listing, operation.screen, this.options.model),
-        ),
-      );
-      const canApply = rows.every(
-        (row) => row.status === "same" || row.status === "metadata_changed",
-      );
-      this.publish({
-        phase: "review",
-        review: Object.freeze({
-          file: content,
-          current: operation.screen,
-          rows,
-          canApply,
-        }),
-        message: canApply
-          ? "Review the complete file and current definition. Applying does not run the screen."
-          : "The complete recipe cannot be applied because a listing is missing, changed or outside current Annual coverage.",
-      });
+      await this.readSelectedFile(operation, file);
     } catch {
       this.finish(
         operation,
@@ -342,24 +361,21 @@ export class ManagedFinancialScreenRecipes {
       );
     }
   }
-  apply(review: ScreenRecipeReview): boolean {
+  private reviewedOperation(review: ScreenRecipeReview): Operation | null {
+    if (this.state.review !== review || !review.canApply) return null;
     const operation = this.operation;
-    if (
-      !operation ||
-      this.state.review !== review ||
-      !review.canApply ||
-      !this.current(operation)
-    ) {
+    if (!operation) return null;
+    return this.current(operation) ? operation : null;
+  }
+  apply(review: ScreenRecipeReview): boolean {
+    const operation = this.reviewedOperation(review);
+    if (!operation) {
       this.reconcile();
       return false;
     }
     const transition = this.clear("");
-    if (
-      this.transition !== transition ||
-      this.operation ||
-      !this.same(operation.screen)
-    )
-      return false;
+    if (!this.settledTransition(transition)) return false;
+    if (!this.same(operation.screen)) return false;
     const accepted = this.options.model.applyRecipeDefinition(
       operation.screen,
       review.file.criteria,

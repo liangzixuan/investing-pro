@@ -1,7 +1,10 @@
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { ScreenRecipeReviewView } from "./ManagedFinancialScreenRecipes";
+import {
+  ManagedFinancialScreenRecipes,
+  ScreenRecipeReviewView,
+} from "./ManagedFinancialScreenRecipes";
 import { ManagedFinancialScreen } from "./managed-financial-screen";
 import {
   formatManagedFinancialScreenRecipe,
@@ -86,4 +89,19 @@ it("shows missing current identity and refuses the entire Apply control", () => 
   expect(html).toMatch(
     /<button[^>]*disabled=""[^>]*>Apply recipe definition<\/button>/u,
   );
+});
+
+it("keeps closed recipe fields outside the applied-criteria visibility boundary", () => {
+  const model = new ManagedFinancialScreen(
+    { resolve: vi.fn(), annualReport: vi.fn() },
+    vi.fn(),
+  );
+  const html = renderToStaticMarkup(
+    <ManagedFinancialScreenRecipes model={model} onApplied={vi.fn()} />,
+  );
+  expect(html).toContain('id="managed-screen-recipes"');
+  expect(html).toContain('id="managed-screen-recipe-name"');
+  expect(html).toContain('id="managed-screen-recipe-file"');
+  expect(html.match(/class="managed-screen-recipe-field"/gu)).toHaveLength(2);
+  expect(html).not.toContain('class="managed-screen-clause"');
 });

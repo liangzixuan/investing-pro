@@ -1,8 +1,9 @@
 import { registerPlugin } from "@capacitor/core";
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type ReactElement } from "react";
 import {
   createNativeFinancialScreenRecipeAdapter,
   type InvestmentFinancialScreenRecipePlugin,
+  type ManagedFinancialScreenRecipeDeliveryAdapter,
 } from "../../src/clerk-trial/financial-screen-recipe-delivery";
 
 /** Test APK only: observes the actual chosen-document recipe writer with invented data. */
@@ -49,4 +50,25 @@ export function createNativeFinancialScreenRecipeFixture(
     );
   }
   return { delivery, Controls, getSnapshot };
+}
+
+interface ScreenRecipeSession {
+  readonly routerProps: {
+    readonly financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+  };
+  readonly Controls: () => ReactElement | null;
+}
+function EmptyControls() {
+  return null;
+}
+
+/** Recipes carry no account scope; this port only selects the invented fixture capability. */
+export function createNativeFinancialScreenRecipeSession(
+  fixture: ReturnType<typeof createNativeFinancialScreenRecipeFixture> | null,
+): ScreenRecipeSession {
+  if (!fixture) return { routerProps: {}, Controls: EmptyControls };
+  return {
+    routerProps: { financialScreenRecipeDelivery: fixture.delivery },
+    Controls: fixture.Controls,
+  };
 }

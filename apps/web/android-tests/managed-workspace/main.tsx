@@ -1,4 +1,7 @@
-import { createNativeFinancialScreenRecipeFixture } from "./native-financial-screen-recipe-fixture";
+import {
+  createNativeFinancialScreenRecipeFixture,
+  createNativeFinancialScreenRecipeSession,
+} from "./native-financial-screen-recipe-fixture";
 import { createNativeReportFixture } from "./native-report-fixture";
 import { NativeFilingsFixtureControls } from "./native-filings-fixture-controls";
 import { App } from "@capacitor/app";
@@ -93,10 +96,11 @@ const nativeExport =
   scenario === "watchlist-export" ? createNativeExportFixture() : null;
 const nativeDraftFile =
   scenario === "watchlist-draft-file" ? createNativeDraftFileFixture() : null;
-const nativeScreenRecipe =
+const nativeScreenRecipe = createNativeFinancialScreenRecipeSession(
   scenario === "financial-screen"
     ? createNativeFinancialScreenRecipeFixture()
-    : null;
+    : null,
+);
 const nativeValuationDraftFile =
   scenario === "saved-valuation"
     ? createNativeValuationDraftFileFixture()
@@ -145,9 +149,7 @@ function FixtureSession({
             {...(nativeExport ? { exportDelivery: nativeExport.delivery } : {})}
             {...draftFileSession.routerProps}
             {...valuationDraftFileSession.routerProps}
-            {...(nativeScreenRecipe
-              ? { financialScreenRecipeDelivery: nativeScreenRecipe.delivery }
-              : {})}
+            {...nativeScreenRecipe.routerProps}
           />
         ) : (
           <p role="status">Loading your workspace…</p>
@@ -165,7 +167,7 @@ function FixtureSession({
         onFreshSession={onFreshSession}
       />
       <valuationDraftFileSession.Controls />
-      {nativeScreenRecipe && <nativeScreenRecipe.Controls />}
+      <nativeScreenRecipe.Controls />
       {workspace && fixture.portfolio && (
         <PortfolioFixtureControls
           workspace={workspace}

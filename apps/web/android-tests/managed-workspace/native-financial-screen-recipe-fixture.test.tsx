@@ -6,7 +6,10 @@ import { formatManagedFinancialScreenRecipe } from "../../src/clerk-trial/manage
 import { ManagedFinancialScreenRecipes } from "../../src/clerk-trial/managed-financial-screen-recipes";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { eodSelection } from "../../src/clerk-trial/eod-history-fixture";
-import { createNativeFinancialScreenRecipeFixture } from "./native-financial-screen-recipe-fixture";
+import {
+  createNativeFinancialScreenRecipeFixture,
+  createNativeFinancialScreenRecipeSession,
+} from "./native-financial-screen-recipe-fixture";
 import { createFixture } from "./fixture";
 
 vi.mock("@capacitor/core", () => ({ registerPlugin: vi.fn() }));
@@ -45,6 +48,22 @@ function context() {
 }
 
 describe("invented native screen recipe fixture", () => {
+  it("binds only an explicitly selected fixture capability without registering or operating a plugin", () => {
+    vi.mocked(registerPlugin).mockReset();
+    const absent = createNativeFinancialScreenRecipeSession(null);
+    expect(absent.routerProps).toEqual({});
+    expect(renderToStaticMarkup(<absent.Controls />)).toBe("");
+    const fixture = nativeFixture();
+    const selected = createNativeFinancialScreenRecipeSession(fixture.native);
+    expect(selected.routerProps).toEqual({
+      financialScreenRecipeDelivery: fixture.native.delivery,
+    });
+    expect(selected.Controls).toBe(fixture.native.Controls);
+    expect(registerPlugin).not.toHaveBeenCalled();
+    expect(fixture.plugin.choose).not.toHaveBeenCalled();
+    expect(fixture.plugin.write).not.toHaveBeenCalled();
+  });
+
   it("registers the fixed real plugin and exposes idle metadata without an operation", () => {
     const f = nativeFixture();
     vi.mocked(registerPlugin).mockReset().mockReturnValue(f.plugin);
