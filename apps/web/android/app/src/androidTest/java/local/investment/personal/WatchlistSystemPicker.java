@@ -39,10 +39,180 @@ final class WatchlistSystemPicker {
     }
 
     void cancel() throws Exception {
-        awaitOpen();
-        assertTrue("System picker Back must dispatch", automation.performGlobalAction(
+        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        CancelSurface initial = awaitCancelSurface(deadline, -1);
+        if (initial.imeId >= 0) {
+            dispatchCancelBack(initial, deadline, "ime-dismiss");
+            awaitImeDismissed(initial, deadline);
+        }
+        CancelSurface current = awaitCancelSurface(deadline, initial.pickerId);
+        assertEquals("A late keyboard must not consume picker cancellation", -1, current.imeId);
+        dispatchCancelBack(current, deadline, "picker-cancel");
+        awaitReturnToApp(deadline);
+    }
+
+    private static final class CancelSurface {
+        final int pickerId;
+        final int imeId;
+
+        CancelSurface(int pickerId, int imeId) {
+            this.pickerId = pickerId;
+            this.imeId = imeId;
+        }
+    }
+
+    private CancelSurface awaitCancelSurface(long deadline, int expectedPickerId) throws InterruptedException {
+        while (SystemClock.uptimeMillis() < deadline) {
+            CancelSurface surface = stableCancelSurface(deadline, expectedPickerId);
+            if (surface != null) return surface;
+            pauseUntil(deadline);
+        }
+        throw new AssertionError("The exact system Save picker did not become unambiguous before Cancel");
+    }
+
+    private CancelSurface stableCancelSurface(long deadline, int expectedPickerId) {
+        AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+        CancelSurface before = readCancelSurface(root, expectedPickerId);
+        if (before == null) return null;
+        long remaining = deadline - SystemClock.uptimeMillis();
+        if (remaining <= 0) return null;
+        StableResult stable = AccessibilityNodeInfoExt.waitForStable(root, remaining, 500, 50, false);
+        if (stable.isTimeout()) return null;
+        AccessibilityNodeInfo current = automation.getRootInActiveWindow();
+        CancelSurface after = readCancelSurface(current, before.pickerId);
+        if (!root.equals(current)) return null;
+        return after;
+    }
+
+    private CancelSurface readCancelSurface(int expectedPickerId) {
+        return readCancelSurface(automation.getRootInActiveWindow(), expectedPickerId);
+    }
+
+    private CancelSurface readCancelSurface(AccessibilityNodeInfo root, int expectedPickerId) {
+        if (!readyCancelRoot(root, expectedPickerId)) return null;
+        AccessibilityWindowInfo window = root.getWindow();
+        if (!isCancelPickerWindow(window)) return null;
+        if (expectedPickerId >= 0)
+            assertEquals("Cancel must not move to a different picker window", expectedPickerId, window.getId());
+        if (!isCancelSurfaceReady(root, window)) return null;
+        int imeId = observeCancelIme(window);
+        if (imeId == -2) return null;
+        return new CancelSurface(window.getId(), imeId);
+    }
+
+    private static boolean readyCancelRoot(AccessibilityNodeInfo root, int expectedPickerId) {
+        if (root == null) return false;
+        if (!root.refresh()) return false;
+        if (!root.isVisibleToUser()) return false;
+        if (string(root.getPackageName()).endsWith(".documentsui")) return true;
+        if (expectedPickerId < 0) return false;
+        throw new AssertionError("Cancel must remain in the observed DocumentsUI window");
+    }
+
+    private static boolean isCancelPickerWindow(AccessibilityWindowInfo window) {
+        if (window == null) return false;
+        if (window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) return false;
+        if (window.getDisplayId() != Display.DEFAULT_DISPLAY) return false;
+        if (!window.isActive()) return false;
+        return window.isFocused();
+    }
+
+    private static boolean isCancelSurfaceReady(AccessibilityNodeInfo root, AccessibilityWindowInfo window) {
+        if (root.getWindowId() != window.getId()) return false;
+        AccessibilityNodeInfo save = find(root, node -> node.isVisibleToUser()
+            && string(node.getViewIdResourceName()).endsWith(":id/container_save"), 0);
+        if (save == null) return false;
+        if (find(root, WatchlistSystemPicker::isRootsList, 0) != null) return false;
+        return find(root, WatchlistSystemPicker::isCancelModal, 0) == null;
+    }
+
+    private static boolean isCancelModal(AccessibilityNodeInfo node) {
+        if (!node.isVisibleToUser()) return false;
+        return java.util.Set.of("android:id/parentPanel", "android:id/alertTitle")
+            .contains(string(node.getViewIdResourceName()));
+    }
+
+    /** -1 means observed absent; -2 means incomplete or conflicting window evidence. */
+    private int observeCancelIme(AccessibilityWindowInfo picker) {
+        List<AccessibilityWindowInfo> windows = automation.getWindows();
+        if (windows == null) return -2;
+        if (!isCancelWindowRoster(windows, picker)) return -2;
+        return visibleCancelImeId(windows);
+    }
+
+    private static boolean isCancelWindowRoster(List<AccessibilityWindowInfo> windows, AccessibilityWindowInfo picker) {
+        int pickerCount = 0;
+        for (AccessibilityWindowInfo window : windows) {
+            if (window == null) return false;
+            if (window.getDisplayId() != Display.DEFAULT_DISPLAY) continue;
+            if (window.getId() == picker.getId()) {
+                if (!isCancelPickerWindow(window)) return false;
+                pickerCount++;
+            } else if (window.getType() != AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                if (conflictsWithCancelPicker(window, picker)) return false;
+            }
+        }
+        return pickerCount == 1;
+    }
+
+    private static int visibleCancelImeId(List<AccessibilityWindowInfo> windows) {
+        int imeId = -1;
+        for (AccessibilityWindowInfo window : windows) {
+            if (window.getDisplayId() != Display.DEFAULT_DISPLAY) continue;
+            if (window.getType() != AccessibilityWindowInfo.TYPE_INPUT_METHOD) continue;
+            int visibleId = visibleCancelIme(window);
+            if (visibleId == -2) return -2;
+            if (visibleId == -1) continue;
+            if (imeId >= 0) return -2;
+            imeId = visibleId;
+        }
+        return imeId;
+    }
+
+    private static int visibleCancelIme(AccessibilityWindowInfo window) {
+        AccessibilityNodeInfo root = window.getRoot();
+        if (root == null) return -2;
+        if (!root.refresh() || root.getWindowId() != window.getId()) return -2;
+        if (!root.isVisibleToUser()) return -1;
+        Rect bounds = new Rect();
+        window.getBoundsInScreen(bounds);
+        if (bounds.isEmpty()) return -2;
+        return window.getId();
+    }
+
+    private static boolean conflictsWithCancelPicker(AccessibilityWindowInfo window, AccessibilityWindowInfo picker) {
+        if (window.isActive()) return true;
+        if (window.isFocused()) return true;
+        if (window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) return false;
+        if (window.getLayer() <= picker.getLayer()) return false;
+        AccessibilityNodeInfo root = window.getRoot();
+        if (root == null || !root.refresh()) return true;
+        return root.isVisibleToUser();
+    }
+
+    private void awaitImeDismissed(CancelSurface initial, long deadline) throws InterruptedException {
+        while (SystemClock.uptimeMillis() < deadline) {
+            CancelSurface current = readCancelSurface(initial.pickerId);
+            if (current != null) {
+                if (current.imeId == -1) return;
+                assertEquals("IME dismissal must not select another keyboard window", initial.imeId, current.imeId);
+            }
+            pauseUntil(deadline);
+        }
+        throw new AssertionError("The observed keyboard did not dismiss within the shared picker Cancel deadline");
+    }
+
+    private void dispatchCancelBack(CancelSurface surface, long deadline, String phase) {
+        assertTrue("Picker Cancel must stay within its original deadline", SystemClock.uptimeMillis() < deadline);
+        Log.i("WatchlistSystemPicker", "Cancel phase=" + phase + " picker=" + surface.pickerId
+            + " ime=" + surface.imeId + " uptime=" + SystemClock.uptimeMillis());
+        assertTrue("System picker " + phase + " Back must dispatch", automation.performGlobalAction(
             android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));
-        awaitReturnToApp();
+    }
+
+    private static void pauseUntil(long deadline) throws InterruptedException {
+        long remaining = deadline - SystemClock.uptimeMillis();
+        if (remaining > 0) Thread.sleep(Math.min(50, remaining));
     }
 
     void saveToInventedRoot() throws Exception {
@@ -233,8 +403,11 @@ final class WatchlistSystemPicker {
 
     /** A dispatched picker action does not mean its destination or Activity result is ready. */
     private void awaitReturnToApp() throws InterruptedException {
-        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
-        do {
+        awaitReturnToApp(SystemClock.uptimeMillis() + TIMEOUT_MS);
+    }
+
+    private void awaitReturnToApp(long deadline) throws InterruptedException {
+        while (SystemClock.uptimeMillis() < deadline) {
             AccessibilityNodeInfo root = automation.getRootInActiveWindow();
             if (root != null && "local.investment.personal".contentEquals(string(root.getPackageName()))
                 && root.isVisibleToUser()) {
@@ -242,8 +415,8 @@ final class WatchlistSystemPicker {
                 if (window != null && window.getType() == AccessibilityWindowInfo.TYPE_APPLICATION
                     && window.isActive() && window.isFocused()) return;
             }
-            Thread.sleep(50);
-        } while (SystemClock.uptimeMillis() < deadline);
+            pauseUntil(deadline);
+        }
         throw new AssertionError("The target app did not regain the active focused window after the system picker");
     }
 

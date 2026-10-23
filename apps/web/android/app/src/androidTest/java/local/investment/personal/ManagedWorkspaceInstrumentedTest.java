@@ -1014,6 +1014,7 @@ public class ManagedWorkspaceInstrumentedTest {
         selectWatchlistNote(1);
         touchInput("managed-note-1");
         replaceFocusedInput("managed-note-1", "Invented second note", "Holding research list note");
+        selectWatchlistNote(0);
         click("button[aria-label='Remove ZERO']");
         awaitPage("the missing target leaves the independent ONE note unchanged",
             DRAFT + ".memberships.length === 1 && " + DRAFT + ".memberships[0].listingId === 'listing-one'" +
