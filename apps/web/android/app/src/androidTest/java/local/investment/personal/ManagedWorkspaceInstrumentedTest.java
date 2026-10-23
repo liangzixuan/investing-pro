@@ -831,6 +831,21 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("native End collapses the valuation operand caret without changing its raw value",
             exactEditor + " && document.getElementById(" + JSONObject.quote(id) + ").selectionStart===" + after.length() +
             " && document.getElementById(" + JSONObject.quote(id) + ").selectionEnd===" + after.length());
+        String nextSuffix = java.util.Map.of(
+            "dcf-startingUnleveredCashFlowUsd", "dcf-enterpriseToEquityBridgeUsd",
+            "exit-cash", "exit-debt").get(suffix);
+        assertNotNull("Valuation file operand has one exact next native editor", nextSuffix);
+        String nextId = id.substring(0, id.length() - suffix.length()) + nextSuffix;
+        String editor = readFixtureString("JSON.stringify(" + savedValuationEditor() + ")");
+        String resource = readFixtureString("JSON.stringify(" + savedValuationResource() + ")");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_TAB));
+        awaitPage("native Tab leaves the completed operand for its exact next editor without changing any inputs or saved resource",
+            "(() => {const previous=document.getElementById(" + JSONObject.quote(id) + "),next=document.getElementById(" + JSONObject.quote(nextId) + ");" +
+            "return previous instanceof HTMLInputElement && previous.value===" + JSONObject.quote(after) +
+            " && next instanceof HTMLInputElement && next.type==='text' && !next.disabled && document.activeElement===next" +
+            " && next.labels?.length===1 && next.labels[0].control===next && next.labels[0].htmlFor===next.id" +
+            " && JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(editor) +
+            " && JSON.stringify(" + savedValuationResource() + ")===" + JSONObject.quote(resource) + ";})()");
         closeSoftKeyboard();
     }
 
