@@ -23,6 +23,7 @@ final class WatchlistSystemPicker {
     private static final long TIMEOUT_MS = 10_000;
     private final UiDevice device;
     private final UiAutomation automation;
+    private final PickerCancelObservation observation = new PickerCancelObservation();
 
     WatchlistSystemPicker() {
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
@@ -41,18 +42,25 @@ final class WatchlistSystemPicker {
     void cancel() throws Exception {
         long startedAt = SystemClock.uptimeMillis();
         long deadline = startedAt + TIMEOUT_MS;
-        Log.i("WatchlistSystemPicker", "Cancel start uptime=" + startedAt + " deadline=" + deadline);
-        CancelSurface initial = awaitCancelSurface(deadline, -1);
-        if (initial.imeId >= 0) {
-            dispatchCancelBack(initial, deadline, "ime-dismiss");
-            awaitImeDismissed(initial, deadline);
-            awaitCancelSurface(deadline, initial.pickerId);
+        observation.begin(startedAt, deadline);
+        try {
+            Log.i("WatchlistSystemPicker", "Cancel start uptime=" + startedAt + " deadline=" + deadline);
+            CancelSurface initial = awaitCancelSurface(deadline, -1);
+            if (initial.imeId >= 0) {
+                dispatchCancelBack(initial, deadline, "ime-dismiss");
+                awaitImeDismissed(initial, deadline);
+                awaitCancelSurface(deadline, initial.pickerId);
+            }
+            AccessibilityNodeInfo root = observation.measure(PickerCancelObservation.Stage.CANCEL_FINAL_ROOT, automation::getRootInActiveWindow);
+            CancelSurface current = observation.measure(PickerCancelObservation.Stage.CANCEL_FINAL_SURFACE, () -> readCancelSurface(root, initial.pickerId));
+            assertNotNull("Fresh exact system Save picker must remain unambiguous before Cancel", current);
+            assertEquals("A late keyboard must not consume picker cancellation", -1, current.imeId);
+            dispatchCancelBack(current, deadline, "picker-cancel");
+            awaitReturnToApp(deadline);
+        } catch (Exception | AssertionError failure) {
+            observation.failure();
+            throw failure;
         }
-        CancelSurface current = readCancelSurface(automation.getRootInActiveWindow(), initial.pickerId);
-        assertNotNull("Fresh exact system Save picker must remain unambiguous before Cancel", current);
-        assertEquals("A late keyboard must not consume picker cancellation", -1, current.imeId);
-        dispatchCancelBack(current, deadline, "picker-cancel");
-        awaitReturnToApp(deadline);
     }
 
     private static final class CancelSurface {
@@ -75,21 +83,23 @@ final class WatchlistSystemPicker {
     }
 
     private CancelSurface stableCancelSurface(long deadline, int expectedPickerId) {
-        AccessibilityNodeInfo root = automation.getRootInActiveWindow();
-        CancelSurface before = readCancelSurface(root, expectedPickerId);
+        AccessibilityNodeInfo root = observation.measure(PickerCancelObservation.Stage.CANCEL_INITIAL_ROOT, automation::getRootInActiveWindow);
+        CancelSurface before = observation.measure(PickerCancelObservation.Stage.CANCEL_INITIAL_SURFACE, () -> readCancelSurface(root, expectedPickerId));
         if (before == null) return null;
         long remaining = deadline - SystemClock.uptimeMillis();
         if (remaining <= 0) return null;
-        StableResult stable = AccessibilityNodeInfoExt.waitForStable(root, remaining, 500, 50, false);
+        StableResult stable = observation.measure(PickerCancelObservation.Stage.CANCEL_STABILITY,
+            () -> AccessibilityNodeInfoExt.waitForStable(root, remaining, 500, 50, false));
         if (stable.isTimeout()) return null;
-        AccessibilityNodeInfo current = automation.getRootInActiveWindow();
-        CancelSurface after = readCancelSurface(current, before.pickerId);
+        AccessibilityNodeInfo current = observation.measure(PickerCancelObservation.Stage.CANCEL_FRESH_ROOT, automation::getRootInActiveWindow);
+        CancelSurface after = observation.measure(PickerCancelObservation.Stage.CANCEL_FRESH_SURFACE, () -> readCancelSurface(current, before.pickerId));
         if (!root.equals(current)) return null;
         return after;
     }
 
     private CancelSurface readCancelSurface(int expectedPickerId) {
-        return readCancelSurface(automation.getRootInActiveWindow(), expectedPickerId);
+        AccessibilityNodeInfo root = observation.measure(PickerCancelObservation.Stage.CANCEL_IME_ROOT, automation::getRootInActiveWindow);
+        return observation.measure(PickerCancelObservation.Stage.CANCEL_IME_SURFACE, () -> readCancelSurface(root, expectedPickerId));
     }
 
     private CancelSurface readCancelSurface(AccessibilityNodeInfo root, int expectedPickerId) {
@@ -422,13 +432,20 @@ final class WatchlistSystemPicker {
 
     /** A dispatched picker action does not mean its destination or Activity result is ready. */
     private void awaitReturnToApp() throws InterruptedException {
-        awaitReturnToApp(SystemClock.uptimeMillis() + TIMEOUT_MS);
+        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        observation.begin(deadline - TIMEOUT_MS, deadline);
+        try {
+            awaitReturnToApp(deadline);
+        } catch (InterruptedException | RuntimeException | AssertionError failure) {
+            observation.failure();
+            throw failure;
+        }
     }
 
     private void awaitReturnToApp(long deadline) throws InterruptedException {
         AppReturnObservation last = new AppReturnObservation();
         while (SystemClock.uptimeMillis() < deadline) {
-            last = readFreshAppReturn();
+            last = observation.measure(PickerCancelObservation.Stage.RETURN_SAMPLE, this::readFreshAppReturn);
             if (SystemClock.uptimeMillis() >= deadline) break;
             if (last.isReady()) return;
             pauseUntil(deadline);
@@ -438,52 +455,81 @@ final class WatchlistSystemPicker {
     }
 
     /** Select current default-display application evidence without cached active-root fallback. */
-    private AccessibilityWindowInfo freshCurrentApplicationWindow() {
-        if (!automation.clearCache()) return null;
-        List<AccessibilityWindowInfo> windows = automation.getWindows();
-        if (windows == null) return null;
+    private AccessibilityWindowInfo freshCurrentApplicationWindow(PickerCancelObservation.Selection selection) {
+        observation.reason(selection, PickerCancelObservation.Refusal.STARTED);
+        if (!observation.measure(selection.cache, automation::clearCache)) {
+            observation.reason(selection, PickerCancelObservation.Refusal.CACHE_CLEAR_FALSE);
+            return null;
+        }
+        List<AccessibilityWindowInfo> windows = observation.measure(selection.windows, automation::getWindows);
+        if (windows == null) {
+            observation.reason(selection, PickerCancelObservation.Refusal.NULL_WINDOWS);
+            return null;
+        }
+        observation.windowCount(selection, windows);
+        long metadataStart = observation.start(selection.metadata);
         AccessibilityWindowInfo selected = null;
         for (AccessibilityWindowInfo window : windows) {
-            if (window == null) return null;
+            if (window == null)
+                return observation.finishSelection(selection, PickerCancelObservation.Refusal.NULL_ENTRY, metadataStart, null);
             if (window.getDisplayId() != Display.DEFAULT_DISPLAY) continue;
             boolean active = window.isActive();
             boolean focused = window.isFocused();
-            if (active != focused) return null;
+            if (active != focused)
+                return observation.finishSelection(selection, PickerCancelObservation.Refusal.ACTIVE_FOCUS_SPLIT, metadataStart, null);
             if (!active) continue;
-            if (window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) return null;
-            if (selected != null) return null;
+            if (window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION)
+                return observation.finishSelection(selection, PickerCancelObservation.Refusal.NON_APPLICATION, metadataStart, null);
+            if (selected != null)
+                return observation.finishSelection(selection, PickerCancelObservation.Refusal.AMBIGUOUS, metadataStart, null);
             selected = window;
         }
-        return selected;
+        return observation.finishSelected(selection, metadataStart, selected);
     }
 
     private AppReturnObservation readFreshAppReturn() {
-        AccessibilityWindowInfo before = freshCurrentApplicationWindow();
+        observation.sample();
+        AccessibilityWindowInfo before = freshCurrentApplicationWindow(PickerCancelObservation.Selection.BEFORE);
         if (before == null) return new AppReturnObservation();
         int selectedId = before.getId();
-        AppReturnObservation observed = readAppReturn(before.getRoot(0));
-        AccessibilityWindowInfo after = freshCurrentApplicationWindow();
+        AppReturnObservation observed = readAppReturn(
+            observation.measure(PickerCancelObservation.Stage.ROOT_ZERO, () -> before.getRoot(0)), observation);
+        AccessibilityWindowInfo after = freshCurrentApplicationWindow(PickerCancelObservation.Selection.AFTER);
         observed.selectedWindowMatches = after != null && after.getId() == selectedId
             && observed.rootWindowId == selectedId && observed.windowId == selectedId;
         return observed;
     }
 
-    private static AppReturnObservation readAppReturn(AccessibilityNodeInfo root) {
+    private static AppReturnObservation readAppReturn(AccessibilityNodeInfo root, PickerCancelObservation observation) {
         AppReturnObservation observed = new AppReturnObservation();
         observed.rootPresent = root != null;
-        if (root == null) return observed;
-        observed.refreshed = root.refresh();
-        if (!observed.refreshed) return observed;
-        observed.exactPackage = "local.investment.personal".contentEquals(string(root.getPackageName()));
-        observed.visible = root.isVisibleToUser();
-        observed.rootWindowId = root.getWindowId();
-        AccessibilityWindowInfo window = root.getWindow();
-        if (window == null) return observed;
-        observed.windowId = window.getId();
-        observed.type = window.getType();
-        observed.display = window.getDisplayId();
-        observed.active = window.isActive();
-        observed.focused = window.isFocused();
+        if (root == null) {
+            observation.root(PickerCancelObservation.RootResult.NULL_ROOT);
+            return observed;
+        }
+        observed.refreshed = observation.measure(PickerCancelObservation.Stage.ROOT_REFRESH, root::refresh);
+        if (!observed.refreshed) {
+            observation.root(PickerCancelObservation.RootResult.REFRESH_FALSE);
+            return observed;
+        }
+        observation.run(PickerCancelObservation.Stage.ROOT_METADATA, () -> {
+            observed.exactPackage = "local.investment.personal".contentEquals(string(root.getPackageName()));
+            observed.visible = root.isVisibleToUser();
+            observed.rootWindowId = root.getWindowId();
+        });
+        AccessibilityWindowInfo window = observation.measure(PickerCancelObservation.Stage.ROOT_WINDOW, root::getWindow);
+        if (window == null) {
+            observation.root(PickerCancelObservation.RootResult.NO_WINDOW);
+            return observed;
+        }
+        observation.run(PickerCancelObservation.Stage.WINDOW_METADATA, () -> {
+            observed.windowId = window.getId();
+            observed.type = window.getType();
+            observed.display = window.getDisplayId();
+            observed.active = window.isActive();
+            observed.focused = window.isFocused();
+        });
+        observation.root(PickerCancelObservation.RootResult.OBSERVED);
         return observed;
     }
 
