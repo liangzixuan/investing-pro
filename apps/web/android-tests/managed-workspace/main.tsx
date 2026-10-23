@@ -1,4 +1,4 @@
-import { NativeReportRevisitFixture } from "./native-report-revisit-fixture";
+import { ReportRevisitFixtureControls } from "./report-revisit-fixture-controls";
 import {
   createNativeFinancialScreenRecipeFixture,
   createNativeFinancialScreenRecipeSession,
@@ -158,7 +158,7 @@ function FixtureSession({
         )}
       </TrialFrame>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
-      <ReportRevisitFixtureControls workspace={workspace} />
+      <ReportRevisitFixtureControls workspace={workspace} scenario={scenario} />
       {workspace && nativeReport && (
         <nativeReport.Controls workspace={workspace} />
       )}
@@ -185,17 +185,6 @@ function FixtureSession({
       )}
     </>
   );
-}
-
-/** The fixed report scenario owns its explicit invented archive control. */
-function ReportRevisitFixtureControls({
-  workspace,
-}: {
-  workspace: ManagedWorkspace | null;
-}) {
-  if (!workspace) return null;
-  if (scenario !== "report-revisit") return null;
-  return <NativeReportRevisitFixture />;
 }
 
 function FollowupsFixtureControls({

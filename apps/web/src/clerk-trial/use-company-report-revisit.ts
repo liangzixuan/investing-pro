@@ -18,7 +18,7 @@ const empty: CompanyReportRevisitState = {
 };
 const emptySnapshot = () => empty;
 const noop = () => () => {};
-export function useCompanyReportRevisit(props: CompanyReportRevisitProps) {
+function useRevisitController(props: CompanyReportRevisitProps) {
   const latest = useRef(props);
   useLayoutEffect(() => {
     latest.current = props;
@@ -38,12 +38,18 @@ export function useCompanyReportRevisit(props: CompanyReportRevisitProps) {
     setController(next);
     return () => next.dispose();
   }, [selection, price, annual, filings, valuation]);
+  return controller;
+}
+function useRevisitSnapshot(controller: CompanyReportRevisit | null) {
   useLayoutEffect(() => controller?.reconcile());
   const state = useSyncExternalStore(
     controller?.subscribe ?? noop,
     controller?.getSnapshot ?? emptySnapshot,
     controller?.getSnapshot ?? emptySnapshot,
   );
+  return state;
+}
+function useCommittedRevisitAction(controller: CompanyReportRevisit | null) {
   // Old handlers cannot act after another render, local edit, append or unmount.
   const frame = {};
   const committed = useRef<object | null>(null);
@@ -59,6 +65,13 @@ export function useCompanyReportRevisit(props: CompanyReportRevisitProps) {
     committed.current = null;
     action();
   };
+  return act;
+}
+/** Controller lifetime, observation and committed actions keep their hook order. */
+export function useCompanyReportRevisit(props: CompanyReportRevisitProps) {
+  const controller = useRevisitController(props);
+  const state = useRevisitSnapshot(controller);
+  const act = useCommittedRevisitAction(controller);
   return { controller, state, act };
 }
 export type CompanyReportRevisitControls = ReturnType<

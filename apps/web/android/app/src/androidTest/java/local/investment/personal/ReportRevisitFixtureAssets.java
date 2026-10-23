@@ -44,8 +44,11 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         assertTrue(byteCount <= MAX_BYTES);
     }
     File directory() { return directory; }
-    private String[] entries(Directory current) throws IOException {
+    private void requireDepth(Directory current) throws IOException {
         if (current.depth > 3) throw new IOException("Fixture nesting limit exceeded");
+    }
+    private String[] entries(Directory current) throws IOException {
+        requireDepth(current);
         String[] entries = assets.list(current.source);
         if (entries == null) throw new IOException("Invalid fixture directory");
         if (entries.length == 0) throw new IOException("Invalid fixture directory");

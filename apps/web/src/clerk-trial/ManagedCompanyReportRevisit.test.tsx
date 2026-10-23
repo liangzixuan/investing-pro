@@ -4,6 +4,7 @@ import { load } from "cheerio";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
 import { ManagedCompanyReportRevisit } from "./ManagedCompanyReportRevisit";
+import { CompanyReportDocumentView } from "./CompanyReportDocument";
 import type {
   CompanyReportRevisitOptions,
   CompanyReportRevisitState,
@@ -343,6 +344,48 @@ function expectNoActions(f: ReturnType<typeof fixture>) {
 }
 
 describe("Company report revisit committed UI", () => {
+  it("keeps the legacy JSON document's exact four frame targets separate from the new disclosure", () => {
+    const f = fixture();
+    f.replace({ phase: "idle", archive: null, current: null, preview: null });
+    const revisit = f.mount();
+    // Compose the real document view with its existing disclosure and the real
+    // revisit node. This checks the selector boundary, not viewport geometry.
+    const html = renderToStaticMarkup(
+      <section className="managed-company-report">
+        <details className="managed-report-document">
+          <summary>Inspect report document (JSON)</summary>
+          <CompanyReportDocumentView
+            document={{
+              purpose: "investment.company-research",
+              filename: "invented-report.json",
+              text: "{}",
+              byteLength: 2,
+            }}
+          />
+        </details>
+        {revisit.node}
+      </section>,
+    );
+    const $ = load(html);
+    const targets = $(
+      ".managed-report-document > summary, #managed-report-document-scope, label[for='managed-report-document'], #managed-report-document",
+    );
+    expect(targets).toHaveLength(4);
+    expect($(".managed-report-document > summary").text()).toBe(
+      "Inspect report document (JSON)",
+    );
+    expect($(".managed-report-revisit").attr("class")).toBe(
+      "managed-report-revisit",
+    );
+    expect(
+      targets
+        .toArray()
+        .every(
+          (node) => $(node).closest(".managed-report-revisit").length === 0,
+        ),
+    ).toBe(true);
+    expectNoActions(f);
+  });
   it("starts closed and preserves the controller creation lifetime across committed and abandoned renders", () => {
     const f = fixture(),
       v = f.mount(),

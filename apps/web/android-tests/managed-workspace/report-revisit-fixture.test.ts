@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createFixture } from "./fixture";
 import {
   archivedRevisitNote,
+  currentRevisitNote,
   archivedPreparedAt,
   reportRevisitDocument,
   revisitAssessment,
@@ -13,7 +14,7 @@ import { companySnapshotEvidence } from "../../src/clerk-trial/managed-company-s
 import { prepareCompanyReport } from "../../src/clerk-trial/managed-company-report";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 
-async function current() {
+async function openedCurrentCompany() {
   const fixture = await createFixture("report-revisit");
   const workspace = new ManagedWorkspace(
     fixture.api,
@@ -21,6 +22,7 @@ async function current() {
     undefined,
     {
       researchCoverage: fixture.researchCoverage,
+      marketsCohort: fixture.marketsCohort,
       priceCoverage: fixture.priceCoverage,
     },
   );
@@ -31,6 +33,11 @@ async function current() {
   workspace.openWatchlistAnnual(
     workspace.coordinator.getSnapshot().draft!.memberships[0]!,
   );
+  return { fixture, workspace, original };
+}
+
+async function current() {
+  const { fixture, workspace, original } = await openedCurrentCompany();
   await workspace.annual.load();
   const selection = workspace.getSnapshot().research!.selection;
   const report = prepareCompanyReport(
@@ -75,7 +82,7 @@ async function comparisonCommand(f: Awaited<ReturnType<typeof current>>) {
   };
   expect(f.fixture.getSnapshot()).toMatchObject({
     annual: 1,
-    resolve: 1,
+    resolve: 0,
     eod: 0,
     filings: 0,
   });
@@ -107,6 +114,49 @@ async function comparisonCommand(f: Awaited<ReturnType<typeof current>>) {
 }
 
 describe("isolated native report-revisit fixture", () => {
+  it("keeps the exact saved company and draft with no source request until explicit Annual load", async () => {
+    const f = await openedCurrentCompany();
+    try {
+      const { note, ...listing } = f.original.memberships[0]!;
+      expect(note).toBe(currentRevisitNote);
+      expect(f.workspace.getSnapshot().research).toMatchObject({
+        section: "annual",
+        selection: { listing, cik: null, origin: "watchlist" },
+      });
+      expect(f.workspace.annual.getSnapshot()).toMatchObject({
+        response: null,
+        view: null,
+        running: false,
+      });
+      expect(f.fixture.getSnapshot()).toMatchObject({
+        annual: 0,
+        resolve: 0,
+        marketsResolve: 1,
+        marketsEod: 0,
+        eod: 0,
+        filings: 0,
+        save: 0,
+      });
+      expect(f.workspace.coordinator.getSnapshot().draft).toEqual(f.original);
+      await f.workspace.annual.load();
+      expect(f.fixture.getSnapshot()).toMatchObject({
+        annual: 1,
+        resolve: 0,
+        marketsResolve: 1,
+        marketsEod: 0,
+        eod: 0,
+        filings: 0,
+        save: 0,
+      });
+      expect(f.workspace.annual.getSnapshot().response).not.toBeNull();
+      expect(f.workspace.getSnapshot().research!.selection.listing).toEqual(
+        listing,
+      );
+      expect(f.workspace.coordinator.getSnapshot().draft).toEqual(f.original);
+    } finally {
+      f.workspace.sessionOwner.dispose();
+    }
+  });
   it("produces admitted format5 bytes above the old file ceiling while keeping the full note and original canonical provenance", async () => {
     const document = await reportRevisitDocument(
       await createFixture("company-snapshot"),

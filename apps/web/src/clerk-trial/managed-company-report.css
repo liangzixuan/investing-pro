@@ -24,17 +24,22 @@
   border-left: 3px solid var(--managed-line);
   color: var(--managed-ink);
 }
-.managed-frame .managed-report-document {
+.managed-frame :is(.managed-report-document, .managed-report-revisit) {
   margin-block: 24px;
   border-top: 1px solid var(--managed-line);
 }
-.managed-frame .managed-report-document > summary {
+.managed-frame
+  :is(.managed-report-document, .managed-report-revisit)
+  > summary {
   min-height: 44px;
   padding-block: 12px;
   color: var(--managed-action);
   cursor: pointer;
 }
-.managed-frame .managed-company-report .managed-report-document textarea {
+.managed-frame
+  .managed-company-report
+  :is(.managed-report-document, .managed-report-revisit)
+  textarea {
   display: block;
   box-sizing: border-box;
   width: 100%;

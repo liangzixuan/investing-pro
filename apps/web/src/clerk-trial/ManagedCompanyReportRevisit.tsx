@@ -19,7 +19,7 @@ export function ManagedCompanyReportRevisit(props: CompanyReportRevisitProps) {
   const canCompare = controller?.comparisonIsCurrent() === true;
   return (
     <details
-      className="managed-report-document managed-report-revisit"
+      className="managed-report-revisit"
       onToggle={(event) => {
         if (!event.currentTarget.open) controller?.clear();
       }}
