@@ -417,13 +417,44 @@ final class WatchlistSystemPicker {
     private void awaitReturnToApp(long deadline) throws InterruptedException {
         AppReturnObservation last = new AppReturnObservation();
         while (SystemClock.uptimeMillis() < deadline) {
-            last = readAppReturn(automation.getRootInActiveWindow());
+            last = readFreshAppReturn();
             if (SystemClock.uptimeMillis() >= deadline) break;
             if (last.isReady()) return;
             pauseUntil(deadline);
         }
         throw new AssertionError("The target app did not regain the active focused window after the system picker; "
             + last.details(deadline));
+    }
+
+    /** Select current default-display application evidence without cached active-root fallback. */
+    private AccessibilityWindowInfo freshCurrentApplicationWindow() {
+        if (!automation.clearCache()) return null;
+        List<AccessibilityWindowInfo> windows = automation.getWindows();
+        if (windows == null) return null;
+        AccessibilityWindowInfo selected = null;
+        for (AccessibilityWindowInfo window : windows) {
+            if (window == null) return null;
+            if (window.getDisplayId() != Display.DEFAULT_DISPLAY) continue;
+            boolean active = window.isActive();
+            boolean focused = window.isFocused();
+            if (active != focused) return null;
+            if (!active) continue;
+            if (window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) return null;
+            if (selected != null) return null;
+            selected = window;
+        }
+        return selected;
+    }
+
+    private AppReturnObservation readFreshAppReturn() {
+        AccessibilityWindowInfo before = freshCurrentApplicationWindow();
+        if (before == null) return new AppReturnObservation();
+        int selectedId = before.getId();
+        AppReturnObservation observed = readAppReturn(before.getRoot(0));
+        AccessibilityWindowInfo after = freshCurrentApplicationWindow();
+        observed.selectedWindowMatches = after != null && after.getId() == selectedId
+            && observed.rootWindowId == selectedId && observed.windowId == selectedId;
+        return observed;
     }
 
     private static AppReturnObservation readAppReturn(AccessibilityNodeInfo root) {
@@ -457,12 +488,14 @@ final class WatchlistSystemPicker {
         int display = -1;
         boolean active;
         boolean focused;
+        boolean selectedWindowMatches;
 
         boolean isReady() {
             if (!rootPresent) return false;
             if (!refreshed) return false;
             if (!exactPackage) return false;
             if (!visible) return false;
+            if (!selectedWindowMatches) return false;
             return isExactAppWindow();
         }
 
@@ -483,7 +516,8 @@ final class WatchlistSystemPicker {
                 + " exactPackage=" + exactPackage + " visible=" + visible
                 + " rootWindowId=" + rootWindowId + " windowId=" + windowId
                 + " type=" + type + " display=" + display
-                + " active=" + active + " focused=" + focused;
+                + " active=" + active + " focused=" + focused
+                + " selectedWindowMatches=" + selectedWindowMatches;
         }
     }
 
