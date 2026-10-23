@@ -58,13 +58,16 @@ retained-stage correction kept all entries and continued unrun steps. Original
 failure evidence remains. Phone installation, keyboard/Back acceptance and
 sustained use remain owner actions. The API, website and earlier APKs are unchanged.
 
-The next M4 source increment connects an authored current Portfolio holding to
+[PR 229](https://github.com/liangzixuan/investing-pro/pull/229) merged the M4
+workflow from an authored current Portfolio holding to
 [My Watchlist research](MANAGED_PORTFOLIO.md#keep-a-current-holding-in-my-watchlist).
 Review the exact identity and current target draft, append only a missing listing
 with an empty note, then use existing research and separate Watchlist Save.
-Portfolio keeps its ledger and independent Save. Implementation and affected
-verification are in progress; no new source request, storage or browser acceptance
-is claimed.
+Portfolio keeps its ledger and independent Save. All original PR checks and the
+hosted native 73-case gate passed. The original main native run then failed at
+fixture startup in one shard, before its managed test bodies. Main qualification
+and Android delivery remain pending while the native focus failure is diagnosed.
+No new source request, storage or browser acceptance is claimed.
 
 Android 1.34.0, code 35, is provided locally from accepted source
 `241b0e4d61c487a561399d403b78be62443861ad` with the existing production signer.

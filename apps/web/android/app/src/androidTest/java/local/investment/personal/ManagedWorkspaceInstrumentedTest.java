@@ -10414,7 +10414,8 @@ public class ManagedWorkspaceInstrumentedTest {
             if (dismissedDialog == null) Thread.sleep(50);
         }
         String diagnostic = "missed callbacks=" + missedCallbacks +
-            (requireNativeReady ? "; native=" + nativeState.get() : "") + "; " + pageDiagnostic();
+            (requireNativeReady ? "; native=" + nativeState.get() +
+                "; activeWindow=" + NativeReadinessFailureObservation.capture() : "") + "; " + pageDiagnostic();
         Log.e("ManagedFixture", "Timed out waiting for " + description + ": " + diagnostic);
         fail("Timed out waiting for " + description + ": " + diagnostic);
     }
@@ -10435,10 +10436,13 @@ public class ManagedWorkspaceInstrumentedTest {
         boolean attached = webView.isAttachedToWindow();
         boolean shown = webView.isShown();
         boolean hardware = webView.isHardwareAccelerated();
-        boolean focused = activity.hasWindowFocus() && webView.hasWindowFocus();
+        boolean activityFocused = activity.hasWindowFocus();
+        boolean webViewFocused = webView.hasWindowFocus();
+        boolean focused = activityFocused && webViewFocused;
         boolean callbacks = activity.getOnBackPressedDispatcher().hasEnabledCallbacks();
         diagnostic.set("state=" + state + ", attached=" + attached + ", shown=" + shown +
-            ", hardware=" + hardware + ", focused=" + focused + ", callbacks=" + callbacks);
+            ", hardware=" + hardware + ", activityFocused=" + activityFocused +
+            ", webViewFocused=" + webViewFocused + ", focused=" + focused + ", callbacks=" + callbacks);
         return state == Lifecycle.State.RESUMED && attached && shown && hardware && focused && callbacks;
     }
 

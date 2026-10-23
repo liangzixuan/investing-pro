@@ -64,8 +64,11 @@ The [IBKR instrument-addition guide](https://www.ibkrguides.com/ibkrdesktop/watc
 and [Infront Watchlist guide](https://infront-advisory-solution.helpcenter.infront.co/en/as/latest/add-securities-to-watchlist)
 provide established patterns for explicit instrument choice and appending to a
 research list. Investment adds its existing complete identity/draft review and
-separate Save. No upstream code or assets are copied. Source and additive native
-verification are in progress; no browser or phone acceptance is claimed.
+separate Save. No upstream code or assets are copied. The workflow is merged in
+[PR 229](https://github.com/liangzixuan/investing-pro/pull/229), whose original
+checks and full native 73-case gate passed. Main qualification and client delivery
+remain pending after native fixture startup failures. No browser or phone
+acceptance is claimed.
 
 ## Exact amounts and unknown values
 
