@@ -187,7 +187,7 @@ it("keeps the Portfolio entry hidden on invalid roots and passes the same live r
     },
     navigationPending: false,
     onResearch: vi.fn(),
-    routeActive,
+    navigation: { active: routeActive, view: vi.fn(() => true) },
   };
   type EntryElement = React.ReactElement<{
     hidden: boolean;
@@ -200,6 +200,8 @@ it("keeps the Portfolio entry hidden on invalid roots and passes the same live r
   >;
   expect(panel.type).toBe(ManagedPortfolio);
   expect(panel.props.draftFileRouteActive).toBe(routeActive);
+  panel.props.onReviewWatchlist();
+  expect(props.navigation.view).toHaveBeenCalledExactlyOnceWith("watchlist");
   valid = true;
   expect(panel.props.draftFileRouteActive!()).toBe(true);
   expect((ManagedPortfolioEntry(props) as EntryElement).props.hidden).toBe(

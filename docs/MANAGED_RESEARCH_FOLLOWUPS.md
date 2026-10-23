@@ -1,10 +1,12 @@
 # Saved research follow-ups
 
-Status: in development. Source checks cover the contract, repository, transport,
-authoring model, screen and workspace lifetimes. Invented-data Chrome checks
-verify the workflow, save recovery and rendered layout at desktop and narrow
-mobile widths. The current form-guidance candidate has no new hosted native run;
-live-storage qualification and production publication remain incomplete.
+Status: Android 1.36 is provided locally with the current source workflow.
+Source checks cover the contract, repository, transport, authoring model, screen
+and workspace lifetimes. Its original main checks, hosted native 72-case gate
+and complete guarded APK verification passed. Earlier invented-data Chrome
+checks cover the guidance, save recovery and rendered layout described below;
+no new browser or phone acceptance is claimed. Live-storage qualification and
+production website publication for Follow-ups remain incomplete.
 
 ## Keep the next research check
 
@@ -75,8 +77,10 @@ This extends Investment's existing same-draft research-note pattern. The
 [Todoist task-view guide](https://www.todoist.com/help/todoist/features/use-the-task-view-to-manage-tasks-in-todoist-eDeRDO0C)
 provides an established pattern for keeping a task's full description beside
 its details and returning to the parent list. No upstream code or visual asset
-is copied. Affected source and additive native verification are in progress;
-no new browser or physical-device acceptance is claimed.
+is copied. Android 1.36 provides this workflow after original main checks, the
+hosted native 72-case gate and complete guarded APK verification passed. Phone
+installation, keyboard/Back acceptance and sustained use remain separate; no new
+browser or physical-device acceptance is claimed.
 
 ## Turn a thesis Next check into a follow-up
 

@@ -199,3 +199,84 @@ describe("invented native Portfolio resource", () => {
     });
   });
 });
+
+async function holdingWatchlistFixture() {
+  const f = await createFixture("portfolio-ledger");
+  const original = await f.api.load(signal());
+  const input = {
+    expectedVersion: 1,
+    idempotencyKey: "invented-holding-watchlist-save",
+    payload: {
+      ...original.payload,
+      memberships: [
+        {
+          ...original.payload.memberships[1]!,
+          note: "Holding research list note",
+        },
+        { ...original.payload.memberships[0]!, note: "" },
+      ],
+    },
+  };
+  return { f, input };
+}
+it("admits only the declared holding Watchlist command and reloads its complete version without a Portfolio write", async () => {
+  const { f, input } = await holdingWatchlistFixture();
+  expect(f.getSnapshot()).toMatchObject({
+    load: 1,
+    save: 0,
+    annual: 0,
+    eod: 0,
+    filings: 0,
+  });
+  expect(await f.api.save(input, signal())).toEqual({
+    version: 2,
+    payload: input.payload,
+    replayed: false,
+  });
+  expect(await f.api.load(signal())).toEqual({
+    version: 2,
+    payload: input.payload,
+  });
+  expect(f.getSnapshot()).toMatchObject({
+    load: 2,
+    save: 1,
+    annual: 0,
+    eod: 0,
+    filings: 0,
+  });
+  expect(f.portfolio!.getSnapshot().save).toBe(0);
+  expect(f.followups!.getSnapshot().save).toBe(0);
+});
+it.each(["order", "note", "identity", "version", "key"] as const)(
+  "retains the original fixture refusal for changed holding command %s",
+  async (change) => {
+    const { f, input } = await holdingWatchlistFixture();
+    const bad = structuredClone(input);
+    holdingCommandChanges[change](bad);
+    await expect(f.api.save(bad, signal())).rejects.toThrow(
+      "Unexpected fixture operation: save",
+    );
+    expect(f.getSnapshot().save).toBe(1);
+    expect((await f.api.load(signal())).version).toBe(1);
+  },
+);
+const holdingCommandChanges = {
+  order: (input) => {
+    input.payload.memberships.reverse();
+  },
+  note: (input) => {
+    input.payload.memberships[1]!.note = "Not the declared blank note";
+  },
+  identity: (input) => {
+    input.payload.memberships[1]!.securityId = "different-security";
+  },
+  version: (input) => {
+    input.expectedVersion = 0;
+  },
+  key: (input) => {
+    input.idempotencyKey = "";
+  },
+} satisfies Record<
+  string,
+  (input: Awaited<ReturnType<typeof holdingWatchlistFixture>>["input"]) => void
+>;

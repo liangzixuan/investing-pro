@@ -1334,7 +1334,7 @@ export function ManagedWorkspaceScreen({
                 navigationPending={navigationPending}
                 draftFileScope={draftFileScope}
                 draftFileDelivery={portfolioDraftFileDelivery}
-                routeActive={watchlistRouteActive}
+                navigation={{ active: watchlistRouteActive, view: setView }}
                 onResearch={(draft, listing, opener) =>
                   openResearch(opener, () =>
                     workspace.openPortfolioResearch(draft, listing),
