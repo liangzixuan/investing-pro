@@ -4701,7 +4701,8 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-company-visit') !== null && document.activeElement?.id === 'managed-filings-heading' && " +
             "document.querySelector('#managed-filings-heading')?.textContent === 'SEC filings' && " +
             "document.querySelector('#managed-filings-heading')?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}) === true", true);
-        assertCompanyHistory("listing-zero", "filings", false);
+        // Review replaces the first company entry with root; reopening pushes a third entry.
+        assertExactHistory(2, "https://localhost/", "https://localhost/", companyUrl("listing-zero", "filings"));
         assertFinancialScreenBackReady();
         pressBack();
         awaitPage("Back closes company research and restores the visible Watchlist filing review",
@@ -4711,6 +4712,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "watchlist.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}) && group?.open===true && " +
             "group.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}) && content?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})===true && " +
             "document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='My Watchlist'; })()", true);
+        assertExactHistory(1, "https://localhost/", "https://localhost/", companyUrl("listing-zero", "filings"));
         assertNativeFilingsReviewPacket("ZERO", 26, "2026-09-20T00:00:02.000Z");
         assertNativeFilingsReviewCounts(2, 1, 0, 0);
     }
