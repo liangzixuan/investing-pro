@@ -1329,15 +1329,12 @@ export function ManagedWorkspaceScreen({
                 />
               )}
               <ManagedPortfolioEntry
-                onReviewWatchlist={() => {
-                  setView("watchlist");
-                }}
                 workspace={workspace}
                 discovery={discovery}
                 navigationPending={navigationPending}
                 draftFileScope={draftFileScope}
                 draftFileDelivery={portfolioDraftFileDelivery}
-                routeActive={watchlistRouteActive}
+                navigation={{ active: watchlistRouteActive, view: setView }}
                 onResearch={(draft, listing, opener) =>
                   openResearch(opener, () =>
                     workspace.openPortfolioResearch(draft, listing),

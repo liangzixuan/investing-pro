@@ -1,163 +1,44 @@
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useId } from "react";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
-import type { ManagedWorkspace } from "./managed-workspace";
+import { isPortfolioWatchlistCurrent } from "./managed-portfolio-watchlist";
 import {
-  applyPortfolioWatchlist,
-  isPortfolioWatchlistCurrent,
-  preparePortfolioWatchlist,
-  type PortfolioWatchlistPreview,
-} from "./managed-portfolio-watchlist";
+  portfolioHoldingControlsBlocked,
+  usePortfolioWatchlistFrame,
+  type PortfolioWatchlistFrame,
+  type PortfolioWatchlistProps,
+} from "./managed-portfolio-watchlist-frame";
+import {
+  usePortfolioWatchlistReview,
+  type PortfolioWatchlistReview,
+} from "./use-portfolio-watchlist-review";
 
-interface Props {
-  readonly workspace: ManagedWorkspace;
-  readonly navigationPending: boolean;
-  readonly routeActive: () => boolean;
-  readonly onReviewWatchlist: () => void;
+function currentHoldings(frame: PortfolioWatchlistFrame) {
+  const projected = frame.workspace.portfolio.getProjection();
+  return projected?.status === "valid" ? projected.portfolio.holdings : [];
 }
-function useFrame(workspace: ManagedWorkspace) {
-  const discovery = useSyncExternalStore(
-    workspace.subscribe,
-    workspace.getSnapshot,
-    workspace.getSnapshot,
-  );
-  const portfolio = useSyncExternalStore(
-    workspace.portfolio.subscribe,
-    workspace.portfolio.getSnapshot,
-    workspace.portfolio.getSnapshot,
-  );
-  const ledger = useSyncExternalStore(
-    workspace.portfolio.coordinator.subscribe,
-    workspace.portfolio.coordinator.getSnapshot,
-    workspace.portfolio.coordinator.getSnapshot,
-  );
-  const watchlist = useSyncExternalStore(
-    workspace.coordinator.subscribe,
-    workspace.coordinator.getSnapshot,
-    workspace.coordinator.getSnapshot,
-  );
-  const session = useSyncExternalStore(
-    workspace.sessionOwner.subscribe,
-    workspace.sessionOwner.getSnapshot,
-    workspace.sessionOwner.getSnapshot,
-  );
-  return {
-    workspace,
-    discovery,
-    portfolio,
-    ledger,
-    watchlist,
-    session,
-    route: workspace.capturePortfolioWatchlistRoute(),
-  };
+interface HoldingPanel {
+  readonly frame: PortfolioWatchlistFrame;
+  readonly props: PortfolioWatchlistProps;
+  readonly review: PortfolioWatchlistReview;
+  readonly id: string;
+  readonly holdings: ReturnType<typeof currentHoldings>;
+  readonly blocked: boolean;
 }
-type Frame = ReturnType<typeof useFrame>;
-function sourceCurrent(frame: Frame, props: Props) {
-  const w = frame.workspace;
-  return (
-    !props.navigationPending &&
-    !frame.portfolio.pendingEditor &&
-    !frame.portfolio.reviewing &&
-    !frame.portfolio.review &&
-    props.routeActive() &&
-    frame.route?.() === true &&
-    w === props.workspace &&
-    w.getSnapshot() === frame.discovery &&
-    w.portfolio.getSnapshot() === frame.portfolio &&
-    w.portfolio.coordinator.getSnapshot() === frame.ledger &&
-    w.sessionOwner.getSnapshot() === frame.session
-  );
-}
-function useReview(frame: Frame, props: Props) {
-  const [selection, setSelection] = useState("");
-  const [owned, setOwned] = useState<{
-    owner: ManagedWorkspace;
-    preview: PortfolioWatchlistPreview;
-  } | null>(null);
-  const [notice, setNotice] = useState("");
-  const committed = useRef<Frame | null>(null);
-  useLayoutEffect(() => {
-    committed.current = frame;
-    return () => {
-      committed.current = null;
-    };
-  });
-  const current = () =>
-    committed.current === frame &&
-    sourceCurrent(frame, props) &&
-    frame.workspace.coordinator.getSnapshot() === frame.watchlist;
-  const preview = owned?.owner === frame.workspace ? owned.preview : null;
-  const choose = (value: string) => {
-    if (!current()) return;
-    committed.current = null;
-    setSelection(value);
-    setOwned(null);
-    setNotice("");
-  };
-  const prepare = () => {
-    if (!selection || !current()) return;
-    committed.current = null;
-    const result = preparePortfolioWatchlist(frame.workspace, selection);
-    if (!sourceCurrent(frame, props)) return;
-    setOwned(
-      result.preview
-        ? { owner: frame.workspace, preview: result.preview }
-        : null,
-    );
-    setNotice(result.reason);
-  };
-  const apply = () => {
-    if (
-      !preview ||
-      preview.status !== "add" ||
-      !current() ||
-      !isPortfolioWatchlistCurrent(frame.workspace, preview)
-    )
-      return;
-    const applying = { ...frame };
-    committed.current = applying;
-    const result = applyPortfolioWatchlist(frame.workspace, preview);
-    if (committed.current !== applying || !sourceCurrent(frame, props)) return;
-    committed.current = null;
-    setOwned(null);
-    setNotice(result.message);
-  };
-  const cancel = () => {
-    if (committed.current !== frame) return;
-    committed.current = null;
-    setOwned(null);
-    setNotice("");
-  };
-  const reviewWatchlist = () => {
-    if (current()) props.onReviewWatchlist();
-  };
-  return {
-    selection,
-    preview,
-    notice,
-    choose,
-    prepare,
-    apply,
-    cancel,
-    reviewWatchlist,
-  };
-}
-type Review = ReturnType<typeof useReview>;
-
 /** Choose one authored current holding; adding to a draft never saves either resource. */
-export function ManagedPortfolioWatchlist(props: Props) {
-  const frame = useFrame(props.workspace);
-  const review = useReview(frame, props);
+export function ManagedPortfolioWatchlist(props: PortfolioWatchlistProps) {
+  const frame = usePortfolioWatchlistFrame(props.workspace);
+  const review = usePortfolioWatchlistReview(frame, props);
   const id = useId();
-  const projected = props.workspace.portfolio.getProjection();
-  const holdings =
-    projected?.status === "valid" ? projected.portfolio.holdings : [];
+  const holdings = currentHoldings(frame);
   if (frame.session.phase !== "active") return null;
+  const panel = {
+    frame,
+    props,
+    review,
+    id,
+    holdings,
+    blocked: portfolioHoldingControlsBlocked(frame, props),
+  };
   return (
     <section aria-label="Portfolio holding research list">
       <details>
@@ -167,63 +48,62 @@ export function ManagedPortfolioWatchlist(props: Props) {
           before adding it to the Watchlist draft. Existing notes and order stay
           intact. Save each resource separately.
         </p>
-        <label htmlFor={`${id}-holding`}>
-          Current holding
-          <select
-            id={`${id}-holding`}
-            value={review.selection}
-            disabled={
-              props.navigationPending ||
-              frame.portfolio.pendingEditor ||
-              frame.portfolio.reviewing
-            }
-            onChange={(event) => review.choose(event.currentTarget.value)}
-          >
-            <option value="">Choose a current holding</option>
-            {holdings.map(({ identity }) => (
-              <option key={identity.listingId} value={identity.listingId}>
-                {identity.symbol} · {identity.shareClassName} ·{" "}
-                {identity.exchangeMic}
-              </option>
-            ))}
-          </select>
-        </label>
-        {holdings.length === 0 && (
-          <p>No current holding is available for this review.</p>
-        )}
-        <div className="trial-actions">
-          <button
-            type="button"
-            disabled={
-              props.navigationPending ||
-              !review.selection ||
-              frame.portfolio.pendingEditor ||
-              frame.portfolio.reviewing
-            }
-            onClick={review.prepare}
-          >
-            Review holding for My Watchlist
-          </button>
-          <button
-            type="button"
-            className="trial-secondary"
-            disabled={
-              props.navigationPending ||
-              frame.portfolio.pendingEditor ||
-              frame.portfolio.reviewing
-            }
-            onClick={review.reviewWatchlist}
-          >
-            Review and save in My Watchlist
-          </button>
-        </div>
+        {renderHoldingChoice(panel)}
+        {renderHoldingActions(panel)}
         {review.notice && <p role="status">{review.notice}</p>}
-        {review.preview && renderHoldingReview(frame, props, review)}
+        {review.preview && renderHoldingReview(panel)}
       </details>
     </section>
   );
 }
-function renderHoldingReview(frame: Frame, props: Props, review: Review) {
+function renderHoldingChoice({ id, holdings, review, blocked }: HoldingPanel) {
+  return (
+    <>
+      <label htmlFor={`${id}-holding`}>
+        Current holding
+        <select
+          id={`${id}-holding`}
+          value={review.selection}
+          disabled={blocked}
+          onChange={(event) => review.choose(event.currentTarget.value)}
+        >
+          <option value="">Choose a current holding</option>
+          {holdings.map(({ identity }) => (
+            <option key={identity.listingId} value={identity.listingId}>
+              {identity.symbol} · {identity.shareClassName} ·{" "}
+              {identity.exchangeMic}
+            </option>
+          ))}
+        </select>
+      </label>
+      {holdings.length === 0 && (
+        <p>No current holding is available for this review.</p>
+      )}
+    </>
+  );
+}
+function renderHoldingActions({ review, blocked }: HoldingPanel) {
+  return (
+    <div className="trial-actions">
+      <button
+        type="button"
+        disabled={blocked || !review.selection}
+        onClick={review.prepare}
+      >
+        Review holding for My Watchlist
+      </button>
+      <button
+        type="button"
+        className="trial-secondary"
+        disabled={blocked}
+        onClick={review.reviewWatchlist}
+      >
+        Review and save in My Watchlist
+      </button>
+    </div>
+  );
+}
+function renderHoldingReview({ frame, props, review }: HoldingPanel) {
   const preview = review.preview!;
   const current = isPortfolioWatchlistCurrent(frame.workspace, preview);
   return (
