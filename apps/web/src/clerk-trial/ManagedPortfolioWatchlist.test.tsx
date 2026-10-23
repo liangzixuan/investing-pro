@@ -265,6 +265,39 @@ describe("Portfolio holding Watchlist review", () => {
     click(f.render().button(REVIEW));
     expect(f.review).toHaveBeenCalledOnce();
   });
+  it("consumes the exact review before a synchronous external-store commit without stale completion writes", () => {
+    const f = fixture(),
+      original = f.prepared();
+    let writesAtCommit = -1;
+    domain.apply.mockImplementation(() => {
+      f.sources.watchlist.replace({ draft: { appended: true } });
+      const duringApply = f.render();
+      expect(duringApply.html()).not.toContain("Holding addition review");
+      writesAtCommit = hooks.writes;
+      retained(original);
+      click(original.button(CANCEL));
+      expect(hooks.writes).toBe(writesAtCommit);
+      return { added: true, message: "Do not publish a stale completion." };
+    });
+    click(original.button(APPLY));
+    expect(domain.apply).toHaveBeenCalledExactlyOnceWith(
+      f.workspace,
+      f.proposal,
+    );
+    expect(hooks.writes).toBe(writesAtCommit);
+    const completed = f.render();
+    expect(completed.html()).not.toContain("Holding addition review");
+    expect(completed.html()).not.toContain(
+      "Do not publish a stale completion.",
+    );
+    expect(f.review).not.toHaveBeenCalled();
+    click(completed.button(PREPARE));
+    expect(f.render().button(APPLY).props.disabled).toBe(false);
+    expect(domain.prepare).toHaveBeenCalledTimes(2);
+    retained(original);
+    expect(domain.apply).toHaveBeenCalledOnce();
+    expect(f.review).not.toHaveBeenCalled();
+  });
   it("shows refusal, existing and stale review states without an enabled addition", () => {
     const f = fixture();
     f.choose();
@@ -287,6 +320,7 @@ describe("Portfolio holding Watchlist review", () => {
     click(f.render().button(PREPARE));
     domain.current.mockReturnValue(false);
     const stale = f.render();
+    expect(stale.html()).toContain("Holding addition review");
     expect(stale.button(APPLY).props.disabled).toBe(true);
     click(stale.button(APPLY));
     expect(domain.apply).not.toHaveBeenCalled();

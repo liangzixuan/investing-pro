@@ -16,6 +16,15 @@ interface OwnedPortfolioPreview {
   readonly owner: ManagedWorkspace;
   readonly preview: PortfolioWatchlistPreview;
 }
+function visibleOwnedPreview(
+  owned: OwnedPortfolioPreview | null,
+  consumed: WeakSet<OwnedPortfolioPreview>,
+  owner: ManagedWorkspace,
+) {
+  if (!owned) return null;
+  if (owned.owner !== owner) return null;
+  return consumed.has(owned) ? null : owned.preview;
+}
 /** Commit and unmount own the live render token used by every action. */
 function useCommittedPortfolioFrame(frame: PortfolioWatchlistFrame) {
   const committed = useRef<PortfolioWatchlistFrame | null>(null);
@@ -35,13 +44,14 @@ export function usePortfolioWatchlistReview(
   const [selection, setSelection] = useState("");
   const [owned, setOwned] = useState<OwnedPortfolioPreview | null>(null);
   const [notice, setNotice] = useState("");
+  const consumed = useRef(new WeakSet<OwnedPortfolioPreview>());
   const committed = useCommittedPortfolioFrame(frame);
   const current = () => {
     if (committed.current !== frame) return false;
     if (!portfolioWatchlistSourceCurrent(frame, props)) return false;
     return frame.workspace.coordinator.getSnapshot() === frame.watchlist;
   };
-  const preview = owned?.owner === frame.workspace ? owned.preview : null;
+  const preview = visibleOwnedPreview(owned, consumed.current, frame.workspace);
   const choose = (value: string) => {
     if (!current()) return;
     committed.current = null;
@@ -69,6 +79,7 @@ export function usePortfolioWatchlistReview(
     if (!isPortfolioWatchlistCurrent(frame.workspace, preview)) return;
     const applying = { ...frame };
     committed.current = applying;
+    consumed.current.add(owned!);
     const result = applyPortfolioWatchlist(frame.workspace, preview);
     if (committed.current !== applying) return;
     if (!portfolioWatchlistSourceCurrent(frame, props)) return;

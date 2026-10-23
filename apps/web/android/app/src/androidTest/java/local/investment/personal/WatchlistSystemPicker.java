@@ -143,16 +143,20 @@ final class WatchlistSystemPicker {
     private static boolean isCancelWindowRoster(List<AccessibilityWindowInfo> windows, AccessibilityWindowInfo picker) {
         int pickerCount = 0;
         for (AccessibilityWindowInfo window : windows) {
-            if (window == null) return false;
-            if (window.getDisplayId() != Display.DEFAULT_DISPLAY) continue;
-            if (window.getId() == picker.getId()) {
-                if (!isCancelPickerWindow(window)) return false;
-                pickerCount++;
-            } else if (window.getType() != AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
-                if (conflictsWithCancelPicker(window, picker)) return false;
-            }
+            int contribution = cancelRosterContribution(window, picker);
+            if (contribution < 0) return false;
+            pickerCount += contribution;
         }
         return pickerCount == 1;
+    }
+
+    /** Refused windows contribute -1; admitted other windows 0; the exact picker 1. */
+    private static int cancelRosterContribution(AccessibilityWindowInfo window, AccessibilityWindowInfo picker) {
+        if (window == null) return -1;
+        if (window.getDisplayId() != Display.DEFAULT_DISPLAY) return 0;
+        if (window.getId() == picker.getId()) return isCancelPickerWindow(window) ? 1 : -1;
+        if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) return 0;
+        return conflictsWithCancelPicker(window, picker) ? -1 : 0;
     }
 
     private static int visibleCancelImeId(List<AccessibilityWindowInfo> windows) {
