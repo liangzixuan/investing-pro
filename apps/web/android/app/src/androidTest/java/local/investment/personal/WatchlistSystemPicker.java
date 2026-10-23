@@ -295,6 +295,17 @@ final class WatchlistSystemPicker {
             family.equals("watchlist-draft") || family.equals("valuation-inputs-draft") || family.equals("financial-screen-recipe"));
         assertTrue("Only an exact invented draft document can be selected",
             displayName.matches("Investment-" + family + "-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json"));
+        selectInventedDocument(displayName);
+    }
+
+    /** Exact invented format5 report filename; selection and return guards are shared unchanged. */
+    void openInventedReportDocument(String displayName) throws Exception {
+        assertEquals("Only the fixed invented current-format company report can be selected",
+            "Investment-research-ZERO-XNAS-20261015T000000000Z.json", displayName);
+        selectInventedDocument(displayName);
+    }
+
+    private void selectInventedDocument(String displayName) throws Exception {
         AccessibilityNodeInfo navigation = await(node -> isRootsList(node)
             || "Show roots".contentEquals(string(node.getContentDescription())));
         if (!isRootsList(navigation)) click(navigation);

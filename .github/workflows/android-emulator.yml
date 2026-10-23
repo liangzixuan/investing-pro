@@ -326,6 +326,13 @@ jobs:
           ))
           if len(required) != 73:
               raise SystemExit("The holding Watchlist journey must extend all 72 existing native tests.")
+          # Keep every original73 case and require the complete saved-report revisit.
+          required.add((
+              "local.investment.personal.CompanyReportRevisitInstrumentedTest",
+              "savedReportRevisitUsesLargeFileChooserAndExplicitWatchlistSave",
+          ))
+          if len(required) != 74:
+              raise SystemExit("The report revisit journey must extend all 73 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

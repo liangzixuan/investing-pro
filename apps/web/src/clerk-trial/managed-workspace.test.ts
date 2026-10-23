@@ -282,6 +282,110 @@ async function ready(workspace: ManagedWorkspace) {
   await workspace.search();
 }
 
+describe("company report revisit Watchlist boundary", () => {
+  async function open() {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        { ...listingMembership(result), note: "Current full thesis" },
+        { ...listingMembership(second), note: "Separate share-class note" },
+      ],
+    });
+    await ready(setup.workspace);
+    setup.workspace.setView("watchlist");
+    const member =
+      setup.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    setup.workspace.openWatchlistAnnual(member);
+    const selection = setup.workspace.getSnapshot().research!.selection;
+    const target = setup.workspace.captureCompanyReportRevisitTarget(
+      selection,
+      () => true,
+    )!;
+    expect(target.isCurrent()).toBe(true);
+    return { ...setup, selection, target };
+  }
+  it("appends the complete candidate once, retains other notes and order, then saves separately", async () => {
+    const { workspace, api, saved, target } = await open();
+    const original = workspace.coordinator.getSnapshot().draft!;
+    const next = "Current full thesis Authored dated report assessment";
+    expect(target.append(next, "Current full thesis")).toBe(true);
+    expect(target.isCurrent()).toBe(false);
+    expect(target.append(next, next)).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft!.memberships).toEqual([
+      { ...original.memberships[0]!, note: next },
+      original.memberships[1],
+    ]);
+    expect(saved().payload).toEqual(original);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    await workspace.coordinator.save();
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(saved().payload.memberships[0]!.note).toBe(next);
+    workspace.sessionOwner.dispose();
+  });
+  it.each([
+    "other-note-restored",
+    "order-restored",
+    "section",
+    "navigation-restored",
+    "visit",
+    "session",
+    "pending-save",
+  ] as const)("refuses a capture after %s", async (boundary) => {
+    const { workspace, target, selection } = await open();
+    const before = workspace.coordinator.getSnapshot().draft!;
+    let saving: Promise<void> | undefined;
+    if (boundary === "other-note-restored") {
+      workspace.note(second.listingId, "Intervening other note");
+      workspace.note(second.listingId, before.memberships[1]!.note);
+    }
+    if (boundary === "order-restored") {
+      workspace.move(second.listingId, -1);
+      workspace.move(second.listingId, 1);
+    }
+    if (boundary === "section") workspace.switchToFilings();
+    if (boundary === "navigation-restored") {
+      workspace.setNavigationBlocked(true);
+      workspace.setNavigationBlocked(false);
+    }
+    if (boundary === "visit") {
+      workspace.closeResearch();
+      workspace.openWatchlistAnnual(before.memberships[0]!);
+    }
+    if (boundary === "session")
+      workspace.sessionOwner.retire("Invented expiry");
+    if (boundary === "pending-save") {
+      workspace.note(result.listingId, "A current unsaved draft");
+      saving = workspace.coordinator.save();
+    }
+    const unchanged = workspace.coordinator.getSnapshot();
+    expect(target.isCurrent()).toBe(false);
+    expect(target.append("Rejected candidate", "Current full thesis")).toBe(
+      false,
+    );
+    expect(workspace.coordinator.getSnapshot()).toBe(unchanged);
+    if (saving) await saving;
+    if (boundary !== "session")
+      expect(workspace.getResearchWatchlist(selection).member?.note).not.toBe(
+        "Rejected candidate",
+      );
+    workspace.sessionOwner.dispose();
+  });
+  it("refuses wrong expected text, invalid note and inactive route without changing the draft", async () => {
+    const { workspace, selection, target } = await open();
+    const before = workspace.coordinator.getSnapshot();
+    expect(target.append("Rejected", "Older note")).toBe(false);
+    expect(target.append("x".repeat(2_001), "Current full thesis")).toBe(false);
+    expect(
+      workspace.captureCompanyReportRevisitTarget(selection, () => false),
+    ).toBeNull();
+    expect(workspace.coordinator.getSnapshot()).toBe(before);
+    workspace.sessionOwner.dispose();
+  });
+});
+
 describe("thesis review through the shared watchlist draft", () => {
   it("protects intervening edits, saves the complete draft and reloads the review", async () => {
     const initial = {

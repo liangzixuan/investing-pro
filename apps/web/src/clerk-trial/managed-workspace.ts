@@ -1944,6 +1944,56 @@ export class ManagedWorkspace {
       reason: null,
     };
   }
+  /** Capture the complete draft and visit before a local report review action. */
+  captureCompanyReportRevisitTarget(
+    selection: ManagedResearchSelection,
+    routeActive: () => boolean,
+  ) {
+    const watchlist = this.getResearchWatchlist(selection);
+    if ((!watchlist.canEdit && !watchlist.canAdd) || !routeActive())
+      return null;
+    const saved = this.coordinator.getSnapshot();
+    const session = this.sessionOwner.getSnapshot();
+    const visit = this.state.research;
+    const operation = this.researchOperation;
+    const navigation = this.navigationRevision;
+    const isCurrent = () => {
+      const current = this.getResearchWatchlist(selection);
+      return (
+        !this.retired &&
+        !this.navigationBlocked &&
+        routeActive() &&
+        this.sessionOwner.getSnapshot() === session &&
+        session.phase === "active" &&
+        this.state.research === visit &&
+        visit?.selection === selection &&
+        this.researchOperation === operation &&
+        this.navigationRevision === navigation &&
+        this.coordinator.getSnapshot() === saved &&
+        (current.canEdit || current.canAdd)
+      );
+    };
+    return {
+      isCurrent,
+      append: (note: string, expectedNote: string) => {
+        if (
+          !isCurrent() ||
+          !watchlist.canEdit ||
+          watchlist.member?.note !== expectedNote
+        )
+          return false;
+        if (normalizeWatchlistNote(note) === null) return false;
+        this.noteResearch(selection, note, expectedNote);
+        return (
+          this.coordinator
+            .getSnapshot()
+            .draft?.memberships.find(
+              (member) => member.listingId === selection.listing.listingId,
+            )?.note === note
+        );
+      },
+    };
+  }
   addResearchToWatchlist(selection: ManagedResearchSelection) {
     if (!this.getResearchWatchlist(selection).canAdd) return;
     const draft = this.coordinator.getSnapshot().draft!;

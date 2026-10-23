@@ -1109,6 +1109,12 @@ export function ManagedWorkspaceScreen({
                   readReportWatchlist={(selection) =>
                     workspace.getResearchWatchlist(selection)
                   }
+                  reportRevisitTarget={() =>
+                    workspace.captureCompanyReportRevisitTarget(
+                      discovery.research!.selection,
+                      () => !navigation?.invalid && !navigation?.isPending(),
+                    )
+                  }
                   annual={workspace.annual}
                   filings={workspace.filings}
                   eod={workspace.eod}

@@ -1,3 +1,4 @@
+import { NativeReportRevisitFixture } from "./native-report-revisit-fixture";
 import {
   createNativeFinancialScreenRecipeFixture,
   createNativeFinancialScreenRecipeSession,
@@ -56,6 +57,7 @@ if (
   scenario !== "annual-balance-sheet" &&
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
+  scenario !== "report-revisit" &&
   scenario !== "research-followups" &&
   scenario !== "portfolio-ledger" &&
   scenario !== "markets-day-view" &&
@@ -156,6 +158,9 @@ function FixtureSession({
         )}
       </TrialFrame>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
+      {workspace && scenario === "report-revisit" && (
+        <NativeReportRevisitFixture />
+      )}
       {workspace && nativeReport && (
         <nativeReport.Controls workspace={workspace} />
       )}

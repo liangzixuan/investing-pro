@@ -64,10 +64,23 @@ workflow from an authored current Portfolio holding to
 Review the exact identity and current target draft, append only a missing listing
 with an empty note, then use existing research and separate Watchlist Save.
 Portfolio keeps its ledger and independent Save. All original PR checks and the
-hosted native 73-case gate passed. The original main native run then failed at
-fixture startup in one shard, before its managed test bodies. Main qualification
-and Android delivery remain pending while the native focus failure is diagnosed.
-No new source request, storage or browser acceptance is claimed.
+hosted native 73-case gate passed. The native focus correction was accepted at
+source `ad7d4cff42c6828ada5e81f5e7e532d7c46da57b`. Its original required main checks
+and native producing jobs passed. Android 1.37.0, code 38, is provided locally with
+the existing production signer after guarded build, complete packaged asset,
+signature, manifest and native policy checks. Earlier failed native outcomes are
+retained. Phone installation and physical acceptance remain owner actions. The
+live website and API are unchanged.
+
+The active development outcome is [revisit a saved company
+report](MANAGED_COMPANY_REPORT.md#revisit-a-saved-report): open a local format 5
+JSON copy for the exact company, compare full archived/current notes and original
+source provenance, author a dated assessment, preview the whole destination note,
+append once, then use separate Watchlist Review and Save. Imported derived
+sections remain an unverified appendix and never populate live evidence models.
+The full web unit suite, affected types, lint and architecture boundaries pass
+locally. Hosted native acceptance, source merge and client delivery are pending. No browser acceptance,
+source coverage, new storage, API or website release is claimed.
 
 Android 1.34.0, code 35, is provided locally from accepted source
 `241b0e4d61c487a561399d403b78be62443861ad` with the existing production signer.

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { CompanyReportRevisitTarget } from "./company-report-revisit";
 import type { ManagedAnnualStatementsReviewActions } from "./ManagedAnnualStatementsReview";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ManagedResearchSelection } from "./managed-research-selection";
@@ -41,6 +42,7 @@ export function ManagedCompanyResearch({
   navigationPending,
   reportDelivery,
   readReportWatchlist,
+  reportRevisitTarget,
   annual,
   filings,
   eod,
@@ -74,6 +76,7 @@ export function ManagedCompanyResearch({
   research: ManagedResearchVisit;
   navigationPending: boolean;
   reportDelivery?: CompanyReportDeliveryAdapter;
+  reportRevisitTarget?: () => CompanyReportRevisitTarget | null;
   readReportWatchlist?: (
     selection: ManagedResearchSelection,
   ) => ResearchWatchlistState;
@@ -177,6 +180,7 @@ export function ManagedCompanyResearch({
         {...(valuation ? { valuation } : {})}
         {...(reportDelivery ? { reportDelivery } : {})}
         {...(readReportWatchlist ? { readReportWatchlist } : {})}
+        {...(reportRevisitTarget ? { reportRevisitTarget } : {})}
         onSection={onSection}
       />
       {valuation && valuationNoteActions && (
