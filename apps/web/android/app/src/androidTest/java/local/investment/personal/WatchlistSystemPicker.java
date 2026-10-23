@@ -46,8 +46,10 @@ final class WatchlistSystemPicker {
         if (initial.imeId >= 0) {
             dispatchCancelBack(initial, deadline, "ime-dismiss");
             awaitImeDismissed(initial, deadline);
+            awaitCancelSurface(deadline, initial.pickerId);
         }
-        CancelSurface current = awaitCancelSurface(deadline, initial.pickerId);
+        CancelSurface current = readCancelSurface(automation.getRootInActiveWindow(), initial.pickerId);
+        assertNotNull("Fresh exact system Save picker must remain unambiguous before Cancel", current);
         assertEquals("A late keyboard must not consume picker cancellation", -1, current.imeId);
         dispatchCancelBack(current, deadline, "picker-cancel");
         awaitReturnToApp(deadline);

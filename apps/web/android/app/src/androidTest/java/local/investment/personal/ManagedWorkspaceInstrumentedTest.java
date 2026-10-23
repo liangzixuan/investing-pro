@@ -822,6 +822,15 @@ public class ManagedWorkspaceInstrumentedTest {
         String id = readFixtureString("document.querySelector(" + JSONObject.quote(".managed-valuation-workbench:not(.managed-valuation-assumptions) input[id$='-" + suffix + "']") + ").id");
         touchInput(id);
         replaceFocusedInput(id, before, after);
+        String exactEditor = "(() => { const input=document.getElementById(" + JSONObject.quote(id) + ");" +
+            "return input instanceof HTMLInputElement && input.type==='text' && !input.disabled" +
+            " && document.activeElement===input && input.value===" + JSONObject.quote(after) + "; })()";
+        awaitPage("valuation completion retains the exact focused single-line raw operand", exactEditor);
+        awaitNativeEditor(id);
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_MOVE_END));
+        awaitPage("native End collapses the valuation operand caret without changing its raw value",
+            exactEditor + " && document.getElementById(" + JSONObject.quote(id) + ").selectionStart===" + after.length() +
+            " && document.getElementById(" + JSONObject.quote(id) + ").selectionEnd===" + after.length());
         closeSoftKeyboard();
     }
 
@@ -864,6 +873,8 @@ public class ManagedWorkspaceInstrumentedTest {
     private void selectInventedValuationInputs(WatchlistTestDocuments.Output output) throws Exception {
         ValuationChooserGeometry.PreparedTouch prepared = ValuationChooserGeometry.await(scenario, PAGE_TIMEOUT_MS);
         try {
+            scenario.onActivity(activity -> ValuationChooserTouchAdmission.require(
+                activity.getWindow(), activity.getBridge().getWebView()));
             touchEditorGeometry("Valuation inputs file chooser label", prepared.geometry);
             new WatchlistSystemPicker().openInventedDocument(output.name, "valuation-inputs-draft");
         } finally {
@@ -10414,7 +10425,8 @@ public class ManagedWorkspaceInstrumentedTest {
             if (dismissedDialog == null) Thread.sleep(50);
         }
         String diagnostic = "missed callbacks=" + missedCallbacks +
-            (requireNativeReady ? "; native=" + nativeState.get() : "") + "; " + pageDiagnostic();
+            (requireNativeReady ? "; native=" + nativeState.get() +
+                "; activeWindow=" + NativeReadinessFailureObservation.capture() : "") + "; " + pageDiagnostic();
         Log.e("ManagedFixture", "Timed out waiting for " + description + ": " + diagnostic);
         fail("Timed out waiting for " + description + ": " + diagnostic);
     }
@@ -10435,10 +10447,13 @@ public class ManagedWorkspaceInstrumentedTest {
         boolean attached = webView.isAttachedToWindow();
         boolean shown = webView.isShown();
         boolean hardware = webView.isHardwareAccelerated();
-        boolean focused = activity.hasWindowFocus() && webView.hasWindowFocus();
+        boolean activityFocused = activity.hasWindowFocus();
+        boolean webViewFocused = webView.hasWindowFocus();
+        boolean focused = activityFocused && webViewFocused;
         boolean callbacks = activity.getOnBackPressedDispatcher().hasEnabledCallbacks();
         diagnostic.set("state=" + state + ", attached=" + attached + ", shown=" + shown +
-            ", hardware=" + hardware + ", focused=" + focused + ", callbacks=" + callbacks);
+            ", hardware=" + hardware + ", activityFocused=" + activityFocused +
+            ", webViewFocused=" + webViewFocused + ", focused=" + focused + ", callbacks=" + callbacks);
         return state == Lifecycle.State.RESUMED && attached && shown && hardware && focused && callbacks;
     }
 
