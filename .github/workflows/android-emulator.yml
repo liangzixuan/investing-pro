@@ -296,6 +296,22 @@ jobs:
           })
           if len(required) != 65:
               raise SystemExit("The HTML policy cases must extend all 60 existing native tests.")
+          required.update({
+              ("local.investment.personal.FinancialScreenRecipePolicyInstrumentedTest", method)
+              for method in {
+                  "acceptsFixedRecipeMetadataAndCurrentBody",
+                  "rejectsUnknownCrossPurposeAndMismatchedDestinationMetadata",
+                  "rejectsVersionTimestampAndNonClosedRecipeFraming",
+                  "sharedWriterEnforcesExactUtf8LimitAndRejectsMalformedText",
+                  "validatesCalendarBoundariesAndKeepsMimeAndOptionsFixed",
+              }
+          })
+          required.add((
+              "local.investment.personal.ManagedWorkspaceInstrumentedTest",
+              "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave",
+          ))
+          if len(required) != 71:
+              raise SystemExit("Recipe policy and system-picker journey must extend all 65 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

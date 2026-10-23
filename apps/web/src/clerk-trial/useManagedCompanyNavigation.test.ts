@@ -818,15 +818,39 @@ describe("managed company URL navigation", () => {
       ),
     );
     nav = f.render();
+    const companySearch = mount.entries[mount.cursor]!.search;
     f.workspace.noteResearch(
       f.workspace.getSnapshot().research!.selection,
       "Unsent",
     );
     nav.view("watchlist");
-    f.render();
+    nav = f.render();
     expect(mount.entries[mount.cursor]!.search).toBe("");
     expect(mount.entries).toHaveLength(2);
     expect(f.workspace.getSnapshot().view).toBe("watchlist");
+    expect(f.workspace.getSnapshot().research).toBeNull();
+    expect(
+      f.workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe("Unsent");
+
+    expect(mount.cursor).toBe(1);
+    nav.open(() =>
+      f.workspace.openWatchlistEod(
+        f.workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      ),
+    );
+    nav = f.render();
+    expect(mount.entries.map((entry) => entry.search)).toEqual([
+      "",
+      "",
+      companySearch,
+    ]);
+    expect(mount.cursor).toBe(2);
+    nav.back();
+    f.render();
+    expect(mount.cursor).toBe(1);
+    expect(mount.entries).toHaveLength(3);
+    expect(mount.entries[mount.cursor]!.search).toBe("");
     expect(f.workspace.getSnapshot().research).toBeNull();
     expect(
       f.workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,

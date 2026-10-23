@@ -426,6 +426,54 @@ export class ManagedFinancialScreen {
       comparison: emptyComparison(),
     });
   }
+  /** Consume one current recipe review as an atomic definition-only change. */
+  applyRecipeDefinition(
+    captured: ManagedFinancialScreenState,
+    value: unknown,
+    members: readonly ManagedFinancialScreenMember[],
+  ): boolean {
+    if (
+      !this.accepts(captured) ||
+      this.operation ||
+      captured.pending ||
+      captured.criteriaStaged
+    )
+      return false;
+    const criteria = validateManagedFinancialScreenCriteria(value);
+    if (
+      !criteria ||
+      !Array.isArray(members) ||
+      members.length < 1 ||
+      members.length > 17
+    )
+      return false;
+    const selected: ManagedFinancialScreenMember[] = [];
+    for (const candidate of members) {
+      const owned = captured.memberships.find((member) => member === candidate);
+      if (!owned || !this.hasCoverage(owned)) return false;
+      selected.push(owned);
+    }
+    if (
+      new Set(selected).size !== selected.length ||
+      new Set(selected.map((member) => member.listing.issuerId)).size !==
+        selected.length
+    )
+      return false;
+    this.update({
+      criteria,
+      selected: Object.freeze(selected),
+      criteriaRevision: Symbol(),
+      selectionRevision: Symbol(),
+      criteriaStaged: false,
+      run: null,
+      shortlist: Object.freeze([]),
+      comparison: emptyComparison(),
+      message:
+        "Recipe definition applied. Run the screen explicitly to load reports.",
+      error: false,
+    });
+    return true;
+  }
   private failBoundary(error: unknown) {
     if (
       error instanceof TrialApiError &&

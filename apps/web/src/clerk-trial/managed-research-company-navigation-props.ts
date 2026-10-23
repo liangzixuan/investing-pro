@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, RefObject } from "react";
 import type { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import type { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
@@ -24,5 +24,22 @@ export function managedResearchCompanyNavigationProps(
       if (navigation) navigation.open(open);
       else open();
     },
+  };
+}
+
+/** Bind company entry and its focus origin to the same current workspace and route. */
+export function managedResearchOpener(
+  workspace: ManagedWorkspace,
+  navigation: ManagedCompanyNavigation | undefined,
+  panelOrigin: RefObject<HTMLButtonElement | null>,
+) {
+  return (opener: HTMLButtonElement, action: () => void) => {
+    if (!workspace.canNavigate()) return;
+    const open = () => {
+      action();
+      if (workspace.getSnapshot().research) panelOrigin.current = opener;
+    };
+    if (navigation) navigation.open(open);
+    else open();
   };
 }

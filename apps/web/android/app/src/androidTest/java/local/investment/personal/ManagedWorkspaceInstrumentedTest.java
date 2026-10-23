@@ -115,7 +115,8 @@ public class ManagedWorkspaceInstrumentedTest {
         "watchlistFilingsReviewKeepsPacketsNotesAndRetiresLateChecks", "watchlist-filings-review",
         "watchlistDraftFileUsesSystemExportImportAndExplicitRestore", "watchlist-draft-file",
         "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file",
-        "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation");
+        "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation",
+        "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen");
     private static final String ANNUAL_COMPARISON_NOTE =
         "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
         "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
@@ -4696,8 +4697,22 @@ public class ManagedWorkspaceInstrumentedTest {
             DRAFT + ".memberships[0].note === " + JSONObject.quote(expected));
         assertNativeFilingsReviewCounts(2, 1, 0, 0);
         clickNativeFilingsReviewAction("Inspect filings and write note");
-        awaitPage("Saved review can reopen its existing packet", "document.querySelector('.managed-company-visit') !== null");
+        awaitPage("Saved review can reopen its existing packet with committed Filings focus",
+            "document.querySelector('.managed-company-visit') !== null && document.activeElement?.id === 'managed-filings-heading' && " +
+            "document.querySelector('#managed-filings-heading')?.textContent === 'SEC filings' && " +
+            "document.querySelector('#managed-filings-heading')?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}) === true", true);
+        // Review replaces the first company entry with root; reopening pushes a third entry.
+        assertExactHistory(2, "https://localhost/", "https://localhost/", companyUrl("listing-zero", "filings"));
+        assertFinancialScreenBackReady();
         pressBack();
+        awaitPage("Back closes company research and restores the visible Watchlist filing review",
+            "(() => { const watchlist=document.querySelector('section[aria-labelledby=managed-watchlist-heading]')," +
+            "group=document.querySelector('.managed-filings-review'), content=group?.querySelector('section');" +
+            "return document.querySelector('.managed-company-visit')===null && watchlist && !watchlist.hidden && " +
+            "watchlist.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}) && group?.open===true && " +
+            "group.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}) && content?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})===true && " +
+            "document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='My Watchlist'; })()", true);
+        assertExactHistory(1, "https://localhost/", "https://localhost/", companyUrl("listing-zero", "filings"));
         assertNativeFilingsReviewPacket("ZERO", 26, "2026-09-20T00:00:02.000Z");
         assertNativeFilingsReviewCounts(2, 1, 0, 0);
     }
@@ -6378,6 +6393,152 @@ public class ManagedWorkspaceInstrumentedTest {
         assertEquals("Price note review, save and reload preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertExactHistory(1, "https://localhost/", "https://localhost/");
         Log.i("ManagedPriceNote", "phase=saved-reloaded, exactNoteLength=" + PRICE_NOTE.length() + "; " + pageDiagnostic());
+    }
+
+    @Test
+    public void financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave() throws Exception {
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        double origin = readDocumentTimeOrigin();
+        WatchlistTestDocuments.clear(context);
+        try {
+            prepareNativeScreenRecipe();
+            String draft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+            WatchlistTestDocuments.Output output = captureNativeScreenRecipe(context, draft);
+            clickFinancialScreenAction("Remove criterion 1");
+            clickFinancialScreenAction("Apply criteria");
+            click(".managed-screen-cohort input[type=checkbox]");
+            awaitPage("the current definition differs before file review", nativeScreenRecipeEmptyDefinition());
+            openNativeScreenRecipe(output);
+            assertNativeScreenRecipeReview(draft);
+            clickFinancialScreenAction("Keep current screen definition");
+            awaitPage("Cancel keeps the complete current definition and draft",
+                nativeScreenRecipeEmptyDefinition() + " && document.querySelector('#managed-screen-recipe-review')===null && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(draft));
+            openNativeScreenRecipe(output);
+            assertNativeScreenRecipeReview(draft);
+            clickFinancialScreenAction("Apply recipe definition");
+            awaitPage("Apply restores only the recipe definition and does not run or save",
+                "document.querySelectorAll('.managed-financial-screen > form .managed-screen-clause').length===1 && " +
+                "document.querySelector('.managed-financial-screen > form .managed-screen-clause input')?.value==='0' && " +
+                "document.querySelector('.managed-screen-cohort input')?.checked===true && " +
+                "document.querySelector('#managed-screen-recipe-review')===null && document.querySelectorAll('.managed-screen-table tbody > tr').length===0 && " +
+                "JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(draft));
+            assertFinancialScreenCounts(1, 0);
+            clickFinancialScreenAction("Run screen (1 companies)");
+            awaitPage("only explicit Run reads the original exact Annual packet", financialScreenExact());
+            assertFinancialScreenCounts(1, 1);
+            assertNativeScreenRecipeResearchBack(draft);
+            exerciseFinancialScreenShortlistSave();
+            assertEquals("Recipe, research, Back and independent Save retain the document", origin, readDocumentTimeOrigin(), 0.0);
+        } finally {
+            WatchlistTestDocuments.clear(context);
+        }
+    }
+
+    private void prepareNativeScreenRecipe() throws Exception {
+        awaitPage("recipe startup has no source request", DIAGNOSTICS + ".marketsResolve===1");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Screening research draft");
+        selectWatchlistNote(1);
+        touchInput("managed-note-1");
+        replaceFocusedInput("managed-note-1", "Invented second note", "Unrelated screen draft");
+        selectWorkspaceView("Discover");
+        clickFinancialScreenAction("Load screening cohort");
+        awaitPage("the exact invented cohort is selected without reading Annual",
+            "document.querySelectorAll('.managed-screen-cohort input').length===1 && document.querySelector('.managed-screen-cohort input')?.checked===true");
+        clickFinancialScreenAction("Add criterion");
+        clickFinancialScreenAction("Apply criteria");
+        click("#managed-screen-recipes > summary");
+        typeIntoInput("managed-screen-recipe-name", "Native cash discipline");
+        awaitPage("only the applied complete definition enables native capture",
+            "[...document.querySelectorAll('#managed-screen-recipes button')].some(button=>button.textContent==='Save screen recipe file'&&!button.disabled)");
+        assertFinancialScreenCounts(1, 0);
+    }
+
+    private WatchlistTestDocuments.Output captureNativeScreenRecipe(android.content.Context context, String draft) throws Exception {
+        WatchlistSystemPicker picker = new WatchlistSystemPicker();
+        clickFinancialScreenAction("Save screen recipe file");
+        picker.cancel();
+        awaitPage("native recipe picker Cancel keeps the current definition and both note drafts",
+            "document.querySelector('#managed-screen-recipes [role=status]')?.textContent==='Recipe save cancelled. The current definition is unchanged.' && " +
+            "JSON.parse(document.querySelector('#fixture-screen-recipe-protocol').textContent).choices===1 && " +
+            "JSON.parse(document.querySelector('#fixture-screen-recipe-protocol').textContent).writes===0 && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(draft));
+        assertEquals(0, WatchlistTestDocuments.outputs(context).length);
+        clickFinancialScreenAction("Save screen recipe file");
+        picker.saveToInventedRoot();
+        awaitPage("the actual chosen recipe file finishes one complete write",
+            "document.querySelector('#managed-screen-recipes [role=status]')?.textContent==='Screen recipe saved. It contains the definition only.' && " +
+            "JSON.parse(document.querySelector('#fixture-screen-recipe-protocol').textContent).choices===2 && JSON.parse(document.querySelector('#fixture-screen-recipe-protocol').textContent).writes===1");
+        WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
+        assertEquals(1, outputs.length);
+        String text = readFixtureString("JSON.parse(document.querySelector('#fixture-screen-recipe-protocol').textContent).text");
+        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+        assertTrue(bytes.length <= 65536);
+        assertArrayEquals(bytes, WatchlistTestDocuments.read(context, outputs[0]));
+        assertEquals("application/json", context.getContentResolver().getType(outputs[0].uri));
+        JSONObject recipe = new JSONObject(text);
+        assertEquals(7, recipe.length());
+        assertEquals("investment-financial-screen-recipe", recipe.getString("format"));
+        assertEquals(1, recipe.getInt("version"));
+        assertEquals("Native cash discipline", recipe.getString("name"));
+        assertTrue(recipe.getString("catalogSnapshotSha256").matches("sha256:[0-9a-f]{64}"));
+        assertEquals("Investment-financial-screen-recipe-" + recipe.getString("capturedAt").replace(':','-').replace('.','-') + ".json", outputs[0].name);
+        JSONObject criteria = recipe.getJSONObject("criteria"), sort = criteria.getJSONObject("sort");
+        assertEquals(2, criteria.length());
+        assertEquals(1, criteria.getJSONArray("clauses").length());
+        JSONObject clause = criteria.getJSONArray("clauses").getJSONObject(0);
+        assertEquals(3, clause.length());
+        assertEquals("operatingCashFlow", clause.getString("field"));
+        assertEquals("gte", clause.getString("operator"));
+        assertEquals("0", clause.getString("value"));
+        assertEquals(2, sort.length());
+        assertEquals("symbol", sort.getString("field"));
+        assertEquals("asc", sort.getString("direction"));
+        assertEquals(1, recipe.getJSONArray("listings").length());
+        assertEquals(11, recipe.getJSONArray("listings").getJSONObject(0).length());
+        assertFinancialScreenCounts(1, 0);
+        return outputs[0];
+    }
+
+    private String nativeScreenRecipeEmptyDefinition() {
+        return "document.querySelectorAll('.managed-financial-screen > form .managed-screen-clause').length===0 && " +
+            "document.querySelector('.managed-screen-cohort input')?.checked===false && document.querySelectorAll('.managed-screen-table tbody > tr').length===0";
+    }
+
+    private void openNativeScreenRecipe(WatchlistTestDocuments.Output output) throws Exception {
+        touchDraftFileChooserLabel("#managed-screen-recipes", "Open screen recipe file", "Screen recipe file chooser label");
+        new WatchlistSystemPicker().openInventedDocument(output.name, "financial-screen-recipe");
+    }
+
+    private void assertNativeScreenRecipeReview(String draft) throws Exception {
+        awaitPage("the complete recipe and current definition are reviewed before Apply",
+            "(() => {const review=document.querySelector('#managed-screen-recipe-review')?.parentElement," +
+            "file=JSON.parse(JSON.parse(document.querySelector('#fixture-screen-recipe-protocol').textContent).text), text=review?.textContent??'';" +
+            "const labels={'Country':'country','Exchange MIC':'exchangeMic','Instrument type':'instrumentType','Issuer ID':'issuerId','Company name':'issuerName'," +
+            "'Listing ID':'listingId','Security ID':'securityId','Security name':'securityName','Share class ID':'shareClassId','Share class name':'shareClassName','Ticker':'symbol'};" +
+            "const identities=[...(review?.querySelectorAll('dl')??[])];return identities.length===2 && identities.every(identity=>{" +
+            "const fields=[...identity.querySelectorAll('div')];return fields.length===11&&fields.every(field=>file.listings[0][labels[field.querySelector('dt')?.textContent]]===field.querySelector('dd')?.textContent);})" +
+            "&& text.includes(file.name)&&text.includes(file.capturedAt)&&text.includes(file.catalogSnapshotSha256)&&text.includes('unverified claims')" +
+            "&& text.includes('Reported operating cash flow at least 0')&&text.includes('No numerical criteria.')&&text.includes('No listings selected.')" +
+            "&& [...review.querySelectorAll('button')].some(button=>button.textContent==='Apply recipe definition'&&!button.disabled)" +
+            "&& document.querySelector('#managed-screen-recipe-file')?.value==='' && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(draft) + ";})() && " + nativeScreenRecipeEmptyDefinition());
+        assertFinancialScreenCounts(1, 0);
+    }
+
+    private void assertNativeScreenRecipeResearchBack(String draft) throws Exception {
+        String row = ".managed-financial-screen .managed-screen-table tbody > tr";
+        click(row + " > th > label input[type=checkbox]");
+        click(row + " > th > button");
+        awaitPage("Research reuses the recipe run without a source refresh or a note mutation",
+            "document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO' && " +
+            "document.querySelector('#managed-research-note')?.value==='Screening research draft' && " +
+            "document.querySelector('.managed-annual-origin')?.textContent==='Showing the report loaded for financial screening. Original source and observation times are unchanged.'");
+        assertFinancialScreenBackReady();
+        pressBack();
+        awaitPage("native Back retains the exact run, shortlist, definition and complete independent draft",
+            financialScreenExact() + " && document.querySelector('.managed-company-visit')===null && " +
+            "document.querySelector(" + JSONObject.quote(row + " > th > label input") + ")?.checked===true && " +
+            "document.activeElement===document.querySelector(" + JSONObject.quote(row + " > th > button") + ") && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(draft));
+        assertFinancialScreenCounts(1, 1);
     }
 
     @Test

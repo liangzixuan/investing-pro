@@ -6,6 +6,7 @@ import type { ManagedEodIdentity } from "@research-cockpit/contracts";
 import type { ManagedApi } from "./managed-api";
 import { eodSelection } from "./eod-history-fixture";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
+import { ManagedFinancialScreenRecipes } from "./ManagedFinancialScreenRecipes";
 import {
   ManagedFinancialScreen as ScreenModel,
   type ManagedFinancialScreenReportCapture,
@@ -485,4 +486,34 @@ describe("managed financial screening surface", () => {
     expect(runButton(f.render()).props.disabled).toBe(true);
     expect(f.annualReport).toHaveBeenCalledOnce();
   });
+});
+
+it("keeps the raw criteria form through recipe review/cancel and resets it only after an explicit accepted Apply", async () => {
+  const f = await fixture();
+  await f.load();
+  click(findButton(f.render(), "Add criterion"));
+  changeThreshold(f.render(), "1e");
+  const panel = elements(f.render()).find(
+    (element) => element.type === ManagedFinancialScreenRecipes,
+  )!;
+  expect(panel).toBeDefined();
+  expect(threshold(f.render()).props.value).toBe("1e");
+  (panel.props.onApplied as () => void)();
+  expect(threshold(f.render()).props.value).toBe("1e");
+  submit(f.render());
+  expect(threshold(f.render()).props.value).toBe("1e");
+  changeThreshold(f.render(), "0");
+  submit(f.render());
+  const state = f.model.getSnapshot();
+  const criteria = {
+    clauses: [{ field: "operatingIncome", operator: "lte", value: "10.00" }],
+    sort: { field: "symbol", direction: "desc" },
+  };
+  expect(f.model.applyRecipeDefinition(state, criteria, state.selected)).toBe(
+    true,
+  );
+  (panel.props.onApplied as () => void)();
+  expect(threshold(f.render()).props.value).toBe("10.00");
+  expect(f.model.getSnapshot().criteriaStaged).toBe(false);
+  expect(f.annualReport).not.toHaveBeenCalled();
 });

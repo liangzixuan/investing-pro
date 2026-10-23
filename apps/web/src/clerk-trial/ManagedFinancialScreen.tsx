@@ -13,6 +13,8 @@ import type {
 } from "./managed-financial-screen";
 import "./managed-financial-screen.css";
 import { ManagedFinancialScreenComparison } from "./ManagedFinancialScreenComparison";
+import { ManagedFinancialScreenRecipes } from "./ManagedFinancialScreenRecipes";
+import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import {
   AnnualStatementObservation,
   AnnualStatementsContext,
@@ -37,8 +39,12 @@ const copyCriteria = (criteria: ManagedFinancialScreenCriteria): Draft => ({
 export function ManagedFinancialScreen({
   model,
   onOpenReport,
+  recipeDelivery,
+  recipesRouteActive,
 }: {
   model: ScreenModel;
+  recipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+  recipesRouteActive?: () => boolean;
   onOpenReport: (
     capture: ManagedFinancialScreenReportCapture,
     opener: HTMLButtonElement,
@@ -312,6 +318,18 @@ export function ManagedFinancialScreen({
           run criteria.
         </p>
       )}
+      <ManagedFinancialScreenRecipes
+        model={model}
+        {...(recipeDelivery ? { delivery: recipeDelivery } : {})}
+        {...(recipesRouteActive ? { routeActive: recipesRouteActive } : {})}
+        onApplied={() => {
+          const current = model.getSnapshot();
+          if (!current.criteriaStaged) {
+            setForm({ owner: model, draft: copyCriteria(current.criteria) });
+            setNotice("");
+          }
+        }}
+      />
       <div className="trial-actions">
         <button
           type="button"

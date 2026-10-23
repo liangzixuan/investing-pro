@@ -1,4 +1,8 @@
 import {
+  browserFinancialScreenRecipeAdapter,
+  type ManagedFinancialScreenRecipeDeliveryAdapter,
+} from "./financial-screen-recipe-delivery";
+import {
   browserValuationDraftFileAdapter,
   type ManagedValuationDraftFileDeliveryAdapter,
 } from "./valuation-draft-file-delivery";
@@ -163,6 +167,7 @@ describe("official Clerk browser adapter", () => {
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
+      financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.apiOrigin).toBe(config.apiOrigin);
@@ -172,6 +177,7 @@ describe("official Clerk browser adapter", () => {
     expect(props.portfolioDraftFileDelivery).toBeUndefined();
     expect(props.followupsDraftFileDelivery).toBeUndefined();
     expect(props.valuationDraftFileDelivery).toBeUndefined();
+    expect(props.financialScreenRecipeDelivery).toBeUndefined();
     expect(props.reportDelivery).toBeUndefined();
     expect(await props.session.getToken()).toBe("synthetic-token");
     await props.session.signOut();
@@ -245,6 +251,7 @@ describe("official Clerk browser adapter", () => {
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
+      financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     };
     expect(props.warnOnBrowserLeave).toBe(true);
@@ -258,6 +265,9 @@ describe("official Clerk browser adapter", () => {
     );
     expect(props.valuationDraftFileDelivery).toBe(
       browserValuationDraftFileAdapter,
+    );
+    expect(props.financialScreenRecipeDelivery).toBe(
+      browserFinancialScreenRecipeAdapter,
     );
     expect(props.reportDelivery).toBe(browserCompanyReportAdapter);
     expect(props.session).toMatchObject({

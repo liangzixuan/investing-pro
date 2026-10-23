@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 22, 2026. This is the current capability and delivery record.
+Updated October 23, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
@@ -31,6 +31,17 @@ enablement reused its accepted source archive. The current API is ready and live
 and its downloaded source matches the accepted ce7 archive. The website already contains the matching Portfolio
 workflow. No authenticated owner Portfolio Save was exercised during release.
 
+Android 1.34.0, code 35, is provided locally from accepted source
+`241b0e4d61c487a561399d403b78be62443861ad` with the existing production signer.
+It adds **Save report (HTML)** beside JSON for prepared company research.
+The guarded offline build, package/version/non-debug and production signer
+checks, complete configuration and asset verification, and final source
+preservation passed. Separate native artifact verification passed after a
+DEX-output decoding correction reused the completed successful tools. The
+original decoding failure and raw output are preserved; the APK was not rebuilt
+or re-signed. Installation, offline HTML reading on the phone and sustained use
+remain open. The website, API and prior APKs remain unchanged.
+
 Android 1.33.0, code 34, is provided from accepted source
 `7873256003e02b9c44f37990c4ee512d71a7bca1` with the existing production signer.
 It adds dated thesis Follow-ups, Follow-up draft files, valuation editor draft
@@ -44,7 +55,7 @@ is preserved; future guards remain unchanged. On October 22 the owner reported
 "Installed and verified." for the latest update. This records installation and
 overall verification by owner report; no per-feature results or independent
 device inspection were supplied. Sustained use remains open. The readable HTML
-report source work below is not included in this package. The API, website and
+report workflow is provided separately in Android 1.34. The API, website and
 prior APKs remain unchanged.
 
 Android 1.32.0, code 33, was provided from accepted source
@@ -112,9 +123,9 @@ recovery and sustained use remain open. The full goal still includes broader
 company discovery, news and calendars, quarterly/TTM financials, peer research
 and comparable portfolio returns.
 
-## Android readable research report candidate
+## Android readable research report
 
-The source candidate adds explicit **Save report (HTML)** beside JSON after
+Android 1.34 adds explicit **Save report (HTML)** beside JSON after
 preparing a company report. The system picker chooses one document. The existing
 reading view includes the exact authored draft, dated source qualifications and
 complete captured JSON appendix. It needs no script, external assets or source
@@ -126,9 +137,19 @@ The native HTML boundary fixes its purpose, calendar-valid filename, MIME type,
 8 MiB strict UTF-8 ceiling, versioned envelope, leading CSP and stylesheet hash.
 The shared formatter owns passive markup and escaping. This is an application
 export path, not a sanitizer or import API. The existing JSON policy and chosen
-document writer remain unchanged. Source/native verification is in progress;
-provided Android 1.33 and the website/API remain unchanged. Physical-device
-HTML reading is not yet established.
+document writer remain unchanged. Source/native verification and local APK
+delivery are complete. The website/API remain unchanged. Physical-device HTML
+reading is not yet established.
+
+## Active source work: reusable financial-screen recipes
+
+The next M2/M4 increment adds [named screen recipes](MANAGED_FINANCIAL_SCREEN_RECIPES.md).
+The complete path is applied criteria and selected companies, local file capture,
+full file/current review, explicit Apply and Run, then research, Back, shortlist
+review and independent Watchlist Save. Recipes contain a definition rather than
+financial results or notes. Current Annual coverage, source admission, account
+storage and publication stay unchanged. Implementation and affected verification
+are in progress; no recipe APK or phone acceptance is claimed.
 
 ## Watchlist filing review source
 

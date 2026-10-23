@@ -1,4 +1,9 @@
-import { managedResearchCompanyNavigationProps } from "./managed-research-company-navigation-props";
+import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
+import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
+import {
+  managedResearchCompanyNavigationProps,
+  managedResearchOpener,
+} from "./managed-research-company-navigation-props";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
@@ -84,6 +89,7 @@ import {
 } from "../mobile/android-back";
 
 interface ManagedFileDeliveries {
+  financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
@@ -231,6 +237,7 @@ function SessionWorkspace(props: SessionProps) {
 
 function definedSessionWorkspacePorts(initial: SessionProps) {
   const ports = {
+    financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
     valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
@@ -455,6 +462,7 @@ export function ManagedWorkspaceScreen({
   portfolioDraftFileDelivery,
   followupsDraftFileDelivery,
   valuationDraftFileDelivery,
+  financialScreenRecipeDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -541,15 +549,11 @@ export function ManagedWorkspaceScreen({
     workspace.setView(view);
     return true;
   };
-  const openResearch = (opener: HTMLButtonElement, action: () => void) => {
-    if (!workspace.canNavigate()) return;
-    const open = () => {
-      action();
-      if (workspace.getSnapshot().research) panelOrigin.current = opener;
-    };
-    if (navigation) navigation.open(open);
-    else open();
-  };
+  const openResearch = managedResearchOpener(
+    workspace,
+    navigation,
+    panelOrigin,
+  );
   const onNativeBack = useEffectEvent(
     ({ canGoBack }: { canGoBack: boolean }) => {
       const phase = workspace.coordinator.getSnapshot().phase;
@@ -798,11 +802,14 @@ export function ManagedWorkspaceScreen({
   };
   const retired = sessionState.phase !== "active";
   const navigationPending = navigation?.pending ?? false;
+  const recipesRouteActive = useManagedScreenRecipeRoute(workspace, navigation);
   const financialDiscovery = managedFinancialDiscoveryProps(
     workspace,
     navigationPending,
     openResearch,
     () => setView("watchlist"),
+    financialScreenRecipeDelivery,
+    recipesRouteActive,
   );
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();
