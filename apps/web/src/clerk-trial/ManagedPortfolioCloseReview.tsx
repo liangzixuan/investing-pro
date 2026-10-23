@@ -10,6 +10,7 @@ import type { PersonalPortfolioIdentity } from "@research-cockpit/contracts";
 import type {
   ManagedPortfolioCloseReview as ReviewModel,
   PortfolioCloseState,
+  PortfolioCloseContext,
 } from "./managed-portfolio-close-review";
 import { capturePortfolioCloseContext } from "./portfolio-close-review-context";
 import { PortfolioCloseReviewView } from "./PortfolioCloseReviewView";
@@ -32,6 +33,16 @@ type Props = {
     opener: HTMLButtonElement,
   ) => void;
 };
+type Controller = { model: ReviewModel; context: PortfolioCloseContext | null };
+function controllerIsCurrent(
+  controller: Controller | null,
+  context: PortfolioCloseContext | null,
+  navigationPending: boolean,
+) {
+  if (navigationPending || !controller) return false;
+  if (controller.context !== context) return false;
+  return controller.model.isCurrent(context);
+}
 function useCloseController(
   workspace: ManagedWorkspace,
   navigationPending: boolean,
@@ -61,10 +72,7 @@ function useCloseController(
     () => (navigationPending ? null : capturePortfolioCloseContext(workspace)),
     [workspace, view, saved, portfolio, session, navigationPending],
   );
-  const [controller, setController] = useState<{
-    model: ReviewModel;
-    context: typeof context;
-  } | null>(null);
+  const [controller, setController] = useState<Controller | null>(null);
   useLayoutEffect(() => {
     const next = workspace.createPortfolioCloseReview();
     next.enter(context);
@@ -78,9 +86,7 @@ function useCloseController(
     prices?.getSnapshot ?? emptySnapshot,
   );
   const current = () =>
-    !navigationPending &&
-    controller?.context === context &&
-    prices?.isCurrent(context) === true;
+    controllerIsCurrent(controller, context, navigationPending);
   return { prices, state, current };
 }
 function loadCurrent(prices: ReviewModel | undefined, current: () => boolean) {

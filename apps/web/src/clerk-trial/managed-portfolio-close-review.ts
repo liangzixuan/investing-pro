@@ -84,6 +84,20 @@ function failedHistory(
   };
 }
 
+function captureCloseHistory(
+  received: ManagedEodHistoryResponseDto,
+  catalogSnapshotSha256: `sha256:${string}`,
+  listingId: string,
+) {
+  const response = parseManagedEodHistoryResponse(received, {
+    catalogSnapshotSha256,
+    listingId,
+    range: "1m",
+  });
+  if (!response) throw new TrialApiError("invalid_response");
+  return response;
+}
+
 /** One mounted, exact-ledger review. Reads are explicit and share the workspace cooldown. */
 export class ManagedPortfolioCloseReview {
   private state = empty();
@@ -285,12 +299,7 @@ export class ManagedPortfolioCloseReview {
         load.operation.signal,
       );
       if (!load.current()) return false;
-      const response = parseManagedEodHistoryResponse(received, {
-        catalogSnapshotSha256,
-        listingId: id,
-        range: "1m",
-      });
-      if (!response) throw new TrialApiError("invalid_response");
+      const response = captureCloseHistory(received, catalogSnapshotSha256, id);
       this.row(id, {
         response,
         running: false,
@@ -311,6 +320,16 @@ export class ManagedPortfolioCloseReview {
     if (this.active(load.context)) this.update({ running: false });
     else this.clear();
   }
+  private currentLoad(
+    context: PortfolioCloseContext,
+    operation: AbortController,
+  ) {
+    return (
+      this.active(context) &&
+      this.operation === operation &&
+      !operation.signal.aborted
+    );
+  }
   async load() {
     const context = this.context;
     if (!context) return;
@@ -322,10 +341,7 @@ export class ManagedPortfolioCloseReview {
     const load = {
       context,
       operation,
-      current: () =>
-        this.active(context) &&
-        this.operation === operation &&
-        !operation.signal.aborted,
+      current: () => this.currentLoad(context, operation),
     };
     this.update({
       running: true,
