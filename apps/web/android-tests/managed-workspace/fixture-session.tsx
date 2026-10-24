@@ -1,4 +1,5 @@
 import { App } from "@capacitor/app";
+import { CompanySnapshotLoadingFixtureControls } from "./company-snapshot-loading-fixture-controls";
 import { useLayoutEffect, useState } from "react";
 import { ManagedWorkspaceRouter } from "../../src/clerk-trial/ManagedWorkspaceScreen";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
@@ -58,6 +59,9 @@ function DraftAndRevisitControls({
   return (
     <>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
+      {workspace && fixture.companySnapshotLoading && (
+        <CompanySnapshotLoadingFixtureControls workspace={workspace} />
+      )}
       <ReportRevisitFixtureControls workspace={workspace} scenario={scenario} />
     </>
   );

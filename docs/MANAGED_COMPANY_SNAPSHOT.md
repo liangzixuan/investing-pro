@@ -18,7 +18,8 @@ Price names the requested month or year separately from the loaded range.
 Change the selection in Price, then load it explicitly. A staged choice does not
 change the retained response or its dates. Annual and Filings share the existing
 SEC admission budget across devices. A returned cooldown requires a later
-explicit retry; there is no Load-all action, countdown or automatic retry.
+explicit retry. Individual source actions remain available; the bounded
+missing-source action below adds no countdown or automatic retry.
 
 Actions belong to the current visit and exact selection, including on a settled
 company URL. Leaving or replacing that visit, catalog invalidation and session
@@ -32,6 +33,31 @@ and source actions that change the section are disabled until navigation
 commits. Actions are not queued or retried. Evidence disclosures, note edits,
 Save, report preparation, Cancel and the selected section's direct Load keep
 their existing rules.
+
+## Load missing company sources
+
+The source candidate adds **Load missing company sources** below Research sources.
+It attempts eligible missing Price, Annual and Filings responses once, in that
+order, one at a time. It stays in the current company section. Opening the view
+makes no request. Existing loaded responses, including retained or refused
+packets, keep their original dates and warnings; this action does not refresh them.
+Use a source's separate Refresh action when a new response is wanted.
+
+A new response must pass its existing identity and source validation. Missing
+individual financial values remain unavailable. An unavailable source packet,
+failed request, cooldown or cancellation stops the remaining queue. Annual and
+Filings share SEC admission across devices; a successful Annual load can leave
+Filings deferred. Inspect its message and use a later explicit load when ready.
+There is no scheduled resume, countdown, parallel request or automatic retry.
+
+**Cancel company source load** cancels only its current read and stops the queue.
+Manual source controls, section navigation, company/route/catalog changes and
+session retirement invalidate it. Late completion cannot start another source.
+The loaded snapshot keeps each source's separate dates and qualifications. Notes,
+report preparation, Research/Back and independent Save keep their existing rules.
+No new source, coverage, provider entitlement, saved resource or server limit is
+added. Integration, native runtime checks and delivery of this candidate remain
+separate from the previously delivered individual source actions.
 
 ## Read the loaded snapshot
 

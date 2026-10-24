@@ -30,6 +30,7 @@ const allowedScenarios = [
   "annual-balance-sheet",
   "annual-operating-comparison",
   "company-snapshot",
+  "company-snapshot-loading",
   "report-revisit",
   "research-followups",
   "portfolio-ledger",

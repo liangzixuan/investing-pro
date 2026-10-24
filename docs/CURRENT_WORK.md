@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 23, 2026. This is the current capability and delivery record.
+Updated October 24, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
@@ -93,12 +93,19 @@ continued unrun preparation stages and preserved its original failure. The
 production build guard stayed unchanged. This does not establish physical-device
 acceptance. Price coverage, storage, website and API are unchanged.
 
-The active outcome is a [readable Portfolio review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md).
-Capture the current dated holdings review, inspect its complete ledger, values
-and original evidence, then explicitly save a private HTML copy. Capture and
-file delivery remain separate from source loading and Portfolio Review/Save.
-Implementation and affected checks are in progress. Source integration, native
-runtime acceptance and client delivery of this report remain pending.
+Android 1.40.0, code 41, provides the [Portfolio review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md)
+from accepted source `23b0611ee6749a5a8020c3a587572330b4f445b3` with the existing
+production signer. Capture the dated holdings review, inspect its complete ledger,
+values and original evidence, then explicitly save a private HTML copy. All
+original required checks, the complete synthetic native 81-case gate and guarded
+APK verification passed. Capture and file delivery remain separate from source
+loading and Portfolio Review/Save. No physical-device acceptance is claimed.
+
+The active M2 outcome is [coordinated company snapshot loading](MANAGED_COMPANY_SNAPSHOT.md#load-missing-company-sources).
+One explicit action loads eligible missing sources sequentially, preserves loaded
+responses and stops on refusal, failure, cooldown or cancellation. Source requests
+retain their existing admission and separate dates. Implementation and affected
+checks are in progress; integration, native acceptance and delivery remain pending.
 
 Request installation and phone acceptance only for major milestones, such as
 version 2.0. Routine updates retain automated functional, integrity, recovery,

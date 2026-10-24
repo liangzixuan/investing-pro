@@ -7613,6 +7613,130 @@ describe("workspace persisted follow-up research", () => {
     return capture;
   }
 
+  describe("coordinated missing company sources", () => {
+    async function opened() {
+      const f = await followupFixture();
+      f.workspace.openFollowupResearch(await prepared(f));
+      const visit = f.workspace.getSnapshot().research!;
+      return { ...f, visit };
+    }
+    it("loads the exact visit without changing section, dates or independent drafts and saves", async () => {
+      const f = await opened();
+      noSources(f.api);
+      const watchlist = f.workspace.coordinator.getSnapshot().draft;
+      const followups = f.workspace.followups.coordinator.getSnapshot().draft;
+      await f.workspace.loadCompanySnapshot(f.visit);
+      expect(f.workspace.getSnapshot().research).toBe(f.visit);
+      expect(f.api.eodHistory).toHaveBeenCalledOnce();
+      expect(f.api.annualReport).toHaveBeenCalledOnce();
+      expect(f.api.recentFilings).toHaveBeenCalledOnce();
+      const responses = [
+        f.workspace.eod.getSnapshot().response,
+        f.workspace.annual.getSnapshot().response,
+        f.workspace.filings.getSnapshot().response,
+      ];
+      expect(responses.every(Boolean)).toBe(true);
+      await f.workspace.loadCompanySnapshot(f.visit);
+      expect(f.api.eodHistory).toHaveBeenCalledOnce();
+      expect(f.api.annualReport).toHaveBeenCalledOnce();
+      expect(f.api.recentFilings).toHaveBeenCalledOnce();
+      expect([
+        f.workspace.eod.getSnapshot().response,
+        f.workspace.annual.getSnapshot().response,
+        f.workspace.filings.getSnapshot().response,
+      ]).toEqual(responses);
+      expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+      expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(
+        followups,
+      );
+      expect(f.api.save).not.toHaveBeenCalled();
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+      f.workspace.closeResearch();
+      expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+      expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(
+        followups,
+      );
+    });
+    it.each(["navigation", "section", "close", "retire", "cancel"] as const)(
+      "stops the remaining queue at %s and ignores a late response",
+      async (boundary) => {
+        const f = await opened();
+        const held = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+        vi.mocked(f.api.eodHistory).mockReturnValueOnce(held.promise);
+        const reading = f.workspace.loadCompanySnapshot(f.visit);
+        expect(f.api.eodHistory).toHaveBeenCalledOnce();
+        const signal = vi.mocked(f.api.eodHistory).mock.calls[0]![1];
+        if (boundary === "navigation") f.workspace.setNavigationBlocked(true);
+        if (boundary === "section") f.workspace.switchToAnnual();
+        if (boundary === "close") f.workspace.closeResearch();
+        if (boundary === "retire") f.workspace.sessionOwner.retire();
+        if (boundary === "cancel") f.workspace.cancelCompanySnapshot(f.visit);
+        expect(signal.aborted).toBe(true);
+        held.resolve(eodResponse());
+        await reading;
+        expect(f.api.annualReport).not.toHaveBeenCalled();
+        expect(f.api.recentFilings).not.toHaveBeenCalled();
+        expect(f.workspace.companySnapshotLoad.getSnapshot().running).toBe(
+          false,
+        );
+        if (boundary !== "cancel") {
+          await f.workspace.loadCompanySnapshot(f.visit);
+          expect(f.api.eodHistory).toHaveBeenCalledOnce();
+        }
+      },
+    );
+    it("does not let an old visit cancel a new missing-source read for the same company", async () => {
+      const f = await opened();
+      const oldPacket =
+        deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      const newPacket =
+        deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      vi.mocked(f.api.eodHistory)
+        .mockReturnValueOnce(oldPacket.promise)
+        .mockReturnValueOnce(newPacket.promise);
+      const oldRead = f.workspace.loadCompanySnapshot(f.visit);
+      if (f.visit.section === "eod") f.workspace.switchToAnnual();
+      else f.workspace.switchToEod();
+      const current = f.workspace.getSnapshot().research!;
+      expect(current).not.toBe(f.visit);
+      expect(current.selection).toBe(f.visit.selection);
+      const newRead = f.workspace.loadCompanySnapshot(current);
+      expect(f.api.eodHistory).toHaveBeenCalledTimes(2);
+      const oldSignal = vi.mocked(f.api.eodHistory).mock.calls[0]![1];
+      const newSignal = vi.mocked(f.api.eodHistory).mock.calls[1]![1];
+      expect(oldSignal.aborted).toBe(true);
+      f.workspace.cancelCompanySnapshot(f.visit);
+      oldPacket.resolve(eodResponse());
+      await oldRead;
+      expect(newSignal.aborted).toBe(false);
+      expect(f.workspace.companySnapshotLoad.getSnapshot().running).toBe(true);
+      f.workspace.cancelCompanySnapshot(current);
+      expect(newSignal.aborted).toBe(true);
+      newPacket.resolve(eodResponse());
+      await newRead;
+      expect(f.api.annualReport).not.toHaveBeenCalled();
+      expect(f.api.recentFilings).not.toHaveBeenCalled();
+    });
+    it("keeps checked SEC cooldowns and requires another explicit action after a partial stop", async () => {
+      const f = await opened();
+      const future = new Date(Date.now() + 60_000).toISOString();
+      vi.mocked(f.api.annualReport).mockRejectedValueOnce(
+        new ManagedSecCooldownError(future),
+      );
+      await f.workspace.loadCompanySnapshot(f.visit);
+      expect(f.api.eodHistory).toHaveBeenCalledOnce();
+      expect(f.api.annualReport).toHaveBeenCalledOnce();
+      expect(f.api.recentFilings).not.toHaveBeenCalled();
+      expect(f.workspace.annual.getSnapshot().message).toContain(future);
+      const price = f.workspace.eod.getSnapshot().response;
+      await f.workspace.loadCompanySnapshot(f.visit);
+      expect(f.api.eodHistory).toHaveBeenCalledOnce();
+      expect(f.api.annualReport).toHaveBeenCalledOnce();
+      expect(f.api.recentFilings).not.toHaveBeenCalled();
+      expect(f.workspace.eod.getSnapshot().response).toBe(price);
+    });
+  });
+
   describe("contextual follow-up assessment", () => {
     async function opened() {
       const f = await followupFixture();
