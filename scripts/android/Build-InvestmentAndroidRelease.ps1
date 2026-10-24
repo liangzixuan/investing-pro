@@ -7,8 +7,10 @@ $secret = $null
 $password = $null
 $childEnvironment = @{}
 $evidence = $null
-$stage = 'admission'
+$stage = 'runtime_prerequisites'
 try {
+    Assert-SigningRuntime
+    $stage = 'admission'
     $PublicConfiguration = Assert-SigningPath $PublicConfiguration
     Assert-OrdinaryPath $PublicConfiguration
     $configurationBytes = [IO.File]::ReadAllBytes($PublicConfiguration)
@@ -112,7 +114,7 @@ try {
     if ($null -ne $evidence -and -not [IO.File]::Exists((Join-Path $evidence 'result.json'))) {
         Write-SigningJson (Join-Path $evidence 'result.json') @{ status = 'failed'; stage = $stage; retryAllowed = $false }
     }
-    Write-Error 'Release build stopped. Inspect the bounded public evidence before another operation.' -ErrorAction Continue
+    Write-Error ("Release build stopped at stage '$stage'. Inspect the bounded public evidence before another operation.") -ErrorAction Continue
     exit 1
 } finally {
     $childEnvironment.Clear()
