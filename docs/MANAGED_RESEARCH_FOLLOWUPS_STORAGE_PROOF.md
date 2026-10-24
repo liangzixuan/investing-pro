@@ -13,6 +13,31 @@ execution permissions or live persistence. Creating or changing the fixed
 Follow-ups tables can affect the existing route and requires its own operational
 scope.
 
+## Existing qualification and replay boundary
+
+The retained October 16 acceptance already qualified the fixed private v3
+artifact `a4bf7fa6`, plan `8a381028`, on deployment
+`6ad166846d0a6d6439a2`. All eleven phases passed with 131 counted store calls
+and 130 recorded HTTP dispatches, within the combined ceiling of 156. The live
+capacity case used 250,191 bytes. The two concurrent phases followed the admitted
+`commit400` paths. This is acceptance of that exact invented-data storage proof;
+it does not establish owner-account Save, physical-device use, every payload
+length, a container restart or full product acceptance.
+
+Keep that accepted evidence and its consumed authority. Do not repeat the proof
+because a later checkout has older status text. The earlier v2 attempt passed
+five phases and stopped at an unadmitted overlap response; its cause remains
+unproven and its authority is consumed. Preserve that failure as history.
+
+The builder's current data still selects the consumed v2 principals
+`proof-followups-prestage-v2-a`, `-b` and `-size`, with plan
+`b1f35ad067007bb7cc66de5a3bcdedad52a1605f1171ad614e741b280660f910`.
+Its local build and notices checks are valid for their recorded scope. They do
+not make this cohort eligible for another live run. Do not upload or execute it,
+delete retained rows, replace principals or manufacture a new empty baseline.
+Reuse the accepted v3 evidence only where source, dependencies and settings
+match; keep any later differences explicit.
+
 ## Fixed proof scope
 
 An empty, query-free `POST /proof/{phase}` selects one of eleven compiled phases.
