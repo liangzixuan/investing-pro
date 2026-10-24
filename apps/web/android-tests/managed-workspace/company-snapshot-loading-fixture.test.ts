@@ -1,3 +1,4 @@
+import { encodeMainWatchlistPayload } from "@research-cockpit/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFixture } from "./fixture";
 import { snapshotLoadingNote } from "./company-snapshot-loading-fixture";
@@ -64,6 +65,23 @@ function requireOnlyMissingFilings(opened: Opened) {
   );
   expect(opened.workspace.getSnapshot().research?.section).toBe("annual");
 }
+function requireSavedAuthoredDraft(
+  opened: Opened,
+  before: NonNullable<ReturnType<typeof observeSources>["draft"]>,
+) {
+  const saved = opened.workspace.coordinator.getSnapshot().draft!;
+  expect(saved).toStrictEqual(before);
+  expect(JSON.stringify(saved)).not.toBe(JSON.stringify(before));
+  expect(encodeMainWatchlistPayload(saved)).toBe(
+    encodeMainWatchlistPayload(before),
+  );
+  expect(
+    encodeMainWatchlistPayload({
+      ...saved,
+      memberships: [...saved.memberships].reverse(),
+    }),
+  ).not.toBe(encodeMainWatchlistPayload(before));
+}
 describe("invented coordinated company snapshot native fixture", () => {
   it("cancels the owned read, discards its late packet and loads only missing Filings on a later explicit action", async () => {
     const opened = await openInventedCompany();
@@ -84,6 +102,7 @@ describe("invented coordinated company snapshot native fixture", () => {
         baseVersion: 2,
         dirty: false,
       });
+      requireSavedAuthoredDraft(opened, evidence.draft!);
     } finally {
       opened.workspace.sessionOwner.dispose();
     }

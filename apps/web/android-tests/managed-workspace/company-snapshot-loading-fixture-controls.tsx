@@ -1,3 +1,4 @@
+import { encodeMainWatchlistPayload } from "@research-cockpit/contracts";
 import { useSyncExternalStore } from "react";
 import type { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { snapshotLoadingNote } from "./company-snapshot-loading-fixture";
@@ -68,6 +69,9 @@ export function CompanySnapshotLoadingFixtureControls({ workspace }: Props) {
       <pre id="fixture-company-snapshot-evidence" hidden>
         {JSON.stringify({
           draft: draft.draft,
+          encodedDraft: draft.draft
+            ? encodeMainWatchlistPayload(draft.draft)
+            : null,
           price: price.response,
           annual: annual.response,
           filings: filings.response,

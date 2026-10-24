@@ -22,7 +22,7 @@ public class CompanySnapshotLoadingInstrumentedTest {
     private static final String LOAD = "section[aria-label='Load company snapshot']";
     private static final String SNAPSHOT = ".managed-company-snapshot";
     private static final String NOTE = "Snapshot research remains an authored draft";
-    private record CapturedDraft(String payload, String timeOrigin) {}
+    private record CapturedDraft(String payload, String encodedPayload, String timeOrigin) {}
     private record LoadedSources(String price, String annual) {}
     private enum Action {
         LOAD("Load missing company sources"), CANCEL("Cancel company source load");
@@ -86,7 +86,7 @@ public class CompanySnapshotLoadingInstrumentedTest {
         JSONObject expected = new JSONObject(before);
         expected.getJSONArray("memberships").getJSONObject(0).put("note", NOTE);
         assertEquals("Fixture setup retains every identity, other note and member order", expected.toString(), new JSONObject(authored).toString());
-        CapturedDraft draft = new CapturedDraft(authored, page.read(new ReportRevisitPage.Script("String(performance.timeOrigin)")));
+        CapturedDraft draft = new CapturedDraft(authored, page.read(new ReportRevisitPage.Script(EVIDENCE + ".encodedDraft")), page.read(new ReportRevisitPage.Script("String(performance.timeOrigin)")));
         page.await(new ReportRevisitPage.Check("real Watchlist navigation exposes the enabled Annual target without loading sources or saving", new ReportRevisitPage.Script("(() => {const p=document.querySelector('section[aria-labelledby=\"managed-watchlist-heading\"]'),b=document.querySelector('button[aria-label=\"Annual report for saved ZERO\"]');return p?.hidden===false && b?.disabled===false && b.getClientRects().length===1 && " + zeroSources() + " && " + COUNTS + ".save===0;})()")).nativeReady());
         page.click(ReportRevisitPage.Element.css("button[aria-label='Annual report for saved ZERO']"));
         page.await(new ReportRevisitPage.Check("exact company opens in Annual without loading sources", new ReportRevisitPage.Script("document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO' && new URL(location.href).searchParams.get('company')==='listing-zero' && new URL(location.href).searchParams.get('section')==='annual' && document.querySelector(\"" + LOAD + "\")!==null && " + zeroSources())));
@@ -131,7 +131,7 @@ public class CompanySnapshotLoadingInstrumentedTest {
         page.click(ReportRevisitPage.Element.css("#managed-note-0-reading-toggle"));
         page.await(new ReportRevisitPage.Check("independent whole-note review shows the exact fixture-authored note before Save", new ReportRevisitPage.Script("document.querySelector('#managed-note-0-reading-text')?.textContent===" + JSONObject.quote(NOTE) + " && " + COUNTS + ".save===0")));
         page.click(ReportRevisitPage.Element.xpath("//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']"));
-        page.await(new ReportRevisitPage.Check("only explicit full-list Save acknowledges version2 with source counts unchanged", new ReportRevisitPage.Script(DRAFT + ".baseVersion===2 && " + DRAFT + ".dirty===false && JSON.stringify(" + EVIDENCE + ".draft)===" + JSONObject.quote(draft.payload) + " && " + COUNTS + ".save===1 && " + COUNTS + ".eod===1 && " + COUNTS + ".annual===1 && " + COUNTS + ".filings===2 && " + COUNTS + ".token===0 && " + COUNTS + ".signOut===0")));
+        page.await(new ReportRevisitPage.Check("only explicit full-list Save acknowledges version2 with source counts unchanged", new ReportRevisitPage.Script(DRAFT + ".baseVersion===2 && " + DRAFT + ".dirty===false && " + EVIDENCE + ".encodedDraft===" + JSONObject.quote(draft.encodedPayload) + " && " + COUNTS + ".save===1 && " + COUNTS + ".eod===1 && " + COUNTS + ".annual===1 && " + COUNTS + ".filings===2 && " + COUNTS + ".token===0 && " + COUNTS + ".signOut===0")));
         assertEquals("Source coordination and Back retain the mounted native document", draft.timeOrigin, page.read(new ReportRevisitPage.Script("String(performance.timeOrigin)")));
     }
     @After public void closeInventedSnapshotLoading() {
