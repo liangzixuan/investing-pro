@@ -10127,7 +10127,7 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private String companyUrl(String listing, String section) {
-        assertTrue("Only fixed invented company IDs", listing.matches("listing-(zero|alfa|beta-a|beta-c)"));
+        assertTrue("Only fixed invented company IDs", listing.matches("listing-(zero|one|alfa|beta-a|beta-c)"));
         assertTrue("Only supported public sections", section.equals("price") || section.equals("annual") || section.equals("filings"));
         return "https://localhost/?company=" + listing + "&section=" + section;
     }
