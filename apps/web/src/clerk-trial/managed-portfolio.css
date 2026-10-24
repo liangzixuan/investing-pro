@@ -3,6 +3,9 @@
   gap: 20px;
   min-width: 0;
 }
+.managed-portfolio .managed-portfolio-close-review {
+  min-width: 0;
+}
 .managed-portfolio section,
 .managed-portfolio .ledger-section {
   min-width: 0;

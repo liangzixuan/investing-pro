@@ -211,6 +211,7 @@ function ObservedDate({ state, onDate }: Pick<Props, "state" | "onDate">) {
     <label>
       Observed close date
       <select
+        id="managed-portfolio-close-date"
         value={state.selectedDate}
         disabled={state.running || !state.dates.length}
         onChange={(event) => onDate(event.currentTarget.value)}

@@ -1036,6 +1036,11 @@ public class ManagedWorkspaceInstrumentedTest {
         click(scope + " .ledger-actions button:first-child");
         awaitPage("one explicit raw-close read values exactly the authored holding and known cash",
             "(() => {const s=document.querySelector(\"" + scope + "\");const values=Object.fromEntries([...s.querySelectorAll(':scope > dl > div')].map(e=>[e.querySelector('dt').textContent,e.querySelector('dd').textContent]));return " + DIAGNOSTICS + ".eod===1 && values['Priced holdings']==='1 of 1' && values['Priced holdings subtotal']==='USD 110.25' && values['Complete holdings value']==='USD 110.25' && values['Authored cash']==='USD 948.00' && values['Complete value including authored cash']==='USD 1058.25' && ['Tiingo','raw_close','USD','US','XNAS','common_stock','issuer-zero','Zero Company','listing-zero','security-zero','Zero Class A','class-zero','Class A','ZERO'].every(value=>s.textContent.includes(value));})()");
+        awaitPage("dated holding review keeps its controls and page inside the narrow native frame",
+            "(() => {const select=document.querySelector(" + JSONObject.quote(scope + " select") + ");const r=select?.getBoundingClientRect();" +
+            "return select?.id==='managed-portfolio-close-date' && select.labels.length===1 && r.height>=44" +
+            " && r.left>=0 && r.right<=document.documentElement.clientWidth+1" +
+            " && document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;})()");
         String provenance = readFixtureString("document.querySelector(\"" + scope + " tbody td:last-child\").textContent");
         String currentDate = readFixtureString("document.querySelector(\"" + scope + " select\").value");
         String priorDate = readFixtureString("document.querySelector(\"" + scope + " select\").options[1].value");
@@ -1975,6 +1980,8 @@ public class ManagedWorkspaceInstrumentedTest {
         WatchlistSystemPicker picker = new WatchlistSystemPicker();
         try {
             click("#managed-watchlist-export");
+            // Observe asynchronous DocumentsUI launch before the unchanged Cancel deadline.
+            picker.awaitOpen();
             picker.cancel();
             awaitPage("cancelled export returns to the same draft", "document.querySelector('#managed-watchlist-export-status')?.textContent.includes('cancelled')");
             assertEquals(0, WatchlistTestDocuments.outputs(appContext).length);

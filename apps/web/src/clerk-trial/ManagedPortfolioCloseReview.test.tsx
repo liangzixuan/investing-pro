@@ -232,6 +232,7 @@ describe("Dated holdings review committed UI", () => {
     expect(html).toContain('tabindex="0"');
     expect(html).toContain('scope="col"');
     const select = nodes(node, true).find((item) => item.type === "select")!;
+    expect(select.props.id).toBe("managed-portfolio-close-date");
     (select.props.onChange as (event: unknown) => void)({
       currentTarget: { value: "2026-09-18" },
     });
