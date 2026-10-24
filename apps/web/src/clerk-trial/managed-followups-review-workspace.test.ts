@@ -201,3 +201,36 @@ it("ends the temporary order for a different manual check and preserves both dra
   expect(f.workspace.coordinator.getSnapshot().draft).toBe(watchlist);
   expect(f.api.saveFollowups).not.toHaveBeenCalled();
 });
+
+it("keeps the chosen company and authored assessment through the native router's blocked Back transition", async () => {
+  const f = await fixture();
+  f.start();
+  const first = await f.open();
+  first.editAssessment("Assessment before native Back");
+  f.workspace.setNavigationBlocked(true);
+  expect(f.model.getSnapshot()).toMatchObject({
+    entered: true,
+    available: false,
+    position: 0,
+  });
+  expect(f.model.getSnapshot().selected?.entry.result).toBe(
+    "Assessment before native Back",
+  );
+  f.workspace.closeResearch();
+  expect(f.model.getSnapshot()).toMatchObject({
+    entered: true,
+    available: false,
+    position: 0,
+  });
+  f.workspace.setNavigationBlocked(false);
+  expect(f.model.getSnapshot()).toMatchObject({
+    entered: true,
+    available: true,
+    position: 0,
+  });
+  expect(f.model.getSnapshot().selected?.entry.result).toBe(
+    "Assessment before native Back",
+  );
+  expect(f.api.resolve).toHaveBeenCalledOnce();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+});

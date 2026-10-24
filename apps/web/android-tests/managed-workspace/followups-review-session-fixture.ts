@@ -102,7 +102,7 @@ class FollowupsReviewFixture {
     this.publish();
     return refuse();
   }
-  private requireEntry(entry: ResearchFollowup, index: number) {
+  private requireEntryIdentity(entry: ResearchFollowup, index: number) {
     const listing = this.listing(index);
     if (!membershipMatchesResult({ ...listing, note: "" }, entry.listing))
       refuse();
@@ -111,6 +111,8 @@ class FollowupsReviewFixture {
       this.base.researchCoverage.catalogSnapshotSha256
     )
       refuse();
+  }
+  private requireAuthoredFields(entry: ResearchFollowup, index: number) {
     if (entry.check !== reviewSessionQuestions[index]) refuse();
     if (entry.result !== reviewSessionResults[index]) refuse();
     if (entry.dueOn !== reviewSessionDueOn) refuse();
@@ -120,6 +122,10 @@ class FollowupsReviewFixture {
       (index === 0 ? new Date().toISOString().slice(0, 10) : null)
     )
       refuse();
+  }
+  private requireEntry(entry: ResearchFollowup, index: number) {
+    this.requireEntryIdentity(entry, index);
+    this.requireAuthoredFields(entry, index);
   }
   private requireCommand(
     input: unknown,

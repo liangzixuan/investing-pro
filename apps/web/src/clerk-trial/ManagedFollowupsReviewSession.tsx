@@ -1,6 +1,9 @@
 import { useId, useSyncExternalStore } from "react";
 import type { ResearchFollowup } from "@research-cockpit/contracts";
-import { FOLLOWUPS_REVIEW_LIMIT } from "./managed-followups-review-session";
+import {
+  FOLLOWUPS_REVIEW_LIMIT,
+  type FollowupsReviewState,
+} from "./managed-followups-review-session";
 import type { ManagedWorkspace } from "./managed-workspace";
 import { ListingIdentity, identityLabels } from "./ManagedListingIdentity";
 import { FollowupsDraftDetails } from "./ManagedFollowupsDraftDetails";
@@ -35,6 +38,151 @@ function ReviewCheck({ entry }: { entry: ResearchFollowup }) {
   );
 }
 
+type ReviewControls = ReturnType<typeof useManagedFollowupsReviewControls>;
+type SavedFollowups = ReturnType<
+  ManagedWorkspace["followups"]["coordinator"]["getSnapshot"]
+>;
+
+function finishedReview(saved: SavedFollowups, controls: ReviewControls) {
+  return (
+    <>
+      <p>
+        The session has ended. Review the complete current draft below,
+        including checks outside this session. Complete or reopen checks in the
+        normal editor, then use Save follow-ups separately.
+      </p>
+      <p>
+        Draft based on version {saved.baseVersion ?? "not loaded"}.
+        {saved.dirty ? " Unsaved changes." : " No unsaved changes."}
+      </p>
+      {saved.draft && <FollowupsDraftDetails draft={saved.draft} />}
+      <button
+        id="managed-followups-review-again"
+        className="trial-secondary"
+        disabled={!controls.canEnter}
+        onClick={(event) => controls.enter(event.currentTarget)}
+      >
+        Choose another set
+      </button>
+    </>
+  );
+}
+function chooseReviewChecks(
+  state: FollowupsReviewState,
+  controls: ReviewControls,
+) {
+  return (
+    <>
+      <p>
+        Assessed on {state.assessedOn} UTC. Selection order becomes the review
+        order.
+      </p>
+      {!state.rows.length && (
+        <p>
+          No eligible due checks. Keep using the normal editor to load or change
+          your follow-ups.
+        </p>
+      )}
+      <ol className="managed-followups-review-choices">
+        {state.rows.map((row) => {
+          const position = state.chosen.findIndex(
+            (chosen) => chosen.handle === row.handle,
+          );
+          return (
+            <li key={row.entry.id}>
+              <ReviewCheck entry={row.entry} />
+              <button
+                id={`managed-followups-review-choose-${row.entry.id}`}
+                className="trial-secondary"
+                aria-pressed={position >= 0}
+                disabled={!controls.canChoose(row.handle)}
+                onClick={() => controls.choose(row.handle)}
+              >
+                {position >= 0
+                  ? `Chosen ${position + 1}: remove this check`
+                  : "Choose this check"}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      <button
+        id="managed-followups-review-start"
+        disabled={!controls.canStart}
+        onClick={(event) => controls.start(event.currentTarget)}
+      >
+        Start this review
+      </button>
+    </>
+  );
+}
+function currentReviewCheck(
+  state: FollowupsReviewState,
+  controls: ReviewControls,
+) {
+  if (!state.selected) return null;
+  return (
+    <>
+      <p id="managed-followups-review-position">
+        Check {state.position + 1} of {state.chosen.length}. Assessed on{" "}
+        {state.assessedOn} UTC.
+      </p>
+      <ReviewCheck entry={state.selected.entry} />
+      <p>Your assessment</p>
+      <p className="managed-followups-authored">
+        {state.selected.entry.result || "No authored assessment yet."}
+      </p>
+      <div className="trial-actions">
+        <button
+          id="managed-followups-review-research"
+          disabled={!controls.enabled}
+          onClick={(event) => controls.research(event.currentTarget)}
+        >
+          Open company research
+        </button>
+        <button
+          id="managed-followups-review-next"
+          className="trial-secondary"
+          disabled={!controls.canContinue}
+          onClick={(event) => controls.next(event.currentTarget)}
+        >
+          Continue to next check
+        </button>
+      </div>
+      <details>
+        <summary>Chosen review order</summary>
+        <ol>
+          {state.chosen.map((row) => (
+            <li key={row.entry.id}>
+              <ReviewCheck entry={row.entry} />
+            </li>
+          ))}
+        </ol>
+      </details>
+    </>
+  );
+}
+function reviewContent(
+  state: FollowupsReviewState,
+  saved: SavedFollowups,
+  controls: ReviewControls,
+) {
+  if (!state.entered)
+    return (
+      <button
+        id="managed-followups-review-enter"
+        className="trial-secondary"
+        disabled={!controls.canEnter}
+        onClick={(event) => controls.enter(event.currentTarget)}
+      >
+        Choose checks for review
+      </button>
+    );
+  if (state.phase === "finished") return finishedReview(saved, controls);
+  if (state.phase === "choosing") return chooseReviewChecks(state, controls);
+  return currentReviewCheck(state, controls);
+}
+
 export function ManagedFollowupsReviewSession(props: {
   workspace: ManagedWorkspace;
   active: boolean;
@@ -66,119 +214,7 @@ export function ManagedFollowupsReviewSession(props: {
           Choose up to {FOLLOWUPS_REVIEW_LIMIT} overdue or due-today checks.
           Review one company at a time and return here to continue.
         </p>
-        {!state.entered ? (
-          <button
-            id="managed-followups-review-enter"
-            className="trial-secondary"
-            disabled={!controls.canEnter}
-            onClick={(event) => controls.enter(event.currentTarget)}
-          >
-            Choose checks for review
-          </button>
-        ) : state.phase === "finished" ? (
-          <>
-            <p>
-              The session has ended. Review the complete current draft below,
-              including checks outside this session. Complete or reopen checks
-              in the normal editor, then use Save follow-ups separately.
-            </p>
-            <p>
-              Draft based on version {saved.baseVersion ?? "not loaded"}.
-              {saved.dirty ? " Unsaved changes." : " No unsaved changes."}
-            </p>
-            {saved.draft && <FollowupsDraftDetails draft={saved.draft} />}
-            <button
-              id="managed-followups-review-again"
-              className="trial-secondary"
-              disabled={!controls.canEnter}
-              onClick={(event) => controls.enter(event.currentTarget)}
-            >
-              Choose another set
-            </button>
-          </>
-        ) : state.phase === "choosing" ? (
-          <>
-            <p>
-              Assessed on {state.assessedOn} UTC. Selection order becomes the
-              review order.
-            </p>
-            {!state.rows.length && (
-              <p>
-                No eligible due checks. Keep using the normal editor to load or
-                change your follow-ups.
-              </p>
-            )}
-            <ol className="managed-followups-review-choices">
-              {state.rows.map((row) => {
-                const position = state.chosen.findIndex(
-                  (chosen) => chosen.handle === row.handle,
-                );
-                return (
-                  <li key={row.entry.id}>
-                    <ReviewCheck entry={row.entry} />
-                    <button
-                      id={`managed-followups-review-choose-${row.entry.id}`}
-                      className="trial-secondary"
-                      aria-pressed={position >= 0}
-                      disabled={!controls.canChoose(row.handle)}
-                      onClick={() => controls.choose(row.handle)}
-                    >
-                      {position >= 0
-                        ? `Chosen ${position + 1}: remove this check`
-                        : "Choose this check"}
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-            <button
-              id="managed-followups-review-start"
-              disabled={!controls.canStart}
-              onClick={(event) => controls.start(event.currentTarget)}
-            >
-              Start this review
-            </button>
-          </>
-        ) : state.selected ? (
-          <>
-            <p id="managed-followups-review-position">
-              Check {state.position + 1} of {state.chosen.length}. Assessed on{" "}
-              {state.assessedOn} UTC.
-            </p>
-            <ReviewCheck entry={state.selected.entry} />
-            <p>Your assessment</p>
-            <p className="managed-followups-authored">
-              {state.selected.entry.result || "No authored assessment yet."}
-            </p>
-            <div className="trial-actions">
-              <button
-                id="managed-followups-review-research"
-                disabled={!controls.enabled}
-                onClick={(event) => controls.research(event.currentTarget)}
-              >
-                Open company research
-              </button>
-              <button
-                id="managed-followups-review-next"
-                className="trial-secondary"
-                disabled={!controls.canContinue}
-                onClick={(event) => controls.next(event.currentTarget)}
-              >
-                Continue to next check
-              </button>
-            </div>
-            <details>
-              <summary>Chosen review order</summary>
-              <ol>
-                {state.chosen.map((row) => (
-                  <li key={row.entry.id}>
-                    <ReviewCheck entry={row.entry} />
-                  </li>
-                ))}
-              </ol>
-            </details>
-          </>
-        ) : null}
+        {reviewContent(state, saved, controls)}
         {state.entered && state.phase === "reviewing" && (
           <button
             id="managed-followups-review-finish"

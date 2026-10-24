@@ -209,6 +209,17 @@ export interface FollowupReview {
   readonly isCurrent: () => boolean;
 }
 
+interface FollowupPreparationContext {
+  readonly entry: ResearchFollowup;
+  readonly draft: ResearchFollowupsPayload;
+  readonly snapshot: ManagedCatalogSnapshotDto;
+  readonly navigationRevision: number;
+  readonly reviewHandle: FollowupsReviewHandle | null;
+}
+interface FollowupOpeningContext extends FollowupPreparationContext {
+  readonly operation: AbortController;
+}
+
 export interface PreparedFollowupResearch {
   readonly reviewHandle: FollowupsReviewHandle | null;
   readonly entry: ResearchFollowup;
@@ -635,30 +646,36 @@ export class ManagedWorkspace {
       state.selected?.handle === handle
     );
   }
+  private queuedReviewVisitIsCurrent() {
+    const visit = this.state.research;
+    if (!visit) return false;
+    const owner = this.followupResearch;
+    if (!owner) return false;
+    if (!owner.reviewHandle) return false;
+    if (!this.ownsFollowupsReview(owner.reviewHandle)) return false;
+    if (!companyEvidenceSelectionMatches(owner.selection, visit.selection))
+      return false;
+    return this.researchSourceRouteReady(visit.selection);
+  }
+  private followupReviewNavigationPaused() {
+    return this.navigationBlocked || this.followupsNavigationDepth > 0;
+  }
   private syncFollowupsReview() {
     const model = this.followupsReview;
     if (this.retired || this.state.view !== "followups") {
       model.leave();
       return;
     }
-    if (this.followupsNavigationDepth > 0) {
+    if (this.followupReviewNavigationPaused()) {
       model.setAvailable(false);
       return;
     }
-    const visit = this.state.research;
-    const owner = this.followupResearch;
-    if (visit || this.state.companyRoute) {
-      const owned =
-        visit &&
-        owner?.reviewHandle &&
-        this.ownsFollowupsReview(owner.reviewHandle) &&
-        companyEvidenceSelectionMatches(owner.selection, visit.selection) &&
-        this.researchSourceRouteReady(visit.selection);
-      if (!owned) model.leave();
+    if (this.state.research || this.state.companyRoute) {
+      if (!this.queuedReviewVisitIsCurrent()) model.leave();
       else model.setAvailable(false);
       return;
     }
-    model.setAvailable(!this.navigationBlocked && !this.state.followupOpening);
+    model.setAvailable(!this.state.followupOpening);
   }
   private syncWatchlistFilings() {
     if (this.retired || this.state.view !== "watchlist") {
@@ -1665,59 +1682,91 @@ export class ManagedWorkspace {
       selected.selectedId === entry.id;
     return isCurrent() ? Object.freeze({ entry, draft, isCurrent }) : null;
   }
+  private followupRouteIsCurrent() {
+    if (this.retired) return false;
+    if (this.navigationBlocked) return false;
+    if (this.followupsNavigationDepth > 0) return false;
+    return this.state.view === "followups";
+  }
+  private followupOpeningRouteReady() {
+    if (!this.followupRouteIsCurrent()) return false;
+    return !this.state.research && !this.state.companyRoute;
+  }
+  private followupEntryIsCurrent(
+    entry: ResearchFollowup,
+    draft: ResearchFollowupsPayload,
+    snapshot: ManagedCatalogSnapshotDto,
+  ) {
+    if (!draft.entries.includes(entry)) return false;
+    return entry.catalogSnapshotSha256 === snapshot.snapshotSha256;
+  }
+  private followupReviewHandle(entry: ResearchFollowup) {
+    const review = this.followupsReview.getSnapshot();
+    if (!review.entered) return null;
+    if (review.phase !== "reviewing") return null;
+    const selected = review.selected;
+    if (!selected) return null;
+    return selected.entry === entry ? selected.handle : null;
+  }
+  private matchesFollowupPreparation(context: FollowupPreparationContext) {
+    if (this.navigationRevision !== context.navigationRevision) return false;
+    if (this.state.snapshot !== context.snapshot) return false;
+    if (this.followups.coordinator.getSnapshot().draft !== context.draft)
+      return false;
+    if (!this.ownsFollowupsReview(context.reviewHandle)) return false;
+    return context.draft.entries.includes(context.entry);
+  }
+  private followupOpeningIsCurrent(context: FollowupOpeningContext) {
+    if (!this.followupOpeningRouteReady()) return false;
+    if (context.operation.signal.aborted) return false;
+    if (this.followupOpenOperation !== context.operation) return false;
+    return this.matchesFollowupPreparation(context);
+  }
+  private followupPreparedDraftIsCurrent(capture: PreparedFollowupResearch) {
+    if (
+      this.state.snapshot?.snapshotSha256 !==
+      capture.selection.catalogSnapshotSha256
+    )
+      return false;
+    if (this.followups.coordinator.getSnapshot().draft !== capture.draft)
+      return false;
+    return capture.draft.entries.includes(capture.entry);
+  }
+  private preparedFollowupIsCurrent(capture: PreparedFollowupResearch) {
+    if (!this.followupRouteIsCurrent()) return false;
+    if (this.preparedFollowup !== capture) return false;
+    if (!this.ownsFollowupsReview(capture.reviewHandle)) return false;
+    if (this.navigationRevision !== capture.navigationRevision) return false;
+    return this.followupPreparedDraftIsCurrent(capture);
+  }
   async prepareFollowupResearch(
     entry: ResearchFollowup,
   ): Promise<PreparedFollowupResearch | null> {
     const snapshot = this.state.snapshot;
     const draft = this.followups.coordinator.getSnapshot().draft;
-    if (
-      this.retired ||
-      this.navigationBlocked ||
-      this.followupsNavigationDepth > 0 ||
-      this.state.view !== "followups" ||
-      this.state.research ||
-      this.state.companyRoute ||
-      !snapshot ||
-      !draft ||
-      !draft.entries.includes(entry) ||
-      entry.catalogSnapshotSha256 !== snapshot.snapshotSha256
-    )
-      return null;
+    if (!this.followupOpeningRouteReady()) return null;
+    if (!snapshot || !draft) return null;
+    if (!this.followupEntryIsCurrent(entry, draft, snapshot)) return null;
     const review = this.followupsReview.getSnapshot();
-    const reviewHandle =
-      review.entered &&
-      review.phase === "reviewing" &&
-      review.selected?.entry === entry
-        ? review.selected.handle
-        : null;
+    const reviewHandle = this.followupReviewHandle(entry);
     const revision = this.navigationRevision;
     if (review.entered && reviewHandle === null) this.followupsReview.leave();
     if (reviewHandle === null && this.followupsReview.getSnapshot().entered)
       return null;
+    const context: FollowupPreparationContext = {
+      entry,
+      draft,
+      snapshot,
+      reviewHandle,
+      navigationRevision: revision,
+    };
     this.cancelFollowupOpening();
-    if (
-      this.followupOpenOperation ||
-      this.navigationRevision !== revision ||
-      this.state.snapshot !== snapshot ||
-      this.followups.coordinator.getSnapshot().draft !== draft ||
-      !this.ownsFollowupsReview(reviewHandle)
-    )
-      return null;
+    if (this.followupOpenOperation) return null;
+    if (!this.matchesFollowupPreparation(context)) return null;
     const operation = new AbortController();
     this.followupOpenOperation = operation;
-    const current = () =>
-      !this.retired &&
-      !operation.signal.aborted &&
-      this.followupOpenOperation === operation &&
-      this.ownsFollowupsReview(reviewHandle) &&
-      this.navigationRevision === revision &&
-      !this.navigationBlocked &&
-      this.state.view === "followups" &&
-      !this.state.research &&
-      !this.state.companyRoute &&
-      this.state.snapshot === snapshot &&
-      this.followups.coordinator.getSnapshot().draft === draft &&
-      draft.entries.includes(entry);
+    const opening = { ...context, operation };
+    const current = () => this.followupOpeningIsCurrent(opening);
     this.update({
       followupOpening: true,
       message: "Checking this company's current listing…",
@@ -1784,17 +1833,7 @@ export class ManagedWorkspace {
     }
   }
   openFollowupResearch(capture: PreparedFollowupResearch) {
-    const current = () =>
-      !this.retired &&
-      !this.navigationBlocked &&
-      this.preparedFollowup === capture &&
-      this.ownsFollowupsReview(capture.reviewHandle) &&
-      this.navigationRevision === capture.navigationRevision &&
-      this.state.view === "followups" &&
-      this.state.snapshot?.snapshotSha256 ===
-        capture.selection.catalogSnapshotSha256 &&
-      this.followups.coordinator.getSnapshot().draft === capture.draft &&
-      capture.draft.entries.includes(capture.entry);
+    const current = () => this.preparedFollowupIsCurrent(capture);
     if (!current() || this.state.research || this.state.companyRoute) return;
     this.followupResearch = {
       reviewHandle: capture.reviewHandle,

@@ -145,10 +145,12 @@ export class ManagedFollowupsReviewSession {
     const rows: FollowupsReviewRow[] = [];
     for (const handle of this.chosen) {
       const record = this.handles.get(handle);
+      if (!record) return null;
       const entry = context.draft.entries.find(
-        (entry) => entry.id === record?.original.id,
+        (entry) => entry.id === record.original.id,
       );
-      if (!record || !entry || !sameCheck(record.original, entry)) return null;
+      if (!entry) return null;
+      if (!sameCheck(record.original, entry)) return null;
       rows.push(this.row(entry));
     }
     return Object.freeze(rows);
@@ -191,11 +193,15 @@ export class ManagedFollowupsReviewSession {
     this.refresh(context);
   }
   private accepts(captured: FollowupsReviewState) {
-    if (this.retired || !this.routeAvailable || !this.state.entered)
-      return false;
-    if (captured !== this.state || !captured.available) return false;
+    if (this.retired) return false;
+    if (!this.routeAvailable) return false;
+    if (!this.state.entered) return false;
+    if (captured !== this.state) return false;
+    if (!captured.available) return false;
     const context = this.model.getReviewContext();
-    return context?.scope === this.scope && context?.draft === this.draft;
+    if (!context) return false;
+    if (context.scope !== this.scope) return false;
+    return context.draft === this.draft;
   }
   canChoose(captured: FollowupsReviewState, handle: FollowupsReviewHandle) {
     if (!this.accepts(captured) || captured.phase !== "choosing") return false;
