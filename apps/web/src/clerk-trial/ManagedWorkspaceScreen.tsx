@@ -42,6 +42,7 @@ import {
   type FollowupReview,
 } from "./managed-workspace";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
+import { managedCompanySnapshotLoadingProps } from "./managed-company-snapshot-loading-props";
 import { managedValuationResearchProps } from "./managed-valuation-research-props";
 import {
   ManagedWatchlistEditor,
@@ -1292,14 +1293,11 @@ export function ManagedWorkspaceScreen({
                       ).member,
                     );
                   }}
-                  snapshotLoad={workspace.companySnapshotLoad}
-                  onLoadSnapshot={async () => {
-                    if (navigation?.invalid || navigation?.isPending()) return;
-                    await workspace.loadCompanySnapshot(discovery.research!);
-                  }}
-                  onCancelSnapshot={() =>
-                    workspace.cancelCompanySnapshot(discovery.research!)
-                  }
+                  {...managedCompanySnapshotLoadingProps(
+                    workspace,
+                    discovery.research,
+                    navigation,
+                  )}
                   onRequestSource={async (section) => {
                     const visit = discovery.research!;
                     if (

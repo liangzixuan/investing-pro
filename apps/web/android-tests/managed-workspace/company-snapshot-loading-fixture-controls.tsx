@@ -3,12 +3,8 @@ import type { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { snapshotLoadingNote } from "./company-snapshot-loading-fixture";
 import { fixture } from "./native-fixture-environment";
 
-/** Only the fixed invented scenario exposes a late-packet release and full evidence observations. */
-export function CompanySnapshotLoadingFixtureControls({
-  workspace,
-}: {
-  workspace: ManagedWorkspace;
-}) {
+type Props = { workspace: ManagedWorkspace };
+function useSnapshotFixtureObservations(workspace: ManagedWorkspace) {
   const draft = useSyncExternalStore(
     workspace.coordinator.subscribe,
     workspace.coordinator.getSnapshot,
@@ -26,14 +22,29 @@ export function CompanySnapshotLoadingFixtureControls({
     workspace.filings.getSnapshot,
   );
   const counts = useSyncExternalStore(fixture.subscribe, fixture.getSnapshot);
-  const controls = fixture.companySnapshotLoading;
-  if (!controls) return null;
-  const canAuthor =
+  return { draft, price, annual, filings, counts };
+}
+type Observations = ReturnType<typeof useSnapshotFixtureObservations>;
+function canAuthorSnapshotNote({
+  draft,
+  counts,
+}: Pick<Observations, "draft" | "counts">) {
+  return (
     draft.baseVersion === 1 &&
     counts.eod === 0 &&
     counts.annual === 0 &&
     counts.filings === 0 &&
-    draft.draft?.memberships[0]?.note !== snapshotLoadingNote;
+    draft.draft?.memberships[0]?.note !== snapshotLoadingNote
+  );
+}
+
+/** Only the fixed invented scenario exposes a late-packet release and full evidence observations. */
+export function CompanySnapshotLoadingFixtureControls({ workspace }: Props) {
+  const { draft, price, annual, filings, counts } =
+    useSnapshotFixtureObservations(workspace);
+  const controls = fixture.companySnapshotLoading;
+  if (!controls) return null;
+  const canAuthor = canAuthorSnapshotNote({ draft, counts });
   return (
     <aside aria-label="Invented company snapshot loading controls">
       <button

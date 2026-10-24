@@ -78,6 +78,7 @@ public class CompanySnapshotLoadingInstrumentedTest {
     }
 
     private CapturedDraft authorFixtureNoteAndOpenExactCompany() throws Exception {
+        page.click(ReportRevisitPage.Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='My Watchlist']"));
         String before = page.read(new ReportRevisitPage.Script("JSON.stringify(" + EVIDENCE + ".draft)"));
         page.click(ReportRevisitPage.Element.css("#fixture-snapshot-author-note"));
         page.await(new ReportRevisitPage.Check("explicit fixture setup authors only the first note without a source or Save", new ReportRevisitPage.Script(EVIDENCE + ".draft.memberships[0].note===" + JSONObject.quote(NOTE) + " && " + zeroSources() + " && " + COUNTS + ".save===0")));
@@ -86,6 +87,7 @@ public class CompanySnapshotLoadingInstrumentedTest {
         expected.getJSONArray("memberships").getJSONObject(0).put("note", NOTE);
         assertEquals("Fixture setup retains every identity, other note and member order", expected.toString(), new JSONObject(authored).toString());
         CapturedDraft draft = new CapturedDraft(authored, page.read(new ReportRevisitPage.Script("String(performance.timeOrigin)")));
+        page.await(new ReportRevisitPage.Check("real Watchlist navigation exposes the enabled Annual target without loading sources or saving", new ReportRevisitPage.Script("(() => {const p=document.querySelector('section[aria-labelledby=\"managed-watchlist-heading\"]'),b=document.querySelector('button[aria-label=\"Annual report for saved ZERO\"]');return p?.hidden===false && b?.disabled===false && b.getClientRects().length===1 && " + zeroSources() + " && " + COUNTS + ".save===0;})()")).nativeReady());
         page.click(ReportRevisitPage.Element.css("button[aria-label='Annual report for saved ZERO']"));
         page.await(new ReportRevisitPage.Check("exact company opens in Annual without loading sources", new ReportRevisitPage.Script("document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO' && new URL(location.href).searchParams.get('company')==='listing-zero' && new URL(location.href).searchParams.get('section')==='annual' && document.querySelector(\"" + LOAD + "\")!==null && " + zeroSources())));
         verifyNarrowControls();

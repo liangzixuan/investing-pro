@@ -7685,6 +7685,38 @@ describe("workspace persisted follow-up research", () => {
         }
       },
     );
+    it("does not let an old visit cancel a new missing-source read for the same company", async () => {
+      const f = await opened();
+      const oldPacket =
+        deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      const newPacket =
+        deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      vi.mocked(f.api.eodHistory)
+        .mockReturnValueOnce(oldPacket.promise)
+        .mockReturnValueOnce(newPacket.promise);
+      const oldRead = f.workspace.loadCompanySnapshot(f.visit);
+      if (f.visit.section === "eod") f.workspace.switchToAnnual();
+      else f.workspace.switchToEod();
+      const current = f.workspace.getSnapshot().research!;
+      expect(current).not.toBe(f.visit);
+      expect(current.selection).toBe(f.visit.selection);
+      const newRead = f.workspace.loadCompanySnapshot(current);
+      expect(f.api.eodHistory).toHaveBeenCalledTimes(2);
+      const oldSignal = vi.mocked(f.api.eodHistory).mock.calls[0]![1];
+      const newSignal = vi.mocked(f.api.eodHistory).mock.calls[1]![1];
+      expect(oldSignal.aborted).toBe(true);
+      f.workspace.cancelCompanySnapshot(f.visit);
+      oldPacket.resolve(eodResponse());
+      await oldRead;
+      expect(newSignal.aborted).toBe(false);
+      expect(f.workspace.companySnapshotLoad.getSnapshot().running).toBe(true);
+      f.workspace.cancelCompanySnapshot(current);
+      expect(newSignal.aborted).toBe(true);
+      newPacket.resolve(eodResponse());
+      await newRead;
+      expect(f.api.annualReport).not.toHaveBeenCalled();
+      expect(f.api.recentFilings).not.toHaveBeenCalled();
+    });
     it("keeps checked SEC cooldowns and requires another explicit action after a partial stop", async () => {
       const f = await opened();
       const future = new Date(Date.now() + 60_000).toISOString();

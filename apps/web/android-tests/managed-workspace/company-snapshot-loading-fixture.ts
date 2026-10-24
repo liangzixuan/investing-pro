@@ -129,21 +129,28 @@ class SnapshotLoadingStore {
     this.publish();
     return this.base.api.recentFilings(input, signal);
   };
-  private captureSave(input: Parameters<Api["save"]>[0], signal: AbortSignal) {
+  private requireSaveReadiness(signal: AbortSignal): Stored {
     if (signal.aborted) return refuse();
     if (!this.stored) return refuse();
     if (this.saves !== 0) refuse();
     if (this.filings !== 2) refuse();
     if (this.lateResolved !== 1) refuse();
     this.requireInitialSources();
-    const command = parseManagedWatchlistCommand(input);
-    if (command?.expectedVersion !== 1) return refuse();
-    const expected = {
-      ...this.stored.payload,
-      memberships: this.stored.payload.memberships.map((member, index) =>
+    return this.stored;
+  }
+  private expectedSavedPayload(stored: Stored) {
+    return {
+      ...stored.payload,
+      memberships: stored.payload.memberships.map((member, index) =>
         index === 0 ? { ...member, note: snapshotLoadingNote } : member,
       ),
     };
+  }
+  private captureSave(input: Parameters<Api["save"]>[0], signal: AbortSignal) {
+    const stored = this.requireSaveReadiness(signal);
+    const command = parseManagedWatchlistCommand(input);
+    if (command?.expectedVersion !== 1) return refuse();
+    const expected = this.expectedSavedPayload(stored);
     if (
       encodeMainWatchlistPayload(command.payload) !==
       encodeMainWatchlistPayload(expected)

@@ -405,7 +405,9 @@ it("ends ownership before a synchronous listener starts a replacement at natural
   const replacement = { started: false, pending: Promise.resolve() };
   f.price.subscribe(() => {
     const state = f.price.getSnapshot();
-    if (replacement.started || state.running || state.response === null) return;
+    if (replacement.started) return;
+    if (state.running) return;
+    if (state.response === null) return;
     replacement.started = true;
     replacement.pending = f.price.load();
     f.model.cancel();
