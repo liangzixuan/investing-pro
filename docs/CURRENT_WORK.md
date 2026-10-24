@@ -101,11 +101,22 @@ original required checks, the complete synthetic native 81-case gate and guarded
 APK verification passed. Capture and file delivery remain separate from source
 loading and Portfolio Review/Save. No physical-device acceptance is claimed.
 
-The active M2 outcome is [coordinated company snapshot loading](MANAGED_COMPANY_SNAPSHOT.md#load-missing-company-sources).
-One explicit action loads eligible missing sources sequentially, preserves loaded
-responses and stops on refusal, failure, cooldown or cancellation. Source requests
-retain their existing admission and separate dates. Implementation and affected
-checks are in progress; integration, native acceptance and delivery remain pending.
+Android 1.41.0, code 42, provides [coordinated company snapshot loading](MANAGED_COMPANY_SNAPSHOT.md#load-missing-company-sources)
+from accepted source `7a1e2a60b0a4d42b8bc7506a5dad21aa0aa3c267` with the existing
+production signer. One explicit action loads eligible missing sources sequentially,
+preserves loaded responses and stops on refusal, failure, cooldown or cancellation.
+Original PR and main checks, the complete synthetic native 82-case gate and guarded
+APK verification passed. Source admission and separate dates remain unchanged.
+No physical-device acceptance is claimed.
+
+The next outcome prepares [Follow-ups persistence qualification](MANAGED_RESEARCH_FOLLOWUPS_STORAGE_PROOF.md)
+for the daily question, Save, fresh-session reopen, research and result workflow.
+The local private-artifact increment binds installed runtime packages, tools,
+licenses, notices and the full module graph to the existing fixed proof. The local
+artifact, complete input graph and retained notices passed inspection. No proof
+entry or storage phase was executed. Source integration and live schema, quota,
+deployment and storage acceptance remain separate; the source has no Follow-ups
+enable flag.
 
 Request installation and phone acceptance only for major milestones, such as
 version 2.0. Routine updates retain automated functional, integrity, recovery,

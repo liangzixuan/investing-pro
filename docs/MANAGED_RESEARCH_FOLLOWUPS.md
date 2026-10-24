@@ -213,6 +213,9 @@ CAS and receipt protocol. Owner principals come only from verified server auth.
 Rows have no client permissions. The existing watchlist payload, notes, exports
 and accepted storage values remain unchanged.
 
-Live provisioning must separately confirm actual schema limits, row security and
-execution-key scope. Source tests and invented in-memory fixtures do not establish
+The [private storage qualification](MANAGED_RESEARCH_FOLLOWUPS_STORAGE_PROOF.md)
+records its fixed eleven phases, row scope, operation limits and local artifact
+admission. The managed source has no Follow-ups enable flag; provisioning its
+fixed tables can affect the existing route. Live provisioning must separately
+confirm actual schema limits, row security and execution-key scope. Source tests and invented in-memory fixtures do not establish
 live storage, production publication, real provider or physical-device use.
