@@ -16,6 +16,38 @@ function Equal($Actual, $Expected) {
     if ($Actual -cne $Expected) { throw 'assertion_failed' }
 }
 
+Check 'admits the installed public hash command' { Assert-SigningRuntime }
+Check 'checks runtime before configuration, evidence and custody' {
+    $tokens = $null
+    $errors = $null
+    $build = [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'Build-InvestmentAndroidRelease.ps1'), [ref]$tokens, [ref]$errors)
+    Equal $errors.Count 0
+    $commands = @($build.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] }, $true))
+    $runtime = @($commands | Where-Object { $_.GetCommandName() -ceq 'Assert-SigningRuntime' })
+    Equal $runtime.Count 1
+    foreach ($name in @('Assert-SigningPath', 'New-SigningDirectory', 'Get-SigningPassword')) {
+        $later = @($commands | Where-Object { $_.GetCommandName() -ceq $name })
+        if ($later.Count -eq 0 -or @($later | Where-Object { $_.Extent.StartOffset -le $runtime[0].Extent.StartOffset }).Count -ne 0) { throw 'runtime_preflight_order_invalid' }
+    }
+    $configurationRead = @($build.FindAll({ param($node) $node -is [Management.Automation.Language.InvokeMemberExpressionAst] -and $node.Member.Value -ceq 'ReadAllBytes' }, $true))
+    Equal $configurationRead.Count 1
+    if ($configurationRead[0].Extent.StartOffset -le $runtime[0].Extent.StartOffset) { throw 'runtime_preflight_order_invalid' }
+    $stages = @($build.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -and $node.Left -is [Management.Automation.Language.VariableExpressionAst] -and $node.Left.VariablePath.UserPath -ceq 'stage' }, $true))
+    if ($stages.Count -eq 0) { throw 'constant_stage_required' }
+    foreach ($stage in $stages) {
+        $value = @($stage.Right.FindAll({ param($node) $node -is [Management.Automation.Language.StringConstantExpressionAst] }, $true))
+        if ($value.Count -ne 1 -or $stage.Right.Extent.Text -cne ("'" + $value[0].Value + "'")) { throw 'constant_stage_required' }
+    }
+    Equal $stages[0].Right.Extent.Text "'runtime_prerequisites'"
+    if ($stages[0].Extent.StartOffset -ge $runtime[0].Extent.StartOffset) { throw 'runtime_stage_order_invalid' }
+    $errorCommands = @($commands | Where-Object { $_.GetCommandName() -ceq 'Write-Error' })
+    Equal $errorCommands.Count 1
+    $message = @($errorCommands[0].FindAll({ param($node) $node -is [Management.Automation.Language.ExpandableStringExpressionAst] }, $true))
+    Equal $message.Count 1
+    Equal $message[0].NestedExpressions.Count 1
+    Equal $message[0].NestedExpressions[0].VariablePath.UserPath 'stage'
+}
+
 Check 'normalizes absolute slash paths without opening them' { Equal (Assert-SigningPath 'C:/Signing Store/new') 'C:\Signing Store\new' }
 foreach ($bad in @('', 'relative', 'C:relative', 'C:\', '\\server\share\key', 'C:\a\..\key', 'C:\a\.\key', 'C:\a:stream', 'C:\a.\key', 'C:\a \key', 'C:\a"b')) {
     Check ('rejects unsafe path: ' + $bad) { Reject { Assert-SigningPath $bad } 'path_invalid' }

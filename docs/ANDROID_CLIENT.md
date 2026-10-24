@@ -233,6 +233,12 @@ The Kotlin/Java source namespace does not define the installed package identity.
 
 ## Signing, updates and recovery
 
+The release entry point checks the installed PowerShell hash command before
+creating release evidence or opening signing custody. Missing runtime commands
+stop at the runtime prerequisite stage. Public errors report only the stage;
+they do not expose exception details, passwords or configuration values.
+This preflight does not reopen a failed operation or change its retry limit.
+
 Release builds require four process inputs: `INVESTMENT_ANDROID_KEYSTORE`,
 `INVESTMENT_ANDROID_KEY_ALIAS`, `INVESTMENT_ANDROID_STORE_PASSWORD` and
 `INVESTMENT_ANDROID_KEY_PASSWORD`. The keystore path must be absolute. Missing
