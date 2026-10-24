@@ -73,7 +73,7 @@ verified on October 23. No per-feature or independent device inspection is claim
 
 ## Review holdings at one observed close date
 
-The current source candidate adds an initially closed **Dated holdings review**.
+Android 1.39 provides an initially closed **Dated holdings review**.
 Load Portfolio, apply or reset pending forms, and approve its current catalog
 identities first. My Watchlist does not need to be loaded. Open the disclosure,
 then select **Load holding closes**. Only this action requests one month of raw
@@ -102,6 +102,10 @@ catalog review, unresolved Save/recovery, navigation or session retirement
 invalidates the review. A later opening requires a new explicit load. These
 values never enter the ledger or a Watchlist note, and do not save either resource.
 Use the existing independent Portfolio Review and Save for authored changes.
+
+The next source increment adds a [readable review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md)
+with explicit capture, complete inspection and private HTML delivery. That report
+is not included in Android 1.39.
 
 ## Exact amounts and unknown values
 

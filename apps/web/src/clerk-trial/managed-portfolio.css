@@ -114,3 +114,22 @@
   display: grid;
   gap: 12px;
 }
+
+.managed-frame .managed-portfolio-review-report {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3, 0.75rem);
+  margin-top: 1rem;
+}
+.managed-frame .managed-portfolio-review-report pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
+}
+.managed-frame .managed-portfolio-review-report :is(p, dd, td, th) {
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-portfolio-review-report > * {
+  min-width: 0;
+}

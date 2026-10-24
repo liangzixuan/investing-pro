@@ -1,3 +1,7 @@
+import {
+  authorInventedPortfolioReviewReportLedger,
+  createNativePortfolioReviewReportFixture,
+} from "./native-portfolio-review-report-fixture";
 import { ReportRevisitFixtureControls } from "./report-revisit-fixture-controls";
 import {
   createNativeFinancialScreenRecipeFixture,
@@ -61,6 +65,7 @@ if (
   scenario !== "research-followups" &&
   scenario !== "portfolio-ledger" &&
   scenario !== "portfolio-close-review" &&
+  scenario !== "portfolio-review-report" &&
   scenario !== "markets-day-view" &&
   scenario !== "company-price-ranges" &&
   scenario !== "thesis-review" &&
@@ -94,6 +99,10 @@ const fixture = await createFixture(scenario ?? "default");
 const nativeReport =
   scenario === "company-snapshot" || scenario === "annual-statements"
     ? createNativeReportFixture()
+    : null;
+const nativePortfolioReviewReport =
+  scenario === "portfolio-review-report"
+    ? createNativePortfolioReviewReportFixture()
     : null;
 const nativeExport =
   scenario === "watchlist-export" ? createNativeExportFixture() : null;
@@ -150,6 +159,12 @@ function FixtureSession({
             androidBack={App}
             {...(nativeReport ? { reportDelivery: nativeReport.delivery } : {})}
             {...(nativeExport ? { exportDelivery: nativeExport.delivery } : {})}
+            {...(nativePortfolioReviewReport
+              ? {
+                  portfolioReviewReportDelivery:
+                    nativePortfolioReviewReport.delivery,
+                }
+              : {})}
             {...draftFileSession.routerProps}
             {...valuationDraftFileSession.routerProps}
             {...nativeScreenRecipe.routerProps}
@@ -160,6 +175,9 @@ function FixtureSession({
       </TrialFrame>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
       <ReportRevisitFixtureControls workspace={workspace} scenario={scenario} />
+      {workspace && nativePortfolioReviewReport && (
+        <PortfolioReviewReportFixtureControls workspace={workspace} />
+      )}
       {workspace && nativeReport && (
         <nativeReport.Controls workspace={workspace} />
       )}
@@ -185,6 +203,43 @@ function FixtureSession({
         />
       )}
     </>
+  );
+}
+
+function PortfolioReviewReportFixtureControls({
+  workspace,
+}: {
+  workspace: ManagedWorkspace;
+}) {
+  const report = nativePortfolioReviewReport!;
+  const state = useSyncExternalStore(report.subscribe, report.getSnapshot);
+  const draft = useSyncExternalStore(
+    workspace.portfolio.coordinator.subscribe,
+    workspace.portfolio.coordinator.getSnapshot,
+  );
+  return (
+    <aside aria-label="Invented Portfolio report setup">
+      <p>
+        Test-only authored setup through the real ledger model. No source read
+        or Save.
+      </p>
+      <button
+        id="fixture-portfolio-report-author"
+        disabled={
+          draft.phase !== "idle" ||
+          draft.baseVersion !== 0 ||
+          draft.draft?.ledger !== null
+        }
+        onClick={() => {
+          authorInventedPortfolioReviewReportLedger(workspace, fixture);
+        }}
+      >
+        Author invented report ledger
+      </button>
+      <pre id="fixture-portfolio-report" hidden>
+        {JSON.stringify(state)}
+      </pre>
+    </aside>
   );
 }
 

@@ -16,6 +16,7 @@ import {
 import { ManagedPortfolioWatchlist } from "./ManagedPortfolioWatchlist";
 import { ManagedPortfolioCloseReview } from "./ManagedPortfolioCloseReview";
 import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 
 const usd = (value: string | null) =>
@@ -179,6 +180,7 @@ export function ManagedPortfolio({
   onReviewWatchlist,
   draftFileScope,
   draftFileDelivery,
+  reviewReportDelivery,
   draftFileRouteActive = () => true,
 }: {
   workspace: ManagedWorkspace;
@@ -186,6 +188,7 @@ export function ManagedPortfolio({
   onReviewWatchlist: () => void;
   draftFileScope?: Promise<string> | undefined;
   draftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter | undefined;
+  reviewReportDelivery?: PortfolioReviewReportDeliveryAdapter | undefined;
   draftFileRouteActive?: () => boolean;
   onResearch: (
     draft: PortfolioDraft,
@@ -635,6 +638,7 @@ export function ManagedPortfolio({
             )}
           </section>
           <ManagedPortfolioCloseReview
+            delivery={reviewReportDelivery}
             workspace={workspace}
             navigationPending={navigationPending}
             onResearch={onResearch}

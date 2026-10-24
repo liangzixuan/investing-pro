@@ -8,6 +8,7 @@ import type {
   ManagedPortfolioPayload,
 } from "@research-cockpit/contracts";
 import { ManagedPortfolio } from "./ManagedPortfolio";
+import { ManagedPortfolioCloseReview } from "./ManagedPortfolioCloseReview";
 import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
 import { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedApi } from "./managed-api";
@@ -209,10 +210,10 @@ function fixture(initial: ManagedPortfolioPayload | null = null) {
   >((draft, listing) => workspace.openPortfolioResearch(draft, listing));
   const render = (
     navigationPending = false,
-    draftFiles?: {
-      draftFileScope: Promise<string>;
-      draftFileRouteActive: () => boolean;
-    },
+    draftFiles?: Pick<
+      React.ComponentProps<typeof ManagedPortfolio>,
+      "draftFileScope" | "draftFileRouteActive" | "reviewReportDelivery"
+    >,
   ) => {
     hooks.index = 0;
     hooks.direct = true;
@@ -789,5 +790,21 @@ it("passes valid-root-route admission to Portfolio file tools even when workspac
     typeof ManagedPortfolioDraftFiles
   >;
   expect(pending.routeActive()).toBe(false);
+  f.workspace.sessionOwner.dispose();
+});
+
+it("passes the optional report adapter to dated review without starting delivery", async () => {
+  const f = fixture(ledger());
+  await loaded(f);
+  const reviewReportDelivery = { deliver: vi.fn() };
+  const review = nodes(f.render(false, { reviewReportDelivery }).tree).find(
+    (node) => node.type === ManagedPortfolioCloseReview,
+  )!;
+  expect(review).toBeDefined();
+  expect(
+    (review.props as React.ComponentProps<typeof ManagedPortfolioCloseReview>)
+      .delivery,
+  ).toBe(reviewReportDelivery);
+  expect(reviewReportDelivery.deliver).not.toHaveBeenCalled();
   f.workspace.sessionOwner.dispose();
 });

@@ -6537,7 +6537,11 @@ it("restores Portfolio research opener focus and retains all three drafts withou
   ];
   mounted.direct = true;
   mounted.refIndex = 0;
-  const screen = ManagedWorkspaceScreen({ workspace: f.workspace });
+  const portfolioReviewReportDelivery = { deliver: vi.fn() };
+  const screen = ManagedWorkspaceScreen({
+    workspace: f.workspace,
+    portfolioReviewReportDelivery,
+  });
   const entry = elements(screen).find(
     (node) => node.type === ManagedPortfolioEntry,
   ) as React.ReactElement<React.ComponentProps<typeof ManagedPortfolioEntry>>;
@@ -6546,6 +6550,10 @@ it("restores Portfolio research opener focus and retains all three drafts withou
     (node) => node.type === ManagedPortfolio,
   ) as React.ReactElement<React.ComponentProps<typeof ManagedPortfolio>>;
   expect(portfolio).toBeDefined();
+  expect(portfolio.props.reviewReportDelivery).toBe(
+    portfolioReviewReportDelivery,
+  );
+  expect(portfolioReviewReportDelivery.deliver).not.toHaveBeenCalled();
   const opener = { isConnected: true, focus: vi.fn() };
   portfolio.props.onResearch(
     draft,

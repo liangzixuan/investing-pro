@@ -83,13 +83,22 @@ passed, including the complete native 74-case gate and APK verification. The own
 reported "Installed and verified." on October 23. This is overall owner-reported
 acceptance, without per-feature results or independent device inspection.
 
-The active development outcome is [Portfolio dated holdings review](MANAGED_PORTFOLIO.md#review-holdings-at-one-observed-close-date).
-Explicitly load eligible current holdings' raw closes, select one observed date,
-inspect per-holding values, partial or complete totals and authored cash, then
-continue to exact-company Research and Back. The schema-3 ledger, identity review,
-shared EOD access and separate Save remain in use. This source candidate adds no
-price coverage, storage, dependency, API or website release. Native acceptance,
-source integration and client delivery remain pending.
+Android 1.39.0, code 40, provides [Portfolio dated holdings review](MANAGED_PORTFOLIO.md#review-holdings-at-one-observed-close-date)
+from accepted source `b2479455bba8797322f0b50d13da9bdecd10c870` with the existing
+production signer. Explicit raw-close loads, one observed date, exact line values
+and partial or complete totals connect to exact-company Research and Back.
+Original PR and main checks, the complete native 75-case gate and full APK
+verification passed. An exact additive AndroidTest cache inventory correction
+continued unrun preparation stages and preserved its original failure. The
+production build guard stayed unchanged. This does not establish physical-device
+acceptance. Price coverage, storage, website and API are unchanged.
+
+The active outcome is a [readable Portfolio review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md).
+Capture the current dated holdings review, inspect its complete ledger, values
+and original evidence, then explicitly save a private HTML copy. Capture and
+file delivery remain separate from source loading and Portfolio Review/Save.
+Implementation and affected checks are in progress. Source integration, native
+runtime acceptance and client delivery of this report remain pending.
 
 Request installation and phone acceptance only for major milestones, such as
 version 2.0. Routine updates retain automated functional, integrity, recovery,

@@ -6,6 +6,7 @@ import {
   managedResearchOpener,
 } from "./managed-research-company-navigation-props";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import {
@@ -94,6 +95,7 @@ interface ManagedFileDeliveries {
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
+  portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
   followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
   valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
@@ -240,6 +242,7 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
   const ports = {
     financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
+    portfolioReviewReportDelivery: initial.portfolioReviewReportDelivery,
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
     valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
     androidBack: initial.androidBack,
@@ -461,6 +464,7 @@ export function ManagedWorkspaceScreen({
   draftFileScope,
   draftFileDelivery,
   portfolioDraftFileDelivery,
+  portfolioReviewReportDelivery,
   followupsDraftFileDelivery,
   valuationDraftFileDelivery,
   financialScreenRecipeDelivery,
@@ -1334,6 +1338,7 @@ export function ManagedWorkspaceScreen({
                 navigationPending={navigationPending}
                 draftFileScope={draftFileScope}
                 draftFileDelivery={portfolioDraftFileDelivery}
+                reviewReportDelivery={portfolioReviewReportDelivery}
                 navigation={{ active: watchlistRouteActive, view: setView }}
                 onResearch={(draft, listing, opener) =>
                   openResearch(opener, () =>
