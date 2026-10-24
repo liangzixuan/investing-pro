@@ -162,3 +162,25 @@
     min-width: 0;
   }
 }
+
+.clerk-trial.managed-frame .managed-followups-review {
+  margin-block: 20px;
+  padding-block: 16px;
+  border-block: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-followups-review > summary {
+  cursor: pointer;
+  padding-block: 10px;
+}
+.clerk-trial.managed-frame .managed-followups-review li {
+  min-width: 0;
+  padding-block: 14px;
+  border-bottom: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-followups-review dl {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-followups-review dd {
+  margin-inline: 0;
+}

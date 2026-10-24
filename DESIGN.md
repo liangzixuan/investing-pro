@@ -753,3 +753,16 @@ The navigation assets come from
 [Tabler Icons](https://github.com/tabler/tabler-icons/tree/a4ce1404bc6d24d3c365afe7b258d6bf6f48d62d)
 at commit `a4ce1404bc6d24d3c365afe7b258d6bf6f48d62d`; their source and complete MIT
 notice are retained in `apps/web/src/clerk-trial/icons/`.
+
+## Chosen Follow-ups review
+
+Keep the daily review in an initially closed native disclosure on Follow-ups.
+Use thin separators and existing managed controls. Show the full question, UTC
+date and listing label before each choice; keep the complete identity and captured
+catalog inside a closed disclosure. Number choices by selection order and show
+the current position during research review. Keep Start, Open company, Continue,
+Finish and Save as distinct actions. Finish displays the complete current draft,
+including checks outside the chosen set. Wrap authored text and all identity
+values on narrow screens. Move focus to the review heading after a keyboard-owned
+transition only while its initiating control retains focus; Back uses the existing
+research opener. Source tests do not establish rendered layout or phone acceptance.

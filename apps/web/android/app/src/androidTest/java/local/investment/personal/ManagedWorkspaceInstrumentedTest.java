@@ -98,6 +98,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "saved-valuation",
         "valuation-price",
         "research-followups",
+        "followups-review-session",
         "portfolio-ledger",
         "portfolio-close-review",
         "markets-day-view",
@@ -119,6 +120,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation",
         "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen",
         "followupAssessmentInCompanyReturnsToReviewAndSave", "research-followups",
+        "followupsReviewSessionKeepsChosenOrderThroughCompanyBackAndSeparateSave", "followups-review-session",
         "portfolioHoldingReviewAppendsWatchlistAndKeepsLedgerThroughBack", "portfolio-ledger",
         "portfolioDatedClosesKeepLedgerThroughCancelResearchAndSeparateSave", "portfolio-close-review");
     private static final String ANNUAL_COMPARISON_NOTE =
@@ -1563,6 +1565,114 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + FOLLOWUPS + ".session === 2 && " + FOLLOWUPS + ".load === 2 && " + FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".token === 0 && " + FOLLOWUPS + ".signOut === 0" +
             " && " + DRAFT + ".dirty === false && " + DRAFT + ".memberships?.[0]?.note === '' && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
         assertEquals("Daily review keeps the same native document across fresh invented sessions", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+    }
+
+
+    @Test
+    public void followupsReviewSessionKeepsChosenOrderThroughCompanyBackAndSeparateSave() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Independent Watchlist draft outside this review");
+        FollowupsReviewSessionExpectations.WatchlistSnapshot watchlist = new FollowupsReviewSessionExpectations.WatchlistSnapshot(readFixtureString("JSON.stringify(" + DRAFT + ")"));
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("explicit Load owns the empty independent resource before authoring three checks",
+            FollowupsReviewSessionExpectations.emptyResource());
+        typeIntoInput("managed-followups-new-due", "2000-01-01");
+        FollowupsReviewSessionExpectations.EntryId first = authorSessionFollowup(FollowupsReviewSessionExpectations.Check.ZERO);
+        FollowupsReviewSessionExpectations.EntryId second = authorSessionFollowup(FollowupsReviewSessionExpectations.Check.ONE);
+        FollowupsReviewSessionExpectations.EntryId unchosen = authorSessionFollowup(FollowupsReviewSessionExpectations.Check.ALFA);
+        typeIntoInput("managed-followup-result", FollowupsReviewSessionExpectations.sessionReviewResult(FollowupsReviewSessionExpectations.Check.ALFA));
+        click(".managed-followups-review > summary");
+        click("#managed-followups-review-enter");
+        awaitPage("all three full authored questions are available without choosing or source reads",
+            FollowupsReviewSessionExpectations.threeChoices());
+        click("#managed-followups-review-choose-" + first);
+        click("#managed-followups-review-choose-" + second);
+        awaitPage("selection order contains only the two explicitly chosen checks",
+            FollowupsReviewSessionExpectations.chosenOrder(new FollowupsReviewSessionExpectations.ChosenChecks(first, second, unchosen)));
+        click("#managed-followups-review-start");
+        assertSessionReviewPosition(new FollowupsReviewSessionExpectations.CompanyReview(FollowupsReviewSessionExpectations.Check.ZERO, first, watchlist));
+        reviewSessionCompany(new FollowupsReviewSessionExpectations.CompanyReview(FollowupsReviewSessionExpectations.Check.ZERO, first, watchlist));
+        click("#managed-followups-review-next");
+        assertSessionReviewPosition(new FollowupsReviewSessionExpectations.CompanyReview(FollowupsReviewSessionExpectations.Check.ONE, second, watchlist));
+        reviewSessionCompany(new FollowupsReviewSessionExpectations.CompanyReview(FollowupsReviewSessionExpectations.Check.ONE, second, watchlist));
+        awaitPage("Continue remains explicit and stops at the final chosen check",
+            FollowupsReviewSessionExpectations.lastChosen());
+        click("#managed-followups-review-finish");
+        assertFinishedSessionDraft(new FollowupsReviewSessionExpectations.ReviewDraft(new FollowupsReviewSessionExpectations.ChosenChecks(first, second, unchosen), watchlist));
+        selectFollowup(first.toString());
+        click("#managed-followup-complete");
+        java.time.LocalDate day = java.time.LocalDate.parse(readFixtureString("document.querySelector('#managed-followups-assessed-day').getAttribute('datetime')"));
+        awaitPage("completion is a separate authored action and still does not Save",
+            FollowupsReviewSessionExpectations.completed(day));
+        FollowupsReviewSessionExpectations.SavedEntriesSnapshot complete = new FollowupsReviewSessionExpectations.SavedEntriesSnapshot(readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)"));
+        click("#managed-followups-save");
+        awaitPage("one explicit Save commits every chosen and unchosen entry while preserving My Watchlist",
+            FollowupsReviewSessionExpectations.saved(watchlist));
+        reopenSavedSessionReview(complete);
+        assertFixtureBoundary(2, 0);
+        assertEquals("A fresh account session keeps the same native document", origin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    private FollowupsReviewSessionExpectations.EntryId authorSessionFollowup(FollowupsReviewSessionExpectations.Check check) throws Exception {
+        chooseNativeSelectOption("#managed-followups-member", check.listingId(), check.label());
+        awaitPage("the displayed UTC due value remains exact between separate additions",
+            FollowupsReviewSessionExpectations.dueDate());
+        click("#managed-followups-add");
+        awaitPage("Add creates only its selected exact listing and blank question",
+            FollowupsReviewSessionExpectations.added(check));
+        String id = readFixtureString(FOLLOWUP_DRAFT + ".selectedId");
+        assertTrue(id.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"));
+        typeIntoInput("managed-followup-check", FollowupsReviewSessionExpectations.sessionReviewQuestion(check));
+        return new FollowupsReviewSessionExpectations.EntryId(java.util.UUID.fromString(id));
+    }
+
+    private void assertSessionReviewPosition(FollowupsReviewSessionExpectations.CompanyReview review) throws Exception {
+        if (!readFixtureString(FollowupsReviewSessionExpectations.identityOpen()).equals("true")) click(".managed-followups-review > section > details:first-of-type > summary");
+        awaitPage("the current chosen position includes the complete authored question and all eleven listing fields",
+            FollowupsReviewSessionExpectations.position(review));
+    }
+
+    private void reviewSessionCompany(FollowupsReviewSessionExpectations.CompanyReview review) throws Exception {
+        click("#managed-followups-review-research");
+        awaitPage("Open company admits only the current chosen listing with its full unshortened question",
+            FollowupsReviewSessionExpectations.company(review));
+        assertCompanyHistory(review.check().listingId(), "price", false);
+        awaitPage("chosen company sources retain exact supported and unsupported unloaded actions", FollowupsReviewSessionExpectations.unloadedSources(review));
+        click("#managed-research-followup-assessment > summary");
+        typeIntoInput("managed-research-followup-result", FollowupsReviewSessionExpectations.sessionReviewResult(review.check()));
+        awaitPage("the current company assessment changes only its own independent entry",
+            FollowupsReviewSessionExpectations.assessment(review));
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("native Back retains the same chosen position and its complete assessment without continuing",
+            FollowupsReviewSessionExpectations.returned(review));
+        assertReturnedRootHistory(review.check().listingId(), "price");
+        assertSessionSourceCounts(new FollowupsReviewSessionExpectations.RequestCounts(1, review.check().ordinal() + 1));
+    }
+
+    private void assertFinishedSessionDraft(FollowupsReviewSessionExpectations.ReviewDraft draft) throws Exception {
+        awaitPage("Finish renders every full current entry including the unchosen assessment without completing or saving",
+            FollowupsReviewSessionExpectations.finished(draft));
+        retainAnnualNoteFrame("followupsReviewCompleteDraft", ".managed-followups-review > section > ol > li:first-child > .managed-followups-authored", ".managed-followups-review > section > ol > li:first-child > .managed-followups-authored", 2);
+    }
+
+    private void reopenSavedSessionReview(FollowupsReviewSessionExpectations.SavedEntriesSnapshot complete) throws Exception {
+        click("#fixture-followups-fresh-session");
+        awaitPage("fresh session starts without loading Follow-ups or resuming a temporary chosen set",
+            FollowupsReviewSessionExpectations.freshSession());
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("fresh explicit Load restores all exact saved identities, questions, results, order and completion",
+            FollowupsReviewSessionExpectations.reloaded(complete));
+        assertSessionSourceCounts(new FollowupsReviewSessionExpectations.RequestCounts(2, 2));
+    }
+
+    private void assertSessionSourceCounts(FollowupsReviewSessionExpectations.RequestCounts counts) throws Exception {
+        awaitPage("review request budget includes only explicit company resolution plus startup Markets catalogs",
+            FollowupsReviewSessionExpectations.sources(counts));
     }
 
     @Test
@@ -10017,7 +10127,7 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private String companyUrl(String listing, String section) {
-        assertTrue("Only fixed invented company IDs", listing.matches("listing-(zero|alfa|beta-a|beta-c)"));
+        assertTrue("Only fixed invented company IDs", listing.matches("listing-(zero|one|alfa|beta-a|beta-c)"));
         assertTrue("Only supported public sections", section.equals("price") || section.equals("annual") || section.equals("filings"));
         return "https://localhost/?company=" + listing + "&section=" + section;
     }

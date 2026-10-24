@@ -128,6 +128,41 @@ resolve conflicts or uncertain saves, and persist changes. Both drafts survive
 the existing research-and-Back journey. A completed unsaved check leaves the
 Markets due queue immediately and still needs explicit Save follow-ups.
 
+## Review a chosen set of due checks
+
+The source candidate adds an initially closed **Review a few due checks** section
+on Follow-ups. Load the saved version first. Choose checks for review, inspect
+each full question, UTC due date and listing identity, then choose one to five
+overdue or due-today checks. Selection order becomes the review order. Later,
+completed, invalid-date and stale-catalog entries stay in the normal editor.
+
+**Start this review** shows the first chosen check. **Open company research**
+uses the same exact-company resolution and assessment editor as a single check.
+The full question remains beside the research sections. Price, Annual and Filings
+still require their own source actions. Return through **Review follow-ups** or
+Back to keep the chosen order, current position and authored assessment.
+
+**Continue to next check** advances only after an explicit action. It requests no
+source and does not mark a check complete. **Finish and review full draft** shows
+every current check, including unchosen checks, full results and listing
+identities. Use the normal editor to complete or reopen checks, then **Save
+follow-ups** separately. Neither Finish nor opening company research saves either
+resource. A fresh session loads the saved checks without restoring temporary
+review choices.
+
+The temporary review follows local assessment and completion edits. A changed
+question, due date, listing identity, catalog, assessed UTC day, external draft
+replacement, save/recovery state or retired session ends it. Raw invalid authored
+text remains in the editor for correction and keeps the existing Save refusal.
+Leaving Follow-ups, or opening a different manual check, ends the temporary order
+while retaining the drafts. A pending company resolution pauses review actions;
+a late or cancelled response cannot reopen an old review.
+
+This uses the existing [filing-review selection and return pattern](MANAGED_FILINGS_REVIEW.md).
+It adds no saved reviewed flag, reminder, background request, storage resource or
+financial coverage. Source checks and native acceptance have their own recorded
+scope; this candidate is not a website or Android delivery claim.
+
 ## Draft files
 
 The source candidate adds an initially closed **Follow-ups draft files** section.

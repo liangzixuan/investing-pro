@@ -1,3 +1,4 @@
+import { createFollowupsReviewSessionNativeFixture } from "./followups-review-session-fixture";
 import {
   createCompanySnapshotLoadingNativeFixture,
   type SnapshotLoadingFixtureControls,
@@ -2285,6 +2286,13 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "followups-review-session",
+    async () =>
+      createFollowupsReviewSessionNativeFixture(
+        await createSharedFixture("research-followups"),
+      ),
+  ],
+  [
     "company-snapshot-loading",
     async () =>
       createCompanySnapshotLoadingNativeFixture(
@@ -2383,6 +2391,7 @@ export async function createFixture(
     | "portfolio-close-review"
     | "portfolio-review-report"
     | "company-snapshot-loading"
+    | "followups-review-session"
     | "watchlist-filings-review"
     | "report-revisit" = "default",
 ): Promise<ManagedNativeFixture> {

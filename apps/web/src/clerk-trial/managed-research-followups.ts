@@ -48,6 +48,12 @@ export interface FollowupsCreationContext {
   readonly draft: MainWatchlistPayload | null;
   readonly catalogSnapshotSha256: string | null;
 }
+export interface FollowupsReviewContext {
+  readonly scope: object;
+  readonly draft: ResearchFollowupsPayload;
+  readonly catalogSnapshotSha256: `sha256:${string}`;
+  readonly assessedOn: string;
+}
 export interface FollowupsDraftFileContext {
   readonly saved: VersionedPayload<ResearchFollowupsPayload>;
   readonly draft: ResearchFollowupsPayload;
@@ -140,6 +146,9 @@ export class ManagedResearchFollowups {
   private readonly nextChecks = new WeakSet<NextCheckCapture>();
   private creatingNextCheck = false;
   private initialNextCheckLoad: (() => boolean) | null = null;
+  private reviewScope: object = Object.freeze({});
+  private authoredInput: ResearchFollowupsPayload | null = null;
+  private authoredOutput: ResearchFollowupsPayload | null = null;
 
   constructor(
     private readonly api: Pick<
@@ -170,7 +179,7 @@ export class ManagedResearchFollowups {
       {
         mode: "managed",
         empty: () => null,
-        copy: copyDraft,
+        copy: (payload) => this.copyForReview(payload),
         capture,
         load: async (signal) => {
           if (this.initialNextCheckLoad && !this.initialNextCheckLoad())
@@ -214,7 +223,13 @@ export class ManagedResearchFollowups {
     this.coordinator.subscribe(() => {
       const saved = this.coordinator.getSnapshot();
       const changed = saved.draft !== this.observedDraft;
+      const authored = changed && saved.draft === this.authoredOutput;
+      this.authoredOutput = null;
       this.observedDraft = saved.draft;
+      if (changed && !authored) this.endReviewScope();
+      if (saved.phase !== "idle") this.endReviewScope();
+      if (saved.conflict || saved.uncertain || saved.replayPending)
+        this.endReviewScope();
       if (this.retired) return;
       if (changed || saved.phase !== "idle") this.cancelReview();
       this.update({
@@ -248,6 +263,7 @@ export class ManagedResearchFollowups {
   }
   private close() {
     if (this.retired) return;
+    this.endReviewScope();
     this.retired = true;
     this.cancelReview();
     this.state = Object.freeze({
@@ -266,6 +282,7 @@ export class ManagedResearchFollowups {
     if (this.retired) return;
     const digest = catalogDigest(snapshotSha256);
     if (digest === this.state.catalogSnapshotSha256) return;
+    this.endReviewScope();
     this.cancelReview();
     this.update({ catalogSnapshotSha256: digest, message: "" });
   }
@@ -293,6 +310,12 @@ export class ManagedResearchFollowups {
   }
   reassessDueDate(clock: Date) {
     if (this.retired) return;
+    const previous = groupResearchFollowupsByDueDate(
+      [],
+      new Date(this.state.assessmentTime ?? NaN),
+    )?.assessedOn;
+    if (previous !== groupResearchFollowupsByDueDate([], clock)?.assessedOn)
+      this.endReviewScope();
     const time = clock.getTime();
     this.update({
       assessmentTime: groupResearchFollowupsByDueDate([], clock) ? time : null,
@@ -305,6 +328,45 @@ export class ManagedResearchFollowups {
   canSavePayload() {
     const draft = this.coordinator.getSnapshot().draft;
     return !this.retired && draft !== null && capture(draft) !== null;
+  }
+  private endReviewScope() {
+    this.reviewScope = Object.freeze({});
+  }
+  private copyForReview(payload: ResearchFollowupsPayload) {
+    const authored = payload === this.authoredInput;
+    this.authoredInput = null;
+    this.authoredOutput = null;
+    const copied = copyDraft(payload);
+    if (authored) this.authoredOutput = copied;
+    return copied;
+  }
+  private replaceAuthoredDraft(payload: ResearchFollowupsPayload) {
+    this.authoredInput = payload;
+    try {
+      this.coordinator.replaceDraft(payload);
+    } finally {
+      this.authoredInput = null;
+      this.authoredOutput = null;
+    }
+  }
+  getReviewContext(): FollowupsReviewContext | null {
+    const saved = this.coordinator.getSnapshot();
+    if (!this.canEdit() || this.operation || this.state.review) return null;
+    if (!saved.draft || !saved.saved || !saved.latestLoaded) return null;
+    if (saved.baseVersion !== saved.saved.version) return null;
+    const digest = this.state.catalogSnapshotSha256;
+    if (!digest) return null;
+    const groups = groupResearchFollowupsByDueDate(
+      [],
+      new Date(this.state.assessmentTime ?? NaN),
+    );
+    if (!groups) return null;
+    return Object.freeze({
+      scope: this.reviewScope,
+      draft: saved.draft,
+      catalogSnapshotSha256: digest,
+      assessedOn: groups.assessedOn,
+    });
   }
   getDraftFileContext(requireFresh = true): FollowupsDraftFileContext | null {
     const state = this.coordinator.getSnapshot();
@@ -356,15 +418,21 @@ export class ManagedResearchFollowups {
   private owns(entry: ResearchFollowup) {
     return this.canEdit() && this.currentEntry(entry.id) === entry;
   }
-  private replace(entry: ResearchFollowup, next: ResearchFollowup | null) {
+  private replace(
+    entry: ResearchFollowup,
+    next: ResearchFollowup | null,
+    reviewSafe = false,
+  ) {
     if (!this.owns(entry)) return;
     const draft = this.coordinator.getSnapshot().draft!;
-    this.coordinator.replaceDraft({
+    const payload = {
       ...draft,
       entries: draft.entries.flatMap((current) =>
         current === entry ? (next ? [next] : []) : [current],
       ),
-    });
+    };
+    if (reviewSafe) this.replaceAuthoredDraft(payload);
+    else this.coordinator.replaceDraft(payload);
   }
   prepareNextCheck(
     member: WatchlistMembership,
@@ -563,7 +631,7 @@ export class ManagedResearchFollowups {
       this.state.catalogSnapshotSha256 !== digest
     )
       return null;
-    this.coordinator.replaceDraft({
+    this.replaceAuthoredDraft({
       ...draft,
       entries: [
         ...draft.entries,
@@ -588,10 +656,10 @@ export class ManagedResearchFollowups {
     raw: string,
   ) {
     if (["check", "result", "dueOn"].includes(field))
-      this.replace(entry, { ...entry, [field]: raw });
+      this.replace(entry, { ...entry, [field]: raw }, field === "result");
   }
   remove(entry: ResearchFollowup) {
-    this.replace(entry, null);
+    this.replace(entry, null, true);
   }
   complete(entry: ResearchFollowup, capturedClock: Date) {
     if (!this.owns(entry) || entry.status !== "open") return;
@@ -602,11 +670,19 @@ export class ManagedResearchFollowups {
       });
       return;
     }
-    this.replace(entry, { ...entry, status: "completed", completedOn: day });
+    this.replace(
+      entry,
+      { ...entry, status: "completed", completedOn: day },
+      true,
+    );
   }
   reopen(entry: ResearchFollowup) {
     if (entry.status === "completed")
-      this.replace(entry, { ...entry, status: "open", completedOn: null });
+      this.replace(
+        entry,
+        { ...entry, status: "open", completedOn: null },
+        true,
+      );
   }
   async reviewCatalog() {
     const draft = this.coordinator.getSnapshot().draft;
@@ -620,6 +696,7 @@ export class ManagedResearchFollowups {
       draft.entries.length > MANAGED_RESEARCH_FOLLOWUPS_LIMITS.entries
     )
       return;
+    this.endReviewScope();
     const operation = new AbortController();
     this.operation = operation;
     const current = () =>
