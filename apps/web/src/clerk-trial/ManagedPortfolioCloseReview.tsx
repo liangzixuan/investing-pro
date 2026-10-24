@@ -138,13 +138,18 @@ function Review({ workspace, navigationPending, onResearch }: Props) {
 
 export function ManagedPortfolioCloseReview(props: Props) {
   const [open, setOpen] = useState(false);
+  const research: Props["onResearch"] = (...args) => {
+    setOpen(false);
+    props.onResearch(...args);
+  };
   return (
     <details
       className="managed-portfolio-close-review"
+      open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary>Dated holdings review</summary>
-      {open && <Review {...props} />}
+      {open && <Review {...props} onResearch={research} />}
     </details>
   );
 }

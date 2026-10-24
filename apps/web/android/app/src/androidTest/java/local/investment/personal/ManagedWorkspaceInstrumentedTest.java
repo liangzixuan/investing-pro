@@ -1980,8 +1980,8 @@ public class ManagedWorkspaceInstrumentedTest {
         WatchlistSystemPicker picker = new WatchlistSystemPicker();
         try {
             click("#managed-watchlist-export");
-            // Observe asynchronous DocumentsUI launch before the unchanged Cancel deadline.
-            picker.awaitOpen();
+            // Cold external Activity startup uses the existing setup allowance; Cancel stays ten seconds.
+            picker.awaitOpen(FIXTURE_STARTUP_TIMEOUT_MS);
             picker.cancel();
             awaitPage("cancelled export returns to the same draft", "document.querySelector('#managed-watchlist-export-status')?.textContent.includes('cancelled')");
             assertEquals(0, WatchlistTestDocuments.outputs(appContext).length);

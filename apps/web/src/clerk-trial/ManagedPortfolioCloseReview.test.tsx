@@ -211,6 +211,42 @@ function fixture(cashUsd: string | null = "10.00") {
   };
 }
 describe("Dated holdings review committed UI", () => {
+  it("closes the retained disclosure before exact-company research so Back requires explicit reopening", () => {
+    const onResearch = vi.fn();
+    const props = {
+      workspace: {} as ManagedWorkspace,
+      navigationPending: false,
+      onResearch,
+    };
+    const render = () => {
+      hooks.index = 0;
+      return ManagedPortfolioCloseReview(props) as Element;
+    };
+    const closed = render();
+    expect(closed.props.open).toBe(false);
+    (closed.props.onToggle as (event: unknown) => void)({
+      currentTarget: { open: true },
+    });
+    const opened = render();
+    expect(opened.props.open).toBe(true);
+    const inner = nodes(opened).find(
+      (node) => typeof node.type === "function",
+    )!;
+    const draft = {},
+      listing = {},
+      opener = {};
+    (inner.props.onResearch as (...args: unknown[]) => void)(
+      draft,
+      listing,
+      opener,
+    );
+    expect(onResearch).toHaveBeenCalledExactlyOnceWith(draft, listing, opener);
+    const returned = render();
+    expect(returned.props.open).toBe(false);
+    expect(
+      nodes(returned).some((node) => typeof node.type === "function"),
+    ).toBe(false);
+  });
   it("opens without reads, then displays exact identity, selected-date values and original provenance", async () => {
     const f = fixture();
     let node = f.render();
