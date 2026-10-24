@@ -1,6 +1,9 @@
 package local.investment.personal;
 
 import org.json.JSONObject;
+import java.time.LocalDate;
+import java.util.Objects;
+import java.util.UUID;
 
 /** Exact predicates and authored content for the additive invented daily review journey. */
 final class FollowupsReviewSessionExpectations {
@@ -15,20 +18,68 @@ final class FollowupsReviewSessionExpectations {
 
     private FollowupsReviewSessionExpectations() {}
 
-    static String sessionReviewQuestion(int index) {
+    enum Check {
+        ZERO, ONE, ALFA;
+        String listingId() {
+            return switch (this) {
+                case ZERO -> "listing-zero";
+                case ONE -> "listing-one";
+                case ALFA -> "listing-alfa";
+            };
+        }
+        String label() {
+            return switch (this) {
+                case ZERO -> "ZERO · Zero Company · Class A · XNAS";
+                case ONE -> "ONE · One Company · Class A · XNAS";
+                case ALFA -> "ALFA · Alfa Company · Common Stock · XNAS";
+            };
+        }
+    }
+    record EntryId(UUID value) {
+        EntryId {
+            Objects.requireNonNull(value);
+            if (value.version() != 4) throw new IllegalArgumentException("Expected a generated v4 entry identity");
+            if (value.variant() != 2) throw new IllegalArgumentException("Expected a standard entry identity");
+        }
+        @Override public String toString() { return value.toString(); }
+    }
+    record WatchlistSnapshot(String serialized) {
+        WatchlistSnapshot { Objects.requireNonNull(serialized); }
+    }
+    record SavedEntriesSnapshot(String serialized) {
+        SavedEntriesSnapshot { Objects.requireNonNull(serialized); }
+    }
+    record ChosenChecks(EntryId first, EntryId second, EntryId unchosen) {}
+    record ReviewDraft(ChosenChecks chosen, WatchlistSnapshot watchlist) {}
+    record CompanyReview(Check check, EntryId entry, WatchlistSnapshot watchlist) {
+        CompanyReview {
+            Objects.requireNonNull(check);
+            Objects.requireNonNull(entry);
+            Objects.requireNonNull(watchlist);
+            if (check == Check.ALFA) throw new IllegalArgumentException("The unchosen check has no company review position");
+        }
+    }
+    record RequestCounts(int sessions, int resolves) {
+        RequestCounts {
+            if (sessions < 1) throw new IllegalArgumentException("Expected a positive session count");
+            if (resolves < 0) throw new IllegalArgumentException("Expected a nonnegative explicit resolution count");
+        }
+    }
+
+    static String sessionReviewQuestion(Check check) {
         return new String[] {
             "Does ZERO still support the authored research question? Keep the exact Class A listing and original evidence dates.",
             "Which ONE evidence would change this assessment? Read the complete question before writing a result.",
             "Keep this unchosen ALFA check and its existing independent assessment in the full saved draft."
-        }[index];
+        }[check.ordinal()];
     }
 
-    static String sessionReviewResult(int index) {
+    static String sessionReviewResult(Check check) {
         return new String[] {
             "ZERO assessment authored in company research; no source was requested.",
             "ONE assessment authored separately after explicit Continue; no source was requested.",
             "Unchosen assessment stays in the independent full draft."
-        }[index];
+        }[check.ordinal()];
     }
 
     static String emptyResource() {
@@ -41,7 +92,8 @@ final class FollowupsReviewSessionExpectations {
             " && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".marketsResolve === 1";
     }
 
-    static String chosenOrder(String first, String second, String unchosen) {
+    static String chosenOrder(ChosenChecks checks) {
+        String first = checks.first().toString(), second = checks.second().toString(), unchosen = checks.unchosen().toString();
         return "document.querySelector('#managed-followups-review-choose-" + first + "')?.textContent === 'Chosen 1: remove this check'" +
             " && document.querySelector('#managed-followups-review-choose-" + second + "')?.textContent === 'Chosen 2: remove this check'" +
             " && document.querySelector('#managed-followups-review-choose-" + unchosen + "')?.getAttribute('aria-pressed') === 'false'";
@@ -51,12 +103,14 @@ final class FollowupsReviewSessionExpectations {
         return "document.querySelector('#managed-followups-review-next')?.disabled === true";
     }
 
-    static String completed(String day) {
+    static String completed(LocalDate observedDay) {
+        String day = observedDay.toString();
         return FOLLOWUP_DRAFT + ".entries[0].status === 'completed' && " + FOLLOWUP_DRAFT + ".entries[0].completedOn === " + JSONObject.quote(day) +
             " && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUP_DRAFT + ".dirty === true";
     }
 
-    static String saved(String watchlist) {
+    static String saved(WatchlistSnapshot snapshot) {
+        String watchlist = snapshot.serialized();
         return FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".version === 1" +
             " && " + FOLLOWUP_DRAFT + ".baseVersion === 1 && " + FOLLOWUP_DRAFT + ".dirty === false" +
             " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlist);
@@ -66,50 +120,62 @@ final class FollowupsReviewSessionExpectations {
         return "document.querySelector('#managed-followups-new-due')?.value === '2000-01-01'";
     }
 
-    static String added(int index, String listing) {
+    static String added(Check check) {
+        int index = check.ordinal();
+        String listing = check.listingId();
         return FOLLOWUP_DRAFT + ".entries?.length === " + (index + 1) + " && " + FOLLOWUP_DRAFT + ".entries[" + index + "].listing.listingId === " + JSONObject.quote(listing) +
             " && " + FOLLOWUP_DRAFT + ".entries[" + index + "].check === '' && " + FOLLOWUPS + ".save === 0";
     }
 
-    static String position(int index, String id) {
+    static String position(CompanyReview review) {
+        int index = review.check().ordinal();
+        String id = review.entry().toString();
         return "(() => { const panel=document.querySelector('.managed-followups-review > section'), entry=" + FOLLOWUP_DRAFT + ".entries[" + index + "], details=panel?.querySelector(':scope > details'), values=[...details.querySelectorAll('dd')].map(n=>n.textContent);" +
             " return document.querySelector('#managed-followups-review-position')?.textContent.startsWith('Check " + (index + 1) + " of 2.')" +
-            " && panel.querySelector(':scope > .managed-followups-authored')?.textContent === " + JSONObject.quote(sessionReviewQuestion(index)) +
+            " && panel.querySelector(':scope > .managed-followups-authored')?.textContent === " + JSONObject.quote(sessionReviewQuestion(review.check())) +
             " && entry.id === " + JSONObject.quote(id) + " && Object.keys(entry.listing).length === 11 && details.open === true" +
             " && values.length === 11 && Object.values(entry.listing).every((value,i)=>values[i]===value)" +
             " && document.querySelector('#managed-followups-review-research')?.disabled === false" +
             " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
     }
 
-    static String company(int index, String id) {
+    static String company(CompanyReview review) {
+        int index = review.check().ordinal();
+        String id = review.entry().toString();
         String symbol = index == 0 ? "ZERO" : "ONE";
         return "document.querySelector('#managed-company-heading')?.textContent === " + JSONObject.quote("Company research · " + symbol) +
             " && document.querySelector('#managed-research-followup-heading')?.textContent === " + JSONObject.quote("Research check for " + symbol) +
-            " && document.querySelector('.managed-research-followup-check')?.textContent === " + JSONObject.quote(sessionReviewQuestion(index)) +
+            " && document.querySelector('.managed-research-followup-check')?.textContent === " + JSONObject.quote(sessionReviewQuestion(review.check())) +
             " && " + FOLLOWUP_DRAFT + ".entries[" + index + "].id === " + JSONObject.quote(id) + " && " + DIAGNOSTICS + ".resolve === " + (index + 1);
     }
 
-    static String assessment(int index, String watchlist) {
-        return FOLLOWUP_DRAFT + ".entries[" + index + "].result === " + JSONObject.quote(sessionReviewResult(index)) +
+    static String assessment(CompanyReview review) {
+        int index = review.check().ordinal();
+        String watchlist = review.watchlist().serialized();
+        return FOLLOWUP_DRAFT + ".entries[" + index + "].result === " + JSONObject.quote(sessionReviewResult(review.check())) +
             " && " + FOLLOWUP_DRAFT + ".entries[" + index + "].status === 'open' && " + FOLLOWUPS + ".save === 0" +
             " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlist);
     }
 
-    static String returned(int index, String watchlist) {
+    static String returned(CompanyReview review) {
+        int index = review.check().ordinal();
+        String watchlist = review.watchlist().serialized();
         return "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('#managed-followups-review-position')?.textContent.startsWith('Check " + (index + 1) + " of 2.')" +
-            " && document.querySelector('.managed-followups-review')?.textContent.includes(" + JSONObject.quote(sessionReviewResult(index)) + ")" +
+            " && document.querySelector('.managed-followups-review')?.textContent.includes(" + JSONObject.quote(sessionReviewResult(review.check())) + ")" +
             " && document.querySelector('#managed-followups-review-research')?.disabled === false" +
             " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlist);
     }
 
-    static String finished(String first, String second, String unchosen, String watchlist) {
+    static String finished(ReviewDraft draft) {
+        String first = draft.chosen().first().toString(), second = draft.chosen().second().toString(), unchosen = draft.chosen().unchosen().toString();
+        String watchlist = draft.watchlist().serialized();
         return "(() => { const panel=document.querySelector('.managed-followups-review'), entries=" + FOLLOWUP_DRAFT + ".entries, rows=[...panel.querySelectorAll(':scope > section > ol > li')];" +
             " return rows.length===3 && entries.map(e=>e.id).join('|')===" + JSONObject.quote(first + "|" + second + "|" + unchosen) +
             " && entries.every((e,i)=>rows[i].textContent.includes(e.check)&&rows[i].textContent.includes(e.result)&&e.status==='open'&&e.completedOn===null)" +
             " && rows.every((row,i)=>[...row.querySelectorAll('dd')].map(n=>n.textContent).join('|')===Object.values(entries[i].listing).join('|'))" +
             " && document.documentElement.scrollWidth <= document.documentElement.clientWidth" +
-            " && entries[2].result===" + JSONObject.quote(sessionReviewResult(2)) +
+            " && entries[2].result===" + JSONObject.quote(sessionReviewResult(Check.ALFA)) +
             " && panel.querySelector('#managed-followups-review-again')?.disabled===false && panel.querySelector('#managed-followups-review-position')===null" +
             " && " + FOLLOWUPS + ".save===0 && " + FOLLOWUPS + ".commits===0 && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist) + "; })()";
     }
@@ -119,7 +185,8 @@ final class FollowupsReviewSessionExpectations {
             " && " + DRAFT + ".memberships?.length===3 && " + DRAFT + ".dirty===false && " + DRAFT + ".memberships[0].note===''";
     }
 
-    static String reloaded(String complete) {
+    static String reloaded(SavedEntriesSnapshot snapshot) {
+        String complete = snapshot.serialized();
         return FOLLOWUPS + ".load===2 && " + FOLLOWUPS + ".save===1 && " + FOLLOWUPS + ".commits===1" +
             " && " + FOLLOWUP_DRAFT + ".baseVersion===1 && " + FOLLOWUP_DRAFT + ".dirty===false" +
             " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(complete) +
@@ -127,7 +194,8 @@ final class FollowupsReviewSessionExpectations {
             " && " + DRAFT + ".memberships[1].note==='Invented second note' && " + DRAFT + ".memberships[2].note==='Independent unchosen listing note'";
     }
 
-    static String sources(int sessions, int resolves) {
+    static String sources(RequestCounts counts) {
+        int sessions = counts.sessions(), resolves = counts.resolves();
         return DIAGNOSTICS + ".load===" + sessions + " && " + DIAGNOSTICS + ".status===" + sessions + " && " + DIAGNOSTICS + ".marketsResolve===" + sessions +
             " && " + DIAGNOSTICS + ".resolve===" + resolves + " && " + DIAGNOSTICS + ".save===0 && " + DIAGNOSTICS + ".search===0" +
             " && " + DIAGNOSTICS + ".eod===0 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + DIAGNOSTICS + ".marketsEod===0" +
