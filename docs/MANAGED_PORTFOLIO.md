@@ -103,9 +103,10 @@ invalidates the review. A later opening requires a new explicit load. These
 values never enter the ledger or a Watchlist note, and do not save either resource.
 Use the existing independent Portfolio Review and Save for authored changes.
 
-The next source increment adds a [readable review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md)
-with explicit capture, complete inspection and private HTML delivery. That report
-is not included in Android 1.39.
+Android 1.40 adds a [readable review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md)
+with explicit capture, complete inspection and private HTML delivery. The original
+source/native gates and guarded APK verification passed; no physical-device
+acceptance is claimed.
 
 ## Exact amounts and unknown values
 

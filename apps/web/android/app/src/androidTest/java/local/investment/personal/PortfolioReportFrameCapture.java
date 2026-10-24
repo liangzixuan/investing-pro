@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** One absolute deadline covers visual readiness, a committed frame and PixelCopy ownership. */
 final class PortfolioReportFrameCapture {
-    enum Frame { CAPTURED }
+    enum Frame { CAPTURED, COMPANY_SNAPSHOT_LOADED }
     record Request(ActivityScenario<MainActivity> scenario, Frame frame) {}
     private record WindowFrame(WebView webView, Window window) {}
     private record PixelResult(Bitmap bitmap, int result) {}
@@ -53,7 +53,7 @@ final class PortfolioReportFrameCapture {
             assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, stream));
         } finally { screenshot.recycle(); }
     }
-    private String filename() { return switch (request.frame) { case CAPTURED -> "portfolioReviewReportCaptured"; }; }
+    private String filename() { return switch (request.frame) { case CAPTURED -> "portfolioReviewReportCaptured"; case COMPANY_SNAPSHOT_LOADED -> "companySnapshotSourcesLoaded"; }; }
 
     private Bitmap capture() throws Exception {
         Pending pending = new Pending();

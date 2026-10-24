@@ -1292,6 +1292,14 @@ export function ManagedWorkspaceScreen({
                       ).member,
                     );
                   }}
+                  snapshotLoad={workspace.companySnapshotLoad}
+                  onLoadSnapshot={async () => {
+                    if (navigation?.invalid || navigation?.isPending()) return;
+                    await workspace.loadCompanySnapshot(discovery.research!);
+                  }}
+                  onCancelSnapshot={() =>
+                    workspace.cancelCompanySnapshot(discovery.research!)
+                  }
                   onRequestSource={async (section) => {
                     const visit = discovery.research!;
                     if (

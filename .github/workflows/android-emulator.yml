@@ -357,6 +357,13 @@ jobs:
           ))
           if len(required) != 81:
               raise SystemExit("Portfolio report policy and export journey must extend all 75 existing native tests.")
+
+          required.add((
+              "local.investment.personal.CompanySnapshotLoadingInstrumentedTest",
+              "explicitSnapshotLoadCancelsLateFilingsAndKeepsDraftThroughBackAndSeparateSave",
+          ))
+          if len(required) != 82:
+              raise SystemExit("Expected exactly 82 declared native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

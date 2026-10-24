@@ -3067,9 +3067,12 @@ describe("managed workspace screen", () => {
     const local = [...mounted.screenState];
     const refs = mounted.refs.map((ref) => ref.current);
     const request = vi.spyOn(workspace, "requestResearchSource");
+    const snapshotLoad = vi.spyOn(workspace, "loadCompanySnapshot");
     const prepare = vi.spyOn(workspace, "prepareFollowupResearch");
     pending = true; // The ref changes before the disabled render is committed.
     await company.props.onRequestSource("annual");
+    await company.props.onLoadSnapshot();
+    expect(snapshotLoad).not.toHaveBeenCalled();
     company.props.onReview();
     followups.props.onResearch(entry, {} as HTMLButtonElement);
     search.props.onSearch({} as HTMLFormElement);

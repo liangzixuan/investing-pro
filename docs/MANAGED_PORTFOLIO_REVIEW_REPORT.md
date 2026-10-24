@@ -1,8 +1,9 @@
 # Portfolio review report
 
-This source candidate extends [dated holdings review](MANAGED_PORTFOLIO.md#review-holdings-at-one-observed-close-date)
-into a readable private file. Android 1.39 contains the dated review but does not
-include this report. Integration, native runtime checks and delivery are pending.
+Android 1.40 extends [dated holdings review](MANAGED_PORTFOLIO.md#review-holdings-at-one-observed-close-date)
+into a readable private file. Original required source checks, the complete
+synthetic native 81-case gate and guarded APK verification passed. The signed
+update is provided locally; no physical-device acceptance is claimed.
 
 ## Capture, inspect and save
 

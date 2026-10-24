@@ -31,6 +31,7 @@ import {
 } from "./valuation-note";
 import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
 import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
+import { ManagedCompanySnapshotLoad } from "./managed-company-snapshot-load";
 import {
   encodeMainWatchlistPayload,
   isMainWatchlistPayload,
@@ -310,6 +311,7 @@ export class ManagedWorkspace {
   private readonly portfolioPriceCoverage:
     readonly ManagedEodIdentity[] | undefined;
   readonly eod: ManagedEodHistory;
+  readonly companySnapshotLoad: ManagedCompanySnapshotLoad;
   readonly markets: ManagedMarkets;
   readonly watchlistPrices: ManagedWatchlistPrices;
   readonly blsCalendar: ManagedBlsCalendar;
@@ -509,6 +511,11 @@ export class ManagedWorkspace {
       eodAccess,
       options.priceCoverage,
     );
+    this.companySnapshotLoad = new ManagedCompanySnapshotLoad(
+      this.eod,
+      this.annual,
+      this.filings,
+    );
     this.markets = new ManagedMarkets(
       api,
       eodAccess,
@@ -593,6 +600,7 @@ export class ManagedWorkspace {
   }
   setNavigationBlocked(blocked: boolean) {
     this.navigationRevision++;
+    this.companySnapshotLoad.cancel();
     this.cancelFollowupOpening();
     this.navigationBlocked = blocked;
     this.syncAnnouncements();
@@ -1408,6 +1416,8 @@ export class ManagedWorkspace {
     // Model close notifications must never expose the visit with a cleared section.
     if (hadResearch)
       this.state = { ...this.state, research: null, companyRoute: null };
+    this.companySnapshotLoad.clear();
+    if (this.researchOperation !== operation) return hadResearch;
     this.valuation.activate(null);
     if (this.researchOperation !== operation) return hadResearch;
     this.annual.close();
@@ -1723,6 +1733,21 @@ export class ManagedWorkspace {
   switchToEod() {
     this.switchResearch("eod");
   }
+  async loadCompanySnapshot(visit: ManagedResearchVisit): Promise<void> {
+    const operation = this.researchOperation;
+    const revision = this.navigationRevision;
+    const admitted = () =>
+      this.state.research === visit &&
+      this.researchOperation === operation &&
+      this.navigationRevision === revision &&
+      this.researchSourceRouteReady(visit.selection) &&
+      this.canUseResearchSource(visit.selection);
+    if (!admitted()) return;
+    await this.companySnapshotLoad.start(visit.selection, admitted);
+  }
+  cancelCompanySnapshot(visit: ManagedResearchVisit): void {
+    if (this.state.research === visit) this.companySnapshotLoad.cancel();
+  }
   async requestResearchSource(
     visit: ManagedResearchVisit,
     section: ManagedResearchVisit["section"],
@@ -1737,6 +1762,8 @@ export class ManagedWorkspace {
       this.researchOperation === operation &&
       this.state.research?.selection === selection &&
       this.canUseResearchSource(selection);
+    if (!admitted()) return;
+    this.companySnapshotLoad.cancel();
     if (!admitted()) return;
     const switched = this.switchResearch(section, admitted);
     if (!switched || this.state.research !== switched || !admitted()) return;
@@ -1764,6 +1791,7 @@ export class ManagedWorkspace {
       )
     )
       return;
+    this.companySnapshotLoad.cancel();
     this[section].cancel();
   }
   private researchSourceRouteReady(selection: ManagedResearchSelection) {
@@ -1798,6 +1826,8 @@ export class ManagedWorkspace {
       this.researchOperation === operation &&
       this.canUseResearchSource(research.selection) &&
       admit();
+    if (!current()) return null;
+    this.companySnapshotLoad.cancel();
     if (!current()) return null;
     if (research.section === section) return research;
     this[research.section].cancel();

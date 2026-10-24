@@ -16,7 +16,8 @@ import java.util.List;
 /** Owns only the bounded copied instrumentation subtree and its fixed scenario marker. */
 final class ReportRevisitFixtureAssets implements AutoCloseable {
     enum Scenario {
-        REPORT_REVISIT("report-revisit"), PORTFOLIO_REVIEW_REPORT("portfolio-review-report");
+        REPORT_REVISIT("report-revisit"), PORTFOLIO_REVIEW_REPORT("portfolio-review-report"),
+        COMPANY_SNAPSHOT_LOADING("company-snapshot-loading");
         final String marker;
         Scenario(String marker) { this.marker = marker; }
     }

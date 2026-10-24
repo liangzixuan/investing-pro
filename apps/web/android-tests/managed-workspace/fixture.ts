@@ -1,3 +1,7 @@
+import {
+  createCompanySnapshotLoadingNativeFixture,
+  type SnapshotLoadingFixtureControls,
+} from "./company-snapshot-loading-fixture";
 import { createPortfolioReviewReportNativeFixture } from "./native-portfolio-review-report-fixture";
 import { createPortfolioCloseNativeFixture } from "./portfolio-close-fixture";
 import { createReportRevisitNativeFixture } from "./report-revisit-fixture";
@@ -2101,6 +2105,7 @@ export type NativeFinancialReviewMetadata = {
   readonly generation: SharedNativeFixture["generations"]["initial"];
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
+  readonly companySnapshotLoading?: SnapshotLoadingFixtureControls;
   readonly filingsReview?: {
     readonly prefix: string;
     readonly expectedNote: string;
@@ -2280,6 +2285,13 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "company-snapshot-loading",
+    async () =>
+      createCompanySnapshotLoadingNativeFixture(
+        await createSharedFixture("company-snapshot"),
+      ),
+  ],
+  [
     "report-revisit",
     async () =>
       createReportRevisitNativeFixture(
@@ -2370,6 +2382,7 @@ export async function createFixture(
     | "portfolio-ledger"
     | "portfolio-close-review"
     | "portfolio-review-report"
+    | "company-snapshot-loading"
     | "watchlist-filings-review"
     | "report-revisit" = "default",
 ): Promise<ManagedNativeFixture> {

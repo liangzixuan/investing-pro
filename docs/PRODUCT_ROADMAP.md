@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 23, 2026. This document defines the durable product goals and
+Updated October 24, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -104,13 +104,19 @@ totals retain original source evidence and independent Portfolio Save. Original
 main checks, native 75-case acceptance and complete APK verification passed.
 Portfolio history, returns, benchmarks and wider coverage remain separate work.
 
-The next complete M4/M5 outcome is a [readable Portfolio review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md).
-Capture a current review, inspect the full authored ledger and original source
-packets, then explicitly save a private standalone HTML copy. Research/Back and
-independent Save remain available. It extends the existing review into an offline
-reading workflow without another metric, source, storage resource or fee.
-Implementation and affected checks are in progress; integration and delivery of
-the report remain separate.
+Android 1.40 provides the [readable Portfolio review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md)
+from accepted source `23b0611ee6749a5a8020c3a587572330b4f445b3`. Capture a current
+review, inspect the full authored ledger and original packets, then explicitly
+save a private HTML copy. Original source/native gates and complete APK checks
+passed. Research/Back and independent Save remain available. This advances M4/M5
+without a new metric, source, storage resource or fee.
+
+The next M2 outcome is [coordinated company snapshot loading](MANAGED_COMPANY_SNAPSHOT.md#load-missing-company-sources):
+one explicit action loads eligible missing Price, Annual and Filings responses
+sequentially, keeps existing evidence and stops on refusal, failure, cooldown or
+Cancel. Shared source budgets remain unchanged, so a run can stop partially and
+needs another explicit action. This connects existing company evidence without
+repeated panel setup. Implementation and affected checks are in progress.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The

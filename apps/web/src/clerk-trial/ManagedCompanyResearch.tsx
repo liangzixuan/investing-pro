@@ -6,6 +6,8 @@ import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import { ManagedCompanyReport } from "./ManagedCompanyReport";
 import { ManagedCompanySnapshot } from "./ManagedCompanySnapshot";
+import { ManagedCompanySnapshotLoading } from "./ManagedCompanySnapshotLoading";
+import type { ManagedCompanySnapshotLoad } from "./managed-company-snapshot-load";
 import { ManagedCompanyEvidenceActions } from "./ManagedCompanyEvidenceActions";
 import type { ManagedCompanyFilings as FilingsModel } from "./managed-company-filings";
 import type {
@@ -48,6 +50,9 @@ export function ManagedCompanyResearch({
   eod,
   onSection,
   onRequestSource,
+  snapshotLoad,
+  onLoadSnapshot,
+  onCancelSnapshot,
   onCancelSource,
   onBack,
   watchlist,
@@ -85,6 +90,9 @@ export function ManagedCompanyResearch({
   eod: EodModel;
   onSection: (section: ManagedResearchVisit["section"]) => void;
   onRequestSource: (section: ManagedResearchVisit["section"]) => Promise<void>;
+  snapshotLoad: ManagedCompanySnapshotLoad;
+  onLoadSnapshot: () => Promise<void>;
+  onCancelSnapshot: () => void;
   onCancelSource: (section: ManagedResearchVisit["section"]) => void;
   onBack: () => void;
   watchlist: ResearchWatchlistState;
@@ -159,6 +167,12 @@ export function ManagedCompanyResearch({
         onRequest={(section) => void onRequestSource(section)}
         onCancel={onCancelSource}
         onOpen={onSection}
+      />
+      <ManagedCompanySnapshotLoading
+        model={snapshotLoad}
+        navigationPending={navigationPending}
+        onLoad={onLoadSnapshot}
+        onCancel={onCancelSnapshot}
       />
       <ManagedCompanySnapshot
         navigationPending={navigationPending}
