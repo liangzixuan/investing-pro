@@ -14,7 +14,7 @@ import type {
 } from "./managed-portfolio-close-review";
 import { capturePortfolioCloseContext } from "./portfolio-close-review-context";
 import { PortfolioCloseReviewView } from "./PortfolioCloseReviewView";
-import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import { ManagedPortfolioReviewReport } from "./ManagedPortfolioReviewReport";
 
 const empty: PortfolioCloseState = Object.freeze({

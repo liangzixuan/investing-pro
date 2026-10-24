@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type { ManagedPortfolioCloseReview } from "./managed-portfolio-close-review";
-import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import {
   PortfolioReviewReportController,
   emptyPortfolioReviewReport,
@@ -39,11 +39,114 @@ function useReport({ prices, delivery }: Props) {
   );
   return { controller, state };
 }
+type ReportState = ReturnType<PortfolioReviewReportController["getSnapshot"]>;
+type Controller = PortfolioReviewReportController | null;
+function captureReady(props: Props) {
+  if (!props.ready) return false;
+  const prices = props.prices?.getSnapshot();
+  if (!prices) return false;
+  if (prices.running) return false;
+  return !!prices.selectedDate;
+}
+function captureDisabled(
+  ready: boolean,
+  controller: Controller,
+  saving: boolean,
+) {
+  if (!ready) return true;
+  if (!controller) return true;
+  return saving;
+}
+function CaptureAction({
+  ready,
+  controller,
+  saving,
+}: {
+  ready: boolean;
+  controller: Controller;
+  saving: boolean;
+}) {
+  const capture = () => {
+    if (!ready) return;
+    controller?.prepare();
+  };
+  return (
+    <div className="managed-portfolio-actions">
+      <button
+        type="button"
+        disabled={captureDisabled(ready, controller, saving)}
+        onClick={capture}
+      >
+        Capture holdings report
+      </button>
+    </div>
+  );
+}
+function ReportActions({
+  controller,
+  saving,
+  delivery,
+}: {
+  controller: Controller;
+  saving: boolean;
+  delivery: Props["delivery"];
+}) {
+  return (
+    <div className="managed-portfolio-actions">
+      <button
+        type="button"
+        disabled={!delivery || saving}
+        onClick={() => {
+          void controller?.save();
+        }}
+      >
+        Save report (HTML)
+      </button>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => controller?.close()}
+      >
+        Close captured report
+      </button>
+      {saving && (
+        <button type="button" onClick={() => controller?.cancel()}>
+          Cancel report save
+        </button>
+      )}
+    </div>
+  );
+}
+function CapturedReport({
+  state,
+  ready,
+  controller,
+  delivery,
+}: {
+  state: ReportState;
+  ready: boolean;
+  controller: Controller;
+  delivery: Props["delivery"];
+}) {
+  if (!ready) return null;
+  if (!state.report) return null;
+  return (
+    <>
+      <PortfolioReviewReportSnapshot report={state.report} />
+      <ReportActions
+        controller={controller}
+        saving={state.saving}
+        delivery={delivery}
+      />
+    </>
+  );
+}
+function ReportStatus({ message }: { message: string }) {
+  if (!message) return null;
+  return <p role="status">{message}</p>;
+}
 export function ManagedPortfolioReviewReport(props: Props) {
   const { controller, state } = useReport(props);
-  const prices = props.prices?.getSnapshot();
-  const ready = props.ready && !prices?.running && !!prices?.selectedDate;
-  const report = props.ready ? state.report : null;
   return (
     <section
       className="managed-portfolio-review-report"
@@ -55,46 +158,18 @@ export function ManagedPortfolioReviewReport(props: Props) {
         evidence. Review the complete report before saving a private HTML copy.
         This does not save Portfolio or create a restorable draft file.
       </p>
-      <div className="managed-portfolio-actions">
-        <button
-          type="button"
-          disabled={!ready || !controller || state.saving}
-          onClick={() => {
-            if (ready) controller?.prepare();
-          }}
-        >
-          Capture holdings report
-        </button>
-      </div>
-      {report && (
-        <>
-          <PortfolioReviewReportSnapshot report={report} />
-          <div className="managed-portfolio-actions">
-            <button
-              type="button"
-              disabled={!props.delivery || state.saving}
-              onClick={() => {
-                void controller?.save();
-              }}
-            >
-              Save report (HTML)
-            </button>
-            <button
-              type="button"
-              disabled={state.saving}
-              onClick={() => controller?.close()}
-            >
-              Close captured report
-            </button>
-            {state.saving && (
-              <button type="button" onClick={() => controller?.cancel()}>
-                Cancel report save
-              </button>
-            )}
-          </div>
-        </>
-      )}
-      {state.message && <p role="status">{state.message}</p>}
+      <CaptureAction
+        ready={captureReady(props)}
+        controller={controller}
+        saving={state.saving}
+      />
+      <CapturedReport
+        state={state}
+        ready={props.ready}
+        controller={controller}
+        delivery={props.delivery}
+      />
+      <ReportStatus message={state.message} />
     </section>
   );
 }

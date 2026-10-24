@@ -1,3 +1,4 @@
+import type { PortfolioReviewReportHtmlDocument } from "./portfolio-review-report-ports";
 import { createRoot, type Root } from "react-dom/client";
 import { flushSync } from "react-dom";
 import {
@@ -10,12 +11,6 @@ import {
   COMPANY_REPORT_HTML_STYLE,
 } from "./company-report-html-style";
 export const PORTFOLIO_REVIEW_REPORT_HTML_MAX_BYTES = 8 * 1024 * 1024;
-export interface PortfolioReviewReportHtmlDocument {
-  readonly purpose: "investment.portfolio-review-html";
-  readonly filename: string;
-  readonly text: string;
-  readonly byteLength: number;
-}
 const owned = new WeakSet<object>();
 export function isPortfolioReviewReportHtmlDocument(
   value: unknown,
@@ -25,12 +20,9 @@ export function isPortfolioReviewReportHtmlDocument(
 export function portfolioReviewReportHtmlByteLength(
   text: string,
 ): number | null {
-  if (
-    !text.length ||
-    text.length > PORTFOLIO_REVIEW_REPORT_HTML_MAX_BYTES ||
-    /\p{Cs}/u.test(text)
-  )
-    return null;
+  if (!text.length) return null;
+  if (text.length > PORTFOLIO_REVIEW_REPORT_HTML_MAX_BYTES) return null;
+  if (/\p{Cs}/u.test(text)) return null;
   const bytes = new TextEncoder().encode(text).byteLength;
   return bytes > PORTFOLIO_REVIEW_REPORT_HTML_MAX_BYTES ? null : bytes;
 }

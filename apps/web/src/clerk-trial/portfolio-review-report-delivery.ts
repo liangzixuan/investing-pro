@@ -1,23 +1,11 @@
-import type {
-  TextDocumentDeliveryContext,
-  TextDocumentDeliveryResult,
-} from "./document-delivery";
-import {
-  isPortfolioReviewReportHtmlDocument,
-  type PortfolioReviewReportHtmlDocument,
-} from "./portfolio-review-report-html";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
+import { isPortfolioReviewReportHtmlDocument } from "./portfolio-review-report-html";
 import { createBrowserTextDownload } from "./browser-text-download";
 import {
   createNativeTextDocumentDelivery,
   type NativeTextDocumentPlugin,
 } from "./native-text-document-delivery";
 
-export interface PortfolioReviewReportDeliveryAdapter {
-  deliver(
-    document: PortfolioReviewReportHtmlDocument,
-    context: TextDocumentDeliveryContext,
-  ): Promise<TextDocumentDeliveryResult>;
-}
 export const browserPortfolioReviewReportAdapter: PortfolioReviewReportDeliveryAdapter =
   createBrowserTextDownload(
     isPortfolioReviewReportHtmlDocument,

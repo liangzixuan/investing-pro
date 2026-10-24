@@ -16,7 +16,7 @@ import {
 import { ManagedPortfolioWatchlist } from "./ManagedPortfolioWatchlist";
 import { ManagedPortfolioCloseReview } from "./ManagedPortfolioCloseReview";
 import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
-import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 
 const usd = (value: string | null) =>

@@ -2,7 +2,7 @@ import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-sc
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
-import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import {
   Children,

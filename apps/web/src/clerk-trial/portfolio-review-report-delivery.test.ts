@@ -4,7 +4,7 @@ import {
   createNativePortfolioReviewReportAdapter,
   type InvestmentPortfolioReviewReportPlugin,
 } from "./portfolio-review-report-delivery";
-import type { PortfolioReviewReportHtmlDocument } from "./portfolio-review-report-html";
+import type { PortfolioReviewReportHtmlDocument } from "./portfolio-review-report-ports";
 import type * as PortfolioReviewReportHtml from "./portfolio-review-report-html";
 
 // Transport-only ownership seam. The native journey exercises the real detached

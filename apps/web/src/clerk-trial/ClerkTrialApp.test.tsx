@@ -14,10 +14,8 @@ import {
   browserPortfolioDraftFileAdapter,
   type ManagedPortfolioDraftFileDeliveryAdapter,
 } from "./portfolio-draft-file-delivery";
-import {
-  browserPortfolioReviewReportAdapter,
-  type PortfolioReviewReportDeliveryAdapter,
-} from "./portfolio-review-report-delivery";
+import { browserPortfolioReviewReportAdapter } from "./portfolio-review-report-delivery";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import { browserCompanyReportAdapter } from "./browser-company-report";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ReactNode } from "react";

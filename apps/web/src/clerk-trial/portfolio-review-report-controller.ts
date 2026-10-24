@@ -1,6 +1,10 @@
+import type {
+  TextDocumentDeliveryContext,
+  TextDocumentDeliveryResult,
+} from "./document-delivery";
 import type { PreparedPortfolioReviewReport } from "./portfolio-review-report";
-import type { PortfolioReviewReportHtmlDocument } from "./portfolio-review-report-html";
-import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
+import type { PortfolioReviewReportHtmlDocument } from "./portfolio-review-report-ports";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 
 export interface PortfolioReviewReportCapture {
   readonly report: PreparedPortfolioReviewReport;
@@ -98,47 +102,75 @@ export class PortfolioReviewReportController {
       message: "Report save cancelled. The Portfolio draft is unchanged.",
     });
   }
-  async save() {
-    const capture = this.capture;
-    if (!this.current(capture) || !capture || this.operation || !this.delivery)
-      return;
+  private deliveryCapture() {
+    if (!this.delivery) return null;
+    if (this.operation) return null;
+    return this.current() ? this.capture : null;
+  }
+  private startDelivery(capture: PortfolioReviewReportCapture) {
     const operation = new AbortController();
     this.operation = operation;
-    const current = () =>
-      this.operation === operation &&
-      !operation.signal.aborted &&
-      this.current(capture);
     this.update({
       report: capture.report,
       saving: true,
       message: "Preparing the captured HTML report…",
     });
+    return operation;
+  }
+  private deliveryCurrent(
+    operation: AbortController,
+    capture: PortfolioReviewReportCapture,
+  ) {
+    if (this.operation !== operation) return false;
+    if (operation.signal.aborted) return false;
+    return this.current(capture);
+  }
+  private async deliverCapture(
+    capture: PortfolioReviewReportCapture,
+    context: TextDocumentDeliveryContext,
+  ) {
+    const document = this.format(capture.report);
+    if (!context.isCurrent()) return;
+    if (!document) throw new Error("Portfolio report unavailable");
+    const delivery = this.delivery;
+    if (!delivery) return;
+    const result = await delivery.deliver(document, context);
+    if (!context.isCurrent()) return;
+    this.update({
+      report: capture.report,
+      saving: false,
+      message: deliveryMessage(result),
+    });
+  }
+  private deliveryFailed(
+    capture: PortfolioReviewReportCapture,
+    context: TextDocumentDeliveryContext,
+  ) {
+    if (!context.isCurrent()) return;
+    this.update({
+      report: capture.report,
+      saving: false,
+      message:
+        "The Portfolio report could not be saved. The draft is unchanged.",
+    });
+  }
+  private finishDelivery(operation: AbortController) {
+    if (this.operation === operation) this.operation = null;
+  }
+  async save() {
+    const capture = this.deliveryCapture();
+    if (!capture) return;
+    const operation = this.startDelivery(capture);
+    const context = {
+      signal: operation.signal,
+      isCurrent: () => this.deliveryCurrent(operation, capture),
+    };
     try {
-      const document = this.format(capture.report);
-      if (!current()) return;
-      if (!document) throw new Error("Portfolio report unavailable");
-      const result = await this.delivery.deliver(document, {
-        signal: operation.signal,
-        isCurrent: current,
-      });
-      if (!current()) return;
-      const message =
-        result === "written"
-          ? "Portfolio report written to the chosen document."
-          : result === "download_requested"
-            ? "Portfolio report download requested. Check the browser destination."
-            : "Report save cancelled. The Portfolio draft is unchanged.";
-      this.update({ report: capture.report, saving: false, message });
+      await this.deliverCapture(capture, context);
     } catch {
-      if (current())
-        this.update({
-          report: capture.report,
-          saving: false,
-          message:
-            "The Portfolio report could not be saved. The draft is unchanged.",
-        });
+      this.deliveryFailed(capture, context);
     } finally {
-      if (this.operation === operation) this.operation = null;
+      this.finishDelivery(operation);
     }
   }
   dispose() {
@@ -148,4 +180,12 @@ export class PortfolioReviewReportController {
     this.withdraw("");
     this.listeners.clear();
   }
+}
+
+function deliveryMessage(result: TextDocumentDeliveryResult) {
+  if (result === "written")
+    return "Portfolio report written to the chosen document.";
+  if (result === "download_requested")
+    return "Portfolio report download requested. Check the browser destination.";
+  return "Report save cancelled. The Portfolio draft is unchanged.";
 }

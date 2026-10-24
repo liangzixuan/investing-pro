@@ -5,8 +5,8 @@ import {
   isPreparedPortfolioReviewReport,
 } from "./portfolio-review-report";
 import { portfolioReviewReportFixture } from "./portfolio-review-report-fixture";
-import type { PortfolioReviewReportHtmlDocument } from "./portfolio-review-report-html";
-import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
+import type { PortfolioReviewReportHtmlDocument } from "./portfolio-review-report-ports";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import { ManagedPortfolioCloseReview } from "./managed-portfolio-close-review";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { eodResponse, eodSelection } from "./eod-history-fixture";

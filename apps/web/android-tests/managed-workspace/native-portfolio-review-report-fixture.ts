@@ -22,31 +22,25 @@ export function createPortfolioReviewReportNativeFixture(
   );
 }
 
-/** Explicit test setup uses the real ledger parser/model; this is not native text-entry evidence. */
-export function authorInventedPortfolioReviewReportLedger(
-  workspace: ManagedWorkspace,
-  fixture: ManagedNativeFixture,
-): boolean {
-  const loaded = workspace.portfolio.coordinator.getSnapshot();
-  const listing = fixture.priceCoverage.find(
-    (row) => row.listingId === "listing-zero",
-  );
-  if (
-    loaded.phase !== "idle" ||
-    loaded.baseVersion !== 0 ||
-    loaded.draft?.ledger !== null ||
-    !listing
-  )
-    return false;
-  workspace.portfolio.start("2026-10-01", "1000.00");
-  const draft = workspace.portfolio.coordinator.getSnapshot().draft;
-  if (!draft?.ledger) return false;
+type PortfolioResourceState = ReturnType<
+  ManagedWorkspace["portfolio"]["coordinator"]["getSnapshot"]
+>;
+type Ledger = NonNullable<
+  NonNullable<PortfolioResourceState["draft"]>["ledger"]
+>;
+type Listing = Ledger["identities"][number];
+function canAuthor(state: PortfolioResourceState) {
+  if (state.phase !== "idle") return false;
+  if (state.baseVersion !== 0) return false;
+  return state.draft?.ledger === null;
+}
+function inventedReportLedger(ledger: Ledger, listing: Listing): Ledger {
   const date = new Date().toISOString().slice(0, 10);
-  workspace.portfolio.replace(draft, {
-    ...draft.ledger,
+  return {
+    ...ledger,
     identities: [listing],
     opening: {
-      ...draft.ledger.opening,
+      ...ledger.opening,
       holdings: [
         {
           listingId: listing.listingId,
@@ -76,9 +70,30 @@ export function authorInventedPortfolioReviewReportLedger(
         feeUsd: "1.00",
       },
     ],
-  });
-  const state = workspace.portfolio.coordinator.getSnapshot();
-  return state.dirty && state.draft?.ledger?.transactions.length === 2;
+  };
+}
+function authoredReportLedger(state: PortfolioResourceState) {
+  if (!state.dirty) return false;
+  return state.draft?.ledger?.transactions.length === 2;
+}
+/** Explicit test setup uses the real ledger parser/model; this is not native text-entry evidence. */
+export function authorInventedPortfolioReviewReportLedger(
+  workspace: ManagedWorkspace,
+  fixture: ManagedNativeFixture,
+): boolean {
+  if (!canAuthor(workspace.portfolio.coordinator.getSnapshot())) return false;
+  const listing = fixture.priceCoverage.find(
+    (row) => row.listingId === "listing-zero",
+  );
+  if (!listing) return false;
+  workspace.portfolio.start("2026-10-01", "1000.00");
+  const draft = workspace.portfolio.coordinator.getSnapshot().draft;
+  if (!draft?.ledger) return false;
+  workspace.portfolio.replace(
+    draft,
+    inventedReportLedger(draft.ledger, listing),
+  );
+  return authoredReportLedger(workspace.portfolio.coordinator.getSnapshot());
 }
 
 /** Real adapter and plugin; diagnostics contain only operation counts and metadata. */

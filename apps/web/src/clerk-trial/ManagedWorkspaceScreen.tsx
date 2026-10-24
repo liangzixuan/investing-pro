@@ -6,7 +6,7 @@ import {
   managedResearchOpener,
 } from "./managed-research-company-navigation-props";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
-import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-delivery";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import {
@@ -57,6 +57,7 @@ import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
+import { managedPortfolioEntryProps } from "./managed-portfolio-entry-props";
 import {
   ManagedFinancialDiscovery,
   managedFinancialDiscoveryProps,
@@ -1333,18 +1334,16 @@ export function ManagedWorkspaceScreen({
                 />
               )}
               <ManagedPortfolioEntry
-                workspace={workspace}
-                discovery={discovery}
-                navigationPending={navigationPending}
-                draftFileScope={draftFileScope}
-                draftFileDelivery={portfolioDraftFileDelivery}
-                reviewReportDelivery={portfolioReviewReportDelivery}
-                navigation={{ active: watchlistRouteActive, view: setView }}
-                onResearch={(draft, listing, opener) =>
-                  openResearch(opener, () =>
-                    workspace.openPortfolioResearch(draft, listing),
-                  )
-                }
+                {...managedPortfolioEntryProps({
+                  workspace,
+                  discovery,
+                  navigationPending,
+                  draftFileScope,
+                  draftFileDelivery: portfolioDraftFileDelivery,
+                  reviewReportDelivery: portfolioReviewReportDelivery,
+                  navigation: { active: watchlistRouteActive, view: setView },
+                  openResearch,
+                })}
               />
               <ManagedFollowupsEntry
                 discovery={discovery}
