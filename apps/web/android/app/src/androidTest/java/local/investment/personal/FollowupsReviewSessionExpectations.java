@@ -189,7 +189,16 @@ final class FollowupsReviewSessionExpectations {
         String complete = snapshot.serialized();
         return FOLLOWUPS + ".load===2 && " + FOLLOWUPS + ".save===1 && " + FOLLOWUPS + ".commits===1" +
             " && " + FOLLOWUP_DRAFT + ".baseVersion===1 && " + FOLLOWUP_DRAFT + ".dirty===false" +
-            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(complete) +
+            " && (()=>{const expected=JSON.parse(" + JSONObject.quote(complete) + "),actual=" + FOLLOWUP_DRAFT + ".entries;" +
+            " const scalar=['id','catalogSnapshotSha256','check','dueOn','status','result'],entryKeys=[...scalar,'listing','completedOn'];" +
+            " const listingKeys=['country','exchangeMic','instrumentType','issuerId','issuerName','listingId','securityId','securityName','shareClassId','shareClassName','symbol'];" +
+            " const own=(value,keys)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Reflect.ownKeys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));" +
+            " const list=value=>Array.isArray(value)&&value.length===3&&Reflect.ownKeys(value).length===4&&[0,1,2].every(index=>Object.hasOwn(value,index));" +
+            " return list(expected)&&list(actual)&&expected.every((reference,index)=>{const entry=actual[index];" +
+            " return own(entry,entryKeys)&&own(reference,entryKeys)&&own(entry.listing,listingKeys)&&own(reference.listing,listingKeys)" +
+            " && scalar.every(key=>typeof entry[key]==='string'&&entry[key]===reference[key])" +
+            " && entry.completedOn===reference.completedOn&&(entry.completedOn===null||typeof entry.completedOn==='string')" +
+            " && listingKeys.every(key=>typeof entry.listing[key]==='string'&&entry.listing[key]===reference.listing[key]);});})()" +
             " && document.querySelector('#managed-followups-review-position')===null && document.querySelector('#managed-followups-review-enter')!==null" +
             " && " + DRAFT + ".memberships[1].note==='Invented second note' && " + DRAFT + ".memberships[2].note==='Independent unchosen listing note'";
     }
