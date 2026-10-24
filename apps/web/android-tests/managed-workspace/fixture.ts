@@ -1,3 +1,4 @@
+import { createPortfolioCloseNativeFixture } from "./portfolio-close-fixture";
 import { createReportRevisitNativeFixture } from "./report-revisit-fixture";
 import { inventedManagedResearchCoverage } from "../../src/clerk-trial/test-managed-research-coverage-fixture";
 import {
@@ -2319,6 +2320,15 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "portfolio-close-review",
+    async () =>
+      createPortfolioCloseNativeFixture(
+        createPortfolioNativeFixture(
+          await createSharedFixture("research-followups"),
+        ),
+      ),
+  ],
+  [
     "portfolio-ledger",
     async () =>
       createPortfolioNativeFixture(
@@ -2350,6 +2360,7 @@ export async function createFixture(
     | "valuation-price"
     | "saved-valuation"
     | "portfolio-ledger"
+    | "portfolio-close-review"
     | "watchlist-filings-review"
     | "report-revisit" = "default",
 ): Promise<ManagedNativeFixture> {

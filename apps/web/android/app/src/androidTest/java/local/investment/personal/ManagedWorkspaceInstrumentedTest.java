@@ -99,6 +99,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "valuation-price",
         "research-followups",
         "portfolio-ledger",
+        "portfolio-close-review",
         "markets-day-view",
         "company-price-ranges",
         "bea-agenda",
@@ -118,7 +119,8 @@ public class ManagedWorkspaceInstrumentedTest {
         "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation",
         "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen",
         "followupAssessmentInCompanyReturnsToReviewAndSave", "research-followups",
-        "portfolioHoldingReviewAppendsWatchlistAndKeepsLedgerThroughBack", "portfolio-ledger");
+        "portfolioHoldingReviewAppendsWatchlistAndKeepsLedgerThroughBack", "portfolio-ledger",
+        "portfolioDatedClosesKeepLedgerThroughCancelResearchAndSeparateSave", "portfolio-close-review");
     private static final String ANNUAL_COMPARISON_NOTE =
         "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
         "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
@@ -1018,6 +1020,63 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertSavedValuationIsolation(String watchlist) throws Exception {
         awaitPage("saved assumptions preserve the entire independent note draft and exact source/resource counts", "(() => { const d=" + DIAGNOSTICS + ",s=" + savedValuationStore() + ";return JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist) + " && s.counts.load===2 && s.counts.save===1 && s.counts.resolve===1 && s.saved.payload.entries.length===1 && JSON.stringify(s.saved.payload.entries[0])===JSON.stringify(s.expected) && d.load===1 && d.status===1 && d.save===0 && d.annual===0 && d.eod===0 && d.filings===0 && d.marketsEod===0 && d.calendar===0 && d.fed===0 && d.search===0 && d.resolve===0 && d.token===0 && d.signOut===0; })()");
+    }
+
+    @Test
+    public void portfolioDatedClosesKeepLedgerThroughCancelResearchAndSeparateSave() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String ledger = authorPortfolioHoldingHandoff();
+        String watchlist = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String scope = "section[aria-label='Dated Portfolio holdings review']";
+        awaitPage("dated close review starts closed without a price request",
+            "document.querySelector('.managed-portfolio-close-review')?.open===false && " + DIAGNOSTICS + ".eod===0");
+        click(".managed-portfolio-close-review > summary");
+        awaitPage("opening the review makes no implicit read and exposes the explicit load",
+            "document.querySelector(\"" + scope + " .ledger-actions button\")?.disabled===false && " + DIAGNOSTICS + ".eod===0");
+        click(scope + " .ledger-actions button:first-child");
+        awaitPage("one explicit raw-close read values exactly the authored holding and known cash",
+            "(() => {const s=document.querySelector(\"" + scope + "\");const values=Object.fromEntries([...s.querySelectorAll(':scope > dl > div')].map(e=>[e.querySelector('dt').textContent,e.querySelector('dd').textContent]));return " + DIAGNOSTICS + ".eod===1 && values['Priced holdings']==='1 of 1' && values['Priced holdings subtotal']==='USD 110.25' && values['Complete holdings value']==='USD 110.25' && values['Authored cash']==='USD 948.00' && values['Complete value including authored cash']==='USD 1058.25' && ['Tiingo','raw_close','USD','US','XNAS','common_stock','issuer-zero','Zero Company','listing-zero','security-zero','Zero Class A','class-zero','Class A','ZERO'].every(value=>s.textContent.includes(value));})()");
+        awaitPage("dated holding review keeps its controls and page inside the narrow native frame",
+            "(() => {const select=document.querySelector(" + JSONObject.quote(scope + " select") + ");const r=select?.getBoundingClientRect();" +
+            "return select?.id==='managed-portfolio-close-date' && select.labels.length===1 && r.height>=44" +
+            " && r.left>=0 && r.right<=document.documentElement.clientWidth+1" +
+            " && document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;})()");
+        String provenance = readFixtureString("document.querySelector(\"" + scope + " tbody td:last-child\").textContent");
+        String currentDate = readFixtureString("document.querySelector(\"" + scope + " select\").value");
+        String priorDate = readFixtureString("document.querySelector(\"" + scope + " select\").options[1].value");
+        chooseNativeSelectOption(scope + " select", priorDate, priorDate);
+        awaitPage("the earlier close cannot value balances authored later",
+            "document.querySelector(\"" + scope + "\").textContent.includes('Authored balances are later than this close date.') && document.querySelector(\"" + scope + "\").textContent.includes('Unavailable: complete prices and known cash are required.')");
+        chooseNativeSelectOption(scope + " select", currentDate, currentDate);
+        click(scope + " .ledger-actions button:first-child");
+        awaitPage("the second explicit refresh is held with a native Cancel control",
+            DIAGNOSTICS + ".eod===2 && [...document.querySelectorAll(\"" + scope + " button\")].some(e=>e.textContent==='Cancel holding closes')");
+        click(scope + " .ledger-actions button:nth-child(2)");
+        awaitPage("Cancel aborts the held read and retains original history",
+            DIAGNOSTICS + ".eodAborted===1 && document.querySelector(\"" + scope + "\").textContent.includes('Previous history; original dates remain unchanged.')");
+        click("#settle-cancelled-eod");
+        awaitPage("late completion cannot replace dates, values or either authored draft",
+            DIAGNOSTICS + ".eodLateResolved===1 && document.querySelector(\"" + scope + " tbody td:last-child\").textContent.includes('Completed') && JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger)===" + JSONObject.quote(ledger) + " && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist));
+        assertTrue("Original request/completion provenance remains after cancellation", readFixtureString("document.querySelector(\"" + scope + " tbody td:last-child\").textContent").contains(provenance.substring(provenance.indexOf("Provider / basis"))));
+        click(scope + " tbody button");
+        assertCompanyHistory("listing-zero", "price", false);
+        awaitPage("Research opens the exact registered holding with no additional source read",
+            "document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO' && " + DIAGNOSTICS + ".eod===2 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + PORTFOLIO + ".save===0");
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("native Back restores the complete ledger while the private close review is closed",
+            "document.querySelector('.managed-company-visit')===null && document.querySelector('.managed-portfolio-close-review')?.open===false && JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger)===" + JSONObject.quote(ledger) + " && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist));
+        click(".managed-portfolio-close-review > summary");
+        awaitPage("a new disclosure opening has no retained close or automatic refresh",
+            "document.querySelector(\"" + scope + " select\").value==='' && document.querySelector(\"" + scope + "\").textContent.includes('Prices not loaded.') && " + DIAGNOSTICS + ".eod===2");
+        click(".managed-portfolio-close-review > summary");
+        click("#managed-portfolio-review");
+        awaitPage("the authored ledger still requires its separate whole-draft review", "document.querySelector('.managed-portfolio-review')!==null && " + PORTFOLIO + ".save===0");
+        click("#managed-portfolio-save");
+        awaitPage("only the separate Portfolio Save commits; the research list is unchanged",
+            PORTFOLIO + ".save===1 && " + PORTFOLIO + ".commits===1 && " + PORTFOLIO_DRAFT + ".dirty===false && " + DIAGNOSTICS + ".save===0 && " + DIAGNOSTICS + ".eod===2 && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist));
+        assertEquals("Dated close review and Back preserve the mounted document", origin, readDocumentTimeOrigin(), 0.0);
     }
 
     @Test
@@ -1921,6 +1980,8 @@ public class ManagedWorkspaceInstrumentedTest {
         WatchlistSystemPicker picker = new WatchlistSystemPicker();
         try {
             click("#managed-watchlist-export");
+            // Cold external Activity startup uses the existing setup allowance; Cancel stays ten seconds.
+            picker.awaitOpen(FIXTURE_STARTUP_TIMEOUT_MS);
             picker.cancel();
             awaitPage("cancelled export returns to the same draft", "document.querySelector('#managed-watchlist-export-status')?.textContent.includes('cancelled')");
             assertEquals(0, WatchlistTestDocuments.outputs(appContext).length);

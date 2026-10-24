@@ -234,3 +234,12 @@ export {
   type AuthoredCashFlowDcfResult,
   type AuthoredValuationScenario,
 } from "./authored-cash-flow-dcf";
+
+export {
+  calculateAuthoredPortfolioCloseReview,
+  type AuthoredPortfolioCloseReviewHolding,
+  type AuthoredPortfolioCloseReviewPrice,
+  type AuthoredPortfolioCloseReviewInput,
+  type AuthoredPortfolioCloseReviewLine,
+  type AuthoredPortfolioCloseReviewResult,
+} from "./authored-portfolio-close-review";

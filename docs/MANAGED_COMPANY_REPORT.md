@@ -176,7 +176,7 @@ separate M4 work.
 
 ## Revisit a saved report
 
-The development source adds an initially closed **Revisit a saved report**
+Android 1.38 adds an initially closed **Revisit a saved report**
 disclosure inside **Research report**. Select a format 5 JSON report for the exact
 current company. The file remains private to this visit. Closing either report
 disclosure, leaving the company or retiring the session clears it.
@@ -220,6 +220,9 @@ whole-draft revision, catalog, company visit, navigation, recovery or session
 change invalidates the captured comparison. An edit followed by identical-text
 restoration does not revive it. Capture and preview again after a change.
 
-This workflow is a source candidate. Hosted native acceptance, source merge and
-Android delivery remain separate from local tests. The live website and API are
-unchanged.
+This workflow is accepted at source
+`8395bcffc230154497f461f99b87705229b435fd` and delivered in Android 1.38.0,
+code 39. Original required source checks, the complete native 74-case gate and
+APK verification passed. The owner reported "Installed and verified." on
+October 23, without per-feature results or independent device inspection. The
+live website and API are unchanged.

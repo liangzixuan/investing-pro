@@ -35,8 +35,12 @@ final class WatchlistSystemPicker {
     }
 
     void awaitOpen() throws Exception {
+        awaitOpen(TIMEOUT_MS);
+    }
+
+    void awaitOpen(long startupTimeoutMs) throws Exception {
         await(node -> node.getViewIdResourceName() != null
-            && node.getViewIdResourceName().endsWith(":id/container_save"));
+            && node.getViewIdResourceName().endsWith(":id/container_save"), startupTimeoutMs);
     }
 
     void cancel() throws Exception {
@@ -613,7 +617,11 @@ final class WatchlistSystemPicker {
     }
 
     private AccessibilityNodeInfo await(Predicate<AccessibilityNodeInfo> predicate) throws Exception {
-        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        return await(predicate, TIMEOUT_MS);
+    }
+
+    private AccessibilityNodeInfo await(Predicate<AccessibilityNodeInfo> predicate, long timeoutMs) throws Exception {
+        long deadline = SystemClock.uptimeMillis() + timeoutMs;
         do {
             AccessibilityNodeInfo root = automation.getRootInActiveWindow();
             if (root != null && string(root.getPackageName()).endsWith(".documentsui")) {

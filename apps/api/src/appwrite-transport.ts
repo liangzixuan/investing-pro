@@ -1,3 +1,5 @@
+import { addAbortListener } from "node:events";
+
 import { AppwriteException, Client } from "node-appwrite";
 import { Agent, DecoratorHandler, type Dispatcher } from "undici";
 
@@ -51,6 +53,42 @@ function failure(type: Failure): AppwriteException {
     0,
     type,
   );
+}
+
+/** Keep native cancellation attached until the response body completes. */
+function withRequestCancellation(
+  handler: Dispatcher.DispatchHandlers,
+  signal: AbortSignal,
+): Dispatcher.DispatchHandlers {
+  let listener: ReturnType<typeof addAbortListener> | undefined;
+  const dispose = () => {
+    listener?.[Symbol.dispose]();
+    listener = undefined;
+  };
+  const wrapped: Dispatcher.DispatchHandlers = new DecoratorHandler(handler);
+  wrapped.onConnect = (abort) => {
+    dispose();
+    const cancel = () => {
+      const reason: unknown = signal.reason;
+      abort(reason instanceof Error ? reason : failure("deadline"));
+    };
+    if (signal.aborted) {
+      cancel();
+      return;
+    }
+    // Fetch's cloned controller can be collected after headers, before its body.
+    listener = addAbortListener(signal, cancel);
+    handler.onConnect?.(abort);
+  };
+  wrapped.onError = (error) => {
+    dispose();
+    handler.onError?.(error);
+  };
+  wrapped.onComplete = (trailers) => {
+    dispose();
+    handler.onComplete?.(trailers);
+  };
+  return wrapped;
 }
 
 /** One bounded lifetime shared by every SDK call in a server operation. */
@@ -210,7 +248,10 @@ export function createAppwriteTransport(options: Options) {
         if (!requestSignal.aborted) handler.onComplete?.(trailers);
       };
       // Disable Undici's pipeline retry permission even for GET requests.
-      return dispatch({ ...input, idempotent: false }, wrapped);
+      return dispatch(
+        { ...input, idempotent: false },
+        withRequestCancellation(wrapped, requestSignal),
+      );
     });
 
   class BoundedClient extends Client {

@@ -333,6 +333,13 @@ jobs:
           ))
           if len(required) != 74:
               raise SystemExit("The report revisit journey must extend all 73 existing native tests.")
+          # Preserve all 74 existing cases and add dated Portfolio close review.
+          required.add((
+              "local.investment.personal.ManagedWorkspaceInstrumentedTest",
+              "portfolioDatedClosesKeepLedgerThroughCancelResearchAndSeparateSave",
+          ))
+          if len(required) != 75:
+              raise SystemExit("Dated holdings review must extend all 74 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

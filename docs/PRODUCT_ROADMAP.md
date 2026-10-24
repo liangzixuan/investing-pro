@@ -90,15 +90,20 @@ or transaction. Accepted source `ad7d4cff42c6828ada5e81f5e7e532d7c46da57b`, its
 original main checks and native producing jobs, and the guarded APK checks support
 that delivery. Phone installation and acceptance remain owner actions.
 
-The next M3/M4 outcome is [revisit a saved company report](MANAGED_COMPANY_REPORT.md#revisit-a-saved-report).
-It connects an exact-company archived JSON report with a separate current capture,
-whole authored notes and original source provenance. The owner writes a dated
-assessment, previews the complete note, appends once and uses independent
-Watchlist Review and Save. File-reported derived calculations stay unverified and
-do not enter live models. This adds a repeatable thesis review using existing
-sources. Implementation and affected verification are in progress. Quarterly/TTM
-data and Portfolio history remain separate work; ticker and metric additions
-alone do not complete this outcome.
+Android 1.38 delivers [saved company report revisit](MANAGED_COMPANY_REPORT.md#revisit-a-saved-report)
+from accepted source `8395bcffc230154497f461f99b87705229b435fd`. Complete notes
+and original source provenance support a dated authored assessment, whole-note
+preview and separate Watchlist Save. All original required checks, the complete
+native 74-case gate and APK verification passed. The owner reported it installed
+and verified on October 23, without per-feature results or independent inspection.
+
+The next M4 outcome is [Portfolio dated holdings review](MANAGED_PORTFOLIO.md#review-holdings-at-one-observed-close-date).
+Connect the current authored ledger to explicit eligible raw-close loads, one
+observed date, exact per-line values and distinct incomplete totals. Retain exact
+identity, original provenance, independent Save and Research/Back. This advances
+connected portfolio inspection. Portfolio history, returns, benchmarks and wider
+source coverage remain separate work. Source implementation and its affected
+checks are in progress; native acceptance and client delivery are pending.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The

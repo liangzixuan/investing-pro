@@ -72,15 +72,29 @@ signature, manifest and native policy checks. Earlier failed native outcomes are
 retained. Phone installation and physical acceptance remain owner actions. The
 live website and API are unchanged.
 
-The active development outcome is [revisit a saved company
-report](MANAGED_COMPANY_REPORT.md#revisit-a-saved-report): open a local format 5
-JSON copy for the exact company, compare full archived/current notes and original
+Android 1.38.0, code 39, is provided locally from accepted source
+`8395bcffc230154497f461f99b87705229b435fd` with the existing production signer.
+It adds [revisit a saved company report](MANAGED_COMPANY_REPORT.md#revisit-a-saved-report):
+open a format 5 JSON copy for the exact company, compare full notes and original
 source provenance, author a dated assessment, preview the whole destination note,
 append once, then use separate Watchlist Review and Save. Imported derived
-sections remain an unverified appendix and never populate live evidence models.
-The full web unit suite, affected types, lint and architecture boundaries pass
-locally. Hosted native acceptance, source merge and client delivery are pending. No browser acceptance,
-source coverage, new storage, API or website release is claimed.
+sections remain an unverified appendix. All original required PR and main checks
+passed, including the complete native 74-case gate and APK verification. The owner
+reported "Installed and verified." on October 23. This is overall owner-reported
+acceptance, without per-feature results or independent device inspection.
+
+The active development outcome is [Portfolio dated holdings review](MANAGED_PORTFOLIO.md#review-holdings-at-one-observed-close-date).
+Explicitly load eligible current holdings' raw closes, select one observed date,
+inspect per-holding values, partial or complete totals and authored cash, then
+continue to exact-company Research and Back. The schema-3 ledger, identity review,
+shared EOD access and separate Save remain in use. This source candidate adds no
+price coverage, storage, dependency, API or website release. Native acceptance,
+source integration and client delivery remain pending.
+
+Request installation and phone acceptance only for major milestones, such as
+version 2.0. Routine updates retain automated functional, integrity, recovery,
+device/platform and software signature checks. Installation remains an owner
+action; acceptance of 1.38 does not establish acceptance of later releases.
 
 Android 1.34.0, code 35, is provided locally from accepted source
 `241b0e4d61c487a561399d403b78be62443861ad` with the existing production signer.

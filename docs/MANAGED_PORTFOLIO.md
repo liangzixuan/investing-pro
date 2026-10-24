@@ -66,9 +66,42 @@ provide established patterns for explicit instrument choice and appending to a
 research list. Investment adds its existing complete identity/draft review and
 separate Save. No upstream code or assets are copied. The workflow is merged in
 [PR 229](https://github.com/liangzixuan/investing-pro/pull/229), whose original
-checks and full native 73-case gate passed. Main qualification and client delivery
-remain pending after native fixture startup failures. No browser or phone
-acceptance is claimed.
+checks and full native 73-case gate passed. Final main qualification passed at
+`ad7d4cff42c6828ada5e81f5e7e532d7c46da57b`; Android 1.37 delivered this workflow.
+It is also included in Android 1.38, which the owner reported installed and
+verified on October 23. No per-feature or independent device inspection is claimed.
+
+## Review holdings at one observed close date
+
+The current source candidate adds an initially closed **Dated holdings review**.
+Load Portfolio, apply or reset pending forms, and approve its current catalog
+identities first. My Watchlist does not need to be loaded. Open the disclosure,
+then select **Load holding closes**. Only this action requests one month of raw
+closes for each eligible current positive holding, one at a time. Coverage stays
+at the existing three listings for two issuers. Unsupported holdings remain
+visible and unpriced. **Cancel holding closes** stops the remaining queue.
+
+Choose **Observed close date** from the loaded observations. All holding values
+use that exact date; the app does not substitute another listing's latest close.
+A date before the ledger's latest activity or opening balance cannot value those
+current balances. This review is a dated reference calculation, not portfolio
+history, return, adjusted performance or an execution quote.
+
+Each holding value is authored shares multiplied by its raw close, rounded
+half-up to USD cents. The priced subtotal sums those displayed line amounts.
+**Complete holdings value** requires an eligible close for every positive holding.
+**Complete value including authored cash** also requires known cash. Partial
+coverage and unknown cash keep their corresponding totals unavailable; no value
+is filled with zero. Original provider, basis, currency, request window and
+request/completion times stay beside each listing. Recoverable refresh failures
+can retain prior history with its original dates and a visible warning.
+
+**Research** opens the exact registered company without another source request.
+Back returns to the ledger. Closing the disclosure, changing the draft or forms,
+catalog review, unresolved Save/recovery, navigation or session retirement
+invalidates the review. A later opening requires a new explicit load. These
+values never enter the ledger or a Watchlist note, and do not save either resource.
+Use the existing independent Portfolio Review and Save for authored changes.
 
 ## Exact amounts and unknown values
 

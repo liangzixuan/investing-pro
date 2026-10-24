@@ -14,6 +14,7 @@ import {
   PortfolioLedgerDetails,
 } from "./ManagedPortfolioLedgerDetails";
 import { ManagedPortfolioWatchlist } from "./ManagedPortfolioWatchlist";
+import { ManagedPortfolioCloseReview } from "./ManagedPortfolioCloseReview";
 import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 
@@ -170,7 +171,7 @@ function StartPortfolio({
   );
 }
 
-/** An independent authored ledger; source requests remain explicit company actions. */
+/** An independent authored ledger with explicit, separately dated reference-close review. */
 export function ManagedPortfolio({
   workspace,
   navigationPending,
@@ -633,6 +634,11 @@ export function ManagedPortfolio({
               </div>
             )}
           </section>
+          <ManagedPortfolioCloseReview
+            workspace={workspace}
+            navigationPending={navigationPending}
+            onResearch={onResearch}
+          />
           <ActivityHistory ledger={ledger} />
           <PersonalPortfolioLedgerEditor
             ledger={ledger}

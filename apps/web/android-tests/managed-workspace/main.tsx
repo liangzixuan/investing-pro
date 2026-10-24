@@ -60,6 +60,7 @@ if (
   scenario !== "report-revisit" &&
   scenario !== "research-followups" &&
   scenario !== "portfolio-ledger" &&
+  scenario !== "portfolio-close-review" &&
   scenario !== "markets-day-view" &&
   scenario !== "company-price-ranges" &&
   scenario !== "thesis-review" &&
