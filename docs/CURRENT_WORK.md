@@ -5,15 +5,28 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Source candidate: chosen Follow-ups review
+## Source candidate: Android signing runtime preflight
+
+The release tooling checks its installed PowerShell runtime before it creates
+release evidence or reads signing custody. An unavailable hash command stops
+the operation at the runtime prerequisite stage. The public error names that
+stage without exposing exception text or private configuration. This candidate
+keeps the existing source, owner, path, custody, signing and retry guards.
+It does not reopen a failed operation or establish a new APK delivery.
+
+## Accepted source: chosen Follow-ups review
 
 The [daily review session](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks)
 connects one to five chosen due checks to exact-company research, same-draft
 assessment, retained Back navigation, explicit Continue, complete draft review
 and independent Save. The temporary order is local to the active session. It
-reuses current source actions, identities and persistence. Source integration,
-automated native acceptance and client delivery remain separate stages. The
-website, API and delivered Android 1.41 remain unchanged by this candidate.
+reuses current source actions, identities and persistence.
+
+[PR 237](https://github.com/liangzixuan/investing-pro/pull/237) merged at
+`d60e7e5ec1659c741c47cf597474d948b01362af`. Its original required main checks and
+the complete native 83-case union passed within their recorded synthetic scope.
+Android 1.42 preparation passed, but its release build stopped before signing
+and produced no APK. The website, API and delivered Android 1.41 remain unchanged.
 
 ## Current capability and delivery status
 

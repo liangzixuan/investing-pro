@@ -4,6 +4,11 @@ $ErrorActionPreference = 'Stop'
 $script:Package = 'app.investingpro.android'
 $script:Alias = 'investment-android-release'
 
+function Assert-SigningRuntime {
+    try { $null = Get-Command -Name Get-FileHash -ErrorAction Stop }
+    catch { throw 'signing_runtime_unavailable' }
+}
+
 function Assert-SigningPath([string]$Path) {
     if ($Path.Length -lt 4 -or $Path -notmatch '^[A-Za-z]:[\\/]' -or $Path -match '[\x00-\x1f"<>|?*]' -or
         $Path.Substring(2).Contains(':') -or $Path -match '(^|[\\/])\.{1,2}([\\/]|$)' -or
