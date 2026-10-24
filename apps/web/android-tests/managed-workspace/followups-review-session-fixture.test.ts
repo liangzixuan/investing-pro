@@ -11,6 +11,12 @@ import {
   reviewSessionResults,
 } from "./followups-review-session-fixture";
 
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
+import { ManagedCompanyEvidenceActions } from "../../src/clerk-trial/ManagedCompanyEvidenceActions";
+import type { ManagedResearchSelection } from "../../src/clerk-trial/managed-research-selection";
+
 const workspaces: ManagedWorkspace[] = [];
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -90,6 +96,67 @@ function chooseTwo(workspace: ManagedWorkspace) {
   model.start(model.getSnapshot());
   return rows;
 }
+function assertUnloadedCompanySources(
+  workspace: ManagedWorkspace,
+  selection: ManagedResearchSelection,
+) {
+  const models = [workspace.eod, workspace.annual, workspace.filings];
+  const before = models.map((model) => model.getSnapshot());
+  const onRequest = vi.fn();
+  const onOpen = vi.fn();
+  const onCancel = vi.fn();
+  const html = renderToStaticMarkup(
+    createElement(ManagedCompanyEvidenceActions, {
+      selection,
+      price: workspace.eod,
+      annual: workspace.annual,
+      filings: workspace.filings,
+      navigationPending: false,
+      onRequest,
+      onOpen,
+      onCancel,
+    }),
+  );
+  const $ = load(html);
+  const overview = $(".managed-company-evidence-actions");
+  const priceSupported = selection.listing.listingId === "listing-zero";
+  expect(overview.attr("aria-label")).toBe("Company research sources");
+  expect(overview.find(".managed-evidence-action-grid > section")).toHaveLength(
+    3,
+  );
+  for (const [title, supported] of [
+    ["Price", priceSupported],
+    ["Annual", true],
+    ["Filings", true],
+  ] as const) {
+    const card = overview.find(`section[aria-label="${title} source"]`);
+    expect(card).toHaveLength(1);
+    expect(card.attr("aria-busy")).toBe("false");
+    expect(card.find(".managed-evidence-source-state").text()).toBe(
+      supported ? "Not loaded." : "Unsupported listing.",
+    );
+    expect(card.find("time")).toHaveLength(0);
+    const buttons = card.find(".trial-actions > button");
+    const labels = buttons.map((_index, button) => $(button).text()).get();
+    expect(labels).toEqual([
+      ...(supported
+        ? [`Load ${title}${title === "Price" ? " · One month" : ""}`]
+        : []),
+      `Inspect ${title}`,
+    ]);
+    expect(buttons.filter("[disabled]")).toHaveLength(0);
+  }
+  const priceText = overview.find('[aria-label="Price source"]').text();
+  expect(priceText.includes("Requested range: One month.")).toBe(
+    priceSupported,
+  );
+  expect(priceText).not.toContain("Loaded range:");
+  expect(onRequest).not.toHaveBeenCalled();
+  expect(onOpen).not.toHaveBeenCalled();
+  expect(onCancel).not.toHaveBeenCalled();
+  for (const [index, model] of models.entries())
+    expect(model.getSnapshot()).toBe(before[index]);
+}
 async function assessCompany(opened: Opened, index: number) {
   const { workspace, fixture } = opened;
   const current = workspace.followupsReview.getSnapshot();
@@ -106,6 +173,7 @@ async function assessCompany(opened: Opened, index: number) {
     ),
   ).toBe(true);
   expect(visit.selection.origin).toBe("followups");
+  assertUnloadedCompanySources(workspace, visit.selection);
   expect(workspace.followupsReview.getSnapshot()).toMatchObject({
     entered: true,
     available: false,

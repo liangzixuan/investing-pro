@@ -1639,7 +1639,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("Open company admits only the current chosen listing with its full unshortened question",
             FollowupsReviewSessionExpectations.company(review));
         assertCompanyHistory(review.check().listingId(), "price", false);
-        assertCompanySourceOverview(false, false, false);
+        awaitPage("chosen company sources retain exact supported and unsupported unloaded actions", FollowupsReviewSessionExpectations.unloadedSources(review));
         click("#managed-research-followup-assessment > summary");
         typeIntoInput("managed-research-followup-result", FollowupsReviewSessionExpectations.sessionReviewResult(review.check()));
         awaitPage("the current company assessment changes only its own independent entry",

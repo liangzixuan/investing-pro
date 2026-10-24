@@ -202,6 +202,21 @@ final class FollowupsReviewSessionExpectations {
             " && " + DIAGNOSTICS + ".calendar===0 && " + DIAGNOSTICS + ".fed===0 && " + FOLLOWUPS + ".token===0 && " + FOLLOWUPS + ".signOut===0";
     }
 
+    static String unloadedSources(CompanyReview review) {
+        boolean priceSupported = review.check() == Check.ZERO;
+        return "(() => { const overview=document.querySelector('.managed-company-evidence-actions');" +
+            " const expected=[['Price'," + priceSupported + "],['Annual',true],['Filings',true]];" +
+            " if(overview?.getAttribute('aria-label')!=='Company research sources'||overview.querySelectorAll('.managed-evidence-action-grid > section').length!==3)return false;" +
+            " const valid=expected.every(([title,supported])=>{const card=overview.querySelector('[aria-label=\"'+title+' source\"]'),buttons=[...(card?.querySelectorAll('.trial-actions > button')??[])];" +
+            " const labels=supported?['Load '+title+(title==='Price'?' · One month':''),'Inspect '+title]:['Inspect '+title];" +
+            " return card?.getAttribute('aria-busy')==='false'&&card.querySelector('.managed-evidence-source-state')?.textContent===(supported?'Not loaded.':'Unsupported listing.')" +
+            " && card.querySelectorAll('time').length===0&&!card.textContent.includes('Loaded range:')" +
+            " && buttons.length===labels.length&&buttons.every((button,i)=>button.textContent===labels[i]&&!button.disabled&&button.getBoundingClientRect().height>=44&&button.getBoundingClientRect().width>=44);});" +
+            " const price=overview.querySelector('[aria-label=\"Price source\"]');" +
+            " return valid&&(" + priceSupported + "?price.textContent.includes('Requested range: One month.'):!price.textContent.includes('Requested range:'))" +
+            " && document.documentElement.scrollWidth<=document.documentElement.clientWidth;})()";
+    }
+
     static String identityOpen() {
         return "String(document.querySelector('.managed-followups-review > section > details:first-of-type')?.open)";
     }
