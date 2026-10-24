@@ -98,6 +98,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "saved-valuation",
         "valuation-price",
         "research-followups",
+        "followups-review-session",
         "portfolio-ledger",
         "portfolio-close-review",
         "markets-day-view",
@@ -119,6 +120,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation",
         "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen",
         "followupAssessmentInCompanyReturnsToReviewAndSave", "research-followups",
+        "followupsReviewSessionKeepsChosenOrderThroughCompanyBackAndSeparateSave", "followups-review-session",
         "portfolioHoldingReviewAppendsWatchlistAndKeepsLedgerThroughBack", "portfolio-ledger",
         "portfolioDatedClosesKeepLedgerThroughCancelResearchAndSeparateSave", "portfolio-close-review");
     private static final String ANNUAL_COMPARISON_NOTE =
@@ -1563,6 +1565,170 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + FOLLOWUPS + ".session === 2 && " + FOLLOWUPS + ".load === 2 && " + FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".token === 0 && " + FOLLOWUPS + ".signOut === 0" +
             " && " + DRAFT + ".dirty === false && " + DRAFT + ".memberships?.[0]?.note === '' && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
         assertEquals("Daily review keeps the same native document across fresh invented sessions", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+    }
+
+
+    @Test
+    public void followupsReviewSessionKeepsChosenOrderThroughCompanyBackAndSeparateSave() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Independent Watchlist draft outside this review");
+        String watchlist = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("explicit Load owns the empty independent resource before authoring three checks",
+            FOLLOWUPS + ".load === 1 && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUP_DRAFT + ".entries?.length === 0");
+        typeIntoInput("managed-followups-new-due", "2000-01-01");
+        String first = authorSessionFollowup(0, "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        String second = authorSessionFollowup(1, "listing-one", "ONE · One Company · Class A · XNAS");
+        String unchosen = authorSessionFollowup(2, "listing-alfa", "ALFA · Alfa Company · Common Stock · XNAS");
+        typeIntoInput("managed-followup-result", sessionReviewResult(2));
+        click(".managed-followups-review > summary");
+        click("#managed-followups-review-enter");
+        awaitPage("all three full authored questions are available without choosing or source reads",
+            "document.querySelectorAll('.managed-followups-review-choices > li').length === 3" +
+            " && document.querySelector('#managed-followups-review-start')?.disabled === true" +
+            " && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".marketsResolve === 1");
+        click("#managed-followups-review-choose-" + first);
+        click("#managed-followups-review-choose-" + second);
+        awaitPage("selection order contains only the two explicitly chosen checks",
+            "document.querySelector('#managed-followups-review-choose-" + first + "')?.textContent === 'Chosen 1: remove this check'" +
+            " && document.querySelector('#managed-followups-review-choose-" + second + "')?.textContent === 'Chosen 2: remove this check'" +
+            " && document.querySelector('#managed-followups-review-choose-" + unchosen + "')?.getAttribute('aria-pressed') === 'false'");
+        click("#managed-followups-review-start");
+        assertSessionReviewPosition(0, first);
+        reviewSessionCompany(0, first, watchlist);
+        click("#managed-followups-review-next");
+        assertSessionReviewPosition(1, second);
+        reviewSessionCompany(1, second, watchlist);
+        awaitPage("Continue remains explicit and stops at the final chosen check",
+            "document.querySelector('#managed-followups-review-next')?.disabled === true");
+        click("#managed-followups-review-finish");
+        assertFinishedSessionDraft(first, second, unchosen, watchlist);
+        selectFollowup(first);
+        click("#managed-followup-complete");
+        String day = readFixtureString("document.querySelector('#managed-followups-assessed-day').getAttribute('datetime')");
+        awaitPage("completion is a separate authored action and still does not Save",
+            FOLLOWUP_DRAFT + ".entries[0].status === 'completed' && " + FOLLOWUP_DRAFT + ".entries[0].completedOn === " + JSONObject.quote(day) +
+            " && " + FOLLOWUPS + ".save === 0 && " + FOLLOWUP_DRAFT + ".dirty === true");
+        String complete = readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)");
+        click("#managed-followups-save");
+        awaitPage("one explicit Save commits every chosen and unchosen entry while preserving My Watchlist",
+            FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".version === 1" +
+            " && " + FOLLOWUP_DRAFT + ".baseVersion === 1 && " + FOLLOWUP_DRAFT + ".dirty === false" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlist));
+        reopenSavedSessionReview(complete);
+        assertFixtureBoundary(2, 0);
+        assertEquals("A fresh account session keeps the same native document", origin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    private String sessionReviewQuestion(int index) {
+        return new String[] {
+            "Does ZERO still support the authored research question? Keep the exact Class A listing and original evidence dates.",
+            "Which ONE evidence would change this assessment? Read the complete question before writing a result.",
+            "Keep this unchosen ALFA check and its existing independent assessment in the full saved draft."
+        }[index];
+    }
+
+    private String sessionReviewResult(int index) {
+        return new String[] {
+            "ZERO assessment authored in company research; no source was requested.",
+            "ONE assessment authored separately after explicit Continue; no source was requested.",
+            "Unchosen assessment stays in the independent full draft."
+        }[index];
+    }
+
+    private String authorSessionFollowup(int index, String listing, String label) throws Exception {
+        chooseNativeSelectOption("#managed-followups-member", listing, label);
+        awaitPage("the displayed UTC due value remains exact between separate additions",
+            "document.querySelector('#managed-followups-new-due')?.value === '2000-01-01'");
+        click("#managed-followups-add");
+        awaitPage("Add creates only its selected exact listing and blank question",
+            FOLLOWUP_DRAFT + ".entries?.length === " + (index + 1) + " && " + FOLLOWUP_DRAFT + ".entries[" + index + "].listing.listingId === " + JSONObject.quote(listing) +
+            " && " + FOLLOWUP_DRAFT + ".entries[" + index + "].check === '' && " + FOLLOWUPS + ".save === 0");
+        String id = readFixtureString(FOLLOWUP_DRAFT + ".selectedId");
+        assertTrue(id.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"));
+        typeIntoInput("managed-followup-check", sessionReviewQuestion(index));
+        return id;
+    }
+
+    private void assertSessionReviewPosition(int index, String id) throws Exception {
+        String identityOpen = readFixtureString("String(document.querySelector('.managed-followups-review > section > details:first-of-type')?.open)");
+        if (!identityOpen.equals("true")) click(".managed-followups-review > section > details:first-of-type > summary");
+        awaitPage("the current chosen position includes the complete authored question and all eleven listing fields",
+            "(() => { const panel=document.querySelector('.managed-followups-review > section'), entry=" + FOLLOWUP_DRAFT + ".entries[" + index + "], details=panel?.querySelector(':scope > details'), values=[...details.querySelectorAll('dd')].map(n=>n.textContent);" +
+            " return document.querySelector('#managed-followups-review-position')?.textContent.startsWith('Check " + (index + 1) + " of 2.')" +
+            " && panel.querySelector(':scope > .managed-followups-authored')?.textContent === " + JSONObject.quote(sessionReviewQuestion(index)) +
+            " && entry.id === " + JSONObject.quote(id) + " && Object.keys(entry.listing).length === 11 && details.open === true" +
+            " && values.length === 11 && Object.values(entry.listing).every((value,i)=>values[i]===value)" +
+            " && document.querySelector('#managed-followups-review-research')?.disabled === false" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
+    }
+
+    private void reviewSessionCompany(int index, String id, String watchlist) throws Exception {
+        String symbol = index == 0 ? "ZERO" : "ONE";
+        click("#managed-followups-review-research");
+        awaitPage("Open company admits only the current chosen listing with its full unshortened question",
+            "document.querySelector('#managed-company-heading')?.textContent === " + JSONObject.quote("Company research · " + symbol) +
+            " && document.querySelector('#managed-research-followup-heading')?.textContent === " + JSONObject.quote("Research check for " + symbol) +
+            " && document.querySelector('.managed-research-followup-check')?.textContent === " + JSONObject.quote(sessionReviewQuestion(index)) +
+            " && " + FOLLOWUP_DRAFT + ".entries[" + index + "].id === " + JSONObject.quote(id) + " && " + DIAGNOSTICS + ".resolve === " + (index + 1));
+        assertCompanyHistory(index == 0 ? "listing-zero" : "listing-one", "price", false);
+        assertCompanySourceOverview(false, false, false);
+        click("#managed-research-followup-assessment > summary");
+        typeIntoInput("managed-research-followup-result", sessionReviewResult(index));
+        awaitPage("the current company assessment changes only its own independent entry",
+            FOLLOWUP_DRAFT + ".entries[" + index + "].result === " + JSONObject.quote(sessionReviewResult(index)) +
+            " && " + FOLLOWUP_DRAFT + ".entries[" + index + "].status === 'open' && " + FOLLOWUPS + ".save === 0" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlist));
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("native Back retains the same chosen position and its complete assessment without continuing",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('#managed-followups-review-position')?.textContent.startsWith('Check " + (index + 1) + " of 2.')" +
+            " && document.querySelector('.managed-followups-review')?.textContent.includes(" + JSONObject.quote(sessionReviewResult(index)) + ")" +
+            " && document.querySelector('#managed-followups-review-research')?.disabled === false" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(watchlist));
+        assertReturnedRootHistory(index == 0 ? "listing-zero" : "listing-one", "price");
+        assertSessionSourceCounts(1, index + 1);
+    }
+
+    private void assertFinishedSessionDraft(String first, String second, String unchosen, String watchlist) throws Exception {
+        awaitPage("Finish renders every full current entry including the unchosen assessment without completing or saving",
+            "(() => { const panel=document.querySelector('.managed-followups-review'), entries=" + FOLLOWUP_DRAFT + ".entries, rows=[...panel.querySelectorAll(':scope > section > ol > li')];" +
+            " return rows.length===3 && entries.map(e=>e.id).join('|')===" + JSONObject.quote(first + "|" + second + "|" + unchosen) +
+            " && entries.every((e,i)=>rows[i].textContent.includes(e.check)&&rows[i].textContent.includes(e.result)&&e.status==='open'&&e.completedOn===null)" +
+            " && rows.every((row,i)=>[...row.querySelectorAll('dd')].map(n=>n.textContent).join('|')===Object.values(entries[i].listing).join('|'))" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth" +
+            " && entries[2].result===" + JSONObject.quote(sessionReviewResult(2)) +
+            " && panel.querySelector('#managed-followups-review-again')?.disabled===false && panel.querySelector('#managed-followups-review-position')===null" +
+            " && " + FOLLOWUPS + ".save===0 && " + FOLLOWUPS + ".commits===0 && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist) + "; })()");
+        retainAnnualNoteFrame("followupsReviewCompleteDraft", ".managed-followups-review > section > ol > li:first-child > .managed-followups-authored", ".managed-followups-review > section > ol > li:first-child > .managed-followups-authored", 2);
+    }
+
+    private void reopenSavedSessionReview(String complete) throws Exception {
+        click("#fixture-followups-fresh-session");
+        awaitPage("fresh session starts without loading Follow-ups or resuming a temporary chosen set",
+            FOLLOWUPS + ".session===2 && " + FOLLOWUPS + ".load===1 && " + FOLLOWUP_DRAFT + ".entries===null" +
+            " && " + DRAFT + ".memberships?.length===3 && " + DRAFT + ".dirty===false && " + DRAFT + ".memberships[0].note===''");
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("fresh explicit Load restores all exact saved identities, questions, results, order and completion",
+            FOLLOWUPS + ".load===2 && " + FOLLOWUPS + ".save===1 && " + FOLLOWUPS + ".commits===1" +
+            " && " + FOLLOWUP_DRAFT + ".baseVersion===1 && " + FOLLOWUP_DRAFT + ".dirty===false" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(complete) +
+            " && document.querySelector('#managed-followups-review-position')===null && document.querySelector('#managed-followups-review-enter')!==null" +
+            " && " + DRAFT + ".memberships[1].note==='Invented second note' && " + DRAFT + ".memberships[2].note==='Independent unchosen listing note'");
+        assertSessionSourceCounts(2, 2);
+    }
+
+    private void assertSessionSourceCounts(int sessions, int resolves) throws Exception {
+        awaitPage("review request budget includes only explicit company resolution plus startup Markets catalogs",
+            DIAGNOSTICS + ".load===" + sessions + " && " + DIAGNOSTICS + ".status===" + sessions + " && " + DIAGNOSTICS + ".marketsResolve===" + sessions +
+            " && " + DIAGNOSTICS + ".resolve===" + resolves + " && " + DIAGNOSTICS + ".save===0 && " + DIAGNOSTICS + ".search===0" +
+            " && " + DIAGNOSTICS + ".eod===0 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + DIAGNOSTICS + ".marketsEod===0" +
+            " && " + DIAGNOSTICS + ".calendar===0 && " + DIAGNOSTICS + ".fed===0 && " + FOLLOWUPS + ".token===0 && " + FOLLOWUPS + ".signOut===0");
     }
 
     @Test

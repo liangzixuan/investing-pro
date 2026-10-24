@@ -853,3 +853,70 @@ describe("independent managed research follow-ups", () => {
     expect(f.onRetire).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Follow-ups review scope ownership", () => {
+  it("exposes loaded scope while raw authored result and completion replace only their copied draft", async () => {
+    const f = fixture(payload(entry()));
+    expect(f.model.getReviewContext()).toBeNull();
+    await f.model.coordinator.load();
+    const first = f.model.getReviewContext()!;
+    f.model.edit(f.current(), "result", "Invalid\nraw result");
+    const edited = f.model.getReviewContext()!;
+    expect(edited.scope).toBe(first.scope);
+    expect(edited.draft).not.toBe(first.draft);
+    expect(edited.draft.entries[0]?.result).toBe("Invalid\nraw result");
+    expect(f.model.canSavePayload()).toBe(false);
+    f.model.complete(f.current(), new Date("2026-10-24"));
+    expect(f.model.getReviewContext()?.scope).toBe(first.scope);
+    f.model.reopen(f.current());
+    expect(f.model.getReviewContext()?.scope).toBe(first.scope);
+  });
+  it.each(["check", "dueOn"] as const)(
+    "rotates scope for a current %s edit even if its raw value is unchanged",
+    async (field) => {
+      const f = fixture(payload(entry()));
+      await f.model.coordinator.load();
+      const original = f.model.getReviewContext()!;
+      f.model.edit(f.current(), field, f.current()[field]);
+      expect(f.model.getReviewContext()?.scope).not.toBe(original.scope);
+      const fresh = f.model.getReviewContext()!;
+      f.model.edit(original.draft.entries[0]!, field, "Stale caller");
+      expect(f.model.getReviewContext()?.scope).toBe(fresh.scope);
+    },
+  );
+  it("consumes authored copy before a subscriber submits an external identical draft", async () => {
+    const f = fixture(payload(entry()));
+    await f.model.coordinator.load();
+    const scope = f.model.getReviewContext()!.scope;
+    let authoredScope: object | undefined;
+    let external = true;
+    const stop = f.model.subscribe(() => {
+      if (!external) return;
+      external = false;
+      authoredScope = f.model.getReviewContext()!.scope;
+      f.model.coordinator.replaceDraft(
+        f.model.coordinator.getSnapshot().draft!,
+      );
+    });
+    f.model.edit(f.current(), "result", "Authored once");
+    stop();
+    expect(authoredScope).toBe(scope);
+    expect(f.model.getReviewContext()?.scope).not.toBe(scope);
+    expect(f.current().result).toBe("Authored once");
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  });
+  it("an identical fresh load changes scope and retirement cannot expose it again", async () => {
+    const f = fixture(payload(entry()));
+    await f.model.coordinator.load();
+    const scope = f.model.getReviewContext()!.scope;
+    const pending = f.model.coordinator.load();
+    expect(f.model.getReviewContext()).toBeNull();
+    await pending;
+    expect(f.model.getReviewContext()?.scope).not.toBe(scope);
+    f.model.retire();
+    expect(f.model.getReviewContext()).toBeNull();
+    f.model.syncCatalog(digest);
+    f.model.reassessDueDate(new Date("2026-10-24"));
+    expect(f.model.getReviewContext()).toBeNull();
+  });
+});

@@ -29,6 +29,14 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 22 Android delivery
 
+The current M2/M3 source candidate connects the daily Follow-ups workflow across
+a chosen set of due checks: full question and identity review, exact-company
+research and assessment, Back to the retained position, explicit Continue, complete
+draft review and independent Save. It uses existing coverage and storage. See the
+[review-session guide](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks).
+This is a candidate workflow; source, native and delivery acceptance remain
+separate from the broader milestone.
+
 [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files) are accepted in
 source at main `461246249c6d790a1c8bb28ab85de301b267058f`.
 [Valuation editor file recovery](MANAGED_VALUATION_WORKBENCH.md#draft-files-for-one-valuation-editor)

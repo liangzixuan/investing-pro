@@ -5,6 +5,16 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
+## Source candidate: chosen Follow-ups review
+
+The [daily review session](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks)
+connects one to five chosen due checks to exact-company research, same-draft
+assessment, retained Back navigation, explicit Continue, complete draft review
+and independent Save. The temporary order is local to the active session. It
+reuses current source actions, identities and persistence. Source integration,
+automated native acceptance and client delivery remain separate stages. The
+website, API and delivered Android 1.41 remain unchanged by this candidate.
+
 ## Current capability and delivery status
 
 The website retains source

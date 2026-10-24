@@ -1,4 +1,5 @@
 import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
+import { ManagedFollowupsReviewSession } from "./ManagedFollowupsReviewSession";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
@@ -157,6 +158,12 @@ export function ManagedResearchFollowups({
           {entries.length} / {MANAGED_RESEARCH_FOLLOWUPS_LIMITS.entries} checks
         </p>
       </header>
+      <ManagedFollowupsReviewSession
+        workspace={workspace}
+        active={active && !navigationPending}
+        routeActive={draftFileRouteActive}
+        onResearch={onResearch}
+      />
       {draftFileScope && (
         <ManagedFollowupsDraftFiles
           workspace={workspace}

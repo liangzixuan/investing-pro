@@ -123,6 +123,10 @@ import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import { ManagedResearchFollowups } from "./managed-research-followups";
 import {
+  ManagedFollowupsReviewSession,
+  type FollowupsReviewHandle,
+} from "./managed-followups-review-session";
+import {
   captureResearchFollowupContext,
   type ManagedResearchFollowupContext,
 } from "./managed-research-followup-context";
@@ -206,6 +210,7 @@ export interface FollowupReview {
 }
 
 export interface PreparedFollowupResearch {
+  readonly reviewHandle: FollowupsReviewHandle | null;
   readonly entry: ResearchFollowup;
   readonly draft: ResearchFollowupsPayload;
   readonly selection: ManagedResearchSelection;
@@ -296,6 +301,7 @@ export function listingMembership(
 export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
   readonly followups: ManagedResearchFollowups;
+  readonly followupsReview: ManagedFollowupsReviewSession;
   readonly portfolio: ManagedPortfolio;
   readonly sessionOwner: ManagedSessionOwner;
   readonly valuation = new ManagedValuationWorkbench();
@@ -318,6 +324,7 @@ export class ManagedWorkspace {
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
   private navigationBlocked = false;
+  private followupsNavigationDepth = 0;
   private viewRevision = 0;
   private navigationRevision = 0;
   private state = emptyDiscovery();
@@ -330,6 +337,7 @@ export class ManagedWorkspace {
   private followupOpenOperation: AbortController | null = null;
   private preparedFollowup: PreparedFollowupResearch | null = null;
   private followupResearch: {
+    reviewHandle: FollowupsReviewHandle | null;
     id: string;
     selection: ManagedResearchSelection;
   } | null = null;
@@ -393,6 +401,7 @@ export class ManagedWorkspace {
         ),
       ...(newKey ? { newKey } : {}),
     });
+    this.followupsReview = new ManagedFollowupsReviewSession(this.followups);
     this.portfolio = new ManagedPortfolio(api, resourceSession, {
       getCatalogSnapshot: () => this.state.snapshot,
       onRetire: () =>
@@ -579,6 +588,7 @@ export class ManagedWorkspace {
         !this.canSwitchResearch(selection)
       )
         this.closeResearch();
+      this.syncFollowupsReview();
     });
   }
   getSnapshot = (): ManagedDiscoveryState => this.state;
@@ -589,6 +599,7 @@ export class ManagedWorkspace {
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
     this.followups.syncCatalog(this.state.snapshot?.snapshotSha256 ?? null);
+    this.syncFollowupsReview();
     this.portfolio.syncCatalog();
     this.valuationAssumptions.syncCatalog();
     this.syncAnnouncements();
@@ -599,14 +610,55 @@ export class ManagedWorkspace {
     for (const listener of this.listeners) listener();
   }
   setNavigationBlocked(blocked: boolean) {
-    this.navigationRevision++;
-    this.companySnapshotLoad.cancel();
-    this.cancelFollowupOpening();
-    this.navigationBlocked = blocked;
-    this.syncAnnouncements();
-    this.syncAnnualComparison();
-    this.syncFinancialScreen();
-    this.syncWatchlistFilings();
+    this.followupsNavigationDepth++;
+    try {
+      this.followupsReview.setAvailable(false);
+      this.navigationRevision++;
+      this.companySnapshotLoad.cancel();
+      this.cancelFollowupOpening();
+      this.navigationBlocked = blocked;
+      this.syncAnnouncements();
+      this.syncAnnualComparison();
+      this.syncFinancialScreen();
+      this.syncWatchlistFilings();
+    } finally {
+      this.followupsNavigationDepth--;
+      this.syncFollowupsReview();
+    }
+  }
+  private ownsFollowupsReview(handle: FollowupsReviewHandle | null) {
+    if (handle === null) return true;
+    const state = this.followupsReview.getSnapshot();
+    return (
+      state.entered &&
+      state.phase === "reviewing" &&
+      state.selected?.handle === handle
+    );
+  }
+  private syncFollowupsReview() {
+    const model = this.followupsReview;
+    if (this.retired || this.state.view !== "followups") {
+      model.leave();
+      return;
+    }
+    if (this.followupsNavigationDepth > 0) {
+      model.setAvailable(false);
+      return;
+    }
+    const visit = this.state.research;
+    const owner = this.followupResearch;
+    if (visit || this.state.companyRoute) {
+      const owned =
+        visit &&
+        owner?.reviewHandle &&
+        this.ownsFollowupsReview(owner.reviewHandle) &&
+        companyEvidenceSelectionMatches(owner.selection, visit.selection) &&
+        this.researchSourceRouteReady(visit.selection);
+      if (!owned) model.leave();
+      else model.setAvailable(false);
+      return;
+    }
+    model.setAvailable(!this.navigationBlocked && !this.state.followupOpening);
   }
   private syncWatchlistFilings() {
     if (this.retired || this.state.view !== "watchlist") {
@@ -718,6 +770,7 @@ export class ManagedWorkspace {
     this.retired = true;
     this.cancelFollowupOpening();
     this.followupResearch = null;
+    this.followupsReview.retire();
     this.followups.retire();
     this.portfolio.retire();
     this.valuationAssumptions.retire();
@@ -1561,10 +1614,11 @@ export class ManagedWorkspace {
     this.switchResearch("filings");
   }
   private cancelFollowupOpening() {
-    this.followupOpenOperation?.abort();
+    const operation = this.followupOpenOperation;
     this.followupOpenOperation = null;
     this.preparedFollowup = null;
     if (this.state.followupOpening) this.update({ followupOpening: false });
+    operation?.abort();
   }
   reviewFollowup(
     entry: ResearchFollowup,
@@ -1619,6 +1673,7 @@ export class ManagedWorkspace {
     if (
       this.retired ||
       this.navigationBlocked ||
+      this.followupsNavigationDepth > 0 ||
       this.state.view !== "followups" ||
       this.state.research ||
       this.state.companyRoute ||
@@ -1628,14 +1683,33 @@ export class ManagedWorkspace {
       entry.catalogSnapshotSha256 !== snapshot.snapshotSha256
     )
       return null;
-    this.cancelFollowupOpening();
-    const operation = new AbortController();
+    const review = this.followupsReview.getSnapshot();
+    const reviewHandle =
+      review.entered &&
+      review.phase === "reviewing" &&
+      review.selected?.entry === entry
+        ? review.selected.handle
+        : null;
     const revision = this.navigationRevision;
+    if (review.entered && reviewHandle === null) this.followupsReview.leave();
+    if (reviewHandle === null && this.followupsReview.getSnapshot().entered)
+      return null;
+    this.cancelFollowupOpening();
+    if (
+      this.followupOpenOperation ||
+      this.navigationRevision !== revision ||
+      this.state.snapshot !== snapshot ||
+      this.followups.coordinator.getSnapshot().draft !== draft ||
+      !this.ownsFollowupsReview(reviewHandle)
+    )
+      return null;
+    const operation = new AbortController();
     this.followupOpenOperation = operation;
     const current = () =>
       !this.retired &&
       !operation.signal.aborted &&
       this.followupOpenOperation === operation &&
+      this.ownsFollowupsReview(reviewHandle) &&
       this.navigationRevision === revision &&
       !this.navigationBlocked &&
       this.state.view === "followups" &&
@@ -1669,6 +1743,7 @@ export class ManagedWorkspace {
         return null;
       }
       const capture: PreparedFollowupResearch = Object.freeze({
+        reviewHandle,
         entry,
         draft,
         navigationRevision: revision,
@@ -1713,6 +1788,7 @@ export class ManagedWorkspace {
       !this.retired &&
       !this.navigationBlocked &&
       this.preparedFollowup === capture &&
+      this.ownsFollowupsReview(capture.reviewHandle) &&
       this.navigationRevision === capture.navigationRevision &&
       this.state.view === "followups" &&
       this.state.snapshot?.snapshotSha256 ===
@@ -1721,6 +1797,7 @@ export class ManagedWorkspace {
       capture.draft.entries.includes(capture.entry);
     if (!current() || this.state.research || this.state.companyRoute) return;
     this.followupResearch = {
+      reviewHandle: capture.reviewHandle,
       id: capture.entry.id,
       selection: capture.selection,
     };

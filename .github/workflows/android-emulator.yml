@@ -364,6 +364,12 @@ jobs:
           ))
           if len(required) != 82:
               raise SystemExit("Expected exactly 82 declared native tests.")
+          required.add((
+              "local.investment.personal.ManagedWorkspaceInstrumentedTest",
+              "followupsReviewSessionKeepsChosenOrderThroughCompanyBackAndSeparateSave",
+          ))
+          if len(required) != 83:
+              raise SystemExit("The daily Follow-ups review must extend all 82 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

@@ -33,6 +33,7 @@ const allowedScenarios = [
   "company-snapshot-loading",
   "report-revisit",
   "research-followups",
+  "followups-review-session",
   "portfolio-ledger",
   "portfolio-close-review",
   "portfolio-review-report",
