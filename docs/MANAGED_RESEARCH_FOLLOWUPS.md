@@ -5,8 +5,12 @@ Source checks cover the contract, repository, transport, authoring model, screen
 and workspace lifetimes. Its original main checks, hosted native 72-case gate
 and complete guarded APK verification passed. Earlier invented-data Chrome
 checks cover the guidance, save recovery and rendered layout described below;
-no new browser or phone acceptance is claimed. Live-storage qualification and
-production website publication for Follow-ups remain incomplete.
+no new browser or phone acceptance is claimed. The retained October 16 private
+v3 storage qualification passed its fixed invented-data scope. The accepted
+website/API already contain the baseline Follow-ups workflow; later Android
+Next-check and draft-file features have separate client versions. See the
+[qualification and replay boundary](MANAGED_RESEARCH_FOLLOWUPS_STORAGE_PROOF.md#existing-qualification-and-replay-boundary).
+Owner-account Save, backup/restore and full product acceptance remain separate.
 
 ## Keep the next research check
 
