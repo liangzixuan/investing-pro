@@ -1,8 +1,10 @@
+import { execFileSync } from "node:child_process";
+import { getEventListeners } from "node:events";
 import { createServer, type RequestListener, type Server } from "node:http";
 import { connect } from "node:net";
 
 import { AppwriteException, TablesDB } from "node-appwrite";
-import { Agent, MockAgent } from "undici";
+import { Agent, MockAgent, type Dispatcher } from "undici";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createManagedEodAdmission } from "./managed-eod-admission";
@@ -122,6 +124,46 @@ function closeServer(server: Server) {
   return new Promise<void>((resolve, reject) =>
     server.close((error) => (error ? reject(error) : resolve())),
   );
+}
+
+function cancellationDispatchFixture() {
+  const controller = new AbortController();
+  const captured: { handler?: Dispatcher.DispatchHandlers } = {};
+  const agent = new OwnedMockAgent();
+  agent.disableNetConnect();
+  const dispatcher = agent.compose(() => (_options, handler) => {
+    captured.handler = handler;
+    return true;
+  });
+  const transport = createAppwriteTransport({
+    endpoint: ENDPOINT,
+    dispatcher,
+    signal: controller.signal,
+  });
+  resources.push(() => transport.close());
+  const prepared = transport.client.prepareRequest(
+    "GET",
+    new URL(new URL(ENDPOINT).origin + PATH),
+    HEADERS,
+  );
+  const downstream = {
+    onConnect: vi.fn(),
+    onError: vi.fn(),
+    onComplete: vi.fn(),
+  };
+  if (!prepared.options.dispatcher || !prepared.options.signal)
+    throw new Error("Prepared cancellation controls missing");
+  prepared.options.dispatcher.dispatch(
+    { origin: new URL(ENDPOINT).origin, path: PATH, method: "GET" },
+    downstream,
+  );
+  if (!captured.handler) throw new Error("Dispatch handler missing");
+  return {
+    controller,
+    handler: captured.handler,
+    signal: prepared.options.signal,
+    downstream,
+  };
 }
 
 describe("Appwrite bounded SDK transport", () => {
@@ -812,6 +854,145 @@ describe("Appwrite bounded SDK transport", () => {
     await vi.waitFor(() => expect(closed).toBe(true));
     expect(calls).toBe(1);
     record("assertions completed");
+  });
+
+  it("keeps native body cancellation active after fetch controller collection", () => {
+    // A separate process exposes GC without changing Vitest's worker runtime.
+    const script = `
+      import { createServer } from "node:http";
+      import { connect } from "node:net";
+      import { Agent } from ${JSON.stringify(import.meta.resolve("undici"))};
+      import { AppwriteException } from ${JSON.stringify(import.meta.resolve("node-appwrite"))};
+      import { createAppwriteTransport } from ${JSON.stringify(new URL("./appwrite-transport.ts", import.meta.url).href)};
+      let calls = 0;
+      let closed = false;
+      let collections = 0;
+      let expired = false;
+      let resolveClosed;
+      let resolveExpired;
+      const responseClosed = new Promise(resolve => { resolveClosed = resolve; });
+      const deadlineExpired = new Promise(resolve => { resolveExpired = resolve; });
+      const server = createServer((_request, response) => {
+        calls++;
+        response.writeHead(200, { "content-type": "application/json" });
+        response.write('{"pending":');
+        response.on("close", () => { closed = true; resolveClosed(); });
+      });
+      await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+      const dispatcher = new Agent({
+        pipelining: 0,
+        connect: (_options, callback) => {
+          const socket = connect({ host: "127.0.0.1", port: server.address().port });
+          socket.once("connect", () => callback(null, socket));
+          socket.once("error", error => callback(error, null));
+        },
+      });
+      const transport = createAppwriteTransport({
+        endpoint: ${JSON.stringify(ENDPOINT)},
+        dispatcher,
+        limits: { requestTimeoutMs: 150 },
+      });
+      const collector = setInterval(() => { globalThis.gc(); collections++; }, 20);
+      const watchdog = setTimeout(() => {
+        expired = true;
+        resolveExpired();
+        void transport.close();
+      }, 1000);
+      let rejected = false;
+      let observed;
+      try {
+        try {
+          await transport.client.call("GET", new URL(${JSON.stringify(ENDPOINT + "/rows")}), {
+            "content-type": "application/json",
+          });
+        } catch (error) {
+          rejected = error instanceof AppwriteException;
+        }
+        await Promise.race([responseClosed, deadlineExpired]);
+        observed = { rejected, closed, calls, expired, collected: collections > 0,
+          requests: transport.snapshot().requests };
+      } finally {
+        clearInterval(collector);
+        clearTimeout(watchdog);
+        await transport.close();
+        server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+      }
+      console.log(JSON.stringify(observed));
+    `;
+    const result = execFileSync(
+      process.execPath,
+      ["--expose-gc", "--input-type=module", "--eval", script],
+      { encoding: "utf8", timeout: 4000 },
+    );
+    expect(JSON.parse(result)).toEqual({
+      rejected: true,
+      closed: true,
+      calls: 1,
+      expired: false,
+      collected: true,
+      requests: 1,
+    });
+  });
+
+  it("aborts a request canceled before its native connection callback", () => {
+    const f = cancellationDispatchFixture();
+    const abort = vi.fn();
+    f.controller.abort();
+    f.handler.onConnect?.(abort);
+    expect(abort).toHaveBeenCalledExactlyOnceWith(f.signal.reason);
+    expect(f.downstream.onConnect).not.toHaveBeenCalled();
+    expect(getEventListeners(f.signal, "abort")).toHaveLength(0);
+  });
+
+  it("normalizes a non-Error caller cancellation before native abort", () => {
+    const f = cancellationDispatchFixture();
+    const abort = vi.fn();
+    f.handler.onConnect?.(abort);
+    f.controller.abort("Invented private cancellation reason");
+    expect(abort).toHaveBeenCalledExactlyOnceWith(
+      expect.any(AppwriteException),
+    );
+    const reason: unknown = abort.mock.calls[0]?.[0];
+    expect(reason).toMatchObject({ type: "deadline" });
+    expect(String(reason)).not.toContain(
+      "Invented private cancellation reason",
+    );
+    expect(getEventListeners(f.signal, "abort")).toHaveLength(0);
+  });
+
+  it.each(["complete", "error"] as const)(
+    "removes native cancellation after response %s",
+    (terminal) => {
+      const f = cancellationDispatchFixture();
+      const abort = vi.fn();
+      f.handler.onConnect?.(abort);
+      expect(f.downstream.onConnect).toHaveBeenCalledExactlyOnceWith(abort);
+      expect(getEventListeners(f.signal, "abort")).toHaveLength(1);
+      if (terminal === "complete") {
+        f.handler.onComplete?.([]);
+        expect(f.downstream.onComplete).toHaveBeenCalledExactlyOnceWith([]);
+      } else {
+        const error = new Error("Invented native failure");
+        f.handler.onError?.(error);
+        expect(f.downstream.onError).toHaveBeenCalledExactlyOnceWith(error);
+      }
+      expect(getEventListeners(f.signal, "abort")).toHaveLength(0);
+      f.controller.abort();
+      expect(abort).not.toHaveBeenCalled();
+    },
+  );
+
+  it("aborts active native I/O once and releases its cancellation listener", () => {
+    const f = cancellationDispatchFixture();
+    const abort = vi.fn();
+    f.handler.onConnect?.(abort);
+    f.controller.abort();
+    expect(abort).toHaveBeenCalledExactlyOnceWith(f.signal.reason);
+    f.handler.onError?.(new Error("Invented cancellation"));
+    f.controller.abort();
+    expect(abort).toHaveBeenCalledTimes(1);
+    expect(getEventListeners(f.signal, "abort")).toHaveLength(0);
   });
 
   it("cancels active native I/O at the shared deadline and refuses later dispatch", async () => {
