@@ -17,6 +17,7 @@ $out = Assert-SigningPath $EvidenceDirectory
 New-SigningDirectory $out $sid
 Assert-SigningAcl $out $sid
 $stage = 'runtime_prerequisites'
+$runtimeProbeMode = $null
 try {
     $probe = Join-Path $out 'runtime-prerequisite-probe.ps1'
     $missingEvidence = Join-Path $out 'runtime-refusal-effects'
@@ -47,7 +48,8 @@ if ([IO.Directory]::Exists($EvidencePath) -or [IO.File]::Exists($EvidencePath)) 
     [IO.File]::WriteAllText($probe, $probeSource, [Text.UTF8Encoding]::new($false))
     $powershell = Join-Path $PSHOME 'powershell.exe'
     foreach ($mode in @('healthy', 'missing')) {
-        $value = Invoke-SigningTool $powershell @('-NoProfile', '-NonInteractive', '-File', $probe, '-ModulePath', $module, '-EvidencePath', $missingEvidence, '-Mode', $mode) @{} $out $out ('runtime-' + $mode) 20
+        $runtimeProbeMode = $mode
+        $value = Invoke-SigningTool $powershell @('-NoProfile', '-NonInteractive', '-File', $probe, '-ModulePath', $module, '-EvidencePath', $missingEvidence, '-Mode', $mode) @{} $out $out ('runtime-' + $mode) 60
         $expected = if ($mode -ceq 'healthy') { 'signing_runtime_available' } else { 'signing_runtime_unavailable' }
         if ($value -cne $expected -or [IO.Directory]::Exists($missingEvidence) -or [IO.File]::Exists($missingEvidence)) { throw 'runtime_prerequisite_probe_mismatch' }
     }
@@ -81,6 +83,19 @@ if ([IO.Directory]::Exists($EvidencePath) -or [IO.File]::Exists($EvidencePath)) 
     })
     Write-Output ('Public regression passed. Result SHA256: '+(Get-PublicHash (Join-Path $out 'result.json')))
 } catch {
+    if ($stage -ceq 'runtime_prerequisites' -and $runtimeProbeMode -cin @('healthy', 'missing')) {
+        $diagnostic = [ordered]@{ mode=$runtimeProbeMode; status='unavailable'; exitCode=$null; streamsComplete=$null }
+        try {
+            $receipt = [IO.FileInfo]::new((Join-Path $out ('runtime-' + $runtimeProbeMode + '.json')))
+            if ($receipt.Exists -and $receipt.Length -le 8192) {
+                $process = [IO.File]::ReadAllText($receipt.FullName) | ConvertFrom-Json
+                if ($process.status -cin @('start_failed', 'running', 'timeout', 'output_limit', 'completed', 'tool_failed')) { $diagnostic.status = $process.status }
+                if ($process.exitCode -is [int]) { $diagnostic.exitCode = $process.exitCode }
+                if ($process.streamsComplete -is [bool]) { $diagnostic.streamsComplete = $process.streamsComplete }
+            }
+        } catch { }
+        Write-Output ('Runtime prerequisite probe: ' + ($diagnostic | ConvertTo-Json -Compress))
+    }
     Write-SigningJson (Join-Path $out 'result.json') @{status='failed';stage=$stage;publicOnly=$true;error=$_.Exception.Message}
     Write-Output ('Public regression failed at '+$stage+'. Result SHA256: '+(Get-PublicHash (Join-Path $out 'result.json')))
     throw
