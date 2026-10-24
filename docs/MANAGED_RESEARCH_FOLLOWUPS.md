@@ -5,8 +5,12 @@ Source checks cover the contract, repository, transport, authoring model, screen
 and workspace lifetimes. Its original main checks, hosted native 72-case gate
 and complete guarded APK verification passed. Earlier invented-data Chrome
 checks cover the guidance, save recovery and rendered layout described below;
-no new browser or phone acceptance is claimed. Live-storage qualification and
-production website publication for Follow-ups remain incomplete.
+no new browser or phone acceptance is claimed. The retained October 16 private
+v3 storage qualification passed its fixed invented-data scope. The accepted
+website/API already contain the baseline Follow-ups workflow; later Android
+Next-check and draft-file features have separate client versions. See the
+[qualification and replay boundary](MANAGED_RESEARCH_FOLLOWUPS_STORAGE_PROOF.md#existing-qualification-and-replay-boundary).
+Owner-account Save, backup/restore and full product acceptance remain separate.
 
 ## Keep the next research check
 
@@ -213,6 +217,9 @@ CAS and receipt protocol. Owner principals come only from verified server auth.
 Rows have no client permissions. The existing watchlist payload, notes, exports
 and accepted storage values remain unchanged.
 
-Live provisioning must separately confirm actual schema limits, row security and
-execution-key scope. Source tests and invented in-memory fixtures do not establish
+The [private storage qualification](MANAGED_RESEARCH_FOLLOWUPS_STORAGE_PROOF.md)
+records its fixed eleven phases, row scope, operation limits and local artifact
+admission. The managed source has no Follow-ups enable flag; provisioning its
+fixed tables can affect the existing route. Live provisioning must separately
+confirm actual schema limits, row security and execution-key scope. Source tests and invented in-memory fixtures do not establish
 live storage, production publication, real provider or physical-device use.

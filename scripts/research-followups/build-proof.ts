@@ -45,6 +45,7 @@ const inputs = [
   "packages/personal-security-master/package.json",
   "apps/api/tsconfig.json",
   "tsconfig.base.json",
+  "THIRD_PARTY_NOTICES.md",
 ];
 async function discover(directory: string): Promise<void> {
   for (const item of await readdir(resolve(root, directory), {
@@ -105,6 +106,25 @@ const tools = await Promise.all(
       };
     }),
 );
+// Bind the installed builder implementations and the exact native esbuild tool.
+const toolCode: FilePin[] = [];
+for (const path of [
+  resolve(dirname(tsupManifest), "dist/index.js"),
+  resolve(
+    dirname(
+      await realpath(resolve(root, "node_modules/typescript/package.json")),
+    ),
+    "lib/typescript.js",
+  ),
+  resolve(dirname(esbuildManifest), "lib/main.js"),
+  resolve(
+    dirname(esbuildManifest),
+    `../@esbuild/${process.platform}-${process.arch}/${process.platform === "win32" ? "esbuild.exe" : "bin/esbuild"}`,
+  ),
+]) {
+  const actual = await realpath(path);
+  toolCode.push(await pin(relative(root, actual).replaceAll(sep, "/")));
+}
 const data = followupsProofData();
 for (const commandPin of FOLLOWUPS_PROOF_COMMAND_PINS) {
   const command = data.commands[commandPin.name],
@@ -126,17 +146,133 @@ for (const commandPin of FOLLOWUPS_PROOF_COMMAND_PINS) {
   )
     throw new Error("Proof command pin mismatch");
 }
+// Only these installed runtime packages may enter the actual esbuild graph.
+const appwriteRoot = dirname(
+  await realpath(
+    resolve(root, "apps/api/node_modules/node-appwrite/package.json"),
+  ),
+);
+const bigintRoot = dirname(
+  await realpath(resolve(appwriteRoot, "../json-bigint/package.json")),
+);
+const packagePolicy = [
+  {
+    root: appwriteRoot,
+    name: "node-appwrite",
+    version: "29.0.0",
+    files: ["LICENSE"],
+  },
+  {
+    root: dirname(
+      await realpath(
+        resolve(root, "apps/api/node_modules/undici/package.json"),
+      ),
+    ),
+    name: "undici",
+    version: "6.29.0",
+    files: ["LICENSE", "lib/web/fetch/LICENSE"],
+  },
+  {
+    root: bigintRoot,
+    name: "json-bigint",
+    version: "1.0.0",
+    files: ["LICENSE"],
+  },
+  {
+    root: dirname(
+      await realpath(resolve(bigintRoot, "../bignumber.js/package.json")),
+    ),
+    name: "bignumber.js",
+    version: "9.3.1",
+    files: ["LICENCE.md"],
+  },
+];
+const noticeParts = [
+  Buffer.from("Follow-ups private storage proof runtime notices\n\n", "utf8"),
+];
+type FilePin = Awaited<ReturnType<typeof pin>>;
+const dependencyLicenses: {
+  root: string;
+  name: string;
+  version: string;
+  manifest: FilePin;
+  files: FilePin[];
+}[] = [];
+for (const policy of packagePolicy) {
+  const packagePath = relative(root, policy.root).replaceAll(sep, "/");
+  const manifest = await pin(`${packagePath}/package.json`);
+  const value = JSON.parse(
+    await readFile(resolve(root, manifest.path), "utf8"),
+  ) as { name?: unknown; version?: unknown };
+  if (value.name !== policy.name || value.version !== policy.version)
+    throw new Error("Unreviewed proof runtime package version");
+  const files = [];
+  for (const name of policy.files) {
+    const file = await pin(`${packagePath}/${name}`);
+    if (file.bytes < 100 || file.bytes > 64 * 1024)
+      throw new Error("Invalid proof license bytes");
+    files.push(file);
+    noticeParts.push(
+      Buffer.from(
+        `\n===== ${policy.name}@${policy.version}: ${name} =====\n`,
+        "utf8",
+      ),
+      await readFile(resolve(root, file.path)),
+    );
+  }
+  dependencyLicenses.push({
+    root: packagePath,
+    name: policy.name,
+    version: policy.version,
+    manifest,
+    files,
+  });
+}
+// These installed source comments carry additional vendored notices. Retain their
+// complete comment lines. Legal block comments also remain inline in main.js.
+const undiciRoot = packagePolicy[1]!.root;
+for (const name of [
+  "lib/core/util.js",
+  "lib/web/fetch/body.js",
+  "lib/web/websocket/frame.js",
+  "lib/web/websocket/receiver.js",
+]) {
+  const path = relative(root, resolve(undiciRoot, name)).replaceAll(sep, "/");
+  const file = await pin(path);
+  dependencyLicenses[1]!.files.push(file);
+  const text = await readFile(resolve(root, path), "utf8");
+  const lines = text
+    .split(/\r?\n/u)
+    .filter(
+      (line) =>
+        /(?:Copyright|MIT License|MIT license)/u.test(line) &&
+        line.length < 1024,
+    );
+  if (lines.length === 0) throw new Error("Missing reviewed embedded notice");
+  noticeParts.push(
+    Buffer.from(
+      `\n===== undici embedded notices: ${name} =====\n${lines.join("\n")}\n`,
+      "utf8",
+    ),
+  );
+}
+const notices = Buffer.concat(noticeParts);
+if (notices.length > 1024 * 1024)
+  throw new Error("Proof notices bound exceeded");
 const sourceMarker = {
   version: 1,
   planSha256: FOLLOWUPS_PROOF_PLAN_SHA256,
   sources,
   tools,
+  toolCode,
   node: {
     version: process.version,
     sha256: hash(await readFile(process.execPath)),
   },
   catalog: FOLLOWUPS_PROOF_CATALOG_HASH,
   revisedCatalog: FOLLOWUPS_PROOF_REVISED_HASH,
+  dependencyLicenses,
+  notices: { bytes: notices.length, sha256: hash(notices) },
   commands: FOLLOWUPS_PROOF_COMMAND_PINS,
   rows: FOLLOWUPS_PROOF_ROWS,
   // Fixed artifact policy from the installed node-appwrite 29 / Undici 6
@@ -192,6 +328,7 @@ async function bundle(outDir: string, buildProof: string) {
     target: "node24",
     splitting: false,
     sourcemap: false,
+    minify: false,
     clean: false,
     noExternal: [/.*/u],
     // tsup always asks esbuild for its graph; do not emit a second runtime file.
@@ -214,6 +351,7 @@ async function bundle(outDir: string, buildProof: string) {
     ],
     esbuildOptions(options) {
       options.absWorkingDir = root;
+      options.legalComments = "inline";
       options.logOverride = {
         "unsupported-dynamic-import": "error",
         "unsupported-require-call": "error",
@@ -235,10 +373,12 @@ async function bundle(outDir: string, buildProof: string) {
     !outputEntries[0].isFile()
   )
     throw new Error("Unexpected proof output directory member");
-  const modules = [];
+  const modules: (FilePin & { imports: Graph["inputs"][string]["imports"] })[] =
+    [];
   for (const path of Object.keys(meta.inputs).sort()) {
     const normalized = relative(root, resolve(root, path)).replaceAll(sep, "/");
     if (
+      normalized.startsWith("scripts/") ||
       /(?:\.test\.|\/test-|(?:^|\/)(?:clerk-trial-proof-entry|managed-workspace-handler|managed-workspace-function)\.)/u.test(
         normalized,
       )
@@ -246,6 +386,11 @@ async function bundle(outDir: string, buildProof: string) {
       throw new Error("Unrelated execution module in proof bundle");
     if (!normalized.startsWith("node_modules/") && !sourcePaths.has(normalized))
       throw new Error("Unbound application module in proof bundle");
+    if (
+      normalized.startsWith("node_modules/") &&
+      !dependencyLicenses.some((item) => normalized.startsWith(item.root + "/"))
+    )
+      throw new Error("Unreviewed third-party proof module");
     const actual = await realpath(resolve(root, path));
     if (!actual.startsWith(root + sep))
       throw new Error("Module escaped the proof checkout");
@@ -259,6 +404,8 @@ async function bundle(outDir: string, buildProof: string) {
       imports: meta.inputs[path].imports,
     });
   }
+  if (api.some((path) => !modules.some((input) => input.path === path)))
+    throw new Error("Required Follow-ups proof module missing");
   if (
     modules.reduce((sum, item) => sum + item.bytes, 0) > 64 * 1024 * 1024 ||
     Object.values(meta.outputs).some((output) =>
@@ -279,7 +426,11 @@ async function verifySources() {
     if (JSON.stringify(await pin(expected.path)) !== JSON.stringify(expected))
       throw new Error("Proof source changed during build");
   }
-  for (const expected of tools) {
+  for (const expected of [
+    ...tools,
+    ...toolCode,
+    ...dependencyLicenses.flatMap((item) => [item.manifest, ...item.files]),
+  ]) {
     if ((await pin(expected.path)).sha256 !== expected.sha256)
       throw new Error("Proof tool changed during build");
   }
@@ -288,6 +439,8 @@ async function verifySources() {
 }
 const parent = resolve(root, "dist/managed-followups-proof");
 await mkdir(parent, { recursive: true });
+if ((await realpath(parent)) !== parent)
+  throw new Error("Proof output parent is redirected");
 const discovery = await mkdtemp(resolve(parent, ".discovery-"));
 const modules = await bundle(discovery, "0".repeat(64));
 await verifySources();
@@ -305,6 +458,11 @@ if (JSON.stringify(finalModules) !== JSON.stringify(modules))
   throw new Error("Final proof graph differs from discovery");
 await verifySources();
 const artifact = await readFile(resolve(outDir, "main.js"));
+if (artifact.length > 8 * 1024 * 1024)
+  throw new Error("Proof artifact bound exceeded");
+await writeFile(resolve(outDir, "THIRD_PARTY_NOTICES.txt"), notices, {
+  flag: "wx",
+});
 await writeFile(
   resolve(outDir, "package.json"),
   JSON.stringify({ private: true, type: "module" }) + "\n",
@@ -322,6 +480,8 @@ await writeFile(
         sha256: hash(artifact),
       },
       scope: "private synthetic storage qualification; no live acceptance",
+      noticeScope:
+        "Installed full license files for the four allowed runtime packages and retained embedded notices; frontend fonts and icons are not in this graph.",
     },
     null,
     2,

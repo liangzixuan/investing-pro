@@ -101,11 +101,30 @@ original required checks, the complete synthetic native 81-case gate and guarded
 APK verification passed. Capture and file delivery remain separate from source
 loading and Portfolio Review/Save. No physical-device acceptance is claimed.
 
-The active M2 outcome is [coordinated company snapshot loading](MANAGED_COMPANY_SNAPSHOT.md#load-missing-company-sources).
-One explicit action loads eligible missing sources sequentially, preserves loaded
-responses and stops on refusal, failure, cooldown or cancellation. Source requests
-retain their existing admission and separate dates. Implementation and affected
-checks are in progress; integration, native acceptance and delivery remain pending.
+Android 1.41.0, code 42, provides [coordinated company snapshot loading](MANAGED_COMPANY_SNAPSHOT.md#load-missing-company-sources)
+from accepted source `7a1e2a60b0a4d42b8bc7506a5dad21aa0aa3c267` with the existing
+production signer. One explicit action loads eligible missing sources sequentially,
+preserves loaded responses and stops on refusal, failure, cooldown or cancellation.
+Original PR and main checks, the complete synthetic native 82-case gate and guarded
+APK verification passed. Source admission and separate dates remain unchanged.
+No physical-device acceptance is claimed.
+
+The retained October 16 [Follow-ups storage qualification](MANAGED_RESEARCH_FOLLOWUPS_STORAGE_PROOF.md#existing-qualification-and-replay-boundary)
+already passed all eleven fixed private v3 phases: 131 counted store calls,
+130 recorded HTTP dispatches and the 250,191-byte capacity case within the
+156-call ceiling. Its exact artifact, reports and consumed authority remain
+historical evidence. Earlier v2 overlap nonacceptance is also preserved.
+
+The local proof-builder increment binds installed runtime packages, tools,
+licenses, notices and the full module graph. Its actual artifact passed local
+inspection without entry or storage execution. The current builder still selects
+the consumed v2 cohort; its new archive is local evidence only and must not be
+uploaded or executed. Read-only October 24 metadata found the existing Follow-ups
+database and tables and the accepted ce7 public deployment pointer. Source and
+settings comparisons define which prior evidence can be reused. No new storage
+run, provisioning or API/site publication is needed merely to repeat the already
+accepted private proof. Owner-account Save and physical use remain separate
+observations; Follow-ups has no enable flag.
 
 Request installation and phone acceptance only for major milestones, such as
 version 2.0. Routine updates retain automated functional, integrity, recovery,

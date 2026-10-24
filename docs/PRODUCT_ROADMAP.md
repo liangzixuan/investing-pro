@@ -111,12 +111,18 @@ save a private HTML copy. Original source/native gates and complete APK checks
 passed. Research/Back and independent Save remain available. This advances M4/M5
 without a new metric, source, storage resource or fee.
 
-The next M2 outcome is [coordinated company snapshot loading](MANAGED_COMPANY_SNAPSHOT.md#load-missing-company-sources):
-one explicit action loads eligible missing Price, Annual and Filings responses
-sequentially, keeps existing evidence and stops on refusal, failure, cooldown or
-Cancel. Shared source budgets remain unchanged, so a run can stop partially and
-needs another explicit action. This connects existing company evidence without
-repeated panel setup. Implementation and affected checks are in progress.
+Android 1.41 provides [coordinated company snapshot loading](MANAGED_COMPANY_SNAPSHOT.md#load-missing-company-sources)
+from accepted source `7a1e2a60b0a4d42b8bc7506a5dad21aa0aa3c267`. One explicit
+action loads eligible missing Price, Annual and Filings responses sequentially,
+keeps existing evidence and stops on refusal, failure, cooldown or Cancel.
+Shared source budgets remain unchanged. Original source checks, the complete
+native 82-case gate and guarded APK verification passed.
+
+The [Follow-ups private storage proof](MANAGED_RESEARCH_FOLLOWUPS_STORAGE_PROOF.md#existing-qualification-and-replay-boundary)
+already passed its fixed eleven-phase v3 scope on October 16. Preserve that
+accepted evidence and the earlier consumed v2 failure. Builder hardening and
+current metadata comparisons do not authorize another proof run or establish
+owner-account Save, backup/restore or full M2 acceptance.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The
