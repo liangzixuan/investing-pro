@@ -14,8 +14,6 @@ import android.webkit.WebView;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONObject;
 import org.junit.After;
@@ -90,7 +88,7 @@ public class PortfolioReviewReportInstrumentedTest {
         reportButton(ReportAction.SAVE);
         new WatchlistSystemPicker().saveToInventedRoot();
         page.await(new ReportRevisitPage.Check("real native writer confirms one complete HTML write", new ReportRevisitPage.Script( FILE + ".choices===2 && " + FILE + ".writes===1 && document.querySelector(\"" + REPORT + " [role=status]\")?.textContent==='Portfolio report written to the chosen document.'")));
-        inspectWrittenReport(capture);
+        new PortfolioReviewReportWrittenEvidence(new PortfolioReviewReportWrittenEvidence.Request(context(), page, capture.archive)).inspect();
         assertUnchanged(drafts);
         invalidateAndReturnFromResearch(new ReportReturn(currentDate, previousDate, drafts));
         page.click(ReportRevisitPage.Element.css("#managed-portfolio-review"));
@@ -146,45 +144,6 @@ public class PortfolioReviewReportInstrumentedTest {
         assertNotEquals(source.preparedAt, source.response.getString("requestStartedAt"));
         assertTrue(source.response.getString("completedAt").matches("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z"));
         assertEquals(2, source.response.getJSONArray("rows").length());
-    }
-
-    private void inspectWrittenReport(CaptureEvidence capture) throws Exception {
-        WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context());
-        assertEquals(1, outputs.length);
-        WatchlistTestDocuments.Output output = outputs[0];
-        assertChosenReportMetadata(output);
-        byte[] bytes;
-        try (InputStream input = context().getContentResolver().openInputStream(output.uri)) {
-            assertNotNull("Actual chosen URI grant remains readable", input);
-            bytes = input.readNBytes(InvestmentPortfolioReviewReportPlugin.MAX_REPORT_BYTES + 1);
-        }
-        assertChosenReportBytes(output, bytes);
-        String html = new String(bytes, StandardCharsets.UTF_8);
-        assertTrue(PortfolioReviewReportDocumentPolicy.INSTANCE.acceptsText(output.name, html));
-        assertWrittenEscaping(html);
-        assertWrittenContents(new WrittenReport(html, capture));
-    }
-    private void assertChosenReportMetadata(WatchlistTestDocuments.Output output) throws Exception {
-        assertTrue(output.name.matches("Investment-portfolio-review-[0-9]{8}T[0-9]{9}Z\\.html"));
-        assertEquals(page.read(new ReportRevisitPage.Script(FILE + ".filename")), output.name);
-        assertEquals(SavedWatchlistTestDocumentsProvider.AUTHORITY, output.uri.getAuthority());
-    }
-    private void assertChosenReportBytes(WatchlistTestDocuments.Output output, byte[] bytes) throws Exception {
-        assertTrue(bytes.length > 0 && bytes.length <= InvestmentPortfolioReviewReportPlugin.MAX_REPORT_BYTES);
-        assertEquals(output.size, bytes.length);
-        assertEquals(Integer.parseInt(page.read(new ReportRevisitPage.Script("String(" + FILE + ".byteLength)"))), bytes.length);
-    }
-    private record WrittenReport(String html, CaptureEvidence capture) {}
-    private void assertWrittenEscaping(CharSequence html) {
-        assertTrue(html.toString().contains("Zero &lt;script&gt;alert(1)&lt;/script&gt; &amp; Company"));
-        assertFalse(html.toString().contains("<script>"));
-    }
-    private void assertWrittenContents(WrittenReport report) {
-        String html = report.html;
-        assertTrue(html.contains("USD 220.50") && html.contains("USD 948.00") && html.contains("USD 1168.50"));
-        assertTrue(html.contains("Complete authored ledger") && html.contains("Complete report document and source packets"));
-        // Preserve the entire actual written appendix, including every ledger value and source clock.
-        assertTrue("Every captured ledger, raw packet and original clock survives the actual written appendix", html.contains(report.capture.archive.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")));
     }
 
     private void invalidateAndReturnFromResearch(ReportReturn evidence) throws Exception {

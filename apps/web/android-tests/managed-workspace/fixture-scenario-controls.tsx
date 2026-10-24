@@ -39,6 +39,81 @@ function annualCancellationPending(state: Props["state"]) {
   return state.aborted !== 1 || state.lateResolved !== 0;
 }
 
+interface Cancellation {
+  readonly id: string;
+  readonly label: string;
+  readonly visible: (state: Props["state"]) => boolean;
+  readonly disabled: (state: Props["state"]) => boolean;
+  readonly run: () => void;
+}
+const cancellationActions = {
+  calendar: {
+    id: "settle-cancelled-calendar",
+    label: "Settle cancelled invented calendar response",
+    visible: () =>
+      scenario === "bea-agenda" ||
+      scenario === "bea-agenda-comparison" ||
+      scenario === "markets-day-view" ||
+      scenario === "bea-session-retirement",
+    disabled: (state) =>
+      state.calendarAborted !== state.calendarLateResolved + 1,
+    run: () => fixture.settleCancelledCalendar(),
+  },
+  annualComparison: {
+    id: "settle-cancelled-annual-comparison",
+    label: "Settle cancelled invented Annual comparison",
+    visible: () =>
+      scenario === "annual-comparison" ||
+      scenario === "annual-operating-comparison",
+    disabled: (state) => state.aborted !== state.lateResolved + 1,
+    run: () => fixture.settleCancelledAnnualComparison(),
+  },
+  announcements: {
+    id: "settle-cancelled-announcements",
+    label: "Settle cancelled invented announcements response",
+    visible: () =>
+      scenario === "fed-announcements" || scenario === "markets-day-view",
+    disabled: (state) => state.fedAborted !== state.fedLateResolved + 1,
+    run: () => fixture.settleCancelledAnnouncements(),
+  },
+  markets: {
+    id: "settle-cancelled-markets",
+    label: "Settle cancelled invented Markets response",
+    visible: (state) => state.marketsEod > 0,
+    disabled: (state) => !marketCancellationReady(state),
+    run: () => fixture.settleCancelledMarkets(),
+  },
+  eod: {
+    id: "settle-cancelled-eod",
+    label: "Settle cancelled invented EOD response",
+    visible: (state) => state.eod > 0,
+    disabled: (state) => !eodCancellationReady(state),
+    run: () => fixture.settleCancelledEod(),
+  },
+  annual: {
+    id: "settle-cancelled-read",
+    label: "Settle cancelled fixture response",
+    visible: () => true,
+    disabled: (state) => annualCancellationPending(state),
+    run: () => fixture.settleCancelledRead(),
+  },
+} satisfies Record<string, Cancellation>;
+function CancellationAction({
+  action,
+  state,
+}: Props & { action: Cancellation }) {
+  if (!action.visible(state)) return null;
+  return (
+    <button
+      id={action.id}
+      disabled={action.disabled(state)}
+      onClick={action.run}
+    >
+      {action.label}
+    </button>
+  );
+}
+
 type Props = { state: ReturnType<typeof fixture.getSnapshot> };
 function FixtureCounters({ state }: Props) {
   return (
@@ -81,24 +156,7 @@ function SignOutSaveControl({ state }: Props) {
     </>
   );
 }
-function CalendarCancellationControl({ state }: Props) {
-  return (
-    <>
-      {(scenario === "bea-agenda" ||
-        scenario === "bea-agenda-comparison" ||
-        scenario === "markets-day-view" ||
-        scenario === "bea-session-retirement") && (
-        <button
-          id="settle-cancelled-calendar"
-          disabled={state.calendarAborted !== state.calendarLateResolved + 1}
-          onClick={fixture.settleCancelledCalendar}
-        >
-          Settle cancelled invented calendar response
-        </button>
-      )}
-    </>
-  );
-}
+
 function FilingsControls({ state }: Props) {
   return (
     <>
@@ -110,38 +168,7 @@ function FilingsControls({ state }: Props) {
     </>
   );
 }
-function AnnualComparisonCancellationControl({ state }: Props) {
-  return (
-    <>
-      {(scenario === "annual-comparison" ||
-        scenario === "annual-operating-comparison") && (
-        <button
-          id="settle-cancelled-annual-comparison"
-          disabled={state.aborted !== state.lateResolved + 1}
-          onClick={fixture.settleCancelledAnnualComparison}
-        >
-          Settle cancelled invented Annual comparison
-        </button>
-      )}
-    </>
-  );
-}
-function AnnouncementCancellationControl({ state }: Props) {
-  return (
-    <>
-      {(scenario === "fed-announcements" ||
-        scenario === "markets-day-view") && (
-        <button
-          id="settle-cancelled-announcements"
-          disabled={state.fedAborted !== state.fedLateResolved + 1}
-          onClick={fixture.settleCancelledAnnouncements}
-        >
-          Settle cancelled invented announcements response
-        </button>
-      )}
-    </>
-  );
-}
+
 function WatchlistRecoveryControl({ state }: Props) {
   return (
     <>
@@ -157,36 +184,7 @@ function WatchlistRecoveryControl({ state }: Props) {
     </>
   );
 }
-function MarketCancellationControl({ state }: Props) {
-  return (
-    <>
-      {state.marketsEod > 0 && (
-        <button
-          id="settle-cancelled-markets"
-          disabled={!marketCancellationReady(state)}
-          onClick={fixture.settleCancelledMarkets}
-        >
-          Settle cancelled invented Markets response
-        </button>
-      )}
-    </>
-  );
-}
-function EodCancellationControl({ state }: Props) {
-  return (
-    <>
-      {state.eod > 0 && (
-        <button
-          id="settle-cancelled-eod"
-          disabled={!eodCancellationReady(state)}
-          onClick={fixture.settleCancelledEod}
-        >
-          Settle cancelled invented EOD response
-        </button>
-      )}
-    </>
-  );
-}
+
 function CatalogRecoveryControl({ state }: Props) {
   return (
     <>
@@ -276,38 +274,32 @@ function AnnualRefreshFailureControl({ state }: Props) {
     </>
   );
 }
-function AnnualCancellationControl({ state }: Props) {
-  return (
-    <>
-      <button
-        id="settle-cancelled-read"
-        disabled={annualCancellationPending(state)}
-        onClick={fixture.settleCancelledRead}
-      >
-        Settle cancelled fixture response
-      </button>
-    </>
-  );
-}
+
 export function FixtureScenarioControls({ state }: Props) {
   return (
     <aside aria-label="Invented fixture diagnostics">
       <h2>Fixture diagnostics</h2>
       <FixtureCounters state={state} />
       <SignOutSaveControl state={state} />
-      <CalendarCancellationControl state={state} />
+      <CancellationAction action={cancellationActions.calendar} state={state} />
       <FilingsControls state={state} />
-      <AnnualComparisonCancellationControl state={state} />
-      <AnnouncementCancellationControl state={state} />
+      <CancellationAction
+        action={cancellationActions.annualComparison}
+        state={state}
+      />
+      <CancellationAction
+        action={cancellationActions.announcements}
+        state={state}
+      />
       <WatchlistRecoveryControl state={state} />
-      <MarketCancellationControl state={state} />
-      <EodCancellationControl state={state} />
+      <CancellationAction action={cancellationActions.markets} state={state} />
+      <CancellationAction action={cancellationActions.eod} state={state} />
       <CatalogRecoveryControl state={state} />
       <CapturedSourceDiagnostics />
 
       <AnnualRefreshSequenceControl state={state} />
       <AnnualRefreshFailureControl state={state} />
-      <AnnualCancellationControl state={state} />
+      <CancellationAction action={cancellationActions.annual} state={state} />
     </aside>
   );
 }
