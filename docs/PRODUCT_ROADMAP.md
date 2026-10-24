@@ -97,13 +97,20 @@ preview and separate Watchlist Save. All original required checks, the complete
 native 74-case gate and APK verification passed. The owner reported it installed
 and verified on October 23, without per-feature results or independent inspection.
 
-The next M4 outcome is [Portfolio dated holdings review](MANAGED_PORTFOLIO.md#review-holdings-at-one-observed-close-date).
-Connect the current authored ledger to explicit eligible raw-close loads, one
-observed date, exact per-line values and distinct incomplete totals. Retain exact
-identity, original provenance, independent Save and Research/Back. This advances
-connected portfolio inspection. Portfolio history, returns, benchmarks and wider
-source coverage remain separate work. Source implementation and its affected
-checks are in progress; native acceptance and client delivery are pending.
+Android 1.39 delivers [Portfolio dated holdings review](MANAGED_PORTFOLIO.md#review-holdings-at-one-observed-close-date)
+from accepted source `b2479455bba8797322f0b50d13da9bdecd10c870`. Explicit eligible
+raw-close loads, one observed date, exact per-line values and distinct incomplete
+totals retain original source evidence and independent Portfolio Save. Original
+main checks, native 75-case acceptance and complete APK verification passed.
+Portfolio history, returns, benchmarks and wider coverage remain separate work.
+
+The next complete M4/M5 outcome is a [readable Portfolio review report](MANAGED_PORTFOLIO_REVIEW_REPORT.md).
+Capture a current review, inspect the full authored ledger and original source
+packets, then explicitly save a private standalone HTML copy. Research/Back and
+independent Save remain available. It extends the existing review into an offline
+reading workflow without another metric, source, storage resource or fee.
+Implementation and affected checks are in progress; integration and delivery of
+the report remain separate.
 
 The website retains source
 `61f077ca09a00c7fd00d4a7dc1a9463bbfe178c9`. The

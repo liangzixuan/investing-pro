@@ -15,6 +15,14 @@ import java.util.List;
 
 /** Owns only the bounded copied instrumentation subtree and its fixed scenario marker. */
 final class ReportRevisitFixtureAssets implements AutoCloseable {
+    enum Scenario {
+        REPORT_REVISIT("report-revisit"), PORTFOLIO_REVIEW_REPORT("portfolio-review-report");
+        final String marker;
+        Scenario(String marker) { this.marker = marker; }
+    }
+    private final Scenario scenario;
+    ReportRevisitFixtureAssets() { this(Scenario.REPORT_REVISIT); }
+    ReportRevisitFixtureAssets(Scenario scenario) { this.scenario = java.util.Objects.requireNonNull(scenario); }
     private static final long MAX_BYTES = 4 * 1024 * 1024;
     private final AssetManager assets = InstrumentationRegistry.getInstrumentation().getContext().getAssets();
     private final List<File> created = new ArrayList<>();
@@ -99,7 +107,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         assertEquals(html.indexOf("</head>"), html.lastIndexOf("</head>"));
         assertTrue(html.contains("</head>"));
         assertFalse(html.contains("investment-android-test-scenario"));
-        byte[] selected = html.replace("</head>", "<meta name=\"investment-android-test-scenario\" content=\"report-revisit\"></head>").getBytes(StandardCharsets.UTF_8);
+        byte[] selected = html.replace("</head>", "<meta name=\"investment-android-test-scenario\" content=\"" + scenario.marker + "\"></head>").getBytes(StandardCharsets.UTF_8);
         byteCount += selected.length - original.length;
         assertTrue(byteCount <= MAX_BYTES);
         Files.write(index.toPath(), selected);

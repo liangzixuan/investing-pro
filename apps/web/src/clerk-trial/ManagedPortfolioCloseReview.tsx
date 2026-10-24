@@ -14,6 +14,8 @@ import type {
 } from "./managed-portfolio-close-review";
 import { capturePortfolioCloseContext } from "./portfolio-close-review-context";
 import { PortfolioCloseReviewView } from "./PortfolioCloseReviewView";
+import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
+import { ManagedPortfolioReviewReport } from "./ManagedPortfolioReviewReport";
 
 const empty: PortfolioCloseState = Object.freeze({
   rows: [],
@@ -25,6 +27,7 @@ const empty: PortfolioCloseState = Object.freeze({
 const emptySnapshot = () => empty;
 const emptySubscribe = () => () => {};
 type Props = {
+  delivery?: PortfolioReviewReportDeliveryAdapter | undefined;
   workspace: ManagedWorkspace;
   navigationPending: boolean;
   onResearch: (
@@ -115,24 +118,31 @@ function researchCurrent(
   );
   if (draft && exact) onResearch(draft, exact, opener);
 }
-function Review({ workspace, navigationPending, onResearch }: Props) {
+function Review({ workspace, navigationPending, onResearch, delivery }: Props) {
   const { prices, state, current } = useCloseController(
     workspace,
     navigationPending,
   );
   const ready = current();
   return (
-    <PortfolioCloseReviewView
-      ready={ready}
-      state={ready ? state : empty}
-      review={ready ? prices?.review() : null}
-      onLoad={() => loadCurrent(prices, current)}
-      onCancel={() => prices?.cancel()}
-      onDate={(date) => selectCurrent(prices, current, date)}
-      onResearch={(listingId, opener) =>
-        researchCurrent(workspace, current, listingId, opener, onResearch)
-      }
-    />
+    <>
+      <PortfolioCloseReviewView
+        ready={ready}
+        state={ready ? state : empty}
+        review={ready ? prices?.review() : null}
+        onLoad={() => loadCurrent(prices, current)}
+        onCancel={() => prices?.cancel()}
+        onDate={(date) => selectCurrent(prices, current, date)}
+        onResearch={(listingId, opener) =>
+          researchCurrent(workspace, current, listingId, opener, onResearch)
+        }
+      />
+      <ManagedPortfolioReviewReport
+        prices={prices}
+        ready={ready}
+        delivery={delivery}
+      />
+    </>
   );
 }
 

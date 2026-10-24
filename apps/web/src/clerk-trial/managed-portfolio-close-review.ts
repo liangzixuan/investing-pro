@@ -25,6 +25,9 @@ import {
   MANAGED_PRICE_COVERAGE,
 } from "./managed-price-coverage";
 
+import { preparePortfolioReviewReport } from "./portfolio-review-report";
+import type { PortfolioReviewReportCapture } from "./portfolio-review-report-controller";
+
 export interface PortfolioCloseContext {
   readonly ledger: ManagedPortfolioPayload;
   readonly portfolio: PersonalPortfolioPayload;
@@ -254,6 +257,22 @@ export class ManagedPortfolioCloseReview {
           })) ?? [],
       ),
     });
+  }
+  captureReport(preparedAt: string): PortfolioReviewReportCapture | null {
+    const context = this.context;
+    const state = this.state;
+    if (!context || !this.active(context) || state.running) return null;
+    const review = this.review();
+    if (!review) return null;
+    const current = () => this.active(context) && this.state === state;
+    const report = preparePortfolioReviewReport({
+      ledger: context.ledger,
+      portfolio: context.portfolio,
+      state,
+      review,
+      preparedAt,
+    });
+    return report && current() ? Object.freeze({ report, current }) : null;
   }
   private failRow(
     error: unknown,

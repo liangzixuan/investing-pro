@@ -340,6 +340,23 @@ jobs:
           ))
           if len(required) != 75:
               raise SystemExit("Dated holdings review must extend all 74 existing native tests.")
+          # Preserve all 75 existing cases and require the complete Portfolio report export.
+          required.update({
+              ("local.investment.personal.PortfolioReviewReportPolicyInstrumentedTest", method)
+              for method in {
+                  "admitsTheFixedHtmlMetadataAndCompleteEnvelope",
+                  "refusesUnknownOptionsCrossFormatPurposeAndUnsafeFilename",
+                  "reusesTheCompleteUtcCalendarAndExactChosenFilename",
+                  "refusesChangedHeadCspStyleIdentityOrIncompleteEnvelope",
+                  "inheritsTheEightMibStrictUtf8WriterBoundary",
+              }
+          })
+          required.add((
+              "local.investment.personal.PortfolioReviewReportInstrumentedTest",
+              "portfolioReportSystemPickerKeepsExactValuesSourcesAndSeparateSaveThroughBack",
+          ))
+          if len(required) != 81:
+              raise SystemExit("Portfolio report policy and export journey must extend all 75 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

@@ -7,6 +7,10 @@ import {
   type InvestmentValuationDraftFilePlugin,
 } from "./valuation-draft-file-delivery";
 import {
+  createNativePortfolioReviewReportAdapter,
+  type InvestmentPortfolioReviewReportPlugin,
+} from "./portfolio-review-report-delivery";
+import {
   createNativePortfolioDraftFileAdapter,
   type InvestmentPortfolioDraftFilePlugin,
 } from "./portfolio-draft-file-delivery";
@@ -134,6 +138,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const portfolioReviewReportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativePortfolioReviewReportAdapter(
+            registerPlugin<InvestmentPortfolioReviewReportPlugin>(
+              "InvestmentPortfolioReviewReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const followupsDraftFileDelivery = useMemo(
     () =>
       managed
@@ -207,6 +222,9 @@ function NativeSession({
               {...(draftFileDelivery ? { draftFileDelivery } : {})}
               {...(portfolioDraftFileDelivery
                 ? { portfolioDraftFileDelivery }
+                : {})}
+              {...(portfolioReviewReportDelivery
+                ? { portfolioReviewReportDelivery }
                 : {})}
               {...(followupsDraftFileDelivery
                 ? { followupsDraftFileDelivery }

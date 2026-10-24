@@ -1,5 +1,6 @@
 import { browserFinancialScreenRecipeAdapter } from "./financial-screen-recipe-delivery";
 import { browserValuationDraftFileAdapter } from "./valuation-draft-file-delivery";
+import { browserPortfolioReviewReportAdapter } from "./portfolio-review-report-delivery";
 import { browserPortfolioDraftFileAdapter } from "./portfolio-draft-file-delivery";
 import { browserFollowupsDraftFileAdapter } from "./followups-draft-file-delivery";
 import { browserCompanyReportAdapter } from "./browser-company-report";
@@ -111,6 +112,8 @@ function ClerkSession({
               exportDelivery: browserWatchlistExportAdapter,
               draftFileDelivery: browserWatchlistDraftFileAdapter,
               portfolioDraftFileDelivery: browserPortfolioDraftFileAdapter,
+              portfolioReviewReportDelivery:
+                browserPortfolioReviewReportAdapter,
               followupsDraftFileDelivery: browserFollowupsDraftFileAdapter,
               valuationDraftFileDelivery: browserValuationDraftFileAdapter,
               financialScreenRecipeDelivery:
