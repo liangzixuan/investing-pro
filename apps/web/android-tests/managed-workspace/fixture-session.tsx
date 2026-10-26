@@ -1,3 +1,4 @@
+import { MarketsSourceReviewFixtureControls } from "./markets-source-review-fixture-controls";
 import { HoldingFollowupFixtureControls } from "./holding-followup-fixture-controls";
 import { App } from "@capacitor/app";
 import { CompanySnapshotLoadingFixtureControls } from "./company-snapshot-loading-fixture-controls";
@@ -62,6 +63,12 @@ function DraftAndRevisitControls({
   return (
     <>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
+      {workspace && fixture.sourceReview && (
+        <MarketsSourceReviewFixtureControls
+          workspace={workspace}
+          controls={fixture.sourceReview}
+        />
+      )}
       {workspace && fixture.companySnapshotLoading && (
         <CompanySnapshotLoadingFixtureControls workspace={workspace} />
       )}

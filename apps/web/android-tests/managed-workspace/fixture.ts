@@ -1,3 +1,7 @@
+import {
+  createMarketsSourceReviewNativeFixture,
+  type SourceReviewFixtureControls,
+} from "./markets-source-review-fixture";
 import { createHoldingFollowupNativeFixture } from "./holding-followup-fixture";
 import { createFollowupsReviewReportNativeFixture } from "./native-followups-review-report-fixture";
 import { createFilingDatedQuestionNativeFixture } from "./filing-dated-question-fixture";
@@ -2110,6 +2114,7 @@ export type NativeFinancialReviewMetadata = {
   readonly generation: SharedNativeFixture["generations"]["initial"];
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
+  readonly sourceReview?: SourceReviewFixtureControls;
   readonly companySnapshotLoading?: SnapshotLoadingFixtureControls;
   readonly filingsReview?: {
     readonly prefix: string;
@@ -2290,6 +2295,11 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "markets-source-review",
+    async () =>
+      createMarketsSourceReviewNativeFixture(await createSharedFixture()),
+  ],
+  [
     "holding-followup",
     async () =>
       createHoldingFollowupNativeFixture(
@@ -2425,6 +2435,7 @@ export async function createFixture(
     | "followups-review-report"
     | "company-snapshot-loading"
     | "followups-review-session"
+    | "markets-source-review"
     | "holding-followup"
     | "filing-dated-question"
     | "followup-assessment-note"

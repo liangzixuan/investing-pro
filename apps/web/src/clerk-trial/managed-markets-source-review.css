@@ -1,0 +1,80 @@
+.clerk-trial.managed-frame .managed-markets-source-review {
+  min-width: 0;
+  margin-block: 16px;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  background: var(--managed-surface);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-markets-source-review summary {
+  display: list-item;
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame .managed-markets-source-review-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0;
+  list-style: none;
+}
+.clerk-trial.managed-frame .managed-markets-source-review-rows > li {
+  min-width: 0;
+  padding-block: 12px;
+  border-block-start: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-markets-source-review-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame .managed-markets-source-review-choice input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--managed-action);
+}
+.clerk-trial.managed-frame .managed-markets-source-review-identity dl {
+  display: grid;
+  gap: 8px;
+}
+.clerk-trial.managed-frame .managed-markets-source-review-identity dd {
+  margin: 0;
+}
+.clerk-trial.managed-frame .managed-markets-source-review-evidence {
+  white-space: pre-wrap;
+}
+.clerk-trial.managed-frame .managed-markets-source-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-markets-source-review button {
+  min-height: 44px;
+  max-width: 100%;
+  font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-markets-source-review progress {
+  max-width: 100%;
+}
+.clerk-trial.managed-frame
+  .managed-markets-source-review
+  :is(summary, input, button):focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .clerk-trial.managed-frame .managed-markets-source-review-rows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .clerk-trial.managed-frame .managed-markets-source-review-actions {
+    flex-direction: column;
+  }
+}

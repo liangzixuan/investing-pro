@@ -58,6 +58,7 @@ import {
 import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedMarketsSourceReview } from "./ManagedMarketsSourceReview";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { managedPortfolioEntryProps } from "./managed-portfolio-entry-props";
 import {
@@ -1341,6 +1342,11 @@ export function ManagedWorkspaceScreen({
                     navigation?.invalid,
                   )}
                 >
+                  <ManagedMarketsSourceReview
+                    model={workspace.marketsSourceReview}
+                    isCurrent={isMarketsCurrent}
+                    disabled={navigationPending}
+                  />
                   <ManagedMarkets
                     navigationPending={navigationPending}
                     model={workspace.markets}

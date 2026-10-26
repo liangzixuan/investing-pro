@@ -20,6 +20,7 @@ import {
 import type { EodHistorySelection } from "./managed-eod-history";
 
 import { MANAGED_PRICE_COVERAGE } from "./managed-price-coverage";
+import type { ManagedSourceReadResult } from "./managed-source-read-result";
 
 export type ManagedMarketsCohortEntry = ManagedEodIdentity;
 
@@ -83,6 +84,18 @@ interface RowFailure {
   readonly stop: boolean;
 }
 
+interface RowReadResult {
+  readonly result: ManagedSourceReadResult;
+  readonly stop: boolean;
+}
+
+function stoppedPriceRead(signal: AbortSignal): RowReadResult {
+  return {
+    result: signal.reason === "cancelled" ? "cancelled" : "retired",
+    stop: true,
+  };
+}
+
 /** Row retention and batch admission are explicit decisions for each typed refusal. */
 function rowFailure(error: unknown, recovery: string): RowFailure {
   const failure = {
@@ -135,6 +148,8 @@ export class ManagedMarkets {
   private resolution: AbortController | null = null;
   private operation: AbortController | null = null;
   private queued = new Set<string>();
+  private readonly readTokens = new Map<string, symbol>();
+  private readingRows: readonly ManagedMarketsRow[] = [];
   private retired = false;
   private readonly cohort: readonly ManagedMarketsCohortEntry[];
 
@@ -172,6 +187,13 @@ export class ManagedMarkets {
         row.listing.listingId === listingId ? { ...row, ...next } : row,
       ),
     });
+  }
+  getReadToken(listingId: string): symbol | null {
+    return this.readTokens.get(listingId) ?? null;
+  }
+  private markReadActivity(rows: readonly ManagedMarketsRow[]) {
+    for (const row of rows)
+      this.readTokens.set(row.listing.listingId, Symbol());
   }
   private visitDigest() {
     return !this.retired && this.state.active
@@ -235,6 +257,8 @@ export class ManagedMarkets {
     if (catalogSnapshotSha256) void this.resolve();
   }
   leave() {
+    this.markReadActivity(this.readingRows);
+    this.readingRows = [];
     this.resolution?.abort();
     this.resolution = null;
     this.operation?.abort();
@@ -326,7 +350,9 @@ export class ManagedMarkets {
   }
   cancel() {
     if (!this.operation) return;
-    this.operation.abort();
+    this.markReadActivity(this.readingRows);
+    this.readingRows = [];
+    this.operation.abort("cancelled");
     this.operation = null;
     this.update({
       running: false,
@@ -348,25 +374,31 @@ export class ManagedMarkets {
       ),
     });
   }
-  async load() {
-    await this.loadPrices();
+  async load(): Promise<ManagedSourceReadResult> {
+    return this.loadPrices();
   }
-  async loadSelected() {
-    const selected = this.state.rows.find(
-      (row) => row.listing.listingId === this.state.selectedListingId,
+  async loadSelected(): Promise<ManagedSourceReadResult> {
+    return this.loadListing(this.state.selectedListingId ?? "");
+  }
+  async loadListing(listingId: string): Promise<ManagedSourceReadResult> {
+    if (this.retired || this.state.catalogChanged) return "retired";
+    const row = this.state.rows.find(
+      (entry) => entry.listing.listingId === listingId,
     );
-    if (selected) await this.loadPrices(selected);
+    return row ? this.loadPrices(row) : "not_started";
   }
-  private async loadPrices(selected?: ManagedMarketsRow) {
+  private async loadPrices(
+    selected?: ManagedMarketsRow,
+  ): Promise<ManagedSourceReadResult> {
+    if (this.retired || this.state.catalogChanged) return "retired";
     const digest = this.visitDigest();
     if (
       !digest ||
       this.operation ||
       this.state.resolving ||
-      this.state.rows.length !== 3 ||
-      this.state.catalogChanged
+      this.state.rows.length !== 3
     )
-      return;
+      return "not_started";
     const operation = new AbortController();
     this.operation = operation;
     const current = () =>
@@ -374,6 +406,8 @@ export class ManagedMarkets {
       !operation.signal.aborted &&
       this.visitDigest() === digest;
     const rows = selected ? [selected] : this.state.rows;
+    this.readingRows = rows;
+    this.markReadActivity(rows);
     this.queued = new Set(rows.map((row) => row.listing.listingId));
     this.update({
       running: true,
@@ -393,35 +427,37 @@ export class ManagedMarkets {
       ),
     });
     try {
+      let result: ManagedSourceReadResult = "accepted";
       for (const row of rows) {
-        if (!current()) return;
-        if (
-          !(await this.loadRow(
-            row,
-            digest,
-            operation.signal,
-            current,
-            selected,
-          ))
-        )
-          return;
-      }
-      if (current()) {
-        const failed = this.state.rows.some(
-          (row) =>
-            rows.some((target) => target.listing === row.listing) && row.error,
+        if (!current()) return stoppedPriceRead(operation.signal).result;
+        const read = await this.loadRow(
+          row,
+          digest,
+          operation.signal,
+          current,
+          selected,
         );
-        this.update({
-          error: failed,
-          message: failed
-            ? `${selected ? `Price history for ${selected.listing.symbol} could not be loaded.` : "Price loading finished with row errors."} ${this.priceRecovery(selected)} to try again.`
-            : selected
-              ? `Price history for ${selected.listing.symbol} loaded. The row shows its own trading date.`
-              : "All three price histories loaded. Each row shows its own trading date.",
-        });
+        if (!current()) return stoppedPriceRead(operation.signal).result;
+        if (read.stop) return read.result;
+        if (read.result !== "accepted") result = read.result;
       }
+      const failed = this.state.rows.some(
+        (row) =>
+          rows.some((target) => target.listing === row.listing) && row.error,
+      );
+      this.update({
+        error: failed,
+        message: failed
+          ? `${selected ? `Price history for ${selected.listing.symbol} could not be loaded.` : "Price loading finished with row errors."} ${this.priceRecovery(selected)} to try again.`
+          : selected
+            ? `Price history for ${selected.listing.symbol} loaded. The row shows its own trading date.`
+            : "All three price histories loaded. Each row shows its own trading date.",
+      });
+      return current() ? result : stoppedPriceRead(operation.signal).result;
     } finally {
       if (this.operation === operation) {
+        this.markReadActivity(rows);
+        this.readingRows = [];
         this.operation = null;
         this.update({ running: false, rows: this.finishQueue() });
       }
@@ -433,7 +469,7 @@ export class ManagedMarkets {
     signal: AbortSignal,
     current: () => boolean,
     selected?: ManagedMarketsRow,
-  ): Promise<boolean> {
+  ): Promise<RowReadResult> {
     const { listing } = row;
     this.queued.delete(listing.listingId);
     this.updateRow(listing.listingId, {
@@ -450,7 +486,7 @@ export class ManagedMarkets {
         "1m",
         signal,
       );
-      if (!current()) return false;
+      if (!current()) return stoppedPriceRead(signal);
       this.updateRow(listing.listingId, {
         response,
         showingPrevious: false,
@@ -458,10 +494,13 @@ export class ManagedMarkets {
         error: false,
         message: "One-month raw closing prices loaded.",
       });
-      return true;
+      return current()
+        ? { result: "accepted", stop: false }
+        : stoppedPriceRead(signal);
     } catch (error) {
-      if (!current()) return false;
-      if (this.retireFailedRead(error)) return false;
+      if (!current()) return stoppedPriceRead(signal);
+      if (this.retireFailedRead(error))
+        return { result: "retired", stop: true };
       return this.settleRowFailure(row, error, selected);
     }
   }
@@ -469,7 +508,7 @@ export class ManagedMarkets {
     row: ManagedMarketsRow,
     error: unknown,
     selected?: ManagedMarketsRow,
-  ): boolean {
+  ): RowReadResult {
     const failure = rowFailure(error, this.priceRecovery(selected));
     this.updateRow(row.listing.listingId, {
       response: failure.keepPrevious ? row.response : null,
@@ -483,6 +522,10 @@ export class ManagedMarkets {
         message: `${selected ? `Price request for ${selected.listing.symbol} stopped.` : "Remaining price requests stopped."} ${failure.message}`,
         error: failure.error,
       });
-    return !failure.stop;
+    return {
+      result:
+        error instanceof ManagedEodCooldownError ? "not_started" : "failed",
+      stop: failure.stop,
+    };
   }
 }

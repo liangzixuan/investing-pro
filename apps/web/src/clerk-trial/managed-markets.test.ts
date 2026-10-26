@@ -551,6 +551,197 @@ describe("ManagedMarkets", () => {
     },
   );
 
+  it("loads a named admitted row without retargeting the selected listing", async () => {
+    const { model, read } = await ready();
+    model.select(ids[1]!);
+    const before = model.getSnapshot().rows;
+    expect(await model.loadListing(ids[2]!)).toBe("accepted");
+    expect(read.mock.calls.map(([captured]) => captured)).toEqual([request(2)]);
+    expect(model.getSnapshot().selectedListingId).toBe(ids[1]);
+    expect(model.getSnapshot().rows[0]).toBe(before[0]);
+    expect(model.getSnapshot().rows[1]).toBe(before[1]);
+    expect(model.getSnapshot().rows[2]!.response?.security).toEqual(cohort[2]);
+  });
+
+  it("does not dispatch an unadmitted, inactive, resolving or busy named read", async () => {
+    const { model, read, resolve } = setup();
+    expect(await model.loadListing(ids[0]!)).toBe("not_started");
+    const resolution = deferred<ManagedCatalogResolveResponse>();
+    resolve.mockReturnValueOnce(resolution.promise);
+    model.enter(digest);
+    expect(await model.loadListing(ids[0]!)).toBe("not_started");
+    resolution.resolve(resolved());
+    await settle();
+    expect(await model.loadListing("not-admitted")).toBe("not_started");
+    const held = deferred<ManagedEodHistoryResponseDto>();
+    read.mockReturnValueOnce(held.promise);
+    const loading = model.loadListing(ids[0]!);
+    expect(await model.loadListing(ids[1]!)).toBe("not_started");
+    expect(read).toHaveBeenCalledTimes(1);
+    held.resolve(packet(request(0)));
+    expect(await loading).toBe("accepted");
+    model.retire();
+    expect(await model.loadListing(ids[0]!)).toBe("retired");
+  });
+
+  it.each([
+    [new ManagedEodHistoryError("request_timeout"), true],
+    [new ManagedEodHistoryError("unavailable"), true],
+    [new ManagedEodHistoryError("unsupported_listing"), false],
+    [new TrialApiError("invalid_response"), false],
+  ] as const)(
+    "reports a failed named read for %s with its existing retention",
+    async (failure, retained) => {
+      const { model, read } = await ready();
+      await model.loadListing(ids[2]!);
+      const previous = model.getSnapshot().rows[2]!.response;
+      read.mockRejectedValueOnce(failure);
+      expect(await model.loadListing(ids[2]!)).toBe("failed");
+      expect(read).toHaveBeenCalledTimes(2);
+      expect(model.getSnapshot().rows[2]).toMatchObject({
+        response: retained ? previous : null,
+        showingPrevious: retained,
+        error: true,
+        running: false,
+      });
+      expect(model.getSnapshot().selectedListingId).toBe(ids[0]);
+    },
+  );
+
+  it("reports checked cooldown as not started while preserving previous history", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-20T00:00:00.000Z"));
+    const { model, read } = await ready();
+    await model.loadListing(ids[2]!);
+    const previous = model.getSnapshot().rows[2]!.response;
+    read.mockRejectedValueOnce(
+      new ManagedEodCooldownError("2026-09-20T00:01:00.000Z"),
+    );
+    expect(await model.loadListing(ids[2]!)).toBe("not_started");
+    expect(await model.loadListing(ids[2]!)).toBe("not_started");
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(model.getSnapshot().rows[2]).toMatchObject({
+      response: previous,
+      showingPrevious: true,
+      error: false,
+      running: false,
+    });
+  });
+
+  it.each(["source_rate_limited", "not_configured"] as const)(
+    "reports the named %s typed stop as failed",
+    async (code) => {
+      const { model, read } = await ready();
+      read.mockRejectedValueOnce(new ManagedEodHistoryError(code));
+      expect(await model.loadListing(ids[2]!)).toBe("failed");
+      expect(read.mock.calls.map(([captured]) => captured)).toEqual([
+        request(2),
+      ]);
+      expect(model.getSnapshot().running).toBe(false);
+      expect(model.getSnapshot().selectedListingId).toBe(ids[0]);
+    },
+  );
+
+  it.each([
+    new TrialApiError("unauthenticated"),
+    new ManagedCatalogChangedError(),
+    new ManagedEodHistoryError("catalog_changed"),
+  ])("reports active named ownership retirement on %s", async (failure) => {
+    const { model, read } = await ready();
+    read.mockRejectedValueOnce(failure);
+    expect(await model.loadListing(ids[2]!)).toBe("retired");
+    expect(model.getSnapshot().rows).toEqual([]);
+    expect(await model.loadListing(ids[2]!)).toBe("retired");
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports batch row failure while continuing the other ordinary reads", async () => {
+    const { model, read } = await ready();
+    read.mockRejectedValueOnce(new ManagedEodHistoryError("request_timeout"));
+    expect(await model.load()).toBe("failed");
+    expect(read.mock.calls.map(([captured]) => captured)).toEqual(
+      ids.map((_, index) => request(index)),
+    );
+    expect(model.getSnapshot().rows[1]!.response).not.toBeNull();
+    expect(model.getSnapshot().rows[2]!.response).not.toBeNull();
+  });
+
+  it.each(["success", "failure"] as const)(
+    "keeps a cancelled named read %s separate from a newer operation",
+    async (settlement) => {
+      const { model, read, onReadError } = await ready();
+      const old = deferred<ManagedEodHistoryResponseDto>();
+      const next = deferred<ManagedEodHistoryResponseDto>();
+      read.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
+      const cancelled = model.loadListing(ids[2]!);
+      model.cancel();
+      const loading = model.loadListing(ids[1]!);
+      if (settlement === "success") old.resolve(packet(request(2)));
+      else old.reject(new TrialApiError("unauthenticated"));
+      expect(await cancelled).toBe("cancelled");
+      expect(model.getSnapshot().running).toBe(true);
+      expect(model.getSnapshot().rows[2]!.response).toBeNull();
+      next.resolve(packet(request(1)));
+      expect(await loading).toBe("accepted");
+      expect(model.getSnapshot().rows[1]!.response?.security).toEqual(
+        cohort[1],
+      );
+      expect(onReadError).not.toHaveBeenCalled();
+      expect(read).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it.each(["leave", "retire", "catalogChanged", "new catalog"] as const)(
+    "%s returns retired for the old exact read and fences late settlement",
+    async (action) => {
+      const { model, read, onReadError } = await ready();
+      const held = deferred<ManagedEodHistoryResponseDto>();
+      read.mockReturnValueOnce(held.promise);
+      const loading = model.loadListing(ids[2]!);
+      if (action === "new catalog") {
+        model.enter(`sha256:${"b".repeat(64)}`);
+        await settle();
+      } else model[action]();
+      const after = model.getSnapshot();
+      held.reject(new TrialApiError("unauthenticated"));
+      expect(await loading).toBe("retired");
+      expect(model.getSnapshot()).toBe(after);
+      expect(read.mock.calls[0]![1].aborted).toBe(true);
+      expect(onReadError).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["cancel", "retire"] as const)(
+    "handles reentrant %s before dispatch without an accepted result",
+    async (action) => {
+      const { model, read } = await ready();
+      let active = true;
+      model.subscribe(() => {
+        if (!active || !model.getSnapshot().running) return;
+        active = false;
+        model[action]();
+      });
+      expect(await model.loadListing(ids[2]!)).toBe(
+        action === "cancel" ? "cancelled" : "retired",
+      );
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects reentry and cancellation while publishing an accepted row", async () => {
+    const { model, read } = await ready();
+    let reentry: Promise<unknown> | null = null;
+    model.subscribe(() => {
+      if (reentry || !model.getSnapshot().rows[2]?.response) return;
+      reentry = model.loadListing(ids[1]!);
+      model.cancel();
+    });
+    expect(await model.loadListing(ids[2]!)).toBe("cancelled");
+    await expect(reentry).resolves.toBe("not_started");
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(model.getSnapshot().selectedListingId).toBe(ids[0]);
+  });
+
   it("retains complete previous snapshots during refresh and replaces each only on valid success", async () => {
     const { model, read } = await ready();
     await model.load();
