@@ -120,6 +120,16 @@ This is a client source workflow. Focused synthetic checks establish their
 recorded scope; source delivery, browser layout and physical-device acceptance
 remain separate.
 
+## Keep a question from an observed filing
+
+The [filing-question workflow](MANAGED_FILINGS_REVIEW.md#keep-a-dated-question-from-a-filing)
+adds an explicit complete-citation preview beside an already loaded filing.
+Choose an authored UTC due date, create the check once, then review and Save
+Follow-ups separately. It uses the same exact-listing duplicate refusal,
+20-entry limit, 500-code-point check limit and Save/recovery rules. It makes no
+new filing request and does not alter the existing company note. The due date
+is a planning date; original source clocks remain visible and unchanged.
+
 ## Turn a thesis Next check into a follow-up
 
 The thesis editor in My Watchlist and company research has an initially closed

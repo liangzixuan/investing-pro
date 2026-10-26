@@ -79,6 +79,17 @@ ordered oldest first. Keep exact tooltips, original source qualifications and th
 table's contained keyboard scroll region. Preserve the selected metric through
 source changes; show its unavailable reason without choosing a different metric.
 
+## Dated questions from filings
+
+Keep question tools in an initially closed native disclosure beside each filing,
+separate from the existing reference-to-note control. Use labelled question and
+UTC due-date fields with 44px targets. Invalid or oversized input remains visible
+for correction. Show the complete wrapping, read-only check preview, exact company
+identity, due date and original source qualifications before creation. Wrap long
+URLs within the available width. Creation changes only the separate Follow-ups
+draft; keep its explicit Save guidance beside the action. Closing or cancelling
+retires the preview. A stale preview requires a new explicit preparation.
+
 ## Profiles and ownership
 
 The managed browser and Android workspace share the Precision Desk presentation.

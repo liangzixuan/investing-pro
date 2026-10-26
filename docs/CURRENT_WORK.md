@@ -1,20 +1,35 @@
 # Current work
 
-Updated October 25, 2026. This is the current capability and delivery record.
+Updated October 26, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current source: Follow-up assessment in the company note
+## Current source: a dated question from an observed filing
 
-The active source connects an exact-company Follow-up assessment to a complete
-company-note preview, explicit one-time draft append, retained research Back
-and independent My Watchlist and Follow-ups Saves. It labels the captured
-authored UTC time separately from original source, due and completion dates.
-It preserves both resource lifetimes and existing text limits; no source,
-storage schema, account or deployment changed. Focused formatter, cross-draft
-and component checks passed. Required exact-source CI and the new hosted native
-journey remain pending. This candidate has no new browser or delivery acceptance.
+The active candidate connects an already loaded filing to an authored question
+and UTC due date. It previews the complete question and citation before an
+explicit one-time creation in the separate Follow-ups draft. Back retains the
+chosen filing-review group. Save follow-ups and fresh Load remain explicit.
+The existing company note is independent. Source and hosted native acceptance
+for this candidate are pending; it has no new client delivery.
+
+## Accepted baseline: Follow-up assessment in the company note
+
+[PR 240](https://github.com/liangzixuan/investing-pro/pull/240) merged at
+`1c8f43158512283f384f695dac6eb3e4cec441b5`. Its original required PR and main
+checks passed, with the complete synthetic native 84-case scope. It connects an
+exact-company assessment to the complete company-note preview, explicit
+one-time append, retained research Back and independent My Watchlist and
+Follow-ups Saves. Captured authored UTC time stays separate from original
+source, due and completion dates. Existing text limits and resource lifetimes
+remain; no source or storage schema changed.
+
+Android 1.44.0/code45 is provided locally from that accepted source. The guarded
+build, complete packaged assets and notices, production signature, manifest,
+compiled XML policies, all DEX definitions and source-preservation checks passed.
+These automated checks do not establish physical-device acceptance. The website,
+API and all earlier APKs remain unchanged.
 
 ## Android source and native acceptance
 

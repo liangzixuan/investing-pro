@@ -1,3 +1,4 @@
+import type { FilingsFollowupPort } from "./managed-filings-followup";
 import { captureFollowupReviewNoteContext } from "./managed-followup-review-note-context";
 import { captureCompanyReportRevisitTargetContext } from "./company-report-revisit-target";
 import type { ManagedResearchSelection } from "./managed-research-selection";
@@ -2975,6 +2976,114 @@ export class ManagedWorkspace {
       appended: true,
       message: `Annual comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
+  }
+  private filingsFollowupHost(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+    filing: PersonalSecRecentFilingDto,
+  ) {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        member: null,
+        reason:
+          watchlist.reason ??
+          "Use this exact company in an editable My Watchlist draft first.",
+        isCurrent: () => false,
+      };
+    const visit = this.state.research;
+    const source = this.filings.getSnapshot();
+    if (
+      visit?.selection !== selection ||
+      visit.section !== "filings" ||
+      source.response !== response ||
+      source.running ||
+      source.catalogChanged ||
+      response.issuer.status !== "available" ||
+      !response.issuer.filings.includes(filing)
+    )
+      return {
+        member: null,
+        reason: "Choose a filing from the current, settled Filings response.",
+        isCurrent: () => false,
+      };
+    const host = this.thesisFollowupContext(watchlist.member, selection);
+    const operation = this.researchOperation;
+    return {
+      member: watchlist.member,
+      reason: null,
+      isCurrent: () =>
+        host.isCurrent() &&
+        this.state.research === visit &&
+        this.researchOperation === operation &&
+        this.filings.getSnapshot() === source &&
+        this.researchSourceRouteReady(selection) &&
+        this.canUseResearchSource(selection),
+    };
+  }
+  captureFilingsFollowup(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+    filing: PersonalSecRecentFilingDto,
+  ): { port: FilingsFollowupPort | null; reason: string | null } {
+    const host = this.filingsFollowupHost(selection, response, filing);
+    if (!host.member || !host.isCurrent())
+      return {
+        port: null,
+        reason:
+          host.reason ??
+          "Return to the current filing before preparing a question.",
+      };
+    const watchlistSaved = this.coordinator.getSnapshot();
+    const followupsSaved = this.followups.coordinator.getSnapshot();
+    let retired = false;
+    const isCurrent = () => {
+      retired ||=
+        !host.isCurrent() ||
+        this.coordinator.getSnapshot() !== watchlistSaved ||
+        this.followups.coordinator.getSnapshot() !== followupsSaved;
+      return !retired;
+    };
+    return {
+      port: Object.freeze({
+        model: this.followups,
+        member: host.member,
+        response,
+        filing,
+        showingPrevious: this.filings.getSnapshot().showingPrevious,
+        isCurrent,
+      }),
+      reason: null,
+    };
+  }
+  canLoadFilingsFollowups(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+    filing: PersonalSecRecentFilingDto,
+  ): boolean {
+    const host = this.filingsFollowupHost(selection, response, filing);
+    return (
+      host.member !== null &&
+      host.isCurrent() &&
+      this.followups.canLoadForNextCheck(host.member)
+    );
+  }
+  async loadFilingsFollowups(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+    filing: PersonalSecRecentFilingDto,
+    formIsCurrent: () => boolean,
+  ): Promise<void> {
+    const host = this.filingsFollowupHost(selection, response, filing);
+    const watchlistSaved = this.coordinator.getSnapshot();
+    if (!host.member) return;
+    await this.followups.loadForNextCheck(
+      host.member,
+      () =>
+        host.isCurrent() &&
+        formIsCurrent() &&
+        this.coordinator.getSnapshot() === watchlistSaved,
+    );
   }
   private filingsNoteProposal(
     selection: ManagedResearchSelection,

@@ -1,3 +1,4 @@
+import type { ManagedFilingsFollowupActions } from "./ManagedFilingsFollowup";
 import type { ReactNode } from "react";
 import type { CompanyReportRevisitTarget } from "./company-report-revisit";
 import type { ManagedAnnualStatementsReviewActions } from "./ManagedAnnualStatementsReview";
@@ -74,6 +75,7 @@ export function ManagedCompanyResearch({
   priceNoteActions,
   priceStudiesActions,
   filingsNoteActions,
+  filingsFollowupActions,
   companyNavigationState,
   canOpenCompany,
   onOpenCompany,
@@ -114,6 +116,7 @@ export function ManagedCompanyResearch({
   priceNoteActions: ManagedPriceNoteActions;
   priceStudiesActions?: ManagedPriceStudiesActions;
   filingsNoteActions: ManagedFilingsNoteActions;
+  filingsFollowupActions?: ManagedFilingsFollowupActions;
   companyNavigationState: ResearchCompanyNavigationState;
   canOpenCompany: (
     visit: ManagedResearchVisit,
@@ -271,6 +274,9 @@ export function ManagedCompanyResearch({
                 model={filings}
                 annual={annual}
                 noteActions={filingsNoteActions}
+                {...(filingsFollowupActions
+                  ? { followupActions: filingsFollowupActions }
+                  : {})}
               />
             ) : null}
           </div>
