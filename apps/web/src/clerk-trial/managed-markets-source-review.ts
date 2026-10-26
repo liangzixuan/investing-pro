@@ -252,6 +252,13 @@ export class ManagedMarketsSourceReview {
     this.publish("running", `Reading ${source.read().label}…`);
     if (!this.ready(operation)) return false;
     const result = await this.loadSource(source);
+    return this.settleRead(operation, source, result);
+  }
+  private settleRead(
+    operation: ReviewOperation,
+    source: MarketsSourceReviewPort,
+    result: ManagedSourceReadResult,
+  ) {
     if (this.operation !== operation) return false;
     operation.tokens.set(source.id, source.read().token);
     if (!this.ready(operation)) return false;
