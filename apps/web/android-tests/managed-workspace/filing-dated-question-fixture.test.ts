@@ -243,6 +243,101 @@ async function restoreFreshQuestion(
   });
 }
 
+type SavedCommand = ReturnType<typeof command>;
+function patchSavedEntry(value: SavedCommand, patch: object) {
+  Object.assign(value.payload.entries[0]!, patch);
+}
+function replaceCitation(
+  value: SavedCommand,
+  change: readonly [string, string],
+) {
+  patchSavedEntry(value, {
+    check: value.payload.entries[0]!.check.replace(...change),
+  });
+}
+const invalidSavedCommands: readonly {
+  name: string;
+  mutate: (value: SavedCommand) => void;
+}[] = [
+  {
+    name: "question",
+    mutate: (value) =>
+      replaceCitation(value, [filingDatedQuestion, "Shortened question"]),
+  },
+  {
+    name: "form",
+    mutate: (value) => replaceCitation(value, ["Form 10-Q", "Form 8-K"]),
+  },
+  {
+    name: "accession",
+    mutate: (value) =>
+      replaceCitation(value, ["0000000001-26-000001", "0000000001-26-000002"]),
+  },
+  {
+    name: "filed date",
+    mutate: (value) =>
+      replaceCitation(value, ["filed 2026-09-19", "filed 2026-09-20"]),
+  },
+  {
+    name: "source URL",
+    mutate: (value) => replaceCitation(value, ["/data/1/", "/data/2/"]),
+  },
+  {
+    name: "due date",
+    mutate: (value) => patchSavedEntry(value, { dueOn: "2027-01-01" }),
+  },
+  {
+    name: "assessment",
+    mutate: (value) =>
+      patchSavedEntry(value, { result: "Unrelated assessment" }),
+  },
+  {
+    name: "completion",
+    mutate: (value) =>
+      patchSavedEntry(value, {
+        status: "completed",
+        completedOn: "2026-10-26",
+      }),
+  },
+  {
+    name: "listing",
+    mutate: (value) => {
+      Object.assign(value.payload.entries[0]!.listing, {
+        shareClassId: "other-class",
+      });
+    },
+  },
+  {
+    name: "digest",
+    mutate: (value) =>
+      patchSavedEntry(value, {
+        catalogSnapshotSha256: `sha256:${"b".repeat(64)}`,
+      }),
+  },
+  {
+    name: "extra entry",
+    mutate: (value) => {
+      const entry = value.payload.entries[0]!;
+      Object.assign(value.payload, {
+        entries: [
+          entry,
+          { ...entry, id: "10000000-0000-4000-8000-000000000004" },
+        ],
+      });
+    },
+  },
+  {
+    name: "extra key",
+    mutate: (value) => patchSavedEntry(value, { sourceRefreshed: true }),
+  },
+  {
+    name: "expected version",
+    mutate: (value) => {
+      value.expectedVersion = 1;
+    },
+  },
+];
+
 describe("isolated filing dated-question native fixture", () => {
   it("cancels one complete preview, creates once, retains exact group source, and restores the whole independently saved resource", async () => {
     const opened = await openFiling();
@@ -261,61 +356,14 @@ describe("isolated filing dated-question native fixture", () => {
     await saveIndependentQuestion(opened, expected);
     await restoreFreshQuestion(opened, expected, watchlist);
   });
-  it.each([
-    "question",
-    "form",
-    "accession",
-    "filed date",
-    "source URL",
-    "due date",
-    "assessment",
-    "completion",
-    "listing",
-    "digest",
-    "extra entry",
-    "extra key",
-    "expected version",
-  ])(
-    "refuses changed complete saved %s without a resource commit",
-    async (change) => {
+  it.each(invalidSavedCommands)(
+    "refuses changed complete saved $name without a resource commit",
+    async ({ mutate }) => {
       const opened = await openFiling();
       const preview = await loadAndPreview(opened);
       expect(preview.create()).not.toBeNull();
       const altered = command(opened);
-      const entry = altered.payload.entries[0]!;
-      const parts: Record<string, [string, string]> = {
-        question: [filingDatedQuestion, "Shortened question"],
-        form: ["Form 10-Q", "Form 8-K"],
-        accession: ["0000000001-26-000001", "0000000001-26-000002"],
-        "filed date": ["filed 2026-09-19", "filed 2026-09-20"],
-        "source URL": ["/data/1/", "/data/2/"],
-      };
-      const mutable = entry as {
-        -readonly [K in keyof typeof entry]: (typeof entry)[K];
-      };
-      if (parts[change])
-        mutable.check = mutable.check.replace(...parts[change]);
-      if (change === "due date") mutable.dueOn = "2027-01-01";
-      if (change === "assessment") mutable.result = "Unrelated assessment";
-      if (change === "completion")
-        Object.assign(mutable, {
-          status: "completed",
-          completedOn: "2026-10-26",
-        });
-      if (change === "listing")
-        Object.assign(mutable.listing, { shareClassId: "other-class" });
-      if (change === "digest")
-        mutable.catalogSnapshotSha256 = `sha256:${"b".repeat(64)}`;
-      if (change === "extra entry")
-        Object.assign(altered.payload, {
-          entries: [
-            entry,
-            { ...entry, id: "10000000-0000-4000-8000-000000000004" },
-          ],
-        });
-      if (change === "extra key")
-        Object.assign(mutable, { sourceRefreshed: true });
-      if (change === "expected version") altered.expectedVersion = 1;
+      mutate(altered);
       expect(() =>
         opened.fixture.api.saveFollowups(altered, new AbortController().signal),
       ).toThrow("Unexpected invented");

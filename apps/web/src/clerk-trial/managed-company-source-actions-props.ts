@@ -8,6 +8,7 @@ import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 type SourceActions = Pick<
   ComponentProps<typeof ManagedCompanyResearch>,
+  | "filingsFollowupActions"
   | "snapshotLoad"
   | "onLoadSnapshot"
   | "onCancelSnapshot"
@@ -23,6 +24,7 @@ export function managedCompanySourceActionsProps(
   navigation: ManagedCompanyNavigation | undefined,
 ): SourceActions {
   return {
+    filingsFollowupActions: filingQuestionActions(workspace, visit),
     snapshotLoad: workspace.companySnapshotLoad,
     onLoadSnapshot: async () => {
       if (navigation?.invalid || navigation?.isPending()) return;
@@ -77,5 +79,25 @@ function selectCompanySourceSection(
     else if (section === "annual") workspace.switchToAnnual();
     else if (section === "eod") workspace.switchToEod();
     else if (section === "filings") workspace.switchToFilings();
+  };
+}
+
+function filingQuestionActions(
+  workspace: ManagedWorkspace,
+  visit: ManagedResearchVisit,
+): NonNullable<SourceActions["filingsFollowupActions"]> {
+  return {
+    model: workspace.followups,
+    getContext: (response, filing) =>
+      workspace.captureFilingsFollowup(visit.selection, response, filing),
+    canLoad: (response, filing) =>
+      workspace.canLoadFilingsFollowups(visit.selection, response, filing),
+    load: (response, filing, current) =>
+      workspace.loadFilingsFollowups(
+        visit.selection,
+        response,
+        filing,
+        current,
+      ),
   };
 }

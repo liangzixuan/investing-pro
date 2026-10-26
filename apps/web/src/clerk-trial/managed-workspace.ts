@@ -2977,6 +2977,21 @@ export class ManagedWorkspace {
       message: `Annual comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
   }
+  private filingsFollowupSourceIsCurrent(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+    filing: PersonalSecRecentFilingDto,
+  ): boolean {
+    const visit = this.state.research;
+    if (visit?.selection !== selection) return false;
+    if (visit.section !== "filings") return false;
+    const source = this.filings.getSnapshot();
+    if (source.response !== response) return false;
+    if (source.running) return false;
+    if (source.catalogChanged) return false;
+    if (response.issuer.status !== "available") return false;
+    return response.issuer.filings.includes(filing);
+  }
   private filingsFollowupHost(
     selection: ManagedResearchSelection,
     response: ManagedSecFilingsResponseDto,
@@ -2993,15 +3008,7 @@ export class ManagedWorkspace {
       };
     const visit = this.state.research;
     const source = this.filings.getSnapshot();
-    if (
-      visit?.selection !== selection ||
-      visit.section !== "filings" ||
-      source.response !== response ||
-      source.running ||
-      source.catalogChanged ||
-      response.issuer.status !== "available" ||
-      !response.issuer.filings.includes(filing)
-    )
+    if (!this.filingsFollowupSourceIsCurrent(selection, response, filing))
       return {
         member: null,
         reason: "Choose a filing from the current, settled Filings response.",

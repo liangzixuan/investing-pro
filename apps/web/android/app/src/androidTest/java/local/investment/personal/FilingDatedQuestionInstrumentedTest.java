@@ -80,7 +80,29 @@ public class FilingDatedQuestionInstrumentedTest {
         final String selector, text;
         Input(String suffix, String text) { this.selector = PREFIX + suffix; this.text = text; }
     }
-    private record Draft(String watchlist, String payload) {}
+    private record Draft(JSONObject watchlist, JSONObject payload) {}
+    private enum ResourceState { UNSAVED, SAVED }
+    private enum PacketState { UNLOADED, LOADED }
+    private enum WorkspaceView {
+        WATCHLIST("My Watchlist", "managed-watchlist-heading"), FOLLOWUPS("Follow-ups", "managed-followups-heading");
+        final String label, heading;
+        WorkspaceView(String label, String heading) { this.label=label; this.heading=heading; }
+    }
+    private enum FilingAction {
+        START("Start filing review"), LOAD("Load review filings"), INSPECT("Inspect filings and write note");
+        final String label;
+        FilingAction(String label) { this.label=label; }
+    }
+    private enum PreviewRegion {
+        COMPLETE, SOURCE;
+        String targets() {
+            return this==COMPLETE ? PREFIX+"-preview,"+PREVIEW+" > p:first-of-type,"+PREVIEW+" > dl" :
+                PREVIEW+" .managed-filings-period,"+PREVIEW+" .managed-filings-source,"+PREVIEW+" > .managed-filings-scope,"+PREVIEW+" .managed-filings-source-details";
+        }
+        FilingQuestionFrameCapture.Frame frame() {
+            return this==COMPLETE ? FilingQuestionFrameCapture.Frame.PREVIEW : FilingQuestionFrameCapture.Frame.SOURCE;
+        }
+    }
 
     @Before public void launchInventedFilingQuestion() throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
@@ -95,12 +117,8 @@ public class FilingDatedQuestionInstrumentedTest {
         keyboard = new ReportRevisitKeyboard(page, new ReportRevisitTouch(page));
         scenario.onActivity(activity -> {
             keyboard.observe(activity);
-            assertEquals("local.investment.personal", activity.getPackageName());
-            assertNotNull(activity.getBridge().getPlugin("App"));
-            assertNull(activity.getBridge().getPlugin("InvestmentAuth"));
-            assertFalse(activity.getBridge().getConfig().isWebContentsDebuggingEnabled());
-            assertFalse(activity.getBridge().getConfig().isMixedContentAllowed());
-            assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW, activity.getBridge().getWebView().getSettings().getMixedContentMode());
+            assertBridgeCapabilities(activity);
+            assertWebViewSecurity(activity);
             activity.getBridge().setServerBasePath(assets.directory().getAbsolutePath());
         });
         page.awaitStartup(new Check("invented filing-question fixture has its initial independent resources", new Script(
@@ -110,15 +128,26 @@ public class FilingDatedQuestionInstrumentedTest {
         assertBoundary(Phase.STARTUP);
     }
 
+    private void assertBridgeCapabilities(MainActivity activity) {
+        assertEquals("local.investment.personal", activity.getPackageName());
+        assertNotNull(activity.getBridge().getPlugin("App"));
+        assertNull(activity.getBridge().getPlugin("InvestmentAuth"));
+    }
+    private void assertWebViewSecurity(MainActivity activity) {
+        assertFalse(activity.getBridge().getConfig().isWebContentsDebuggingEnabled());
+        assertFalse(activity.getBridge().getConfig().isMixedContentAllowed());
+        assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW, activity.getBridge().getWebView().getSettings().getMixedContentMode());
+    }
+
     private void selectOnlyNewScenario() throws Exception {
         File index = new File(assets.directory(), "index.html");
         assertEquals(assets.directory().getCanonicalFile(), index.getCanonicalFile().getParentFile());
-        String html = Files.readString(index.toPath(), StandardCharsets.UTF_8);
+        String html = new String(Files.readAllBytes(index.toPath()), StandardCharsets.UTF_8);
         String before = "<meta name=\"investment-android-test-scenario\" content=\"report-revisit\">";
         assertEquals("Only the fixed test marker is replaced", 1, html.split(java.util.regex.Pattern.quote(before), -1).length - 1);
         String selected = html.replace(before, "<meta name=\"investment-android-test-scenario\" content=\"filing-dated-question\">");
         assertTrue(selected.getBytes(StandardCharsets.UTF_8).length <= 65_536);
-        Files.writeString(index.toPath(), selected, StandardCharsets.UTF_8);
+        Files.write(index.toPath(), selected.getBytes(StandardCharsets.UTF_8));
         try (var files = Files.walk(assets.directory().toPath())) {
             long total = files.filter(Files::isRegularFile).mapToLong(path -> {
                 try { return Files.size(path); } catch (IOException error) { throw new java.io.UncheckedIOException(error); }
@@ -128,25 +157,25 @@ public class FilingDatedQuestionInstrumentedTest {
     }
 
     @Test public void loadedFilingCreatesExactDatedQuestionThroughBackSaveAndFreshLoad() throws Exception {
-        String originalWatchlist = loadRetainedFilingGroup();
+        JSONObject originalWatchlist = loadRetainedFilingGroup();
         authorAndCancelQuestion(originalWatchlist);
         Draft created = createOneQuestion(originalWatchlist);
         returnToRetainedGroup(created);
         saveAndFreshLoad(created);
     }
 
-    private String loadRetainedFilingGroup() throws Exception {
-        openView("My Watchlist", "managed-watchlist-heading");
-        String original = page.read(new Script("JSON.stringify(" + WATCHLIST + ")"));
+    private JSONObject loadRetainedFilingGroup() throws Exception {
+        openView(WorkspaceView.WATCHLIST);
+        JSONObject original = new JSONObject(page.read(new Script("JSON.stringify(" + WATCHLIST + ")")));
         page.click(Element.css(".managed-filings-review > summary"));
         page.click(Element.css(".managed-filings-review-choice:nth-of-type(1)"));
         page.click(Element.css(".managed-filings-review-choice:nth-of-type(2)"));
-        groupAction("Start filing review");
-        page.await(new Check("two exact chosen companies retain ZERO then ONE before any source read", new Script(groupOrder(false) +
+        groupAction(FilingAction.START);
+        page.await(new Check("two exact chosen companies retain ZERO then ONE before any source read", new Script(groupOrder(PacketState.UNLOADED) +
             " && " + COUNTS + ".filings===0 && document.activeElement===document.querySelector('.managed-filings-review h4')")));
-        groupAction("Load review filings");
+        groupAction(FilingAction.LOAD);
         assertRetainedPacket();
-        groupAction("Inspect filings and write note");
+        groupAction(FilingAction.INSPECT);
         page.await(new Check("Inspect imports the retained ZERO packet into the exact Filings route", new Script(
             "location.href===" + JSONObject.quote(COMPANY_URL) + " && document.activeElement?.id==='managed-filings-heading'" +
             " && document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO'" +
@@ -156,7 +185,7 @@ public class FilingDatedQuestionInstrumentedTest {
         return original;
     }
 
-    private void authorAndCancelQuestion(String original) throws Exception {
+    private void authorAndCancelQuestion(JSONObject original) throws Exception {
         page.click(Element.css(TOOL + " > summary"));
         page.await(new Check("new standalone tool offers only its explicit labelled draft steps", new Script(
             "document.querySelector(" + JSONObject.quote(TOOL + " > summary") + ")?.textContent==='Keep a dated research question'" +
@@ -194,7 +223,7 @@ public class FilingDatedQuestionInstrumentedTest {
         assertSourceQualifications();
     }
 
-    private Draft createOneQuestion(String original) throws Exception {
+    private Draft createOneQuestion(JSONObject original) throws Exception {
         previewQuestion();
         retainPreviewFrames();
         page.click(Element.css(PREFIX + "-create"));
@@ -203,29 +232,29 @@ public class FilingDatedQuestionInstrumentedTest {
             " && document.querySelector(" + JSONObject.quote(PREFIX + "-create") + ")===null && document.querySelector(" + JSONObject.quote(PREFIX + "-preview") + ")===null")));
         String id = page.read(new Script(RESOURCE + ".entries[0].id"));
         assertTrue(id.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"));
-        String expected = expectedPayload(id).toString();
-        assertPayload(expected, false);
+        JSONObject expected = expectedPayload(java.util.UUID.fromString(id));
+        assertPayload(expected, ResourceState.UNSAVED);
         page.click(Element.css(PREFIX + "-prepare"));
         page.await(new Check("a new explicit Preview refuses an existing exact listing without another Create", new Script(
             "document.querySelector(" + JSONObject.quote(PREFIX + "-create") + ")===null && " + RESOURCE + ".entries?.length===1")));
-        assertPayload(expected, false);
+        assertPayload(expected, ResourceState.UNSAVED);
         assertOriginalWatchlist(original);
         assertBoundary(Phase.CREATED);
         return new Draft(original, expected);
     }
 
-    private JSONObject expectedPayload(String id) throws Exception {
+    private JSONObject expectedPayload(java.util.UUID id) throws Exception {
         JSONObject listing = new JSONObject();
         String[] keys = {"country","exchangeMic","instrumentType","issuerId","issuerName","listingId","securityId","securityName","shareClassId","shareClassName","symbol"};
         String[] values = {"US","XNAS","common_stock","issuer-zero","Zero Company","listing-zero","security-zero","Zero Class A","class-zero","Class A","ZERO"};
         for (int index = 0; index < keys.length; index++) listing.put(keys[index], values[index]);
-        JSONObject entry = new JSONObject().put("id", id).put("catalogSnapshotSha256", "sha256:" + "a".repeat(64)).put("listing", listing)
+        JSONObject entry = new JSONObject().put("id", id.toString()).put("catalogSnapshotSha256", "sha256:" + "a".repeat(64)).put("listing", listing)
             .put("check", CHECK).put("dueOn", DUE).put("status", "open").put("completedOn", JSONObject.NULL).put("result", "");
         return new JSONObject().put("schemaVersion",1).put("entries",new org.json.JSONArray().put(entry));
     }
 
-    private void assertPayload(String expected, boolean saved) throws Exception {
-        String stored = saved ? " && same(resource.saved,{version:1,payload:expected})" : " && resource.baseVersion===0 && same(resource.saved,{version:0,payload:{schemaVersion:1,entries:[]}})";
+    private void assertPayload(JSONObject expected, ResourceState state) throws Exception {
+        String stored = state==ResourceState.SAVED ? " && same(resource.saved,{version:1,payload:expected})" : " && resource.baseVersion===0 && same(resource.saved,{version:0,payload:{schemaVersion:1,entries:[]}})";
         page.await(new Check("complete Follow-ups shape and ordered entries equal the independent golden; object key order is immaterial", new Script(
             "(() => {" + EXACT + "const resource=" + RESOURCE + ",expected=" + expected + ";return same({schemaVersion:1,entries:resource.entries},expected)" + stored + ";})()")));
     }
@@ -240,37 +269,37 @@ public class FilingDatedQuestionInstrumentedTest {
         page.await(new Check("one hardware Back restores the same visible chosen group without another read or Save", new Script(
             "location.href==='https://localhost/' && document.querySelector('.managed-company-visit')===null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='My Watchlist'" +
-            " && document.querySelector('.managed-filings-review')?.open===true && " + groupOrder(true))));
+            " && document.querySelector('.managed-filings-review')?.open===true && " + groupOrder(PacketState.LOADED))));
         assertRetainedPacket();
-        assertPayload(created.payload(), false);
+        assertPayload(created.payload(), ResourceState.UNSAVED);
         assertOriginalWatchlist(created.watchlist());
         assertBoundary(Phase.CREATED);
     }
 
     private void saveAndFreshLoad(Draft created) throws Exception {
-        openView("Follow-ups", "managed-followups-heading");
-        assertPayload(created.payload(), false);
+        openView(WorkspaceView.FOLLOWUPS);
+        assertPayload(created.payload(), ResourceState.UNSAVED);
         page.click(Element.css("#managed-followups-save"));
         page.await(new Check("only explicit Follow-ups Save commits its complete resource once", new Script(
             RESOURCE + ".baseVersion===1 && " + RESOURCE + ".dirty===false && " + FOLLOWUPS + ".save===1 && " + FOLLOWUPS + ".commits===1")));
-        assertPayload(created.payload(), true);
+        assertPayload(created.payload(), ResourceState.SAVED);
         assertOriginalWatchlist(created.watchlist());
         assertBoundary(Phase.SAVED);
         page.click(Element.css("#fixture-followups-fresh-session"));
         page.await(new Check("fresh session reloads the unchanged Watchlist but has no implicit Follow-ups read", new Script(
             COUNTS + ".load===2 && " + COUNTS + ".status===2 && " + COUNTS + ".marketsResolve===2 && " + RESOURCE + ".entries===null")));
         assertBoundary(Phase.FRESH);
-        openView("Follow-ups", "managed-followups-heading");
+        openView(WorkspaceView.FOLLOWUPS);
         page.click(Element.css("#managed-followups-load"));
         page.await(new Check("fresh explicit Load restores the independent saved check at version one", new Script(
             FOLLOWUPS + ".load===2 && " + RESOURCE + ".baseVersion===1 && " + RESOURCE + ".dirty===false")));
-        assertPayload(created.payload(), true);
+        assertPayload(created.payload(), ResourceState.SAVED);
         assertOriginalWatchlist(created.watchlist());
         assertBoundary(Phase.RELOADED);
     }
 
-    private String groupOrder(boolean loaded) {
-        String zero = loaded ? "26 filings in retained response" : "No response loaded";
+    private String groupOrder(PacketState state) {
+        String zero = state==PacketState.LOADED ? "26 filings in retained response" : "No response loaded";
         return "[...document.querySelectorAll('.managed-filings-review-companies > li > button')].map(b=>b.textContent).join('|')==='ZERO · Class A · XNAS" + zero + "|ONE · Class A · XNASNo response loaded'" +
             " && document.querySelector('.managed-filings-review-companies > li:first-child > button')?.getAttribute('aria-current')==='true'";
     }
@@ -278,9 +307,9 @@ public class FilingDatedQuestionInstrumentedTest {
         page.await(new Check("ZERO retains its original source packet while ONE remains unrequested", new Script(
             "document.querySelector('.managed-filings-review section[aria-label=\"Filing review for ZERO\"]')?.checkVisibility()===true" +
             " && document.querySelector('.managed-filings-review section[aria-label=\"Filing review for ZERO\"]')?.textContent.includes('2026-09-20T00:00:02.000Z')" +
-            " && " + groupOrder(true))));
+            " && " + groupOrder(PacketState.LOADED))));
     }
-    private void assertOriginalWatchlist(String original) throws Exception {
+    private void assertOriginalWatchlist(JSONObject original) throws Exception {
         page.await(new Check("whole original Watchlist observations, member order and notes remain unchanged", new Script(
             "(() => {" + EXACT + "return same(" + WATCHLIST + "," + original + ");})()")));
     }
@@ -309,13 +338,15 @@ public class FilingDatedQuestionInstrumentedTest {
             " && " + FOLLOWUPS + ".load===" + phase.loads() + " && " + FOLLOWUPS + ".save===" + phase.saves() + " && " + FOLLOWUPS + ".commits===" + phase.saves() +
             " && " + FOLLOWUPS + ".replays===0 && " + FOLLOWUPS + ".token===0 && " + FOLLOWUPS + ".signOut===0")));
     }
-    private void openView(String label, String heading) throws Exception {
+    private void openView(WorkspaceView view) throws Exception {
+        String label=view.label, heading=view.heading;
         page.click(Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='" + label + "']"));
         page.await(new Check("visible product view: " + label, new Script(
             "document.querySelector('.managed-navigation [aria-current=page]')?.textContent===" + JSONObject.quote(label) +
             " && document.getElementById(" + JSONObject.quote(heading) + ")?.checkVisibility()===true")));
     }
-    private void groupAction(String label) {
+    private void groupAction(FilingAction action) {
+        String label=action.label;
         page.click(Element.xpath("//details[contains(@class,'managed-filings-review')]//button[normalize-space(.)='" + label + "']"));
     }
 
@@ -333,19 +364,46 @@ public class FilingDatedQuestionInstrumentedTest {
         page.await(new Check("complete native text reaches its controlled author field", new Script("document.querySelector(" + JSONObject.quote(input.selector) + ")?.value===" + JSONObject.quote(input.text))));
         keyboard.closeSoftKeyboard();
     }
-    private float[] nativePoint(View view, JSONObject point) {
-        try {
-            double scale=point.getDouble("scale");
-            assertTrue(Double.isFinite(scale) && scale>0);
-            assertTrue(view.isShown() && view.hasWindowFocus());
-            assertTrue(Math.abs(point.getDouble("width")*scale-view.getWidth())<=scale+1);
-            assertTrue(point.getDouble("height")*scale<=view.getHeight()+scale+1);
-            float x=(float)((point.getDouble("x")-point.getDouble("ox"))*scale);
-            float y=(float)((point.getDouble("y")-point.getDouble("oy"))*scale);
-            assertTrue(Float.isFinite(x)&&Float.isFinite(y)&&x>0&&y>0&&x<view.getWidth()&&y<view.getHeight());
+    private static final class AuthorGeometry {
+        private final JSONObject value;
+        private final double scale;
+        AuthorGeometry(JSONObject value) throws Exception {
+            this.value=value;
+            scale=value.getDouble("scale");
+            assertTrue(Double.isFinite(scale));
+            assertTrue(scale>0);
+        }
+        private void requireWindow(View view) {
+            assertTrue(view.isShown());
+            assertTrue(view.hasWindowFocus());
+        }
+        private void requireViewport(View view) throws Exception {
+            assertTrue(Math.abs(value.getDouble("width")*scale-view.getWidth())<=scale+1);
+            assertTrue(value.getDouble("height")*scale<=view.getHeight()+scale+1);
+        }
+        private void requirePoint(View view, android.graphics.PointF point) {
+            assertTrue(Float.isFinite(point.x)&&Float.isFinite(point.y));
+            assertTrue(point.x>0&&point.y>0);
+            assertTrue(point.x<view.getWidth()&&point.y<view.getHeight());
+        }
+        float[] screenPoint(View view) throws Exception {
+            requireWindow(view);
+            requireViewport(view);
+            var point=new android.graphics.PointF((float)((value.getDouble("x")-value.getDouble("ox"))*scale),
+                (float)((value.getDouble("y")-value.getDouble("oy"))*scale));
+            requirePoint(view,point);
             int[] location=new int[2];view.getLocationOnScreen(location);
-            return new float[]{location[0]+x,location[1]+y};
-        } catch (Exception error) { throw new AssertionError("Invalid observed author-field geometry",error); }
+            return new float[]{location[0]+point.x,location[1]+point.y};
+        }
+    }
+    private float[] nativePoint(View view, JSONObject point) {
+        try { return new AuthorGeometry(point).screenPoint(view); }
+        catch(Exception error) { throw new AssertionError("Invalid observed author-field geometry",error); }
+    }
+    private boolean editorReady(View view) {
+        if (!view.hasFocus()) return false;
+        if (!view.hasWindowFocus()) return false;
+        return supportsInputMethods().matches(view);
     }
     private void commitInput(Input input) {
         onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
@@ -353,7 +411,7 @@ public class FilingDatedQuestionInstrumentedTest {
             @Override public String getDescription() { return "commit complete invented filing question through native IME"; }
             @Override public void perform(UiController controller, View view) {
                 long deadline=SystemClock.uptimeMillis()+10_000;
-                while (!(view.hasFocus()&&view.hasWindowFocus()&&supportsInputMethods().matches(view))) {
+                while (!editorReady(view)) {
                     long remaining=deadline-SystemClock.uptimeMillis();
                     assertTrue("Author editor retains its original native readiness deadline",remaining>0);
                     controller.loopMainThreadForAtLeast(Math.min(50,remaining));
@@ -369,18 +427,18 @@ public class FilingDatedQuestionInstrumentedTest {
     private void retainPreviewFrames() throws Exception {
         String first=PREVIEW + " > label";
         page.read(new Script("(()=>{document.querySelector(" + JSONObject.quote(first) + ").scrollIntoView({block:'start',inline:'center',behavior:'instant'});return 'preview positioned';})()"));
-        String previewTargets=PREFIX + "-preview," + PREVIEW + " > p:first-of-type," + PREVIEW + " > dl";
-        retainFrame(previewTargets,FilingQuestionFrameCapture.Frame.PREVIEW);
+        retainFrame(PreviewRegion.COMPLETE);
         page.click(Element.css(PREVIEW + " .managed-filings-source-details > summary"));
         page.read(new Script("(()=>{document.querySelector(" + JSONObject.quote(PREVIEW + " .managed-filings-period") + ").scrollIntoView({block:'start',inline:'center',behavior:'instant'});return 'source positioned';})()"));
-        retainFrame(PREVIEW + " .managed-filings-period," + PREVIEW + " .managed-filings-source," + PREVIEW + " > .managed-filings-scope," + PREVIEW + " .managed-filings-source-details",FilingQuestionFrameCapture.Frame.SOURCE);
+        retainFrame(PreviewRegion.SOURCE);
         assertSourceQualifications();
     }
-    private void retainFrame(String targets,FilingQuestionFrameCapture.Frame frame) throws Exception {
+    private void retainFrame(PreviewRegion region) throws Exception {
+        String targets=region.targets();
         String visible="(()=>{const list=[...document.querySelectorAll(" + JSONObject.quote(targets) + ")],v=visualViewport;return list.length>0&&v&&list.every(e=>{const r=e.getBoundingClientRect();" +
             "return e.checkVisibility()&&r.width>0&&r.height>0&&r.left>=v.offsetLeft&&r.right<=v.offsetLeft+v.width&&r.top>=v.offsetTop&&r.bottom<=v.offsetTop+v.height;});})()";
         page.await(new Check("complete requested preview frame is visible; text equality is checked separately",new Script(visible)).nativeReady());
-        new FilingQuestionFrameCapture(new FilingQuestionFrameCapture.Request(scenario,frame)).retain();
+        new FilingQuestionFrameCapture(new FilingQuestionFrameCapture.Request(scenario,region.frame())).retain();
         page.await(new Check("requested preview region remains inside the captured frame",new Script(visible)));
     }
     @After public void closeInventedFilingQuestion() {

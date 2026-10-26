@@ -1267,28 +1267,6 @@ export function ManagedWorkspaceScreen({
                         end,
                       ),
                   }}
-                  filingsFollowupActions={{
-                    model: workspace.followups,
-                    getContext: (response, filing) =>
-                      workspace.captureFilingsFollowup(
-                        discovery.research!.selection,
-                        response,
-                        filing,
-                      ),
-                    canLoad: (response, filing) =>
-                      workspace.canLoadFilingsFollowups(
-                        discovery.research!.selection,
-                        response,
-                        filing,
-                      ),
-                    load: (response, filing, current) =>
-                      workspace.loadFilingsFollowups(
-                        discovery.research!.selection,
-                        response,
-                        filing,
-                        current,
-                      ),
-                  }}
                   filingsNoteActions={{
                     getAction: (response, filing) =>
                       workspace.getFilingsNoteAction(

@@ -309,42 +309,81 @@ it("creates the complete preview once, fences double and reentrant callbacks, an
     "Save follow-ups. My Watchlist is unchanged",
   );
 });
-it.each([
-  "cancel",
-  "close",
-  "question",
-  "date",
-  "unmount",
-  "response",
-  "filing",
-  "route",
-])("permanently refuses the captured Create after %s", async (boundary) => {
-  const f = await fixture();
-  const view = f.previewed();
-  const preview = f.previews[0]!;
-  const click = view.byId("create").props.onClick!;
-  if (boundary === "cancel") view.byId("cancel").props.onClick!();
-  if (boundary === "close")
-    (view.tree.props as ElementProps).onToggle!({
-      currentTarget: { open: false },
-    });
-  if (boundary === "question")
-    view.byId("question").props.onChange!({
-      currentTarget: { value: "Changed question" },
-    });
-  if (boundary === "date")
-    view.byId("due").props.onChange!({
-      currentTarget: { value: "2027-01-01" },
-    });
-  if (boundary === "unmount") unmount();
-  if (boundary === "response") f.render({ response: { ...f.response } });
-  if (boundary === "filing") f.render({ filing: { ...f.filing } });
-  if (boundary === "route") f.route(false);
-  click();
-  expect(f.model.coordinator.getSnapshot().draft!.entries).toEqual([]);
-  if (boundary !== "route") expect(preview.create).not.toHaveBeenCalled();
-  expect(f.api.saveFollowups).not.toHaveBeenCalled();
-});
+type FollowupFixture = Awaited<ReturnType<typeof fixture>>;
+type FollowupView = ReturnType<FollowupFixture["render"]>;
+interface CreateBoundary {
+  name: string;
+  apply: (this: void, fixture: FollowupFixture, view: FollowupView) => void;
+  createCalls: number;
+}
+const createBoundaries: CreateBoundary[] = [
+  {
+    name: "cancel",
+    apply: (_fixture, view) => view.byId("cancel").props.onClick!(),
+    createCalls: 0,
+  },
+  {
+    name: "close",
+    apply: (_fixture, view) =>
+      (view.tree.props as ElementProps).onToggle!({
+        currentTarget: { open: false },
+      }),
+    createCalls: 0,
+  },
+  {
+    name: "question",
+    apply: (_fixture, view) =>
+      view.byId("question").props.onChange!({
+        currentTarget: { value: "Changed question" },
+      }),
+    createCalls: 0,
+  },
+  {
+    name: "date",
+    apply: (_fixture, view) =>
+      view.byId("due").props.onChange!({
+        currentTarget: { value: "2027-01-01" },
+      }),
+    createCalls: 0,
+  },
+  { name: "unmount", apply: unmount, createCalls: 0 },
+  {
+    name: "response",
+    apply: (fixture) => {
+      fixture.render({ response: { ...fixture.response } });
+    },
+    createCalls: 0,
+  },
+  {
+    name: "filing",
+    apply: (fixture) => {
+      fixture.render({ filing: { ...fixture.filing } });
+    },
+    createCalls: 0,
+  },
+  {
+    name: "route",
+    apply: (fixture) => {
+      fixture.route(false);
+    },
+    createCalls: 1,
+  },
+];
+it.each(createBoundaries)(
+  "permanently refuses the captured Create after $name",
+  async ({ apply, createCalls }) => {
+    const f = await fixture();
+    const view = f.previewed();
+    const preview = f.previews[0]!;
+    const click = view.byId("create").props.onClick!;
+    apply(f, view);
+    click();
+    expect(f.model.coordinator.getSnapshot().draft!.entries).toEqual([]);
+    expect(preview.create).toHaveBeenCalledTimes(createCalls);
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  },
+);
+
 it("does not restore a retired preview when its external predicate becomes true again", async () => {
   const f = await fixture();
   f.previewed();

@@ -165,12 +165,9 @@ function preparePreview(interaction: Interaction) {
 }
 function createDraft(interaction: Interaction, captured: CapturedPreview) {
   const { lifetime } = interaction;
-  if (
-    !actionIsCurrent(interaction) ||
-    lifetime.busy ||
-    lifetime.preview !== captured.value
-  )
-    return;
+  if (!actionIsCurrent(interaction)) return;
+  if (lifetime.busy) return;
+  if (lifetime.preview !== captured.value) return;
   lifetime.busy = true;
   lifetime.preview = null;
   try {
@@ -190,13 +187,11 @@ function createDraft(interaction: Interaction, captured: CapturedPreview) {
 }
 async function loadFollowups(interaction: Interaction) {
   const { render, lifetime } = interaction;
-  if (!actionIsCurrent(interaction) || lifetime.loading || lifetime.busy)
-    return;
-  if (
-    render.actions.model.coordinator.getSnapshot().draft ||
-    !render.actions.canLoad(render.response, render.filing)
-  )
-    return;
+  if (!actionIsCurrent(interaction)) return;
+  if (lifetime.loading) return;
+  if (lifetime.busy) return;
+  if (render.actions.model.coordinator.getSnapshot().draft) return;
+  if (!render.actions.canLoad(render.response, render.filing)) return;
   retirePreview(lifetime);
   const request = {};
   const token = lifetime.token;
@@ -221,6 +216,76 @@ async function loadFollowups(interaction: Interaction) {
     }
   }
 }
+type SavedFollowups = ReturnType<
+  ManagedResearchFollowups["coordinator"]["getSnapshot"]
+>;
+type FollowupContext = ReturnType<ManagedFilingsFollowupActions["getContext"]>;
+
+function currentPreview(render: Render, lifetime: Lifetime) {
+  const captured = render.form.preview;
+  if (!captured) return null;
+  if (!sameHost(render, captured.host)) return null;
+  if (captured.token !== lifetime.token) return null;
+  return captured.value.isCurrent() ? captured : null;
+}
+function previewMessage(
+  state: FormState,
+  context: FollowupContext,
+  stale: boolean,
+) {
+  if (stale)
+    return "This preview no longer matches the current company, filing or drafts. Prepare the check again.";
+  return state.message ?? context.reason;
+}
+function canPreparePreview(saved: SavedFollowups, context: FollowupContext) {
+  if (saved.draft === null) return false;
+  if (context.port === null) return false;
+  return context.port.isCurrent();
+}
+function followupDisplay(interaction: Interaction, saved: SavedFollowups) {
+  const { render, lifetime } = interaction;
+  const context = render.actions.getContext(render.response, render.filing);
+  const preview = currentPreview(render, lifetime);
+  const stale = render.form.preview !== null && preview === null;
+  return {
+    state: render.form,
+    saved,
+    preview,
+    stale,
+    message: previewMessage(render.form, context, stale),
+    canPrepare: canPreparePreview(saved, context),
+    canLoad:
+      lifetime.loading === null &&
+      render.actions.canLoad(render.response, render.filing),
+  };
+}
+function useCommittedRender(render: Render, lifetime: Lifetime) {
+  const committed = useRef<Render | null>(null);
+  useLayoutEffect(() => {
+    committed.current = render;
+    return () => {
+      if (committed.current === render) committed.current = null;
+    };
+  });
+  useLayoutEffect(() => {
+    // A new host's commit adopts the token produced by the old host's cleanup.
+    render.token = lifetime.token;
+    return () => retirePreview(lifetime);
+  }, [render.response, render.filing, render.actions.model, lifetime]);
+  return committed;
+}
+function retireStalePreview(
+  interaction: Interaction,
+  captured: CapturedPreview | null,
+  stale: boolean,
+) {
+  if (!stale) return;
+  const { lifetime, committed, render } = interaction;
+  if (lifetime.preview !== captured?.value) return;
+  retirePreview(lifetime);
+  // Renew only this committed render; captured previews retain retired tokens.
+  if (committed.current === render) render.token = lifetime.token;
+}
 function useFilingsFollowup(props: Props) {
   const { model } = props.actions;
   useSyncExternalStore(model.subscribe, model.getSnapshot, model.getSnapshot);
@@ -237,18 +302,8 @@ function useFilingsFollowup(props: Props) {
     loading: null,
     busy: false,
   }).current;
-  const committed = useRef<Render | null>(null);
   const render: Render = { ...props, form: state, token: lifetime.token };
-  useLayoutEffect(() => {
-    committed.current = render;
-    return () => {
-      if (committed.current === render) committed.current = null;
-    };
-  });
-  useLayoutEffect(() => {
-    render.token = lifetime.token;
-    return () => retirePreview(lifetime);
-  }, [props.response, props.filing, model, lifetime]);
+  const committed = useCommittedRender(render, lifetime);
   const interaction: Interaction = {
     render,
     committed,
@@ -259,39 +314,18 @@ function useFilingsFollowup(props: Props) {
       setState(next);
     },
   };
-  const context = props.actions.getContext(props.response, props.filing);
+  const display = followupDisplay(interaction, saved);
   const captured = state.preview;
-  const preview =
-    captured &&
-    sameHost(props, captured.host) &&
-    captured.token === lifetime.token &&
-    captured.value.isCurrent()
-      ? captured
-      : null;
-  const stale = captured !== null && preview === null;
   useLayoutEffect(() => {
-    if (stale && lifetime.preview === captured?.value) {
-      retirePreview(lifetime);
-      if (committed.current === render) render.token = lifetime.token;
-    }
-  }, [captured, stale, lifetime]);
+    retireStalePreview(interaction, captured, display.stale);
+  }, [captured, display.stale, lifetime]);
   return {
-    state,
-    saved,
-    preview,
-    message: stale
-      ? "This preview no longer matches the current company, filing or drafts. Prepare the check again."
-      : (state.message ?? context.reason),
-    canPrepare:
-      saved.draft !== null && context.port !== null && context.port.isCurrent(),
-    canLoad:
-      lifetime.loading === null &&
-      props.actions.canLoad(props.response, props.filing),
+    ...display,
     edit: (field: "question" | "dueOn", raw: string) =>
       editField(interaction, field, raw),
     prepare: () => preparePreview(interaction),
     create: () => {
-      if (preview) createDraft(interaction, preview);
+      if (display.preview) createDraft(interaction, display.preview);
     },
     cancel: () => cancelPreview(interaction),
     load: () => {
@@ -299,6 +333,7 @@ function useFilingsFollowup(props: Props) {
     },
   };
 }
+
 type Controls = ReturnType<typeof useFilingsFollowup>;
 function questionFields(id: string, controls: Controls) {
   return (
