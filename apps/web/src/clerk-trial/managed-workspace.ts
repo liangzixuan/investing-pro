@@ -3006,27 +3006,33 @@ export class ManagedWorkspace {
           "Use this exact company in an editable My Watchlist draft first.",
         isCurrent: () => false,
       };
-    const visit = this.state.research;
-    const source = this.filings.getSnapshot();
     if (!this.filingsFollowupSourceIsCurrent(selection, response, filing))
       return {
         member: null,
         reason: "Choose a filing from the current, settled Filings response.",
         isCurrent: () => false,
       };
-    const host = this.thesisFollowupContext(watchlist.member, selection);
-    const operation = this.researchOperation;
     return {
       member: watchlist.member,
       reason: null,
-      isCurrent: () =>
-        host.isCurrent() &&
-        this.state.research === visit &&
-        this.researchOperation === operation &&
-        this.filings.getSnapshot() === source &&
-        this.researchSourceRouteReady(selection) &&
-        this.canUseResearchSource(selection),
+      isCurrent: this.filingsFollowupLifetime(watchlist.member, selection),
     };
+  }
+  private filingsFollowupLifetime(
+    member: WatchlistMembership,
+    selection: ManagedResearchSelection,
+  ) {
+    const visit = this.state.research;
+    const source = this.filings.getSnapshot();
+    const host = this.thesisFollowupContext(member, selection);
+    const operation = this.researchOperation;
+    return () =>
+      host.isCurrent() &&
+      this.state.research === visit &&
+      this.researchOperation === operation &&
+      this.filings.getSnapshot() === source &&
+      this.researchSourceRouteReady(selection) &&
+      this.canUseResearchSource(selection);
   }
   captureFilingsFollowup(
     selection: ManagedResearchSelection,
