@@ -14,33 +14,44 @@ export function MarketsSourceReviewFixtureControls({
   workspace: ManagedWorkspace;
   controls: SourceReviewFixtureControls;
 }) {
-  const counts = useSyncExternalStore(controls.subscribe, controls.getSnapshot);
+  const counts = useSyncExternalStore(
+    controls.subscribe,
+    controls.getSnapshot,
+    controls.getSnapshot,
+  );
   const draft = useSyncExternalStore(
     workspace.coordinator.subscribe,
+    workspace.coordinator.getSnapshot,
     workspace.coordinator.getSnapshot,
   );
   const markets = useSyncExternalStore(
     workspace.markets.subscribe,
     workspace.markets.getSnapshot,
+    workspace.markets.getSnapshot,
   );
   const review = useSyncExternalStore(
     workspace.marketsSourceReview.subscribe,
+    workspace.marketsSourceReview.getSnapshot,
     workspace.marketsSourceReview.getSnapshot,
   );
   const bls = useSyncExternalStore(
     workspace.blsCalendar.subscribe,
     workspace.blsCalendar.getSnapshot,
+    workspace.blsCalendar.getSnapshot,
   );
   const bea = useSyncExternalStore(
     workspace.agenda.subscribe,
+    workspace.agenda.getSnapshot,
     workspace.agenda.getSnapshot,
   );
   const fed = useSyncExternalStore(
     workspace.announcements.subscribe,
     workspace.announcements.getSnapshot,
+    workspace.announcements.getSnapshot,
   );
   const price = useSyncExternalStore(
     workspace.eod.subscribe,
+    workspace.eod.getSnapshot,
     workspace.eod.getSnapshot,
   );
   return (

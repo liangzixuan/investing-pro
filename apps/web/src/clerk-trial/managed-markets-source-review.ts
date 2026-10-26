@@ -117,15 +117,23 @@ export class ManagedMarketsSourceReview {
       listener();
     }
   }
-  private observed() {
-    if (this.retired) return;
+  private changes() {
     const changed = this.views().filter(
       ({ source, view }) => this.observedTokens.get(source.id) !== view.token,
     );
-    if (!changed.length) return;
     for (const { source, view } of changed)
       this.observedTokens.set(source.id, view.token);
+    return changed;
+  }
+  private observed() {
+    if (this.retired) return;
+    const changed = this.changes();
+    if (!changed.length) return;
     if (this.cancelling) return;
+    if (this.operation?.finished) {
+      this.invalidate(false);
+      return;
+    }
     if (this.ownsChanges(changed)) {
       this.observeOwned(changed);
       return;
@@ -139,10 +147,6 @@ export class ManagedMarketsSourceReview {
   }
   private observeOwned(changed: readonly SourceView[]) {
     const operation = this.operation!;
-    if (operation.finished) {
-      this.invalidate(false);
-      return;
-    }
     if (changed.some(({ view }) => !view.busy)) operation.finished = true;
     this.publish();
   }

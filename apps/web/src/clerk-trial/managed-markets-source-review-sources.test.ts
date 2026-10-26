@@ -169,6 +169,36 @@ const priceRequest = (index: number): ManagedEodHistoryRequestDto => ({
   listingId: cohort[index]!.listingId,
   range: "1m",
 });
+async function expectCompletedManualBoard(
+  f: Awaited<ReturnType<typeof fixture>>,
+  manual: ReturnType<ManagedMarkets["load"]> | undefined,
+  replacement: ManagedEodHistoryResponseDto,
+) {
+  await expect(manual).resolves.toBe("accepted");
+  expect(f.order).toEqual([
+    "price-0",
+    "price-0-manual-board",
+    "price-1",
+    "price-2",
+  ]);
+  expect(f.read).toHaveBeenCalledTimes(4);
+  expect(f.read.mock.calls.slice(1).map(([request]) => request)).toEqual(
+    [0, 1, 2].map(priceRequest),
+  );
+  expect(
+    f.read.mock.calls.slice(1).every(([, signal]) => !signal.aborted),
+  ).toBe(true);
+  expect(f.markets.getSnapshot().rows[0]!.response).toBe(replacement);
+  expect(
+    f.markets.getSnapshot().rows.map((entry) => entry.response?.security),
+  ).toEqual(cohort);
+  expect(f.markets.getSnapshot().running).toBe(false);
+  expect(f.review.getSnapshot().phase).toBe("retired");
+  expect(f.blsRead).not.toHaveBeenCalled();
+  expect(f.beaRead).not.toHaveBeenCalled();
+  expect(f.fedRead).not.toHaveBeenCalled();
+}
+
 afterEach(() => vi.useRealTimers());
 
 describe("Markets source review through the real source models", () => {
@@ -532,6 +562,57 @@ describe("Markets source review through the real source models", () => {
       expect(f.read.mock.calls[1]![1].aborted).toBe(false);
       expect(f.review.getSnapshot().phase).toBe("retired");
       expect(f.order).toEqual(["price-0", "price-0-manual"]);
+    },
+  );
+
+  it.each(["held", "immediate"] as const)(
+    "does not cancel the %s independent whole-board load from the final Price0 notification",
+    async (settlement) => {
+      const f = await fixture();
+      const firstPacket = pricePacket(priceRequest(0));
+      const replacement = pricePacket(priceRequest(0));
+      const held = deferred<ManagedEodHistoryResponseDto>();
+      const completion = {
+        held: () => held.promise,
+        immediate: () => Promise.resolve(replacement),
+      };
+      f.read
+        .mockImplementationOnce(() => {
+          f.order.push("price-0");
+          return Promise.resolve(firstPacket);
+        })
+        .mockImplementationOnce(() => {
+          f.order.push("price-0-manual-board");
+          return completion[settlement]();
+        });
+      const manualReads: ReturnType<typeof f.markets.load>[] = [];
+      let restarted = false;
+      f.markets.subscribe(() => {
+        const snapshot = f.markets.getSnapshot();
+        if (restarted) return;
+        if (snapshot.running) return;
+        if (snapshot.rows[0]?.response !== firstPacket) return;
+        restarted = true;
+        manualReads.push(f.markets.load());
+      });
+      f.review.preview();
+      await f.review.start();
+      expect(restarted).toBe(true);
+      expect(f.review.getSnapshot().phase).toBe("retired");
+      expect(
+        f.read.mock.calls.slice(0, 2).map(([request]) => request.listingId),
+      ).toEqual([cohort[0]!.listingId, cohort[0]!.listingId]);
+      expect(f.read.mock.calls[1]![1].aborted).toBe(false);
+      expect(f.blsRead).not.toHaveBeenCalled();
+      expect(f.beaRead).not.toHaveBeenCalled();
+      expect(f.fedRead).not.toHaveBeenCalled();
+      if (settlement === "held") {
+        expect(f.read).toHaveBeenCalledTimes(2);
+        expect(f.markets.getSnapshot().running).toBe(true);
+        expect(f.markets.getSnapshot().rows[0]!.response).toBe(firstPacket);
+      }
+      held.resolve(replacement);
+      await expectCompletedManualBoard(f, manualReads[0], replacement);
     },
   );
 

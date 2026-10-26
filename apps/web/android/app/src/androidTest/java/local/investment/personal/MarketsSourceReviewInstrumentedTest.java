@@ -32,7 +32,7 @@ public class MarketsSourceReviewInstrumentedTest {
     private ReportRevisitFixtureAssets assets;
     private ReportRevisitPage page;
     private String sourceSha;
-    private record Retained(String draft, String sources, String origin) {}
+    private record Retained(String encodedDraft, String sources, String origin) {}
 
     @Before public void launchInventedSourceReview() throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
@@ -60,11 +60,11 @@ public class MarketsSourceReviewInstrumentedTest {
         page.click(Element.css("#fixture-source-review-author-note"));
         page.await(new Check("the fixture authors only the complete independent Watchlist note", new Script(
             EVIDENCE+".draft.memberships[0].note==="+JSONObject.quote(NOTE)+" && "+DRAFT+".dirty===true && "+COUNTS+".order.length===0")));
-        String draft = page.read(new Script("JSON.stringify("+EVIDENCE+".draft)"));
+        String encodedDraft = page.read(new Script(EVIDENCE+".encodedDraft"));
         openMarkets();
         String plan = previewCompletePlan();
         loadAllSix(plan);
-        Retained retained = new Retained(draft, page.read(new Script(sources())), page.read(new Script("String(performance.timeOrigin)")));
+        Retained retained = new Retained(encodedDraft, page.read(new Script(sources())), page.read(new Script("String(performance.timeOrigin)")));
         cancelRefreshAndSettle(retained);
         researchAndReturn(retained);
         saveIndependently(retained);
@@ -134,20 +134,20 @@ public class MarketsSourceReviewInstrumentedTest {
     private void saveIndependently(Retained retained) throws Exception {
         page.click(Element.xpath("//nav[contains(@class,'managed-navigation')]//button[normalize-space(.)='My Watchlist']"));
         page.await(new Check("Watchlist keeps the complete original authored draft before any Save", new Script(
-            "document.querySelector('#managed-note-0')?.value==="+JSONObject.quote(NOTE)+" && JSON.stringify("+EVIDENCE+".draft)==="+JSONObject.quote(retained.draft)+" && "+COUNTS+".save===0")));
+            "document.querySelector('#managed-note-0')?.value==="+JSONObject.quote(NOTE)+" && "+EVIDENCE+".encodedDraft==="+JSONObject.quote(retained.encodedDraft)+" && "+COUNTS+".save===0")));
         page.click(Element.css("#managed-note-0-reading-toggle"));
         page.await(new Check("whole-note reading is independent of source review", new Script(
             "document.querySelector('#managed-note-0-reading-text')?.textContent==="+JSONObject.quote(NOTE))));
         page.click(Element.xpath("//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']"));
         page.await(new Check("only explicit Save persists the full unchanged list as version2", new Script(
-            DRAFT+".baseVersion===2 && "+DRAFT+".dirty===false && "+COUNTS+".save===1 && JSON.stringify("+EVIDENCE+".draft)==="+JSONObject.quote(retained.draft))));
+            DRAFT+".baseVersion===2 && "+DRAFT+".dirty===false && "+COUNTS+".save===1 && "+EVIDENCE+".encodedDraft==="+JSONObject.quote(retained.encodedDraft))));
         boundary(1);
         assertEquals(retained.origin, page.read(new Script("String(performance.timeOrigin)")));
     }
     private String sources() { return "JSON.stringify({markets:"+EVIDENCE+".markets.map(r=>r.response),bls:"+EVIDENCE+".bls,bea:"+EVIDENCE+".bea,fed:"+EVIDENCE+".fed})"; }
     private void retain(Retained retained) throws Exception {
         page.await(new Check("complete source packets and independent authored draft retain original bytes", new Script(
-            sources()+"==="+JSONObject.quote(retained.sources)+" && JSON.stringify("+EVIDENCE+".draft)==="+JSONObject.quote(retained.draft)+" && "+DRAFT+".dirty===true && "+COUNTS+".save===0")));
+            sources()+"==="+JSONObject.quote(retained.sources)+" && "+EVIDENCE+".encodedDraft==="+JSONObject.quote(retained.encodedDraft)+" && "+DRAFT+".dirty===true && "+COUNTS+".save===0")));
         boundary(0);
     }
     private void boundary(int saves) throws Exception {

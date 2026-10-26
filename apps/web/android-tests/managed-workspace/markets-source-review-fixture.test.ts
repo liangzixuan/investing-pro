@@ -1,3 +1,9 @@
+import {
+  encodeMainWatchlistPayload,
+  isMainWatchlistPayload,
+  type MainWatchlistPayload,
+} from "@research-cockpit/contracts";
+import { MarketsSourceReviewFixtureControls } from "./markets-source-review-fixture-controls";
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -142,6 +148,7 @@ describe("isolated native Markets source-review protocol", () => {
   it("fences the cancelled refresh, retains packets through research/Back and saves only the independent full draft", async () => {
     const f = await mounted();
     const draft = author(f);
+    const encodedBefore = encodeMainWatchlistPayload(draft);
     await firstPass(f);
     const original = packets(f);
     await cancelledPass(f);
@@ -170,6 +177,31 @@ describe("isolated native Markets source-review protocol", () => {
     f.workspace.setView("watchlist");
     await f.workspace.coordinator.save();
     expect(f.controls.getSnapshot().save).toBe(1);
+    const acknowledged = f.workspace.coordinator.getSnapshot().draft!;
+    expect(acknowledged).toEqual(draft);
+    expect(encodeMainWatchlistPayload(acknowledged)).toBe(encodedBefore);
+    expect(
+      encodeMainWatchlistPayload({
+        ...acknowledged,
+        memberships: [...acknowledged.memberships].reverse(),
+      }),
+    ).not.toBe(encodedBefore);
+    const html = load(
+      renderToStaticMarkup(
+        createElement(MarketsSourceReviewFixtureControls, {
+          workspace: f.workspace,
+          controls: f.controls,
+        }),
+      ),
+    );
+    const evidence = JSON.parse(
+      html("#fixture-source-review-evidence").text(),
+    ) as {
+      draft: typeof draft;
+      encodedDraft: string;
+    };
+    expect(evidence.draft).toEqual(draft);
+    expect(evidence.encodedDraft).toBe(encodedBefore);
     expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
       draft,
       baseVersion: 2,
@@ -187,6 +219,43 @@ describe("isolated native Markets source-review protocol", () => {
     expect(() => f.controls.settleCancelledBls()).toThrow(
       "Unexpected invented source-review action",
     );
+  });
+  it("canonicalizes object key order while refusing any changed note, exact identity or membership order", async () => {
+    const f = await mounted();
+    const draft = author(f);
+    const encoded = encodeMainWatchlistPayload(draft);
+    const reordered: Record<string, unknown> = Object.fromEntries(
+      Object.entries(draft).reverse(),
+    );
+    reordered.memberships = draft.memberships.map((member) =>
+      Object.fromEntries(Object.entries(member).reverse()),
+    );
+    expect(isMainWatchlistPayload(reordered)).toBe(true);
+    expect(reordered).toEqual(draft);
+    expect(encodeMainWatchlistPayload(reordered as MainWatchlistPayload)).toBe(
+      encoded,
+    );
+    for (const changed of [
+      {
+        ...draft,
+        memberships: draft.memberships.map((member, index) =>
+          index === 0
+            ? { ...member, note: sourceReviewNote + " changed" }
+            : member,
+        ),
+      },
+      {
+        ...draft,
+        memberships: draft.memberships.map((member, index) =>
+          index === 0
+            ? { ...member, shareClassId: member.shareClassId + "-changed" }
+            : member,
+        ),
+      },
+      { ...draft, memberships: [...draft.memberships].reverse() },
+    ])
+      expect(encodeMainWatchlistPayload(changed)).not.toBe(encoded);
+    expect(f.controls.getSnapshot().save).toBe(0);
   });
   it("rejects an out-of-order government request and a wrong exact listing before dispatch", async () => {
     const f = await mounted(),
