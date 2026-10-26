@@ -6,19 +6,40 @@ import {
   inventedFollowupsReportPayload,
 } from "./native-followups-review-report-fixture";
 
+type Fixture = Awaited<ReturnType<typeof createFixture>>;
+function createWorkspace(fixture: Fixture) {
+  return new ManagedWorkspace(fixture.api, fixture.session, undefined, {
+    priceCoverage: fixture.priceCoverage,
+    researchCoverage: fixture.researchCoverage,
+    marketsCohort: fixture.marketsCohort,
+  });
+}
+function assertCompleteMixedDraft(
+  workspace: ManagedWorkspace,
+  fixture: Fixture,
+) {
+  const expected = inventedFollowupsReportPayload(fixture);
+  expect(workspace.followups.coordinator.getSnapshot().draft).toEqual(expected);
+  expect(expected.entries.map((entry) => entry.status)).toEqual([
+    "open",
+    "completed",
+    "open",
+  ]);
+  expect(expected.entries[2]?.dueOn).toBe("2099-12-31");
+  expect(
+    workspace.coordinator
+      .getSnapshot()
+      .draft?.memberships.some(
+        (member) => member.listingId === expected.entries[2]?.listing.listingId,
+      ),
+  ).toBe(false);
+  return expected;
+}
+
 describe("invented native Follow-ups report journey", () => {
   it("requires explicit load and setup, keeps all mixed entries and separately saves and freshly loads the complete resource", async () => {
     const fixture = await createFixture("followups-review-report");
-    const workspace = new ManagedWorkspace(
-      fixture.api,
-      fixture.session,
-      undefined,
-      {
-        priceCoverage: fixture.priceCoverage,
-        researchCoverage: fixture.researchCoverage,
-        marketsCohort: fixture.marketsCohort,
-      },
-    );
+    const workspace = createWorkspace(fixture);
     try {
       await workspace.coordinator.load();
       await workspace.refreshCatalog();
@@ -33,24 +54,7 @@ describe("invented native Follow-ups report journey", () => {
       expect(authorInventedFollowupsReviewReport(workspace, fixture)).toBe(
         false,
       );
-      const expected = inventedFollowupsReportPayload(fixture);
-      expect(workspace.followups.coordinator.getSnapshot().draft).toEqual(
-        expected,
-      );
-      expect(expected.entries.map((entry) => entry.status)).toEqual([
-        "open",
-        "completed",
-        "open",
-      ]);
-      expect(expected.entries[2]?.dueOn).toBe("2099-12-31");
-      expect(
-        workspace.coordinator
-          .getSnapshot()
-          .draft?.memberships.some(
-            (member) =>
-              member.listingId === expected.entries[2]?.listing.listingId,
-          ),
-      ).toBe(false);
+      const expected = assertCompleteMixedDraft(workspace, fixture);
       expect(fixture.followups?.getSnapshot()).toMatchObject({
         load: 1,
         save: 0,

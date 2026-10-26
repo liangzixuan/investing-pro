@@ -1,81 +1,66 @@
 import type { ManagedWorkspace } from "./managed-workspace";
-import { prepareFollowupsReviewReport } from "./followups-review-report";
-import type {
-  FollowupsReviewReportCapture,
-  FollowupsReviewReportSource,
-} from "./followups-review-report-controller";
+import {
+  prepareFollowupsReviewReport,
+  type PreparedFollowupsReviewReport,
+} from "./followups-review-report";
+import type { FollowupsReviewReportSource } from "./followups-review-report-controller";
+import {
+  captureFollowupsReportContext,
+  sameFollowupsReportContext,
+  type FollowupsReportContext,
+} from "./managed-followups-review-report-admission";
 
-function reportContext(
-  workspace: ManagedWorkspace,
-  routeActive: () => boolean,
-) {
-  if (!routeActive()) return null;
-  const session = workspace.sessionOwner.getSnapshot();
-  if (session.phase !== "active") return null;
-  const view = workspace.getSnapshot();
-  if (
-    view.view !== "followups" ||
-    view.research ||
-    view.companyRoute ||
-    view.followupOpening ||
-    view.read ||
-    view.reviewing ||
-    view.review
-  )
-    return null;
-  if (workspace.followups.hasDraftFileActivity()) return null;
-  const context = workspace.followups.getDraftFileContext(false);
-  const saved = workspace.followups.coordinator.getSnapshot();
-  if (
-    !context ||
-    !saved.latestLoaded ||
-    !saved.saved ||
-    saved.baseVersion !== saved.saved.version ||
-    saved.phase !== "idle" ||
-    saved.conflict ||
-    saved.uncertain ||
-    saved.replayPending
-  )
-    return null;
-  return {
-    ...context,
-    saveState: saved,
-    catalogSnapshot: view.snapshot,
-    session,
-  };
+interface CaptureLifetime {
+  readonly context: FollowupsReportContext;
+  retired: boolean;
 }
-type Context = NonNullable<ReturnType<typeof reportContext>>;
-function sameContext(before: Context, after: Context | null) {
-  return (
-    after !== null &&
-    before.saveState === after.saveState &&
-    before.saved === after.saved &&
-    before.draft === after.draft &&
-    before.baseVersion === after.baseVersion &&
-    before.catalog === after.catalog &&
-    before.catalogSnapshot === after.catalogSnapshot &&
-    before.session === after.session
-  );
+/** Captures latch retirement even when the original resource values return. */
+class FollowupsReportCaptures {
+  private readonly captures = new Set<CaptureLifetime>();
+  constructor(
+    private readonly readContext: () => FollowupsReportContext | null,
+  ) {}
+  private retire(capture: CaptureLifetime) {
+    capture.retired = true;
+    this.captures.delete(capture);
+  }
+  private current(capture: CaptureLifetime) {
+    if (capture.retired) return false;
+    if (!sameFollowupsReportContext(capture.context, this.readContext()))
+      this.retire(capture);
+    return !capture.retired;
+  }
+  admit(
+    report: PreparedFollowupsReviewReport,
+    context: FollowupsReportContext,
+  ) {
+    const capture = { context, retired: false };
+    this.captures.add(capture);
+    return Object.freeze({ report, current: () => this.current(capture) });
+  }
+  reconcile() {
+    const context = this.readContext();
+    for (const capture of this.captures) {
+      if (!sameFollowupsReportContext(capture.context, context))
+        this.retire(capture);
+    }
+  }
+  dispose() {
+    for (const capture of this.captures) this.retire(capture);
+  }
 }
-
-/** Capture capabilities latch retirement, including changes that later restore old values. */
 export function createManagedFollowupsReviewReportSource(
   workspace: ManagedWorkspace,
   routeActive: () => boolean,
 ) {
   let disposed = false;
   const listeners = new Set<() => void>();
-  const captures = new Set<{ context: Context; retired: boolean }>();
-  const currentContext = () =>
-    disposed ? null : reportContext(workspace, routeActive);
+  const readContext = () =>
+    disposed ? null : captureFollowupsReportContext(workspace, routeActive);
+  const captures = new FollowupsReportCaptures(readContext);
   const reconcile = () => {
     if (disposed) return;
-    const context = currentContext();
-    for (const capture of captures) {
-      if (sameContext(capture.context, context)) continue;
-      capture.retired = true;
-      captures.delete(capture);
-    }
+    captures.reconcile();
     for (const listener of listeners) listener();
   };
   const unsubscribers = [
@@ -85,8 +70,8 @@ export function createManagedFollowupsReviewReportSource(
     workspace.sessionOwner,
   ].map((resource) => resource.subscribe(reconcile));
   const source: FollowupsReviewReportSource = {
-    capture: (): FollowupsReviewReportCapture | null => {
-      const context = currentContext();
+    capture: () => {
+      const context = readContext();
       if (!context) return null;
       const report = prepareFollowupsReviewReport({
         capturedAt: new Date().toISOString(),
@@ -95,19 +80,9 @@ export function createManagedFollowupsReviewReportSource(
         dirty: context.saveState.dirty,
         currentCatalogSnapshotSha256: context.catalog,
       });
-      if (!report || !sameContext(context, currentContext())) return null;
-      const capture = { context, retired: false };
-      captures.add(capture);
-      return Object.freeze({
-        report,
-        current: () => {
-          if (!capture.retired && !sameContext(context, currentContext())) {
-            capture.retired = true;
-            captures.delete(capture);
-          }
-          return !capture.retired;
-        },
-      });
+      if (!report) return null;
+      if (!sameFollowupsReportContext(context, readContext())) return null;
+      return captures.admit(report, context);
     },
     subscribe: (listener) => {
       listeners.add(listener);
@@ -116,13 +91,12 @@ export function createManagedFollowupsReviewReportSource(
   };
   return {
     ...source,
-    canCapture: () => currentContext() !== null,
+    canCapture: () => readContext() !== null,
     reconcile,
     dispose: () => {
       if (disposed) return;
       disposed = true;
-      for (const capture of captures) capture.retired = true;
-      captures.clear();
+      captures.dispose();
       for (const unsubscribe of unsubscribers) unsubscribe();
       listeners.clear();
     },

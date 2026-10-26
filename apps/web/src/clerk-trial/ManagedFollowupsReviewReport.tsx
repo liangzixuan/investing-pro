@@ -55,6 +55,69 @@ function useReport(props: Props) {
   );
   return { controller: owned?.controller, state, ready };
 }
+interface CapturedReportProps {
+  controller: FollowupsReviewReportController | undefined;
+  state: ReturnType<FollowupsReviewReportController["getSnapshot"]>;
+  delivery: Props["delivery"];
+}
+/** Passive reading and explicit file actions for one admitted capture. */
+function renderCapturedReport({
+  controller,
+  state,
+  delivery,
+}: CapturedReportProps) {
+  if (!state.report) return null;
+  return (
+    <>
+      <section
+        id="managed-followups-report-preview"
+        aria-label="Captured follow-ups report"
+      >
+        <FollowupsReviewReportSnapshot report={state.report} />
+      </section>
+      <label htmlFor="managed-followups-report-json">
+        Complete captured report JSON
+        <textarea
+          id="managed-followups-report-json"
+          readOnly
+          rows={12}
+          value={JSON.stringify(state.report, null, 2)}
+        />
+      </label>
+      <div className="trial-actions">
+        <button
+          id="managed-followups-report-save"
+          type="button"
+          className="trial-secondary"
+          disabled={!delivery || state.saving}
+          onClick={() => {
+            void controller?.save();
+          }}
+        >
+          Save report (HTML)
+        </button>
+        {state.saving && (
+          <button
+            id="managed-followups-report-cancel"
+            type="button"
+            className="trial-secondary"
+            onClick={() => controller?.cancel()}
+          >
+            Cancel report save
+          </button>
+        )}
+        <button
+          id="managed-followups-report-close"
+          type="button"
+          className="trial-secondary"
+          onClick={() => controller?.close()}
+        >
+          Close captured report
+        </button>
+      </div>
+    </>
+  );
+}
 export function ManagedFollowupsReviewReport(props: Props) {
   const { controller, state, ready } = useReport(props);
   return (
@@ -93,56 +156,7 @@ export function ManagedFollowupsReviewReport(props: Props) {
           review before capture.
         </p>
       )}
-      {state.report && (
-        <>
-          <section
-            id="managed-followups-report-preview"
-            aria-label="Captured follow-ups report"
-          >
-            <FollowupsReviewReportSnapshot report={state.report} />
-          </section>
-          <label htmlFor="managed-followups-report-json">
-            Complete captured report JSON
-            <textarea
-              id="managed-followups-report-json"
-              readOnly
-              rows={12}
-              value={JSON.stringify(state.report, null, 2)}
-            />
-          </label>
-          <div className="trial-actions">
-            <button
-              id="managed-followups-report-save"
-              type="button"
-              className="trial-secondary"
-              disabled={!props.delivery || state.saving}
-              onClick={() => {
-                void controller?.save();
-              }}
-            >
-              Save report (HTML)
-            </button>
-            {state.saving && (
-              <button
-                id="managed-followups-report-cancel"
-                type="button"
-                className="trial-secondary"
-                onClick={() => controller?.cancel()}
-              >
-                Cancel report save
-              </button>
-            )}
-            <button
-              id="managed-followups-report-close"
-              type="button"
-              className="trial-secondary"
-              onClick={() => controller?.close()}
-            >
-              Close captured report
-            </button>
-          </div>
-        </>
-      )}
+      {renderCapturedReport({ controller, state, delivery: props.delivery })}
       {state.message && <p role="status">{state.message}</p>}
     </details>
   );

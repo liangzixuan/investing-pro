@@ -65,7 +65,7 @@ import {
   managedFinancialDiscoveryProps,
 } from "./ManagedFinancialDiscovery";
 import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
-import { managedFollowupsRouteActive } from "./managed-followups-route";
+import { managedFollowupsEntryProps } from "./managed-followups-entry-props";
 import {
   ManagedMarketsNavigation,
   useManagedMarketsSections,
@@ -1318,29 +1318,18 @@ export function ManagedWorkspaceScreen({
                 })}
               />
               <ManagedFollowupsEntry
-                discovery={discovery}
-                routeActive={managedFollowupsRouteActive(
+                {...managedFollowupsEntryProps({
+                  discovery,
+                  routeActive: watchlistRouteActive,
+                  draftFileScope,
+                  draftFileDelivery: followupsDraftFileDelivery,
+                  followupsReviewReportDelivery,
+                  review: followupReview,
+                  navigationPending,
                   workspace,
                   navigation,
-                  watchlistRouteActive,
-                )}
-                draftFileScope={draftFileScope}
-                draftFileDelivery={followupsDraftFileDelivery}
-                followupsReviewReportDelivery={followupsReviewReportDelivery}
-                review={followupReview}
-                navigationPending={navigationPending}
-                workspace={workspace}
-                onResearch={(entry, opener) => {
-                  if (navigation?.isPending()) return;
-                  void workspace
-                    .prepareFollowupResearch(entry)
-                    .then((capture) => {
-                      if (capture)
-                        openResearch(opener, () =>
-                          workspace.openFollowupResearch(capture),
-                        );
-                    });
-                }}
+                  openResearch,
+                })}
               />
               {discovery.view === "markets" && (
                 <div

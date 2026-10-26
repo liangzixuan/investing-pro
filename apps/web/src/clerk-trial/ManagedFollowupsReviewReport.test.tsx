@@ -17,42 +17,52 @@ const hooks = vi.hoisted(() => ({
   effects: [] as Array<() => void | (() => void)>,
   cleanups: [] as Array<() => void>,
 }));
+function controlledRef(initial: unknown) {
+  return (hooks.slots[hooks.index++] ??= { current: initial });
+}
+function controlledState(initial: unknown) {
+  const slot = hooks.index++;
+  if (!(slot in hooks.slots)) hooks.slots[slot] = initial;
+  return [
+    hooks.slots[slot],
+    (value: unknown) => {
+      hooks.slots[slot] = value;
+    },
+  ];
+}
+function sameDependencies(
+  before: React.DependencyList | undefined,
+  next: React.DependencyList | undefined,
+) {
+  if (!next) return false;
+  if (!before) return false;
+  if (next.length !== before.length) return false;
+  return next.every((value, at) => value === before[at]);
+}
+function controlledEffect(
+  effect: () => void | (() => void),
+  dependencies?: React.DependencyList,
+) {
+  const index = hooks.effectIndex++;
+  if (sameDependencies(hooks.dependencies[index], dependencies)) return;
+  hooks.dependencies[index] = dependencies;
+  hooks.effects.push(effect);
+}
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
   return {
     ...actual,
-    useRef: (initial: unknown) => {
-      if (!hooks.direct) return actual.useRef(initial);
-      return (hooks.slots[hooks.index++] ??= { current: initial });
-    },
-    useState: (initial: unknown) => {
-      if (!hooks.direct) return actual.useState(initial);
-      const slot = hooks.index++;
-      if (!(slot in hooks.slots)) hooks.slots[slot] = initial;
-      return [
-        hooks.slots[slot],
-        (value: unknown) => {
-          hooks.slots[slot] = value;
-        },
-      ];
-    },
+    useRef: (initial: unknown) =>
+      hooks.direct ? controlledRef(initial) : actual.useRef(initial),
+    useState: (initial: unknown) =>
+      hooks.direct ? controlledState(initial) : actual.useState(initial),
     useLayoutEffect: (
       effect: () => void | (() => void),
       dependencies?: React.DependencyList,
-    ) => {
-      if (!hooks.direct) return actual.useLayoutEffect(effect, dependencies);
-      const index = hooks.effectIndex++;
-      const before = hooks.dependencies[index];
-      if (
-        dependencies &&
-        before &&
-        dependencies.length === before.length &&
-        dependencies.every((value, at) => value === before[at])
-      )
-        return;
-      hooks.dependencies[index] = dependencies;
-      hooks.effects.push(effect);
-    },
+    ) =>
+      hooks.direct
+        ? controlledEffect(effect, dependencies)
+        : actual.useLayoutEffect(effect, dependencies),
     useSyncExternalStore: (
       subscribe: (listener: () => void) => () => void,
       get: () => unknown,

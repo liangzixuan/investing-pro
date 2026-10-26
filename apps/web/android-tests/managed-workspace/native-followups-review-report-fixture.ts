@@ -61,14 +61,11 @@ export function authorInventedFollowupsReviewReport(
   fixture: SharedNativeFixture,
 ): boolean {
   const state = workspace.followups.coordinator.getSnapshot();
-  if (
-    state.phase !== "idle" ||
-    state.baseVersion !== 0 ||
-    state.dirty ||
-    state.draft?.entries.length !== 0 ||
-    !state.latestLoaded
-  )
-    return false;
+  if (state.phase !== "idle") return false;
+  if (state.baseVersion !== 0) return false;
+  if (state.dirty) return false;
+  if (state.draft?.entries.length !== 0) return false;
+  if (!state.latestLoaded) return false;
   workspace.followups.coordinator.replaceDraft(
     inventedFollowupsReportPayload(fixture),
   );
@@ -109,19 +106,23 @@ export function createFollowupsReviewReportNativeFixture(
       save: () => refuse(),
       loadFollowups: (signal) => {
         const count = base.followups!.getSnapshot().load;
-        if (count >= 2 || (count === 1 && saves !== 1)) return refuse();
+        if (count >= 2) return refuse();
+        if (count === 1) {
+          if (saves !== 1) return refuse();
+        }
         return base.api.loadFollowups(signal);
       },
       saveFollowups: (input, signal) => {
         const command = parseManagedResearchFollowupsCommand(input);
+        if (signal.aborted) return refuse();
+        if (!command) return refuse();
+        if (saves !== 0) return refuse();
+        if (command.expectedVersion !== 0) return refuse();
+        if (Object.values(sources).some((count) => count !== 0))
+          return refuse();
         if (
-          signal.aborted ||
-          !command ||
-          saves !== 0 ||
-          command.expectedVersion !== 0 ||
-          Object.values(sources).some((count) => count !== 0) ||
           encodeResearchFollowupsPayload(command.payload) !==
-            encodeResearchFollowupsPayload(expected)
+          encodeResearchFollowupsPayload(expected)
         )
           return refuse();
         saves++;

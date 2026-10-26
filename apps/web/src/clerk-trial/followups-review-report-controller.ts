@@ -83,9 +83,17 @@ export class FollowupsReviewReportController {
       this.transitioning--;
     }
   }
+  private interactionBlocked() {
+    if (this.disposed) return true;
+    if (this.operation) return true;
+    return this.callbackActive();
+  }
+  private callbackActive() {
+    if (this.notifying) return true;
+    return this.transitioning > 0;
+  }
   prepare() {
-    if (this.disposed || this.operation || this.notifying || this.transitioning)
-      return;
+    if (this.interactionBlocked()) return;
     const capture = this.source.capture();
     if (!capture || !capture.current()) {
       this.withdraw(
@@ -101,16 +109,17 @@ export class FollowupsReviewReportController {
         "Captured the complete Follow-ups draft. Save follow-ups remains separate.",
     });
   }
+  private ownsReportWork() {
+    return this.capture !== null || this.operation !== null;
+  }
+  private emptyPublishedReport() {
+    if (this.state.report) return false;
+    if (this.state.saving) return false;
+    return !this.state.message;
+  }
   close() {
     if (this.disposed) return;
-    if (
-      !this.capture &&
-      !this.operation &&
-      !this.state.report &&
-      !this.state.saving &&
-      !this.state.message
-    )
-      return;
+    if (!this.ownsReportWork() && this.emptyPublishedReport()) return;
     this.withdraw("");
   }
   cancel() {
@@ -158,17 +167,7 @@ export class FollowupsReviewReportController {
       message: deliveryMessage(result),
     });
   }
-  async save() {
-    if (
-      this.disposed ||
-      this.operation ||
-      this.notifying ||
-      this.transitioning ||
-      !this.delivery
-    )
-      return;
-    if (!this.current()) return this.reconcile();
-    const capture = this.capture!;
+  private startDelivery(capture: FollowupsReviewReportCapture) {
     const operation = new AbortController();
     this.operation = operation;
     const context = {
@@ -180,16 +179,30 @@ export class FollowupsReviewReportController {
       saving: true,
       message: "Preparing the captured HTML report…",
     });
+    return { operation, context };
+  }
+  private deliveryFailed(
+    capture: FollowupsReviewReportCapture,
+    context: TextDocumentDeliveryContext,
+  ) {
+    if (!context.isCurrent()) return;
+    this.update({
+      report: capture.report,
+      saving: false,
+      message:
+        "The Follow-ups report could not be saved. Check the chosen destination before trying again.",
+    });
+  }
+  async save() {
+    if (this.interactionBlocked()) return;
+    if (!this.delivery) return;
+    if (!this.current()) return this.reconcile();
+    const capture = this.capture!;
+    const { operation, context } = this.startDelivery(capture);
     try {
       await this.deliverCapture(capture, context);
     } catch {
-      if (context.isCurrent())
-        this.update({
-          report: capture.report,
-          saving: false,
-          message:
-            "The Follow-ups report could not be saved. Check the chosen destination before trying again.",
-        });
+      this.deliveryFailed(capture, context);
     } finally {
       if (this.operation === operation) this.operation = null;
     }
