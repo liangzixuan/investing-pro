@@ -1,3 +1,4 @@
+import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
@@ -142,6 +143,11 @@ async function mount(
     write: vi.fn(),
     cancel: vi.fn(),
   };
+  const followupsReviewReportPlugin = {
+    choose: vi.fn(),
+    write: vi.fn(),
+    cancel: vi.fn(),
+  };
   const portfolioReviewReportPlugin = {
     choose: vi.fn(),
     write: vi.fn(),
@@ -160,6 +166,7 @@ async function mount(
     ["InvestmentCompanyReportHtml", reportPlugin],
     ["InvestmentPortfolioDraftFile", portfolioDraftFilePlugin],
     ["InvestmentPortfolioReviewReport", portfolioReviewReportPlugin],
+    ["InvestmentFollowupsReviewReport", followupsReviewReportPlugin],
     ["InvestmentFollowupsDraftFile", followupsDraftFilePlugin],
     ["InvestmentValuationDraftFile", valuationDraftFilePlugin],
     ["InvestmentFinancialScreenRecipe", financialScreenRecipePlugin],
@@ -196,6 +203,7 @@ async function mount(
     draftFilePlugin,
     portfolioDraftFilePlugin,
     portfolioReviewReportPlugin,
+    followupsReviewReportPlugin,
     followupsDraftFilePlugin,
     valuationDraftFilePlugin,
     financialScreenRecipePlugin,
@@ -213,6 +221,7 @@ function findScreen(node: ReactNode):
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
+      followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
@@ -238,6 +247,7 @@ function findScreen(node: ReactNode):
         draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
         portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
         portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
+        followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
         followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
         valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
         financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
@@ -293,6 +303,7 @@ describe("native shared workspace composition", () => {
         draftFilePlugin,
         portfolioDraftFilePlugin,
         portfolioReviewReportPlugin,
+        followupsReviewReportPlugin,
         followupsDraftFilePlugin,
         valuationDraftFilePlugin,
         financialScreenRecipePlugin,
@@ -316,6 +327,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentWatchlistDraftFile"],
               ["InvestmentPortfolioDraftFile"],
               ["InvestmentPortfolioReviewReport"],
+              ["InvestmentFollowupsReviewReport"],
               ["InvestmentFollowupsDraftFile"],
               ["InvestmentValuationDraftFile"],
               ["InvestmentFinancialScreenRecipe"],
@@ -361,6 +373,14 @@ describe("native shared workspace composition", () => {
         screen?.props.portfolioReviewReportDelivery,
       );
       for (const method of Object.values(portfolioReviewReportPlugin))
+        expect(method).not.toHaveBeenCalled();
+      expect(typeof screen?.props.followupsReviewReportDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.followupsReviewReportDelivery).toBe(
+        screen?.props.followupsReviewReportDelivery,
+      );
+      for (const method of Object.values(followupsReviewReportPlugin))
         expect(method).not.toHaveBeenCalled();
       expect(typeof screen?.props.followupsDraftFileDelivery?.deliver).toBe(
         config.environment === "production" ? "function" : "undefined",

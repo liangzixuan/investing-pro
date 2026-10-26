@@ -1,3 +1,5 @@
+import { ManagedFollowupsReviewReport } from "./ManagedFollowupsReviewReport";
+import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
 import { ManagedFollowupsReviewSession } from "./ManagedFollowupsReviewSession";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -22,6 +24,8 @@ export interface ManagedResearchFollowupsProps {
   review?: FollowupReview | null;
   workspace: ManagedWorkspace;
   onResearch: (entry: ResearchFollowup, opener: HTMLButtonElement) => void;
+  followupsReviewReportDelivery?:
+    FollowupsReviewReportDeliveryAdapter | undefined;
   draftFileScope?: Promise<string> | undefined;
   draftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter | undefined;
   draftFileRouteActive?: (() => boolean) | undefined;
@@ -39,6 +43,7 @@ export function ManagedResearchFollowups({
   review,
   workspace,
   onResearch,
+  followupsReviewReportDelivery,
   draftFileScope,
   draftFileDelivery,
   draftFileRouteActive = () => true,
@@ -625,6 +630,11 @@ export function ManagedResearchFollowups({
           </section>
         </>
       )}
+      <ManagedFollowupsReviewReport
+        workspace={workspace}
+        delivery={followupsReviewReportDelivery}
+        routeActive={() => draftFileRouteActive() && !navigationPending}
+      />
       {saved.saved && (
         <details className="managed-followups-saved">
           <summary>

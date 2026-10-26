@@ -1,3 +1,4 @@
+import { createNativeFollowupsReviewReportFixture } from "./native-followups-review-report-fixture";
 import { Capacitor } from "@capacitor/core";
 import { createFixture } from "./fixture";
 import {
@@ -39,6 +40,7 @@ const allowedScenarios = [
   "portfolio-ledger",
   "portfolio-close-review",
   "portfolio-review-report",
+  "followups-review-report",
   "markets-day-view",
   "company-price-ranges",
   "thesis-review",
@@ -102,4 +104,9 @@ export const nativeScreenRecipe = createNativeFinancialScreenRecipeSession(
 export const nativeValuationDraftFile =
   scenario === "saved-valuation"
     ? createNativeValuationDraftFileFixture()
+    : null;
+
+export const nativeFollowupsReviewReport =
+  scenario === "followups-review-report"
+    ? createNativeFollowupsReviewReportFixture()
     : null;

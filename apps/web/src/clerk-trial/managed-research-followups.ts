@@ -144,6 +144,7 @@ export class ManagedResearchFollowups {
   private observedDraft: ResearchFollowupsPayload | null = null;
   private readonly newEntryId: () => string;
   private readonly nextChecks = new WeakSet<NextCheckCapture>();
+  private readonly draftFileActivities = new Set<object>();
   private creatingNextCheck = false;
   private initialNextCheckLoad: (() => boolean) | null = null;
   private reviewScope: object = Object.freeze({});
@@ -265,6 +266,7 @@ export class ManagedResearchFollowups {
     if (this.retired) return;
     this.endReviewScope();
     this.retired = true;
+    this.draftFileActivities.clear();
     this.cancelReview();
     this.state = Object.freeze({
       ...this.state,
@@ -367,6 +369,19 @@ export class ManagedResearchFollowups {
       catalogSnapshotSha256: digest,
       assessedOn: groups.assessedOn,
     });
+  }
+  /** Local file operations retire readable-report captures without changing the draft. */
+  hasDraftFileActivity() {
+    return this.draftFileActivities.size > 0;
+  }
+  beginDraftFileActivity(operation: object) {
+    if (this.retired || this.draftFileActivities.has(operation)) return;
+    this.draftFileActivities.add(operation);
+    for (const listener of this.listeners) listener();
+  }
+  endDraftFileActivity(operation: object) {
+    if (!this.draftFileActivities.delete(operation)) return;
+    for (const listener of this.listeners) listener();
   }
   getDraftFileContext(requireFresh = true): FollowupsDraftFileContext | null {
     const state = this.coordinator.getSnapshot();

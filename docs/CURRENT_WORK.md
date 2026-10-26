@@ -5,16 +5,32 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current source: a dated question from an observed filing
+## Current source: a complete Follow-ups reading report
 
-The active candidate connects an already loaded filing to an authored question
-and UTC due date. It previews the complete question and citation before an
-explicit one-time creation in the separate Follow-ups draft. Back retains the
-chosen filing-review group. Save follow-ups and fresh Load remain explicit.
-The existing company note is independent. Source and hosted native acceptance
-for this candidate are pending; it has no new client delivery.
+The [report candidate](MANAGED_FOLLOWUPS_REVIEW_REPORT.md) captures the whole
+valid Follow-ups draft, including entries outside the filter, chosen review or
+My Watchlist. Inspect complete questions, assessments, identities and original
+dates, then explicitly save a private passive HTML copy. Online Save stays
+separate. Draft, save/recovery, catalog, route and session changes retire the
+capture. Local draft-file activity also retires it. Original PR/main, hosted
+native and client-delivery acceptance are pending.
 
-## Accepted baseline: Follow-up assessment in the company note
+## Accepted and delivered: a dated question from an observed filing
+
+[PR 241](https://github.com/liangzixuan/investing-pro/pull/241) merged at
+d434db973cab9ff16e9cc86f8802c79770a7ef0f. All original required PR/main checks
+and the complete synthetic native 85-case scope passed. An already loaded filing
+supports a complete cited question and UTC due date, one-time Follow-ups draft
+creation, retained filing-review Back and explicit Save/fresh Load. Original
+source clocks, exact identity, text/entry limits and resource lifetimes remain.
+
+Android 1.45.0/code46 is provided locally from that source. Its guarded build,
+complete input/asset/notice verification, production signature, compiled XML
+policies, all DEX definitions and source preservation passed. No rebuild or
+re-sign followed the guard. These checks do not establish installation or
+physical-device acceptance. The API, website and earlier APKs remain unchanged.
+
+## Earlier delivered baseline: Follow-up assessment in the company note
 
 [PR 240](https://github.com/liangzixuan/investing-pro/pull/240) merged at
 `1c8f43158512283f384f695dac6eb3e4cec441b5`. Its original required PR and main

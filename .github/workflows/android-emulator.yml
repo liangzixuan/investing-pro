@@ -382,6 +382,23 @@ jobs:
           ))
           if len(required) != 85:
               raise SystemExit("The filing dated-question journey must extend all 84 existing native tests.")
+          # Preserve all 85 existing cases and require complete Follow-ups report delivery.
+          required.update({
+              ("local.investment.personal.FollowupsReviewReportPolicyInstrumentedTest", method)
+              for method in {
+                  "admitsTheFixedHtmlMetadataAndCompleteEnvelope",
+                  "refusesUnknownOptionsCrossFormatPurposeAndUnsafeFilename",
+                  "reusesTheCompleteUtcCalendarAndExactChosenFilename",
+                  "refusesChangedHeadCspStyleIdentityOrIncompleteEnvelope",
+                  "inheritsTheEightMibStrictUtf8WriterBoundary",
+              }
+          })
+          required.add((
+              "local.investment.personal.FollowupsReviewReportInstrumentedTest",
+              "followupsReportSystemPickerKeepsCompleteDraftThroughBackAndSeparateSaveAndFreshLoad",
+          ))
+          if len(required) != 91:
+              raise SystemExit("Follow-ups report policy and export journey must extend all 85 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

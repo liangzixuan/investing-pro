@@ -27,15 +27,22 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority after the October 22 Android delivery
+## Current priority after the October 26 Android delivery
 
-The current M2/M3 source candidate connects the daily Follow-ups workflow across
-a chosen set of due checks: full question and identity review, exact-company
-research and assessment, Back to the retained position, explicit Continue, complete
-draft review and independent Save. It uses existing coverage and storage. See the
-[review-session guide](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks).
-This is a candidate workflow; source, native and delivery acceptance remain
-separate from the broader milestone.
+The current M4 candidate closes a research session with a complete
+[Follow-ups reading report](MANAGED_FOLLOWUPS_REVIEW_REPORT.md). Capture every
+valid authored check and assessment, inspect the whole resource with original
+identities and dates, then explicitly save passive HTML for offline reading.
+Online Save remains independent. It reuses the Portfolio report and chosen-file
+patterns without a new source, metric, storage schema, dependency or fee.
+Source, native and client-delivery acceptance remain separate from the broader
+milestone.
+
+Android 1.45 delivers the preceding filing-to-dated-question workflow from
+accepted main d434db973cab9ff16e9cc86f8802c79770a7ef0f. The owner can keep an
+already observed filing as a complete cited question, return through the
+retained review and explicitly Save/load Follow-ups. Original source/native85
+and complete guarded APK checks passed. Installation remains an owner action.
 
 [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files) are accepted in
 source at main `461246249c6d790a1c8bb28ab85de301b267058f`.

@@ -52,6 +52,7 @@ import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedPortfolio } from "./ManagedPortfolio";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
+import { ManagedResearchFollowups } from "./ManagedResearchFollowups";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
@@ -6600,4 +6601,64 @@ it("restores Portfolio research opener focus and retains all three drafts withou
   expect(f.api.recentFilings).not.toHaveBeenCalled();
   expect(f.api.save).not.toHaveBeenCalled();
   expect(f.api.saveFollowups).not.toHaveBeenCalled();
+});
+
+it("keeps the readable Follow-ups report on the root route without source or save effects", async () => {
+  const { workspace, api } = fixture();
+  await workspace.coordinator.load();
+  await workspace.refreshCatalog();
+  vi.mocked(api.loadFollowups).mockResolvedValue({
+    version: 1,
+    payload: { schemaVersion: 1, entries: [] },
+  });
+  await workspace.followups.coordinator.load();
+  workspace.setView("followups");
+  const before = [
+    workspace.coordinator.getSnapshot(),
+    workspace.followups.coordinator.getSnapshot(),
+  ] as const;
+  let pending = false;
+  const navigation: ManagedCompanyNavigation = {
+    pending: false,
+    isPending: () => pending,
+    invalid: false,
+    returnFocus: 0,
+    hasCompanyRoute: () => false,
+    open: vi.fn(),
+    section: vi.fn(),
+    view: vi.fn(() => false),
+    back: vi.fn(),
+  };
+  const delivery = { deliver: vi.fn() };
+  mounted.direct = true;
+  mounted.refIndex = 0;
+  const screen = ManagedWorkspaceScreen({
+    workspace,
+    navigation,
+    followupsReviewReportDelivery: delivery,
+  });
+  const entry = elements(screen).find(
+    (node) => node.type === ManagedFollowupsEntry,
+  ) as React.ReactElement<React.ComponentProps<typeof ManagedFollowupsEntry>>;
+  const followups = elements(ManagedFollowupsEntry(entry.props)).find(
+    (node) => node.type === ManagedResearchFollowups,
+  ) as React.ReactElement<
+    React.ComponentProps<typeof ManagedResearchFollowups>
+  >;
+  expect(followups.props.followupsReviewReportDelivery).toBe(delivery);
+  expect(followups.props.draftFileRouteActive?.()).toBe(true);
+  pending = true;
+  expect(followups.props.draftFileRouteActive?.()).toBe(false);
+  pending = false;
+  workspace.sessionOwner.dispose();
+  expect(followups.props.draftFileRouteActive?.()).toBe(false);
+  expect(delivery.deliver).not.toHaveBeenCalled();
+  expect(api.eodHistory).not.toHaveBeenCalled();
+  expect(api.annualReport).not.toHaveBeenCalled();
+  expect(api.recentFilings).not.toHaveBeenCalled();
+  expect(api.save).not.toHaveBeenCalled();
+  expect(api.saveFollowups).not.toHaveBeenCalled();
+  expect(before[0]?.draft?.memberships).toEqual(payload.memberships);
+  expect(before[1]?.draft?.entries).toEqual([]);
+  mounted.direct = false;
 });
