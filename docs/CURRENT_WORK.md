@@ -1,18 +1,26 @@
 # Current work
 
-Updated October 24, 2026. This is the current capability and delivery record.
+Updated October 25, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Source candidate: Android signing runtime preflight
+## Android source and native acceptance
 
-The release tooling checks its installed PowerShell runtime before it creates
-release evidence or reads signing custody. An unavailable hash command stops
-the operation at the runtime prerequisite stage. The public error names that
-stage without exposing exception text or private configuration. This candidate
-keeps the existing source, owner, path, custody, signing and retry guards.
-It does not reopen a failed operation or establish a new APK delivery.
+The signing runtime preflight is merged in
+[PR 238](https://github.com/liangzixuan/investing-pro/pull/238). It checks the
+installed PowerShell hash command before release evidence or signing custody.
+Public failures name the stage without exposing exception text or private
+configuration. Existing source, owner, path, custody, signing and retry guards
+remain in place.
+
+The current native test candidate waits for the exact company route and its
+visible, enabled Back control before sending hardware Back from Portfolio
+research. It keeps the single Back press, existing deadline and all return,
+ledger, source-read and independent Save assertions. The original merged main
+failed this return check. Its log did not capture the navigation-pending state;
+the original failure remains recorded, and revised native acceptance is pending.
+This source work has not produced a new APK or reopened a failed release operation.
 
 ## Accepted source: chosen Follow-ups review
 
