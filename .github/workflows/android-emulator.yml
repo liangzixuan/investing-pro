@@ -371,7 +371,7 @@ jobs:
           if len(required) != 83:
               raise SystemExit("The daily Follow-ups review must extend all 82 existing native tests.")
           required.add((
-              "local.investment.personal.ManagedWorkspaceInstrumentedTest",
+              "local.investment.personal.FollowupAssessmentNoteInstrumentedTest",
               "followupAssessmentAppendsExactCompanyNoteThroughBackAndSeparateSaves",
           ))
           if len(required) != 84:

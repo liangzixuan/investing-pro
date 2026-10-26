@@ -4,17 +4,56 @@ import type {
   FollowupReviewNotePreview,
 } from "./managed-followup-review-note-context";
 
-export function ManagedFollowupReviewNote({
-  context,
-}: {
-  context: FollowupReviewNoteContext;
-}) {
-  const [state, setState] = useState<{
-    preview: Readonly<FollowupReviewNotePreview> | null;
-    message: string | null;
-  }>({ preview: null, message: null });
+type NotePreview = Readonly<FollowupReviewNotePreview>;
+interface NoteState {
+  preview: NotePreview | null;
+  message: string | null;
+}
+interface NoteInteraction {
+  readonly context: FollowupReviewNoteContext;
+  readonly committed: { current: FollowupReviewNoteContext | null };
+  readonly active: { current: NotePreview | null };
+  readonly setState: (state: NoteState) => void;
+}
+function isCommitted(note: NoteInteraction): boolean {
+  return note.committed.current === note.context;
+}
+function clearPreview(note: NoteInteraction) {
+  note.active.current?.cancel();
+  note.active.current = null;
+  note.setState({ preview: null, message: null });
+}
+function preparePreview(note: NoteInteraction) {
+  if (!isCommitted(note)) return;
+  note.active.current?.cancel();
+  const result = note.context.prepare();
+  note.active.current = result.preview;
+  note.setState({ preview: result.preview, message: result.reason });
+}
+function appendPreview(note: NoteInteraction, preview: NotePreview | null) {
+  if (!isCommitted(note) || note.active.current !== preview || !preview) return;
+  const appended = preview.append();
+  note.active.current = null;
+  note.setState({
+    preview: null,
+    message: appended
+      ? "Assessment added to the company note draft. Review and save My Watchlist and Follow-ups separately."
+      : "The preview is no longer current. Nothing was added. Preview again.",
+  });
+}
+function cancelPreview(note: NoteInteraction) {
+  if (isCommitted(note)) clearPreview(note);
+}
+function closeDisclosure(note: NoteInteraction, open: boolean) {
+  if (isCommitted(note) && !open) clearPreview(note);
+}
+function useFollowupReviewNote(context: FollowupReviewNoteContext) {
+  const [state, setState] = useState<NoteState>({
+    preview: null,
+    message: null,
+  });
   const committed = useRef<FollowupReviewNoteContext | null>(null);
-  const active = useRef<Readonly<FollowupReviewNotePreview> | null>(null);
+  const active = useRef<NotePreview | null>(null);
   useLayoutEffect(() => {
     committed.current = context;
     return () => {
@@ -22,20 +61,65 @@ export function ManagedFollowupReviewNote({
     };
   });
   useLayoutEffect(() => () => active.current?.cancel(), []);
-  const current = () => committed.current === context;
   const preview = state.preview?.isCurrent() ? state.preview : null;
-  const clear = () => {
-    active.current?.cancel();
-    active.current = null;
-    setState({ preview: null, message: null });
-  };
   const stale = state.preview !== null && preview === null;
+  const message =
+    context.reason ??
+    (stale
+      ? "The preview no longer matches the current drafts. Preview again."
+      : state.message);
+  const interaction = { context, committed, active, setState };
+  return {
+    preview,
+    message,
+    prepare: () => preparePreview(interaction),
+    append: () => appendPreview(interaction, preview),
+    cancel: () => cancelPreview(interaction),
+    close: (open: boolean) => closeDisclosure(interaction, open),
+  };
+}
+function previewEditor(
+  preview: Readonly<FollowupReviewNotePreview> | null,
+  append: () => void,
+  cancel: () => void,
+) {
+  if (!preview) return null;
+  return (
+    <div>
+      <label htmlFor="managed-followup-note-preview">
+        Complete company note preview
+      </label>
+      <textarea
+        id="managed-followup-note-preview"
+        className="managed-followup-note-preview"
+        rows={8}
+        readOnly
+        value={preview.note}
+      />
+      <button
+        id="managed-followup-note-append"
+        type="button"
+        className="trial-secondary"
+        onClick={append}
+      >
+        Append assessment to note draft
+      </button>
+      <button type="button" className="trial-secondary" onClick={cancel}>
+        Keep current note
+      </button>
+    </div>
+  );
+}
+export function ManagedFollowupReviewNote({
+  context,
+}: {
+  context: FollowupReviewNoteContext;
+}) {
+  const note = useFollowupReviewNote(context);
   return (
     <details
       className="managed-followup-review-note"
-      onToggle={(event) => {
-        if (current() && !event.currentTarget.open) clear();
-      }}
+      onToggle={(event) => note.close(event.currentTarget.open)}
     >
       <summary>Keep assessment in company note</summary>
       <p>
@@ -53,62 +137,13 @@ export function ManagedFollowupReviewNote({
         type="button"
         className="trial-secondary"
         disabled={context.reason !== null}
-        onClick={() => {
-          if (!current()) return;
-          active.current?.cancel();
-          const result = context.prepare();
-          active.current = result.preview;
-          setState({ preview: result.preview, message: result.reason });
-        }}
+        onClick={note.prepare}
       >
         Preview complete note
       </button>
-      {preview && (
-        <div>
-          <label htmlFor="managed-followup-note-preview">
-            Complete company note preview
-          </label>
-          <textarea
-            id="managed-followup-note-preview"
-            className="managed-followup-note-preview"
-            rows={8}
-            readOnly
-            value={preview.note}
-          />
-          <button
-            id="managed-followup-note-append"
-            type="button"
-            className="trial-secondary"
-            onClick={() => {
-              if (!current() || active.current !== preview) return;
-              const appended = preview.append();
-              active.current = null;
-              setState({
-                preview: null,
-                message: appended
-                  ? "Assessment added to the company note draft. Review and save My Watchlist and Follow-ups separately."
-                  : "The preview is no longer current. Nothing was added. Preview again.",
-              });
-            }}
-          >
-            Append assessment to note draft
-          </button>
-          <button
-            type="button"
-            className="trial-secondary"
-            onClick={() => {
-              if (current()) clear();
-            }}
-          >
-            Keep current note
-          </button>
-        </div>
-      )}
+      {previewEditor(note.preview, note.append, note.cancel)}
       <p role="status" aria-live="polite">
-        {context.reason ??
-          (stale
-            ? "The preview no longer matches the current drafts. Preview again."
-            : state.message)}
+        {note.message}
       </p>
     </details>
   );

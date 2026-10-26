@@ -155,103 +155,128 @@ it("cancel consumes the proposal without changing either draft or original dates
   noSources(f);
 });
 
+type NoteFixture = Awaited<ReturnType<typeof fixture>>;
 const boundaries = [
-  "watchlist equal draft",
-  "watchlist note round trip",
-  "followups equal draft",
-  "assessment round trip",
-  "question",
-  "due date",
-  "completion",
-  "identity",
-  "destination identity",
-  "catalog",
-  "navigation round trip",
-  "view round trip",
-  "close",
-  "session",
-] as const;
+  {
+    name: "watchlist equal draft",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.coordinator.replaceDraft({
+        ...f.workspace.coordinator.getSnapshot().draft!,
+      });
+    },
+  },
+  {
+    name: "watchlist note round trip",
+    retire(this: void, f: NoteFixture) {
+      const note =
+        f.workspace.coordinator.getSnapshot().draft!.memberships[0]!.note;
+      f.workspace.note(f.selection.listing.listingId, "changed");
+      f.workspace.note(f.selection.listing.listingId, note);
+    },
+  },
+  {
+    name: "followups equal draft",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.followups.coordinator.replaceDraft({
+        ...f.workspace.followups.coordinator.getSnapshot().draft!,
+      });
+    },
+  },
+  {
+    name: "assessment round trip",
+    retire(this: void, f: NoteFixture) {
+      const value = f.current().result;
+      f.workspace.followups.edit(f.current(), "result", "changed");
+      f.workspace.followups.edit(f.current(), "result", value);
+    },
+  },
+  {
+    name: "question",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.followups.edit(f.current(), "check", "Changed question");
+    },
+  },
+  {
+    name: "due date",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.followups.edit(f.current(), "dueOn", "2026-10-21");
+    },
+  },
+  {
+    name: "completion",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.followups.complete(
+        f.current(),
+        new Date("2026-10-26T00:00:00Z"),
+      );
+    },
+  },
+  {
+    name: "identity",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.followups.coordinator.replaceDraft({
+        schemaVersion: 1,
+        entries: [
+          {
+            ...f.current(),
+            listing: { ...f.current().listing, shareClassId: "other-class" },
+          },
+        ],
+      });
+    },
+  },
+  {
+    name: "destination identity",
+    retire(this: void, f: NoteFixture) {
+      const draft = f.workspace.coordinator.getSnapshot().draft!;
+      f.workspace.coordinator.replaceDraft({
+        ...draft,
+        memberships: draft.memberships.map((member) => ({
+          ...member,
+          shareClassId: "changed-destination-class",
+        })),
+      });
+    },
+  },
+  {
+    name: "catalog",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.followups.syncCatalog(`sha256:${"b".repeat(64)}`);
+    },
+  },
+  {
+    name: "navigation round trip",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.setNavigationBlocked(true);
+      f.workspace.setNavigationBlocked(false);
+    },
+  },
+  {
+    name: "view round trip",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.setView("markets");
+      f.workspace.setView("followups");
+    },
+  },
+  {
+    name: "close",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.closeResearch();
+    },
+  },
+  {
+    name: "session",
+    retire(this: void, f: NoteFixture) {
+      f.workspace.sessionOwner.retire();
+    },
+  },
+];
 it.each(boundaries)(
-  "permanently retires a captured note after %s",
-  async (boundary) => {
+  "permanently retires a captured note after $name",
+  async ({ retire }) => {
     const f = await fixture();
     const preview = f.capture().prepare().preview!;
-    switch (boundary) {
-      case "watchlist equal draft":
-        f.workspace.coordinator.replaceDraft({
-          ...f.workspace.coordinator.getSnapshot().draft!,
-        });
-        break;
-      case "watchlist note round trip": {
-        const note =
-          f.workspace.coordinator.getSnapshot().draft!.memberships[0]!.note;
-        f.workspace.note(f.selection.listing.listingId, "changed");
-        f.workspace.note(f.selection.listing.listingId, note);
-        break;
-      }
-      case "followups equal draft":
-        f.workspace.followups.coordinator.replaceDraft({
-          ...f.workspace.followups.coordinator.getSnapshot().draft!,
-        });
-        break;
-      case "assessment round trip": {
-        const value = f.current().result;
-        f.workspace.followups.edit(f.current(), "result", "changed");
-        f.workspace.followups.edit(f.current(), "result", value);
-        break;
-      }
-      case "question":
-        f.workspace.followups.edit(f.current(), "check", "Changed question");
-        break;
-      case "due date":
-        f.workspace.followups.edit(f.current(), "dueOn", "2026-10-21");
-        break;
-      case "completion":
-        f.workspace.followups.complete(
-          f.current(),
-          new Date("2026-10-26T00:00:00Z"),
-        );
-        break;
-      case "identity":
-        f.workspace.followups.coordinator.replaceDraft({
-          schemaVersion: 1,
-          entries: [
-            {
-              ...f.current(),
-              listing: { ...f.current().listing, shareClassId: "other-class" },
-            },
-          ],
-        });
-        break;
-      case "destination identity": {
-        const draft = f.workspace.coordinator.getSnapshot().draft!;
-        f.workspace.coordinator.replaceDraft({
-          ...draft,
-          memberships: draft.memberships.map((member) => ({
-            ...member,
-            shareClassId: "changed-destination-class",
-          })),
-        });
-        break;
-      }
-      case "catalog":
-        f.workspace.followups.syncCatalog(`sha256:${"b".repeat(64)}`);
-        break;
-      case "navigation round trip":
-        f.workspace.setNavigationBlocked(true);
-        f.workspace.setNavigationBlocked(false);
-        break;
-      case "view round trip":
-        f.workspace.setView("markets");
-        f.workspace.setView("followups");
-        break;
-      case "close":
-        f.workspace.closeResearch();
-        break;
-      case "session":
-        f.workspace.sessionOwner.retire();
-        break;
-    }
+    retire(f);
     const after = f.workspace.coordinator.getSnapshot().draft;
     expect(preview.isCurrent()).toBe(false);
     expect(preview.append()).toBe(false);
@@ -273,59 +298,78 @@ it("refuses a missing destination and never adds a Watchlist member", async () =
   noSources(f);
 });
 
-it.each(["watchlist", "followups"] as const)(
-  "blocks pending/conflict/uncertain %s Save and does not revive old captures",
-  async (resource) => {
-    for (const failure of ["pending", "conflict", "uncertain"] as const) {
-      const f = await fixture();
-      f.workspace.note(f.selection.listing.listingId, "Dirty current note");
-      const preview = f.capture().prepare().preview!;
-      const watchlistHeld = deferred<Awaited<ReturnType<ManagedApi["save"]>>>();
-      const followupsHeld =
-        deferred<Awaited<ReturnType<ManagedApi["saveFollowups"]>>>();
-      if (resource === "watchlist")
-        vi.mocked(f.api.save).mockReturnValueOnce(watchlistHeld.promise);
-      else
-        vi.mocked(f.api.saveFollowups).mockReturnValueOnce(
-          followupsHeld.promise,
-        );
-      const coordinator =
-        resource === "watchlist"
-          ? f.workspace.coordinator
-          : f.workspace.followups.coordinator;
-      const saving = coordinator.save();
-      expect(f.capture().reason).toBeTruthy();
-      expect(preview.isCurrent()).toBe(false);
-      if (failure === "pending") {
-        if (resource === "watchlist") {
-          const command = vi.mocked(f.api.save).mock.calls[0]![0];
-          watchlistHeld.resolve({
-            version: command.expectedVersion + 1,
-            payload: command.payload,
-            replayed: false,
-          });
-        } else {
-          const command = vi.mocked(f.api.saveFollowups).mock.calls[0]![0];
-          followupsHeld.resolve({
-            version: command.expectedVersion + 1,
-            payload: command.payload,
-            replayed: false,
-          });
-        }
-      } else {
-        const error = new TrialApiError(
-          failure === "conflict" ? "conflict" : "unavailable",
-        );
-        if (resource === "watchlist") watchlistHeld.reject(error);
-        else followupsHeld.reject(error);
-      }
-      await saving;
-      expect(preview.append()).toBe(false);
-      if (failure !== "pending")
-        expect(f.capture().prepare().preview).toBeNull();
-      expect(f.current().result).toContain("Assessment");
-      noSources(f);
-    }
+interface HeldSave {
+  start(): Promise<void>;
+  accept(): void;
+  reject(error: TrialApiError): void;
+}
+function holdWatchlistSave(f: NoteFixture): HeldSave {
+  const held = deferred<Awaited<ReturnType<ManagedApi["save"]>>>();
+  vi.mocked(f.api.save).mockReturnValueOnce(held.promise);
+  return {
+    start: () => f.workspace.coordinator.save(),
+    accept() {
+      const command = vi.mocked(f.api.save).mock.calls[0]![0];
+      held.resolve({
+        version: command.expectedVersion + 1,
+        payload: command.payload,
+        replayed: false,
+      });
+    },
+    reject: held.reject,
+  };
+}
+function holdFollowupsSave(f: NoteFixture): HeldSave {
+  const held = deferred<Awaited<ReturnType<ManagedApi["saveFollowups"]>>>();
+  vi.mocked(f.api.saveFollowups).mockReturnValueOnce(held.promise);
+  return {
+    start: () => f.workspace.followups.coordinator.save(),
+    accept() {
+      const command = vi.mocked(f.api.saveFollowups).mock.calls[0]![0];
+      held.resolve({
+        version: command.expectedVersion + 1,
+        payload: command.payload,
+        replayed: false,
+      });
+    },
+    reject: held.reject,
+  };
+}
+type SaveOutcome = "pending" | "conflict" | "uncertain";
+function settleSave(held: HeldSave, outcome: SaveOutcome) {
+  if (outcome === "pending") held.accept();
+  else
+    held.reject(
+      new TrialApiError(outcome === "conflict" ? "conflict" : "unavailable"),
+    );
+}
+const saveOutcomes: readonly SaveOutcome[] = [
+  "pending",
+  "conflict",
+  "uncertain",
+];
+const saveBoundaries = [
+  { resource: "watchlist", hold: holdWatchlistSave },
+  { resource: "followups", hold: holdFollowupsSave },
+].flatMap((resource) =>
+  saveOutcomes.map((outcome) => ({ ...resource, outcome })),
+);
+it.each(saveBoundaries)(
+  "blocks $outcome $resource Save and does not revive old captures",
+  async ({ hold, outcome }) => {
+    const f = await fixture();
+    f.workspace.note(f.selection.listing.listingId, "Dirty current note");
+    const preview = f.capture().prepare().preview!;
+    const held = hold(f);
+    const saving = held.start();
+    expect(f.capture().reason).toBeTruthy();
+    expect(preview.isCurrent()).toBe(false);
+    settleSave(held, outcome);
+    await saving;
+    expect(preview.append()).toBe(false);
+    if (outcome !== "pending") expect(f.capture().prepare().preview).toBeNull();
+    expect(f.current().result).toContain("Assessment");
+    noSources(f);
   },
 );
 

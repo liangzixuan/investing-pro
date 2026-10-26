@@ -31,6 +31,7 @@ final class ReportRevisitKeyboard {
         Assessment(String text) { this.text = text; }
     }
     record Edit(Assessment next, Assessment previous) {}
+    record FieldInput(ReportRevisitTouch.Field field, String text) {}
     private static final long PAGE_TIMEOUT_MS = 10_000;
     private final ReportRevisitPage page;
     private final ReportRevisitTouch touch;
@@ -48,6 +49,17 @@ final class ReportRevisitKeyboard {
         if (edit.previous != Assessment.EMPTY) selectCompletePrevious(edit, focused);
         commitNativeText(edit.next);
         page.await(new ReportRevisitPage.Check("native assessment edit reaches the controlled product field", new ReportRevisitPage.Script("document.activeElement===document.querySelector('" + selector + "') && document.activeElement.value===" + JSONObject.quote(edit.next.text))));
+        closeSoftKeyboard();
+    }
+    void enter(FieldInput input) throws Exception {
+        String selector = input.field.selector;
+        touch.input(input.field);
+        page.await(new ReportRevisitPage.Check("input focused: " + selector, new ReportRevisitPage.Script(
+            "document.activeElement === document.querySelector(" + JSONObject.quote(selector) + ")")));
+        awaitNativeEditor();
+        commitNativeText(input.text);
+        page.await(new ReportRevisitPage.Check("native input value: " + selector, new ReportRevisitPage.Script(
+            "document.querySelector(" + JSONObject.quote(selector) + ")?.value === " + JSONObject.quote(input.text))));
         closeSoftKeyboard();
     }
     private void selectCompletePrevious(Edit edit, String focused) throws Exception {
@@ -74,7 +86,7 @@ final class ReportRevisitKeyboard {
             }
         });
     }
-    private void closeSoftKeyboard() {
+    void closeSoftKeyboard() {
         androidx.test.espresso.Espresso.closeSoftKeyboard();
         awaitHiddenIme();
     }
@@ -139,7 +151,8 @@ final class ReportRevisitKeyboard {
             }
         });
     }
-    private void commitNativeText(Assessment assessment) {
+    private void commitNativeText(Assessment assessment) { commitNativeText(assessment.text); }
+    private void commitNativeText(String text) {
         onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
             @Override public Matcher<View> getConstraints() { return isDisplayed(); }
             @Override public String getDescription() { return "commit invented text through native IME"; }
@@ -148,7 +161,7 @@ final class ReportRevisitKeyboard {
                 android.view.inputmethod.InputConnection input = ((WebView) view).onCreateInputConnection(
                     new android.view.inputmethod.EditorInfo());
                 assertNotNull("The actual WebView editor must supply a native connection", input);
-                assertTrue("Native IME commit must dispatch", input.commitText(assessment.text, 1));
+                assertTrue("Native IME commit must dispatch", input.commitText(text, 1));
                 controller.loopMainThreadUntilIdle();
             }
         });

@@ -17,7 +17,8 @@ import java.util.List;
 final class ReportRevisitFixtureAssets implements AutoCloseable {
     enum Scenario {
         REPORT_REVISIT("report-revisit"), PORTFOLIO_REVIEW_REPORT("portfolio-review-report"),
-        COMPANY_SNAPSHOT_LOADING("company-snapshot-loading");
+        COMPANY_SNAPSHOT_LOADING("company-snapshot-loading"),
+        FOLLOWUP_ASSESSMENT_NOTE("followup-assessment-note");
         final String marker;
         Scenario(String marker) { this.marker = marker; }
     }

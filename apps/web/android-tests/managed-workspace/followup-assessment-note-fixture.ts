@@ -66,12 +66,27 @@ class AssessmentNoteFixture {
     return refuse();
   }
   private requireSaveState(signal: AbortSignal) {
+    this.requireActiveProtocol(signal);
+    this.requireInitialCompanyVisit();
+    this.requireUnusedSourceBudget();
+  }
+  private requireActiveProtocol(signal: AbortSignal) {
+    if (signal.aborted) refuse();
+    if (!this.original) refuse();
+  }
+  private requireInitialCompanyVisit() {
     const state = this.base.getSnapshot();
-    if (signal.aborted || !this.original) refuse();
-    if (state.load !== 1 || state.status !== 1 || state.resolve !== 1) refuse();
+    if (state.load !== 1) refuse();
+    if (state.status !== 1) refuse();
+    if (state.resolve !== 1) refuse();
+  }
+  private requireUnusedSourceBudget() {
+    const state = this.base.getSnapshot();
     if (Object.values(this.sourceAttempts).some((count) => count !== 0))
       refuse();
-    if (state.marketsEod || state.calendar || state.fed) refuse();
+    if (state.marketsEod) refuse();
+    if (state.calendar) refuse();
+    if (state.fed) refuse();
   }
   readonly saveFollowups: Api["saveFollowups"] = (input, signal) => {
     this.requireSaveState(signal);
