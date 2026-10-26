@@ -5,15 +5,37 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current source: research a holding and keep its next check
+## Selected next: an explicit Markets source review pass
 
-The [holding workflow candidate](MANAGED_HOLDING_FOLLOWUP.md) connects a positive
-authored Portfolio position to exact-company research, a complete question/date
-preview, explicit Follow-ups draft creation, retained Back and independent
-Save/fresh Load. It supports holdings outside My Watchlist without requiring
-that resource to load. Position context keeps original authored dates and unknown
-basis values. Draft, recovery, catalog, route, session and file activity retire
-old previews. Original source/native/client acceptance remains pending.
+The [source review pass](MANAGED_MARKETS_SOURCE_REVIEW.md) is the next M1/M3
+candidate. Inspect a named plan for eligible board histories and the existing
+BLS, BEA and Fed sources. Start the selected work explicitly, review each result,
+and continue through the existing source and research views. Keep checked-empty,
+retained previous, failed, cancelled and not-attempted states distinct. Original source, synthetic native and client acceptance remain pending; existing
+individual controls remain.
+
+## Accepted and delivered: research a holding and keep its next check
+
+The [holding workflow](MANAGED_HOLDING_FOLLOWUP.md) connects a positive authored
+Portfolio position to exact-company research, a complete question/date preview,
+explicit independent Follow-ups draft creation, retained Back and separate
+Save/fresh Load. Holdings outside My Watchlist work before that resource loads.
+Position context preserves authored dates and unknown basis. Draft, file,
+recovery, catalog, route and session changes retire old previews.
+
+[PR 243](https://github.com/liangzixuan/investing-pro/pull/243) added the workflow.
+[PR 244](https://github.com/liangzixuan/investing-pro/pull/244) corrected native
+Save-picker readiness after the original main run exposed a directory race.
+Actual main `e8f05b6989949affcd5c066f18fb8c22fb4b5364` passed its original
+required checks and complete synthetic native 92-case scope. Retained native
+XML and screenshots were reused only for the identical tested tree and workflow.
+
+Android 1.47.0/code48 is provided locally from that source. Its guarded build,
+complete input, asset and notice checks, existing production signature, manifest,
+compiled XML policies, all DEX definitions and source preservation passed.
+Delivered APK bytes match the guarded APK. These checks do not establish
+installation, owner-record or physical-device acceptance. The website, API and
+earlier APKs remain unchanged by this delivery.
 
 ## Accepted and delivered: complete Follow-ups reading report
 

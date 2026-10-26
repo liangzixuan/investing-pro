@@ -4,6 +4,7 @@ import {
   type PersonalMonetaryAnnouncementsDto,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
+import type { ManagedSourceReadResult } from "./managed-source-read-result";
 import type { ManagedApi } from "./managed-api";
 import { ManagedFedAnnouncements } from "./managed-fed-announcements";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
@@ -179,7 +180,7 @@ describe("managed Fed announcements lifetime", () => {
       await model.load();
       const error = new TrialApiError(code);
       read.mockRejectedValueOnce(error);
-      await model.load();
+      expect(await model.load()).toBe("retired");
       expect(retire).toHaveBeenCalledExactlyOnceWith(error);
       expect(model.getSnapshot()).toMatchObject({
         announcements: null,
@@ -399,7 +400,7 @@ describe("managed Fed accepted refresh comparison", () => {
     const next = deferred<PersonalMonetaryAnnouncementsDto>();
     read.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
     const oldRun = model.load();
-    let nextRun = Promise.resolve();
+    let nextRun = Promise.resolve<ManagedSourceReadResult>("not_started");
     let started = false;
     model.subscribe(() => {
       if (!started && !model.getSnapshot().busy) {
@@ -411,14 +412,121 @@ describe("managed Fed accepted refresh comparison", () => {
     expect(started).toBe(true);
     expect(model.getSnapshot().busy).toBe(true);
     old.resolve(acceptedFeed(true));
-    await oldRun;
+    expect(await oldRun).toBe("cancelled");
     expect(model.getSnapshot().busy).toBe(true);
     expect(model.getSnapshot().refreshComparison).toBe(comparison);
     const replacement = acceptedFeed(false, "2026-10-24T18:00:00.000Z");
     next.resolve(replacement);
-    await nextRun;
+    expect(await nextRun).toBe("accepted");
     expect(model.getSnapshot().refreshComparison?.previous).toBe(current);
     expect(model.getSnapshot().refreshComparison?.current).toBe(replacement);
     expect(read).toHaveBeenCalledTimes(4);
   });
+});
+
+it("returns an accepted empty replacement but fails retained invalid and unavailable refreshes", async () => {
+  const { model, read, announcements: original } = fixture();
+  expect(await model.load()).toBe("accepted");
+  const empty = { ...original, availableItemCount: 0, items: [] };
+  read.mockResolvedValueOnce(empty);
+  expect(await model.load()).toBe("accepted");
+  expect(model.getSnapshot().announcements).toBe(empty);
+  for (const error of [
+    new TrialApiError("invalid_response"),
+    new Error("offline"),
+  ]) {
+    read.mockRejectedValueOnce(error);
+    expect(await model.load()).toBe("failed");
+    expect(model.getSnapshot().announcements).toBe(empty);
+    expect(model.getSnapshot().showingPrevious).toBe(true);
+  }
+});
+
+it("reports busy and inactive refusal without letting a cancelled old read settle a new operation", async () => {
+  const { model, read, announcements: original } = fixture();
+  expect(await model.load()).toBe("accepted");
+  const old = deferred<PersonalMonetaryAnnouncementsDto>();
+  const next = deferred<PersonalMonetaryAnnouncementsDto>();
+  read.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
+  const oldRun = model.load();
+  expect(await model.load()).toBe("not_started");
+  model.cancel();
+  const nextRun = model.load();
+  old.resolve({ ...original, availableItemCount: 0, items: [] });
+  expect(await oldRun).toBe("cancelled");
+  expect(model.getSnapshot()).toMatchObject({
+    busy: true,
+    announcements: original,
+  });
+  const replacement = { ...original, availableItemCount: 0, items: [] };
+  next.resolve(replacement);
+  expect(await nextRun).toBe("accepted");
+  expect(model.getSnapshot().announcements).toBe(replacement);
+  model.leave();
+  expect(await model.load()).toBe("not_started");
+  model.enter();
+  const late = deferred<PersonalMonetaryAnnouncementsDto>();
+  read.mockReturnValueOnce(late.promise);
+  const lateRun = model.load();
+  model.retire();
+  late.resolve(original);
+  expect(await lateRun).toBe("retired");
+  expect(await model.load()).toBe("retired");
+  expect(model.getSnapshot()).toMatchObject({
+    busy: false,
+    announcements: null,
+  });
+  expect(read).toHaveBeenCalledTimes(4);
+});
+
+it.each(["cancel", "leave", "retire"] as const)(
+  "returns the %s outcome when a busy listener interrupts before dispatch",
+  async (boundary) => {
+    const { model, read } = fixture();
+    model.subscribe(() => {
+      if (model.getSnapshot().busy) model[boundary]();
+    });
+    expect(await model.load()).toBe(
+      boundary === "retire" ? "retired" : "cancelled",
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(model.getSnapshot().busy).toBe(false);
+  },
+);
+
+it.each(["cancel", "leave", "retire"] as const)(
+  "does not report accepted after a response listener requests %s",
+  async (boundary) => {
+    const { model, read, announcements: original } = fixture();
+    expect(await model.load()).toBe("accepted");
+    const replacement = { ...original, availableItemCount: 0, items: [] };
+    let interrupted = false;
+    model.subscribe(() => {
+      if (!interrupted && model.getSnapshot().announcements === replacement) {
+        interrupted = true;
+        model[boundary]();
+      }
+    });
+    read.mockResolvedValueOnce(replacement);
+    expect(await model.load()).toBe(
+      boundary === "retire" ? "retired" : "cancelled",
+    );
+    expect(interrupted).toBe(true);
+    expect(model.getSnapshot().announcements).toBe(
+      boundary === "retire" ? null : replacement,
+    );
+    expect(model.getSnapshot().busy).toBe(false);
+  },
+);
+
+it("reports retirement from the final busy notification without restoring accepted state", async () => {
+  const { model, read, announcements: original } = fixture();
+  const replacement = { ...original, availableItemCount: 0, items: [] };
+  model.subscribe(() => {
+    const state = model.getSnapshot();
+    if (!state.busy && state.announcements === replacement) model.retire();
+  });
+  read.mockResolvedValueOnce(replacement);
+  expect(await model.load()).toBe("retired");
+  expect(model.getSnapshot().announcements).toBeNull();
 });

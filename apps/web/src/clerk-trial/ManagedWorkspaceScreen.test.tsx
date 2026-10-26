@@ -44,6 +44,7 @@ import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedCompanyEvidenceActions } from "./ManagedCompanyEvidenceActions";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedMarketsBoard } from "./ManagedMarketsBoard";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
@@ -485,8 +486,17 @@ function elements(
   node: React.ReactNode,
 ): React.ReactElement<{ children?: React.ReactNode }>[] {
   if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];
+  const board =
+    node.type === ManagedMarketsBoard
+      ? elements(
+          ManagedMarketsBoard(
+            node.props as React.ComponentProps<typeof ManagedMarketsBoard>,
+          ),
+        )
+      : [];
   return [
     node,
+    ...board,
     ...React.Children.toArray(node.props.children).flatMap(elements),
   ];
 }

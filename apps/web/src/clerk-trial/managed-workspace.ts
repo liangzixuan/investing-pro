@@ -107,6 +107,8 @@ import {
 } from "./managed-filings-review";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
+import { createManagedMarketsSourceReview } from "./managed-markets-source-review-sources";
+import type { ManagedMarketsSourceReview } from "./managed-markets-source-review";
 import {
   ManagedWatchlistPrices,
   type ManagedWatchlistPriceHandle,
@@ -345,6 +347,7 @@ export class ManagedWorkspace {
   readonly eod: ManagedEodHistory;
   readonly companySnapshotLoad: ManagedCompanySnapshotLoad;
   readonly markets: ManagedMarkets;
+  readonly marketsSourceReview: ManagedMarketsSourceReview;
   readonly watchlistPrices: ManagedWatchlistPrices;
   readonly blsCalendar: ManagedBlsCalendar;
   readonly agenda: ManagedBeaReleaseAgenda;
@@ -560,6 +563,13 @@ export class ManagedWorkspace {
       () => this.invalidateCatalog(),
       options.marketsCohort,
     );
+    this.marketsSourceReview = createManagedMarketsSourceReview({
+      markets: this.markets,
+      bls: this.blsCalendar,
+      bea: this.agenda,
+      fed: this.announcements,
+      available: () => this.marketsReviewAvailable(),
+    });
     this.watchlistPrices = new ManagedWatchlistPrices(
       (request, signal) => api.eodHistory(request, signal),
       (error) => this.coordinator.readError(error),
@@ -624,8 +634,18 @@ export class ManagedWorkspace {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
+  private marketsReviewAvailable() {
+    return (
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.state.view === "markets" &&
+      !this.state.research &&
+      !this.state.companyRoute
+    );
+  }
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
+    this.marketsSourceReview.reconcile();
     this.followups.syncCatalog(this.state.snapshot?.snapshotSha256 ?? null);
     this.syncFollowupsReview();
     this.portfolio.syncCatalog();
@@ -645,6 +665,7 @@ export class ManagedWorkspace {
       this.companySnapshotLoad.cancel();
       this.cancelFollowupOpening();
       this.navigationBlocked = blocked;
+      this.marketsSourceReview.reconcile();
       this.syncAnnouncements();
       this.syncAnnualComparison();
       this.syncFinancialScreen();
@@ -802,6 +823,7 @@ export class ManagedWorkspace {
   }
   private clear() {
     this.retired = true;
+    this.marketsSourceReview.retire();
     this.cancelFollowupOpening();
     this.followupResearch = null;
     this.followupsReview.retire();
@@ -900,6 +922,7 @@ export class ManagedWorkspace {
     this.update({ view });
   }
   private invalidateCatalog() {
+    this.marketsSourceReview.invalidate();
     if (this.retired || !this.state.snapshot) return;
     this.state = { ...this.state, snapshot: null };
     this.searchOperation?.abort();
@@ -920,6 +943,7 @@ export class ManagedWorkspace {
     });
   }
   async refreshCatalog() {
+    this.marketsSourceReview.invalidate();
     await this.readCatalog("status");
   }
   async search() {
@@ -1180,6 +1204,7 @@ export class ManagedWorkspace {
       requested.catalogSnapshotSha256 !== this.state.snapshot?.snapshotSha256
     )
       return;
+    this.marketsSourceReview.invalidate();
     this.markets.cancel();
     // Cancellation settles previous-history status before the visit captures it.
     const selection = this.markets.selection(requested.listing.listingId);

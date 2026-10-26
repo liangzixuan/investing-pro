@@ -1,9 +1,10 @@
 # A holding's next research check
 
-This source candidate connects a current positive Portfolio holding to company
-research and an authored Follow-ups check. Source, native and client-delivery
-acceptance remain pending. Android 1.46 provides the preceding complete Follow-ups
-reading report.
+This workflow connects a current positive Portfolio holding to company research
+and an authored Follow-ups check. Android 1.47 provides it from accepted main
+`e8f05b6989949affcd5c066f18fb8c22fb4b5364` after the original source checks,
+complete synthetic native 92-case scope and guarded APK checks passed.
+Installation and physical-device acceptance remain separate owner actions.
 
 ## Research and keep a check
 
@@ -47,6 +48,6 @@ local draft-file activity also retires it. Returning to earlier values does not
 revive an old preview. Review the current context and preview again.
 
 Creation changes only the Follow-ups draft. It makes no financial source request,
-online Save, Watchlist edit or Portfolio edit. This candidate adds no schema,
+online Save, Watchlist edit or Portfolio edit. This workflow adds no schema,
 provider, dependency, fee or deployment. Synthetic tests and local delivery do
 not establish authenticated owner-record or physical-device acceptance.

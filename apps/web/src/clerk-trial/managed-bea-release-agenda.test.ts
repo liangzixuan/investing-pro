@@ -4,6 +4,7 @@ import {
   type PersonalEconomicCalendarDto,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
+import type { ManagedSourceReadResult } from "./managed-source-read-result";
 import type { ManagedApi } from "./managed-api";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
@@ -165,7 +166,7 @@ describe("managed BEA agenda lifetime", () => {
       await model.load();
       const error = new TrialApiError(code);
       read.mockRejectedValueOnce(error);
-      await model.load();
+      expect(await model.load()).toBe("retired");
       expect(retire).toHaveBeenCalledExactlyOnceWith(error);
       expect(model.getSnapshot()).toMatchObject({ agenda: null, busy: false });
       expect(model.getSnapshot().refreshComparison).toBeNull();
@@ -216,4 +217,135 @@ describe("managed BEA agenda lifetime", () => {
     model.retire();
     expect(model.getSnapshot().refreshComparison).toBeNull();
   });
+});
+
+it("returns an accepted empty replacement but fails retained invalid and unavailable refreshes", async () => {
+  const { model, read, agenda: original } = fixture();
+  expect(await model.load()).toBe("accepted");
+  const empty = { ...original, events: [] };
+  read.mockResolvedValueOnce(empty);
+  expect(await model.load()).toBe("accepted");
+  expect(model.getSnapshot().agenda).toBe(empty);
+  for (const error of [
+    new TrialApiError("invalid_response"),
+    new Error("offline"),
+  ]) {
+    read.mockRejectedValueOnce(error);
+    expect(await model.load()).toBe("failed");
+    expect(model.getSnapshot().agenda).toBe(empty);
+    expect(model.getSnapshot().showingPrevious).toBe(true);
+  }
+});
+
+it("reports busy and inactive refusal without letting a cancelled old read settle a new operation", async () => {
+  const { model, read, agenda: original } = fixture();
+  expect(await model.load()).toBe("accepted");
+  const old = deferred<PersonalEconomicCalendarDto>();
+  const next = deferred<PersonalEconomicCalendarDto>();
+  read.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
+  const oldRun = model.load();
+  expect(await model.load()).toBe("not_started");
+  model.cancel();
+  const nextRun = model.load();
+  old.resolve({ ...original, events: [] });
+  expect(await oldRun).toBe("cancelled");
+  expect(model.getSnapshot()).toMatchObject({ busy: true, agenda: original });
+  const replacement = { ...original, events: [] };
+  next.resolve(replacement);
+  expect(await nextRun).toBe("accepted");
+  expect(model.getSnapshot().agenda).toBe(replacement);
+  model.leave();
+  expect(await model.load()).toBe("not_started");
+  model.enter();
+  const late = deferred<PersonalEconomicCalendarDto>();
+  read.mockReturnValueOnce(late.promise);
+  const lateRun = model.load();
+  model.retire();
+  late.resolve(original);
+  expect(await lateRun).toBe("retired");
+  expect(await model.load()).toBe("retired");
+  expect(model.getSnapshot()).toMatchObject({ busy: false, agenda: null });
+  expect(read).toHaveBeenCalledTimes(4);
+});
+
+it.each(["cancel", "leave", "retire"] as const)(
+  "returns the %s outcome when a busy listener interrupts before dispatch",
+  async (boundary) => {
+    const { model, read } = fixture();
+    model.subscribe(() => {
+      if (model.getSnapshot().busy) model[boundary]();
+    });
+    expect(await model.load()).toBe(
+      boundary === "retire" ? "retired" : "cancelled",
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(model.getSnapshot().busy).toBe(false);
+  },
+);
+
+it.each(["cancel", "leave", "retire"] as const)(
+  "does not report accepted after a response listener requests %s",
+  async (boundary) => {
+    const { model, read, agenda: original } = fixture();
+    expect(await model.load()).toBe("accepted");
+    const replacement = { ...original, events: [] };
+    let interrupted = false;
+    model.subscribe(() => {
+      if (!interrupted && model.getSnapshot().agenda === replacement) {
+        interrupted = true;
+        model[boundary]();
+      }
+    });
+    read.mockResolvedValueOnce(replacement);
+    expect(await model.load()).toBe(
+      boundary === "retire" ? "retired" : "cancelled",
+    );
+    expect(interrupted).toBe(true);
+    expect(model.getSnapshot().agenda).toBe(
+      boundary === "retire" ? null : replacement,
+    );
+    expect(model.getSnapshot().busy).toBe(false);
+  },
+);
+
+it("reports retirement from the final busy notification without restoring accepted state", async () => {
+  const { model, read, agenda: original } = fixture();
+  const replacement = { ...original, events: [] };
+  model.subscribe(() => {
+    const state = model.getSnapshot();
+    if (!state.busy && state.agenda === replacement) model.retire();
+  });
+  read.mockResolvedValueOnce(replacement);
+  expect(await model.load()).toBe("retired");
+  expect(model.getSnapshot().agenda).toBeNull();
+});
+
+it("preserves a new read started by a cancellation listener when the old read settles", async () => {
+  const { model, read, agenda: original } = fixture();
+  expect(await model.load()).toBe("accepted");
+  const old = deferred<PersonalEconomicCalendarDto>();
+  const next = deferred<PersonalEconomicCalendarDto>();
+  read.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
+  const oldRun = model.load();
+  let nextRun = Promise.resolve<ManagedSourceReadResult>("not_started");
+  let started = false;
+  model.subscribe(() => {
+    if (!started && !model.getSnapshot().busy) {
+      started = true;
+      nextRun = model.load();
+    }
+  });
+  model.cancel();
+  expect(started).toBe(true);
+  old.resolve({ ...original, events: [] });
+  expect(await oldRun).toBe("cancelled");
+  expect(model.getSnapshot()).toMatchObject({ busy: true, agenda: original });
+  const replacement = { ...original, events: [] };
+  next.resolve(replacement);
+  expect(await nextRun).toBe("accepted");
+  expect(model.getSnapshot()).toMatchObject({
+    busy: false,
+    agenda: replacement,
+  });
+  expect(read).toHaveBeenCalledTimes(3);
 });

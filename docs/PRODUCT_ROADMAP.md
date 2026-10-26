@@ -29,19 +29,21 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 26 Android delivery
 
-The current M4/M5 candidate connects a positive authored Portfolio holding to
-[company research with position context and a dated follow-up](MANAGED_HOLDING_FOLLOWUP.md).
-Inspect the current position, preview a complete question and UTC due date,
-explicitly create a Follow-ups draft entry, return through retained Back and
-Save/load that resource independently. It supports holdings outside My Watchlist
-without adding a source, price calculation, storage schema, dependency or fee.
-Source, native and client-delivery acceptance remain separate.
+The next M1/M3 candidate is an [explicit Markets source review pass](MANAGED_MARKETS_SOURCE_REVIEW.md).
+Review a named plan for the existing admitted board and BLS, BEA and Fed sources,
+start selected work explicitly, and inspect complete, partial and unattempted
+results with their original clocks. It reuses current source actions, budgets,
+retention and research views. It adds no provider, coverage, schema or fee.
+Original source, synthetic native and client acceptance remain pending.
 
-Android 1.46 delivers the [complete Follow-ups reading report](MANAGED_FOLLOWUPS_REVIEW_REPORT.md)
-from accepted main cf30baa9d23a02f2c9440d2e635c4bc8817e796e. Capture every valid
-authored check and assessment, inspect the whole resource with original identities
-and dates, then explicitly save passive HTML. Original source/native91 and
-complete guarded APK checks passed. Installation remains an owner action.
+Android 1.47 now delivers [holding research and a dated Follow-ups check](MANAGED_HOLDING_FOLLOWUP.md)
+from accepted main `e8f05b6989949affcd5c066f18fb8c22fb4b5364`. Original required
+checks, the complete synthetic native 92-case scope and all guarded APK checks
+passed. Preview the complete authored question and UTC due date, create one
+independent Follow-ups draft entry, return through Back, and Save/load that
+resource separately. Holdings outside My Watchlist are supported. Installation
+remains an owner action; automated checks do not establish phone acceptance.
+The complete Follow-ups reading report from Android 1.46 remains available.
 
 [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files) are accepted in
 source at main `461246249c6d790a1c8bb28ab85de301b267058f`.

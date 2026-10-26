@@ -405,6 +405,12 @@ jobs:
           ))
           if len(required) != 92:
               raise SystemExit("The holding research check must extend all 91 existing native tests.")
+          required.add((
+              "local.investment.personal.MarketsSourceReviewInstrumentedTest",
+              "selectedSourcePassKeepsExactOrderClocksCancelBackAndSeparateSave",
+          ))
+          if len(required) != 93:
+              raise SystemExit("The source review journey must extend all 92 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

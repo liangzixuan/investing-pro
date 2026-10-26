@@ -11,6 +11,19 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Markets source review pass candidate
+
+Place the named plan near the Markets section links. Show each exact listing or
+source, its retained packet and original clock, and whether the selected work
+will Load or Refresh. Keep all labels, dates and results readable without opening
+another page. Use 44px labelled targets, visible focus and a stacked narrow layout.
+
+Keep Preview, Start, Cancel and the existing source-detail actions distinct.
+Show progress and checked-empty, retained previous, failed, cancelled and
+not-attempted outcomes in text. Keep a partial result visible with its original
+qualifications. Do not present one common market timestamp or an all-current
+badge. Returning to the page must not restart a cancelled or retired pass.
+
 ## A holding's next research check
 
 Place the authored position readout beside Portfolio company research, with exact

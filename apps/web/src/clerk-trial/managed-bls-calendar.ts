@@ -1,6 +1,7 @@
 import type { ManagedBlsCalendarDto } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
+import type { ManagedSourceReadResult } from "./managed-source-read-result";
 export interface ManagedBlsCalendarState {
   readonly calendar: ManagedBlsCalendarDto | null;
   readonly busy: boolean;
@@ -107,25 +108,43 @@ export class ManagedBlsCalendar {
     this.operation = null;
     this.update({ busy: false });
   }
-  async load() {
-    if (!this.canLoad()) return;
+  private readResult(
+    operation: AbortController,
+    result: ManagedSourceReadResult,
+  ): ManagedSourceReadResult {
+    if (this.retired) return "retired";
+    if (!this.active || operation.signal.aborted) return "cancelled";
+    return result;
+  }
+  async load(): Promise<ManagedSourceReadResult> {
+    if (this.retired) return "retired";
+    if (!this.canLoad()) return "not_started";
     const operation = this.beginLoad();
+    let result: ManagedSourceReadResult = "cancelled";
     try {
-      if (!this.current(operation)) return;
-      const calendar = await this.read(operation.signal);
-      if (!this.current(operation)) return;
-      this.update({
-        calendar,
-        showingPrevious: false,
-        message: "BLS calendar loaded. Refresh explicitly to check again.",
-      });
+      if (this.current(operation)) {
+        const calendar = await this.read(operation.signal);
+        if (this.current(operation)) {
+          this.update({
+            calendar,
+            showingPrevious: false,
+            message: "BLS calendar loaded. Refresh explicitly to check again.",
+          });
+          result = "accepted";
+        }
+      }
     } catch (error) {
-      if (this.current(operation)) this.failedRead(error);
+      if (this.current(operation)) {
+        this.failedRead(error);
+        result = "failed";
+      }
     } finally {
       this.finishLoad(operation);
     }
+    return this.readResult(operation, result);
   }
 }
+
 function sessionFailure(error: unknown): error is TrialApiError {
   return (
     error instanceof TrialApiError &&
