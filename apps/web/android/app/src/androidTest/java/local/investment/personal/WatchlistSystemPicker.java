@@ -282,10 +282,94 @@ final class WatchlistSystemPicker {
             || "Show roots".contentEquals(string(node.getContentDescription())));
         if (!isRootsList(navigation)) click(navigation);
         clickInventedRoot();
-        AccessibilityNodeInfo save = await(WatchlistSystemPicker::saveInInventedDirectory);
-        assertTrue("Unexpected native Save control", "Save".equalsIgnoreCase(string(save.getText())));
-        click(save);
+        clickSettledInventedSave();
         awaitReturnToApp();
+    }
+
+    private record SaveSurface(AccessibilityNodeInfo root, AccessibilityNodeInfo save, Rect bounds) {}
+
+    /** Android16 breadcrumb items count actual stack documents; a root toolbar title can precede them. */
+    private void clickSettledInventedSave() throws InterruptedException {
+        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        while (SystemClock.uptimeMillis() < deadline) {
+            SaveSurface surface = stableInventedSave(deadline);
+            if (surface != null && SystemClock.uptimeMillis() < deadline) {
+                assertTrue("Unexpected native Save control", "Save".equalsIgnoreCase(string(surface.save().getText())));
+                click(surface.save());
+                return;
+            }
+            pauseUntil(deadline);
+        }
+        throw new AssertionError("The exact invented directory did not settle before Save");
+    }
+
+    private SaveSurface stableInventedSave(long deadline) {
+        if (SystemClock.uptimeMillis() >= deadline) return null;
+        SaveSurface before = freshSaveSurface();
+        long remaining = deadline - SystemClock.uptimeMillis();
+        if (before == null || remaining <= 0) return null;
+        StableResult stable = AccessibilityNodeInfoExt.waitForStable(before.root(), remaining, 500, 50, false);
+        if (stable.isTimeout() || SystemClock.uptimeMillis() >= deadline) return null;
+        SaveSurface after = freshSaveSurface();
+        if (!sameSaveSurface(before, after)) return null;
+        return SystemClock.uptimeMillis() < deadline ? after : null;
+    }
+
+    private SaveSurface freshSaveSurface() {
+        if (!automation.clearCache()) return null;
+        return readSaveSurface(automation.getRootInActiveWindow());
+    }
+
+    private SaveSurface readSaveSurface(AccessibilityNodeInfo root) {
+        if (!readySaveRoot(root)) return null;
+        if (saveSurfaceBlocked(root)) return null;
+        if (!singleInventedBreadcrumb(root)) return null;
+        List<AccessibilityNodeInfo> saves = new ArrayList<>();
+        collectVisibleNodes(root, WatchlistSystemPicker::saveInInventedDirectory, saves, 0);
+        if (saves.size() != 1) return null;
+        AccessibilityNodeInfo save = saves.get(0);
+        Rect bounds = clippedLabelBounds(save, root.getWindow(), new Rect(0, 0, device.getDisplayWidth(), device.getDisplayHeight()));
+        return bounds == null ? null : new SaveSurface(root, save, bounds);
+    }
+
+    private static boolean readySaveRoot(AccessibilityNodeInfo root) {
+        if (root == null || !root.refresh() || !root.isVisibleToUser()) return false;
+        if (!string(root.getPackageName()).endsWith(".documentsui")) return false;
+        AccessibilityWindowInfo window = root.getWindow();
+        if (!isCancelPickerWindow(window)) return false;
+        return root.getWindowId() == window.getId();
+    }
+
+    private static boolean saveSurfaceBlocked(AccessibilityNodeInfo root) {
+        if (find(root, WatchlistSystemPicker::isRootsList, 0) != null) return true;
+        if (find(root, WatchlistSystemPicker::isCancelModal, 0) != null) return true;
+        return find(root, node -> node.isVisibleToUser()
+            && "android.widget.ProgressBar".contentEquals(string(node.getClassName())), 0) != null;
+    }
+
+    private static boolean singleInventedBreadcrumb(AccessibilityNodeInfo root) {
+        List<AccessibilityNodeInfo> labels = new ArrayList<>();
+        collectVisibleNodes(root, node -> string(node.getViewIdResourceName()).endsWith(":id/breadcrumb_text")
+            && hasAncestor(node, ":id/horizontal_breadcrumb"), labels, 0);
+        if (labels.size() != 1) return false;
+        return SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(labels.get(0).getText()));
+    }
+
+    private static void collectVisibleNodes(AccessibilityNodeInfo node, Predicate<AccessibilityNodeInfo> predicate,
+        List<AccessibilityNodeInfo> matches, int depth) {
+        if (depth > 48) throw new AssertionError("Unexpected system picker hierarchy depth");
+        if (!node.isVisibleToUser()) return;
+        if (predicate.test(node)) matches.add(node);
+        for (int index = 0; index < node.getChildCount() && matches.size() < 2; index++) {
+            AccessibilityNodeInfo child = node.getChild(index);
+            if (child != null) collectVisibleNodes(child, predicate, matches, depth + 1);
+        }
+    }
+
+    private static boolean sameSaveSurface(SaveSurface before, SaveSurface after) {
+        if (after == null || !before.root().equals(after.root())) return false;
+        if (before.root().getWindowId() != after.root().getWindowId()) return false;
+        return before.save().equals(after.save()) && before.bounds().equals(after.bounds());
     }
 
     /** The CREATE picker exposes this action only after a writable current directory exists. */

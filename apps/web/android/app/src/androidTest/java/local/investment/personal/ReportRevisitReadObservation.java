@@ -9,6 +9,8 @@ final class ReportRevisitReadObservation {
     private static final String INVENTED_NAME = "Investment-research-ZERO-XNAS-20261015T000000000Z.json";
     private static final Set<String> NAMES = Set.of("", "other", INVENTED_NAME);
     private static final Set<String> TYPES = Set.of("", "other", "application/json", "text/plain");
+    private static final Set<String> WRITER_PHASES = Set.of("missing", "idle", "preparing", "choosing", "written", "cancelled", "failed");
+    private static final Set<String> WRITER_NAMES = Set.of("", INVENTED_NAME);
     private static final String FLAGS = "rootPresent outerPresent outerOpen companyHeadingExpected headingPresent headingExpected archivePresent currentPresent notePresent annualProvenancePresent sourceCikPresent preparedAtPresent sourceCompletedAtPresent appendixPresent observationFailed";
     private static final String COUNTERS = "load status annual eod filings save resolve marketsResolve marketsEod token signOut";
     private static final String SCRIPT = """
@@ -49,6 +51,19 @@ final class ReportRevisitReadObservation {
           const counters={};
           for (const key of ['load','status','annual','eod','filings','save','resolve','marketsResolve','marketsEod','token','signOut']) counters[key]=number(fixture[key]);
           const input=outer?.querySelector('input[type=file]');
+          const writerElement=document.querySelector('#fixture-revisit-file');
+          let writer={present:false,phase:'missing',filename:'',byteLength:0};
+          if (writerElement) {
+            const writerText=writerElement.textContent??'';
+            if (writerText.length>256) throw new Error();
+            const value=JSON.parse(writerText);
+            if (value===null || typeof value!=='object' || Array.isArray(value)) throw new Error();
+            if (Object.keys(value).length!==3) throw new Error();
+            if (!['idle','preparing','choosing','written','cancelled','failed'].includes(value.phase)) throw new Error();
+            if (!['','Investment-research-ZERO-XNAS-20261015T000000000Z.json'].includes(value.filename)) throw new Error();
+            if (!Number.isSafeInteger(value.byteLength) || value.byteLength<0 || value.byteLength>2850816) throw new Error();
+            writer={present:true,phase:value.phase,filename:value.filename,byteLength:value.byteLength};
+          }
           observation={rootPresent:!!report,outerPresent:!!outer,outerOpen:outer?.open===true,
             companyHeadingExpected:document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO',
             headingPresent:!!heading,headingExpected:heading?.textContent==='Reopened report · ZERO',
@@ -60,7 +75,7 @@ final class ReportRevisitReadObservation {
             identityMask:['US','XNAS','common_stock','issuer-zero','Zero Company','listing-zero','security-zero','Zero Class A','class-zero','Class A','ZERO'].reduce((mask,value,index)=>mask|(text.includes(value)?1<<index:0),0),
             appendixPresent:!!outer?.querySelector('textarea[readonly]'),statusCode:messages.indexOf(status),
             inputCount:Math.min(8,input?.files?.length??0),inputValueEmpty:input?.value==='',
-            observationFailed:false,counters,file:window[key]};
+            observationFailed:false,counters,file:window[key],writer};
         } catch { observation={observationFailed:true}; }
         return {passed,observation};})()
         """;
@@ -93,6 +108,7 @@ final class ReportRevisitReadObservation {
             copyBoolean(source, safe, "inputValueEmpty");
             safe.put("counters", safeCounters(source.getJSONObject("counters")));
             safe.put("file", safeFile(source.getJSONObject("file")));
+            safe.put("writer", safeWriter(source.getJSONObject("writer")));
             String text = safe.toString();
             if (text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_OBSERVATION_BYTES)
                 return "observation exceeded bound";
@@ -118,6 +134,29 @@ final class ReportRevisitReadObservation {
         safe.put("name", name);
         safe.put("type", type);
         return safe;
+    }
+    private static JSONObject safeWriter(JSONObject source) throws Exception {
+        if (source.length() != 4) throw new IllegalArgumentException();
+        JSONObject safe = new JSONObject();
+        copyBoolean(source, safe, "present");
+        Object phase = source.get("phase"), filename = source.get("filename");
+        if (!WRITER_PHASES.contains(phase)) throw new IllegalArgumentException();
+        if (!WRITER_NAMES.contains(filename)) throw new IllegalArgumentException();
+        safe.put("phase", phase);
+        safe.put("filename", filename);
+        copyInteger(source, safe, "byteLength", new IntegerRange(0, 2850816));
+        requireWriterPresence(safe);
+        return safe;
+    }
+    private static void requireWriterPresence(JSONObject source) throws Exception {
+        Object phase = source.get("phase");
+        if (source.getBoolean("present")) {
+            if ("missing".equals(phase)) throw new IllegalArgumentException();
+            return;
+        }
+        if (!"missing".equals(phase)) throw new IllegalArgumentException();
+        if (!"".equals(source.get("filename"))) throw new IllegalArgumentException();
+        if (source.getLong("byteLength") != 0) throw new IllegalArgumentException();
     }
     private static void copyBoolean(JSONObject source, JSONObject target, String key) throws Exception {
         Object value = source.get(key);
