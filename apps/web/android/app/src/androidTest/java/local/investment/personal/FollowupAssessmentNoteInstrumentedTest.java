@@ -204,11 +204,11 @@ public class FollowupAssessmentNoteInstrumentedTest {
     }
 
     private void saveAndReload(Appended note) throws Exception {
-        String entries=note.review().entries().serialized(), expected=note.expected();
+        String expected=note.expected();
         double origin=note.review().origin();
         page.click(Element.css("#managed-followups-save"));
         page.await(new Check("Save follow-ups commits only its full independent resource", new Script(FOLLOWUPS + ".save===1 && " + FOLLOWUPS + ".commits===1 && " + FOLLOWUP_DRAFT + ".baseVersion===1 && " + FOLLOWUP_DRAFT + ".dirty===false" +
-            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries) +
+            " && " + savedEntriesMatch(note.review().entries()).expression() +
             " && " + DRAFT + ".dirty===true && " + DRAFT + ".baseVersion===1 && " + DRAFT + ".memberships[0].note===" + JSONObject.quote(expected))));
         assertFollowupNoteSources(JourneyState.ASSESSED);
         openWatchlistView();
@@ -224,12 +224,26 @@ public class FollowupAssessmentNoteInstrumentedTest {
         openFollowupsView();
         page.click(Element.css("#managed-followups-load"));
         page.await(new Check("explicit fresh Load restores both whole saved packets with no repeated append or chosen-session restoration", new Script(FOLLOWUPS + ".load===2 && " + FOLLOWUPS + ".save===1 && " + FOLLOWUPS + ".commits===1" +
-            " && " + FOLLOWUP_DRAFT + ".baseVersion===1 && " + FOLLOWUP_DRAFT + ".dirty===false && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries) +
+            " && " + FOLLOWUP_DRAFT + ".baseVersion===1 && " + FOLLOWUP_DRAFT + ".dirty===false && " + savedEntriesMatch(note.review().entries()).expression() +
             " && JSON.stringify(" + DRAFT + ".memberships)===" + JSONObject.quote(members) +
             " && document.querySelector('#managed-followups-review-enter')!==null && document.querySelector('#managed-followups-review-position')===null")));
         assertFollowupNoteSources(JourneyState.RELOADED);
         assertFixtureBoundary(JourneyState.RELOADED);
         assertEquals("Separate resource Saves and fresh Load keep the same native document", origin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    /** Compare every persisted value and ordered entry; JSON object key order is not data. */
+    private Script savedEntriesMatch(SavedEntriesSnapshot snapshot) {
+        return new Script("(() => { const expected=JSON.parse(" + JSONObject.quote(snapshot.serialized()) + "),actual=" + FOLLOWUP_DRAFT + ".entries;" +
+            " const scalar=['id','catalogSnapshotSha256','check','dueOn','status','result'],entryKeys=[...scalar,'listing','completedOn'];" +
+            " const listingKeys=['country','exchangeMic','instrumentType','issuerId','issuerName','listingId','securityId','securityName','shareClassId','shareClassName','symbol'];" +
+            " const own=(value,keys)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Reflect.ownKeys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));" +
+            " const list=value=>Array.isArray(value)&&value.length===2&&Reflect.ownKeys(value).length===3&&[0,1].every(index=>Object.hasOwn(value,index));" +
+            " return list(expected)&&list(actual)&&expected.every((reference,index)=>{const entry=actual[index];" +
+            " return own(entry,entryKeys)&&own(reference,entryKeys)&&own(entry.listing,listingKeys)&&own(reference.listing,listingKeys)" +
+            " && scalar.every(key=>typeof entry[key]==='string'&&entry[key]===reference[key])" +
+            " && entry.completedOn===reference.completedOn&&(entry.completedOn===null||typeof entry.completedOn==='string')" +
+            " && listingKeys.every(key=>typeof entry.listing[key]==='string'&&entry.listing[key]===reference.listing[key]);}); })()");
     }
 
     private String assertFollowupNotePreview() throws Exception {
