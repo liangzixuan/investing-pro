@@ -1,3 +1,7 @@
+import {
+  ManagedFilingsFollowup,
+  type ManagedFilingsFollowupActions,
+} from "./ManagedFilingsFollowup";
 import { useState } from "react";
 import type { ManagedSecFilingsResponseDto } from "@research-cockpit/contracts";
 import {
@@ -30,6 +34,7 @@ export function ManagedFilingsResults({
   annualFromComparison = false,
   refreshComparison = null,
   noteActions,
+  followupActions,
 }: {
   response: ManagedSecFilingsResponseDto;
   baseline?: ManagedFilingsAnnualBaseline | null;
@@ -37,6 +42,7 @@ export function ManagedFilingsResults({
   annualFromComparison?: boolean;
   refreshComparison?: ManagedFilingsRefreshComparison | null;
   noteActions?: ManagedFilingsNoteActions;
+  followupActions?: ManagedFilingsFollowupActions;
 }) {
   const [filter, setFilter] = useState(() =>
     initialManagedFilingsFilter(response, baseline, refreshComparison),
@@ -166,6 +172,7 @@ export function ManagedFilingsResults({
             page={page}
             newAccessions={comparison?.newAccessions ?? []}
             {...(noteActions ? { noteActions } : {})}
+            {...(followupActions ? { followupActions } : {})}
           />
         </>
       )}
@@ -205,12 +212,14 @@ function FilingsList({
   page,
   newAccessions,
   noteActions,
+  followupActions,
 }: {
   response: ManagedSecFilingsResponseDto;
   rows: ManagedSecFilingsResponseDto["issuer"]["filings"];
   page: number;
   newAccessions: readonly string[];
   noteActions?: ManagedFilingsNoteActions;
+  followupActions?: ManagedFilingsFollowupActions;
 }) {
   return (
     <ol
@@ -250,6 +259,13 @@ function FilingsList({
               response={response}
               filing={filing}
               actions={noteActions}
+            />
+          )}
+          {followupActions && (
+            <ManagedFilingsFollowup
+              response={response}
+              filing={filing}
+              actions={followupActions}
             />
           )}
         </li>

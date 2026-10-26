@@ -1,3 +1,4 @@
+import type { ManagedFilingsFollowupActions } from "./ManagedFilingsFollowup";
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 
 import { ManagedFilingsResults } from "./ManagedFilingsResults";
@@ -22,10 +23,12 @@ export function ManagedCompanyFilings({
   model,
   annual,
   noteActions,
+  followupActions,
 }: {
   model: FilingsModel;
   annual: AnnualModel;
   noteActions?: ManagedFilingsNoteActions;
+  followupActions?: ManagedFilingsFollowupActions;
 }) {
   const state = useSyncExternalStore(
     model.subscribe,
@@ -123,6 +126,7 @@ export function ManagedCompanyFilings({
             annualState.responseOrigin === "watchlist-comparison"
           }
           {...(noteActions ? { noteActions } : {})}
+          {...(followupActions ? { followupActions } : {})}
         />
       )}
 

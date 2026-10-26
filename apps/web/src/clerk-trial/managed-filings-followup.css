@@ -1,0 +1,82 @@
+.clerk-trial.managed-frame .managed-filings-followup {
+  min-width: 0;
+  grid-column: 1 / -1;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  background: var(--managed-surface);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-followup summary {
+  display: list-item;
+  align-content: center;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame
+  .managed-filings-followup
+  :is(summary, button, input) {
+  min-height: 44px;
+}
+.clerk-trial.managed-frame
+  .managed-filings-followup
+  :is(button, input, textarea) {
+  box-sizing: border-box;
+  max-width: 100%;
+  font: inherit;
+}
+.clerk-trial.managed-frame .managed-filings-followup :is(button, p, dd, a) {
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-followup button {
+  white-space: normal;
+  margin: 4px 8px 4px 0;
+}
+.clerk-trial.managed-frame .managed-filings-followup-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-filings-followup-fields > div {
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-filings-followup label {
+  display: block;
+  margin-block-end: 6px;
+}
+.clerk-trial.managed-frame .managed-filings-followup :is(input, textarea) {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+  line-height: 1.5;
+}
+.clerk-trial.managed-frame .managed-filings-followup textarea {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+.clerk-trial.managed-frame
+  .managed-filings-followup
+  :is(summary, input, textarea, button):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame .managed-filings-followup-preview {
+  min-width: 0;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-filings-followup dl {
+  display: grid;
+  gap: 8px;
+}
+.clerk-trial.managed-frame .managed-filings-followup dd {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .clerk-trial.managed-frame .managed-filings-followup-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

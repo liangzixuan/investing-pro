@@ -40,6 +40,40 @@ schedule a retry or set a saved reviewed flag. There is no automatic next-compan
 check. The review shares the existing checked SEC cooldown with company Annual,
 Filings and other Watchlist checks.
 
+## Keep a dated question from a filing
+
+In company Filings, open **Keep a dated research question** beside an observed
+filing. Write the whole question and a UTC due date. If Follow-ups has no loaded
+draft, use **Load follow-ups for this question**. This reads only the separate
+saved Follow-ups resource. Opening the disclosure makes no request, and a failed
+initial Load keeps the authored question and date available for correction.
+An existing draft cannot be replaced by this inline Load.
+
+Choose **Preview dated question**. Read the whole proposed check, exact company
+identity and due date before **Create follow-up draft**. The stored check includes
+the complete question, form, accession, original filing date and filing index URL.
+The complete text must fit the existing single-line 500-code-point limit; an
+oversized or invalid candidate is refused as a whole. Nothing is clipped.
+An existing check for the listing, including a completed check, and the 20-entry
+limit also refuse creation. Review an existing check in Follow-ups separately.
+
+The citation describes filing metadata. Filing contents are not fetched or read
+by this action. The preview keeps the packet's original request, retrieval,
+completion, window, truncation and retained-response qualifications visible.
+The due date is an authored planning date; it does not refresh the evidence.
+The saved check is a question with a citation, not a saved copy of the source packet.
+
+Creation changes only the Follow-ups draft. Cancel, closing the disclosure or
+editing the question/date retires its preview. A changed source, either draft,
+Save/recovery state, catalog, route or session also retires it permanently.
+Prepare a new preview after resolving the current state. Back retains the filing
+review's selected company and packets. Open Follow-ups to review and **Save
+follow-ups** explicitly. A fresh Load shows only saved checks. My Watchlist and
+its note retain their separate Save.
+
+This is a client source candidate. Current-source checks, hosted native
+acceptance and delivery remain separate events.
+
 ## Responses and limits
 
 An unloaded listing, an available response with no matching filings, an unsupported
@@ -87,6 +121,13 @@ refreshes, Finish and session retirement. Its API admits only the fixed sequence
 and one exact complete Watchlist save in memory. Changed late packets must not
 replace retained evidence or revive the retired group.
 
-The native gate keeps all 59 baseline cases and requires this additional journey.
-Source checks, a passing hosted native run and client delivery remain separate
-acceptance events. None establishes owner-account or physical-device acceptance.
+The original group-review increment added this journey to its 59-case baseline.
+Later native cases retain that original contract. The dated-question candidate
+adds one isolated journey that checks the complete question and citation,
+consume-once creation, retained group Back, separate Follow-ups Save and fresh
+Load, with no Watchlist Save or extra filing request. Its fixed invented resource
+refuses changed payloads and unexpected operations.
+
+Source checks, a passing current-source hosted native run and client delivery
+remain separate acceptance events. None establishes owner-account or physical-device
+acceptance. See [Current work](CURRENT_WORK.md) for the accepted scope.

@@ -2449,6 +2449,17 @@ describe("managed workspace screen", () => {
       (element) => element.type === ManagedCompanyFilings,
     ) as React.ReactElement<React.ComponentProps<typeof ManagedCompanyFilings>>;
     expect(panel.props.noteActions).toBe(company.props.filingsNoteActions);
+    expect(panel.props.followupActions).toBe(
+      company.props.filingsFollowupActions,
+    );
+    expect(panel.props.followupActions!.model).toBe(workspace.followups);
+    expect(api.loadFollowups).not.toHaveBeenCalled();
+    const followupPort = panel.props.followupActions!.getContext(
+      response,
+      response.issuer.filings[1]!,
+    ).port!;
+    expect(followupPort.isCurrent()).toBe(true);
+    expect(followupPort.response).toBe(response);
     expect(panel.props.annual).toBe(workspace.annual);
     const actions = panel.props.noteActions!;
     const row = response.issuer.filings[1]!;
@@ -2469,6 +2480,12 @@ describe("managed workspace screen", () => {
     await workspace.filings.load();
     const next = workspace.filings.getSnapshot().response!;
     expect(actions.append(next, next.issuer.filings[1]!).appended).toBe(false);
+    expect(followupPort.isCurrent()).toBe(false);
+    expect(
+      panel.props.followupActions!.getContext(next, next.issuer.filings[1]!)
+        .port,
+    ).toBeNull();
+    expect(api.loadFollowups).not.toHaveBeenCalled();
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     expect(api.recentFilings).toHaveBeenCalledTimes(2);
     expect(api.annualReport).not.toHaveBeenCalled();
