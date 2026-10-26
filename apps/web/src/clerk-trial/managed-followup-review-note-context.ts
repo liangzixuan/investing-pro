@@ -144,8 +144,9 @@ function prepareCapturedNote(
 ): ReturnType<FollowupReviewNoteContext["prepare"]> {
   const { port, watchlist, reason } = captured;
   const member = watchlist.member;
-  if (reason || !member || !isCurrent())
-    return { preview: null, reason: reason ?? stale };
+  if (reason) return { preview: null, reason };
+  if (!member) return { preview: null, reason: reason ?? stale };
+  if (!isCurrent()) return { preview: null, reason: reason ?? stale };
   const recordedAt = recordedTime(now);
   if (recordedAt === null)
     return {

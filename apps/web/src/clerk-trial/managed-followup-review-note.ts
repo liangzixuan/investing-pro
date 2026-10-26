@@ -40,7 +40,7 @@ function validCheck(entry: ResearchFollowup): boolean {
     entry.status !== "completed" || isResearchFollowupDueDate(entry.completedOn)
   );
 }
-function validRecordedAt(recordedAt: string): boolean {
+function validRecordedAt({ recordedAt }: NoteInput): boolean {
   try {
     requiredDraftFileTime(recordedAt);
     return isResearchFollowupDueDate(recordedAt.slice(0, 10));
@@ -48,7 +48,8 @@ function validRecordedAt(recordedAt: string): boolean {
     return false;
   }
 }
-function inputReason({ entry, note, recordedAt }: NoteInput): string | null {
+function inputReason(input: NoteInput): string | null {
+  const { entry, note } = input;
   if (!validCheck(entry))
     return "Correct the complete check and its dates in Follow-ups first.";
   if (
@@ -58,7 +59,7 @@ function inputReason({ entry, note, recordedAt }: NoteInput): string | null {
     return "Write a valid, nonempty assessment in Follow-ups first.";
   if (!validRaw(note, 2_000))
     return "Correct the current company note before adding an assessment.";
-  if (!validRecordedAt(recordedAt))
+  if (!validRecordedAt(input))
     return "The authored assessment time is unavailable. Preview again.";
   return null;
 }
@@ -69,7 +70,7 @@ function assessmentContent(entry: ResearchFollowup): string {
       : "State: open";
   return `Follow-up assessment for ${entry.listing.symbol} (${entry.listing.shareClassName}, ${entry.listing.exchangeMic}). Question: ${entry.check} | Due date (UTC): ${entry.dueOn} | ${state} | My assessment: ${entry.result}`;
 }
-function hasRecordedAssessment(note: string, content: string): boolean {
+function hasRecordedAssessment({ note }: NoteInput, content: string): boolean {
   // Compare canonical text without the new clock; keep both drafts' raw text.
   return note
     .normalize("NFC")
@@ -78,11 +79,11 @@ function hasRecordedAssessment(note: string, content: string): boolean {
     );
 }
 function completeProposal(
-  note: string,
+  input: NoteInput,
   content: string,
-  recordedAt: string,
 ): FollowupReviewNotePreparation {
-  if (hasRecordedAssessment(note, content))
+  const { note, recordedAt } = input;
+  if (hasRecordedAssessment(input, content))
     return refuse(
       "This complete assessment is already in the company note draft.",
     );
@@ -104,9 +105,5 @@ export function prepareFollowupReviewNote(
 ): FollowupReviewNotePreparation {
   const reason = inputReason(input);
   if (reason) return refuse(reason);
-  return completeProposal(
-    input.note,
-    assessmentContent(input.entry),
-    input.recordedAt,
-  );
+  return completeProposal(input, assessmentContent(input.entry));
 }

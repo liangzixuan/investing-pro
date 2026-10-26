@@ -31,7 +31,9 @@ function preparePreview(note: NoteInteraction) {
   note.setState({ preview: result.preview, message: result.reason });
 }
 function appendPreview(note: NoteInteraction, preview: NotePreview | null) {
-  if (!isCommitted(note) || note.active.current !== preview || !preview) return;
+  if (!isCommitted(note)) return;
+  if (note.active.current !== preview) return;
+  if (!preview) return;
   const appended = preview.append();
   note.active.current = null;
   note.setState({
