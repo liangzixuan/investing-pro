@@ -83,6 +83,57 @@ function packets(f: Mounted) {
     fed: f.workspace.announcements.getSnapshot().announcements,
   };
 }
+async function saveAndAssertCanonicalPayload(
+  f: Mounted,
+  draft: MainWatchlistPayload,
+  encodedBefore: string,
+) {
+  f.workspace.setView("watchlist");
+  await f.workspace.coordinator.save();
+  expect(f.controls.getSnapshot().save).toBe(1);
+  const acknowledged = f.workspace.coordinator.getSnapshot().draft!;
+  expect(acknowledged).toEqual(draft);
+  expect(encodeMainWatchlistPayload(acknowledged)).toBe(encodedBefore);
+  expect(
+    encodeMainWatchlistPayload({
+      ...acknowledged,
+      memberships: [...acknowledged.memberships].reverse(),
+    }),
+  ).not.toBe(encodedBefore);
+  const html = load(
+    renderToStaticMarkup(
+      createElement(MarketsSourceReviewFixtureControls, {
+        workspace: f.workspace,
+        controls: f.controls,
+      }),
+    ),
+  );
+  const evidence = JSON.parse(
+    html("#fixture-source-review-evidence").text(),
+  ) as {
+    draft: typeof draft;
+    encodedDraft: string;
+  };
+  expect(evidence.draft).toEqual(draft);
+  expect(evidence.encodedDraft).toBe(encodedBefore);
+  expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
+    draft,
+    baseVersion: 2,
+    dirty: false,
+  });
+  expect(f.fixture.getSnapshot()).toMatchObject({
+    load: 1,
+    status: 1,
+    eod: 0,
+    annual: 0,
+    filings: 0,
+    token: 0,
+    signOut: 0,
+  });
+  expect(() => f.controls.settleCancelledBls()).toThrow(
+    "Unexpected invented source-review action",
+  );
+}
 describe("isolated native Markets source-review protocol", () => {
   it("runs only exact ordered source APIs and preserves captured Load labels and all original clocks", async () => {
     const f = await mounted();
@@ -174,51 +225,7 @@ describe("isolated native Markets source-review protocol", () => {
     expect(f.workspace.getSnapshot().view).toBe("markets");
     expect(packets(f)).toEqual(original);
     expect(f.workspace.coordinator.getSnapshot().draft).toEqual(draft);
-    f.workspace.setView("watchlist");
-    await f.workspace.coordinator.save();
-    expect(f.controls.getSnapshot().save).toBe(1);
-    const acknowledged = f.workspace.coordinator.getSnapshot().draft!;
-    expect(acknowledged).toEqual(draft);
-    expect(encodeMainWatchlistPayload(acknowledged)).toBe(encodedBefore);
-    expect(
-      encodeMainWatchlistPayload({
-        ...acknowledged,
-        memberships: [...acknowledged.memberships].reverse(),
-      }),
-    ).not.toBe(encodedBefore);
-    const html = load(
-      renderToStaticMarkup(
-        createElement(MarketsSourceReviewFixtureControls, {
-          workspace: f.workspace,
-          controls: f.controls,
-        }),
-      ),
-    );
-    const evidence = JSON.parse(
-      html("#fixture-source-review-evidence").text(),
-    ) as {
-      draft: typeof draft;
-      encodedDraft: string;
-    };
-    expect(evidence.draft).toEqual(draft);
-    expect(evidence.encodedDraft).toBe(encodedBefore);
-    expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
-      draft,
-      baseVersion: 2,
-      dirty: false,
-    });
-    expect(f.fixture.getSnapshot()).toMatchObject({
-      load: 1,
-      status: 1,
-      eod: 0,
-      annual: 0,
-      filings: 0,
-      token: 0,
-      signOut: 0,
-    });
-    expect(() => f.controls.settleCancelledBls()).toThrow(
-      "Unexpected invented source-review action",
-    );
+    await saveAndAssertCanonicalPayload(f, draft, encodedBefore);
   });
   it("canonicalizes object key order while refusing any changed note, exact identity or membership order", async () => {
     const f = await mounted();
