@@ -142,14 +142,22 @@ interface FixtureLifetime {
   routeCurrent: boolean;
   previewLive: boolean;
 }
-function fixturePreview(
-  model: ManagedResearchFollowups,
-  source: HoldingFollowupPort,
-  question: string,
-  dueOn: string,
-  formCurrent: () => boolean,
-  lifetime: FixtureLifetime,
-): HoldingFollowupPreview {
+interface FixturePreviewInput {
+  model: ManagedResearchFollowups;
+  source: HoldingFollowupPort;
+  question: string;
+  dueOn: string;
+  formCurrent: () => boolean;
+  lifetime: FixtureLifetime;
+}
+function fixturePreview({
+  model,
+  source,
+  question,
+  dueOn,
+  formCurrent,
+  lifetime,
+}: FixturePreviewInput): HoldingFollowupPreview {
   const saved = model.coordinator.getSnapshot();
   const state = model.getSnapshot();
   let active = true;
@@ -221,14 +229,14 @@ function installPreviewFixture(
         )
       )
         return { preview: null, reason: "Review the existing check." };
-      const preview = fixturePreview(
+      const preview = fixturePreview({
         model,
         source,
         question,
         dueOn,
         formCurrent,
         lifetime,
-      );
+      });
       previews.push(preview);
       return { preview, reason: null };
     },
