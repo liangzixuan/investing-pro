@@ -1,3 +1,4 @@
+import { captureFollowupReviewNoteContext } from "./managed-followup-review-note-context";
 import { captureCompanyReportRevisitTargetContext } from "./company-report-revisit-target";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
@@ -1984,6 +1985,27 @@ export class ManagedWorkspace {
         this.canNavigate() &&
         this.researchSourceRouteReady(selection) &&
         this.canUseResearchSource(selection),
+    });
+  }
+  captureFollowupReviewNote(
+    selection: ManagedResearchSelection,
+    routeActive: () => boolean,
+  ) {
+    const followup = this.researchFollowupContext(selection);
+    if (!followup) return null;
+    return captureFollowupReviewNoteContext({
+      followup,
+      watchlist: () => this.getResearchWatchlist(selection),
+      watchlistSaved: () => this.coordinator.getSnapshot(),
+      followupsSaved: () => this.followups.coordinator.getSnapshot(),
+      canEditFollowups: () =>
+        this.followups.canEdit() &&
+        this.canNavigate() &&
+        this.researchSourceRouteReady(selection) &&
+        this.canUseResearchSource(selection),
+      routeActive,
+      note: (note, expectedNote) =>
+        this.noteResearch(selection, note, expectedNote),
     });
   }
   private followupResearchSessionIsCurrent(visit: FollowupResearchVisit) {

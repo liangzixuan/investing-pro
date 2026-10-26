@@ -86,6 +86,40 @@ hosted native 72-case gate and complete guarded APK verification passed. Phone
 installation, keyboard/Back acceptance and sustained use remain separate; no new
 browser or physical-device acceptance is claimed.
 
+### Keep an assessment in the company note
+
+After writing a nonempty assessment during company research, open **Keep
+assessment in company note**. It requires an editable, existing My Watchlist
+note for that exact company and share class. A separately retained check can
+outlive a Watchlist member; the app explains that missing destination and does
+not add the company automatically.
+
+**Preview complete note** shows the whole original company note plus the full
+question, UTC due date, current completion state and authored assessment. It
+captures one **Authored assessment recorded at (UTC)** timestamp. This is the
+local authored capture time, not a source observation or completion date.
+Append and Save keep that same timestamp. Original source references and dates
+already in the note remain unchanged; this text does not verify the assessment.
+
+**Append assessment to note draft** changes only the company note once. It
+does not mark the check complete, change its assessment, read a source, navigate
+or save either resource. **Keep current note** or closing the disclosure cancels
+the preview. Back retains the check, assessment and chosen review position.
+Review and save My Watchlist and Follow-ups separately through their existing
+controls; saving one does not persist the other.
+
+The whole candidate must fit the existing single-line, 2,000-character note
+limit. Invalid or oversized text stays available for correction without
+clipping. An unchanged question/assessment cannot be appended again merely by
+capturing a later timestamp. A change to either draft, entry, exact identity,
+catalog, company route or session invalidates the preview. Pending Save,
+conflict and uncertain-save recovery pause this action. Resolve the existing
+resource state and create a new preview; an old one cannot become current again.
+
+This is a client source workflow. Focused synthetic checks establish their
+recorded scope; source delivery, browser layout and physical-device acceptance
+remain separate.
+
 ## Turn a thesis Next check into a follow-up
 
 The thesis editor in My Watchlist and company research has an initially closed

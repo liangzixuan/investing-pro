@@ -1,4 +1,5 @@
-.clerk-trial.managed-frame .managed-research-followup {
+.clerk-trial.managed-frame
+  :is(.managed-research-followup, .managed-research-followup-note) {
   min-width: 0;
   margin-block: 20px;
   padding: 16px;
@@ -8,23 +9,47 @@
   color: var(--managed-ink);
   overflow-wrap: anywhere;
 }
-.clerk-trial.managed-frame .managed-research-followup :is(h3, p) {
+.clerk-trial.managed-frame
+  :is(.managed-research-followup, .managed-research-followup-note)
+  :is(h3, p) {
   margin-block: 8px 12px;
 }
 .clerk-trial.managed-frame .managed-research-followup-check {
   white-space: pre-wrap;
 }
-.clerk-trial.managed-frame .managed-research-followup :is(summary, button) {
+.clerk-trial.managed-frame
+  :is(.managed-research-followup, .managed-research-followup-note)
+  :is(summary, button) {
   min-height: 44px;
 }
-.clerk-trial.managed-frame .managed-research-followup summary {
+.clerk-trial.managed-frame
+  :is(.managed-research-followup, .managed-research-followup-note)
+  summary {
   display: list-item;
   align-content: center;
   cursor: pointer;
 }
 .clerk-trial.managed-frame .managed-research-followup-help,
-.clerk-trial.managed-frame .managed-research-followup .managed-followups-help {
+.clerk-trial.managed-frame
+  :is(.managed-research-followup, .managed-research-followup-note)
+  .managed-followups-help {
   color: var(--managed-muted);
   font-size: 0.875rem;
   line-height: 1.5;
+}
+
+.clerk-trial.managed-frame .managed-followup-note-preview {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
 }

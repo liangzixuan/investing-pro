@@ -17,6 +17,25 @@ import org.json.JSONObject;
 
 /** One observed DOM target maps to one guarded app-scoped native touch. */
 final class ReportRevisitTouch {
+    enum Field {
+        REPORT_ASSESSMENT(".managed-report-revisit textarea:not([readonly])", "report comparison assessment"),
+        COMPANY_NOTE("#managed-note-0", "company note"),
+        FOLLOWUP_DUE("#managed-followups-new-due", "Follow-up due date"),
+        FOLLOWUP_QUESTION("#managed-followup-check", "Follow-up question"),
+        FOLLOWUP_RESULT("#managed-research-followup-result", "Follow-up assessment");
+        final String selector;
+        final String description;
+        Field(String selector, String description) { this.selector = selector; this.description = description; }
+        static Field forId(String id) {
+            return switch (id) {
+                case "managed-note-0" -> COMPANY_NOTE;
+                case "managed-followups-new-due" -> FOLLOWUP_DUE;
+                case "managed-followup-check" -> FOLLOWUP_QUESTION;
+                case "managed-research-followup-result" -> FOLLOWUP_RESULT;
+                default -> throw new IllegalArgumentException("Unsupported native fixture field");
+            };
+        }
+    }
     private final ReportRevisitPage page;
     ReportRevisitTouch(ReportRevisitPage page) { this.page = page; }
     void fileChooser() throws Exception {
@@ -38,10 +57,11 @@ final class ReportRevisitTouch {
             " hit:label.contains(document.elementFromPoint(x,y))}; })()")));
         dispatch(new Target("Report revisit input chooser", geometry));
     }
-    void assessment() throws Exception {
-        String selector = ".managed-report-revisit textarea:not([readonly])";
+    void assessment() throws Exception { input(Field.REPORT_ASSESSMENT); }
+    void input(Field field) throws Exception {
+        String selector = field.selector;
         Geometry geometry = new Geometry(page.read(new ReportRevisitPage.Script("JSON.stringify((()=>{const input=document.querySelector('" + selector + "');input.scrollIntoView({block:'center',behavior:'instant'});const r=input.getBoundingClientRect(),v=visualViewport,x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio,finite:[x,y,r.width,r.height,v.width,v.height,v.scale,devicePixelRatio].every(Number.isFinite)&&r.width>0&&r.height>0,visible:r.left>=v.offsetLeft&&r.right<=v.offsetLeft+v.width&&r.top>=v.offsetTop&&r.bottom<=v.offsetTop+v.height,hit:input.contains(document.elementFromPoint(x,y))};})())")));
-        dispatch(new Target("report comparison assessment", geometry));
+        dispatch(new Target(field.description, geometry));
     }
     private record Target(String description, Geometry geometry) {}
     private static final class Geometry {
