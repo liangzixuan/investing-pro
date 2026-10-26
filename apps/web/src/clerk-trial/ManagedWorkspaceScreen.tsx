@@ -9,6 +9,7 @@ import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft
 import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
+import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import {
   useCallback,
   useEffect,
@@ -64,6 +65,7 @@ import {
   managedFinancialDiscoveryProps,
 } from "./ManagedFinancialDiscovery";
 import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
+import { managedFollowupsRouteActive } from "./managed-followups-route";
 import {
   ManagedMarketsNavigation,
   useManagedMarketsSections,
@@ -99,6 +101,7 @@ interface ManagedFileDeliveries {
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
   portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
   followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+  followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
   valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
@@ -246,6 +249,7 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     portfolioReviewReportDelivery: initial.portfolioReviewReportDelivery,
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
+    followupsReviewReportDelivery: initial.followupsReviewReportDelivery,
     valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
     androidBack: initial.androidBack,
     reportDelivery: initial.reportDelivery,
@@ -468,6 +472,7 @@ export function ManagedWorkspaceScreen({
   portfolioDraftFileDelivery,
   portfolioReviewReportDelivery,
   followupsDraftFileDelivery,
+  followupsReviewReportDelivery,
   valuationDraftFileDelivery,
   financialScreenRecipeDelivery,
   reportDelivery,
@@ -1314,9 +1319,14 @@ export function ManagedWorkspaceScreen({
               />
               <ManagedFollowupsEntry
                 discovery={discovery}
-                routeActive={watchlistRouteActive}
+                routeActive={managedFollowupsRouteActive(
+                  workspace,
+                  navigation,
+                  watchlistRouteActive,
+                )}
                 draftFileScope={draftFileScope}
                 draftFileDelivery={followupsDraftFileDelivery}
+                followupsReviewReportDelivery={followupsReviewReportDelivery}
                 review={followupReview}
                 navigationPending={navigationPending}
                 workspace={workspace}

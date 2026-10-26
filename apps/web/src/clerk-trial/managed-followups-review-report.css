@@ -1,0 +1,40 @@
+.clerk-trial.managed-frame .managed-followups-review-report {
+  min-width: 0;
+  margin-block: 24px;
+  padding-block: 16px;
+  border-block: 1px solid var(--managed-line);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame
+  .managed-followups-review-report
+  :is(button, summary) {
+  min-height: 44px;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-followups-review-report :is(p, dd, pre) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame
+  .managed-followups-review-report
+  :is(section, dl, dd, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+.clerk-trial.managed-frame .managed-followups-review-report dd {
+  margin-inline-start: 0;
+}
+.clerk-trial.managed-frame .managed-followups-review-report .trial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.clerk-trial.managed-frame .managed-followups-review-report textarea {
+  box-sizing: border-box;
+  width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}

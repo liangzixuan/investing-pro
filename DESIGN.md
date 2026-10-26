@@ -787,3 +787,23 @@ including checks outside the chosen set. Wrap authored text and all identity
 values on narrow screens. Move focus to the review heading after a keyboard-owned
 transition only while its initiating control retains focus; Back uses the existing
 research opener. Source tests do not establish rendered layout or phone acceptance.
+
+## Follow-ups reading report
+
+Place the report in an initially closed native disclosure on Follow-ups, beside
+the existing draft-file workflow. Use Precision Desk controls with wrapping
+labels, at least 44px targets and visible focus. The complete preview includes
+every entry in resource order; filters and chosen reviews do not hide report
+content. Keep all questions, assessments and identity fields readable without
+clipping, with a labelled read-only field for complete captured JSON.
+
+The downloaded file reuses the Portfolio report's light paper treatment,
+system fonts, contained JSON disclosure and passive CSP. Keep authored capture
+UTC, online base version and unsaved state distinct from entry catalog,
+planning and completion dates. Mark a missing current catalog unavailable;
+never replace an entry's recorded identity. Place explicit file Save/Cancel
+and close actions together. Captures retire during local draft-file recovery
+as well as draft, online Save, catalog, navigation and session changes.
+
+Synthetic source tests and hosted native evidence establish only their recorded
+scope. No browser or physical-device acceptance is inferred.

@@ -13,6 +13,7 @@ import {
   nativeReport,
   nativeExport,
   nativePortfolioReviewReport,
+  nativeFollowupsReviewReport,
   nativeDraftFile,
   nativeValuationDraftFile,
   nativeScreenRecipe,
@@ -21,6 +22,7 @@ import { nativeFixtureRouterPorts } from "./native-fixture-router-ports";
 import { FixtureDraftDiagnostics } from "./fixture-draft-diagnostics";
 import { ReportRevisitFixtureControls } from "./report-revisit-fixture-controls";
 import { PortfolioReviewReportFixtureControls } from "./portfolio-review-report-fixture-controls";
+import { FollowupsReviewReportFixtureControls } from "./followups-review-report-fixture-controls";
 import { PortfolioFixtureControls } from "./portfolio-fixture-controls";
 import { FollowupsFixtureControls } from "./followups-fixture-controls";
 interface Props {
@@ -73,6 +75,9 @@ function NativeDeliveryControls({
     <>
       {workspace && nativePortfolioReviewReport && (
         <PortfolioReviewReportFixtureControls workspace={workspace} />
+      )}
+      {workspace && nativeFollowupsReviewReport && (
+        <FollowupsReviewReportFixtureControls workspace={workspace} />
       )}
       {workspace && nativeReport && (
         <nativeReport.Controls workspace={workspace} />

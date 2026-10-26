@@ -15,6 +15,8 @@ import {
   type ManagedPortfolioDraftFileDeliveryAdapter,
 } from "./portfolio-draft-file-delivery";
 import { browserPortfolioReviewReportAdapter } from "./portfolio-review-report-delivery";
+import { browserFollowupsReviewReportAdapter } from "./followups-review-report-delivery";
+import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import { browserCompanyReportAdapter } from "./browser-company-report";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
@@ -169,6 +171,7 @@ describe("official Clerk browser adapter", () => {
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+      followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
@@ -180,6 +183,7 @@ describe("official Clerk browser adapter", () => {
     expect(props.portfolioDraftFileDelivery).toBeUndefined();
     expect(props.portfolioReviewReportDelivery).toBeUndefined();
     expect(props.followupsDraftFileDelivery).toBeUndefined();
+    expect(props.followupsReviewReportDelivery).toBeUndefined();
     expect(props.valuationDraftFileDelivery).toBeUndefined();
     expect(props.financialScreenRecipeDelivery).toBeUndefined();
     expect(props.reportDelivery).toBeUndefined();
@@ -255,6 +259,7 @@ describe("official Clerk browser adapter", () => {
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+      followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
@@ -270,6 +275,9 @@ describe("official Clerk browser adapter", () => {
     );
     expect(props.followupsDraftFileDelivery).toBe(
       browserFollowupsDraftFileAdapter,
+    );
+    expect(props.followupsReviewReportDelivery).toBe(
+      browserFollowupsReviewReportAdapter,
     );
     expect(props.valuationDraftFileDelivery).toBe(
       browserValuationDraftFileAdapter,

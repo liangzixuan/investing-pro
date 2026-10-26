@@ -302,3 +302,12 @@ admission. The managed source has no Follow-ups enable flag; provisioning its
 fixed tables can affect the existing route. Live provisioning must separately
 confirm actual schema limits, row security and execution-key scope. Source tests and invented in-memory fixtures do not establish
 live storage, production publication, real provider or physical-device use.
+
+## Read the complete draft offline
+
+The [readable report source candidate](MANAGED_FOLLOWUPS_REVIEW_REPORT.md)
+captures all valid checks, including completed and later entries outside the
+current filter or chosen review. Inspect their full authored questions,
+assessments, exact identities and original dates before explicitly saving a
+private HTML copy. The file and online Save remain separate. Source/native and
+client-delivery acceptance remain pending for this candidate.

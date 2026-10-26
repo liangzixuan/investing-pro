@@ -2,6 +2,7 @@ import {
   nativeReport,
   nativeExport,
   nativePortfolioReviewReport,
+  nativeFollowupsReviewReport,
 } from "./native-fixture-environment";
 export function nativeFixtureRouterPorts() {
   return {
@@ -9,6 +10,9 @@ export function nativeFixtureRouterPorts() {
     ...(nativeExport ? { exportDelivery: nativeExport.delivery } : {}),
     ...(nativePortfolioReviewReport
       ? { portfolioReviewReportDelivery: nativePortfolioReviewReport.delivery }
+      : {}),
+    ...(nativeFollowupsReviewReport
+      ? { followupsReviewReportDelivery: nativeFollowupsReviewReport.delivery }
       : {}),
   };
 }

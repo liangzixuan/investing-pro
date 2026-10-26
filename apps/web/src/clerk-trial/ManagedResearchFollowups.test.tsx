@@ -1,3 +1,4 @@
+import { ManagedFollowupsReviewReport } from "./ManagedFollowupsReviewReport";
 import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
@@ -648,5 +649,53 @@ it("retains authored values after a failed load and fences a held load on sessio
   await Promise.resolve();
   expect(f.workspace.followups.coordinator.getSnapshot().draft).toBeNull();
   expect(view(f).html).not.toContain("Unchanged raw draft");
+  noOtherRequests(f);
+});
+
+it("composes readable report delivery with existing route and navigation admission without source or Save effects", async () => {
+  const f = await fixture();
+  await f.loadEntries(f.entry());
+  const before = f.workspace.followups.coordinator.getSnapshot();
+  const deliver = vi.fn().mockResolvedValue("written");
+  const delivery = { deliver };
+  let route = true;
+  function panel(navigationPending: boolean) {
+    hooks.index = 0;
+    const node = ManagedResearchFollowups({
+      workspace: f.workspace,
+      onResearch: f.onResearch,
+      navigationPending,
+      followupsReviewReportDelivery: delivery,
+      draftFileRouteActive: () => route,
+    });
+    const findPanel = (
+      value: React.ReactNode,
+    ):
+      | React.ReactElement<
+          React.ComponentProps<typeof ManagedFollowupsReviewReport>
+        >
+      | undefined => {
+      for (const child of React.Children.toArray(value)) {
+        if (!React.isValidElement<{ children?: React.ReactNode }>(child))
+          continue;
+        if (child.type === ManagedFollowupsReviewReport)
+          return child as React.ReactElement<
+            React.ComponentProps<typeof ManagedFollowupsReviewReport>
+          >;
+        const nested = findPanel(child.props.children);
+        if (nested) return nested;
+      }
+    };
+    return findPanel(node)!;
+  }
+  expect(panel(false).props.delivery).toBe(delivery);
+  expect(panel(false).props.routeActive()).toBe(true);
+  expect(panel(true).props.routeActive()).toBe(false);
+  route = false;
+  expect(panel(false).props.routeActive()).toBe(false);
+  expect(f.workspace.followups.coordinator.getSnapshot()).toBe(before);
+  expect(f.api.loadFollowups).toHaveBeenCalledOnce();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  expect(deliver).not.toHaveBeenCalled();
   noOtherRequests(f);
 });

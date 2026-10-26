@@ -1,4 +1,8 @@
 import {
+  createNativeFollowupsReviewReportAdapter,
+  type InvestmentFollowupsReviewReportPlugin,
+} from "./followups-review-report-delivery";
+import {
   createNativeFinancialScreenRecipeAdapter,
   type InvestmentFinancialScreenRecipePlugin,
 } from "./financial-screen-recipe-delivery";
@@ -149,6 +153,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const followupsReviewReportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeFollowupsReviewReportAdapter(
+            registerPlugin<InvestmentFollowupsReviewReportPlugin>(
+              "InvestmentFollowupsReviewReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const followupsDraftFileDelivery = useMemo(
     () =>
       managed
@@ -225,6 +240,9 @@ function NativeSession({
                 : {})}
               {...(portfolioReviewReportDelivery
                 ? { portfolioReviewReportDelivery }
+                : {})}
+              {...(followupsReviewReportDelivery
+                ? { followupsReviewReportDelivery }
                 : {})}
               {...(followupsDraftFileDelivery
                 ? { followupsDraftFileDelivery }
