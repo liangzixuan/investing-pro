@@ -26,10 +26,10 @@ function held<T>() {
   return { promise, resolve };
 }
 
-async function fixture(authored = false) {
-  const base = await createFixture("research-followups");
-  const order: string[] = [];
-  const packets = {
+type BaseFixture = Awaited<ReturnType<typeof createFixture>>;
+
+function governmentPackets() {
+  return {
     bls: parseManagedBlsCalendar({
       ...economicCalendarFixture(),
       source: MANAGED_BLS_CALENDAR_SOURCE,
@@ -37,16 +37,29 @@ async function fixture(authored = false) {
     bea: parseManagedEconomicCalendar(economicCalendarFixture())!,
     fed: parseManagedMonetaryAnnouncements(fedAnnouncementsFixture())!,
   };
-  const api = {
+}
+
+function resourceApi(api: ManagedApi) {
+  return {
+    load: vi.fn(api.load),
+    save: vi.fn(api.save),
+    loadFollowups: vi.fn(api.loadFollowups),
+    saveFollowups: vi.fn(api.saveFollowups),
+    loadPortfolio: vi.fn(api.loadPortfolio),
+    savePortfolio: vi.fn(api.savePortfolio),
+    loadValuationAssumptions: vi.fn(api.loadValuationAssumptions),
+    saveValuationAssumptions: vi.fn(api.saveValuationAssumptions),
+  };
+}
+
+function sourceApi(
+  base: BaseFixture,
+  packets: ReturnType<typeof governmentPackets>,
+  order: string[],
+) {
+  return {
     ...base.api,
-    load: vi.fn(base.api.load),
-    save: vi.fn(base.api.save),
-    loadFollowups: vi.fn(base.api.loadFollowups),
-    saveFollowups: vi.fn(base.api.saveFollowups),
-    loadPortfolio: vi.fn(base.api.loadPortfolio),
-    savePortfolio: vi.fn(base.api.savePortfolio),
-    loadValuationAssumptions: vi.fn(base.api.loadValuationAssumptions),
-    saveValuationAssumptions: vi.fn(base.api.saveValuationAssumptions),
+    ...resourceApi(base.api),
     status: vi.fn(base.api.status),
     resolve: vi.fn(base.api.resolve),
     annualReport: vi.fn(base.api.annualReport),
@@ -74,6 +87,51 @@ async function fixture(authored = false) {
       return Promise.resolve(packets.fed);
     }),
   } satisfies ManagedApi;
+}
+
+async function authorDrafts(workspace: ManagedWorkspace) {
+  await workspace.coordinator.load();
+  const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+  workspace.note(member.listingId, "Keep the complete unsaved Watchlist note.");
+  workspace.setView("followups");
+  await workspace.followups.coordinator.load();
+  const currentMember =
+    workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+  workspace.followups.add(currentMember, "2026-11-01");
+  const entry = workspace.followups.coordinator.getSnapshot().draft!.entries[0];
+  if (!entry)
+    throw new Error("The invented editable resource must admit a check");
+  workspace.followups.edit(
+    entry,
+    "check",
+    "Read the next original filing before the due date.",
+  );
+  workspace.setView("markets");
+  await vi.waitFor(() =>
+    expect(workspace.markets.getSnapshot().rows).toHaveLength(3),
+  );
+  expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+  expect(workspace.followups.coordinator.getSnapshot().dirty).toBe(true);
+}
+
+function resourceCalls(api: ReturnType<typeof sourceApi>) {
+  return {
+    watchlistLoad: api.load.mock.calls.length,
+    watchlistSave: api.save.mock.calls.length,
+    followupsLoad: api.loadFollowups.mock.calls.length,
+    followupsSave: api.saveFollowups.mock.calls.length,
+    portfolioLoad: api.loadPortfolio.mock.calls.length,
+    portfolioSave: api.savePortfolio.mock.calls.length,
+    valuationLoad: api.loadValuationAssumptions.mock.calls.length,
+    valuationSave: api.saveValuationAssumptions.mock.calls.length,
+  };
+}
+
+async function fixture(authored = false) {
+  const base = await createFixture("research-followups");
+  const order: string[] = [];
+  const packets = governmentPackets();
+  const api = sourceApi(base, packets, order);
   const workspace = new ManagedWorkspace(api, base.session, undefined, {
     researchCoverage: base.researchCoverage,
     marketsCohort: base.marketsCohort,
@@ -84,44 +142,7 @@ async function fixture(authored = false) {
   await vi.waitFor(() =>
     expect(workspace.markets.getSnapshot().rows).toHaveLength(3),
   );
-  if (authored) {
-    await workspace.coordinator.load();
-    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
-    workspace.note(
-      member.listingId,
-      "Keep the complete unsaved Watchlist note.",
-    );
-    workspace.setView("followups");
-    await workspace.followups.coordinator.load();
-    const currentMember =
-      workspace.coordinator.getSnapshot().draft!.memberships[0]!;
-    workspace.followups.add(currentMember, "2026-11-01");
-    const entry =
-      workspace.followups.coordinator.getSnapshot().draft!.entries[0];
-    if (!entry)
-      throw new Error("The invented editable resource must admit a check");
-    workspace.followups.edit(
-      entry,
-      "check",
-      "Read the next original filing before the due date.",
-    );
-    workspace.setView("markets");
-    await vi.waitFor(() =>
-      expect(workspace.markets.getSnapshot().rows).toHaveLength(3),
-    );
-    expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
-    expect(workspace.followups.coordinator.getSnapshot().dirty).toBe(true);
-  }
-  const resourceCalls = () => ({
-    watchlistLoad: api.load.mock.calls.length,
-    watchlistSave: api.save.mock.calls.length,
-    followupsLoad: api.loadFollowups.mock.calls.length,
-    followupsSave: api.saveFollowups.mock.calls.length,
-    portfolioLoad: api.loadPortfolio.mock.calls.length,
-    portfolioSave: api.savePortfolio.mock.calls.length,
-    valuationLoad: api.loadValuationAssumptions.mock.calls.length,
-    valuationSave: api.saveValuationAssumptions.mock.calls.length,
-  });
+  if (authored) await authorDrafts(workspace);
   return {
     workspace,
     review: workspace.marketsSourceReview,
@@ -129,7 +150,7 @@ async function fixture(authored = false) {
     base,
     packets,
     order,
-    resourceCalls,
+    resourceCalls: () => resourceCalls(api),
   };
 }
 

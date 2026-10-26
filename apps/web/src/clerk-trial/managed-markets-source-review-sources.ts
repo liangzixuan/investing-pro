@@ -1,7 +1,11 @@
 import type { ManagedBlsCalendar } from "./managed-bls-calendar";
 import type { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import type { ManagedFedAnnouncements } from "./managed-fed-announcements";
-import type { ManagedMarkets } from "./managed-markets";
+import type {
+  ManagedMarkets,
+  ManagedMarketsRow,
+  ManagedMarketsState,
+} from "./managed-markets";
 import { ManagedMarketsSourceReview } from "./managed-markets-source-review";
 import type {
   MarketsSourceReviewPort,
@@ -23,6 +27,43 @@ function tokenReader() {
     return token;
   };
 }
+function priceActivity(
+  markets: ManagedMarkets,
+  state: ManagedMarketsState,
+  row: ManagedMarketsRow | undefined,
+) {
+  const context = [
+    state.active,
+    state.catalogSnapshotSha256,
+    state.catalogChanged,
+    state.selectedListingId,
+  ];
+  if (!row) return [...context, null];
+  return [
+    ...context,
+    markets.getReadToken(row.listing.listingId),
+    row.listing,
+    row.response,
+    row.showingPrevious,
+    row.running,
+    row.error,
+    row.message,
+  ];
+}
+function priceEligible(
+  state: ManagedMarketsState,
+  row: ManagedMarketsRow | undefined,
+) {
+  if (!state.active || state.resolving) return false;
+  return !state.catalogChanged && row !== undefined;
+}
+function priceEvidence(row: ManagedMarketsRow | undefined) {
+  const response = row?.response;
+  if (!response)
+    return "No history loaded. Resolve the current board listings before requesting prices.";
+  const last = response.rows.at(-1);
+  return `${row?.showingPrevious ? "Previous history. " : ""}Trading date ${last?.date}; raw USD close. Window ${response.window.startDate} to ${response.window.endDate}. Request ${response.requestStartedAt} to ${response.completedAt}.`;
+}
 function pricePort(
   markets: ManagedMarkets,
   index: number,
@@ -31,37 +72,18 @@ function pricePort(
   const read = (): MarketsSourceView => {
     const state = markets.getSnapshot(),
       row = state.rows[index];
-    const response = row?.response,
-      last = response?.rows.at(-1);
+    const response = row?.response;
     return {
-      token: token([
-        state.active,
-        state.catalogSnapshotSha256,
-        state.catalogChanged,
-        state.selectedListingId,
-        markets.getReadToken(row?.listing.listingId ?? ""),
-        row?.listing,
-        row?.response,
-        row?.showingPrevious,
-        row?.running,
-        row?.error,
-        row?.message,
-      ]),
+      token: token(priceActivity(markets, state, row)),
       label: row
         ? `${row.listing.symbol} price history`
         : `Company board history ${index + 1}`,
       identity: row?.listing ?? null,
-      eligible:
-        state.active &&
-        !state.resolving &&
-        !state.catalogChanged &&
-        row !== undefined,
+      eligible: priceEligible(state, row),
       busy: state.running || state.resolving,
       loaded: response != null,
       empty: false,
-      evidence: response
-        ? `${row?.showingPrevious ? "Previous history. " : ""}Trading date ${last?.date}; raw USD close. Window ${response.window.startDate} to ${response.window.endDate}. Request ${response.requestStartedAt} to ${response.completedAt}.`
-        : "No history loaded. Resolve the current board listings before requesting prices.",
+      evidence: priceEvidence(row),
     };
   };
   return {
@@ -80,22 +102,30 @@ function pricePort(
 interface Packet {
   readonly fetchedAt: string;
 }
-function packetPort<T extends Packet>(
-  id: string,
-  label: string,
+interface PacketSource<T extends Packet> {
+  id: string;
+  label: string;
   model: {
     subscribe: (listener: () => void) => () => void;
     load: MarketsSourceReviewPort["load"];
     cancel: () => void;
-  },
+  };
   snapshot: () => {
     readonly packet: T | null;
     readonly busy: boolean;
     readonly previous: boolean;
-  },
-  count: (packet: T) => number,
-  qualification: (packet: T) => string,
-): MarketsSourceReviewPort {
+  };
+  count: (packet: T) => number;
+  qualification: (packet: T) => string;
+}
+function packetPort<T extends Packet>({
+  id,
+  label,
+  model,
+  snapshot,
+  count,
+  qualification,
+}: PacketSource<T>): MarketsSourceReviewPort {
   const token = tokenReader();
   return {
     id,
@@ -120,22 +150,29 @@ function packetPort<T extends Packet>(
     },
   };
 }
-export function createManagedMarketsSourceReview(
-  markets: ManagedMarkets,
-  bls: ManagedBlsCalendar,
-  bea: ManagedBeaReleaseAgenda,
-  fed: ManagedFedAnnouncements,
-  available: () => boolean,
-) {
+interface SourceModels {
+  markets: ManagedMarkets;
+  bls: ManagedBlsCalendar;
+  bea: ManagedBeaReleaseAgenda;
+  fed: ManagedFedAnnouncements;
+  available: () => boolean;
+}
+export function createManagedMarketsSourceReview({
+  markets,
+  bls,
+  bea,
+  fed,
+  available,
+}: SourceModels) {
   const ports: MarketsSourceReviewPort[] = [0, 1, 2].map((index) =>
     pricePort(markets, index),
   );
   ports.push(
-    packetPort(
-      "bls",
-      "BLS release calendar",
-      bls,
-      () => {
+    packetPort({
+      id: "bls",
+      label: "BLS release calendar",
+      model: bls,
+      snapshot: () => {
         const s = bls.getSnapshot();
         return {
           packet: s.calendar,
@@ -143,31 +180,31 @@ export function createManagedMarketsSourceReview(
           previous: s.showingPrevious,
         };
       },
-      (p) => p.events.length,
-      (p) =>
+      count: (p) => p.events.length,
+      qualification: (p) =>
         `${p.events.length} scheduled releases; window ${p.window.fromInclusive} (inclusive) to ${p.window.toExclusive} (exclusive).`,
-    ),
+    }),
   );
   ports.push(
-    packetPort(
-      "bea",
-      "BEA release agenda",
-      bea,
-      () => {
+    packetPort({
+      id: "bea",
+      label: "BEA release agenda",
+      model: bea,
+      snapshot: () => {
         const s = bea.getSnapshot();
         return { packet: s.agenda, busy: s.busy, previous: s.showingPrevious };
       },
-      (p) => p.events.length,
-      (p) =>
+      count: (p) => p.events.length,
+      qualification: (p) =>
         `${p.events.length} scheduled releases; window ${p.window.fromInclusive} (inclusive) to ${p.window.toExclusive} (exclusive).`,
-    ),
+    }),
   );
   ports.push(
-    packetPort(
-      "fed",
-      "Federal Reserve announcements",
-      fed,
-      () => {
+    packetPort({
+      id: "fed",
+      label: "Federal Reserve announcements",
+      model: fed,
+      snapshot: () => {
         const s = fed.getSnapshot();
         return {
           packet: s.announcements,
@@ -175,10 +212,10 @@ export function createManagedMarketsSourceReview(
           previous: s.showingPrevious,
         };
       },
-      (p) => p.items.length,
-      (p) =>
+      count: (p) => p.items.length,
+      qualification: (p) =>
         `${p.items.length} displayed announcements of ${p.availableItemCount} available; publication times remain in the source panel.`,
-    ),
+    }),
   );
   return new ManagedMarketsSourceReview(ports, available);
 }

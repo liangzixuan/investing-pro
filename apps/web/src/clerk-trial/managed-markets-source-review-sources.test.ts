@@ -132,13 +132,13 @@ async function fixture() {
   market.markets.enter(digest);
   await settle();
   expect(market.markets.getSnapshot().rows).toHaveLength(3);
-  const review = createManagedMarketsSourceReview(
-    market.markets,
-    government.bls,
-    government.bea,
-    government.fed,
-    () => available.current,
-  );
+  const review = createManagedMarketsSourceReview({
+    markets: market.markets,
+    bls: government.bls,
+    bea: government.bea,
+    fed: government.fed,
+    available: () => available.current,
+  });
   return { ...market, ...government, order, available, review };
 }
 function deferred<T>() {

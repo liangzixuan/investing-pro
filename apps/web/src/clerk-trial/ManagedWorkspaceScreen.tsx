@@ -57,8 +57,7 @@ import {
 } from "./ManagedFilingsReviewEntry";
 import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
-import { ManagedMarkets } from "./ManagedMarkets";
-import { ManagedMarketsSourceReview } from "./ManagedMarketsSourceReview";
+import { ManagedMarketsBoard } from "./ManagedMarketsBoard";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { managedPortfolioEntryProps } from "./managed-portfolio-entry-props";
 import {
@@ -67,10 +66,7 @@ import {
 } from "./ManagedFinancialDiscovery";
 import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import { managedFollowupsEntryProps } from "./managed-followups-entry-props";
-import {
-  ManagedMarketsNavigation,
-  useManagedMarketsSections,
-} from "./ManagedMarketsNavigation";
+import { useManagedMarketsSections } from "./ManagedMarketsNavigation";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
 import type { AnnualComparisonNoteCapture } from "./managed-watchlist-annual-comparison-note";
@@ -1342,18 +1338,11 @@ export function ManagedWorkspaceScreen({
                     navigation?.invalid,
                   )}
                 >
-                  <ManagedMarketsSourceReview
-                    model={workspace.marketsSourceReview}
+                  <ManagedMarketsBoard
+                    workspace={workspace}
                     isCurrent={isMarketsCurrent}
-                    disabled={navigationPending}
-                  />
-                  <ManagedMarkets
                     navigationPending={navigationPending}
-                    model={workspace.markets}
-                    headingRef={marketsSectionNavigation.targets.board.ref}
-                    sectionNavigation={
-                      <ManagedMarketsNavigation {...marketsSectionNavigation} />
-                    }
+                    navigation={marketsSectionNavigation}
                     onResearch={(kind, opener) => {
                       openResearch(opener, () =>
                         workspace.openMarketResearch(kind),

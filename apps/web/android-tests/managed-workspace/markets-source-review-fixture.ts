@@ -186,22 +186,28 @@ class SourceReviewStore {
     });
     void Promise.resolve().then(() => this.record("late"));
   };
-  private captureSave(input: Parameters<Api["save"]>[0], signal: AbortSignal) {
+  private requireSaveReadiness(signal: AbortSignal): Stored {
     if (signal.aborted) return refuse();
     if (!this.stored) return refuse();
     if (this.counts.save !== 0) return refuse();
     if (this.counts.late !== 1) return refuse();
-    const command = parseManagedWatchlistCommand(input);
-    if (command?.expectedVersion !== 1) return refuse();
-    const expected = {
-      ...this.stored.payload,
-      memberships: this.stored.payload.memberships.map((member, index) =>
+    return this.stored;
+  }
+  private expectedSavedPayload(stored: Stored) {
+    return {
+      ...stored.payload,
+      memberships: stored.payload.memberships.map((member, index) =>
         index === 0 ? { ...member, note: sourceReviewNote } : member,
       ),
     };
+  }
+  private captureSave(input: Parameters<Api["save"]>[0], signal: AbortSignal) {
+    const stored = this.requireSaveReadiness(signal);
+    const command = parseManagedWatchlistCommand(input);
+    if (command?.expectedVersion !== 1) return refuse();
     if (
       encodeMainWatchlistPayload(command.payload) !==
-      encodeMainWatchlistPayload(expected)
+      encodeMainWatchlistPayload(this.expectedSavedPayload(stored))
     )
       return refuse();
     return command;

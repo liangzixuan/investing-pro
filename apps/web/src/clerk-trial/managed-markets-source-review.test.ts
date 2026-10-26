@@ -343,10 +343,11 @@ describe("explicit Markets source review pass", () => {
       Promise.resolve<ManagedSourceReadResult>("not_started");
     first.port.subscribe(() => {
       const view = first.port.read();
-      if (!restarted && view.loaded && !view.busy) {
-        restarted = true;
-        independentRun = first.port.load();
-      }
+      if (restarted) return;
+      if (!view.loaded) return;
+      if (view.busy) return;
+      restarted = true;
+      independentRun = first.port.load();
     });
     await review.start();
     expect(restarted).toBe(true);

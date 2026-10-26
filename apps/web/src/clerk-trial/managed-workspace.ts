@@ -563,13 +563,13 @@ export class ManagedWorkspace {
       () => this.invalidateCatalog(),
       options.marketsCohort,
     );
-    this.marketsSourceReview = createManagedMarketsSourceReview(
-      this.markets,
-      this.blsCalendar,
-      this.agenda,
-      this.announcements,
-      () => this.marketsReviewAvailable(),
-    );
+    this.marketsSourceReview = createManagedMarketsSourceReview({
+      markets: this.markets,
+      bls: this.blsCalendar,
+      bea: this.agenda,
+      fed: this.announcements,
+      available: () => this.marketsReviewAvailable(),
+    });
     this.watchlistPrices = new ManagedWatchlistPrices(
       (request, signal) => api.eodHistory(request, signal),
       (error) => this.coordinator.readError(error),
