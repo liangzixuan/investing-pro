@@ -188,7 +188,7 @@ public class HoldingResearchFollowupInstrumentedTest {
             " && document.querySelector('#holding-followup-preview-shares')?.textContent==='3'"+
             " && document.querySelector('#holding-followup-preview-basis')?.textContent==='Unavailable'"+
             " && document.querySelector('#holding-followup-preview-confirmed')?.textContent==='2026-10-03'"+
-            " && document.querySelector('.managed-holding-followup-preview .managed-holding-followup-position > p')?.textContent==='ONE · Class A · XNAS'"+
+            " && document.querySelector('.managed-holding-followup-preview .managed-holding-followup-position > p')?.textContent==='ONE · One CompanyClass A · XNAS · Common stock'"+
             " && document.querySelector('#holding-followup-create')?.textContent==='Create follow-up draft'"+
             " && document.querySelector("+JSONObject.quote(TOOL)+")?.textContent.includes('not saved with')")));
         assertPosition("3","Unavailable","2026-10-03");

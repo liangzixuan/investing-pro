@@ -1,3 +1,9 @@
+import type { ManagedCompanyNavigation } from "../../src/clerk-trial/useManagedCompanyNavigation";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
+import { ManagedHoldingFollowup } from "../../src/clerk-trial/ManagedHoldingFollowup";
+import { managedCompanySourceActionsProps } from "../../src/clerk-trial/managed-company-source-actions-props";
 import { afterEach, describe, expect, it } from "vitest";
 import { prepareHoldingFollowup } from "../../src/clerk-trial/managed-holding-followup";
 import { createResearchFollowupsFixture } from "./followups-fixture";
@@ -132,7 +138,198 @@ async function saveAndRestore(
   });
   noOtherEffects(f, 2);
 }
+function companyNavigation(
+  pending = false,
+  invalid = false,
+): ManagedCompanyNavigation {
+  return {
+    pending,
+    invalid,
+    isPending: () => pending,
+    returnFocus: 0,
+    open: () => {
+      throw new Error("Unexpected navigation action");
+    },
+    section: () => {
+      throw new Error("Unexpected source section change");
+    },
+    view: () => false,
+    back: () => {
+      throw new Error("Unexpected Back action");
+    },
+    hasCompanyRoute: () => true,
+  };
+}
+function recordingReviewNavigation(f: Mounted) {
+  const state = {
+    destination: "?company=listing-one&section=price",
+    transitions: 0,
+  };
+  const navigation = companyNavigation();
+  navigation.view = (next) => {
+    state.transitions++;
+    expect(next).toBe("followups");
+    f.workspace.setNavigationBlocked(true);
+    f.workspace.setView(next);
+    state.destination = "/";
+    return true;
+  };
+  return { state, navigation };
+}
 describe("invented holding Follow-ups protocol", () => {
+  it("keeps the full exact readout after the router settles the existing Portfolio company URL", async () => {
+    const f = await mounted();
+    const selection = openPosition(f, "listing-zero");
+    f.workspace.setNavigationBlocked(true);
+    await f.workspace.setCompanyRoute({
+      kind: "company",
+      listingId: "listing-zero",
+      section: "eod",
+    });
+    expect(f.workspace.getSnapshot().companyRoute).toMatchObject({
+      listingId: "listing-zero",
+      section: "eod",
+      status: "open",
+    });
+    const visit = f.workspace.getSnapshot().research!;
+    expect(visit.selection).toBe(selection);
+    const props = managedCompanySourceActionsProps(
+      f.workspace,
+      visit,
+      undefined,
+    );
+    const html = load(
+      renderToStaticMarkup(
+        createElement(ManagedHoldingFollowup, {
+          actions: props.holdingFollowupActions!,
+          owner: selection,
+          position: props.holdingPosition ?? null,
+        }),
+      ),
+    );
+    expect(html("#managed-holding-followup")).toHaveLength(1);
+    expect(html("#holding-followup-shares").text()).toBe("2");
+    expect(html("#holding-followup-basis").text()).toBe("80.00");
+    expect(html("#holding-followup-confirmed").text()).toBe("2026-10-02");
+    expect(html(".managed-holding-followup-position > p").text()).toBe(
+      "ZERO · Zero CompanyClass A · XNAS · Common stock",
+    );
+    expect(f.workspace.canLoadHoldingFollowups(selection)).toBe(true);
+    noOtherEffects(f);
+  });
+
+  it("refuses unsettled, pending, invalid and replaced company visits without loading or creating", async () => {
+    const f = await mounted();
+    const selection = openPosition(f, "listing-zero");
+    f.workspace.setNavigationBlocked(true);
+    expect(f.workspace.getHoldingResearchPosition(selection)).toBeNull();
+    expect(f.workspace.canLoadHoldingFollowups(selection)).toBe(false);
+    await f.workspace.setCompanyRoute({
+      kind: "company",
+      listingId: "listing-zero",
+      section: "eod",
+    });
+    const visit = f.workspace.getSnapshot().research!;
+    for (const navigation of [
+      companyNavigation(true),
+      companyNavigation(false, true),
+    ]) {
+      const actions = managedCompanySourceActionsProps(
+        f.workspace,
+        visit,
+        navigation,
+      ).holdingFollowupActions!;
+      expect(actions.getContext().port).toBeNull();
+      expect(actions.canLoad()).toBe(false);
+      await actions.load(() => true);
+    }
+    const stale = managedCompanySourceActionsProps(
+      f.workspace,
+      visit,
+      companyNavigation(),
+    ).holdingFollowupActions!;
+    f.workspace.setNavigationBlocked(false);
+    f.workspace.closeResearch();
+    openPosition(f, "listing-one");
+    f.workspace.setNavigationBlocked(true);
+    await f.workspace.setCompanyRoute({
+      kind: "company",
+      listingId: "listing-one",
+      section: "eod",
+    });
+    expect(f.workspace.getHoldingResearchPosition(selection)).toBeNull();
+    expect(stale.getContext().port).toBeNull();
+    expect(stale.canLoad()).toBe(false);
+    await stale.load(() => true);
+    expect(f.fixture.followups!.getSnapshot()).toMatchObject({
+      load: 0,
+      save: 0,
+      commits: 0,
+    });
+    noOtherEffects(f);
+  });
+  it("reviews the exact existing holding check through the real props navigation bridge without saving or overwriting", async () => {
+    const f = await mounted();
+    const selection = openPosition(f);
+    f.workspace.setNavigationBlocked(true);
+    await f.workspace.setCompanyRoute({
+      kind: "company",
+      listingId: "listing-one",
+      section: "eod",
+    });
+    await f.workspace.loadHoldingFollowups(selection, () => true);
+    const created = prepared(f, selection).create();
+    expect(created).not.toBeNull();
+    const resource = f.workspace.followups.coordinator.getSnapshot();
+    const visit = f.workspace.getSnapshot().research!;
+    const bridge = recordingReviewNavigation(f);
+    const props = managedCompanySourceActionsProps(
+      f.workspace,
+      visit,
+      bridge.navigation,
+    );
+    const html = load(
+      renderToStaticMarkup(
+        createElement(ManagedHoldingFollowup, {
+          actions: props.holdingFollowupActions!,
+          owner: selection,
+          position: props.holdingPosition ?? null,
+        }),
+      ),
+    );
+    expect(html(".managed-holding-followup-position > p").text()).toBe(
+      "ONE · One CompanyClass A · XNAS · Common stock",
+    );
+    props.holdingFollowupActions!.reviewExisting();
+    expect(bridge.state.transitions).toBe(1);
+    expect(bridge.state.destination).toBe("/");
+    expect(f.workspace.getSnapshot()).toMatchObject({
+      view: "followups",
+      research: null,
+      companyRoute: null,
+    });
+    expect(f.workspace.followups.getSnapshot()).toMatchObject({
+      selectedId: created!.id,
+      filter: "open",
+    });
+    expect(f.workspace.followups.coordinator.getSnapshot()).toBe(resource);
+    expect(resource.draft).toEqual(
+      holdingFollowupExpected(f.fixture, created!.id),
+    );
+    f.workspace.setNavigationBlocked(false);
+    await f.workspace.setCompanyRoute(null);
+    expect(f.workspace.followups.getSnapshot()).toMatchObject({
+      selectedId: created!.id,
+      filter: "open",
+    });
+    expect(f.workspace.followups.coordinator.getSnapshot()).toBe(resource);
+    expect(f.fixture.followups!.getSnapshot()).toMatchObject({
+      load: 1,
+      save: 0,
+      commits: 0,
+    });
+    noOtherEffects(f);
+  });
   it("preserves the empty default resource and rejects a nonempty version-zero seed", async () => {
     const resource = createResearchFollowupsFixture();
     expect(resource.getSnapshot()).toMatchObject({

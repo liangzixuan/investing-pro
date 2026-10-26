@@ -522,3 +522,176 @@ it.each(["conflict", "unavailable"] as const)(
     expect(f.unexpected).not.toHaveBeenCalled();
   },
 );
+
+async function settleHoldingUrl(f: HoldingFixture) {
+  f.workspace.setNavigationBlocked(true);
+  await f.workspace.setCompanyRoute({
+    kind: "company",
+    listingId: f.selection.listing.listingId,
+    section: "eod",
+  });
+  expect(f.workspace.getSnapshot().companyRoute?.status).toBe("open");
+}
+it("loads and creates only after the exact holding URL settles without touching other resource drafts", async () => {
+  const f = await fixture(false);
+  const portfolio = f.workspace.portfolio.coordinator.getSnapshot();
+  const watchlist = f.workspace.coordinator.getSnapshot();
+  f.workspace.setNavigationBlocked(true);
+  expect(f.workspace.getHoldingResearchPosition(f.selection)).toBeNull();
+  expect(f.workspace.canLoadHoldingFollowups(f.selection)).toBe(false);
+  await f.initialLoad();
+  expect(f.api.loadFollowups).not.toHaveBeenCalled();
+  await settleHoldingUrl(f);
+  expect(f.workspace.getHoldingResearchPosition(f.selection)).toMatchObject({
+    shares: "2",
+    totalCostBasisUsd: null,
+  });
+  expect(f.workspace.canLoadHoldingFollowups(f.selection)).toBe(true);
+  await f.initialLoad();
+  const created = f.prepare().create();
+  expect(created?.listing).toEqual(listing);
+  expect(created?.check).toBe("Café 東京 😀 complete holding question");
+  expect(f.api.loadFollowups).toHaveBeenCalledOnce();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  expect(f.workspace.portfolio.coordinator.getSnapshot()).toBe(portfolio);
+  expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.unexpected).not.toHaveBeenCalled();
+});
+it("retires captures from before the URL handshake and after a different company URL", async () => {
+  const f = await fixture();
+  const before = f.prepare();
+  await settleHoldingUrl(f);
+  expect(before.isCurrent()).toBe(false);
+  expect(before.create()).toBeNull();
+  const settled = f.prepare();
+  await f.workspace.setCompanyRoute({
+    kind: "company",
+    listingId: "other-listing",
+    section: "eod",
+  });
+  expect(settled.isCurrent()).toBe(false);
+  expect(settled.create()).toBeNull();
+  expect(f.workspace.captureHoldingFollowup(f.selection).port).toBeNull();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+});
+async function holdingReviewFixture() {
+  const existing: ResearchFollowup = {
+    id: "00000000-0000-4000-8000-000000000001",
+    listing,
+    catalogSnapshotSha256: digest,
+    check: "Keep this original completed check",
+    dueOn: "2026-11-01",
+    status: "completed",
+    completedOn: "2026-10-24",
+    result: "Keep the complete result",
+  };
+  const f = await fixture(true, { schemaVersion: 1, entries: [existing] });
+  await settleHoldingUrl(f);
+  return f;
+}
+it("uses an owned router transition for exact completed-entry review and retains its selection after URL settlement", async () => {
+  const f = await holdingReviewFixture();
+  const saved = f.workspace.followups.coordinator.getSnapshot();
+  const portfolio = f.workspace.portfolio.coordinator.getSnapshot();
+  const watchlist = f.workspace.coordinator.getSnapshot();
+  const navigate = vi.fn(() => {
+    f.workspace.setNavigationBlocked(true);
+    f.workspace.setView("followups");
+    return true;
+  });
+  const review = f.workspace.reviewHoldingFollowup(f.selection, navigate);
+  expect(navigate).toHaveBeenCalledOnce();
+  expect(review?.entry).toBe(saved.draft!.entries[0]);
+  expect(review?.isCurrent()).toBe(true);
+  expect(f.workspace.followups.getSnapshot()).toMatchObject({
+    selectedId: review!.entry.id,
+    filter: "completed",
+  });
+  f.workspace.setNavigationBlocked(false);
+  await f.workspace.setCompanyRoute(null);
+  expect(review!.isCurrent()).toBe(false);
+  expect(f.workspace.getSnapshot()).toMatchObject({
+    view: "followups",
+    research: null,
+    companyRoute: null,
+  });
+  expect(f.workspace.followups.getSnapshot()).toMatchObject({
+    selectedId: review!.entry.id,
+    filter: "completed",
+  });
+  expect(f.workspace.followups.coordinator.getSnapshot()).toBe(saved);
+  expect(f.workspace.portfolio.coordinator.getSnapshot()).toBe(portfolio);
+  expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  expect(f.unexpected).not.toHaveBeenCalled();
+});
+const refusedReviewTransitions: readonly (readonly [
+  string,
+  (f: HoldingFixture) => boolean,
+])[] = [
+  ["refused", () => false],
+  ["skipped destination", () => true],
+  [
+    "wrong destination",
+    (f) => {
+      f.workspace.setView("watchlist");
+      return true;
+    },
+  ],
+  [
+    "reentrant view",
+    (f) => {
+      f.workspace.setView("followups");
+      f.workspace.setView("followups");
+      return true;
+    },
+  ],
+  [
+    "file activity round trip",
+    (f) => {
+      const token = {};
+      const saved = f.workspace.followups.coordinator.getSnapshot();
+      f.workspace.followups.beginDraftFileActivity(token);
+      f.workspace.followups.endDraftFileActivity(token);
+      expect(f.workspace.followups.coordinator.getSnapshot()).toBe(saved);
+      f.workspace.setView("followups");
+      return true;
+    },
+  ],
+  [
+    "replaced entry",
+    (f) => {
+      f.workspace.setView("followups");
+      const draft = f.workspace.followups.coordinator.getSnapshot().draft!;
+      f.workspace.followups.coordinator.replaceDraft({
+        ...draft,
+        entries: draft.entries.map((entry) => ({
+          ...entry,
+          check: "Changed during navigation",
+        })),
+      });
+      return true;
+    },
+  ],
+  [
+    "retired session",
+    (f) => {
+      f.workspace.setView("followups");
+      f.workspace.sessionOwner.retire("Retired during navigation");
+      return true;
+    },
+  ],
+];
+it.each(refusedReviewTransitions)(
+  "refuses %s review navigation before selecting an existing entry",
+  async (_name, transition) => {
+    const f = await holdingReviewFixture();
+    const navigate = vi.fn(() => transition(f));
+    expect(f.workspace.reviewHoldingFollowup(f.selection, navigate)).toBeNull();
+    expect(navigate).toHaveBeenCalledOnce();
+    expect(f.workspace.followups.getSnapshot().selectedId).toBeNull();
+    expect(f.workspace.followups.getSnapshot().filter).toBe("open");
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    expect(f.unexpected).not.toHaveBeenCalled();
+  },
+);

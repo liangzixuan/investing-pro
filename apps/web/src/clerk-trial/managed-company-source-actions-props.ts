@@ -136,9 +136,27 @@ function holdingQuestionActions(
           () => active() && current(),
         );
       },
-      reviewExisting: () => {
-        if (active()) workspace.reviewHoldingFollowup(visit.selection);
-      },
+      reviewExisting: reviewHoldingQuestion(
+        workspace,
+        visit,
+        navigation,
+        active,
+      ),
     },
+  };
+}
+
+function reviewHoldingQuestion(
+  workspace: ManagedWorkspace,
+  visit: ManagedResearchVisit,
+  navigation: ManagedCompanyNavigation | undefined,
+  active: () => boolean,
+): () => void {
+  return () => {
+    if (!active()) return;
+    workspace.reviewHoldingFollowup(
+      visit.selection,
+      navigation && (() => navigation.view("followups")),
+    );
   };
 }

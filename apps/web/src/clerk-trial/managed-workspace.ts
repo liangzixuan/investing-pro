@@ -1647,9 +1647,9 @@ export class ManagedWorkspace {
   switchToFilings() {
     this.switchResearch("filings");
   }
-  private holdingNavigationReady() {
+  private holdingNavigationReady(selection: ManagedResearchSelection) {
     if (this.retired) return false;
-    if (this.navigationBlocked) return false;
+    if (!this.researchSourceRouteReady(selection)) return false;
     return this.canNavigate();
   }
   private holdingVisitCurrent(
@@ -1667,7 +1667,7 @@ export class ManagedWorkspace {
     const navigation = this.navigationRevision,
       view = this.viewRevision;
     return () =>
-      this.holdingNavigationReady() &&
+      this.holdingNavigationReady(selection) &&
       this.holdingVisitCurrent(selection, visit, operation) &&
       this.navigationRevision === navigation &&
       this.viewRevision === view &&
@@ -1745,14 +1745,27 @@ export class ManagedWorkspace {
       () => context.isCurrent() && formIsCurrent() && context.isCurrent(),
     );
   }
+  private holdingReviewDestinationReady(routerTransition: boolean) {
+    if (!routerTransition) return this.followupOpeningRouteReady();
+    if (this.retired) return false;
+    if (this.followupsNavigationDepth > 0) return false;
+    if (this.state.view !== "followups") return false;
+    return !this.state.research && !this.state.companyRoute;
+  }
+  private navigateHoldingReview(navigate: (() => boolean) | undefined) {
+    if (navigate) return navigate();
+    this.setView("followups");
+    return true;
+  }
   private holdingReviewRoute(
     saved: ReturnType<ManagedResearchFollowups["coordinator"]["getSnapshot"]>,
     session: ManagedSessionOwner,
     revision: number,
+    routerTransition: boolean,
   ) {
     const navigation = this.navigationRevision;
     return () =>
-      this.followupOpeningRouteReady() &&
+      this.holdingReviewDestinationReady(routerTransition) &&
       this.canNavigate() &&
       this.viewRevision === revision + 1 &&
       this.navigationRevision === navigation &&
@@ -1760,12 +1773,35 @@ export class ManagedWorkspace {
       session.getSnapshot().phase === "active" &&
       this.followups.coordinator.getSnapshot() === saved;
   }
+  private holdingReviewFileCurrent(activity: object) {
+    return (
+      this.followups.getDraftFileActivityRevision() === activity &&
+      !this.followups.hasDraftFileActivity()
+    );
+  }
+  private holdingReviewContinuation(
+    routeCurrent: () => boolean,
+    session: ManagedSessionOwner,
+    initial: ReturnType<ManagedResearchFollowups["getSnapshot"]>,
+    activity: object,
+  ) {
+    if (!routeCurrent()) return null;
+    if (this.followups.getSnapshot() !== initial) return null;
+    const acceptedSession = session.getSnapshot();
+    return () =>
+      routeCurrent() &&
+      session.getSnapshot() === acceptedSession &&
+      this.holdingReviewFileCurrent(activity);
+  }
   reviewHoldingFollowup(
     selection: ManagedResearchSelection,
+    navigate?: () => boolean,
   ): FollowupReview | null {
     const context = this.holdingFollowupContext(selection);
     const saved = this.followups.coordinator.getSnapshot(),
       session = this.sessionOwner;
+    const initial = this.followups.getSnapshot();
+    const activity = this.followups.getDraftFileActivityRevision();
     const draft = saved.draft;
     if (!draft) return null;
     const entry = draft.entries.find(
@@ -1774,12 +1810,20 @@ export class ManagedWorkspace {
     if (!entry) return null;
     if (!context.isCurrent()) return null;
     const revision = this.viewRevision;
-    this.setView("followups");
-    const routeCurrent = this.holdingReviewRoute(saved, session, revision);
-    if (!routeCurrent()) return null;
-    const acceptedSession = session.getSnapshot();
-    const current = () =>
-      routeCurrent() && session.getSnapshot() === acceptedSession;
+    if (!this.navigateHoldingReview(navigate)) return null;
+    const routeCurrent = this.holdingReviewRoute(
+      saved,
+      session,
+      revision,
+      navigate !== undefined,
+    );
+    const current = this.holdingReviewContinuation(
+      routeCurrent,
+      session,
+      initial,
+      activity,
+    );
+    if (!current) return null;
     return selectHoldingFollowupForReview(this, entry, draft, current);
   }
   private cancelFollowupOpening() {
