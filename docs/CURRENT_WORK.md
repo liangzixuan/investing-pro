@@ -5,6 +5,17 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
+## Current source: Follow-up assessment in the company note
+
+The active source connects an exact-company Follow-up assessment to a complete
+company-note preview, explicit one-time draft append, retained research Back
+and independent My Watchlist and Follow-ups Saves. It labels the captured
+authored UTC time separately from original source, due and completion dates.
+It preserves both resource lifetimes and existing text limits; no source,
+storage schema, account or deployment changed. Focused formatter, cross-draft
+and component checks passed. Required exact-source CI and the new hosted native
+journey remain pending. This candidate has no new browser or delivery acceptance.
+
 ## Android source and native acceptance
 
 The signing runtime preflight is merged in
@@ -14,13 +25,13 @@ Public failures name the stage without exposing exception text or private
 configuration. Existing source, owner, path, custody, signing and retry guards
 remain in place.
 
-The current native test candidate waits for the exact company route and its
-visible, enabled Back control before sending hardware Back from Portfolio
-research. It keeps the single Back press, existing deadline and all return,
-ledger, source-read and independent Save assertions. The original merged main
-failed this return check. Its log did not capture the navigation-pending state;
-the original failure remains recorded, and revised native acceptance is pending.
-This source work has not produced a new APK or reopened a failed release operation.
+The Portfolio research Back repair waits for the exact company route and its
+visible, enabled Back control before the same single hardware Back action.
+Its original PR239 and actual-main checks passed, including the complete
+synthetic native83 scope. Android 1.43.0/code44 is provided locally from
+`8976c242c3ee3a324cede2c56cf871a9de766976` after guarded build and complete APK
+verification. The original failed native and Android142 outcomes remain
+recorded. No operation was reopened and no physical-device acceptance is inferred.
 
 ## Accepted source: chosen Follow-ups review
 
@@ -34,7 +45,9 @@ reuses current source actions, identities and persistence.
 `d60e7e5ec1659c741c47cf597474d948b01362af`. Its original required main checks and
 the complete native 83-case union passed within their recorded synthetic scope.
 Android 1.42 preparation passed, but its release build stopped before signing
-and produced no APK. The website, API and delivered Android 1.41 remain unchanged.
+and produced no APK. Android 1.43 subsequently provides this workflow with the
+accepted Portfolio Back-readiness repair. The website and API remain unchanged;
+Android 1.41 and every earlier delivery are preserved.
 
 ## Current capability and delivery status
 

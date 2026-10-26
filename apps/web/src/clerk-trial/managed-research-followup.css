@@ -28,3 +28,19 @@
   font-size: 0.875rem;
   line-height: 1.5;
 }
+
+.clerk-trial.managed-frame .managed-followup-note-preview {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}

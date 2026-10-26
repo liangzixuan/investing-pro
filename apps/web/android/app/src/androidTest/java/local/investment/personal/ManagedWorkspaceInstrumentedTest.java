@@ -99,6 +99,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "valuation-price",
         "research-followups",
         "followups-review-session",
+        "followup-assessment-note",
         "portfolio-ledger",
         "portfolio-close-review",
         "markets-day-view",
@@ -121,6 +122,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen",
         "followupAssessmentInCompanyReturnsToReviewAndSave", "research-followups",
         "followupsReviewSessionKeepsChosenOrderThroughCompanyBackAndSeparateSave", "followups-review-session",
+        "followupAssessmentAppendsExactCompanyNoteThroughBackAndSeparateSaves", "followup-assessment-note",
         "portfolioHoldingReviewAppendsWatchlistAndKeepsLedgerThroughBack", "portfolio-ledger",
         "portfolioDatedClosesKeepLedgerThroughCancelResearchAndSeparateSave", "portfolio-close-review");
     private static final String ANNUAL_COMPARISON_NOTE =
@@ -1565,6 +1567,156 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + FOLLOWUPS + ".session === 2 && " + FOLLOWUPS + ".load === 2 && " + FOLLOWUPS + ".save === 1 && " + FOLLOWUPS + ".commits === 1 && " + FOLLOWUPS + ".token === 0 && " + FOLLOWUPS + ".signOut === 0" +
             " && " + DRAFT + ".dirty === false && " + DRAFT + ".memberships?.[0]?.note === '' && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
         assertEquals("Daily review keeps the same native document across fresh invented sessions", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+    }
+
+
+    @Test
+    public void followupAssessmentAppendsExactCompanyNoteThroughBackAndSeparateSaves() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String prefix = "Independent company note before review";
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", prefix);
+        openFollowupsView();
+        awaitPage("the new note journey still needs an explicit Follow-ups Load",
+            FOLLOWUPS + ".load===0 && " + FOLLOWUP_DRAFT + ".entries===null");
+        click("#managed-followups-load");
+        awaitPage("one explicit Load starts the independent empty resource",
+            FOLLOWUPS + ".load===1 && " + FOLLOWUP_DRAFT + ".baseVersion===0 && " + FOLLOWUP_DRAFT + ".entries?.length===0");
+        typeIntoInput("managed-followups-new-due", "2000-01-01");
+        FollowupsReviewSessionExpectations.EntryId first = authorSessionFollowup(FollowupsReviewSessionExpectations.Check.ZERO);
+        FollowupsReviewSessionExpectations.EntryId second = authorSessionFollowup(FollowupsReviewSessionExpectations.Check.ONE);
+        click(".managed-followups-review > summary");
+        click("#managed-followups-review-enter");
+        awaitPage("two authored questions are available for explicit selection",
+            "document.querySelectorAll('.managed-followups-review-choices > li').length===2 && document.querySelector('#managed-followups-review-start')?.disabled===true");
+        click("#managed-followups-review-choose-" + first);
+        click("#managed-followups-review-choose-" + second);
+        awaitPage("explicit choice order is ZERO then ONE",
+            "document.querySelector('#managed-followups-review-choose-" + first + "')?.textContent==='Chosen 1: remove this check'" +
+            " && document.querySelector('#managed-followups-review-choose-" + second + "')?.textContent==='Chosen 2: remove this check'");
+        click("#managed-followups-review-start");
+        click("#managed-followups-review-research");
+        awaitPage("the first chosen company opens with the original note and no loaded source",
+            "document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO'" +
+            " && document.querySelector('#managed-research-note')?.value===" + JSONObject.quote(prefix) +
+            " && document.querySelector('.managed-followup-review-note')===null");
+        assertCompanyHistory("listing-zero", "price", false);
+        assertCompanySourceOverview(false, false, false);
+        click("#managed-research-followup-assessment > summary");
+        typeIntoInput("managed-research-followup-result", FollowupsReviewSessionExpectations.sessionReviewResult(FollowupsReviewSessionExpectations.Check.ZERO));
+        awaitPage("a nonempty authored assessment exposes the initially closed note action",
+            "document.querySelector('.managed-followup-review-note')?.open===false" +
+            " && document.querySelector('.managed-followup-review-note > summary')?.textContent==='Keep assessment in company note'" +
+            " && " + FOLLOWUP_DRAFT + ".entries?.[0]?.result===" + JSONObject.quote(FollowupsReviewSessionExpectations.sessionReviewResult(FollowupsReviewSessionExpectations.Check.ZERO)));
+        String entries = readFixtureString("JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)");
+        String before = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        click(".managed-followup-review-note > summary");
+        click("#managed-followup-note-preview-action");
+        String cancelled = assertFollowupNotePreview(prefix);
+        awaitPage("preview keeps both complete drafts and all source budgets unchanged",
+            "JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(before) +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries));
+        assertFollowupNoteSources(1, 0);
+        click("#managed-followup-note-append + button");
+        awaitPage("Keep current note removes the preview without editing or saving either resource",
+            "document.querySelector('#managed-followup-note-preview')===null && document.querySelector('#managed-followup-note-append')===null" +
+            " && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(before) +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries));
+        assertTrue("Cancelled preview is complete", cancelled.contains("Authored text; original source dates remain unchanged."));
+        click("#managed-followup-note-preview-action");
+        String expected = assertFollowupNotePreview(prefix);
+        retainAnnualNoteFrame("followupAssessmentCompleteNotePreview", "#managed-followup-note-preview", "#managed-followup-note-preview", 1);
+        click("#managed-followup-note-append");
+        String appended = "document.querySelector('#managed-research-note')?.value===" + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[0]?.note===" + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[1]?.note==='Invented second note' && " + DRAFT + ".dirty===true" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries) +
+            " && " + FOLLOWUP_DRAFT + ".dirty===true && " + FOLLOWUPS + ".save===0 && " + FOLLOWUPS + ".commits===0";
+        awaitPage("Append changes only the selected Watchlist note and reports the two separate unsaved resources",
+            appended + " && document.querySelector('#managed-followup-note-preview')===null" +
+            " && document.querySelector('#managed-followup-note-append')===null && document.querySelector('#managed-followup-note-preview-action')?.disabled===false" +
+            " && document.querySelector('.managed-followup-review-note [role=status]')?.textContent==='Assessment added to the company note draft. Review and save My Watchlist and Follow-ups separately.'");
+        click("#managed-followup-note-preview-action");
+        awaitPage("a new explicit Preview refuses the already appended full assessment without another mutation",
+            appended + " && document.querySelector('#managed-followup-note-preview')===null && document.querySelector('#managed-followup-note-append')===null" +
+            " && document.querySelector('.managed-followup-review-note [role=status]')?.textContent==='This complete assessment is already in the company note draft.'");
+        assertFollowupNoteSources(1, 0);
+        closeSoftKeyboard();
+        String ready = "(() => { const back=document.querySelector('.managed-company-visit .trial-toolbar > button'); const r=back?.getBoundingClientRect();" +
+            " return location.pathname==='/' && location.search==='?company=listing-zero&section=price' && location.hash===''" +
+            " && document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO'" +
+            " && back?.disabled===false && back.textContent==='Back to workspace' && back.checkVisibility()===true && r.width>0 && r.height>0; })()";
+        awaitPage("the exact company visit and enabled visible Back control are ready for one hardware Back", ready + " && " + appended, true);
+        pressBack();
+        awaitPage("one native Back retains the first chosen check, assessment and appended note without advancing or saving",
+            "document.querySelector('.managed-company-visit')===null && location.search===''" +
+            " && document.querySelector('#managed-followups-review-position')?.textContent.startsWith('Check 1 of 2.')" +
+            " && document.activeElement===document.querySelector('#managed-followups-review-research')" +
+            " && document.querySelector('.managed-followups-review')?.textContent.includes(" + JSONObject.quote(FollowupsReviewSessionExpectations.sessionReviewResult(FollowupsReviewSessionExpectations.Check.ZERO)) + ")" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries) +
+            " && " + DRAFT + ".memberships?.[0]?.note===" + JSONObject.quote(expected));
+        assertReturnedRootHistory("listing-zero", "price");
+        click(".managed-followups-review > section > details:last-of-type > summary");
+        awaitPage("the same two complete questions retain their chosen order after company Back",
+            "[...document.querySelectorAll('.managed-followups-review > section > details:last-of-type > ol > li > .managed-followups-authored')].map(e=>e.textContent).join('|')===" +
+            JSONObject.quote(FollowupsReviewSessionExpectations.sessionReviewQuestion(FollowupsReviewSessionExpectations.Check.ZERO) + "|" + FollowupsReviewSessionExpectations.sessionReviewQuestion(FollowupsReviewSessionExpectations.Check.ONE)));
+        click("#managed-followups-review-finish");
+        awaitPage("Finish preserves the complete two-entry authored draft and performs no Save",
+            "document.querySelector('#managed-followups-review-again')?.disabled===false && document.querySelector('#managed-followups-review-position')===null" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries) + " && " + FOLLOWUPS + ".save===0");
+        click("#managed-followups-save");
+        awaitPage("Save follow-ups commits only its full independent resource",
+            FOLLOWUPS + ".save===1 && " + FOLLOWUPS + ".commits===1 && " + FOLLOWUP_DRAFT + ".baseVersion===1 && " + FOLLOWUP_DRAFT + ".dirty===false" +
+            " && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries) +
+            " && " + DRAFT + ".dirty===true && " + DRAFT + ".baseVersion===1 && " + DRAFT + ".memberships[0].note===" + JSONObject.quote(expected));
+        assertFollowupNoteSources(1, 0);
+        selectWorkspaceView("My Watchlist");
+        clickWatchlistAction("Save watchlist");
+        awaitPage("Save watchlist separately commits the complete exact note and preserves the Follow-ups saved version",
+            DRAFT + ".baseVersion===2 && " + DRAFT + ".dirty===false && " + DRAFT + ".memberships[0].note===" + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships[1].note==='Invented second note' && " + FOLLOWUPS + ".save===1 && " + FOLLOWUP_DRAFT + ".baseVersion===1");
+        String members = readFixtureString("JSON.stringify(" + DRAFT + ".memberships)");
+        assertFollowupNoteSources(1, 1);
+        click("#fixture-followups-fresh-session");
+        awaitPage("fresh session loads only the saved Watchlist and does not resume a chosen review",
+            FOLLOWUPS + ".session===2 && " + FOLLOWUPS + ".load===1 && " + FOLLOWUP_DRAFT + ".entries===null" +
+            " && " + DRAFT + ".baseVersion===2 && " + DRAFT + ".dirty===false && JSON.stringify(" + DRAFT + ".memberships)===" + JSONObject.quote(members));
+        openFollowupsView();
+        click("#managed-followups-load");
+        awaitPage("explicit fresh Load restores both whole saved packets with no repeated append or chosen-session restoration",
+            FOLLOWUPS + ".load===2 && " + FOLLOWUPS + ".save===1 && " + FOLLOWUPS + ".commits===1" +
+            " && " + FOLLOWUP_DRAFT + ".baseVersion===1 && " + FOLLOWUP_DRAFT + ".dirty===false && JSON.stringify(" + FOLLOWUP_DRAFT + ".entries)===" + JSONObject.quote(entries) +
+            " && JSON.stringify(" + DRAFT + ".memberships)===" + JSONObject.quote(members) +
+            " && document.querySelector('#managed-followups-review-enter')!==null && document.querySelector('#managed-followups-review-position')===null");
+        assertFollowupNoteSources(2, 1);
+        assertFixtureBoundary(1, 1);
+        assertEquals("Separate resource Saves and fresh Load keep the same native document", origin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    private String assertFollowupNotePreview(String prefix) throws Exception {
+        awaitPage("Preview renders one complete readonly company note with explicit Append and Keep controls",
+            "document.querySelector('#managed-followup-note-preview')?.readOnly===true" +
+            " && document.querySelector('label[for=managed-followup-note-preview]')?.textContent==='Complete company note preview'" +
+            " && document.querySelector('#managed-followup-note-append')?.textContent==='Append assessment to note draft'" +
+            " && document.querySelector('#managed-followup-note-append + button')?.textContent==='Keep current note'");
+        String stamp = readFixtureString("document.querySelector('#managed-followup-note-preview').value.match(/Authored assessment recorded at \\(UTC\\): ([0-9T:.Z-]+)\\. Authored text;/)?.[1] ?? ''");
+        assertTrue("Preview captures one canonical authored UTC timestamp", stamp.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z"));
+        java.time.Instant.parse(stamp);
+        String expected = prefix + " Follow-up assessment for ZERO (Class A, XNAS). Question: " + FollowupsReviewSessionExpectations.sessionReviewQuestion(FollowupsReviewSessionExpectations.Check.ZERO) +
+            " | Due date (UTC): 2000-01-01 | State: open | My assessment: " + FollowupsReviewSessionExpectations.sessionReviewResult(FollowupsReviewSessionExpectations.Check.ZERO) +
+            " | Authored assessment recorded at (UTC): " + stamp + ". Authored text; original source dates remain unchanged.";
+        assertTrue("Whole note stays within the unchanged Unicode limit", expected.codePointCount(0, expected.length()) <= 2000);
+        awaitPage("complete preview equals the handwritten note including original prefix, full question, result, due date, open state and captured clock",
+            "document.querySelector('#managed-followup-note-preview')?.value===" + JSONObject.quote(expected));
+        return expected;
+    }
+
+    private void assertFollowupNoteSources(int sessions, int saves) throws Exception {
+        awaitPage("assessment note workflow has only startup catalogs, one explicit company resolve and the declared separate Watchlist Save",
+            DIAGNOSTICS + ".load===" + sessions + " && " + DIAGNOSTICS + ".status===" + sessions + " && " + DIAGNOSTICS + ".marketsResolve===" + sessions +
+            " && " + DIAGNOSTICS + ".resolve===1 && " + DIAGNOSTICS + ".save===" + saves + " && " + DIAGNOSTICS + ".search===0" +
+            " && " + DIAGNOSTICS + ".eod===0 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + DIAGNOSTICS + ".marketsEod===0" +
+            " && " + DIAGNOSTICS + ".calendar===0 && " + DIAGNOSTICS + ".fed===0 && " + FOLLOWUPS + ".token===0 && " + FOLLOWUPS + ".signOut===0");
     }
 
 

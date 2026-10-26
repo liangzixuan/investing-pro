@@ -3,6 +3,8 @@ import type { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedResearchFollowupContext } from "./managed-research-followup-context";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
+import { ManagedFollowupReviewNote } from "./ManagedFollowupReviewNote";
+import type { FollowupReviewNoteContext } from "./managed-followup-review-note-context";
 import "./managed-research-followup.css";
 
 export function ManagedResearchFollowup({
@@ -35,12 +37,18 @@ export function ManagedResearchFollowup({
     workspace.sessionOwner.getSnapshot,
     workspace.sessionOwner.getSnapshot,
   );
+  useSyncExternalStore(
+    workspace.coordinator.subscribe,
+    workspace.coordinator.getSnapshot,
+    workspace.coordinator.getSnapshot,
+  );
   const context = workspace.researchFollowupContext(selection);
   if (!context) return null;
   return renderResearchFollowup(
     context,
     () => !navigationPending && routeActive() && context.isCurrent(),
     onReview,
+    workspace.captureFollowupReviewNote(selection, routeActive),
   );
 }
 
@@ -49,6 +57,7 @@ function renderResearchFollowup(
   context: ManagedResearchFollowupContext,
   current: () => boolean,
   onReview: () => void,
+  noteContext: FollowupReviewNoteContext | null,
 ) {
   const editable = context.editable && current();
   const entry = context.entry;
@@ -78,11 +87,15 @@ function renderResearchFollowup(
           }}
         />
       </details>
+      {noteContext && entry.result.trim().length > 0 && (
+        <ManagedFollowupReviewNote context={noteContext} />
+      )}
       {context.reason && <p role="status">{context.reason}</p>}
       <p className="managed-research-followup-help">
         {context.dirty ? "Follow-ups has unsaved changes. " : ""}
         Complete this check and save the full draft in Follow-ups. Source reads
-        and My Watchlist Save stay separate.
+        and My Watchlist Save stay separate. Write an assessment to preview it
+        in the company note.
       </p>
       <button
         id="managed-research-followup-review"

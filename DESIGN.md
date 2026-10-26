@@ -184,6 +184,16 @@ four workspace destinations share the existing bottom navigation; content keeps
 enough clearance for that navigation. Identity review and saved-version details
 follow the editor. Private test controls remain outside the product build.
 
+After a contextual Follow-up has a nonempty assessment, show **Keep assessment
+in company note** as an initially closed native disclosure. Keep the prerequisite
+visible in the parent guidance before it appears. Repeat the company symbol, share-class name and exchange MIC, and explain the
+authored UTC capture clock beside the action. Show the
+whole proposed note in a labelled, read-only, wrapping text area. Use the existing
+44px controls and focus tokens. Cancel or closing clears only the preview.
+Keep missing-destination, limit and recovery refusals visible; distinguish the
+authored timestamp from due, completion and source dates. Append, My Watchlist
+Review/Save and Follow-ups completion/Save remain separate actions.
+
 Place the always-visible Research sources area below company navigation and
 before the loaded snapshot. Keep Price, Annual and Filings in three equal cards,
 stacked below 900px. Each card separates source status, original completion time
