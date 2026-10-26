@@ -156,7 +156,11 @@ public class PortfolioReviewReportInstrumentedTest {
         reportButton(ReportAction.CAPTURE);
         page.await(new ReportRevisitPage.Check("fresh capture after a date change needs no additional source request", new ReportRevisitPage.Script( "document.querySelector(\"" + CAPTURE + "\")!==null && " + D + ".eod===1")));
         page.click(ReportRevisitPage.Element.css(CLOSE + " tbody button"));
-        page.await(new ReportRevisitPage.Check("exact Research route opens the registered listing without reading sources", new ReportRevisitPage.Script( "document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO' && new URL(location.href).searchParams.get('company')==='listing-zero' && new URL(location.href).searchParams.get('section')==='price' && " + D + ".eod===1 && " + D + ".annual===0 && " + D + ".filings===0")));
+        page.await(new ReportRevisitPage.Check("exact Research route and visible enabled Back settle without reading sources", new ReportRevisitPage.Script(
+            "(() => { const back=document.querySelector('.managed-company-visit .trial-toolbar > button'), rect=back?.getBoundingClientRect(); return " +
+            "document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO' && new URL(location.href).searchParams.get('company')==='listing-zero' && new URL(location.href).searchParams.get('section')==='price' && " + D + ".eod===1 && " + D + ".annual===0 && " + D + ".filings===0" +
+            " && back?.disabled===false && back.textContent==='Back to workspace' && rect.width>0 && rect.height>0 && getComputedStyle(back).visibility==='visible'; })()"
+        )).nativeReady());
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         pressBack();
         page.await(new ReportRevisitPage.Check("native Back restores Portfolio with private captures closed", new ReportRevisitPage.Script("document.querySelector('.managed-company-visit')===null && document.querySelector('.managed-portfolio-close-review')?.open===false && document.querySelector(\"" + CAPTURE + "\")===null")).nativeReady());
