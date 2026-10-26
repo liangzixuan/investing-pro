@@ -39,6 +39,15 @@ registered in this ledger; they do not cause source requests. Split entries use
 the explicit manual split controls described in
 [split reconciliation](PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md).
 
+## Keep a next research check for a holding
+
+The [current source candidate](MANAGED_HOLDING_FOLLOWUP.md) shows the positive
+holding's authored shares, known or unavailable basis and original confirmation
+date beside company research. Preview a question and UTC due date, then create
+one entry in the independent Follow-ups draft. My Watchlist membership or Load
+is not required. Retained Back and separate Follow-ups Save/fresh Load complete
+the workflow. Source, native and delivery acceptance are pending.
+
 ## Keep a current holding in My Watchlist
 
 The current source increment connects one authored current holding to the

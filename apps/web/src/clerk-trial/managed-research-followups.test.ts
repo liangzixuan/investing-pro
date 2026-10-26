@@ -8,7 +8,10 @@ import type {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
-import { ManagedResearchFollowups } from "./managed-research-followups";
+import {
+  ManagedResearchFollowups,
+  type HoldingCreationContext,
+} from "./managed-research-followups";
 import { SaveCoordinator } from "./save-coordinator";
 import type { SavePort } from "./save-coordinator";
 import { MANAGED_WATCHLIST_SAVE_COPY } from "./save-coordinator-copy";
@@ -58,7 +61,11 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
-function fixture(initial = payload(), newEntryId?: () => string) {
+function fixture(
+  initial = payload(),
+  newEntryId?: () => string,
+  getHoldingCreationContext?: () => HoldingCreationContext | null,
+) {
   let stored: ManagedResearchFollowupsDto = {
     version: initial.entries.length ? 1 : 0,
     payload: initial,
@@ -107,6 +114,7 @@ function fixture(initial = payload(), newEntryId?: () => string) {
   const onRetire = vi.fn();
   const model = new ManagedResearchFollowups(api, session, {
     getCreationContext: () => context,
+    ...(getHoldingCreationContext ? { getHoldingCreationContext } : {}),
     onRetire,
     newKey: () => `invented-followup-${++key}`,
     newEntryId: newEntryId ?? (() => id(entryId++)),
@@ -918,5 +926,81 @@ describe("Follow-ups review scope ownership", () => {
     f.model.syncCatalog(digest);
     f.model.reassessDueDate(new Date("2026-10-24"));
     expect(f.model.getReviewContext()).toBeNull();
+  });
+});
+
+describe("holding-origin shared creation guards", () => {
+  const position = {
+    listing,
+    shares: "2",
+    totalCostBasisUsd: null,
+    confirmedOn: "2026-10-02",
+  };
+  const source: HoldingCreationContext = {
+    position,
+    catalogSnapshotSha256: digest,
+    isCurrent: () => true,
+  };
+  it.each(["listing", "capacity", "uuid"] as const)(
+    "rechecks %s after UUID generation publishes a replacement resource",
+    async (boundary) => {
+      const f = fixture(
+        payload(),
+        () => {
+          const entries: ResearchFollowup[] = [];
+          if (boundary === "listing") entries.push({ ...entry(1), listing });
+          if (boundary === "capacity")
+            entries.push(...Array.from({ length: 20 }, (_, i) => entry(i + 1)));
+          if (boundary === "uuid") entries.push(entry(100));
+          f.model.coordinator.replaceDraft(payload(...entries));
+          return id(100);
+        },
+        () => source,
+      );
+      f.context.draft = null;
+      await f.model.coordinator.load();
+      const capture = f.model.prepareHoldingCheck(
+        position,
+        "Complete question",
+        "2026-12-31",
+      ).capture!;
+      expect(capture).not.toBeNull();
+      expect(f.model.createHoldingCheck(capture, () => true)).toBeNull();
+      expect(f.model.coordinator.getSnapshot().draft!.entries).toHaveLength(
+        boundary === "capacity" ? 20 : 1,
+      );
+      expect(f.api.saveFollowups).not.toHaveBeenCalled();
+    },
+  );
+  it("publishes observable file activity with a monotonic token while preserving the SaveState", async () => {
+    const f = fixture();
+    await f.model.coordinator.load();
+    const saved = f.model.coordinator.getSnapshot(),
+      before = f.model.getSnapshot(),
+      first = f.model.getDraftFileActivityRevision(),
+      activity = {};
+    f.model.beginDraftFileActivity(activity);
+    const second = f.model.getDraftFileActivityRevision();
+    expect(second).not.toBe(first);
+    expect(f.model.getSnapshot()).not.toBe(before);
+    expect(f.model.hasDraftFileActivity()).toBe(true);
+    f.model.endDraftFileActivity(activity);
+    expect(f.model.getDraftFileActivityRevision()).not.toBe(second);
+    expect(f.model.hasDraftFileActivity()).toBe(false);
+    expect(f.model.coordinator.getSnapshot()).toBe(saved);
+  });
+  it("refuses an initial Load before dispatch when a loading subscriber changes form-independent model input", async () => {
+    const f = fixture(payload(), undefined, () => source);
+    f.context.draft = null;
+    const stop = f.model.coordinator.subscribe(() => {
+      if (f.model.coordinator.getSnapshot().phase === "loading") {
+        f.model.setFilter("all");
+        f.model.setFilter("open");
+      }
+    });
+    await f.model.loadHoldingChecks(position, () => true);
+    stop();
+    expect(f.api.loadFollowups).not.toHaveBeenCalled();
+    expect(f.model.coordinator.getSnapshot().draft).toBeNull();
   });
 });

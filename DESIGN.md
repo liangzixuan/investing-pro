@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## A holding's next research check
+
+Place the authored position readout beside Portfolio company research, with exact
+listing/share class, wrapping decimal shares and USD basis or an unavailable
+value. Keep the original confirmation date labelled separately from the UTC due
+date. Put question tools in an initially closed native disclosure with 44px
+controls and visible focus. Preserve the complete raw form through an explicit
+initial Follow-ups Load. Show the whole question/date preview and explain which
+fields will enter the draft. Keep Create, Back, Review and Save distinct. A stale
+preview stays unavailable until a new preview; never retarget its position.
+
 ## Authored valuation workbench
 
 Keep the workbench in an initially closed native disclosure below the report.

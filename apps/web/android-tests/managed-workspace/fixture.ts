@@ -1,3 +1,4 @@
+import { createHoldingFollowupNativeFixture } from "./holding-followup-fixture";
 import { createFollowupsReviewReportNativeFixture } from "./native-followups-review-report-fixture";
 import { createFilingDatedQuestionNativeFixture } from "./filing-dated-question-fixture";
 import { createFollowupAssessmentNoteNativeFixture } from "./followup-assessment-note-fixture";
@@ -2289,6 +2290,13 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "holding-followup",
+    async () =>
+      createHoldingFollowupNativeFixture(
+        await createSharedFixture("research-followups"),
+      ),
+  ],
+  [
     "followups-review-report",
     async () =>
       createFollowupsReviewReportNativeFixture(
@@ -2417,6 +2425,7 @@ export async function createFixture(
     | "followups-review-report"
     | "company-snapshot-loading"
     | "followups-review-session"
+    | "holding-followup"
     | "filing-dated-question"
     | "followup-assessment-note"
     | "watchlist-filings-review"

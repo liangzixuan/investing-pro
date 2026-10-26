@@ -1,3 +1,8 @@
+import {
+  ManagedHoldingFollowup,
+  type ManagedHoldingFollowupActions,
+} from "./ManagedHoldingFollowup";
+import type { HoldingFollowupPreview } from "./managed-holding-followup";
 import type { ManagedFilingsFollowupActions } from "./ManagedFilingsFollowup";
 import type { ReactNode } from "react";
 import type { CompanyReportRevisitTarget } from "./company-report-revisit";
@@ -76,6 +81,8 @@ export function ManagedCompanyResearch({
   priceStudiesActions,
   filingsNoteActions,
   filingsFollowupActions,
+  holdingFollowupActions,
+  holdingPosition,
   companyNavigationState,
   canOpenCompany,
   onOpenCompany,
@@ -117,6 +124,8 @@ export function ManagedCompanyResearch({
   priceStudiesActions?: ManagedPriceStudiesActions;
   filingsNoteActions: ManagedFilingsNoteActions;
   filingsFollowupActions?: ManagedFilingsFollowupActions;
+  holdingFollowupActions?: ManagedHoldingFollowupActions;
+  holdingPosition?: HoldingFollowupPreview["position"] | null;
   companyNavigationState: ResearchCompanyNavigationState;
   canOpenCompany: (
     visit: ManagedResearchVisit,
@@ -154,6 +163,11 @@ export function ManagedCompanyResearch({
         </span>
       </p>
       {researchFollowup}
+      <HoldingResearchNextCheck
+        selection={research.selection}
+        actions={holdingFollowupActions}
+        position={holdingPosition}
+      />
       <ManagedResearchCompanyNavigation
         navigationPending={navigationPending}
         research={research}
@@ -294,5 +308,24 @@ export function ManagedCompanyResearch({
         </aside>
       </div>
     </section>
+  );
+}
+
+function HoldingResearchNextCheck({
+  selection,
+  actions,
+  position,
+}: {
+  selection: ManagedResearchSelection;
+  actions: ManagedHoldingFollowupActions | undefined;
+  position: HoldingFollowupPreview["position"] | null | undefined;
+}) {
+  if (selection.origin !== "portfolio" || !actions) return null;
+  return (
+    <ManagedHoldingFollowup
+      actions={actions}
+      owner={selection}
+      position={position ?? null}
+    />
   );
 }

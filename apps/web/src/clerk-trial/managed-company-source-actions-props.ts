@@ -9,6 +9,8 @@ import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 type SourceActions = Pick<
   ComponentProps<typeof ManagedCompanyResearch>,
   | "filingsFollowupActions"
+  | "holdingFollowupActions"
+  | "holdingPosition"
   | "snapshotLoad"
   | "onLoadSnapshot"
   | "onCancelSnapshot"
@@ -25,6 +27,9 @@ export function managedCompanySourceActionsProps(
 ): SourceActions {
   return {
     filingsFollowupActions: filingQuestionActions(workspace, visit),
+    ...(visit.selection.origin === "portfolio"
+      ? holdingQuestionActions(workspace, visit, navigation)
+      : {}),
     snapshotLoad: workspace.companySnapshotLoad,
     onLoadSnapshot: async () => {
       if (navigation?.invalid || navigation?.isPending()) return;
@@ -99,5 +104,59 @@ function filingQuestionActions(
         filing,
         current,
       ),
+  };
+}
+
+function holdingQuestionActions(
+  workspace: ManagedWorkspace,
+  visit: ManagedResearchVisit,
+  navigation: ManagedCompanyNavigation | undefined,
+): Pick<SourceActions, "holdingFollowupActions" | "holdingPosition"> {
+  const active = () =>
+    !navigation?.invalid &&
+    !navigation?.isPending() &&
+    workspace.getSnapshot().research?.selection === visit.selection;
+  return {
+    holdingPosition: workspace.getHoldingResearchPosition(visit.selection),
+    holdingFollowupActions: {
+      model: workspace.followups,
+      getContext: () =>
+        active()
+          ? workspace.captureHoldingFollowup(visit.selection)
+          : {
+              port: null,
+              reason: "Return to this holding's current company visit first.",
+            },
+      canLoad: () =>
+        active() && workspace.canLoadHoldingFollowups(visit.selection),
+      load: async (current) => {
+        if (!active()) return;
+        await workspace.loadHoldingFollowups(
+          visit.selection,
+          () => active() && current(),
+        );
+      },
+      reviewExisting: reviewHoldingQuestion(
+        workspace,
+        visit,
+        navigation,
+        active,
+      ),
+    },
+  };
+}
+
+function reviewHoldingQuestion(
+  workspace: ManagedWorkspace,
+  visit: ManagedResearchVisit,
+  navigation: ManagedCompanyNavigation | undefined,
+  active: () => boolean,
+): () => void {
+  return () => {
+    if (!active()) return;
+    workspace.reviewHoldingFollowup(
+      visit.selection,
+      navigation && (() => navigation.view("followups")),
+    );
   };
 }

@@ -5,15 +5,31 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current source: a complete Follow-ups reading report
+## Current source: research a holding and keep its next check
 
-The [report candidate](MANAGED_FOLLOWUPS_REVIEW_REPORT.md) captures the whole
-valid Follow-ups draft, including entries outside the filter, chosen review or
-My Watchlist. Inspect complete questions, assessments, identities and original
-dates, then explicitly save a private passive HTML copy. Online Save stays
-separate. Draft, save/recovery, catalog, route and session changes retire the
-capture. Local draft-file activity also retires it. Original PR/main, hosted
-native and client-delivery acceptance are pending.
+The [holding workflow candidate](MANAGED_HOLDING_FOLLOWUP.md) connects a positive
+authored Portfolio position to exact-company research, a complete question/date
+preview, explicit Follow-ups draft creation, retained Back and independent
+Save/fresh Load. It supports holdings outside My Watchlist without requiring
+that resource to load. Position context keeps original authored dates and unknown
+basis values. Draft, recovery, catalog, route, session and file activity retire
+old previews. Original source/native/client acceptance remains pending.
+
+## Accepted and delivered: complete Follow-ups reading report
+
+[PR 242](https://github.com/liangzixuan/investing-pro/pull/242) merged at
+cf30baa9d23a02f2c9440d2e635c4bc8817e796e. All original required PR/main checks
+and the complete synthetic native 91-case scope passed. The
+[report](MANAGED_FOLLOWUPS_REVIEW_REPORT.md) captures the whole valid Follow-ups
+draft, including entries outside the filter, chosen review or My Watchlist.
+Inspect complete questions, assessments, identities and original dates, then
+explicitly save a private passive HTML copy. Online Save stays separate.
+
+Android 1.46.0/code47 is provided locally from that source. Its guarded build,
+complete input/asset/notice checks, existing production signature, manifest,
+compiled XML policies, all DEX definitions and source preservation passed.
+These checks do not establish installation or physical-device acceptance.
+The website, API and earlier APKs remain unchanged.
 
 ## Accepted and delivered: a dated question from an observed filing
 

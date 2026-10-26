@@ -123,7 +123,20 @@ import {
 import { ManagedBlsCalendar } from "./managed-bls-calendar";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
-import { ManagedResearchFollowups } from "./managed-research-followups";
+import {
+  ManagedResearchFollowups,
+  type HoldingCreationContext,
+} from "./managed-research-followups";
+import {
+  holdingPositionsMatch,
+  type HoldingFollowupPort,
+  type HoldingFollowupPosition,
+  type HoldingFollowupPreview,
+} from "./managed-holding-followup";
+import {
+  captureHoldingFollowupContext,
+  selectHoldingFollowupForReview,
+} from "./managed-holding-followup-context";
 import {
   ManagedFollowupsReviewSession,
   type FollowupsReviewHandle,
@@ -404,6 +417,8 @@ export class ManagedWorkspace {
       },
     );
     this.followups = new ManagedResearchFollowups(api, resourceSession, {
+      getHoldingCreationContext: (position) =>
+        this.holdingCreationContext(position),
       getCreationContext: () => ({
         draft: this.coordinator.getSnapshot().draft,
         catalogSnapshotSha256: this.currentWatchlistCatalogDigest(),
@@ -1631,6 +1646,185 @@ export class ManagedWorkspace {
   }
   switchToFilings() {
     this.switchResearch("filings");
+  }
+  private holdingNavigationReady(selection: ManagedResearchSelection) {
+    if (this.retired) return false;
+    if (!this.researchSourceRouteReady(selection)) return false;
+    return this.canNavigate();
+  }
+  private holdingVisitCurrent(
+    selection: ManagedResearchSelection,
+    visit: ManagedResearchVisit | null,
+    operation: symbol,
+  ) {
+    if (this.state.research !== visit) return false;
+    if (visit?.selection !== selection) return false;
+    return this.researchOperation === operation;
+  }
+  private holdingResearchRoute(selection: ManagedResearchSelection) {
+    const visit = this.state.research,
+      operation = this.researchOperation;
+    const navigation = this.navigationRevision,
+      view = this.viewRevision;
+    return () =>
+      this.holdingNavigationReady(selection) &&
+      this.holdingVisitCurrent(selection, visit, operation) &&
+      this.navigationRevision === navigation &&
+      this.viewRevision === view &&
+      this.canUseResearchSource(selection);
+  }
+  private holdingFollowupContext(
+    selection: ManagedResearchSelection,
+    includeFollowups = true,
+  ) {
+    return captureHoldingFollowupContext(
+      this,
+      selection,
+      this.holdingResearchRoute(selection),
+      includeFollowups,
+    );
+  }
+  /** Current authored readout, available without a Follow-ups or Watchlist Load. */
+  getHoldingResearchPosition(
+    selection: ManagedResearchSelection,
+  ): HoldingFollowupPreview["position"] | null {
+    return this.holdingFollowupContext(selection, false).position;
+  }
+  private holdingCreationContext(
+    position: HoldingFollowupPosition,
+  ): HoldingCreationContext | null {
+    const selection = this.state.research?.selection;
+    if (!selection) return null;
+    const context = this.holdingFollowupContext(selection, false);
+    if (!context.position) return null;
+    if (!context.isCurrent()) return null;
+    if (!holdingPositionsMatch(context.position, position)) return null;
+    return {
+      position: context.position,
+      catalogSnapshotSha256: selection.catalogSnapshotSha256,
+      isCurrent: context.isCurrent,
+    };
+  }
+  captureHoldingFollowup(selection: ManagedResearchSelection): {
+    port: HoldingFollowupPort | null;
+    reason: string | null;
+  } {
+    const context = this.holdingFollowupContext(selection);
+    if (!context.position || !context.isCurrent())
+      return {
+        port: null,
+        reason:
+          context.reason ??
+          "Return to the current holding before previewing its check.",
+      };
+    return {
+      port: Object.freeze({
+        model: this.followups,
+        position: context.position,
+        isCurrent: context.isCurrent,
+      }),
+      reason: null,
+    };
+  }
+  canLoadHoldingFollowups(selection: ManagedResearchSelection): boolean {
+    const context = this.holdingFollowupContext(selection, false);
+    return (
+      context.position !== null &&
+      context.isCurrent() &&
+      this.followups.canLoadHoldingChecks(context.position)
+    );
+  }
+  async loadHoldingFollowups(
+    selection: ManagedResearchSelection,
+    formIsCurrent: () => boolean,
+  ): Promise<void> {
+    const context = this.holdingFollowupContext(selection, false);
+    if (!context.position || !context.isCurrent()) return;
+    await this.followups.loadHoldingChecks(
+      context.position,
+      () => context.isCurrent() && formIsCurrent() && context.isCurrent(),
+    );
+  }
+  private holdingReviewDestinationReady(routerTransition: boolean) {
+    if (!routerTransition) return this.followupOpeningRouteReady();
+    if (this.retired) return false;
+    if (this.followupsNavigationDepth > 0) return false;
+    if (this.state.view !== "followups") return false;
+    return !this.state.research && !this.state.companyRoute;
+  }
+  private navigateHoldingReview(navigate: (() => boolean) | undefined) {
+    if (navigate) return navigate();
+    this.setView("followups");
+    return true;
+  }
+  private holdingReviewRoute(
+    saved: ReturnType<ManagedResearchFollowups["coordinator"]["getSnapshot"]>,
+    session: ManagedSessionOwner,
+    revision: number,
+    routerTransition: boolean,
+  ) {
+    const navigation = this.navigationRevision;
+    return () =>
+      this.holdingReviewDestinationReady(routerTransition) &&
+      this.canNavigate() &&
+      this.viewRevision === revision + 1 &&
+      this.navigationRevision === navigation &&
+      this.sessionOwner === session &&
+      session.getSnapshot().phase === "active" &&
+      this.followups.coordinator.getSnapshot() === saved;
+  }
+  private holdingReviewFileCurrent(activity: object) {
+    return (
+      this.followups.getDraftFileActivityRevision() === activity &&
+      !this.followups.hasDraftFileActivity()
+    );
+  }
+  private holdingReviewContinuation(
+    routeCurrent: () => boolean,
+    session: ManagedSessionOwner,
+    initial: ReturnType<ManagedResearchFollowups["getSnapshot"]>,
+    activity: object,
+  ) {
+    if (!routeCurrent()) return null;
+    if (this.followups.getSnapshot() !== initial) return null;
+    const acceptedSession = session.getSnapshot();
+    return () =>
+      routeCurrent() &&
+      session.getSnapshot() === acceptedSession &&
+      this.holdingReviewFileCurrent(activity);
+  }
+  reviewHoldingFollowup(
+    selection: ManagedResearchSelection,
+    navigate?: () => boolean,
+  ): FollowupReview | null {
+    const context = this.holdingFollowupContext(selection);
+    const saved = this.followups.coordinator.getSnapshot(),
+      session = this.sessionOwner;
+    const initial = this.followups.getSnapshot();
+    const activity = this.followups.getDraftFileActivityRevision();
+    const draft = saved.draft;
+    if (!draft) return null;
+    const entry = draft.entries.find(
+      (row) => row.listing.listingId === selection.listing.listingId,
+    );
+    if (!entry) return null;
+    if (!context.isCurrent()) return null;
+    const revision = this.viewRevision;
+    if (!this.navigateHoldingReview(navigate)) return null;
+    const routeCurrent = this.holdingReviewRoute(
+      saved,
+      session,
+      revision,
+      navigate !== undefined,
+    );
+    const current = this.holdingReviewContinuation(
+      routeCurrent,
+      session,
+      initial,
+      activity,
+    );
+    if (!current) return null;
+    return selectHoldingFollowupForReview(this, entry, draft, current);
   }
   private cancelFollowupOpening() {
     const operation = this.followupOpenOperation;

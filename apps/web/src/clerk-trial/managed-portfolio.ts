@@ -109,6 +109,8 @@ export class ManagedPortfolio {
   private resourceState: SaveState<PortfolioDraft>;
   private state: Readonly<ManagedPortfolioState>;
   private readonly listeners = new Set<() => void>();
+  private readonly draftFileActivities = new Set<object>();
+  private draftFileActivityRevision: object = {};
   private readonly now: () => Date;
   private retired = false;
   private retireNotified = false;
@@ -273,6 +275,8 @@ export class ManagedPortfolio {
   private close() {
     if (this.retired) return;
     this.retired = true;
+    this.draftFileActivities.clear();
+    this.draftFileActivityRevision = {};
     this.approval = null;
     this.clearReview();
     this.state = Object.freeze({
@@ -304,6 +308,24 @@ export class ManagedPortfolio {
       !state.uncertain &&
       !state.replayPending
     );
+  }
+  /** Local file activity withdraws owned holding captures without changing saved data. */
+  hasDraftFileActivity() {
+    return this.draftFileActivities.size > 0;
+  }
+  getDraftFileActivityRevision() {
+    return this.draftFileActivityRevision;
+  }
+  beginDraftFileActivity(operation: object) {
+    if (this.retired || this.draftFileActivities.has(operation)) return;
+    this.draftFileActivities.add(operation);
+    this.draftFileActivityRevision = {};
+    this.update({});
+  }
+  endDraftFileActivity(operation: object) {
+    if (!this.draftFileActivities.delete(operation)) return;
+    this.draftFileActivityRevision = {};
+    this.update({});
   }
   getDraftFileContext(requireFresh = true): PortfolioDraftFileContext | null {
     const state = this.coordinator.getSnapshot();

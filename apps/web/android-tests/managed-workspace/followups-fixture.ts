@@ -35,11 +35,13 @@ interface FollowupsFixtureState {
 }
 
 /** One invented account, independent RAM resource, and explicit failure controls. */
-export function createResearchFollowupsFixture() {
-  let stored: ManagedResearchFollowupsDto = owned({
+export function createResearchFollowupsFixture(
+  initial: ManagedResearchFollowupsDto = {
     version: 0,
     payload: { schemaVersion: 1, entries: [] },
-  });
+  },
+) {
+  let stored: ManagedResearchFollowupsDto = owned(initial);
   const receipts = new Map<
     string,
     {
@@ -65,7 +67,7 @@ export function createResearchFollowupsFixture() {
     held: 0,
     signOut: 0,
     token: 0,
-    version: 0,
+    version: stored.version,
     nextRead: "complete",
     nextSave: "complete",
   });
