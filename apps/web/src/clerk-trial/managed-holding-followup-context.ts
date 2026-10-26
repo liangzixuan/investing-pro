@@ -74,40 +74,60 @@ function projectedPosition({
     ? Object.freeze(position)
     : null;
 }
+function holdingRouteActive(c: HoldingContext) {
+  if (!c.routeCurrent()) return false;
+  if (c.session.phase !== "active") return false;
+  return c.view.view === "portfolio";
+}
+function holdingSelectionCurrent(c: HoldingContext) {
+  if (c.view.research?.selection !== c.selection) return false;
+  if (c.selection.origin !== "portfolio") return false;
+  return c.selection.cik === null;
+}
+function catalogActionPending(c: HoldingContext) {
+  return Boolean(c.view.read || c.view.review || c.view.reviewing);
+}
 function routeIssue(c: HoldingContext) {
-  if (
-    !c.routeCurrent() ||
-    c.session.phase !== "active" ||
-    c.view.view !== "portfolio" ||
-    c.view.research?.selection !== c.selection ||
-    c.selection.origin !== "portfolio" ||
-    c.selection.cik !== null
-  )
+  if (!holdingRouteActive(c) || !holdingSelectionCurrent(c))
     return "Return to the current holding in Portfolio research after the pending action finishes.";
-  return c.view.read || c.view.review || c.view.reviewing
+  return catalogActionPending(c)
     ? "Finish the current catalog action before preparing a holding check."
     : null;
 }
+function portfolioFormPending(c: HoldingContext) {
+  if (c.portfolio.pendingEditor) return true;
+  return Boolean(c.portfolio.reviewing || c.portfolio.review);
+}
 function portfolioIssue(c: HoldingContext) {
-  if (
-    c.portfolio.pendingEditor ||
-    c.portfolio.reviewing ||
-    c.portfolio.review ||
-    c.workspace.portfolio.hasDraftFileActivity()
-  )
+  if (portfolioFormPending(c) || c.workspace.portfolio.hasDraftFileActivity())
     return "Apply or reset the Portfolio form and finish its identity or file review first.";
   return !holdingResourceReady(c.ledger) ||
     !c.workspace.portfolio.canSavePayload()
     ? "Load the current Portfolio and finish its save or recovery decision first."
     : null;
 }
+function catalogMatches(c: HoldingContext, digest: string) {
+  if (digest !== c.selection.catalogSnapshotSha256) return false;
+  if (c.portfolio.catalogSnapshotSha256 !== digest) return false;
+  return c.ledger.draft?.ledger?.snapshotSha256 === digest;
+}
 function catalogIssue(c: HoldingContext) {
   const digest = c.view.snapshot?.snapshotSha256;
-  return !digest ||
-    digest !== c.selection.catalogSnapshotSha256 ||
-    c.portfolio.catalogSnapshotSha256 !== digest ||
-    c.ledger.draft?.ledger?.snapshotSha256 !== digest
-    ? "Review the holding against the current Portfolio catalog first."
+  if (!digest)
+    return "Review the holding against the current Portfolio catalog first.";
+  return catalogMatches(c, digest)
+    ? null
+    : "Review the holding against the current Portfolio catalog first.";
+}
+function followupsReviewPending(c: HoldingContext) {
+  if (c.followups.reviewing || c.followups.review) return true;
+  return c.workspace.followups.hasDraftFileActivity();
+}
+function followupsCatalogIssue(c: HoldingContext) {
+  if (followupsReviewPending(c))
+    return "Finish Follow-ups file or catalog review before previewing this check.";
+  return c.followups.catalogSnapshotSha256 !== c.selection.catalogSnapshotSha256
+    ? "Finish Follow-ups file or catalog review before previewing this check."
     : null;
 }
 function followupsIssue(c: HoldingContext) {
@@ -115,14 +135,7 @@ function followupsIssue(c: HoldingContext) {
     return "Load Follow-ups here before previewing this check. Your question and due date stay here.";
   if (!holdingResourceReady(c.saved) || !c.workspace.followups.canEdit())
     return "Finish Follow-ups load, save or recovery before previewing this check.";
-  if (
-    c.followups.reviewing ||
-    c.followups.review ||
-    c.workspace.followups.hasDraftFileActivity() ||
-    c.followups.catalogSnapshotSha256 !== c.selection.catalogSnapshotSha256
-  )
-    return "Finish Follow-ups file or catalog review before previewing this check.";
-  return null;
+  return followupsCatalogIssue(c);
 }
 function initialLoadSessionCurrent(c: HoldingContext) {
   return (
@@ -133,21 +146,23 @@ function initialLoadSessionCurrent(c: HoldingContext) {
     c.workspace.valuation.getSnapshot() === c.valuation
   );
 }
-function baseUnchanged(c: HoldingContext, includeFollowups: boolean) {
-  const session = c.workspace.sessionOwner.getSnapshot();
-  const sessionCurrent = includeFollowups
-    ? session === c.session
-    : initialLoadSessionCurrent(c);
+function portfolioUnchanged(c: HoldingContext) {
   return (
-    c.routeCurrent() &&
-    c.workspace.getSnapshot() === c.view &&
-    sessionCurrent &&
     c.workspace.portfolio.getSnapshot() === c.portfolio &&
     c.workspace.portfolio.coordinator.getSnapshot() === c.ledger &&
     c.workspace.portfolio.getDraftFileActivityRevision() ===
       c.portfolioActivity &&
     !c.workspace.portfolio.hasDraftFileActivity()
   );
+}
+function baseUnchanged(c: HoldingContext, includeFollowups: boolean) {
+  const session = c.workspace.sessionOwner.getSnapshot();
+  const sessionCurrent = includeFollowups
+    ? session === c.session
+    : initialLoadSessionCurrent(c);
+  if (!c.routeCurrent()) return false;
+  if (c.workspace.getSnapshot() !== c.view) return false;
+  return sessionCurrent && portfolioUnchanged(c);
 }
 function followupsUnchanged(c: HoldingContext) {
   return (
@@ -158,6 +173,18 @@ function followupsUnchanged(c: HoldingContext) {
     !c.workspace.followups.hasDraftFileActivity()
   );
 }
+function positionUnchanged(
+  c: HoldingContext,
+  position: HoldingFollowupPosition,
+) {
+  const current = projectedPosition(c);
+  return current !== null && holdingPositionsMatch(position, current);
+}
+function contextUnchanged(c: HoldingContext, includeFollowups: boolean) {
+  if (!baseUnchanged(c, includeFollowups)) return false;
+  if (!includeFollowups) return true;
+  return followupsUnchanged(c);
+}
 function lifetime(
   c: HoldingContext,
   position: HoldingFollowupPosition,
@@ -166,22 +193,26 @@ function lifetime(
   let retired = false;
   return () => {
     if (retired) return false;
-    retired =
-      !baseUnchanged(c, includeFollowups) ||
-      (includeFollowups && !followupsUnchanged(c));
-    const current = retired ? null : projectedPosition(c);
-    retired ||= !current || !holdingPositionsMatch(position, current);
+    retired = !contextUnchanged(c, includeFollowups);
+    if (retired) return false;
+    retired = !positionUnchanged(c, position);
     return !retired;
   };
 }
-/** Portfolio authority is independent of My Watchlist; initial Follow-ups Load has its own continuation. */
-export function captureHoldingFollowupContext(
+function contextIssue(c: HoldingContext, includeFollowups: boolean) {
+  const issue = routeIssue(c) ?? portfolioIssue(c) ?? catalogIssue(c);
+  if (issue) return issue;
+  return includeFollowups ? followupsIssue(c) : null;
+}
+function refusedContext(reason: string) {
+  return { position: null, reason, isCurrent: () => false };
+}
+function readHoldingContext(
   workspace: ManagedWorkspace,
   selection: ManagedResearchSelection,
   routeCurrent: () => boolean,
-  includeFollowups = true,
-) {
-  const c: HoldingContext = {
+): HoldingContext {
+  return {
     workspace,
     selection,
     routeCurrent,
@@ -197,17 +228,17 @@ export function captureHoldingFollowupContext(
     valuationSaved: workspace.valuationAssumptions.coordinator.getSnapshot(),
     valuation: workspace.valuation.getSnapshot(),
   };
-  const refuse = (reason: string) => ({
-    position: null,
-    reason,
-    isCurrent: () => false,
-  });
-  const issue =
-    routeIssue(c) ??
-    portfolioIssue(c) ??
-    catalogIssue(c) ??
-    (includeFollowups ? followupsIssue(c) : null);
-  if (issue) return refuse(issue);
+}
+/** Portfolio authority is independent of My Watchlist; initial Follow-ups Load has its own continuation. */
+export function captureHoldingFollowupContext(
+  workspace: ManagedWorkspace,
+  selection: ManagedResearchSelection,
+  routeCurrent: () => boolean,
+  includeFollowups = true,
+) {
+  const c = readHoldingContext(workspace, selection, routeCurrent);
+  const issue = contextIssue(c, includeFollowups);
+  if (issue) return refusedContext(issue);
   const position = projectedPosition(c);
   return position
     ? {
@@ -215,7 +246,7 @@ export function captureHoldingFollowupContext(
         reason: null,
         isCurrent: lifetime(c, position, includeFollowups),
       }
-    : refuse(
+    : refusedContext(
         "Choose an exact current positive Portfolio holding before keeping its next check.",
       );
 }
@@ -232,6 +263,14 @@ export function selectHoldingFollowupForReview(
   workspace.followups.setFilter(
     entry.status === "completed" ? "completed" : "open",
   );
+  return selectedHoldingReview(workspace, entry, draft, current);
+}
+function selectedHoldingReview(
+  workspace: ManagedWorkspace,
+  entry: ResearchFollowup,
+  draft: ResearchFollowupsPayload,
+  current: () => boolean,
+) {
   const selected = workspace.followups.getSnapshot();
   const isCurrent = () =>
     current() &&

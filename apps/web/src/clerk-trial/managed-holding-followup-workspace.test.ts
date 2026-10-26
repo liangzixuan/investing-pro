@@ -289,48 +289,75 @@ it.each([
     expect(f.unexpected).not.toHaveBeenCalled();
   },
 );
-it.each([
-  "portfolio-file",
-  "followups-file",
-  "editor",
-  "draft",
-  "followups",
-  "navigation",
-  "catalog",
-  "session",
-] as const)(
-  "permanently retires preview after %s round trip",
-  async (boundary) => {
-    const f = await fixture();
-    const preview = f.prepare();
-    if (boundary === "portfolio-file") {
+type HoldingFixture = Awaited<ReturnType<typeof fixture>>;
+const previewRetirements: readonly (readonly [
+  string,
+  (f: HoldingFixture) => void | Promise<void>,
+])[] = [
+  [
+    "portfolio-file",
+    (f) => {
       const token = {};
       f.workspace.portfolio.beginDraftFileActivity(token);
       f.workspace.portfolio.endDraftFileActivity(token);
-    }
-    if (boundary === "followups-file") {
+    },
+  ],
+  [
+    "followups-file",
+    (f) => {
       const token = {};
       f.workspace.followups.beginDraftFileActivity(token);
       f.workspace.followups.endDraftFileActivity(token);
-    }
-    if (boundary === "editor") {
+    },
+  ],
+  [
+    "editor",
+    (f) => {
       f.workspace.portfolio.setPendingEditor(f.draft, true);
       f.workspace.portfolio.setPendingEditor(f.draft, false);
-    }
-    if (boundary === "draft")
+    },
+  ],
+  [
+    "draft",
+    (f) => {
       f.workspace.portfolio.coordinator.replaceDraft(f.draft);
-    if (boundary === "followups")
+    },
+  ],
+  [
+    "followups",
+    (f) => {
       f.workspace.followups.coordinator.replaceDraft({
         schemaVersion: 1,
         entries: [],
       });
-    if (boundary === "navigation") {
+    },
+  ],
+  [
+    "navigation",
+    (f) => {
       f.workspace.setNavigationBlocked(true);
       f.workspace.setNavigationBlocked(false);
-    }
-    if (boundary === "catalog") await f.workspace.refreshCatalog();
-    if (boundary === "session")
+    },
+  ],
+  [
+    "catalog",
+    async (f) => {
+      await f.workspace.refreshCatalog();
+    },
+  ],
+  [
+    "session",
+    (f) => {
       f.workspace.sessionOwner.retire("Invented session expired");
+    },
+  ],
+];
+it.each(previewRetirements)(
+  "permanently retires preview after %s round trip",
+  async (_boundary, retire) => {
+    const f = await fixture();
+    const preview = f.prepare();
+    await retire(f);
     expect(preview.isCurrent()).toBe(false);
     expect(preview.create()).toBeNull();
     expect(f.api.saveFollowups).not.toHaveBeenCalled();

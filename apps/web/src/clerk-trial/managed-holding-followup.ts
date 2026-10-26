@@ -1,5 +1,8 @@
 import { type ResearchFollowup } from "@research-cockpit/contracts";
-import type { ManagedResearchFollowups } from "./managed-research-followups";
+import type {
+  HoldingCheckCapture,
+  ManagedResearchFollowups,
+} from "./managed-research-followups";
 
 export interface HoldingFollowupPosition {
   readonly listing: ResearchFollowup["listing"];
@@ -48,12 +51,7 @@ export function prepareHoldingFollowup(
   dueOn: string,
   formIsCurrent: () => boolean,
 ): { preview: HoldingFollowupPreview | null; reason: string | null } {
-  let retired = false;
-  const current = () => {
-    if (retired) return false;
-    retired = !port.isCurrent() || !formIsCurrent() || !port.isCurrent();
-    return !retired;
-  };
+  const current = holdingFormLifetime(port, formIsCurrent);
   if (!current()) return { preview: null, reason: stale };
   const prepared = port.model.prepareHoldingCheck(
     port.position,
@@ -63,6 +61,24 @@ export function prepareHoldingFollowup(
   if (!current()) return { preview: null, reason: stale };
   const capture = prepared.capture;
   if (!capture) return { preview: null, reason: prepared.reason };
+  return { preview: ownedHoldingPreview(port, capture, current), reason: null };
+}
+function holdingFormLifetime(
+  port: HoldingFollowupPort,
+  formIsCurrent: () => boolean,
+) {
+  let retired = false;
+  return () => {
+    if (retired) return false;
+    retired = !port.isCurrent() || !formIsCurrent() || !port.isCurrent();
+    return !retired;
+  };
+}
+function ownedHoldingPreview(
+  port: HoldingFollowupPort,
+  capture: HoldingCheckCapture,
+  current: () => boolean,
+): HoldingFollowupPreview {
   let consumed = false;
   const available = () => !consumed && current();
   const preview: HoldingFollowupPreview = Object.freeze({
@@ -81,5 +97,5 @@ export function prepareHoldingFollowup(
       return port.model.createHoldingCheck(capture, current);
     },
   });
-  return { preview, reason: null };
+  return preview;
 }

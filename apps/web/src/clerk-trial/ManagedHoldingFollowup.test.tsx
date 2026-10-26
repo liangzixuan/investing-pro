@@ -46,9 +46,15 @@ interface ElementProps {
   onToggle?: (event: { currentTarget: { open: boolean } }) => void;
 }
 function elements(node: React.ReactNode): React.ReactElement<ElementProps>[] {
-  return React.isValidElement<ElementProps>(node)
-    ? [node, ...React.Children.toArray(node.props.children).flatMap(elements)]
-    : [];
+  if (!React.isValidElement<ElementProps>(node)) return [];
+  if (typeof node.type === "function") {
+    const component = node.type as (props: ElementProps) => React.ReactNode;
+    return elements(component(node.props));
+  }
+  return [
+    node,
+    ...React.Children.toArray(node.props.children).flatMap(elements),
+  ];
 }
 function hasCleanup(slot: unknown): slot is { cleanup: () => void } {
   return Boolean(
@@ -81,10 +87,7 @@ const original: ResearchFollowup = {
   completedOn: "2026-01-02",
   result: "Keep the complete earlier assessment.",
 };
-async function fixture(
-  loaded = true,
-  basis: string | null = "12345678901234567890.01",
-) {
+function fixtureApi() {
   let stored = {
     version: 1,
     payload: {
@@ -92,7 +95,7 @@ async function fixture(
       entries: [original],
     } as ResearchFollowupsPayload,
   };
-  const api = {
+  return {
     loadFollowups: vi.fn<ManagedApi["loadFollowups"]>(() =>
       Promise.resolve(stored),
     ),
@@ -105,13 +108,17 @@ async function fixture(
     }),
     resolve: vi.fn<ManagedApi["resolve"]>(),
   };
+}
+function modelFactory(
+  api: ConstructorParameters<typeof ManagedResearchFollowups>[0],
+) {
   const session: TrialSession = {
     userId: "invented",
     sessionId: "invented",
     getToken: vi.fn(),
     signOut: vi.fn(),
   };
-  const makeModel = () =>
+  return () =>
     new ManagedResearchFollowups(api, session, {
       getCreationContext: () => ({
         draft: null,
@@ -120,33 +127,85 @@ async function fixture(
       onRetire: vi.fn(),
       newKey: () => id(99),
     });
-  const model = makeModel();
-  if (loaded) await model.coordinator.load();
-  const position: HoldingFollowupPreview["position"] = {
+}
+function fixturePosition(
+  basis: string | null,
+): HoldingFollowupPreview["position"] {
+  return {
     listing: filingsSelection.listing,
     shares: "12345678901234567890.123456",
     totalCostBasisUsd: basis,
     confirmedOn: "2026-10-03",
   };
-  let routeCurrent = true;
-  let previewLive = true;
-  const port: HoldingFollowupPort = {
-    model,
-    position,
-    isCurrent: () =>
-      routeCurrent && model.coordinator.getSnapshot().phase === "idle",
+}
+interface FixtureLifetime {
+  routeCurrent: boolean;
+  previewLive: boolean;
+}
+function fixturePreview(
+  model: ManagedResearchFollowups,
+  source: HoldingFollowupPort,
+  question: string,
+  dueOn: string,
+  formCurrent: () => boolean,
+  lifetime: FixtureLifetime,
+): HoldingFollowupPreview {
+  const saved = model.coordinator.getSnapshot();
+  const state = model.getSnapshot();
+  let active = true;
+  const current = () => {
+    if (!active || !lifetime.previewLive) return false;
+    if (!source.isCurrent() || !formCurrent()) return false;
+    return (
+      model.coordinator.getSnapshot() === saved && model.getSnapshot() === state
+    );
   };
+  return {
+    position: source.position,
+    check: question,
+    dueOn,
+    isCurrent: current,
+    cancel: vi.fn(() => {
+      active = false;
+    }),
+    create: vi.fn(() => {
+      if (!current()) return null;
+      active = false;
+      const entry: ResearchFollowup = {
+        id: id(2),
+        catalogSnapshotSha256: digest,
+        listing: source.position.listing,
+        check: question,
+        dueOn,
+        status: "open",
+        completedOn: null,
+        result: "",
+      };
+      model.coordinator.replaceDraft({
+        ...saved.draft!,
+        entries: [...saved.draft!.entries, entry],
+      });
+      return entry;
+    }),
+  };
+}
+function fixtureQuestion(raw: string, dueOn: string) {
+  if ([...raw].length > 500) return null;
+  const question = normalizeResearchFollowupCheck(raw);
+  if (!isResearchFollowupDueDate(dueOn)) return null;
+  return question;
+}
+function installPreviewFixture(
+  model: ManagedResearchFollowups,
+  lifetime: FixtureLifetime,
+) {
   const previews: HoldingFollowupPreview[] = [];
   vi.mocked(prepareHoldingFollowup).mockImplementation(
     (source, raw, dueOn, formCurrent) => {
-      const question = normalizeResearchFollowupCheck(raw);
       if (!source.isCurrent() || !formCurrent())
         return { preview: null, reason: "The holding is no longer current." };
-      if (
-        [...raw].length > 500 ||
-        question === null ||
-        !isResearchFollowupDueDate(dueOn)
-      )
+      const question = fixtureQuestion(raw, dueOn);
+      if (question === null)
         return {
           preview: null,
           reason:
@@ -162,70 +221,49 @@ async function fixture(
         )
       )
         return { preview: null, reason: "Review the existing check." };
-      const state = model.getSnapshot();
-      let active = true;
-      const current = () =>
-        active &&
-        previewLive &&
-        source.isCurrent() &&
-        formCurrent() &&
-        model.coordinator.getSnapshot() === saved &&
-        model.getSnapshot() === state;
-      const preview: HoldingFollowupPreview = {
-        position: source.position,
-        check: question,
+      const preview = fixturePreview(
+        model,
+        source,
+        question,
         dueOn,
-        isCurrent: current,
-        cancel: vi.fn(() => {
-          active = false;
-        }),
-        create: vi.fn(() => {
-          if (!current()) return null;
-          active = false;
-          const entry: ResearchFollowup = {
-            id: id(2),
-            catalogSnapshotSha256: digest,
-            listing: source.position.listing,
-            check: question,
-            dueOn,
-            status: "open",
-            completedOn: null,
-            result: "",
-          };
-          model.coordinator.replaceDraft({
-            ...saved.draft!,
-            entries: [...saved.draft!.entries, entry],
-          });
-          return entry;
-        }),
-      };
+        formCurrent,
+        lifetime,
+      );
       previews.push(preview);
       return { preview, reason: null };
     },
   );
-  const actions: ManagedHoldingFollowupActions = {
+  return previews;
+}
+function fixtureActions(
+  model: ManagedResearchFollowups,
+  port: HoldingFollowupPort,
+  lifetime: FixtureLifetime,
+): ManagedHoldingFollowupActions {
+  return {
     model,
     getContext: vi.fn(() => ({
-      port: routeCurrent ? port : null,
-      reason: routeCurrent ? null : "The holding is unavailable.",
+      port: lifetime.routeCurrent ? port : null,
+      reason: lifetime.routeCurrent ? null : "The holding is unavailable.",
     })),
-    canLoad: vi.fn(
-      () =>
-        routeCurrent &&
-        model.coordinator.getSnapshot().draft === null &&
-        model.coordinator.getSnapshot().phase === "idle",
-    ),
+    canLoad: vi.fn(() => {
+      if (!lifetime.routeCurrent) return false;
+      const saved = model.coordinator.getSnapshot();
+      return saved.draft === null && saved.phase === "idle";
+    }),
     load: vi.fn<ManagedHoldingFollowupActions["load"]>(async (current) => {
-      if (routeCurrent && current()) await model.coordinator.load();
+      if (lifetime.routeCurrent && current()) await model.coordinator.load();
     }),
     reviewExisting: vi.fn(),
   };
-  const props: {
-    actions: ManagedHoldingFollowupActions;
-    owner: object;
-    position: HoldingFollowupPreview["position"] | null;
-  } = { actions, owner: {}, position };
-  const render = (override: Partial<typeof props> = {}, commit = true) => {
+}
+interface FixtureProps {
+  actions: ManagedHoldingFollowupActions;
+  owner: object;
+  position: HoldingFollowupPreview["position"] | null;
+}
+function fixtureRenderer(props: FixtureProps) {
+  const render = (override: Partial<FixtureProps> = {}, commit = true) => {
     hooks.index = 0;
     hooks.effects = [];
     const tree = ManagedHoldingFollowup({ ...props, ...override });
@@ -253,6 +291,27 @@ async function fixture(
     written().byId("preview")!.props.onClick!();
     return render();
   };
+  return { render, edit, written, previewed };
+}
+async function fixture(
+  loaded = true,
+  basis: string | null = "12345678901234567890.01",
+) {
+  const api = fixtureApi();
+  const makeModel = modelFactory(api);
+  const model = makeModel();
+  if (loaded) await model.coordinator.load();
+  const position = fixturePosition(basis);
+  const lifetime = { routeCurrent: true, previewLive: true };
+  const port: HoldingFollowupPort = {
+    model,
+    position,
+    isCurrent: () =>
+      lifetime.routeCurrent && model.coordinator.getSnapshot().phase === "idle",
+  };
+  const previews = installPreviewFixture(model, lifetime);
+  const actions = fixtureActions(model, port, lifetime);
+  const props: FixtureProps = { actions, owner: {}, position };
   return {
     model,
     api,
@@ -262,15 +321,12 @@ async function fixture(
     position,
     previews,
     makeModel,
-    render,
-    edit,
-    written,
-    previewed,
+    ...fixtureRenderer(props),
     route: (current: boolean) => {
-      routeCurrent = current;
+      lifetime.routeCurrent = current;
     },
     live: (current: boolean) => {
-      previewLive = current;
+      lifetime.previewLive = current;
     },
   };
 }

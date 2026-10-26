@@ -125,8 +125,8 @@ function edit(
 }
 function prepare(interaction: Interaction, source: HTMLButtonElement | null) {
   const { render, lifetime } = interaction;
-  if (!actionIsCurrent(interaction) || lifetime.busy || lifetime.loading)
-    return;
+  if (!actionIsCurrent(interaction)) return;
+  if (lifetime.busy || lifetime.loading) return;
   lifetime.busy = true;
   retire(lifetime);
   const token = lifetime.token;
@@ -186,8 +186,8 @@ function create(interaction: Interaction, captured: Capture) {
 }
 async function loadFollowups(interaction: Interaction) {
   const { render, lifetime } = interaction;
-  if (!actionIsCurrent(interaction) || lifetime.busy || lifetime.loading)
-    return;
+  if (!actionIsCurrent(interaction)) return;
+  if (lifetime.busy || lifetime.loading) return;
   if (render.actions.model.coordinator.getSnapshot().draft) return;
   if (!render.actions.canLoad()) return;
   retire(lifetime);
@@ -405,30 +405,26 @@ function Position({
     </div>
   );
 }
-export function ManagedHoldingFollowup(props: Props) {
-  const controls = useHoldingFollowup(props);
+type HoldingControls = ReturnType<typeof useHoldingFollowup>;
+function usePreviewFocus(controls: HoldingControls) {
   const heading = useRef<HTMLHeadingElement | null>(null);
   useLayoutEffect(() => {
     const source = controls.lifetime.focusFrom;
     controls.lifetime.focusFrom = null;
-    if (
-      !controls.preview ||
-      !source?.isConnected ||
-      source.ownerDocument.activeElement !== source
-    )
-      return;
+    if (!controls.preview) return;
+    if (!source?.isConnected) return;
+    if (source.ownerDocument.activeElement !== source) return;
     heading.current?.focus({ preventScroll: true });
     heading.current?.scrollIntoView({ block: "nearest" });
   }, [controls.preview, controls.lifetime]);
+  return heading;
+}
+function HoldingPosition({ position }: Pick<Props, "position">) {
   return (
-    <section
-      id="managed-holding-followup"
-      className="managed-holding-followup"
-      aria-label="Authored holding and next check"
-    >
+    <>
       <h3>Authored Portfolio draft position</h3>
-      {props.position ? (
-        <Position position={props.position} prefix="holding-followup" />
+      {position ? (
+        <Position position={position} prefix="holding-followup" />
       ) : (
         <p>Current holding context is unavailable.</p>
       )}
@@ -436,70 +432,163 @@ export function ManagedHoldingFollowup(props: Props) {
         These are authored Portfolio values. The original holding confirmation
         date and company research source dates remain separate.
       </p>
+    </>
+  );
+}
+function QuestionFields({ controls }: { controls: HoldingControls }) {
+  return (
+    <>
+      <div className="managed-holding-followup-fields">
+        <div>
+          <label htmlFor="holding-followup-question">
+            Research question (required, one line)
+          </label>
+          <textarea
+            id="holding-followup-question"
+            rows={3}
+            value={controls.state.question}
+            aria-describedby="holding-followup-help holding-followup-status"
+            onChange={(event) =>
+              controls.edit("question", event.currentTarget.value)
+            }
+          />
+        </div>
+        <div>
+          <label htmlFor="holding-followup-due">
+            Due date (required, UTC, YYYY-MM-DD)
+          </label>
+          <input
+            id="holding-followup-due"
+            type="text"
+            placeholder="YYYY-MM-DD"
+            value={controls.state.dueOn}
+            aria-invalid={
+              controls.state.dueOn !== "" &&
+              !isResearchFollowupDueDate(controls.state.dueOn)
+            }
+            aria-describedby="holding-followup-help holding-followup-status"
+            onChange={(event) =>
+              controls.edit("dueOn", event.currentTarget.value)
+            }
+          />
+        </div>
+      </div>
+      <p id="holding-followup-help">
+        Enter 1 to 500 characters on one line. No text is clipped. Load
+        Follow-ups explicitly, preview the complete question, then create its
+        local draft. Save follow-ups remains separate.
+      </p>
+    </>
+  );
+}
+function FollowupsLoad({ controls }: { controls: HoldingControls }) {
+  if (controls.saved.draft) return null;
+  return (
+    <>
+      <button
+        id="holding-followup-load"
+        type="button"
+        className="trial-secondary"
+        disabled={!controls.canLoad}
+        onClick={controls.load}
+      >
+        {controls.saved.phase === "loading"
+          ? "Loading follow-ups…"
+          : "Load follow-ups for this question"}
+      </button>
+      {controls.saved.message && <p role="status">{controls.saved.message}</p>}
+    </>
+  );
+}
+function HoldingPreview({
+  controls,
+  heading,
+}: {
+  controls: HoldingControls;
+  heading: RefObject<HTMLHeadingElement | null>;
+}) {
+  if (!controls.preview) return null;
+  const preview = controls.preview.value;
+  return (
+    <section
+      className="managed-holding-followup-preview"
+      aria-label="Holding next check preview"
+    >
+      <h4 ref={heading} tabIndex={-1}>
+        Review the complete next check
+      </h4>
+      <label htmlFor="holding-followup-check">
+        Complete next check preview
+      </label>
+      <textarea
+        id="holding-followup-check"
+        rows={4}
+        readOnly
+        value={preview.check}
+      />
+      <p>Due date (UTC): {preview.dueOn}</p>
+      <Position position={preview.position} prefix="holding-followup-preview" />
+      <p>
+        The position context is not saved with this check. Only the complete
+        question and due date become an open Follow-ups draft entry. Portfolio
+        and My Watchlist are unchanged.
+      </p>
+      <button
+        id="holding-followup-create"
+        type="button"
+        className="trial-secondary"
+        onClick={controls.create}
+      >
+        Create follow-up draft
+      </button>
+    </section>
+  );
+}
+function ReviewAndCancel({ controls }: { controls: HoldingControls }) {
+  return (
+    <>
+      {controls.canReview && (
+        <button
+          id="holding-followup-review"
+          type="button"
+          className="trial-secondary"
+          onClick={controls.review}
+        >
+          Review existing follow-up
+        </button>
+      )}
+      <button
+        id="holding-followup-cancel"
+        type="button"
+        className="trial-secondary"
+        onClick={controls.cancel}
+      >
+        Cancel preview
+      </button>
+      <p id="holding-followup-status" role="status" aria-live="polite">
+        {controls.message}
+      </p>
+    </>
+  );
+}
+export function ManagedHoldingFollowup(props: Props) {
+  const controls = useHoldingFollowup(props);
+  const heading = usePreviewFocus(controls);
+  return (
+    <section
+      id="managed-holding-followup"
+      className="managed-holding-followup"
+      aria-label="Authored holding and next check"
+    >
+      <HoldingPosition position={props.position} />
       <details
         onToggle={(event) => {
           if (!event.currentTarget.open) controls.cancel();
         }}
       >
         <summary>Review holding and keep a next check</summary>
-        <div className="managed-holding-followup-fields">
-          <div>
-            <label htmlFor="holding-followup-question">
-              Research question (required, one line)
-            </label>
-            <textarea
-              id="holding-followup-question"
-              rows={3}
-              value={controls.state.question}
-              aria-describedby="holding-followup-help holding-followup-status"
-              onChange={(event) =>
-                controls.edit("question", event.currentTarget.value)
-              }
-            />
-          </div>
-          <div>
-            <label htmlFor="holding-followup-due">
-              Due date (required, UTC, YYYY-MM-DD)
-            </label>
-            <input
-              id="holding-followup-due"
-              type="text"
-              placeholder="YYYY-MM-DD"
-              value={controls.state.dueOn}
-              aria-invalid={
-                controls.state.dueOn !== "" &&
-                !isResearchFollowupDueDate(controls.state.dueOn)
-              }
-              aria-describedby="holding-followup-help holding-followup-status"
-              onChange={(event) =>
-                controls.edit("dueOn", event.currentTarget.value)
-              }
-            />
-          </div>
-        </div>
-        <p id="holding-followup-help">
-          Enter 1 to 500 characters on one line. No text is clipped. Load
-          Follow-ups explicitly, preview the complete question, then create its
-          local draft. Save follow-ups remains separate.
-        </p>
-        {!controls.saved.draft && (
-          <>
-            <button
-              id="holding-followup-load"
-              type="button"
-              className="trial-secondary"
-              disabled={!controls.canLoad}
-              onClick={controls.load}
-            >
-              {controls.saved.phase === "loading"
-                ? "Loading follow-ups…"
-                : "Load follow-ups for this question"}
-            </button>
-            {controls.saved.message && (
-              <p role="status">{controls.saved.message}</p>
-            )}
-          </>
-        )}
+        <QuestionFields controls={controls} />
+        <FollowupsLoad controls={controls} />
         <button
           id="holding-followup-preview"
           type="button"
@@ -509,64 +598,8 @@ export function ManagedHoldingFollowup(props: Props) {
         >
           Preview next check
         </button>
-        {controls.preview && (
-          <section
-            className="managed-holding-followup-preview"
-            aria-label="Holding next check preview"
-          >
-            <h4 ref={heading} tabIndex={-1}>
-              Review the complete next check
-            </h4>
-            <label htmlFor="holding-followup-check">
-              Complete next check preview
-            </label>
-            <textarea
-              id="holding-followup-check"
-              rows={4}
-              readOnly
-              value={controls.preview.value.check}
-            />
-            <p>Due date (UTC): {controls.preview.value.dueOn}</p>
-            <Position
-              position={controls.preview.value.position}
-              prefix="holding-followup-preview"
-            />
-            <p>
-              The position context is not saved with this check. Only the
-              complete question and due date become an open Follow-ups draft
-              entry. Portfolio and My Watchlist are unchanged.
-            </p>
-            <button
-              id="holding-followup-create"
-              type="button"
-              className="trial-secondary"
-              onClick={controls.create}
-            >
-              Create follow-up draft
-            </button>
-          </section>
-        )}
-        {controls.canReview && (
-          <button
-            id="holding-followup-review"
-            type="button"
-            className="trial-secondary"
-            onClick={controls.review}
-          >
-            Review existing follow-up
-          </button>
-        )}
-        <button
-          id="holding-followup-cancel"
-          type="button"
-          className="trial-secondary"
-          onClick={controls.cancel}
-        >
-          Cancel preview
-        </button>
-        <p id="holding-followup-status" role="status" aria-live="polite">
-          {controls.message}
-        </p>
+        <HoldingPreview controls={controls} heading={heading} />
+        <ReviewAndCancel controls={controls} />
       </details>
     </section>
   );

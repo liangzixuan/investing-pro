@@ -1647,18 +1647,28 @@ export class ManagedWorkspace {
   switchToFilings() {
     this.switchResearch("filings");
   }
+  private holdingNavigationReady() {
+    if (this.retired) return false;
+    if (this.navigationBlocked) return false;
+    return this.canNavigate();
+  }
+  private holdingVisitCurrent(
+    selection: ManagedResearchSelection,
+    visit: ManagedResearchVisit | null,
+    operation: symbol,
+  ) {
+    if (this.state.research !== visit) return false;
+    if (visit?.selection !== selection) return false;
+    return this.researchOperation === operation;
+  }
   private holdingResearchRoute(selection: ManagedResearchSelection) {
     const visit = this.state.research,
       operation = this.researchOperation;
     const navigation = this.navigationRevision,
       view = this.viewRevision;
     return () =>
-      !this.retired &&
-      !this.navigationBlocked &&
-      this.canNavigate() &&
-      this.state.research === visit &&
-      visit?.selection === selection &&
-      this.researchOperation === operation &&
+      this.holdingNavigationReady() &&
+      this.holdingVisitCurrent(selection, visit, operation) &&
       this.navigationRevision === navigation &&
       this.viewRevision === view &&
       this.canUseResearchSource(selection);
@@ -1686,12 +1696,9 @@ export class ManagedWorkspace {
     const selection = this.state.research?.selection;
     if (!selection) return null;
     const context = this.holdingFollowupContext(selection, false);
-    if (
-      !context.position ||
-      !context.isCurrent() ||
-      !holdingPositionsMatch(context.position, position)
-    )
-      return null;
+    if (!context.position) return null;
+    if (!context.isCurrent()) return null;
+    if (!holdingPositionsMatch(context.position, position)) return null;
     return {
       position: context.position,
       catalogSnapshotSha256: selection.catalogSnapshotSha256,
@@ -1738,21 +1745,13 @@ export class ManagedWorkspace {
       () => context.isCurrent() && formIsCurrent() && context.isCurrent(),
     );
   }
-  reviewHoldingFollowup(
-    selection: ManagedResearchSelection,
-  ): FollowupReview | null {
-    const context = this.holdingFollowupContext(selection);
-    const saved = this.followups.coordinator.getSnapshot(),
-      session = this.sessionOwner;
-    const draft = saved.draft;
-    const entry = draft?.entries.find(
-      (row) => row.listing.listingId === selection.listing.listingId,
-    );
-    if (!entry || !draft || !context.isCurrent()) return null;
-    const revision = this.viewRevision;
-    this.setView("followups");
+  private holdingReviewRoute(
+    saved: ReturnType<ManagedResearchFollowups["coordinator"]["getSnapshot"]>,
+    session: ManagedSessionOwner,
+    revision: number,
+  ) {
     const navigation = this.navigationRevision;
-    const routeCurrent = () =>
+    return () =>
       this.followupOpeningRouteReady() &&
       this.canNavigate() &&
       this.viewRevision === revision + 1 &&
@@ -1760,6 +1759,23 @@ export class ManagedWorkspace {
       this.sessionOwner === session &&
       session.getSnapshot().phase === "active" &&
       this.followups.coordinator.getSnapshot() === saved;
+  }
+  reviewHoldingFollowup(
+    selection: ManagedResearchSelection,
+  ): FollowupReview | null {
+    const context = this.holdingFollowupContext(selection);
+    const saved = this.followups.coordinator.getSnapshot(),
+      session = this.sessionOwner;
+    const draft = saved.draft;
+    if (!draft) return null;
+    const entry = draft.entries.find(
+      (row) => row.listing.listingId === selection.listing.listingId,
+    );
+    if (!entry) return null;
+    if (!context.isCurrent()) return null;
+    const revision = this.viewRevision;
+    this.setView("followups");
+    const routeCurrent = this.holdingReviewRoute(saved, session, revision);
     if (!routeCurrent()) return null;
     const acceptedSession = session.getSnapshot();
     const current = () =>
