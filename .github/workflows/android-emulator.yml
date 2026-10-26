@@ -399,6 +399,12 @@ jobs:
           ))
           if len(required) != 91:
               raise SystemExit("Follow-ups report policy and export journey must extend all 85 existing native tests.")
+          required.add((
+              "local.investment.personal.HoldingResearchFollowupInstrumentedTest",
+              "outsideWatchlistHoldingKeepsExactPositionAndDatedCheckThroughBackAndSeparateSave",
+          ))
+          if len(required) != 92:
+              raise SystemExit("The holding research check must extend all 91 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

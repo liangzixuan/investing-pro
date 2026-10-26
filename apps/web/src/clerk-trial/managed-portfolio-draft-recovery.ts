@@ -147,19 +147,24 @@ export class ManagedPortfolioDraftRecovery {
     if (!this.context()) return false;
     return this.operation === null || phase === "review";
   }
-  private clear(message: string, retired = false) {
+  private clear(message: string, retired = false, releaseActivity = true) {
     const transition = {};
     this.transition = transition;
     const operation = this.operation;
     this.operation = null;
     operation?.controller.abort();
-    this.publish({
-      phase: retired ? "retired" : "idle",
-      preview: null,
-      currentDraft: null,
-      currentSavedVersion: null,
-      message,
-    });
+    try {
+      this.publish({
+        phase: retired ? "retired" : "idle",
+        preview: null,
+        currentDraft: null,
+        currentSavedVersion: null,
+        message,
+      });
+    } finally {
+      if (releaseActivity && operation)
+        this.options.workspace.portfolio.endDraftFileActivity(operation);
+    }
     return transition;
   }
   reconcile = () => {
@@ -186,6 +191,11 @@ export class ManagedPortfolioDraftRecovery {
       controller: new AbortController(),
     };
     this.operation = operation;
+    this.options.workspace.portfolio.beginDraftFileActivity(operation);
+    if (!this.current(operation)) {
+      this.reconcile();
+      return null;
+    }
     return operation;
   }
   private finish(operation: Operation, message: string) {
@@ -310,26 +320,32 @@ export class ManagedPortfolioDraftRecovery {
       this.reconcile();
       return false;
     }
-    const transition = this.clear("");
-    if (this.transition !== transition) return false;
-    if (this.operation) return this.changedBeforeRestore();
-    if (!this.sameContext(operation)) return this.changedBeforeRestore();
-    const accepted = this.options.workspace.portfolio.restoreFileDraft(
-      operation.context,
-      preview.draft,
-    );
-    if (!this.live()) return false;
-    const restored = this.restored(accepted, operation);
-    this.publish({
-      message: restored
-        ? "File restored to your local Portfolio draft. Review catalog identities, then Review portfolio and Save Portfolio to save it online."
-        : "The draft changed before restoration. Select the file again.",
-    });
-    return restored;
+    // Keep holding capture paused through the complete restoration transition.
+    try {
+      const transition = this.clear("", false, false);
+      if (this.transition !== transition) return false;
+      if (this.operation) return this.changedBeforeRestore();
+      if (!this.sameContext(operation)) return this.changedBeforeRestore();
+      const accepted = this.options.workspace.portfolio.restoreFileDraft(
+        operation.context,
+        preview.draft,
+      );
+      if (!this.live()) return false;
+      const restored = this.restored(accepted, operation);
+      this.publish({
+        message: restored
+          ? "File restored to your local Portfolio draft. Review catalog identities, then Review portfolio and Save Portfolio to save it online."
+          : "The draft changed before restoration. Select the file again.",
+      });
+      return restored;
+    } finally {
+      this.options.workspace.portfolio.endDraftFileActivity(operation);
+    }
   }
   dispose() {
     this.transition = {};
-    this.operation?.controller.abort();
+    const operation = this.operation;
+    operation?.controller.abort();
     this.operation = null;
     this.scope = null;
     this.disposed = true;
@@ -344,5 +360,7 @@ export class ManagedPortfolioDraftRecovery {
       canImport: false,
       message: "",
     });
+    if (operation)
+      this.options.workspace.portfolio.endDraftFileActivity(operation);
   }
 }

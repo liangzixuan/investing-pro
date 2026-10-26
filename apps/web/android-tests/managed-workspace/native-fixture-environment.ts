@@ -35,6 +35,7 @@ const allowedScenarios = [
   "report-revisit",
   "research-followups",
   "followups-review-session",
+  "holding-followup",
   "filing-dated-question",
   "followup-assessment-note",
   "portfolio-ledger",

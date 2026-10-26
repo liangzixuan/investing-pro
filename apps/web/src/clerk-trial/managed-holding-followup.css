@@ -1,0 +1,84 @@
+.clerk-trial.managed-frame .managed-holding-followup {
+  min-width: 0;
+  padding: 12px;
+  margin-block: 16px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  background: var(--managed-surface);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame
+  .managed-holding-followup
+  :is(summary, button, input) {
+  min-height: 44px;
+}
+.clerk-trial.managed-frame .managed-holding-followup summary {
+  display: list-item;
+  align-content: center;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame
+  .managed-holding-followup
+  :is(button, input, textarea) {
+  box-sizing: border-box;
+  max-width: 100%;
+  font: inherit;
+}
+.clerk-trial.managed-frame
+  .managed-holding-followup
+  :is(button, p, dd, h3, h4) {
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-holding-followup button {
+  margin: 4px 8px 4px 0;
+  white-space: normal;
+}
+.clerk-trial.managed-frame .managed-holding-followup-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-holding-followup-fields > div {
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-holding-followup label {
+  display: block;
+  margin-block-end: 6px;
+}
+.clerk-trial.managed-frame .managed-holding-followup :is(input, textarea) {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+  line-height: 1.5;
+}
+.clerk-trial.managed-frame .managed-holding-followup textarea {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+.clerk-trial.managed-frame
+  .managed-holding-followup
+  :is(summary, input, textarea, button, h4):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame .managed-holding-followup-preview {
+  min-width: 0;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-holding-followup dl {
+  display: grid;
+  gap: 8px;
+}
+.clerk-trial.managed-frame .managed-holding-followup dd {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .clerk-trial.managed-frame .managed-holding-followup-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

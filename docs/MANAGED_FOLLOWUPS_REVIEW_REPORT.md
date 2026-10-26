@@ -1,9 +1,9 @@
 # Follow-ups review report
 
-This source candidate adds a readable private copy of the complete Follow-ups
-draft. Original PR/main, hosted native and client-delivery acceptance remain
-separate. Android 1.45 provides the earlier filing-to-dated-question workflow;
-it does not contain this report.
+Android 1.46 provides a readable private copy of the complete Follow-ups draft
+from accepted source cf30baa9d23a02f2c9440d2e635c4bc8817e796e. Original required
+PR/main checks, the complete synthetic native 91-case scope and full guarded APK
+verification passed. Installation and physical-device acceptance remain separate.
 
 ## Capture, inspect and save
 

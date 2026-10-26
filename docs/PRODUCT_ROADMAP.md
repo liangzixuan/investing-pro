@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 24, 2026. This document defines the durable product goals and
+Updated October 26, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -29,20 +29,19 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 26 Android delivery
 
-The current M4 candidate closes a research session with a complete
-[Follow-ups reading report](MANAGED_FOLLOWUPS_REVIEW_REPORT.md). Capture every
-valid authored check and assessment, inspect the whole resource with original
-identities and dates, then explicitly save passive HTML for offline reading.
-Online Save remains independent. It reuses the Portfolio report and chosen-file
-patterns without a new source, metric, storage schema, dependency or fee.
-Source, native and client-delivery acceptance remain separate from the broader
-milestone.
+The current M4/M5 candidate connects a positive authored Portfolio holding to
+[company research with position context and a dated follow-up](MANAGED_HOLDING_FOLLOWUP.md).
+Inspect the current position, preview a complete question and UTC due date,
+explicitly create a Follow-ups draft entry, return through retained Back and
+Save/load that resource independently. It supports holdings outside My Watchlist
+without adding a source, price calculation, storage schema, dependency or fee.
+Source, native and client-delivery acceptance remain separate.
 
-Android 1.45 delivers the preceding filing-to-dated-question workflow from
-accepted main d434db973cab9ff16e9cc86f8802c79770a7ef0f. The owner can keep an
-already observed filing as a complete cited question, return through the
-retained review and explicitly Save/load Follow-ups. Original source/native85
-and complete guarded APK checks passed. Installation remains an owner action.
+Android 1.46 delivers the [complete Follow-ups reading report](MANAGED_FOLLOWUPS_REVIEW_REPORT.md)
+from accepted main cf30baa9d23a02f2c9440d2e635c4bc8817e796e. Capture every valid
+authored check and assessment, inspect the whole resource with original identities
+and dates, then explicitly save passive HTML. Original source/native91 and
+complete guarded APK checks passed. Installation remains an owner action.
 
 [Follow-ups draft files](MANAGED_RESEARCH_FOLLOWUPS.md#draft-files) are accepted in
 source at main `461246249c6d790a1c8bb28ab85de301b267058f`.

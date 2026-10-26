@@ -1,3 +1,4 @@
+import { HoldingFollowupFixtureControls } from "./holding-followup-fixture-controls";
 import { App } from "@capacitor/app";
 import { CompanySnapshotLoadingFixtureControls } from "./company-snapshot-loading-fixture-controls";
 import { useLayoutEffect, useState } from "react";
@@ -48,7 +49,7 @@ function useFixtureWorkspace(session: TrialSession) {
         : {}),
     });
     setWorkspace(current);
-    void current.coordinator.load();
+    if (scenario !== "holding-followup") void current.coordinator.load();
     void current.refreshCatalog();
     return () => current.sessionOwner.dispose();
   }, [session]);
@@ -91,6 +92,12 @@ function NativeDeliveryControls({
 function ResourceControls({ workspace, onFreshSession }: MountedProps) {
   return (
     <>
+      {workspace && scenario === "holding-followup" && (
+        <HoldingFollowupFixtureControls
+          workspace={workspace}
+          onFreshSession={onFreshSession}
+        />
+      )}
       {workspace && fixture.portfolio && (
         <PortfolioFixtureControls
           workspace={workspace}

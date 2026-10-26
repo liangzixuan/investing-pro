@@ -379,3 +379,77 @@ it("rejects restoration if a subscriber changes the draft while file review is c
   ).toBe("900.00");
   expect(f.api.savePortfolio).not.toHaveBeenCalled();
 });
+
+it("keeps file activity owned through read and review without changing the saved resource", async () => {
+  const f = await fixture();
+  const model = f.workspace.portfolio;
+  const before = model.coordinator.getSnapshot();
+  const revision = model.getDraftFileActivityRevision();
+  const selected = file();
+  const bytes = deferred<ArrayBuffer>();
+  const pending = f.recovery.readFile({
+    ...selected,
+    arrayBuffer: () => {
+      expect(model.hasDraftFileActivity()).toBe(true);
+      return bytes.promise;
+    },
+  });
+  expect(model.hasDraftFileActivity()).toBe(true);
+  expect(model.getDraftFileActivityRevision()).not.toBe(revision);
+  expect(model.coordinator.getSnapshot()).toBe(before);
+  bytes.resolve(await selected.arrayBuffer());
+  await pending;
+  expect(f.recovery.getSnapshot().phase).toBe("review");
+  expect(model.hasDraftFileActivity()).toBe(true);
+  const reviewRevision = model.getDraftFileActivityRevision();
+  f.recovery.cancel();
+  expect(model.hasDraftFileActivity()).toBe(false);
+  expect(model.getDraftFileActivityRevision()).not.toBe(reviewRevision);
+  expect(model.getDraftFileActivityRevision()).not.toBe(revision);
+  expect(model.coordinator.getSnapshot()).toBe(before);
+  expect(f.api.savePortfolio).not.toHaveBeenCalled();
+});
+
+it("holds file activity through restoration publications and releases after the final readout", async () => {
+  const f = await fixture();
+  const model = f.workspace.portfolio;
+  await f.recovery.readFile(file());
+  const observations: boolean[] = [];
+  const observe = () => observations.push(model.hasDraftFileActivity());
+  const offResource = model.coordinator.subscribe(observe);
+  const offReadout = f.recovery.subscribe(observe);
+  expect(f.recovery.restoreDraft()).toBe(true);
+  offResource();
+  offReadout();
+  expect(observations.length).toBeGreaterThan(0);
+  expect(observations.every(Boolean)).toBe(true);
+  expect(model.hasDraftFileActivity()).toBe(false);
+  expect(model.coordinator.getSnapshot().draft?.ledger?.opening.cashUsd).toBe(
+    "750.00",
+  );
+  expect(f.api.savePortfolio).not.toHaveBeenCalled();
+});
+
+it("cancels a reentrant file read before IO and never leaves an active capability", async () => {
+  const f = await fixture();
+  const model = f.workspace.portfolio;
+  const before = model.coordinator.getSnapshot();
+  const selected = file();
+  const revision = model.getDraftFileActivityRevision();
+  let cancelled = false;
+  const off = model.subscribe(() => {
+    if (!cancelled && model.hasDraftFileActivity()) {
+      cancelled = true;
+      f.recovery.cancel();
+    }
+  });
+  await f.recovery.readFile(selected);
+  off();
+  expect(cancelled).toBe(true);
+  expect(selected.arrayBuffer).not.toHaveBeenCalled();
+  expect(model.hasDraftFileActivity()).toBe(false);
+  expect(model.getDraftFileActivityRevision()).not.toBe(revision);
+  expect(model.coordinator.getSnapshot()).toBe(before);
+  f.recovery.dispose();
+  expect(model.hasDraftFileActivity()).toBe(false);
+});

@@ -1,5 +1,6 @@
 import {
   isMainWatchlistPayload,
+  isPersonalPortfolioIdentity,
   MANAGED_RESEARCH_FOLLOWUPS_LIMITS,
   membershipMatchesResult,
   normalizeResearchFollowupCheck,
@@ -13,6 +14,10 @@ import {
   type ResearchFollowupsPayload,
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
+import {
+  holdingPositionsMatch,
+  type HoldingFollowupPosition,
+} from "./managed-holding-followup";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
 import {
@@ -24,6 +29,30 @@ import { MANAGED_FOLLOWUPS_SAVE_COPY } from "./save-coordinator-copy";
 import type { TrialSession } from "./session";
 
 type Listing = Omit<WatchlistMembership, "note">;
+interface CreationSource {
+  readonly listing: Listing;
+  readonly digest: `sha256:${string}`;
+  readonly isCurrent: () => boolean;
+}
+export interface HoldingCreationContext {
+  readonly position: HoldingFollowupPosition;
+  readonly catalogSnapshotSha256: `sha256:${string}`;
+  readonly isCurrent: () => boolean;
+}
+export interface HoldingCheckCapture {
+  readonly position: HoldingFollowupPosition;
+  readonly check: string;
+  readonly dueOn: string;
+}
+interface HoldingCheckOwner {
+  readonly source: HoldingCreationContext;
+  readonly saved: ReturnType<
+    ManagedResearchFollowups["coordinator"]["getSnapshot"]
+  >;
+  readonly model: Readonly<ManagedResearchFollowupsState>;
+  readonly activity: object;
+}
+
 export type FollowupsFilter = "open" | "completed" | "all";
 export interface FollowupIdentityReview {
   readonly entry: ResearchFollowup;
@@ -145,6 +174,13 @@ export class ManagedResearchFollowups {
   private readonly newEntryId: () => string;
   private readonly nextChecks = new WeakSet<NextCheckCapture>();
   private readonly draftFileActivities = new Set<object>();
+  private draftFileActivityRevision: object = {};
+  private holdingInputRevision: object = {};
+  private readonly holdingChecks = new WeakMap<
+    HoldingCheckCapture,
+    HoldingCheckOwner
+  >();
+  private initialHoldingCheckLoad: (() => boolean) | null = null;
   private creatingNextCheck = false;
   private initialNextCheckLoad: (() => boolean) | null = null;
   private reviewScope: object = Object.freeze({});
@@ -159,6 +195,9 @@ export class ManagedResearchFollowups {
     session: TrialSession,
     private readonly options: {
       getCreationContext(): FollowupsCreationContext;
+      getHoldingCreationContext?: (
+        position: HoldingFollowupPosition,
+      ) => HoldingCreationContext | null;
       onRetire(): void;
       newKey?: () => string;
       newEntryId?: () => string;
@@ -187,9 +226,15 @@ export class ManagedResearchFollowups {
             throw new TrialApiError("aborted");
           if (this.retired || signal.aborted)
             throw new TrialApiError("aborted");
-          const result = parseManagedResearchFollowups(
-            await api.loadFollowups(signal),
-          );
+          const holdingLoad = this.initialHoldingCheckLoad;
+          if (holdingLoad && !holdingLoad()) throw new TrialApiError("aborted");
+          const loaded = await api.loadFollowups(signal);
+          if (
+            holdingLoad &&
+            (this.initialHoldingCheckLoad !== holdingLoad || !holdingLoad())
+          )
+            throw new TrialApiError("aborted");
+          const result = parseManagedResearchFollowups(loaded);
           if (!result) throw new TrialApiError("invalid_response");
           return result;
         },
@@ -233,13 +278,16 @@ export class ManagedResearchFollowups {
         this.endReviewScope();
       if (this.retired) return;
       if (changed || saved.phase !== "idle") this.cancelReview();
-      this.update({
-        selectedId: saved.draft?.entries.some(
-          (entry) => entry.id === this.state.selectedId,
-        )
-          ? this.state.selectedId
-          : null,
-      });
+      this.update(
+        {
+          selectedId: saved.draft?.entries.some(
+            (entry) => entry.id === this.state.selectedId,
+          )
+            ? this.state.selectedId
+            : null,
+        },
+        true,
+      );
     });
   }
 
@@ -248,7 +296,11 @@ export class ManagedResearchFollowups {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
-  private update(next: Partial<ManagedResearchFollowupsState>) {
+  private update(
+    next: Partial<ManagedResearchFollowupsState>,
+    coordinatorPublication = false,
+  ) {
+    if (!coordinatorPublication) this.holdingInputRevision = {};
     this.state = Object.freeze({ ...this.state, ...next });
     for (const listener of this.listeners) listener();
   }
@@ -267,6 +319,7 @@ export class ManagedResearchFollowups {
     this.endReviewScope();
     this.retired = true;
     this.draftFileActivities.clear();
+    this.draftFileActivityRevision = {};
     this.cancelReview();
     this.state = Object.freeze({
       ...this.state,
@@ -374,14 +427,19 @@ export class ManagedResearchFollowups {
   hasDraftFileActivity() {
     return this.draftFileActivities.size > 0;
   }
+  getDraftFileActivityRevision() {
+    return this.draftFileActivityRevision;
+  }
   beginDraftFileActivity(operation: object) {
     if (this.retired || this.draftFileActivities.has(operation)) return;
     this.draftFileActivities.add(operation);
-    for (const listener of this.listeners) listener();
+    this.draftFileActivityRevision = {};
+    this.update({});
   }
   endDraftFileActivity(operation: object) {
     if (!this.draftFileActivities.delete(operation)) return;
-    for (const listener of this.listeners) listener();
+    this.draftFileActivityRevision = {};
+    this.update({});
   }
   getDraftFileContext(requireFresh = true): FollowupsDraftFileContext | null {
     const state = this.coordinator.getSnapshot();
@@ -593,6 +651,43 @@ export class ManagedResearchFollowups {
   add(member: WatchlistMembership, dueOn: string) {
     this.create(member, dueOn, "", () => true);
   }
+  private watchlistCreationSource(
+    member: WatchlistMembership,
+  ): CreationSource | null {
+    const context = this.options.getCreationContext();
+    const draft = context.draft;
+    const digest = this.state.catalogSnapshotSha256;
+    if (
+      !draft ||
+      !digest ||
+      context.catalogSnapshotSha256 !== digest ||
+      draft.snapshotSha256 !== digest ||
+      !draft.memberships.includes(member)
+    )
+      return null;
+    if (
+      !isMainWatchlistPayload({
+        ...draft,
+        memberships: [{ ...member, note: "" }],
+      })
+    )
+      return null;
+    const listing = listingIdentity(member);
+    return {
+      listing,
+      digest,
+      isCurrent: () => {
+        const current = this.options.getCreationContext();
+        return (
+          current.draft === draft &&
+          draft.memberships.includes(member) &&
+          draft.snapshotSha256 === digest &&
+          current.catalogSnapshotSha256 === digest &&
+          membershipMatchesResult(member, listing)
+        );
+      },
+    };
+  }
   private create(
     member: WatchlistMembership,
     dueOn: string,
@@ -600,50 +695,46 @@ export class ManagedResearchFollowups {
     admit: () => boolean,
   ): ResearchFollowup | null {
     if (!admit()) return null;
-    const draft = this.coordinator.getSnapshot().draft;
-    const context = this.options.getCreationContext();
-    const creationDraft = context.draft;
-    const digest = this.state.catalogSnapshotSha256;
-    if (
-      !this.canEdit() ||
-      !draft ||
-      !digest ||
-      !creationDraft?.memberships.includes(member) ||
-      creationDraft.snapshotSha256 !== digest ||
-      context.catalogSnapshotSha256 !== digest ||
-      draft.entries.length >= MANAGED_RESEARCH_FOLLOWUPS_LIMITS.entries ||
-      draft.entries.some(
-        (entry) => entry.listing.listingId === member.listingId,
+    const source = this.watchlistCreationSource(member);
+    return source ? this.createListing(source, dueOn, check, admit) : null;
+  }
+  private listingCanBeCreated(
+    draft: ResearchFollowupsPayload,
+    source: CreationSource,
+  ) {
+    return (
+      this.canEdit() &&
+      this.coordinator.getSnapshot().draft === draft &&
+      this.state.catalogSnapshotSha256 === source.digest &&
+      source.isCurrent() &&
+      isPersonalPortfolioIdentity(source.listing) &&
+      draft.entries.length < MANAGED_RESEARCH_FOLLOWUPS_LIMITS.entries &&
+      !draft.entries.some(
+        (entry) => entry.listing.listingId === source.listing.listingId,
       )
-    )
-      return null;
-    const listing = listingIdentity(member);
-    if (
-      !isMainWatchlistPayload({
-        ...creationDraft,
-        memberships: [{ ...member, note: "" }],
-      })
-    )
-      return null;
+    );
+  }
+  /** One UUID/capacity/identity mutation engine for separately admitted sources. */
+  private createListing(
+    source: CreationSource,
+    dueOn: string,
+    check: string,
+    admit: () => boolean,
+  ): ResearchFollowup | null {
+    if (!admit()) return null;
+    const draft = this.coordinator.getSnapshot().draft;
+    if (!draft || !this.listingCanBeCreated(draft, source)) return null;
     const id = this.newEntryId();
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
         id,
-      ) ||
-      draft.entries.some((entry) => entry.id === id)
+      )
     )
       return null;
-    if (!admit()) return null;
-    const current = this.options.getCreationContext();
     if (
-      !this.canEdit() ||
-      this.coordinator.getSnapshot().draft !== draft ||
-      current.draft !== creationDraft ||
-      !current.draft.memberships.includes(member) ||
-      current.draft.snapshotSha256 !== digest ||
-      !membershipMatchesResult(member, listing) ||
-      current.catalogSnapshotSha256 !== digest ||
-      this.state.catalogSnapshotSha256 !== digest
+      !admit() ||
+      !this.listingCanBeCreated(draft, source) ||
+      draft.entries.some((entry) => entry.id === id)
     )
       return null;
     this.replaceAuthoredDraft({
@@ -652,8 +743,8 @@ export class ManagedResearchFollowups {
         ...draft.entries,
         {
           id,
-          listing,
-          catalogSnapshotSha256: digest,
+          listing: source.listing,
+          catalogSnapshotSha256: source.digest,
           check,
           dueOn,
           status: "open",
@@ -664,6 +755,177 @@ export class ManagedResearchFollowups {
     });
     if (this.currentEntry(id)) this.update({ selectedId: id, message: "" });
     return this.currentEntry(id);
+  }
+  private holdingSource(position: HoldingFollowupPosition) {
+    const source = this.options.getHoldingCreationContext?.(position);
+    if (
+      !source ||
+      !source.isCurrent() ||
+      !holdingPositionsMatch(position, source.position)
+    )
+      return null;
+    return source.catalogSnapshotSha256 === this.state.catalogSnapshotSha256
+      ? source
+      : null;
+  }
+  private holdingReadinessIssue() {
+    const saved = this.coordinator.getSnapshot();
+    if (!saved.draft)
+      return "Load Follow-ups here before previewing this check. Your question and due date stay here.";
+    if (
+      !this.canEdit() ||
+      saved.phase !== "idle" ||
+      !saved.latestLoaded ||
+      !saved.saved ||
+      saved.baseVersion !== saved.saved.version ||
+      this.operation ||
+      this.state.reviewing ||
+      this.state.review ||
+      this.hasDraftFileActivity()
+    )
+      return "Finish Follow-ups load, save, file or catalog recovery before previewing this check.";
+    return null;
+  }
+  prepareHoldingCheck(
+    position: HoldingFollowupPosition,
+    rawCheck: string,
+    dueOn: string,
+  ): { capture: HoldingCheckCapture | null; reason: string | null } {
+    const refuse = (reason: string) => ({ capture: null, reason });
+    const source = this.holdingSource(position);
+    if (!source)
+      return refuse(
+        "Return to the exact current positive holding before preparing this check.",
+      );
+    const issue = this.holdingReadinessIssue();
+    if (issue) return refuse(issue);
+    const saved = this.coordinator.getSnapshot();
+    const draft = saved.draft!;
+    if (
+      draft.entries.some(
+        (entry) => entry.listing.listingId === position.listing.listingId,
+      )
+    )
+      return refuse(
+        "This listing already has a follow-up. Open Follow-ups to review it; creation will not replace it.",
+      );
+    if (draft.entries.length >= MANAGED_RESEARCH_FOLLOWUPS_LIMITS.entries)
+      return refuse(
+        "Follow-ups already has 20 entries. Remove an entry there before creating another.",
+      );
+    const check = normalizeResearchFollowupCheck(rawCheck);
+    if (check === null)
+      return refuse(
+        "Next check needs 1–500 characters on one line, without unsupported characters. No text is clipped.",
+      );
+    if (!isResearchFollowupDueDate(dueOn))
+      return refuse("Choose a valid due date for this check.");
+    const capture = Object.freeze({
+      position: Object.freeze({
+        ...source.position,
+        listing: Object.freeze({ ...source.position.listing }),
+      }),
+      check,
+      dueOn,
+    });
+    this.holdingChecks.set(capture, {
+      source,
+      saved,
+      model: this.state,
+      activity: this.draftFileActivityRevision,
+    });
+    return { capture, reason: null };
+  }
+  private holdingCaptureIsCurrent(
+    capture: HoldingCheckCapture,
+    owner: HoldingCheckOwner,
+  ) {
+    return (
+      this.holdingReadinessIssue() === null &&
+      this.coordinator.getSnapshot() === owner.saved &&
+      this.state === owner.model &&
+      this.draftFileActivityRevision === owner.activity &&
+      owner.source.isCurrent() &&
+      this.state.catalogSnapshotSha256 === owner.source.catalogSnapshotSha256 &&
+      holdingPositionsMatch(capture.position, owner.source.position)
+    );
+  }
+  createHoldingCheck(
+    capture: HoldingCheckCapture,
+    isCurrent: () => boolean,
+  ): ResearchFollowup | null {
+    if (this.creatingNextCheck) return null;
+    const owner = this.holdingChecks.get(capture);
+    this.holdingChecks.delete(capture);
+    if (!owner) return null;
+    this.creatingNextCheck = true;
+    try {
+      const current = () =>
+        this.holdingCaptureIsCurrent(capture, owner) &&
+        isCurrent() &&
+        this.holdingCaptureIsCurrent(capture, owner);
+      if (!current()) return null;
+      return this.createListing(
+        {
+          listing: capture.position.listing,
+          digest: owner.source.catalogSnapshotSha256,
+          isCurrent: () => this.holdingCaptureIsCurrent(capture, owner),
+        },
+        capture.dueOn,
+        capture.check,
+        current,
+      );
+    } finally {
+      this.creatingNextCheck = false;
+    }
+  }
+  canLoadHoldingChecks(position: HoldingFollowupPosition) {
+    const saved = this.coordinator.getSnapshot();
+    return (
+      this.holdingSource(position) !== null &&
+      !this.retired &&
+      this.coordinator.canEdit() &&
+      saved.phase === "idle" &&
+      saved.draft === null &&
+      !saved.conflict &&
+      !saved.uncertain &&
+      !saved.replayPending &&
+      !this.hasDraftFileActivity()
+    );
+  }
+  async loadHoldingChecks(
+    position: HoldingFollowupPosition,
+    isCurrent: () => boolean,
+  ): Promise<void> {
+    if (
+      !this.canLoadHoldingChecks(position) ||
+      !isCurrent() ||
+      !this.canLoadHoldingChecks(position)
+    )
+      return;
+    const source = this.holdingSource(position);
+    if (!source) return;
+    const input = this.holdingInputRevision,
+      activity = this.draftFileActivityRevision;
+    let retired = false;
+    const current = () => {
+      retired ||=
+        this.retired ||
+        !source.isCurrent() ||
+        !isCurrent() ||
+        this.holdingInputRevision !== input ||
+        this.draftFileActivityRevision !== activity ||
+        this.hasDraftFileActivity() ||
+        this.state.catalogSnapshotSha256 !== source.catalogSnapshotSha256;
+      return !retired;
+    };
+    this.initialHoldingCheckLoad = current;
+    try {
+      await this.coordinator.load();
+    } finally {
+      if (this.initialHoldingCheckLoad === current)
+        this.initialHoldingCheckLoad = null;
+    }
   }
   edit(
     entry: ResearchFollowup,
