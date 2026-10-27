@@ -71,6 +71,19 @@ before display. The workspace stays mounted while a panel is open, preserving
 unsaved note/order state. Closing restores focus through the same screen action
 used by [Android Back](../apps/web/src/mobile/android-back.ts).
 
+The [calendar Follow-ups context](../apps/web/src/clerk-trial/managed-calendar-followup-context.ts)
+binds one already loaded BLS/BEA/Fed item to the exact settled day-view selection,
+source packets, source-review state, catalog and Markets visit. It can survive
+its own explicit initial Follow-ups read while a preview additionally captures
+both resource coordinator states, member identity and file-activity revision.
+The [citation module](../apps/web/src/clerk-trial/managed-calendar-followup.ts)
+prepares the full bounded question and consumes the preview before creating one
+entry through the existing Follow-ups model. Initial next-check reads validate
+their captured owner again after the response, so a retired form cannot apply a
+late result. Existing exact-entry review and company routes own Research/Back;
+Save remains with its independent coordinator. No new resource or request store
+is added.
+
 The delivered [Markets home](MANAGED_MARKETS_HOME.md) adds a visit-scoped board
 model owned by the same workspace. It resolves a declared exact cohort and loads
 prices sequentially only on request. Board and EOD panel share one checked

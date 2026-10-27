@@ -1,3 +1,4 @@
+import { createCalendarFollowupNativeFixture } from "./calendar-followup-fixture";
 import {
   createMarketsSourceReviewNativeFixture,
   type SourceReviewFixtureControls,
@@ -2295,6 +2296,11 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "markets-calendar-followup",
+    async () =>
+      createCalendarFollowupNativeFixture(await createSharedFixture()),
+  ],
+  [
     "markets-source-review",
     async () =>
       createMarketsSourceReviewNativeFixture(await createSharedFixture()),
@@ -2436,6 +2442,7 @@ export async function createFixture(
     | "company-snapshot-loading"
     | "followups-review-session"
     | "markets-source-review"
+    | "markets-calendar-followup"
     | "holding-followup"
     | "filing-dated-question"
     | "followup-assessment-note"

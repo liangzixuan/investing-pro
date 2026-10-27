@@ -37,6 +37,7 @@ const allowedScenarios = [
   "followups-review-session",
   "holding-followup",
   "markets-source-review",
+  "markets-calendar-followup",
   "filing-dated-question",
   "followup-assessment-note",
   "portfolio-ledger",

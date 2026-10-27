@@ -27,6 +27,14 @@ an unfinished load. Returning uses the retained calendar. Session retirement
 clears it and rejects late results. Calendar reads do not write Watchlist,
 Follow-ups, valuation inputs or Portfolio records.
 
+## Keep an authored research check
+
+The [calendar Follow-ups candidate](MANAGED_CALENDAR_FOLLOWUP.md) adds an
+explicit **Keep a dated check** action to an already loaded day-view item.
+Choose an exact My Watchlist company independently, preview the complete cited
+question and UTC due date, and create an independent Follow-ups draft entry.
+Source reads remain separate from this authored action and from online Save.
+
 ## Source and limits
 
 The API makes one credential-free GET to BLS's fixed public ICS URL. It accepts

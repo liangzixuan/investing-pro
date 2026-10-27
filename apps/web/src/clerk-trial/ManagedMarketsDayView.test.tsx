@@ -219,6 +219,9 @@ async function fixture() {
     agenda: workspace.agenda,
     announcements: workspace.announcements,
     blsCalendar: workspace.blsCalendar,
+    onKeepCheck: null as React.ComponentProps<
+      typeof ManagedMarketsDayView
+    >["onKeepCheck"],
     navigation,
   };
   const day = () => render("day", ManagedMarketsDayView, props);
@@ -518,4 +521,62 @@ it("loads BLS explicitly, filters and inspects retained schedules in day view wh
     eod: 0,
     filings: 0,
   });
+});
+function keepButtons(node: React.ReactNode) {
+  return nodes(node)
+    .filter(
+      (item) => typeof item.type === "function" && "entries" in item.props,
+    )
+    .flatMap((item) =>
+      nodes(
+        (item.type as (props: Record<string, unknown>) => React.ReactNode)(
+          item.props,
+        ),
+      ),
+    )
+    .filter((item) => "data-calendar-entry-key" in item.props);
+}
+it("offers an explicit row action for dated and unknown entries and retires old row/filter callbacks", async () => {
+  const f = await fixture();
+  await f.workspace.agenda.load();
+  await f.workspace.announcements.load();
+  const onKeepCheck = vi.fn();
+  f.props.onKeepCheck = onKeepCheck;
+  const before = f.day();
+  const buttons = keepButtons(before);
+  expect(buttons).toHaveLength(4);
+  expect(
+    buttons.every((button) => button.props.children === "Keep a dated check"),
+  ).toBe(true);
+  const unknown = buttons.find(
+    (button) =>
+      button.props["data-calendar-entry-key"] === `fed:${f.feed.items[1]!.url}`,
+  )!;
+  (unknown.props.onClick as () => void)();
+  expect(onKeepCheck).toHaveBeenCalledWith(
+    expect.objectContaining({
+      title: "Invented announcement without a publication time",
+      instant: null,
+    }),
+    expect.anything(),
+  );
+  const capturedCurrent = onKeepCheck.mock.calls[0]![1] as () => boolean;
+  expect(typeof capturedCurrent).toBe("function");
+  expect(capturedCurrent()).toBe(true);
+  change(f.day(), "managed-day-source", "bea");
+  void f.day();
+  expect(capturedCurrent()).toBe(false);
+  (unknown.props.onClick as () => void)();
+  expect(onKeepCheck).toHaveBeenCalledOnce();
+  const dated = keepButtons(f.day())[0]!;
+  f.workspace.setView("followups");
+  (dated.props.onClick as () => void)();
+  expect(onKeepCheck).toHaveBeenCalledOnce();
+  expect(f.original.followups!.getSnapshot().load).toBe(0);
+});
+it("keeps the explicit null profile read-only without row actions", async () => {
+  const f = await fixture();
+  await f.workspace.agenda.load();
+  expect(keepButtons(f.day())).toHaveLength(0);
+  expect(f.html()).not.toContain("Keep a dated check");
 });

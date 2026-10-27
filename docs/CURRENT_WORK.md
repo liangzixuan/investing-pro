@@ -5,14 +5,33 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: an explicit Markets source review pass
+## Selected next: a dated check from a Markets calendar item
 
-The [source review pass](MANAGED_MARKETS_SOURCE_REVIEW.md) is the next M1/M3
-candidate. Inspect a named plan for eligible board histories and the existing
-BLS, BEA and Fed sources. Start the selected work explicitly, review each result,
-and continue through the existing source and research views. Keep checked-empty,
-retained previous, failed, cancelled and not-attempted states distinct. Original source, synthetic native and client acceptance remain pending; existing
-individual controls remain.
+The [calendar Follow-ups workflow](MANAGED_CALENDAR_FOLLOWUP.md) is the next
+M3/M4 candidate. Choose one loaded BLS/BEA/Fed item and independently choose an
+exact My Watchlist company. Preview the full question, citation and UTC due
+date, create one independent Follow-ups draft entry, then use the existing
+exact-entry Research/Back and separate Save/fresh Load. Original source,
+synthetic native and client acceptance remain pending. Existing source reads,
+resource limits and recovery safeguards remain.
+
+## Accepted and delivered: an explicit Markets source review pass
+
+[PR 245](https://github.com/liangzixuan/investing-pro/pull/245) merged at
+`3808fe9ddc0da3cbb5499474bd8a68a233dbf77d`. All original required PR/main checks
+and the complete synthetic native 93-case scope passed. The
+[source review pass](MANAGED_MARKETS_SOURCE_REVIEW.md) previews selected existing
+board and BLS/BEA/Fed reads and runs them in their declared order. Inspect original
+clocks and accepted, checked-empty, retained previous, failed, cancelled and
+unattempted outcomes. Existing research, Back and separate Saves keep their scopes.
+
+Android 1.48.0/code49 is provided locally from that source. Its guarded build,
+complete input, asset and notice checks, existing production signature, manifest,
+compiled XML policies, all DEX definitions and source preservation passed.
+Delivered APK bytes match the guarded APK. Retained native XML and six scoped
+screenshots establish their recorded synthetic scope. They do not establish
+browser, owner-record, installation or physical-device acceptance. The website,
+API and earlier APKs remain unchanged.
 
 ## Accepted and delivered: research a holding and keep its next check
 

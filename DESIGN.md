@@ -11,7 +11,22 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
-## Markets source review pass candidate
+## A dated check from a Markets calendar item
+
+Give each loaded day-view item a labelled **Keep a dated check** action. Open
+its source readout and question tools in the native disclosure below the day
+view. Keep the original source URL, scheduled or publication time, unknowns,
+retrieval time and loaded window visible. Select the exact Watchlist company
+independently with an empty default and full share-class identity.
+
+Use 44px controls, visible focus and a stacked narrow form. Retain the raw
+question/date through an explicit initial Follow-ups Load. Focus the complete
+question/citation preview and wrap long titles, identities and URLs. Show the
+500-character combined limit and authored UTC due date. Keep Create, Review,
+Research/Back and separate Save distinct. Cancel restores focus to the chosen
+row. Source, form, draft and visit changes retire old previews.
+
+## Markets source review pass
 
 Place the named plan near the Markets section links. Show each exact listing or
 source, its retained packet and original clock, and whether the selected work
