@@ -213,14 +213,14 @@ function prepareCompleteNote(
   const { response, note, showingPrevious, apply } = input;
   const cells = selectedCells(response, keys),
     addition = excerpt(response, cells, showingPrevious);
+  if (normalizeWatchlistNote(note)!.endsWith(addition))
+    return refuse(
+      "These exact reported cells are already at the end of the note draft.",
+    );
   const complete = note ? `${note} ${addition}` : addition;
   if (!validNote(complete))
     return refuse(
       "The complete note exceeds the existing 2,000-code-point single-line limit. Keep the input and select fewer cells or shorten the current note.",
-    );
-  if (normalizeWatchlistNote(note)!.endsWith(addition))
-    return refuse(
-      "These exact reported cells are already at the end of the note draft.",
     );
   if (!current()) return refuse(stale);
   const preview = Object.freeze({

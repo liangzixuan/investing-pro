@@ -1277,10 +1277,7 @@ export class ManagedWorkspace {
     if (
       !route ||
       !isManagedCompanyListingId(route.listingId) ||
-      (route.section !== "annual" &&
-        route.section !== "interim" &&
-        route.section !== "eod" &&
-        route.section !== "filings")
+      !["annual", "interim", "eod", "filings"].includes(route.section)
     ) {
       this.closeResearch();
       return;

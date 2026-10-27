@@ -77,6 +77,44 @@ describe("owned interim statement note", () => {
       false,
     );
   });
+  it("refuses already-appended exact cells before considering a second whole-note overflow", async () => {
+    const { response, selection } = await setup();
+    let note = "Thèse café 📈";
+    const apply = vi.fn((value: string) => {
+      note = value;
+    });
+    const prepare = () =>
+      prepareManagedInterimStatementsNote({
+        response,
+        selection,
+        note,
+        showingPrevious: false,
+        isCurrent: () => true,
+        apply,
+      });
+    const first = prepare();
+    expect(first.reason).toBeNull();
+    expect(first.preview).not.toBeNull();
+    expect(appendManagedInterimStatementsNote(first.preview!).appended).toBe(
+      true,
+    );
+    const appended = note;
+    expect([...appended].length).toBeLessThanOrEqual(2000);
+    expect([...`${appended} ${first.preview!.excerpt}`].length).toBeGreaterThan(
+      2000,
+    );
+    expect(prepare()).toEqual({
+      preview: null,
+      reason:
+        "These exact reported cells are already at the end of the note draft.",
+    });
+    expect(note).toBe(appended);
+    expect(apply).toHaveBeenCalledExactlyOnceWith(appended);
+    expect(appendManagedInterimStatementsNote(first.preview!).appended).toBe(
+      false,
+    );
+    expect(apply).toHaveBeenCalledTimes(1);
+  });
   it("consumes before caller reentry and permanently retires an observed stale capture", async () => {
     const { response, selection } = await setup();
     let live = true;

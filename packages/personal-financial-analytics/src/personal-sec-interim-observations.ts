@@ -64,12 +64,10 @@ function validateObservationIdentity(
   check(positions.has(row.concept));
   check(row.taxonomy === "us-gaap");
   check(row.unit === "USD");
-  check(
-    typeof row.value === "string" &&
-      row.value.length <= limits.decimalCharacters &&
-      /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$/u.test(row.value) &&
-      row.value !== "-0",
-  );
+  check(typeof row.value === "string");
+  check(row.value.length <= limits.decimalCharacters);
+  check(/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$/u.test(row.value));
+  check(row.value !== "-0");
 }
 function validateObservationMetadata(row: Record<string, unknown>): void {
   check(row.periodBasis === "unresolved");
