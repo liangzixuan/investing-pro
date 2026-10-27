@@ -417,6 +417,12 @@ jobs:
           ))
           if len(required) != 94:
               raise SystemExit("The calendar question journey must extend all 93 existing native tests.")
+          required.add((
+              "local.investment.personal.PortfolioCompositionReviewInstrumentedTest",
+              "completeDatedCompositionKeepsClassCCheckAndExactWrittenReportThroughBackAndSeparateSave",
+          ))
+          if len(required) != 95:
+              raise SystemExit("The composition journey must extend all 94 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

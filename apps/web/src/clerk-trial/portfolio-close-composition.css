@@ -1,0 +1,48 @@
+.portfolio-close-composition {
+  min-width: 0;
+  max-width: 100%;
+}
+.portfolio-close-composition :is(p, li, summary, small, th, td) {
+  overflow-wrap: anywhere;
+}
+.portfolio-close-composition summary {
+  min-height: 44px;
+  align-content: center;
+}
+.portfolio-close-composition :is(summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.portfolio-close-composition .portfolio-composition-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.portfolio-close-composition table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.managed-frame
+  .managed-valuation-table.portfolio-composition-table
+  :is(th, td) {
+  min-width: 0;
+  padding: 8px 6px;
+  text-align: right;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  border-bottom: 1px solid var(--managed-line);
+}
+.managed-frame
+  .managed-valuation-table.portfolio-composition-table
+  th:first-child {
+  width: 46%;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.portfolio-close-composition :is(small, .portfolio-composition-company) {
+  display: block;
+}

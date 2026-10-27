@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 26, 2026. This document defines the durable product goals and
+Updated October 27, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,14 +27,24 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority after the October 26 Android delivery
+## Current priority after the October 27 Android delivery
 
-The next M3/M4 candidate is a [dated check from a Markets calendar item](MANAGED_CALENDAR_FOLLOWUP.md).
-Choose an already loaded BLS/BEA/Fed item and an independent exact My Watchlist
-company, preview the full question/citation and UTC due date, then create one
-Follow-ups draft entry. Existing exact-entry Research/Back and separate
-Save/fresh Load complete the workflow. Source, synthetic native and client
-acceptance remain pending. It adds no provider, coverage, schema or fee.
+The next M4 candidate is [dated Portfolio composition review](MANAGED_PORTFOLIO_COMPOSITION.md).
+Inspect exact holding values and authored cash against one complete dated total,
+continue through company research and an authored next check, then capture the
+same composition in the existing private reading report. Missing prices, unknown
+cash and zero totals retain unavailable percentages. It adds no provider, schema,
+coverage, fee, target allocation or return claim. This is one connected Portfolio
+inspection increment; broader Pro-style research milestones remain open.
+
+Android 1.49 delivers [a dated check from a Markets calendar item](MANAGED_CALENDAR_FOLLOWUP.md)
+from accepted main `004e7a3cb1f045ed8013c41849802f794246f32b`. All original
+required checks, the complete synthetic native 94-case scope and guarded APK
+verification passed. Choose an already loaded source item and an independent
+exact company, preview the whole cited question and UTC due date, create one
+Follow-ups draft, then use Research/Back and separate Save/fresh Load.
+Installation remains an owner action; source and automated APK checks do not
+establish phone acceptance. API and website are unchanged.
 
 Android 1.48 now delivers the [explicit Markets source review pass](MANAGED_MARKETS_SOURCE_REVIEW.md)
 from accepted main `3808fe9ddc0da3cbb5499474bd8a68a233dbf77d`. Original required

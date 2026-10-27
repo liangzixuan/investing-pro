@@ -1030,6 +1030,7 @@ public class ManagedWorkspaceInstrumentedTest {
         String ledger = authorPortfolioHoldingHandoff();
         String watchlist = readFixtureString("JSON.stringify(" + DRAFT + ")");
         String scope = "section[aria-label='Dated Portfolio holdings review']";
+        String holdings = scope + " [aria-label='Holding close values and source provenance'] table";
         awaitPage("dated close review starts closed without a price request",
             "document.querySelector('.managed-portfolio-close-review')?.open===false && " + DIAGNOSTICS + ".eod===0");
         click(".managed-portfolio-close-review > summary");
@@ -1043,7 +1044,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "return select?.id==='managed-portfolio-close-date' && select.labels.length===1 && r.height>=44" +
             " && r.left>=0 && r.right<=document.documentElement.clientWidth+1" +
             " && document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;})()");
-        String provenance = readFixtureString("document.querySelector(\"" + scope + " tbody td:last-child\").textContent");
+        String provenance = readFixtureString("document.querySelector(\"" + holdings + " tbody td:last-child\").textContent");
         String currentDate = readFixtureString("document.querySelector(\"" + scope + " select\").value");
         String priorDate = readFixtureString("document.querySelector(\"" + scope + " select\").options[1].value");
         chooseNativeSelectOption(scope + " select", priorDate, priorDate);
@@ -1058,9 +1059,9 @@ public class ManagedWorkspaceInstrumentedTest {
             DIAGNOSTICS + ".eodAborted===1 && document.querySelector(\"" + scope + "\").textContent.includes('Previous history; original dates remain unchanged.')");
         click("#settle-cancelled-eod");
         awaitPage("late completion cannot replace dates, values or either authored draft",
-            DIAGNOSTICS + ".eodLateResolved===1 && document.querySelector(\"" + scope + " tbody td:last-child\").textContent.includes('Completed') && JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger)===" + JSONObject.quote(ledger) + " && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist));
-        assertTrue("Original request/completion provenance remains after cancellation", readFixtureString("document.querySelector(\"" + scope + " tbody td:last-child\").textContent").contains(provenance.substring(provenance.indexOf("Provider / basis"))));
-        click(scope + " tbody button");
+            DIAGNOSTICS + ".eodLateResolved===1 && document.querySelector(\"" + holdings + " tbody td:last-child\").textContent.includes('Completed') && JSON.stringify(" + PORTFOLIO_DRAFT + ".ledger)===" + JSONObject.quote(ledger) + " && JSON.stringify(" + DRAFT + ")===" + JSONObject.quote(watchlist));
+        assertTrue("Original request/completion provenance remains after cancellation", readFixtureString("document.querySelector(\"" + holdings + " tbody td:last-child\").textContent").contains(provenance.substring(provenance.indexOf("Provider / basis"))));
+        click(holdings + " tbody button");
         assertCompanyHistory("listing-zero", "price", false);
         awaitPage("Research opens the exact registered holding with no additional source read",
             "document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO' && " + DIAGNOSTICS + ".eod===2 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + PORTFOLIO + ".save===0");

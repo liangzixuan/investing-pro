@@ -1,3 +1,4 @@
+import { PortfolioCloseComposition } from "./PortfolioCloseComposition";
 import {
   isPreparedPortfolioReviewReport,
   type PreparedPortfolioReviewReport,
@@ -48,6 +49,11 @@ export function PortfolioReviewReportSnapshot({
         <dt>Complete value including authored cash</dt>
         <dd>{usd(review.totalValueUsd)}</dd>
       </dl>
+      <PortfolioCloseComposition
+        id="portfolio-report-composition"
+        review={review}
+        rows={report.sourceRows}
+      />
       <p>{report.message}</p>
       <h3>Holdings and original sources</h3>
       {report.sourceRows.map((row, index) => {

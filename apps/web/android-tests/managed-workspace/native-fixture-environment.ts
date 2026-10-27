@@ -43,6 +43,7 @@ const allowedScenarios = [
   "portfolio-ledger",
   "portfolio-close-review",
   "portfolio-review-report",
+  "portfolio-composition-review",
   "followups-review-report",
   "markets-day-view",
   "company-price-ranges",
@@ -92,7 +93,8 @@ export const nativeReport =
     ? createNativeReportFixture()
     : null;
 export const nativePortfolioReviewReport =
-  scenario === "portfolio-review-report"
+  scenario === "portfolio-review-report" ||
+  scenario === "portfolio-composition-review"
     ? createNativePortfolioReviewReportFixture()
     : null;
 export const nativeExport =

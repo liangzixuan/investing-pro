@@ -22,6 +22,8 @@ final class ReportRevisitTouch {
         COMPANY_NOTE("#managed-note-0", "company note"),
         FOLLOWUP_DUE("#managed-followups-new-due", "Follow-up due date"),
         FOLLOWUP_QUESTION("#managed-followup-check", "Follow-up question"),
+        HOLDING_QUESTION("#holding-followup-question", "holding research question"),
+        HOLDING_DUE("#holding-followup-due", "holding research due date"),
         CALENDAR_QUESTION("#calendar-followup-question", "calendar research question"),
         CALENDAR_DUE("#calendar-followup-due", "calendar research due date"),
         FOLLOWUP_RESULT("#managed-research-followup-result", "Follow-up assessment");

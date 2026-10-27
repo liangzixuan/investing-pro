@@ -101,6 +101,15 @@ function button(node: React.ReactNode, label: string) {
 function click(node: Element, event: unknown = { currentTarget: {} }) {
   (node.props.onClick as (event: unknown) => void)(event);
 }
+function firstHoldingRowLastCell(root: Element) {
+  const body = nodes(root, true).find((node) => node.type === "tbody");
+  const row = nodes(body, true).find((node) => node.type === "tr");
+  const cell = nodes(row, true)
+    .filter((node) => node.type === "td")
+    .at(-1);
+  if (!cell) throw new Error("Expected rendered holding row cell");
+  return renderToStaticMarkup(cell);
+}
 function fixture(cashUsd: string | null = "10.00") {
   let active = true;
   const listing = {
@@ -211,6 +220,46 @@ function fixture(cashUsd: string | null = "10.00") {
   };
 }
 describe("Dated holdings review committed UI", () => {
+  it("scopes original provenance to its named table when composition adds an earlier table", async () => {
+    const f = fixture();
+    await f.models[0]!.load();
+    const node = f.render();
+    const broadCell = firstHoldingRowLastCell(node);
+    expect(broadCell).toContain("95.31%");
+    expect(broadCell).not.toContain("Completed");
+    const provenanceRegion = nodes(node, true).find(
+      (item) =>
+        item.props["aria-label"] ===
+        "Holding close values and source provenance",
+    );
+    expect(provenanceRegion?.props.role).toBe("region");
+    expect(provenanceRegion).toBeDefined();
+    const provenanceCell = firstHoldingRowLastCell(provenanceRegion!);
+    for (const original of [
+      "Provider / basis",
+      "Tiingo",
+      "raw_close",
+      "USD",
+      "2026-08-20",
+      "2026-09-20",
+      "Request started",
+      "2026-09-20T00:00:00.000Z",
+      "Completed",
+      "2026-09-20T00:00:01.000Z",
+    ])
+      expect(provenanceCell).toContain(original);
+    expect(provenanceCell).not.toContain("95.31%");
+    const opener = {} as HTMLButtonElement;
+    click(button(provenanceRegion, "Research ZERO"), {
+      currentTarget: opener,
+    });
+    expect(f.onResearch).toHaveBeenCalledExactlyOnceWith(
+      f.saved.draft,
+      f.context.ledger.identities[0],
+      opener,
+    );
+    expect(f.read).toHaveBeenCalledTimes(1);
+  });
   it("closes the retained disclosure before exact-company research so Back requires explicit reopening", () => {
     const onResearch = vi.fn();
     const props = {
@@ -251,6 +300,9 @@ describe("Dated holdings review committed UI", () => {
     const f = fixture();
     let node = f.render();
     expect(f.read).not.toHaveBeenCalled();
+    expect(renderToStaticMarkup(node)).not.toContain(
+      "portfolio-close-composition",
+    );
     expect(button(node, "Load holding closes").props.disabled).toBe(false);
     const loading = vi.spyOn(f.models[0]!, "load");
     click(button(node, "Load holding closes"));
@@ -259,6 +311,9 @@ describe("Dated holdings review committed UI", () => {
     const html = renderToStaticMarkup(node);
     expect(html).toContain("203.00");
     expect(html).toContain("213.00");
+    expect(html).toContain('id="portfolio-close-composition"');
+    expect(html).toContain("95.31%");
+    expect(html).toContain("4.69%");
     expect(html).toContain("2026-09-19");
     expect(html).toContain("raw_close");
     expect(html).toContain("2026-08-20");
@@ -274,6 +329,8 @@ describe("Dated holdings review committed UI", () => {
     });
     node = f.render();
     expect(renderToStaticMarkup(node)).toContain("200.50");
+    expect(renderToStaticMarkup(node)).toContain("95.25%");
+    expect(renderToStaticMarkup(node)).toContain("4.75%");
     const opener = {} as HTMLButtonElement;
     click(button(node, "Research ZERO"), { currentTarget: opener });
     expect(f.onResearch).toHaveBeenCalledExactlyOnceWith(

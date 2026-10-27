@@ -1,3 +1,7 @@
+import {
+  calculateAuthoredPortfolioCloseComposition,
+  type AuthoredPortfolioCloseComposition,
+} from "./authored-portfolio-close-composition";
 import { validateCloseReviewInput } from "./authored-portfolio-close-review-validation";
 import {
   calculateHoldingCloseValues,
@@ -42,6 +46,7 @@ export type AuthoredPortfolioCloseReviewLine =
     );
 
 export interface AuthoredPortfolioCloseReviewResult {
+  readonly composition: AuthoredPortfolioCloseComposition;
   readonly asOfDate: string;
   readonly balancesOn: string;
   readonly holdings: readonly AuthoredPortfolioCloseReviewLine[];
@@ -61,11 +66,17 @@ export function calculateAuthoredPortfolioCloseReview(
   try {
     validateCloseReviewInput(input);
     const holdings = calculateHoldingCloseValues(input);
+    const summary = summarizeHoldingCloseValues(input, holdings);
     return Object.freeze({
       asOfDate: input.asOfDate,
       balancesOn: input.balancesOn,
       holdings,
-      ...summarizeHoldingCloseValues(input, holdings),
+      ...summary,
+      composition: calculateAuthoredPortfolioCloseComposition(
+        input,
+        holdings,
+        summary,
+      ),
       method: "each_holding_round_half_up_to_cents_then_sum",
     });
   } catch {

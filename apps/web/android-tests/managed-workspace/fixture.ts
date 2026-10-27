@@ -1,3 +1,4 @@
+import { createPortfolioCompositionNativeFixture } from "./portfolio-composition-fixture";
 import { createCalendarFollowupNativeFixture } from "./calendar-followup-fixture";
 import {
   createMarketsSourceReviewNativeFixture,
@@ -2389,6 +2390,13 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "portfolio-composition-review",
+    async () =>
+      createPortfolioCompositionNativeFixture(
+        await createSharedFixture("research-followups"),
+      ),
+  ],
+  [
     "portfolio-review-report",
     async () =>
       createPortfolioReviewReportNativeFixture(
@@ -2438,6 +2446,7 @@ export async function createFixture(
     | "portfolio-ledger"
     | "portfolio-close-review"
     | "portfolio-review-report"
+    | "portfolio-composition-review"
     | "followups-review-report"
     | "company-snapshot-loading"
     | "followups-review-session"

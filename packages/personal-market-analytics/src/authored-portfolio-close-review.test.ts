@@ -60,6 +60,17 @@ describe("authored portfolio close review", () => {
       holdingsValueUsd: "15.24",
       cashUsd: "10.50",
       totalValueUsd: "25.74",
+      composition: {
+        status: "available",
+        reason: null,
+        totalValueUsd: "25.74",
+        cashUsd: "10.50",
+        cashPercent: "40.79",
+        holdings: [
+          { listingId: "listing-a", valueUsd: "15.24", percent: "59.21" },
+        ],
+        method: "displayed_usd_cents_over_complete_total_percent_half_up_2dp",
+      },
       method: "each_holding_round_half_up_to_cents_then_sum",
     });
   });
