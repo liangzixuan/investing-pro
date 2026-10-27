@@ -68,6 +68,9 @@ async function fixture() {
     Promise.reject(new Error("Unexpected provider request")),
   );
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),

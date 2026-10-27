@@ -240,3 +240,12 @@ export {
   type PersonalNumericScreenRow,
   type PersonalNumericScreenSort,
 } from "./personal-numeric-screen";
+
+export { assertPersonalSecInterimCanonicalEvidence } from "./personal-sec-interim-evidence";
+export { serializePersonalSecInterimCanonicalGeneration } from "./personal-sec-interim-serialization";
+export { selectPersonalSecInterimTarget } from "./personal-sec-interim-target";
+export { resolvePersonalSecInterimStatements } from "./personal-sec-interim-statements";
+export {
+  parsePersonalSecInterimCanonicalResponse,
+  isOwnedPersonalSecInterimCanonicalResponse,
+} from "./personal-sec-interim-response";

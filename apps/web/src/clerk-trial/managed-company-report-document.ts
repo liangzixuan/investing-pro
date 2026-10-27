@@ -1,10 +1,13 @@
+import { interimReportReferences } from "./managed-interim-report-references";
 import {
   MANAGED_EOD_HISTORY_LIMITS,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
+  MANAGED_SEC_INTERIM_EVIDENCE_LIMITS,
   MANAGED_SEC_FILINGS_LIMITS,
 } from "@research-cockpit/contracts";
 import {
   companyReportAnnualEvidenceIsOwned,
+  companyReportInterimEvidenceIsOwned,
   companyReportPriceStudiesIsOwned,
   companyReportValuationPriceIsOwned,
   type PreparedCompanyReport,
@@ -14,9 +17,12 @@ import { valuationPriceDocument } from "./managed-valuation-price-document";
 // Fixed whole-document ceiling: canonical sources, explicit resolved references,
 // authored inputs and document framing must fit together or the whole output fails.
 export const COMPANY_REPORT_VALUATION_MAX_BYTES = 131_072;
+export const COMPANY_REPORT_INTERIM_REFERENCES_MAX_BYTES = 1_048_576;
 export const COMPANY_REPORT_DOCUMENT_MAX_BYTES =
   MANAGED_EOD_HISTORY_LIMITS.responseBytes +
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes +
+  MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.responseBytes +
+  COMPANY_REPORT_INTERIM_REFERENCES_MAX_BYTES +
   MANAGED_SEC_FILINGS_LIMITS.responseBytes +
   32_768 +
   COMPANY_REPORT_VALUATION_MAX_BYTES;
@@ -87,7 +93,7 @@ export function isCompanyReportDocument(
     const data = parsed as Record<string, unknown>;
     if (
       data.purpose !== fields.purpose ||
-      data.schemaVersion !== "5.0.0" ||
+      data.schemaVersion !== "6.0.0" ||
       !data.listing ||
       typeof data.listing !== "object" ||
       Array.isArray(data.listing)
@@ -160,6 +166,15 @@ function annualDocument(state: PreparedCompanyReport["evidence"]["annual"]) {
   };
 }
 
+function interimDocument(state: PreparedCompanyReport["evidence"]["interim"]) {
+  const source = sourceDocument(state);
+  if (!state?.response || !state.view) return source;
+  return {
+    ...source,
+    statements: interimReportReferences(state.view.statements),
+  };
+}
+
 /** Only a current model-admitted preview may supply this document. No I/O. */
 export function formatCompanyReportDocument(
   report: PreparedCompanyReport,
@@ -167,8 +182,17 @@ export function formatCompanyReportDocument(
   if (
     report.kind !== "loaded_company_research" ||
     !companyReportAnnualEvidenceIsOwned(report.evidence.annual) ||
+    !companyReportInterimEvidenceIsOwned(report.evidence.interim) ||
     !companyReportPriceStudiesIsOwned(report) ||
     !companyReportValuationPriceIsOwned(report)
+  )
+    return null;
+  const interimReferences = report.evidence.interim?.view
+    ? interimReportReferences(report.evidence.interim.view.statements)
+    : null;
+  if (
+    encoder.encode(JSON.stringify(interimReferences)).byteLength >
+    COMPANY_REPORT_INTERIM_REFERENCES_MAX_BYTES
   )
     return null;
   const noteJson = JSON.stringify(report.note);
@@ -189,7 +213,7 @@ export function formatCompanyReportDocument(
   if (!name) return null;
   const document = {
     purpose: "investment.company-research",
-    schemaVersion: "5.0.0",
+    schemaVersion: "6.0.0",
     preparedAt: report.preparedAt,
     scope: {
       sourceEvidence:
@@ -244,6 +268,7 @@ export function formatCompanyReportDocument(
           }
         : sourceDocument(report.evidence.price),
       annual: annualDocument(report.evidence.annual),
+      interim: interimDocument(report.evidence.interim),
       filings: sourceDocument(report.evidence.filings),
     },
   };

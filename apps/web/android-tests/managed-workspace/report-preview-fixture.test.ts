@@ -33,6 +33,7 @@ describe("composed prepared company report", () => {
         workspace.eod.getSnapshot(),
         workspace.annual.getSnapshot(),
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       );
     const currentDraft = () => workspace.getResearchWatchlist(selected);
     expect(

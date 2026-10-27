@@ -37,7 +37,7 @@ internal object CompanyReportHtmlDocumentPolicy : ChosenDocumentPolicy {
         // Reuse JSON's complete calendar/filename admission without a second date parser.
         val identity = JSONObject()
             .put("purpose", CompanyReportDocumentPolicy.PURPOSE)
-            .put("schemaVersion", "5.0.0")
+            .put("schemaVersion", "6.0.0")
             .put("preparedAt", "$year-$month-" + day + "T$hour:$minute:$second." + millis + "Z")
             .put("listing", JSONObject().put("symbol", symbol).put("exchangeMic", mic))
         require(CompanyReportDocumentPolicy.acceptsText(filename.removeSuffix(".html") + ".json", identity.toString()))

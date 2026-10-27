@@ -3,7 +3,7 @@ import { parseWorkspaceRoute } from "../features/workspace/workspace-route";
 export interface ManagedCompanyRoute {
   readonly kind: "company";
   readonly listingId: string;
-  readonly section: "annual" | "eod" | "filings";
+  readonly section: "annual" | "interim" | "eod" | "filings";
 }
 export type ParsedManagedCompanyRoute =
   | ManagedCompanyRoute
@@ -20,6 +20,15 @@ export function isManagedCompanyListingId(value: string): boolean {
   );
 }
 
+function isWireSection(
+  section: unknown,
+): section is "price" | "annual" | "interim" | "filings" {
+  return (
+    typeof section === "string" &&
+    ["price", "annual", "interim", "filings"].includes(section)
+  );
+}
+
 export function parseManagedCompanyRoute(
   parameters: URLSearchParams,
 ): ParsedManagedCompanyRoute {
@@ -33,7 +42,7 @@ export function parseManagedCompanyRoute(
     sections.length !== 1 ||
     listingId === undefined ||
     !isManagedCompanyListingId(listingId) ||
-    (section !== "price" && section !== "annual" && section !== "filings") ||
+    !isWireSection(section) ||
     [...parameters.keys()].some((key) => key !== "company" && key !== "section")
   )
     return { kind: "invalid" };
@@ -50,7 +59,7 @@ export function managedCompanyHref(
 ): string {
   if (
     !isManagedCompanyListingId(listingId) ||
-    (section !== "annual" && section !== "eod" && section !== "filings")
+    !["annual", "interim", "eod", "filings"].includes(section)
   )
     throw new Error("Invalid company destination.");
   return `/?${new URLSearchParams({ company: listingId, section: section === "eod" ? "price" : section })}`;

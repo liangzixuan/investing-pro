@@ -1,5 +1,6 @@
 import { membershipMatchesResult } from "@research-cockpit/contracts";
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import type { ManagedInterimReportState } from "./managed-interim-report";
 import type { ManagedAnnualReportState } from "./managed-annual-report";
 import type { ManagedEodHistoryState } from "./managed-eod-history";
 import type { ManagedCompanyFilingsState } from "./managed-company-filings";
@@ -10,6 +11,7 @@ export function companySnapshotEvidence(
   price: ManagedEodHistoryState,
   annual: ManagedAnnualReportState,
   filings: ManagedCompanyFilingsState,
+  interim: ManagedInterimReportState | null,
 ) {
   return {
     price:
@@ -21,6 +23,12 @@ export function companySnapshotEvidence(
       !annual.catalogChanged &&
       companyEvidenceSelectionMatches(selection, annual.selection)
         ? annual
+        : null,
+    interim:
+      interim !== null &&
+      !interim.catalogChanged &&
+      companyEvidenceSelectionMatches(selection, interim.selection)
+        ? interim
         : null,
     filings:
       !filings.catalogChanged &&

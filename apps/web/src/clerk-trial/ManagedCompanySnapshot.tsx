@@ -14,7 +14,7 @@ export function ManagedCompanySnapshot({
   ...models
 }: CompanyEvidenceModels & {
   navigationPending: boolean;
-  onSection: (section: "eod" | "annual" | "filings") => void;
+  onSection: (section: "eod" | "annual" | "interim" | "filings") => void;
 }) {
   const evidence = useCompanySnapshotEvidence(models);
   return (
@@ -33,7 +33,7 @@ export function CompanySnapshotView({
 }: {
   navigationPending: boolean;
   evidence: ReturnType<typeof companySnapshotEvidence>;
-  onSection: (section: "eod" | "annual" | "filings") => void;
+  onSection: (section: "eod" | "annual" | "interim" | "filings") => void;
 }) {
   return (
     <details className="managed-company-snapshot">
@@ -58,7 +58,7 @@ export function CompanySnapshotEvidenceView({
 }: {
   navigationPending: boolean;
   evidence: ReturnType<typeof companySnapshotEvidence>;
-  onSection: (section: "eod" | "annual" | "filings") => void;
+  onSection: (section: "eod" | "annual" | "interim" | "filings") => void;
 }) {
   return (
     <div className="managed-snapshot-grid">
@@ -72,6 +72,25 @@ export function CompanySnapshotEvidenceView({
         state={evidence.annual}
         onOpen={() => onSection("annual")}
       />
+      <section aria-label="Interim loaded snapshot">
+        <h3>Interim</h3>
+        <p>
+          {evidence.interim?.response
+            ? `Loaded; original completion ${evidence.interim.response.evidence.generation.completedAt}.`
+            : "Not loaded."}
+        </p>
+        {evidence.interim?.showingPrevious && (
+          <p>Previous response retained; its original source clocks apply.</p>
+        )}
+        <button
+          type="button"
+          className="trial-secondary"
+          disabled={navigationPending}
+          onClick={() => onSection("interim")}
+        >
+          Open Interim
+        </button>
+      </section>
       <CompanySnapshotFilings
         navigationPending={navigationPending}
         state={evidence.filings}

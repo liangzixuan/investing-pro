@@ -92,6 +92,9 @@ function followupsApi(empty: boolean) {
     Promise.reject(new Error("Unexpected unrelated request")),
   );
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     load: unexpected,
     save: unexpected,
     loadPortfolio: unexpected,

@@ -1,3 +1,9 @@
+import {
+  interimCommand,
+  interimPackets,
+  INTERIM_CONTACT,
+} from "./test-personal-sec-interim-fixtures";
+import * as interimServiceModule from "./managed-sec-interim-service";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
 
 import {
@@ -2890,4 +2896,170 @@ describe("managed BLS calendar composed function", () => {
       expect(f.transport).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("managed interim function end-to-end", () => {
+  const path = "/v1/managed/sec-interim-evidence";
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "preserves signed%s identity/sharedSECbudget and two fixed invented sources",
+    async (origin) => {
+      const f = memoryRepository();
+      const reserve = vi.fn<
+        ReturnType<
+          typeof secAdmissionModule.createManagedSecAdmission
+        >["reserve"]
+      >(() =>
+        Promise.resolve({
+          version: 2,
+          nextAllowedAt: "2026-10-27T12:00:20.000Z",
+        }),
+      );
+      const admission = vi
+        .spyOn(secAdmissionModule, "createManagedSecAdmission")
+        .mockReturnValue({ reserve });
+      const reads = vi.fn<typeof globalThis.fetch>((input) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        if (!url.startsWith("https://data.sec.gov/"))
+          throw new Error("Unexpected invented HTTP");
+        return Promise.resolve(
+          Response.json(interimPackets()[url.includes("companyfacts") ? 1 : 0]),
+        );
+      });
+      vi.stubGlobal("fetch", reads);
+      const run = createManagedWorkspaceFunction(
+        configuration(),
+        { userAgent: INTERIM_CONTACT },
+        null,
+      );
+      const c = writeContext(path, interimCommand());
+      const answer = await run({
+        ...c,
+        req: {
+          ...c.req,
+          headers: {
+            ...c.req.headers,
+            origin,
+            authorization: `Bearer ${token({ azp: origin })}`,
+          },
+        },
+      });
+      expect(answer).toMatchObject({
+        status: 200,
+        body: {
+          schemaVersion: "1.0.0",
+          security: { symbol: "AAPL", cik: "0000320193" },
+          evidence: {
+            target: {
+              status: "target",
+              form: "10-Q",
+              reportDate: "2026-06-30",
+            },
+          },
+        },
+      });
+      expect(reads.mock.calls.map(([url]) => url)).toEqual([
+        "https://data.sec.gov/submissions/CIK0000320193.json",
+        "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+      ]);
+      expect(admission).toHaveBeenCalledWith(
+        expect.objectContaining({
+          databaseId: "investment_managed_watchlist_v1",
+          tableId: "sec_annual_budget",
+          rowId: "observed-annual-v1",
+        }),
+      );
+      expect(reserve).toHaveBeenCalledOnce();
+      expect(reserve.mock.calls[0]![0].userId).toMatch(/^clerk-[a-f0-9]{30}$/u);
+      expect(reserve.mock.calls[0]![1]).toBe(
+        new Date(reserve.mock.calls[0]![1]).toISOString(),
+      );
+      expect(reserve.mock.calls[0]![2]).toBeInstanceOf(AbortSignal);
+      expect(f.get).not.toHaveBeenCalled();
+      expect(f.put).not.toHaveBeenCalled();
+    },
+  );
+  it("enforces body/query/sourceconfiguration without acquiring source or storage authority", async () => {
+    const f = memoryRepository();
+    const run = createManagedWorkspaceFunction(configuration(), null, null);
+    expect(await run(writeContext(path, interimCommand()))).toMatchObject({
+      status: 503,
+      body: { error: "not_configured" },
+    });
+    expect(
+      await run({
+        ...writeContext(path, interimCommand()),
+        req: {
+          ...writeContext(path, interimCommand()).req,
+          queryString: "x=1",
+        },
+      }),
+    ).toMatchObject({ status: 400 });
+    expect(
+      await run(
+        writeContext(path, { ...interimCommand(), extra: "x".repeat(4096) }),
+      ),
+    ).toMatchObject({ status: 413 });
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it("keeps originalentrytime through delayed authentication and retires a held interim service", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    const auth = vi.fn<authModule.ClerkTrialAuth>(() => {
+      elapsed = 2_000;
+      return Promise.resolve({
+        status: "allowed",
+        principal: { userId: "clerk-invented-interim" },
+      });
+    });
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(auth);
+    const f = memoryRepository();
+    const run = createManagedWorkspaceFunction(
+      configuration(),
+      { userAgent: INTERIM_CONTACT },
+      null,
+    );
+    expect(await run(writeContext(path, interimCommand()))).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it("returns finite timeout for a noncooperative interim service at the10s function boundary", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(
+      vi.fn<authModule.ClerkTrialAuth>().mockResolvedValue({
+        status: "allowed",
+        principal: { userId: "clerk-invented-timeout" },
+      }),
+    );
+    const load = vi.fn<interimServiceModule.ManagedSecInterimService["load"]>(
+      () => new Promise(() => undefined),
+    );
+    vi.spyOn(
+      interimServiceModule,
+      "createManagedSecInterimService",
+    ).mockReturnValue({ load, assertActive: () => undefined });
+    const run = createManagedWorkspaceFunction(
+      configuration(),
+      { userAgent: INTERIM_CONTACT },
+      null,
+    );
+    const pending = run(writeContext(path, interimCommand()));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(load).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await pending).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    expect(load).toHaveBeenCalledOnce();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
 });

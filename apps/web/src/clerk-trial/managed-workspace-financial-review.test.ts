@@ -115,6 +115,9 @@ async function fixture(
   const unexpected = () =>
     Promise.reject(new Error("Unexpected unrelated invented fixture request"));
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),
@@ -384,6 +387,7 @@ describe("composed explicit company financial review", () => {
       f.workspace.eod.getSnapshot(),
       f.workspace.annual.getSnapshot(),
       f.workspace.filings.getSnapshot(),
+      null,
     );
     const report = prepareCompanyReport(
       f.selection,

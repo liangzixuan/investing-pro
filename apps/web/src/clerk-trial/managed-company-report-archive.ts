@@ -1,3 +1,6 @@
+import { getManagedInterimView } from "./managed-interim-view";
+import type { ManagedInterimView } from "./managed-interim-view";
+import { interimReportReferences } from "./managed-interim-report-references";
 import {
   assertPersonalSecJsonUniqueKeys,
   membershipMatchesResult,
@@ -9,6 +12,9 @@ import {
   type ManagedSecFilingsResponseDto,
   type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
+import { resolvePersonalSecInterimStatements } from "@research-cockpit/personal-financial-analytics";
+import { parseSecInterimCanonicalResponse } from "../lib/sec-interim-canonical-response";
+import type { PersonalSecInterimCanonicalResponseDto } from "@research-cockpit/contracts";
 import { parseSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
 import type { PreparedCompanyReport } from "./managed-company-report";
 import {
@@ -29,7 +35,7 @@ import {
 export const COMPANY_REPORT_ARCHIVE_MAX_BYTES =
   COMPANY_REPORT_DOCUMENT_MAX_BYTES;
 export interface CompanyReportSourceProvenance {
-  readonly source: "price" | "annual" | "filings";
+  readonly source: "price" | "annual" | "interim" | "filings";
   readonly status: "loaded" | "not_loaded";
   readonly retainedPrevious: boolean;
   readonly lastAttemptFailed: boolean;
@@ -47,8 +53,12 @@ export interface CompanyReportRevisitSnapshot {
 }
 export interface CompanyReportArchive extends CompanyReportRevisitSnapshot {
   readonly kind: "company_report_archive";
-  readonly schemaVersion: "5.0.0";
+  readonly schemaVersion: "6.0.0";
   readonly byteLength: number;
+  readonly interim: Readonly<{
+    response: PersonalSecInterimCanonicalResponseDto;
+    statements: ManagedInterimView["statements"];
+  }> | null;
   /** Opaque file-reported calculations; never admitted as live financial values. */
   readonly unverifiedAppendix: string;
 }
@@ -122,7 +132,7 @@ function decodedEnvelope(text: string): Envelope {
   finiteJson(value);
   const envelope = record(value, ENVELOPE);
   requireArchive(envelope.purpose === "investment.company-research");
-  requireArchive(envelope.schemaVersion === "5.0.0");
+  requireArchive(envelope.schemaVersion === "6.0.0");
   const scope = record(envelope.scope, SCOPE);
   for (const field of Object.values(scope)) requiredDraftFileText(field, 2_048);
   return envelope;
@@ -223,6 +233,7 @@ function loadedSource(
   const extras = {
     price: ["studies"],
     annual: ["statements", "financials"],
+    interim: ["statements"],
     filings: [],
   };
   const fields = record(value, [...LOADED, ...extras[key]]);
@@ -232,6 +243,7 @@ function loadedSource(
   const origins = {
     price: ["markets", "watchlist", "company"],
     annual: ["request", "watchlist-comparison", "financial-screen"],
+    interim: ["request"],
     filings: ["request", "watchlist"],
   };
   requireArchive(origins[key].includes(fields.responseOrigin as string));
@@ -342,7 +354,9 @@ function selectedCikMatches(sourceCik: string, expected: Header): void {
   requireArchive(sourceCik === expected.selectionCik);
 }
 function annualIdentity(
-  response: PersonalSecAnnualCanonicalResponseDto,
+  response:
+    | PersonalSecAnnualCanonicalResponseDto
+    | PersonalSecInterimCanonicalResponseDto,
   expected: Header,
 ): void {
   const source = response.security;
@@ -378,6 +392,58 @@ async function annualPacket(
   annualIdentity(response, expected);
   return response;
 }
+async function interimPacket(
+  source: Loaded,
+  expected: Header,
+  signal: AbortSignal,
+): Promise<PersonalSecInterimCanonicalResponseDto> {
+  const response = await parseSecInterimCanonicalResponse(
+    source.response,
+    {
+      schemaVersion: "1.0.0",
+      catalogSnapshotSha256:
+        expected.catalogSnapshotSha256 as `sha256:${string}`,
+      listingId: expected.listing.listingId,
+      symbol: expected.listing.symbol,
+    },
+    signal,
+  );
+  requireArchive(response !== null);
+  annualIdentity(response, expected);
+  const raw = source as Loaded & { statements: unknown };
+  requireArchive(
+    JSON.stringify(raw.statements) ===
+      JSON.stringify(
+        interimReportReferences(
+          resolvePersonalSecInterimStatements(response.evidence),
+        ),
+      ),
+  );
+  return response;
+}
+function interimProvenance(
+  source: Loaded,
+  response: PersonalSecInterimCanonicalResponseDto,
+): CompanyReportSourceProvenance {
+  const { generation, target } = response.evidence;
+  const fields = [
+    { label: "Source CIK", value: response.security.cik },
+    { label: "Cutoff", value: generation.cutoffAt },
+    { label: "Completed", value: generation.completedAt },
+    { label: "Canonical generation", value: generation.sha256 },
+    { label: "Filing target", value: JSON.stringify(target) },
+  ];
+  const references = Object.entries(generation.sources).map(
+    ([label, value]) => {
+      fields.push({
+        label: `${label} source capture`,
+        value: `${value.status}; fetched ${value.fetchedAt ?? "not captured"}; SHA ${value.sha256 ?? "none"}; bytes ${value.bytes ?? "none"}`,
+      });
+      return { label, url: value.sourceUrl };
+    },
+  );
+  return loadedProvenance("interim", source, fields, references);
+}
 function priceProvenance(
   source: Loaded,
   response: ManagedEodHistoryResponseDto,
@@ -397,7 +463,9 @@ function priceProvenance(
 }
 function annualProvenance(
   source: Loaded,
-  response: PersonalSecAnnualCanonicalResponseDto,
+  response:
+    | PersonalSecAnnualCanonicalResponseDto
+    | PersonalSecInterimCanonicalResponseDto,
 ): CompanyReportSourceProvenance {
   const { generation, target } = response.evidence;
   const fields = [
@@ -459,19 +527,36 @@ async function admittedSources(
   envelope: Envelope,
   expected: Header,
   signal: AbortSignal,
-): Promise<readonly CompanyReportSourceProvenance[]> {
-  const values = record(envelope.sources, ["price", "annual", "filings"]);
+): Promise<{
+  sources: readonly CompanyReportSourceProvenance[];
+  interim: CompanyReportArchive["interim"];
+}> {
+  const values = record(envelope.sources, [
+    "price",
+    "annual",
+    "interim",
+    "filings",
+  ]);
   const result: CompanyReportSourceProvenance[] = [];
-  for (const key of ["price", "annual", "filings"] as const) {
+  let interim: CompanyReportArchive["interim"] = null;
+  for (const key of ["price", "annual", "interim", "filings"] as const) {
     signal.throwIfAborted();
     const source = loadedSource(values[key], key);
     if (source.status === "not_loaded") {
       result.push(source as CompanyReportSourceProvenance);
       continue;
     }
-    result.push(await admitSource(key, source as Loaded, expected, signal));
+    if (key === "interim") {
+      const response = await interimPacket(source as Loaded, expected, signal);
+      interim = Object.freeze({
+        response,
+        statements: getManagedInterimView(response)!.statements,
+      });
+      result.push(interimProvenance(source as Loaded, response));
+    } else
+      result.push(await admitSource(key, source as Loaded, expected, signal));
   }
-  return consistentSources(result);
+  return { sources: consistentSources(result), interim };
 }
 function consistentSources(
   sources: readonly CompanyReportSourceProvenance[],
@@ -485,7 +570,7 @@ function consistentSources(
   return Object.freeze(sources);
 }
 async function admitSource(
-  key: SourceKey,
+  key: Exclude<SourceKey, "interim">,
   source: Loaded,
   expected: Header,
   signal: AbortSignal,
@@ -515,6 +600,7 @@ function appendix(envelope: Envelope): string {
       statements: sources.annual?.statements ?? null,
       financials: sources.annual?.financials ?? null,
     },
+    interim: { statements: sources.interim?.statements ?? null },
     priceStudies: sources.price?.studies ?? null,
   });
 }
@@ -527,13 +613,14 @@ export async function parseCompanyReportArchive(
   try {
     const envelope = decodedEnvelope(text);
     const expected = header(envelope);
-    const sources = await admittedSources(envelope, expected, signal);
+    const admitted = await admittedSources(envelope, expected, signal);
     signal.throwIfAborted();
     const result: CompanyReportArchive = Object.freeze({
       ...expected,
-      sources,
+      sources: admitted.sources,
+      interim: admitted.interim,
       kind: "company_report_archive",
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       byteLength: draftFileEncoder.encode(text).byteLength,
       unverifiedAppendix: appendix(envelope),
     });
@@ -564,9 +651,14 @@ export function projectCurrentCompanyReport(
     if (!document) return null;
     const envelope = decodedEnvelope(document.text);
     const expected = header(envelope);
-    const values = record(envelope.sources, ["price", "annual", "filings"]);
-    const sources = (["price", "annual", "filings"] as const).map((key) =>
-      projectSource(key, values[key], expected),
+    const values = record(envelope.sources, [
+      "price",
+      "annual",
+      "interim",
+      "filings",
+    ]);
+    const sources = (["price", "annual", "interim", "filings"] as const).map(
+      (key) => projectSource(key, values[key], expected),
     );
     return Object.freeze({ ...expected, sources: consistentSources(sources) });
   } catch {
@@ -586,7 +678,20 @@ function projectSource(
     return priceProvenance(loaded, pricePacket(loaded, expected));
   if (key === "filings")
     return filingsProvenance(loaded, filingsPacket(loaded, expected));
+  if (key === "interim") {
+    const response = loaded.response as PersonalSecInterimCanonicalResponseDto;
+    annualIdentity(response, expected);
+    return interimProvenance(loaded, response);
+  }
   const response = loaded.response as PersonalSecAnnualCanonicalResponseDto;
   annualIdentity(response, expected);
   return annualProvenance(loaded, response);
+}
+
+/** Only archives owned by completed canonical re-admission expose captured values. */
+export function archivedInterimEvidence(
+  snapshot: CompanyReportRevisitSnapshot,
+) {
+  const archive = snapshot as CompanyReportArchive;
+  return archives.has(archive) ? archive.interim : null;
 }

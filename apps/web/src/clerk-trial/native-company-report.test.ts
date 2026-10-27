@@ -12,7 +12,7 @@ const handle = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const text =
   JSON.stringify({
     purpose: "investment.company-research",
-    schemaVersion: "5.0.0",
+    schemaVersion: "6.0.0",
     preparedAt: "2026-10-15T00:00:00.000Z",
     listing: { symbol: "ZERO", exchangeMic: "XNAS" },
     authoredResearch: { note: "Invented draft: Café 東京 📈\nwhitespace  " },
@@ -171,7 +171,7 @@ describe("native company report delivery", () => {
     async (schema) => {
       const { adapter, plugin, context } = fixture();
       const oldText = text.replace(
-        '"schemaVersion":"5.0.0"',
+        '"schemaVersion":"6.0.0"',
         `"schemaVersion":"${schema}"`,
       );
       await expect(

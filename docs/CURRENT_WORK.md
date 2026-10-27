@@ -5,15 +5,34 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: dated Portfolio composition review
+## Selected next: reported interim financial review
 
-The [composition workflow](MANAGED_PORTFOLIO_COMPOSITION.md) adds exact holding
-and authored-cash shares of one complete positive dated total. Continue through
-existing exact-company research, a dated next check, Back and separate Saves.
-The existing private reading report captures the same complete calculation.
-Missing cash or prices and zero totals keep all percentages unavailable. No
-partial subset is normalized to 100%. Source, synthetic native and client
-acceptance remain pending. Existing sources, storage and budgets remain.
+The [interim workflow](MANAGED_INTERIM_STATEMENTS.md) will connect an explicit
+supported 10-Q evidence load through all three reported-concept views, a full
+selected-cell note preview and the captured company report. Exact start/end
+identity keeps same-end quarterly and year-to-date flows separate. Unknown
+classification remains explicit; no period subtraction or TTM is inferred.
+Source implementation and affected local checks pass. The complete Android
+fixture suite passes, and the native CI roster preserves all 95 prior cases plus
+the interim journey. Hosted Android execution, API activation and client delivery
+remain pending. No new live source or owner-record acceptance is claimed.
+
+## Accepted and delivered: dated Portfolio composition
+
+[PR 247](https://github.com/liangzixuan/investing-pro/pull/247) merged at
+`cfa11b08aa10eeb0100fb25afc79038a6d69ebe5`. All original required PR checks and
+five main workflows/eight jobs passed, including the complete synthetic native
+95-case scope. The [composition workflow](MANAGED_PORTFOLIO_COMPOSITION.md)
+keeps exact holding and authored-cash shares of a complete positive dated total,
+then continues through research, a dated check and the private reading report.
+Missing prices, unknown cash and zero totals retain unavailable percentages.
+
+Android 1.50.0/code51 is provided locally. The guarded existing-signer build,
+all four package checks, signature, complete assets/notices, compiled policies,
+all DEX definitions and source preservation passed. Delivered bytes match the
+guarded APK. Same-tree native XML and one scoped core-frame view retain their
+recorded limits. Installation and physical-device acceptance are not claimed.
+The API, website, prior APKs, owner records and unrelated checkouts are preserved.
 
 ## Accepted and delivered: a dated check from a Markets calendar item
 

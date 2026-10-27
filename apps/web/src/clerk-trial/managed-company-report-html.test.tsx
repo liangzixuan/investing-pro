@@ -67,6 +67,7 @@ async function fixture(
         price.getSnapshot(),
         annual.getSnapshot(),
         filings.getSnapshot(),
+        null,
       ),
       {
         member: { ...eodSelection.listing, note },

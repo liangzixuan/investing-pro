@@ -1,3 +1,7 @@
+import {
+  createInterimStatementsNativeFixture,
+  type NativeInterimStatementsMetadata,
+} from "./interim-statements-fixture";
 import { createPortfolioCompositionNativeFixture } from "./portfolio-composition-fixture";
 import { createCalendarFollowupNativeFixture } from "./calendar-followup-fixture";
 import {
@@ -683,6 +687,11 @@ async function createSharedFixture(
     save: 0,
     resolve: 0,
     annual: 0,
+    interimReport: 0,
+    interimPortfolioLoad: 0,
+    interimPortfolioSave: 0,
+    interimFollowupsLoad: 0,
+    interimFollowupsSave: 0,
     filings: 0,
     filingsAborted: 0,
     filingsLateResolved: 0,
@@ -1621,6 +1630,10 @@ async function createSharedFixture(
         pendingEod = resolve;
       });
     },
+    interimReport: () => {
+      count("interimReport");
+      return Promise.reject(new TrialApiError("unavailable"));
+    },
     annualReport: (request, signal) => {
       if (balanceScenario) {
         if (
@@ -2125,6 +2138,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly financialReview: NativeFinancialReviewMetadata | null;
   readonly portfolio?: PortfolioNativeControls;
   readonly annualStatements?: NativeAnnualStatementsMetadata;
+  readonly interimReview?: NativeInterimStatementsMetadata;
   readonly financialScreen?: NativeFinancialScreenMetadata;
   readonly valuationPrice?: NativeValuationPriceMetadata;
   readonly screenComparison?: NativeScreenComparisonMetadata;
@@ -2383,6 +2397,13 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "interim-statements",
+    async () =>
+      createInterimStatementsNativeFixture(
+        await createSharedFixture("annual-note"),
+      ),
+  ],
+  [
     "annual-statements",
     async () =>
       createAnnualStatementsNativeFixture(
@@ -2438,6 +2459,7 @@ export async function createFixture(
     | Parameters<typeof createSharedFixture>[0]
     | "annual-financial-review"
     | "annual-statements"
+    | "interim-statements"
     | "price-studies"
     | "screen-comparison"
     | "financial-screen"

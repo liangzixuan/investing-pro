@@ -39,3 +39,26 @@ export const MANAGED_SEC_ANNUAL_ISSUERS: readonly string[] = Object.freeze([
   "0000005981",
   "0000006176",
 ]);
+
+/** Interim v1 route qualification: invented two-source fixtures for this existing cohort.
+ * This does not assert that an issuer currently has an available 10-Q or any value.
+ */
+export const MANAGED_SEC_INTERIM_ISSUERS: readonly string[] = Object.freeze([
+  "0000320193",
+  "0001652044",
+  "0000789019",
+  "0000002186",
+  "0000002488",
+  "0000003453",
+  "0000003545",
+  "0000003570",
+  "0000004127",
+  "0000004281",
+  "0000004457",
+  "0000004962",
+  "0000004977",
+  "0000005272",
+  "0000005513",
+  "0000005981",
+  "0000006176",
+]);

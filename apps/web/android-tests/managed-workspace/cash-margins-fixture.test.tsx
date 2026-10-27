@@ -159,6 +159,7 @@ describe("strictly admitted cash margins in the managed workspace", () => {
         workspace.eod.getSnapshot(),
         workspace.annual.getSnapshot(),
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       );
     expect(annual).not.toHaveBeenCalled();
     expect(html()).toBe("");

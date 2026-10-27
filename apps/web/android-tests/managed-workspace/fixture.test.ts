@@ -1652,6 +1652,11 @@ describe("Android managed fixture startup", () => {
       const initial = {
         load: 0,
         status: 0,
+        interimReport: 0,
+        interimPortfolioLoad: 0,
+        interimPortfolioSave: 0,
+        interimFollowupsLoad: 0,
+        interimFollowupsSave: 0,
         search: 0,
         save: 0,
         resolve: 0,

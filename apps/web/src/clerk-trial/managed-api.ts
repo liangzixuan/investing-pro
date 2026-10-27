@@ -58,6 +58,11 @@ import {
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_WATCHLIST_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_LIMITS,
+  parseManagedSecInterimCanonicalRequest,
+  type PersonalSecInterimCanonicalRequestDto,
+  type PersonalSecInterimCanonicalResponseDto,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   parseManagedSecAnnualCanonicalRequest,
@@ -78,6 +83,7 @@ import {
   type PersonalSecAnnualCanonicalRequestDto,
   type PersonalSecAnnualCanonicalResponseDto,
 } from "@research-cockpit/contracts";
+import { parseSecInterimCanonicalResponse } from "../lib/sec-interim-canonical-response";
 import { parseSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
 import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
@@ -115,6 +121,10 @@ export interface ManagedApi {
     request: ManagedEodHistoryRequestDto,
     signal: AbortSignal,
   ) => Promise<ManagedEodHistoryResponseDto>;
+  interimReport: (
+    request: PersonalSecInterimCanonicalRequestDto,
+    signal: AbortSignal,
+  ) => Promise<PersonalSecInterimCanonicalResponseDto>;
   annualReport: (
     request: PersonalSecAnnualCanonicalRequestDto,
     signal: AbortSignal,
@@ -138,6 +148,12 @@ export interface ManagedApi {
 export class ManagedCatalogChangedError extends Error {
   constructor() {
     super("catalog_changed");
+  }
+}
+
+export class ManagedInterimReportError extends Error {
+  constructor(readonly code: "not_configured" | "request_timeout") {
+    super(code);
   }
 }
 
@@ -177,6 +193,7 @@ type RequestKind =
   | "watchlist"
   | "followups"
   | "resolve"
+  | "interim"
   | "annual"
   | "eod"
   | "calendar"
@@ -297,7 +314,8 @@ function responseError(
       throw new ManagedEodHistoryError(error.error);
     throw new TrialApiError("invalid_response");
   }
-  if (kind === "annual" && status === 429) secCooldown(value);
+  if ((kind === "annual" || kind === "interim") && status === 429)
+    secCooldown(value);
   if (
     !value ||
     typeof value !== "object" ||
@@ -311,6 +329,12 @@ function responseError(
   const mutation = mutationKinds.includes(kind);
   if (!mutation && status === 409 && error === "catalog_changed")
     throw new ManagedCatalogChangedError();
+  if (kind === "interim") {
+    if (status === 503 && error === "not_configured")
+      throw new ManagedInterimReportError("not_configured");
+    if (status === 408 && error === "request_timeout")
+      throw new ManagedInterimReportError("request_timeout");
+  }
   if (kind === "annual") {
     if (status === 503 && error === "not_configured")
       throw new ManagedAnnualReportError("not_configured");
@@ -451,6 +475,7 @@ export function createManagedApi(
         error instanceof ManagedCatalogChangedError ||
         error instanceof ManagedSecCooldownError ||
         error instanceof ManagedAnnualReportError ||
+        error instanceof ManagedInterimReportError ||
         error instanceof ManagedSecFilingsError ||
         error instanceof ManagedEodHistoryError ||
         error instanceof ManagedEodCooldownError
@@ -558,6 +583,19 @@ export function createManagedApi(
         (value) => parseManagedEodHistoryResponse(value, captured),
         requestBody(captured, MANAGED_EOD_HISTORY_LIMITS.requestBytes),
         "eod",
+      );
+    },
+    interimReport: async (input, signal) => {
+      const captured = parseManagedSecInterimCanonicalRequest(input);
+      if (!captured) throw new TrialApiError("invalid_request");
+      return request(
+        MANAGED_SEC_INTERIM_EVIDENCE_PATH,
+        signal,
+        MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.responseBytes,
+        (value, lifetime) =>
+          parseSecInterimCanonicalResponse(value, captured, lifetime),
+        requestBody(captured, MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.requestBytes),
+        "interim",
       );
     },
     annualReport: async (input, signal) => {

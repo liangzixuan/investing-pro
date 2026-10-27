@@ -1,3 +1,4 @@
+import { MANAGED_SEC_INTERIM_ISSUERS } from "./managed-sec-issuers";
 import { describe, expect, it } from "vitest";
 import {
   MANAGED_SEC_ANNUAL_ISSUERS,
@@ -34,4 +35,13 @@ describe("independent SEC capability admission", () => {
     expect(new Set(MANAGED_SEC_ANNUAL_ISSUERS).size).toBe(17);
     expect(new Set(MANAGED_SEC_FILINGS_ISSUERS).size).toBe(17);
   });
+});
+
+it("keeps interim fixture-qualified coverage explicit,separate,and within the existing17issuercohort", () => {
+  expect(MANAGED_SEC_INTERIM_ISSUERS).toEqual(QUALIFIED_CIKS);
+  expect(MANAGED_SEC_INTERIM_ISSUERS).not.toBe(MANAGED_SEC_ANNUAL_ISSUERS);
+  expect(Object.isFrozen(MANAGED_SEC_INTERIM_ISSUERS)).toBe(true);
+  expect(new Set(MANAGED_SEC_INTERIM_ISSUERS).size).toBe(17);
+  for (const cik of MANAGED_SEC_INTERIM_ISSUERS)
+    expect(MANAGED_SEC_ANNUAL_ISSUERS).toContain(cik);
 });

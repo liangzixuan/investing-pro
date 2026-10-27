@@ -17,6 +17,7 @@ import type { ManagedSecConfiguration } from "./managed-sec-config";
 import { createSecPersonalAnnualEvidenceProvider } from "./personal-sec-annual-evidence-provider";
 import { encodePersonalSecAnnualCanonicalResponse } from "./personal-sec-annual-canonical-response";
 import type { PersonalSecRequestScheduler } from "./personal-sec-request-scheduler";
+import { createManagedSecSourceFetch } from "./managed-sec-source-fetch";
 import type { WatchlistPrincipal } from "./watchlist-repository";
 
 export class ManagedSecAnnualServiceError extends Error {
@@ -171,13 +172,13 @@ export function createManagedSecAnnualService(options: {
         Math.max(1, providerDeadline - monotonic()),
       );
       timer.unref();
-      const fetch = fixedSecFetch(
-        listing.cik,
+      const fetch = createManagedSecSourceFetch({
+        cik: listing.cik,
         contact,
-        options.fetch ?? globalThis.fetch,
+        fetch: options.fetch ?? globalThis.fetch,
         controller,
         guard,
-      );
+      });
       const provider = createSecPersonalAnnualEvidenceProvider(contact, {
         fetch,
         now: () => {
@@ -212,106 +213,5 @@ export function createManagedSecAnnualService(options: {
         controller.abort();
       }
     },
-  };
-}
-
-/** Accepted proof latch, with issuer fixed by the server's admitted catalog. */
-function fixedSecFetch(
-  cik: string,
-  contact: string,
-  fetch: typeof globalThis.fetch,
-  controller: AbortController,
-  guard: () => void,
-): typeof globalThis.fetch {
-  const urls = [
-    `https://data.sec.gov/submissions/CIK${cik}.json`,
-    `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
-  ];
-  let count = 0;
-  const stop = (): never => {
-    controller.abort();
-    throw new ManagedSecAnnualServiceError("unavailable");
-  };
-  return async (input, init) => {
-    guard();
-    const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input.url;
-    const headers = new Headers(init?.headers);
-    if (
-      count >= 2 ||
-      url !== urls[count] ||
-      init?.method !== "GET" ||
-      init.redirect !== "error" ||
-      init.credentials !== "omit" ||
-      init.cache !== "no-store" ||
-      headers.get("user-agent") !== contact ||
-      headers.get("accept") !== "application/json" ||
-      init.body !== undefined ||
-      init.signal?.aborted !== false
-    )
-      stop();
-    count++;
-    const requestSignal = init!.signal!;
-    const bodyFailed = () => controller.abort();
-    requestSignal.addEventListener("abort", bodyFailed, { once: true });
-    const release = () =>
-      requestSignal.removeEventListener("abort", bodyFailed);
-    try {
-      const response = await fetch(input, init);
-      if (!(response instanceof Response)) stop();
-      try {
-        guard();
-      } catch (error) {
-        void response.body?.cancel().catch(() => undefined);
-        throw error;
-      }
-      if (
-        !response.ok ||
-        response.redirected ||
-        (response.url !== "" && response.url !== url)
-      ) {
-        void response.body?.cancel().catch(() => undefined);
-        stop();
-      }
-      if (response.body === null) {
-        release();
-        return response;
-      }
-      const reader = response.body.getReader();
-      const body = new ReadableStream<Uint8Array>(
-        {
-          async pull(stream) {
-            try {
-              const part = await reader.read();
-              if (part.done) {
-                release();
-                reader.releaseLock();
-                stream.close();
-              } else stream.enqueue(part.value);
-            } catch {
-              bodyFailed();
-              release();
-              stream.error(new Error("Managed SEC body failed"));
-            }
-          },
-          cancel() {
-            release();
-            void reader.cancel().catch(() => undefined);
-          },
-        },
-        { highWaterMark: 0 },
-      );
-      return new Response(body, {
-        status: response.status,
-        headers: response.headers,
-      });
-    } catch {
-      release();
-      return stop();
-    }
   };
 }

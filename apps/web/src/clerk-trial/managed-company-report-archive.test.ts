@@ -1,3 +1,4 @@
+import { COMPANY_REPORT_DOCUMENT_MAX_BYTES } from "./managed-company-report-document";
 import { beforeAll, describe, expect, it } from "vitest";
 import { reportAnnualPacket } from "./managed-annual-statements-report-fixture";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
@@ -56,6 +57,7 @@ async function preparedReport(selection = eodSelection) {
     price.getSnapshot(),
     annual.getSnapshot(),
     filings.getSnapshot(),
+    null,
   );
   return prepareCompanyReport(
     selection,
@@ -98,6 +100,7 @@ describe("current company report archive admission", () => {
     expect(archive.sources.map((value) => value.status)).toEqual([
       "loaded",
       "loaded",
+      "not_loaded",
       "loaded",
     ]);
     expect(archive.sources[0]!.fields).toContainEqual({
@@ -110,11 +113,11 @@ describe("current company report archive admission", () => {
       )!.value,
     ).toContain("0000000001-26-000001");
     expect(
-      archive.sources[2]!.fields.filter((value) => value.label === "Filing"),
+      archive.sources[3]!.fields.filter((value) => value.label === "Filing"),
     ).toHaveLength(2);
-    expect(archive.sources[2]!.references).toHaveLength(3);
+    expect(archive.sources[3]!.references).toHaveLength(3);
     expect(Object.isFrozen(archive)).toBe(true);
-    expect(Object.isFrozen(archive.sources[2]!.fields[0])).toBe(true);
+    expect(Object.isFrozen(archive.sources[3]!.fields[0])).toBe(true);
     expect(Object.hasOwn(archive, "evidence")).toBe(false);
     expect(Object.hasOwn(archive, "valuation")).toBe(false);
     expect(archive.unverifiedAppendix).toContain("financials");
@@ -192,7 +195,7 @@ describe("current company report archive admission", () => {
       lastAttemptFailed: true,
       responseOrigin: "company",
     });
-    expect(archive.sources[2]).toMatchObject({
+    expect(archive.sources[3]).toMatchObject({
       status: "not_loaded",
       lastAttemptFailed: true,
       fields: [],
@@ -467,7 +470,9 @@ describe("archive refusal boundaries", () => {
     expect(await parseCompanyReportArchive(value, signal())).toBeNull();
   });
   it("checks the exact whole byte ceiling before decoding and permits only a bounded complete document", async () => {
-    expect(COMPANY_REPORT_ARCHIVE_MAX_BYTES).toBe(2_850_816);
+    expect(COMPANY_REPORT_ARCHIVE_MAX_BYTES).toBe(
+      COMPANY_REPORT_DOCUMENT_MAX_BYTES,
+    );
     expect(() =>
       assertCompanyReportArchiveSize(COMPANY_REPORT_ARCHIVE_MAX_BYTES),
     ).not.toThrow();

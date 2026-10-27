@@ -26,6 +26,7 @@ const allowedScenarios = [
   "annual-liquidity-history",
   "annual-financial-review",
   "annual-statements",
+  "interim-statements",
   "authored-valuation",
   "saved-valuation",
   "annual-balance-sheet",
@@ -89,7 +90,9 @@ if (scenario === "company-direct-entry")
   history.replaceState(null, "", "/?company=listing-zero&section=annual");
 export const fixture = await createFixture(scenario ?? "default");
 export const nativeReport =
-  scenario === "company-snapshot" || scenario === "annual-statements"
+  scenario === "company-snapshot" ||
+  scenario === "annual-statements" ||
+  scenario === "interim-statements"
     ? createNativeReportFixture()
     : null;
 export const nativePortfolioReviewReport =

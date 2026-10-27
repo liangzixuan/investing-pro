@@ -39,6 +39,7 @@ export async function reportRevisitDocument(base: SharedNativeFixture) {
         workspace.eod.getSnapshot(),
         workspace.annual.getSnapshot(),
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       ),
       workspace.getResearchWatchlist(selection),
       () => new Date(archivedPreparedAt),

@@ -73,6 +73,7 @@ async function fixture(range: "1m" | "1y" = "1m") {
     price.getSnapshot(),
     annual.getSnapshot(),
     filings.getSnapshot(),
+    null,
   );
   const report = prepareCompanyReport(
     eodSelection,
@@ -181,6 +182,7 @@ describe("company research document inspection", () => {
     annual.open(eodSelection);
     await annual.load();
     const evidence = () => ({
+      interim: null,
       price: null,
       annual: annual.getSnapshot(),
       filings: null,
@@ -244,7 +246,7 @@ describe("company research document inspection", () => {
       ),
     );
     expect(isCompanyReportDocument(document)).toBe(true);
-    expect(decode(document.text).schemaVersion).toBe("5.0.0");
+    expect(decode(document.text).schemaVersion).toBe("6.0.0");
     expect(
       companyReportIsCurrent(report, eodSelection, evidence(), draft),
     ).toBe(true);
@@ -302,7 +304,7 @@ describe("company research document inspection", () => {
     expect(isCompanyReportDocument(document)).toBe(true);
     const parsed = decode(document.text);
     expect(parsed.purpose).toBe("investment.company-research");
-    expect(parsed.schemaVersion).toBe("5.0.0");
+    expect(parsed.schemaVersion).toBe("6.0.0");
     expect(parsed.preparedAt).toBe(now().toISOString());
     expect(parsed.catalogSnapshotSha256).toBe(
       eodSelection.catalogSnapshotSha256,

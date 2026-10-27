@@ -51,6 +51,9 @@ function inventedApi() {
   );
   const refuse = () => vi.fn(() => unexpected());
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     load: refuse(),
     save: refuse(),
     loadPortfolio: refuse(),

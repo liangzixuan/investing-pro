@@ -1,4 +1,5 @@
 import { type PersonalSecAnnualFinancialReviewRow } from "@research-cockpit/personal-financial-analytics";
+import { InterimStatementsReportView } from "./InterimStatementsReportView";
 import { AnnualStatementsReportView } from "./AnnualStatementsReportView";
 import { type PreparedCompanyReport } from "./managed-company-report";
 import { ManagedValuationResults } from "./ManagedValuationResults";
@@ -391,6 +392,16 @@ export function CompanyReportHtmlView({
         <ManagedValuationPriceContext context={report.valuationPrice} />
       )}
       <Annual report={report} />
+      <section>
+        <h2>Captured Interim source</h2>
+        <SourceState source={report.evidence.interim} />
+        {report.evidence.interim?.response && report.evidence.interim.view && (
+          <InterimStatementsReportView
+            evidence={report.evidence.interim.response.evidence}
+            statements={report.evidence.interim.view.statements}
+          />
+        )}
+      </section>
       <CapturedPrice report={report} />
       <CapturedFilings report={report} />
       <section>

@@ -29,13 +29,18 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 27 Android delivery
 
-The next M4 candidate is [dated Portfolio composition review](MANAGED_PORTFOLIO_COMPOSITION.md).
-Inspect exact holding values and authored cash against one complete dated total,
-continue through company research and an authored next check, then capture the
-same composition in the existing private reading report. Missing prices, unknown
-cash and zero totals retain unavailable percentages. It adds no provider, schema,
-coverage, fee, target allocation or return claim. This is one connected Portfolio
-inspection increment; broader Pro-style research milestones remain open.
+The next M2 outcome is [reported interim financial review](MANAGED_INTERIM_STATEMENTS.md).
+Connect one explicit supported interim read through Income, Balance sheet and
+Cash flow inspection, full selected-cell note preview, company report and
+independent Save. Exact reported periods, source clocks and unavailable values
+remain visible. This does not infer discrete quarters, period differences or TTM.
+Source implementation, native acceptance and API/client activation are separate.
+
+Android 1.50 delivers [dated Portfolio composition](MANAGED_PORTFOLIO_COMPOSITION.md)
+from main `cfa11b08aa10eeb0100fb25afc79038a6d69ebe5`. All original required
+checks, synthetic native 95-case scope and full guarded APK verification passed.
+Exact holdings and cash use one complete dated denominator, preserved in the
+private report. Installation remains an owner action. API/site are unchanged.
 
 Android 1.49 delivers [a dated check from a Markets calendar item](MANAGED_CALENDAR_FOLLOWUP.md)
 from accepted main `004e7a3cb1f045ed8013c41849802f794246f32b`. All original

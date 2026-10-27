@@ -40,6 +40,7 @@ describe("bounded native company-snapshot journey", () => {
             workspace.eod.getSnapshot(),
             workspace.annual.getSnapshot(),
             workspace.filings.getSnapshot(),
+            workspace.interim.getSnapshot(),
           )}
           onSection={() => {}}
         />,

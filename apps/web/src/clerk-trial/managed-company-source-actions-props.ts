@@ -81,6 +81,7 @@ function selectCompanySourceSection(
   return (section) => {
     if (workspace.getSnapshot().research?.selection !== visit.selection) return;
     if (navigation) navigation.section(section);
+    else if (section === "interim") workspace.switchToInterim();
     else if (section === "annual") workspace.switchToAnnual();
     else if (section === "eod") workspace.switchToEod();
     else if (section === "filings") workspace.switchToFilings();

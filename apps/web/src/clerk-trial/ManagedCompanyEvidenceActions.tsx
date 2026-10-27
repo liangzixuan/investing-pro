@@ -6,7 +6,7 @@ import {
 } from "./useCompanySnapshotEvidence";
 import "./managed-company-snapshot.css";
 
-type Section = "eod" | "annual" | "filings";
+type Section = "eod" | "annual" | "interim" | "filings";
 type SourceState = {
   readonly running: boolean;
   readonly showingPrevious: boolean;
@@ -95,6 +95,28 @@ export function ManagedCompanyEvidenceActions({
             {models.annual.hasCoverage(models.selection)
               ? "Financial values keep their own availability and refusal reasons in Annual."
               : "New Annual reads are not available for this listing in this workspace."}
+          </p>
+        </SourceCard>
+        <SourceCard
+          navigationPending={navigationPending}
+          title="Interim"
+          section="interim"
+          state={evidence.interim}
+          loaded={Boolean(evidence.interim?.response)}
+          completedAt={
+            evidence.interim?.response?.evidence.generation.completedAt
+          }
+          requestLabel={
+            evidence.interim?.response ? "Refresh Interim" : "Load Interim"
+          }
+          supported={models.interim.hasCoverage(models.selection)}
+          onRequest={onRequest}
+          onCancel={onCancel}
+          onOpen={onOpen}
+        >
+          <p>
+            CompanyFacts-only reported-period views. Quarter and YTD
+            classification is not established.
           </p>
         </SourceCard>
         <SourceCard

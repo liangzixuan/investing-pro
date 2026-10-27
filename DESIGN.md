@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Reported interim financial review
+
+Keep one explicit source load and adjacent filing identity, original clocks and
+coverage. Use Income, Balance sheet and Cash flow controls over the same admitted
+graph. Show full start/end or instant dates beside each exact value. Same-end
+flows with different starts occupy separate rows; unknown quarter/YTD roles use
+plain text. Reuse wrapping identities, labelled table regions, visible focus and
+44px actions. Keep full previews readable above fixed navigation, with complete
+scrollable report content. View/selection changes start no source read or Save.
+
 ## Dated Portfolio composition
 
 Place **Composition at this close** beside the existing dated holdings values.

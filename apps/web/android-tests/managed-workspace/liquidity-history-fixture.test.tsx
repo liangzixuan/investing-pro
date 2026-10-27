@@ -112,6 +112,7 @@ describe("invented reported liquidity history", () => {
         workspace.eod.getSnapshot(),
         workspace.annual.getSnapshot(),
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       );
     const history = () =>
       resolvePersonalSecAnnualCanonicalLiquidityHistory(

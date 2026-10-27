@@ -1,3 +1,6 @@
+import { ManagedInterimReport } from "./ManagedInterimReport";
+import type { ManagedInterimStatementsActions } from "./ManagedInterimStatementsReview";
+import type { ManagedInterimReport as InterimModel } from "./managed-interim-report";
 import {
   ManagedHoldingFollowup,
   type ManagedHoldingFollowupActions,
@@ -52,6 +55,8 @@ export function ManagedCompanyResearch({
   readReportWatchlist,
   reportRevisitTarget,
   annual,
+  interim,
+  interimStatementsActions,
   filings,
   eod,
   onSection,
@@ -95,6 +100,8 @@ export function ManagedCompanyResearch({
     selection: ManagedResearchSelection,
   ) => ResearchWatchlistState;
   annual: AnnualModel;
+  interim: InterimModel;
+  interimStatementsActions: ManagedInterimStatementsActions;
   filings: FilingsModel;
   eod: EodModel;
   onSection: (section: ManagedResearchVisit["section"]) => void;
@@ -136,7 +143,12 @@ export function ManagedCompanyResearch({
     member: WatchlistMembership,
   ) => void;
 }) {
-  const labels = { eod: "Price", annual: "Annual", filings: "Filings" };
+  const labels = {
+    eod: "Price",
+    annual: "Annual",
+    interim: "Interim",
+    filings: "Filings",
+  };
   const listing = research.selection.listing;
   return (
     <section
@@ -180,6 +192,7 @@ export function ManagedCompanyResearch({
         selection={research.selection}
         price={eod}
         annual={annual}
+        interim={interim}
         filings={filings}
         onRequest={(section) => void onRequestSource(section)}
         onCancel={onCancelSource}
@@ -197,6 +210,7 @@ export function ManagedCompanyResearch({
         selection={research.selection}
         price={eod}
         annual={annual}
+        interim={interim}
         filings={filings}
         onSection={onSection}
       />
@@ -206,6 +220,7 @@ export function ManagedCompanyResearch({
         selection={research.selection}
         price={eod}
         annual={annual}
+        interim={interim}
         filings={filings}
         watchlist={watchlist}
         {...(valuation ? { valuation } : {})}
@@ -239,19 +254,21 @@ export function ManagedCompanyResearch({
             className="managed-company-sections"
             aria-label="Company research sections"
           >
-            {(["eod", "annual", "filings"] as const).map((section) => (
-              <button
-                key={section}
-                className="trial-secondary"
-                aria-label={`${labels[section]} section for ${listing.symbol}`}
-                aria-pressed={research.section === section}
-                aria-controls="managed-company-content"
-                disabled={navigationPending}
-                onClick={() => onSection(section)}
-              >
-                {labels[section]}
-              </button>
-            ))}
+            {(["eod", "annual", "interim", "filings"] as const).map(
+              (section) => (
+                <button
+                  key={section}
+                  className="trial-secondary"
+                  aria-label={`${labels[section]} section for ${listing.symbol}`}
+                  aria-pressed={research.section === section}
+                  aria-controls="managed-company-content"
+                  disabled={navigationPending}
+                  onClick={() => onSection(section)}
+                >
+                  {labels[section]}
+                </button>
+              ),
+            )}
           </nav>
           <div id="managed-company-content">
             {research.section === "annual" ? (
@@ -266,6 +283,21 @@ export function ManagedCompanyResearch({
                 {...(annualStatementsActions
                   ? { statementActions: annualStatementsActions }
                   : {})}
+              />
+            ) : research.section === "interim" ? (
+              <ManagedInterimReport
+                model={interim}
+                actions={interimStatementsActions}
+                blockedReason={
+                  navigationPending
+                    ? "Finish navigation before preparing a note."
+                    : !watchlist.canEdit || !watchlist.member
+                      ? (watchlist.reason ??
+                        "Add this company to the Watchlist draft before preparing a note.")
+                      : null
+                }
+                onLoad={() => void onRequestSource("interim")}
+                onCancel={() => onCancelSource("interim")}
               />
             ) : research.section === "eod" ? (
               <ManagedEodHistory

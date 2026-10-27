@@ -1077,3 +1077,5 @@ export * from "./managed-portfolio";
 export * from "./managed-valuation-assumptions";
 export * from "./managed-eod-history";
 export * from "./managed-sec-filings";
+
+export * from "./personal-sec-interim-statements";

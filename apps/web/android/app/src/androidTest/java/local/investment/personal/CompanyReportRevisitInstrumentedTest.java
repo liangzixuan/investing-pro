@@ -58,7 +58,7 @@ public class CompanyReportRevisitInstrumentedTest {
         byte[] bytes = WatchlistTestDocuments.readReport(InstrumentationRegistry.getInstrumentation().getTargetContext(), outputs[0]);
         assertTrue(bytes.length > 266_240 && bytes.length < 2_850_816);
         JSONObject archive = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
-        assertEquals("5.0.0", archive.getString("schemaVersion"));
+        assertEquals("6.0.0", archive.getString("schemaVersion"));
         assertEquals(300_000, archive.getJSONObject("sources").getJSONObject("annual").getJSONObject("statements").getString("opaqueInventedPadding").length());
         page.requireUnchanged(new ReportRevisitPage.Draft(before, ReportRevisitPage.AnnualReads.NONE));
         page.click(ReportRevisitPage.Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='My Watchlist']"));

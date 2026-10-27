@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import type { ManagedInterimReport } from "./managed-interim-report";
 import type { ManagedAnnualReport } from "./managed-annual-report";
 import type { ManagedEodHistory } from "./managed-eod-history";
 import type { ManagedCompanyFilings } from "./managed-company-filings";
@@ -9,6 +10,7 @@ export interface CompanyEvidenceModels {
   selection: ManagedResearchSelection;
   price: ManagedEodHistory;
   annual: ManagedAnnualReport;
+  interim: ManagedInterimReport;
   filings: ManagedCompanyFilings;
 }
 
@@ -17,6 +19,7 @@ export function useCompanySnapshotEvidence({
   selection,
   price,
   annual,
+  interim,
   filings,
 }: CompanyEvidenceModels) {
   const priceState = useSyncExternalStore(
@@ -34,10 +37,16 @@ export function useCompanySnapshotEvidence({
     filings.getSnapshot,
     filings.getSnapshot,
   );
+  const interimState = useSyncExternalStore(
+    interim.subscribe,
+    interim.getSnapshot,
+    interim.getSnapshot,
+  );
   return companySnapshotEvidence(
     selection,
     priceState,
     annualState,
     filingsState,
+    interimState,
   );
 }

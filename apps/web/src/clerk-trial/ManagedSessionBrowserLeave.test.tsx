@@ -49,6 +49,9 @@ describe("managed session browser warning lifetime", () => {
         memberships: [],
       };
       const api: ManagedApi = {
+        interimReport: vi
+          .fn<() => Promise<never>>()
+          .mockRejectedValue(new Error("Unexpected interim read")),
         loadValuationAssumptions: () =>
           Promise.reject(
             new Error("Unexpected invented valuation assumptions read"),

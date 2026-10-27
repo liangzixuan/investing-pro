@@ -95,6 +95,9 @@ async function fixture(
     ),
   );
   const api = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
     load: vi.fn<ManagedApi["load"]>(unexpected),
     save: unexpected,

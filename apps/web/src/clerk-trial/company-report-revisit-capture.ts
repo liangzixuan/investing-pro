@@ -20,6 +20,7 @@ function sourceSnapshots(props: CompanyReportRevisitProps) {
   return {
     price: props.price.getSnapshot(),
     annual: props.annual.getSnapshot(),
+    interim: props.interim.getSnapshot(),
     filings: props.filings.getSnapshot(),
     valuation: props.valuation?.getSnapshot(),
   };
@@ -30,6 +31,7 @@ function sourceSnapshotsCurrent(
 ) {
   if (props.price.getSnapshot() !== source.price) return false;
   if (props.annual.getSnapshot() !== source.annual) return false;
+  if (props.interim.getSnapshot() !== source.interim) return false;
   if (props.filings.getSnapshot() !== source.filings) return false;
   return props.valuation?.getSnapshot() === source.valuation;
 }
@@ -45,6 +47,7 @@ export function captureCompanyReportRevisit(props: CompanyReportRevisitProps) {
     source.price,
     source.annual,
     source.filings,
+    source.interim,
   );
   const calculation = source.valuation?.calculation ?? null;
   return {

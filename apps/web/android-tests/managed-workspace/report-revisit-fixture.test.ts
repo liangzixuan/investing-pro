@@ -47,6 +47,7 @@ async function current() {
       workspace.eod.getSnapshot(),
       workspace.annual.getSnapshot(),
       workspace.filings.getSnapshot(),
+      workspace.interim.getSnapshot(),
     ),
     workspace.getResearchWatchlist(selection),
     () => new Date("2026-10-23T17:00:00.000Z"),

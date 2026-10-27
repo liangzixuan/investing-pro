@@ -229,6 +229,9 @@ function explicitResourceApiRefusals(): Pick<
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     ...explicitResourceApiRefusals(),
     monetaryAnnouncements: vi
       .fn<ManagedApi["monetaryAnnouncements"]>()

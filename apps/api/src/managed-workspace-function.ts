@@ -13,6 +13,8 @@ import {
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_LIMITS,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_SEC_FILINGS_LIMITS,
@@ -50,15 +52,11 @@ import {
   type ManagedSecAdmissionOperation,
 } from "./managed-sec-admission";
 import {
-  createManagedSecAnnualService,
-  awaitManagedSecAnnual,
-  ManagedSecAnnualServiceError,
-} from "./managed-sec-annual-service";
-import {
-  createManagedSecFilingsService,
-  awaitManagedSecFilings,
-  ManagedSecFilingsServiceError,
-} from "./managed-sec-filings-service";
+  createManagedSecRouteServices,
+  awaitManagedSecRoute,
+  managedSecRouteTimeout,
+} from "./managed-sec-source-services";
+import { isManagedSourceServiceError } from "./managed-source-service-errors";
 import {
   validateManagedEodConfiguration,
   MANAGED_EOD_BUDGET,
@@ -130,6 +128,16 @@ const PATHS: readonly string[] = [
   MANAGED_CATALOG_RESOLVE_PATH,
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_PATH,
+  MANAGED_SEC_FILINGS_PATH,
+  MANAGED_EOD_HISTORY_PATH,
+  MANAGED_BLS_CALENDAR_PATH,
+  MANAGED_ECONOMIC_CALENDAR_PATH,
+  MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
+];
+const SOURCE_PATHS: readonly string[] = [
+  MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_PATH,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_BLS_CALENDAR_PATH,
@@ -184,13 +192,15 @@ export function bridgeManagedWorkspaceRequest(
           ? MANAGED_RESEARCH_FOLLOWUPS_LIMITS.envelopeBytes
           : req.path === MANAGED_WATCHLIST_PATH
             ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
-            : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
-              ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
-              : req.path === MANAGED_SEC_FILINGS_PATH
-                ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
-                : req.path === MANAGED_EOD_HISTORY_PATH
-                  ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
-                  : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
+            : req.path === MANAGED_SEC_INTERIM_EVIDENCE_PATH
+              ? MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.requestBytes
+              : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
+                ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
+                : req.path === MANAGED_SEC_FILINGS_PATH
+                  ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
+                  : req.path === MANAGED_EOD_HISTORY_PATH
+                    ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
+                    : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
   if (req.bodyBinary.byteLength > maximum)
     throw new BridgeFailure(413, "payload_too_large");
   if (req.method !== "POST" && req.bodyBinary.byteLength !== 0)
@@ -247,16 +257,13 @@ export function createManagedWorkspaceFunction(
       return res.json({ error: "origin_denied" }, 403, headers);
     headers["access-control-allow-origin"] = origin;
     let dispatchedWrite = false;
-    const annual = req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH;
-    const filings = req.path === MANAGED_SEC_FILINGS_PATH;
     const eod = req.path === MANAGED_EOD_HISTORY_PATH;
     const blsCalendar = req.path === MANAGED_BLS_CALENDAR_PATH;
     const calendar = req.path === MANAGED_ECONOMIC_CALENDAR_PATH || blsCalendar;
     const announcements = req.path === MANAGED_MONETARY_ANNOUNCEMENTS_PATH;
-    const sourceController =
-      annual || filings || eod || calendar || announcements
-        ? new AbortController()
-        : undefined;
+    const sourceController = SOURCE_PATHS.includes(req.path)
+      ? new AbortController()
+      : undefined;
     const sourceTimer =
       sourceController === undefined
         ? undefined
@@ -317,28 +324,13 @@ export function createManagedWorkspaceFunction(
             ? nativeAuth
             : webAuth,
         catalog,
-        ...(!annual
-          ? {}
-          : {
-              annual: createManagedSecAnnualService({
-                configuration: secConfiguration,
-                catalog: getManagedWorkspaceCatalog(),
-                enteredAt,
-                startedAt,
-                openAdmission: openSecAdmission,
-              }),
-            }),
-        ...(!filings
-          ? {}
-          : {
-              filings: createManagedSecFilingsService({
-                configuration: secConfiguration,
-                catalog: getManagedWorkspaceCatalog(),
-                enteredAt,
-                startedAt,
-                openAdmission: openSecAdmission,
-              }),
-            }),
+        ...createManagedSecRouteServices(req.path, {
+          configuration: secConfiguration,
+          catalog: getManagedWorkspaceCatalog(),
+          enteredAt,
+          startedAt,
+          openAdmission: openSecAdmission,
+        }),
         ...(!calendar
           ? {}
           : blsCalendar
@@ -503,15 +495,11 @@ export function createManagedWorkspaceFunction(
               )
             : eod
               ? awaitManagedEod(handle(request), sourceController.signal)
-              : filings
-                ? awaitManagedSecFilings(
-                    handle(request),
-                    sourceController.signal,
-                  )
-                : awaitManagedSecAnnual(
-                    handle(request),
-                    sourceController.signal,
-                  )
+              : awaitManagedSecRoute(
+                  req.path,
+                  handle(request),
+                  sourceController.signal,
+                )
         : handle(request));
       const body = await response.text();
       if (
@@ -525,9 +513,7 @@ export function createManagedWorkspaceFunction(
             ? new ManagedEconomicCalendarServiceError("request_timeout")
             : eod
               ? new ManagedEodServiceError("request_timeout")
-              : filings
-                ? new ManagedSecFilingsServiceError("request_timeout")
-                : new ManagedSecAnnualServiceError("request_timeout");
+              : managedSecRouteTimeout(req.path);
       return res.text(
         body,
         response.status,
@@ -539,11 +525,7 @@ export function createManagedWorkspaceFunction(
           error:
             error instanceof BridgeFailure
               ? error.code
-              : error instanceof ManagedSecAnnualServiceError ||
-                  error instanceof ManagedSecFilingsServiceError ||
-                  error instanceof ManagedEodServiceError ||
-                  error instanceof ManagedEconomicCalendarServiceError ||
-                  error instanceof ManagedMonetaryAnnouncementsServiceError
+              : isManagedSourceServiceError(error)
                 ? error.code
                 : dispatchedWrite
                   ? "commit_unknown"
@@ -551,11 +533,7 @@ export function createManagedWorkspaceFunction(
         },
         error instanceof BridgeFailure
           ? error.status
-          : (error instanceof ManagedSecAnnualServiceError ||
-                error instanceof ManagedSecFilingsServiceError ||
-                error instanceof ManagedEodServiceError ||
-                error instanceof ManagedEconomicCalendarServiceError ||
-                error instanceof ManagedMonetaryAnnouncementsServiceError) &&
+          : isManagedSourceServiceError(error) &&
               error.code === "request_timeout"
             ? 408
             : 503,

@@ -1,3 +1,4 @@
+import { unloadedInterim } from "./test-managed-interim-model";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { reportAnnualPacket } from "./managed-annual-statements-report-fixture";
 import * as React from "react";
@@ -58,6 +59,7 @@ async function fixture() {
       price.getSnapshot(),
       annual.getSnapshot(),
       filings.getSnapshot(),
+      null,
     );
   const prepare = () =>
     prepareCompanyReport(eodSelection, evidence(), draft(member), now);
@@ -67,6 +69,7 @@ async function fixture() {
     await filings.load();
   };
   return {
+    interim: unloadedInterim(),
     price,
     annual,
     filings,
@@ -155,7 +158,7 @@ describe("prepared loaded company research report", () => {
     const held = renderToStaticMarkup(
       <CompanyReportView {...props} navigationPending />,
     );
-    expect(held.match(/ disabled=""/gu)).toHaveLength(3);
+    expect(held.match(/ disabled=""/gu)).toHaveLength(4);
     expect(held.replaceAll(' disabled=""', "")).toBe(ready);
     expect(held).toMatch(
       /<button(?![^>]*disabled)[^>]*>Prepare research report<\/button>/u,

@@ -499,7 +499,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("schema5 captures all six comparisons and original graphs once with exact assumptions, source and methodology",
             "(() => { const field=document.querySelector('#managed-report-document'); if(!field?.readOnly)return false; const d=JSON.parse(field.value), c=d.valuationPrice, p=d.sources.price.response, v=d.valuation;" +
-            " const base=(model)=>c.rows.find(row=>row.model===model && row.scenario==='base'); return d.schemaVersion==='5.0.0' && d.authoredResearch.note===" + JSONObject.quote(expected) +
+            " const base=(model)=>c.rows.find(row=>row.model===model && row.scenario==='base'); return d.schemaVersion==='6.0.0' && d.authoredResearch.note===" + JSONObject.quote(expected) +
             " && d.listing.listingId==='listing-zero' && d.listing.shareClassId==='class-zero' && d.catalogSnapshotSha256==='sha256:'+'a'.repeat(64)" +
             " && d.sources.annual.status==='not_loaded' && d.sources.filings.status==='not_loaded' && d.sources.price.status==='loaded'" +
             " && p.provider==='Tiingo' && p.currency==='USD' && p.priceBasis==='raw_close' && p.range==='1m' && p.window.startDate==='2026-08-20' && p.window.endDate==='2026-09-20'" +
@@ -654,7 +654,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("schema two report keeps exact authored assumptions, complete results and both sensitivity grids without sources",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), v = d.valuation;" +
-            " return d.schemaVersion === '5.0.0' && d.authoredResearch.note === " + JSONObject.quote(prefix) +
+            " return d.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(prefix) +
             " && d.listing.listingId === 'listing-zero' && v.dcfDraft.startingUnleveredCashFlowUsd === '100' && v.exitDraft.cash === '100'" +
             " && v.dcfInput.forecastYears === 5 && v.exitInput.horizonYears === 5" +
             " && v.dcfResult.scenarios.base.valuePerShareUsd === '140.00' && v.exitResult.scenarios.base.valuePerShare === '19.00'" +
@@ -701,7 +701,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-company-report > summary");
         click(".managed-company-report .trial-actions button:first-child");
         click(".managed-report-document > summary");
-        awaitPage("new report captures the saved note together with the retained raw valuation", "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value); return d.schemaVersion === '5.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
+        awaitPage("new report captures the saved note together with the retained raw valuation", "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value); return d.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
             " && d.valuation.dcfDraft.waccPercent === '10' && d.valuation.exitDraft.cash === '100' && d.valuation.dcfResult.sensitivity.cells.length === 25 && d.valuation.exitResult.sensitivity.cells.length === 25; })()");
         retainAnnualNoteFrame("authoredValuationReport", "#managed-prepared-report-heading", "#managed-prepared-report-heading", 1);
         click("#managed-signout-open");
@@ -4000,7 +4000,7 @@ public class ManagedWorkspaceInstrumentedTest {
             awaitPage("the complete prepared JSON contains the exact unsaved Unicode draft and loaded source",
                 "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly || !field.value) return false;" +
                 " const report = JSON.parse(field.value); return report.authoredResearch.note === " + JSONObject.quote(note) +
-                " && report.purpose === 'investment.company-research' && report.schemaVersion === '5.0.0'" +
+                " && report.purpose === 'investment.company-research' && report.schemaVersion === '6.0.0'" +
                 " && report.listing.listingId === 'listing-zero' && report.listing.symbol === 'ZERO' && report.listing.exchangeMic === 'XNAS'" +
                 " && report.sources.annual.response.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
                 " && report.sources.price.status === 'not_loaded' && report.sources.filings.status === 'not_loaded'; })()");
@@ -4511,7 +4511,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("report JSON retains the exact draft, complete admitted packets and source clocks",
             "(() => { const field = document.querySelector('#managed-report-document'); " +
             "if (!field?.readOnly || !field.value) return false; const value = JSON.parse(field.value); " +
-            "return value.purpose === 'investment.company-research' && value.schemaVersion === '5.0.0' && " +
+            "return value.purpose === 'investment.company-research' && value.schemaVersion === '6.0.0' && " +
             "value.authoredResearch.status === 'watchlist_draft' && value.authoredResearch.note === " + JSONObject.quote(NOTE) + " && " +
             "value.listing.listingId === 'listing-zero' && value.listing.symbol === 'ZERO' && " +
             "value.sources.price.response.completedAt === '2026-09-20T00:00:01.000Z' && " +
@@ -7427,7 +7427,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " if (!m) return false; const available = [m.selectedWindowReturn,m.maximumDrawdown];" +
             " const refused = [m.trailing20SessionAnnualizedVolatility,m.smaTrend.sma20,m.smaTrend.sma50,m.smaTrend.sma200,m.trailing252SessionCloseRangePosition];" +
             " const all = [...available,...refused];" +
-            " return d.purpose === 'investment.company-research' && d.schemaVersion === '5.0.0'" +
+            " return d.purpose === 'investment.company-research' && d.schemaVersion === '6.0.0'" +
             " && d.authoredResearch.status === 'watchlist_draft' && d.authoredResearch.note === " + JSONObject.quote(PRICE_STUDIES_NOTE) +
             " && d.listing.listingId === 'listing-zero' && d.listing.symbol === 'ZERO' && d.catalogSnapshotSha256 === 'sha256:'+'a'.repeat(64)" +
             " && d.sources.annual.status === 'not_loaded' && d.sources.filings.status === 'not_loaded' && d.valuation === null" +
@@ -7541,7 +7541,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("complete report retains the operating graph, raw revenue and missing net income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
             " const doc = JSON.parse(field.value), annual = doc.sources.annual.response;" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '5.0.0' && annual.schemaVersion === '6.0.0'" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '6.0.0' && annual.schemaVersion === '6.0.0'" +
             " && annual.evidence.facts.observations.find(row => row.concept === 'OperatingIncomeLoss').value === '-250.125'" +
             " && doc.sources.annual.financials.operatingResults.resolution.margins.length === 3" +
             " && annual.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').length === 3 && annual.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').every(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax'].includes(row.concept))" +
@@ -7705,7 +7705,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("schema4 captures all32 scans and95 original observations once with exact selected-cell references",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), a = d.sources.annual, e = a.response.evidence;" +
             " const rows = e.facts.observations, ids = new Set(rows.map(row => row.id));" +
-            " return d.schemaVersion === '5.0.0' && a.response.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
+            " return d.schemaVersion === '6.0.0' && a.response.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
             " && e.facts.scans.length === 32 && rows.length === 95 && ids.size === 95 && rows.every(row => !('metric' in row))" +
             " && field.value.split(String.fromCharCode(34) + 'observations' + String.fromCharCode(34) + ':').length === 2 && a.statements.statements.reduce((count,s) => count+s.rows.length,0) === 32" +
             " && a.statements.statements.length === 3 && a.statements.statements.every(s => s.columns.map(c => c.endDate).join('|') === '2025-12-31|2024-12-31|2023-12-31')" +
@@ -7989,7 +7989,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
             " const doc = JSON.parse(field.value), annual = doc.sources.annual.response, e = annual.evidence, b = doc.sources.annual.financials.balanceSheet;" +
             " const keys = ['totalAssets','totalLiabilities','shareholdersEquity'], concepts = ['Assets','Liabilities','StockholdersEquity'], amounts = ['1000.125','1200.25','-200.125'];" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '5.0.0' && annual.schemaVersion === '6.0.0'" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '6.0.0' && annual.schemaVersion === '6.0.0'" +
             " && annual.security.symbol === 'ZERO' && annual.security.listingId === 'listing-zero' && e.facts.observations.filter(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax','NetIncomeLoss'].includes(row.concept)).length === 0 && doc.sources.annual.financials.income.resolution.pairs.length === 0" +
             " && keys.every((key,i) => { const observations = e.facts.observations.filter(row => row.concept === concepts[i]), value = b.resolution[key], row = observations[0];" +
             " return observations.length === [3,2,3][i] && row.value === amounts[i] && row.concept === concepts[i] && row.unit === 'USD' && row.startDate === null && row.durationDays === null" +

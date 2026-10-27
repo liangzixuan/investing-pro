@@ -1,0 +1,59 @@
+.managed-interim-report,
+.managed-interim-review,
+.managed-interim-statements {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.managed-interim-review nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+.managed-interim-report button,
+.managed-interim-review button,
+.managed-interim-review input[type="checkbox"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+.managed-interim-statements details {
+  margin-block: 0.75rem;
+}
+.managed-interim-statements summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+.managed-frame .managed-interim-statements .managed-valuation-table {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.managed-frame .managed-interim-statements .managed-valuation-table table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 0;
+}
+.managed-frame
+  .managed-interim-statements
+  .managed-valuation-table
+  :is(th, td) {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.managed-interim-note textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.managed-interim-note button {
+  margin: 0.5rem;
+}
+.managed-interim-report :focus-visible {
+  outline: 3px solid var(--trial-accent, #3b82f6);
+  outline-offset: 3px;
+}

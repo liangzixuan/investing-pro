@@ -1,3 +1,4 @@
+import { unloadedInterim } from "./test-managed-interim-model";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
@@ -57,6 +58,7 @@ vi.mock("./company-report-revisit", () => ({
 }));
 vi.mock("./managed-company-report-archive", () => ({
   projectCurrentCompanyReport: model.project,
+  archivedInterimEvidence: () => null,
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
@@ -193,8 +195,9 @@ function fixture() {
   const archived: CompanyReportArchive = {
     ...snapshot(ARCHIVED_NOTE, "2026-09-01T12:00:00.000Z"),
     kind: "company_report_archive",
-    schemaVersion: "5.0.0",
+    schemaVersion: "6.0.0",
     byteLength: 200,
+    interim: null,
     unverifiedAppendix: APPENDIX,
   };
   const current = snapshot(CURRENT_NOTE, "2026-10-23T16:00:00.000Z");
@@ -232,6 +235,7 @@ function fixture() {
   type Props = Parameters<typeof ManagedCompanyReportRevisit>[0];
   const target = { isCurrent: () => true, append: vi.fn() };
   const defaults = {
+    interim: unloadedInterim(),
     selection: eodSelection,
     target: () => target,
     readWatchlist: vi.fn(),
