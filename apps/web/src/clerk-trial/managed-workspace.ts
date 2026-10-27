@@ -3222,12 +3222,15 @@ export class ManagedWorkspace {
       !this.fileCatalogReviewRequired
     );
   }
+  private calendarFollowupWatchlistReady(
+    saved: ReturnType<ManagedWorkspace["coordinator"]["getSnapshot"]>,
+  ) {
+    return saved.phase === "idle" && !saved.uncertain && !saved.replayPending;
+  }
   private calendarFollowupMemberReady(member: WatchlistMembership) {
     if (!this.calendarFollowupRouteReady() || !this.canEdit()) return false;
     const saved = this.coordinator.getSnapshot();
-    if (saved.phase !== "idle") return false;
-    if (saved.uncertain) return false;
-    if (saved.replayPending) return false;
+    if (!this.calendarFollowupWatchlistReady(saved)) return false;
     const digest = this.currentWatchlistCatalogDigest();
     return (
       digest !== null &&
