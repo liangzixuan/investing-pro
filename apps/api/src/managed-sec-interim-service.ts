@@ -103,6 +103,14 @@ function admitRequest(
     throw new ManagedSecInterimServiceError("invalid_request");
   if (request.catalogSnapshotSha256 !== catalog.snapshotSha256)
     throw new ManagedSecInterimServiceError("catalog_changed");
+  const listing = admitListing(catalog, request);
+  return { request, listing };
+}
+/** A current request cannot choose or broaden its catalog issuer. */
+function admitListing(
+  catalog: ManagedSecurityMasterCatalog,
+  request: PersonalSecInterimCanonicalRequestDto,
+) {
   const listing = lookupPersonalSecurityMasterListing(
     catalog,
     request.listingId,
@@ -113,8 +121,9 @@ function admitRequest(
     throw new ManagedSecInterimServiceError("invalid_request");
   if (!MANAGED_SEC_INTERIM_ISSUERS.includes(listing.cik))
     throw new ManagedSecInterimServiceError("invalid_request");
-  return { request, listing };
+  return listing;
 }
+
 async function reserveRead(
   options: Options,
   principal: WatchlistPrincipal,

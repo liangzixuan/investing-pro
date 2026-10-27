@@ -77,19 +77,26 @@ function dataProperty(value: object, key: string) {
     return null;
   return { value: descriptor.value as unknown };
 }
+function registeredConcept(
+  value: unknown,
+): value is PersonalSecInterimStatementConcept {
+  return (
+    typeof value === "string" && registry.some((row) => row.concept === value)
+  );
+}
+function selectionCount(value: unknown): value is number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value)) return false;
+  return value >= 1 && value <= 3200;
+}
 function selectionItem(value: unknown): ManagedInterimCellSelection | null {
   if (!plainSelection(value)) return null;
   if (Reflect.ownKeys(value).length !== 2) return null;
   const concept = dataProperty(value, "concept")?.value,
     key = dataProperty(value, "periodKey")?.value;
-  if (
-    typeof concept !== "string" ||
-    !registry.some((row) => row.concept === concept)
-  )
-    return null;
+  if (!registeredConcept(concept)) return null;
   if (typeof key !== "string" || key.length > 4096) return null;
   return Object.freeze({
-    concept: concept as PersonalSecInterimStatementConcept,
+    concept,
     periodKey: key,
   });
 }
@@ -98,8 +105,7 @@ function selectionLength(value: unknown) {
     return null;
   const count = Object.getOwnPropertyDescriptor(value, "length")
     ?.value as unknown;
-  if (typeof count !== "number" || !Number.isSafeInteger(count)) return null;
-  if (count < 1 || count > 3200) return null;
+  if (!selectionCount(count)) return null;
   return Reflect.ownKeys(value).length === count + 1 ? count : null;
 }
 function copySelection(

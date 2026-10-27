@@ -45,21 +45,8 @@ export async function sealFixture(evidence: Evidence): Promise<Evidence> {
     },
   };
 }
-/** Invented test data only; never exported by the package. No Node/provider imports. */
-export async function buildInterimFixture(
-  identity?: Pick<Response, "catalogSnapshotSha256" | "security">,
-): Promise<Response> {
-  const security = identity?.security ?? {
-    country: "US",
-    exchangeMic: "XNYS",
-    issuerId: "issuer:example",
-    issuerName: "Example Company",
-    listingId: "listing:example:c",
-    securityName: "Example Company Class C",
-    symbol: "EX.C",
-    cik: "0000000001",
-  };
-  const target = {
+function fixtureTarget() {
+  return {
     status: "target",
     accessionNumber: "0000000001-26-000002",
     form: "10-Q",
@@ -67,14 +54,19 @@ export async function buildInterimFixture(
     reportDate: "2026-06-30",
     acceptedAt: "2026-07-30T14:00:00Z",
   } as const;
-  const specs = [
-    ["RevenueFromContractWithCustomerExcludingAssessedTax", "40", "2026-04-01"],
-    ["RevenueFromContractWithCustomerExcludingAssessedTax", "75", "2026-01-01"],
-    ["NetIncomeLoss", "4", "2026-04-01"],
-    ["NetIncomeLoss", "7", "2026-01-01"],
-    ["Assets", "120", null],
-    ["NetCashProvidedByUsedInOperatingActivities", "9", "2026-01-01"],
-  ] as const;
+}
+const specs = [
+  ["RevenueFromContractWithCustomerExcludingAssessedTax", "40", "2026-04-01"],
+  ["RevenueFromContractWithCustomerExcludingAssessedTax", "75", "2026-01-01"],
+  ["NetIncomeLoss", "4", "2026-04-01"],
+  ["NetIncomeLoss", "7", "2026-01-01"],
+  ["Assets", "120", null],
+  ["NetCashProvidedByUsedInOperatingActivities", "9", "2026-01-01"],
+] as const;
+function fixtureObservations(
+  security: Response["security"],
+  target: ReturnType<typeof fixtureTarget>,
+) {
   const counts = new Map<string, number>();
   const observations: Row[] = specs.map(([concept, value, startDate]) => {
     const index = counts.get(concept) ?? 0;
@@ -111,7 +103,10 @@ export async function buildInterimFixture(
       },
     };
   });
-  const scans = registry.map(({ concept }) => {
+  return { observations, counts };
+}
+function fixtureScans(counts: ReadonlyMap<string, number>) {
+  return registry.map(({ concept }) => {
     const count = counts.get(concept) ?? 0;
     return {
       concept,
@@ -134,7 +129,12 @@ export async function buildInterimFixture(
       },
     };
   });
-  const evidence = await sealFixture({
+}
+function fixtureEvidence(security: Response["security"]) {
+  const target = fixtureTarget();
+  const { observations, counts } = fixtureObservations(security, target);
+  const scans = fixtureScans(counts);
+  return sealFixture({
     cik: security.cik,
     target,
     targetScan: {
@@ -166,6 +166,22 @@ export async function buildInterimFixture(
       },
     },
   });
+}
+/** Invented test data only; never exported by the package. No Node/provider imports. */
+export async function buildInterimFixture(
+  identity?: Pick<Response, "catalogSnapshotSha256" | "security">,
+): Promise<Response> {
+  const security = identity?.security ?? {
+    country: "US",
+    exchangeMic: "XNYS",
+    issuerId: "issuer:example",
+    issuerName: "Example Company",
+    listingId: "listing:example:c",
+    securityName: "Example Company Class C",
+    symbol: "EX.C",
+    cik: "0000000001",
+  };
+  const evidence = await fixtureEvidence(security);
   return {
     schemaVersion: "1.0.0",
     catalogSnapshotSha256: identity?.catalogSnapshotSha256 ?? emptyHash,

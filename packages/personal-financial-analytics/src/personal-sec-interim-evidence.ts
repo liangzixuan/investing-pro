@@ -3,6 +3,9 @@ import {
   PERSONAL_SEC_INTERIM_TARGET_REASONS,
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS,
   type PersonalSecInterimCanonicalEvidenceDto as Evidence,
+  type PersonalSecInterimSourceDto as Source,
+  type PersonalSecInterimCanonicalGenerationDto as Generation,
+  type PersonalSecInterimTargetDto as Target,
 } from "@research-cockpit/contracts";
 import {
   check,
@@ -154,22 +157,35 @@ export function assertPersonalSecInterimCanonicalEvidence(
   validateInterimFacts(input.facts, evidence);
 }
 
+function capturedDuringGeneration(
+  source: Source,
+  generation: Generation,
+): boolean {
+  if (source.fetchedAt === null) return true;
+  return (
+    source.fetchedAt >= generation.cutoffAt &&
+    source.fetchedAt <= generation.completedAt
+  );
+}
+function targetBeforeCutoff(target: Target, cutoffAt: string): boolean {
+  if (target.status === "unresolved") return true;
+  const cutoffDay = cutoffAt.slice(0, 10);
+  if (target.reportDate > target.filedDate) return false;
+  if (target.filedDate > cutoffDay) return false;
+  if (target.acceptedAt === null) return target.filedDate < cutoffDay;
+  return (
+    Date.parse(target.acceptedAt) <= Date.parse(cutoffAt) &&
+    target.acceptedAt.slice(0, 10) >= target.reportDate
+  );
+}
 export function interimTemporalContext(evidence: Evidence): boolean {
   const { generation, target } = evidence;
   if (generation.completedAt < generation.cutoffAt) return false;
-  const captured = Object.values(generation.sources).every(
-    (source) =>
-      source.fetchedAt === null ||
-      (source.fetchedAt >= generation.cutoffAt &&
-        source.fetchedAt <= generation.completedAt),
-  );
-  if (!captured) return false;
-  if (target.status === "unresolved") return true;
-  const cutoffDay = generation.cutoffAt.slice(0, 10);
-  if (target.reportDate > target.filedDate || target.filedDate > cutoffDay)
+  if (
+    !Object.values(generation.sources).every((source) =>
+      capturedDuringGeneration(source, generation),
+    )
+  )
     return false;
-  return target.acceptedAt === null
-    ? target.filedDate < cutoffDay
-    : Date.parse(target.acceptedAt) <= Date.parse(generation.cutoffAt) &&
-        target.acceptedAt.slice(0, 10) >= target.reportDate;
+  return targetBeforeCutoff(target, generation.cutoffAt);
 }

@@ -181,8 +181,9 @@ export class ManagedInterimReport {
     const lifetime = this.lifetime;
     this.operation = null;
     operation.abort();
-    if (this.retired || this.lifetime !== lifetime || this.operation !== null)
-      return;
+    if (this.retired) return;
+    if (this.lifetime !== lifetime) return;
+    if (this.operation !== null) return;
     this.update({
       running: false,
       showingPrevious: this.state.response !== null,
@@ -216,11 +217,7 @@ export class ManagedInterimReport {
     if (this.coolingDown()) return;
     const operation = new AbortController();
     this.operation = operation;
-    const current = () =>
-      !this.retired &&
-      this.operation === operation &&
-      this.state.selection === selection &&
-      !operation.signal.aborted;
+    const current = () => this.ownsRead(operation, selection);
     this.update({
       running: true,
       showingPrevious: this.state.response !== null,
@@ -239,6 +236,34 @@ export class ManagedInterimReport {
         this.update({ running: false });
       }
     }
+  }
+  private ownsRead(
+    operation: AbortController,
+    selection: ManagedResearchSelection,
+  ) {
+    return (
+      !this.retired &&
+      this.operation === operation &&
+      this.state.selection === selection &&
+      !operation.signal.aborted
+    );
+  }
+  private admittedView(
+    response: PersonalSecInterimCanonicalResponseDto | null,
+    selection: ManagedResearchSelection,
+  ) {
+    if (!response) throw new TrialApiError("invalid_response");
+    if (
+      !matches(
+        response,
+        selection,
+        getManagedResearchCoverageCik(selection, this.coverage),
+      )
+    )
+      throw new TrialApiError("invalid_response");
+    const view = getManagedInterimView(response);
+    if (!view) throw new TrialApiError("invalid_response");
+    return { response, view };
   }
   private async read(
     selection: ManagedResearchSelection,
@@ -262,21 +287,10 @@ export class ManagedInterimReport {
           operation.signal,
         );
     if (!current()) return;
-    if (
-      !response ||
-      !matches(
-        response,
-        selection,
-        getManagedResearchCoverageCik(selection, this.coverage),
-      )
-    )
-      throw new TrialApiError("invalid_response");
-    const view = getManagedInterimView(response);
-    if (!view) throw new TrialApiError("invalid_response");
+    const admitted = this.admittedView(response, selection);
     if (!current()) return;
     this.update({
-      response,
-      view,
+      ...admitted,
       responseOrigin: "request",
       showingPrevious: false,
       error: false,

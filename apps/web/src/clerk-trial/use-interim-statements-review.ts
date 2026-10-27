@@ -80,6 +80,24 @@ function useContext(response: Response, blocked: string | null) {
     committed() && context.blocked === null && context.revision === revision;
   return { context, committed, canAct };
 }
+function sameCell(left: Selection, right: Selection) {
+  return left.concept === right.concept && left.periodKey === right.periodKey;
+}
+function selectedCellAvailable(response: Response, selection: Selection) {
+  const cell = getManagedInterimView(response)!
+    .statements.statements.flatMap((statement) => statement.rows)
+    .find((row) => row.concept === selection.concept)
+    ?.cells.find((cell) => cell.period.key === selection.periodKey);
+  return cell?.status === "available";
+}
+function toggledSelection(keys: readonly Selection[], selection: Selection) {
+  const already = keys.some((key) => sameCell(key, selection));
+  return Object.freeze(
+    already
+      ? keys.filter((key) => !sameCell(key, selection))
+      : [...keys, Object.freeze(selection)],
+  );
+}
 function useChoices(owner: ReturnType<typeof useContext>) {
   const { context, canAct } = owner,
     response = context.response;
@@ -90,22 +108,11 @@ function useChoices(owner: ReturnType<typeof useContext>) {
   const keys = choice.response === response ? choice.keys : [];
   const toggle = (concept: Concept, periodKey: string) => {
     if (!canAct()) return;
-    const cell = getManagedInterimView(response)!
-      .statements.statements.flatMap((s) => s.rows)
-      .find((r) => r.concept === concept)
-      ?.cells.find((c) => c.period.key === periodKey);
-    if (cell?.status !== "available") return;
-    const already = keys.some(
-      (key) => key.concept === concept && key.periodKey === periodKey,
-    );
+    const selection = { concept, periodKey };
+    if (!selectedCellAvailable(response, selection)) return;
     context.revision = Symbol();
     context.previewRevision = Symbol();
-    const next = already
-      ? keys.filter(
-          (key) => key.concept !== concept || key.periodKey !== periodKey,
-        )
-      : [...keys, Object.freeze({ concept, periodKey })];
-    setChoice({ response, keys: Object.freeze(next) });
+    setChoice({ response, keys: toggledSelection(keys, selection) });
   };
   return { keys, toggle };
 }

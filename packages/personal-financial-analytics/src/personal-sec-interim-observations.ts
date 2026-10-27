@@ -48,6 +48,17 @@ export function validateInterimRow(
     "sourceLocator",
     "filing",
   ]);
+  validateObservationIdentity(row);
+  validateReportedPeriod(row);
+  validateObservationMetadata(row);
+  validateObservationSource(row, evidence);
+  validateFilingJoin(candidate as Row, evidence);
+}
+
+type IdentifiedRow = Record<string, unknown> & { concept: string };
+function validateObservationIdentity(
+  row: Record<string, unknown>,
+): asserts row is IdentifiedRow {
   check(
     matches(row.id, /^sec-interim-fact:[a-f0-9]{64}$/u) &&
       typeof row.concept === "string" &&
@@ -61,7 +72,8 @@ export function validateInterimRow(
       /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$/u.test(row.value) &&
       row.value !== "-0",
   );
-  validateReportedPeriod(row);
+}
+function validateObservationMetadata(row: Record<string, unknown>): void {
   check(
     row.periodBasis === "unresolved" &&
       (row.filingFocusYear === null ||
@@ -71,6 +83,11 @@ export function validateInterimRow(
       (row.frame === null || sourceText(row.frame, 128)) &&
       form(row.form),
   );
+}
+function validateObservationSource(
+  row: IdentifiedRow,
+  evidence: Evidence,
+): void {
   check(
     matches(row.accessionNumber, accession) &&
       evidence.target.status === "target" &&
@@ -83,7 +100,6 @@ export function validateInterimRow(
         "u",
       ).test(row.sourceLocator),
   );
-  validateFilingJoin(candidate as Row, evidence);
 }
 
 function validateReportedPeriod(row: Record<string, unknown>): void {
@@ -111,42 +127,55 @@ function validateFilingJoin(row: Row, evidence: Evidence): void {
     "sourceUrl",
   ]);
   check(filingStatuses.includes(filing.status as string));
-  check(
-    (filing.form === null || form(filing.form)) &&
-      (filing.filedDate === null || date(filing.filedDate)) &&
-      (filing.reportDate === null || date(filing.reportDate)) &&
-      (filing.acceptedAt === null || timestamp(filing.acceptedAt, false)),
-  );
+  validateFilingMetadata(filing);
   const expectedUrl = `https://www.sec.gov/Archives/edgar/data/${evidence.cik.replace(/^0+/u, "")}/${row.accessionNumber}-index.htm`;
   check(filing.sourceUrl === null || filing.sourceUrl === expectedUrl);
   if (filing.status === "matched") {
-    check(evidence.target.status === "target");
-    const target = evidence.target;
-    check(
-      row.form === target.form &&
-        row.filedDate === target.filedDate &&
-        filing.form === target.form &&
-        filing.filedDate === target.filedDate &&
-        filing.reportDate === target.reportDate &&
-        filing.acceptedAt === target.acceptedAt &&
-        filing.sourceUrl === expectedUrl,
-    );
+    validateMatchedFiling(row, filing, evidence, expectedUrl);
   } else if (
     filing.status === "not_in_current_submissions" ||
     filing.status === "submissions_unavailable"
   ) {
-    check(
-      filing.form === null &&
-        filing.filedDate === null &&
-        filing.reportDate === null &&
-        filing.acceptedAt === null &&
-        filing.sourceUrl === null,
-    );
-    check(
-      filing.status !== "submissions_unavailable" ||
-        evidence.generation.sources.submissions.status !== "available",
-    );
+    validateAbsentFiling(filing, evidence);
   }
+}
+function validateFilingMetadata(filing: Record<string, unknown>): void {
+  check(filing.form === null || form(filing.form));
+  check(filing.filedDate === null || date(filing.filedDate));
+  check(filing.reportDate === null || date(filing.reportDate));
+  check(filing.acceptedAt === null || timestamp(filing.acceptedAt, false));
+}
+function validateMatchedFiling(
+  row: Row,
+  filing: Record<string, unknown>,
+  evidence: Evidence,
+  expectedUrl: string,
+): void {
+  check(evidence.target.status === "target");
+  const target = evidence.target;
+  check(row.form === target.form && row.filedDate === target.filedDate);
+  check(filing.form === target.form && filing.filedDate === target.filedDate);
+  check(
+    filing.reportDate === target.reportDate &&
+      filing.acceptedAt === target.acceptedAt,
+  );
+  check(filing.sourceUrl === expectedUrl);
+}
+function validateAbsentFiling(
+  filing: Record<string, unknown>,
+  evidence: Evidence,
+): void {
+  check(
+    [
+      filing.form,
+      filing.filedDate,
+      filing.reportDate,
+      filing.acceptedAt,
+      filing.sourceUrl,
+    ].every((value) => value === null),
+  );
+  if (filing.status === "submissions_unavailable")
+    check(evidence.generation.sources.submissions.status !== "available");
 }
 
 export function compareInterimRows(left: Row, right: Row): number {

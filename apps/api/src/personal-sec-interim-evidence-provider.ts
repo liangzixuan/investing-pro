@@ -4,6 +4,7 @@ import {
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS as LIMITS,
   type PersonalSecInterimCanonicalEvidenceDto,
   type PersonalSecInterimSourceDto,
+  type PersonalSecInterimFilingDto,
 } from "@research-cockpit/contracts";
 import { selectPersonalSecInterimTarget } from "@research-cockpit/personal-financial-analytics";
 import { createPersonalSecInterimCanonicalEvidence } from "./personal-sec-interim-canonical-evidence";
@@ -83,12 +84,9 @@ class SecPersonalInterimEvidenceProvider implements PersonalSecInterimEvidencePr
     this.#now = dependencies.now ?? (() => new Date());
     this.#scheduler =
       dependencies.scheduler ?? sharedPersonalSecRequestScheduler;
-    if (
-      typeof this.#fetch !== "function" ||
-      typeof this.#now !== "function" ||
-      typeof this.#scheduler.wait !== "function"
-    )
-      throw new TypeError(MESSAGE);
+    assertProviderFunctionType(typeof this.#fetch);
+    assertProviderFunctionType(typeof this.#now);
+    assertProviderFunctionType(typeof this.#scheduler.wait);
   }
 
   public status(): Readonly<{ configured: boolean }> {
@@ -106,104 +104,80 @@ class SecPersonalInterimEvidenceProvider implements PersonalSecInterimEvidencePr
     cik: string,
     signal?: AbortSignal,
   ): Promise<PersonalSecInterimCanonicalEvidenceDto> {
-    if (this.#closed || signal?.aborted === true) fail("aborted");
-    if (this.#userAgent === undefined) fail("not_configured");
-    if (typeof cik !== "string" || !/^\d{10}$/u.test(cik) || /^0+$/u.test(cik))
-      fail("invalid_request");
-    if (this.#active !== undefined) fail("busy");
-    let lastTime = -Infinity;
-    const capture = (): string => {
-      const now = this.#now();
-      if (!isPersonalSecClock(now) || now.getTime() < lastTime)
-        fail("invalid_request");
-      lastTime = now.getTime();
-      return now.toISOString();
-    };
-    const cutoffAt = capture();
+    this.#admit(cik, signal);
+    const clock = sourceCapture(this.#now);
     const controller = new AbortController();
     const onAbort = (): void => controller.abort();
     signal?.addEventListener("abort", onAbort, { once: true });
     this.#active = controller;
     try {
-      // Select solely from the bounded current Submissions packet before facts.
-      // Source-provided document/history URLs are never fetched.
-      const submissions = await this.#load(
-        `https://data.sec.gov/submissions/CIK${cik}.json`,
-        controller.signal,
-        (value) => normalizePersonalSecSubmissions(value, cik),
-        capture,
-      );
-      const filings =
-        submissions.value === undefined
-          ? []
-          : [...submissions.value.filings].map(([accessionNumber, filing]) => {
-              if (filing.form === null) fail("invalid_request");
-              return {
-                accessionNumber,
-                form: filing.form,
-                filedDate: filing.filedDate,
-                reportDate: filing.reportDate,
-                acceptedAt: filing.acceptedAt,
-              };
-            });
-      const target =
-        submissions.value === undefined
-          ? Object.freeze({
-              status: "unresolved",
-              reason: "submissions_unavailable",
-            } as const)
-          : selectPersonalSecInterimTarget(
-              filings,
-              cutoffAt,
-              submissions.source.fetchedAt!,
-            );
-      const facts = await this.#load(
-        `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
-        controller.signal,
-        (value) =>
-          normalizePersonalSecInterimStatementCompanyFacts(
-            value,
-            cik,
-            targetAccession(target),
-          ),
-        capture,
-      );
-      if (controller.signal.aborted || this.#closed) fail("aborted");
-      const completedAt = capture();
-      const targetScan =
-        submissions.value === undefined
-          ? null
-          : Object.freeze({
-              currentFilings: filings.length,
-              interimFilings: filings.filter(
-                (filing) => filing.form === "10-Q" || filing.form === "10-Q/A",
-              ).length,
-              olderHistoryAvailable: submissions.value.olderHistoryAvailable,
-            });
-      return createPersonalSecInterimCanonicalEvidence({
-        cik,
-        generation: {
-          definitionVersion: PERSONAL_SEC_INTERIM_CANONICAL_VERSION,
-          cutoffAt,
-          completedAt,
-          sources: {
-            companyFacts: facts.source,
-            submissions: submissions.source,
-          },
-        },
-        target,
-        targetScan,
-        facts:
-          facts.value ??
-          unavailablePersonalSecInterimStatementCompanyFacts(
-            "source_unavailable",
-          ),
-        submissions: submissions.value,
-      });
+      return await this.#captureEvidence(cik, controller, clock);
     } finally {
       signal?.removeEventListener("abort", onAbort);
       if (this.#active === controller) this.#active = undefined;
     }
+  }
+
+  #assertOpen(signal?: AbortSignal): void {
+    if (this.#closed) fail("aborted");
+    if (signal?.aborted === true) fail("aborted");
+  }
+  #admit(cik: string, signal?: AbortSignal): void {
+    this.#assertOpen(signal);
+    if (this.#userAgent === undefined) fail("not_configured");
+    assertCik(cik);
+    if (this.#active !== undefined) fail("busy");
+  }
+  async #captureEvidence(
+    cik: string,
+    controller: AbortController,
+    clock: SourceClock,
+  ): Promise<PersonalSecInterimCanonicalEvidenceDto> {
+    const { cutoffAt, capture } = clock;
+    // Select solely from the bounded current Submissions packet before facts.
+    // Source-provided document/history URLs are never fetched.
+    const submissions = await this.#load(
+      `https://data.sec.gov/submissions/CIK${cik}.json`,
+      controller.signal,
+      (value) => normalizePersonalSecSubmissions(value, cik),
+      capture,
+    );
+    const filings = capturedFilings(submissions);
+    const target = capturedTarget(submissions, filings, cutoffAt);
+    const facts = await this.#load(
+      `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
+      controller.signal,
+      (value) =>
+        normalizePersonalSecInterimStatementCompanyFacts(
+          value,
+          cik,
+          targetAccession(target),
+        ),
+      capture,
+    );
+    if (controller.signal.aborted || this.#closed) fail("aborted");
+    const completedAt = capture();
+    const targetScan = capturedScan(submissions, filings);
+    return createPersonalSecInterimCanonicalEvidence({
+      cik,
+      generation: {
+        definitionVersion: PERSONAL_SEC_INTERIM_CANONICAL_VERSION,
+        cutoffAt,
+        completedAt,
+        sources: {
+          companyFacts: facts.source,
+          submissions: submissions.source,
+        },
+      },
+      target,
+      targetScan,
+      facts:
+        facts.value ??
+        unavailablePersonalSecInterimStatementCompanyFacts(
+          "source_unavailable",
+        ),
+      submissions: submissions.value,
+    });
   }
 
   async #load<T>(
@@ -254,6 +228,77 @@ class SecPersonalInterimEvidenceProvider implements PersonalSecInterimEvidencePr
       });
     }
   }
+}
+
+interface SourceClock {
+  readonly cutoffAt: string;
+  readonly capture: () => string;
+}
+function sourceCapture(readClock: () => Date): SourceClock {
+  let lastTime = -Infinity;
+  const capture = (): string => {
+    const now = readClock();
+    if (!isPersonalSecClock(now) || now.getTime() < lastTime)
+      fail("invalid_request");
+    lastTime = now.getTime();
+    return now.toISOString();
+  };
+  return { cutoffAt: capture(), capture };
+}
+function assertProviderFunctionType(type: string): void {
+  if (type !== "function") throw new TypeError(MESSAGE);
+}
+function assertCik(cik: string): void {
+  if (typeof cik !== "string") fail("invalid_request");
+  if (!/^\d{10}$/u.test(cik)) fail("invalid_request");
+  if (/^0+$/u.test(cik)) fail("invalid_request");
+}
+type SubmissionsResult = SourceResult<
+  ReturnType<typeof normalizePersonalSecSubmissions>
+>;
+function capturedFilings(
+  submissions: SubmissionsResult,
+): readonly PersonalSecInterimFilingDto[] {
+  if (submissions.value === undefined) return [];
+  return [...submissions.value.filings].map(([accessionNumber, filing]) => {
+    if (filing.form === null) fail("invalid_request");
+    return {
+      accessionNumber,
+      form: filing.form,
+      filedDate: filing.filedDate,
+      reportDate: filing.reportDate,
+      acceptedAt: filing.acceptedAt,
+    };
+  });
+}
+function capturedTarget(
+  submissions: SubmissionsResult,
+  filings: readonly PersonalSecInterimFilingDto[],
+  cutoffAt: string,
+): PersonalSecInterimCanonicalEvidenceDto["target"] {
+  if (submissions.value === undefined)
+    return Object.freeze({
+      status: "unresolved",
+      reason: "submissions_unavailable",
+    } as const);
+  return selectPersonalSecInterimTarget(
+    filings,
+    cutoffAt,
+    submissions.source.fetchedAt!,
+  );
+}
+function capturedScan(
+  submissions: SubmissionsResult,
+  filings: readonly PersonalSecInterimFilingDto[],
+): PersonalSecInterimCanonicalEvidenceDto["targetScan"] {
+  if (submissions.value === undefined) return null;
+  return Object.freeze({
+    currentFilings: filings.length,
+    interimFilings: filings.filter(
+      (filing) => filing.form === "10-Q" || filing.form === "10-Q/A",
+    ).length,
+    olderHistoryAvailable: submissions.value.olderHistoryAvailable,
+  });
 }
 
 function targetAccession(

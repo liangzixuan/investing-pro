@@ -21,20 +21,27 @@ const ownedResponses = new WeakSet<object>();
 const encoder = new TextEncoder();
 const identifier = /^[a-z0-9][a-z0-9._:-]{2,127}$/u;
 
+function labelCharacter(character: string): boolean {
+  const point = character.codePointAt(0)!;
+  if (point < 32) return false;
+  if (point >= 0xd800 && point <= 0xdfff) return false;
+  return point !== 127;
+}
 function label(value: unknown): boolean {
-  if (
-    typeof value !== "string" ||
-    !value.length ||
-    value.length > 512 ||
-    value.trim() !== value
-  )
-    return false;
+  if (typeof value !== "string") return false;
+  if (!value.length) return false;
+  if (value.length > 512) return false;
+  if (value.trim() !== value) return false;
   for (const character of value) {
-    const point = character.codePointAt(0)!;
-    if (point < 32 || (point >= 0xd800 && point <= 0xdfff) || point === 127)
-      return false;
+    if (!labelCharacter(character)) return false;
   }
   return true;
+}
+function matchesRequest(response: Response, request: Request): boolean {
+  if (response.catalogSnapshotSha256 !== request.catalogSnapshotSha256)
+    return false;
+  if (response.security.listingId !== request.listingId) return false;
+  return response.security.symbol === request.symbol;
 }
 function assertResponse(value: unknown): asserts value is Response {
   const response = record(value, [
@@ -125,12 +132,7 @@ export async function parsePersonalSecInterimCanonicalResponse(
     const requested = parseManagedSecInterimCanonicalRequest(capturedRequest);
     if (!requested) return null;
     assertResponse(value);
-    if (
-      value.catalogSnapshotSha256 !== requested.catalogSnapshotSha256 ||
-      value.security.listingId !== requested.listingId ||
-      value.security.symbol !== requested.symbol
-    )
-      return null;
+    if (!matchesRequest(value, requested)) return null;
     const owned = structuredClone(value);
     if (
       encoder.encode(JSON.stringify(owned)).byteLength >

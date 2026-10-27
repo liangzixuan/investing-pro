@@ -34,19 +34,33 @@ function scanReason(evidence: Evidence, index: number): Reason | null {
     return "selected_report_overflow";
   return scan.absence;
 }
-function rowReason(row: Row, entry: Entry, evidence: Evidence): Reason | null {
-  if (evidence.target.status !== "target") return "target_unresolved";
-  if (row.form !== "10-Q") return "unsupported_form";
+function periodReason(row: Row, entry: Entry): Reason | null {
   if (entry.periodType === "duration" && row.startDate === null)
     return "invalid_duration_period";
   if (entry.periodType === "instant" && row.startDate !== null)
     return "invalid_instant_period";
+  return null;
+}
+function filingReason(row: Row, reportDate: string): Reason | null {
   if (row.filing.status !== "matched") return "filing_unmatched_or_conflicted";
-  if (row.filing.reportDate !== evidence.target.reportDate)
-    return "report_end_mismatch";
-  if (row.endDate > evidence.target.reportDate || row.endDate > row.filedDate)
+  if (row.filing.reportDate !== reportDate) return "report_end_mismatch";
+  if (row.endDate > reportDate || row.endDate > row.filedDate)
     return "future_or_inconsistent_dates";
   return null;
+}
+function rowReason(row: Row, entry: Entry, evidence: Evidence): Reason | null {
+  if (evidence.target.status !== "target") return "target_unresolved";
+  if (row.form !== "10-Q") return "unsupported_form";
+  return (
+    periodReason(row, entry) ?? filingReason(row, evidence.target.reportDate)
+  );
+}
+function periodKind(row: Row, evidence: Evidence): Period["kind"] {
+  if (evidence.target.status !== "target") return "unresolved";
+  if (row.endDate > evidence.target.reportDate) return "unresolved";
+  return row.endDate === evidence.target.reportDate
+    ? "selected_report"
+    : "comparative";
 }
 function period(row: Row, entry: Entry, evidence: Evidence): Period {
   return {
@@ -55,13 +69,7 @@ function period(row: Row, entry: Entry, evidence: Evidence): Period {
     startDate: row.startDate,
     endDate: row.endDate,
     durationDays: row.durationDays,
-    kind:
-      evidence.target.status !== "target" ||
-      row.endDate > evidence.target.reportDate
-        ? "unresolved"
-        : row.endDate === evidence.target.reportDate
-          ? "selected_report"
-          : "comparative",
+    kind: periodKind(row, evidence),
     classification:
       entry.periodType === "instant" ? "instant" : "not_established",
   };
@@ -88,12 +96,7 @@ function projectCell(
     return { ...shared, status: "unavailable", reason: "ambiguous_value" };
   return { ...shared, status: "available", value: first.value };
 }
-function projectRow(
-  entry: Entry,
-  index: number,
-  evidence: Evidence,
-  context: Reason | null,
-): PersonalSecInterimStatementRowDto {
+function groupPeriods(entry: Entry, evidence: Evidence): Map<string, Row[]> {
   const groups = new Map<string, Row[]>();
   for (const row of evidence.facts.observations) {
     if (row.concept !== entry.concept) continue;
@@ -102,6 +105,15 @@ function projectRow(
     group.push(row);
     groups.set(key, group);
   }
+  return groups;
+}
+function projectRow(
+  entry: Entry,
+  index: number,
+  evidence: Evidence,
+  context: Reason | null,
+): PersonalSecInterimStatementRowDto {
+  const groups = groupPeriods(entry, evidence);
   const reason =
     context ??
     scanReason(evidence, index) ??

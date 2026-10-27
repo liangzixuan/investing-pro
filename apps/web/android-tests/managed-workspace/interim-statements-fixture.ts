@@ -62,6 +62,67 @@ type Counter =
   | "search"
   | "calendar"
   | "fed";
+type InterimRequest = Parameters<ManagedApi["interimReport"]>[0];
+type WatchlistCommand = NonNullable<
+  ReturnType<typeof parseManagedWatchlistCommand>
+>;
+function invalidSourceRequest(): never {
+  throw new Error("Unexpected interim source request or order");
+}
+function admitWatchlistRead(signal: AbortSignal, state: State): void {
+  const refuse = () => {
+    throw new Error("Unexpected interim Watchlist read");
+  };
+  if (signal.aborted) refuse();
+  if (state.load >= 2) refuse();
+  if (state.load !== 1) return;
+  if (state.save !== 1) refuse();
+}
+function admitSourceVisit(signal: AbortSignal, state: State): void {
+  if (signal.aborted) invalidSourceRequest();
+  if (state.interimReport !== 0) invalidSourceRequest();
+  if (state.load !== 1) invalidSourceRequest();
+  if (state.status !== 1) invalidSourceRequest();
+}
+function admitSourceIdentity(
+  input: InterimRequest,
+  original: MainWatchlistPayload | null,
+  packet: PersonalSecInterimCanonicalResponseDto,
+): void {
+  if (input.schemaVersion !== "1.0.0") invalidSourceRequest();
+  if (input.catalogSnapshotSha256 !== original?.snapshotSha256)
+    invalidSourceRequest();
+  if (input.listingId !== packet.security.listingId) invalidSourceRequest();
+  if (input.symbol !== packet.security.symbol) invalidSourceRequest();
+}
+function expectedSavedWatchlist(
+  original: MainWatchlistPayload | null,
+  listingId: string,
+  note: string,
+): MainWatchlistPayload | null {
+  if (!original) return null;
+  if (!original.memberships.some((member) => member.listingId === listingId))
+    return null;
+  return {
+    ...original,
+    memberships: original.memberships.map((member) =>
+      member.listingId === listingId ? { ...member, note } : member,
+    ),
+  };
+}
+function unsavedInterimVisit(state: State): boolean {
+  if (state.save !== 0) return false;
+  if (state.load !== 1) return false;
+  if (state.status !== 1) return false;
+  return state.interimReport === 1;
+}
+function expectedSaveVersion(
+  saved: ManagedWatchlistDto | null,
+  captured: WatchlistCommand,
+): boolean {
+  if (saved?.version !== 1) return false;
+  return captured.expectedVersion === 1;
+}
 export async function createInterimStatementsNativeFixture(
   base: SharedNativeFixture,
 ) {
@@ -147,12 +208,7 @@ export async function createInterimStatementsNativeFixture(
   const api: ManagedApi = {
     ...base.api,
     load: async (signal) => {
-      if (
-        signal.aborted ||
-        snapshot.load >= 2 ||
-        (snapshot.load === 1 && snapshot.save !== 1)
-      )
-        throw new Error("Unexpected interim Watchlist read");
+      admitWatchlistRead(signal, snapshot);
       count("load");
       if (snapshot.load === 1) {
         saved = structuredClone(await base.api.load(signal));
@@ -169,46 +225,27 @@ export async function createInterimStatementsNativeFixture(
       return base.api.status(signal);
     },
     interimReport: (input, signal) => {
-      if (
-        signal.aborted ||
-        snapshot.interimReport !== 0 ||
-        snapshot.load !== 1 ||
-        snapshot.status !== 1 ||
-        input.schemaVersion !== "1.0.0" ||
-        input.catalogSnapshotSha256 !== original?.snapshotSha256 ||
-        input.listingId !== l.listingId ||
-        input.symbol !== l.symbol
-      )
-        throw new Error("Unexpected interim source request or order");
+      admitSourceVisit(signal, snapshot);
+      admitSourceIdentity(input, original, packet);
       count("interimReport");
       return Promise.resolve(structuredClone(packet));
     },
     save: (command, signal) => {
       const captured = parseManagedWatchlistCommand(command);
-      const member = original?.memberships.find(
-        (m) => m.listingId === l.listingId,
+      const expected = expectedSavedWatchlist(
+        original,
+        l.listingId,
+        expectedNote,
       );
-      const expected: MainWatchlistPayload | null =
-        original && member
-          ? {
-              ...original,
-              memberships: original.memberships.map((m) =>
-                m.listingId === l.listingId ? { ...m, note: expectedNote } : m,
-              ),
-            }
-          : null;
+      if (!captured) return unexpected("save");
+      if (!expected) return unexpected("save");
+      if (signal.aborted) return unexpected("save");
+      if (!unsavedInterimVisit(snapshot)) return unexpected("save");
+      if (!expectedSaveVersion(saved, captured)) return unexpected("save");
+      if (unrelated()) return unexpected("save");
       if (
-        signal.aborted ||
-        !expected ||
-        snapshot.save !== 0 ||
-        snapshot.load !== 1 ||
-        snapshot.status !== 1 ||
-        snapshot.interimReport !== 1 ||
-        unrelated() ||
-        saved?.version !== 1 ||
-        captured?.expectedVersion !== 1 ||
         encodeMainWatchlistPayload(captured.payload) !==
-          encodeMainWatchlistPayload(expected)
+        encodeMainWatchlistPayload(expected)
       )
         return unexpected("save");
       count("save");

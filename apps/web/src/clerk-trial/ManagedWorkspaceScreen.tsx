@@ -1126,22 +1126,6 @@ export function ManagedWorkspaceScreen({
                     workspace.getResearchWatchlist(selection)
                   }
                   annual={workspace.annual}
-                  interim={workspace.interim}
-                  interimStatementsActions={{
-                    prepare: (response, cells, current) =>
-                      workspace.prepareInterimStatementsNote(
-                        discovery.research!.selection,
-                        response,
-                        cells,
-                        current,
-                      ),
-                    isCurrent: (preview) =>
-                      workspace.interimStatementsPreviewIsCurrent(preview),
-                    append: (preview) =>
-                      workspace.appendInterimStatementsNote(preview),
-                    cancel: (preview) =>
-                      workspace.cancelInterimStatementsNote(preview),
-                  }}
                   filings={workspace.filings}
                   eod={workspace.eod}
                   {...managedValuationResearchProps(

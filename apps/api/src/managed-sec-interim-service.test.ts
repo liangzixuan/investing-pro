@@ -68,6 +68,22 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
+async function expectSourceCompletionTimeout(elapsed: number): Promise<void> {
+  const f = fixture();
+  f.fetch.mockImplementation(() => {
+    f.elapsed(elapsed);
+    return Promise.resolve(Response.json(interimPackets()[0]));
+  });
+  await expect(
+    f.service.load(
+      interimCommand(),
+      INTERIM_PRINCIPAL,
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({ code: "request_timeout" });
+  expect(f.fetch).toHaveBeenCalledOnce();
+}
+
 describe("managed interim canonical service", () => {
   it.each([
     "AAPL",
@@ -305,36 +321,12 @@ describe("managed interim canonical service", () => {
     expect(f.fetch).toHaveBeenCalledOnce();
   });
   it("stops at the provider deadline before accepting either source result", async () => {
-    const f = fixture();
-    f.fetch.mockImplementation(() => {
-      f.elapsed(7_501);
-      return Promise.resolve(Response.json(interimPackets()[0]));
-    });
-    await expect(
-      f.service.load(
-        interimCommand(),
-        INTERIM_PRINCIPAL,
-        new AbortController().signal,
-      ),
-    ).rejects.toMatchObject({ code: "request_timeout" });
-    expect(f.fetch).toHaveBeenCalledOnce();
+    await expectSourceCompletionTimeout(7_501);
   });
   it.each([Number.NaN, Number.POSITIVE_INFINITY, -1])(
     "rejects invalid monotonic source completion %s",
     async (elapsed) => {
-      const f = fixture();
-      f.fetch.mockImplementation(() => {
-        f.elapsed(elapsed);
-        return Promise.resolve(Response.json(interimPackets()[0]));
-      });
-      await expect(
-        f.service.load(
-          interimCommand(),
-          INTERIM_PRINCIPAL,
-          new AbortController().signal,
-        ),
-      ).rejects.toMatchObject({ code: "request_timeout" });
-      expect(f.fetch).toHaveBeenCalledOnce();
+      await expectSourceCompletionTimeout(elapsed);
     },
   );
   it("bounds the serialized whole graph without clipping a completed source", async () => {

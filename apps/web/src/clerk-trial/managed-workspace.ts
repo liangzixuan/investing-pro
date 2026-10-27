@@ -1577,14 +1577,17 @@ export class ManagedWorkspace {
     if (this.researchOperation !== operation) return hadResearch;
     this.valuation.activate(null);
     if (this.researchOperation !== operation) return hadResearch;
-    this.annual.close();
-    if (this.researchOperation !== operation) return hadResearch;
-    this.interim.close();
-    if (this.researchOperation !== operation) return hadResearch;
+    if (!this.closeFinancialResearch(operation)) return hadResearch;
     this.filings.close();
     if (this.researchOperation !== operation) return hadResearch;
     this.eod.close();
     return hadResearch;
+  }
+  private closeFinancialResearch(operation: symbol) {
+    this.annual.close();
+    if (this.researchOperation !== operation) return false;
+    this.interim.close();
+    return this.researchOperation === operation;
   }
   private canSwitchResearch(selection: ManagedResearchSelection | null) {
     if (
@@ -2588,20 +2591,13 @@ export class ManagedWorkspace {
     cells: readonly ManagedInterimCellSelection[],
     selectionIsCurrent: () => boolean,
   ): ManagedInterimNotePreparation {
-    const visit = this.state.research,
-      operation = this.researchOperation,
-      navigationRevision = this.navigationRevision;
-    const visitCurrent = () => {
-      if (this.retired || this.researchOperation !== operation) return false;
-      if (this.navigationRevision !== navigationRevision) return false;
-      if (this.state.research !== visit || visit?.section !== "interim")
-        return false;
-      if (visit.selection !== selection) return false;
-      return (
-        this.researchSourceRouteReady(selection) &&
-        this.canUseResearchSource(selection)
-      );
+    const capture = {
+      selection,
+      visit: this.state.research,
+      operation: this.researchOperation,
+      navigationRevision: this.navigationRevision,
     };
+    const visitCurrent = () => this.interimNoteVisitCurrent(capture);
     const proposal = captureManagedInterimNote({
       response,
       cells,
@@ -2613,6 +2609,31 @@ export class ManagedWorkspace {
     });
     if (proposal.preview) this.interimStatementsPreviews.add(proposal.preview);
     return proposal;
+  }
+  private interimNoteVisitCurrent(capture: {
+    readonly selection: ManagedResearchSelection;
+    readonly visit: ManagedResearchVisit | null;
+    readonly operation: symbol;
+    readonly navigationRevision: number;
+  }) {
+    if (this.retired || this.researchOperation !== capture.operation)
+      return false;
+    if (this.navigationRevision !== capture.navigationRevision) return false;
+    if (!this.interimNoteVisitMatches(capture)) return false;
+    return (
+      this.researchSourceRouteReady(capture.selection) &&
+      this.canUseResearchSource(capture.selection)
+    );
+  }
+  private interimNoteVisitMatches(capture: {
+    readonly selection: ManagedResearchSelection;
+    readonly visit: ManagedResearchVisit | null;
+  }) {
+    if (this.state.research !== capture.visit) return false;
+    return (
+      capture.visit?.section === "interim" &&
+      capture.visit.selection === capture.selection
+    );
   }
   interimStatementsPreviewIsCurrent(
     preview: PreparedManagedInterimStatementsNote,

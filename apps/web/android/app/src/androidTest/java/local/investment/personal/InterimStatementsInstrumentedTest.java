@@ -68,6 +68,7 @@ public class InterimStatementsInstrumentedTest {
         keyboard.enter(new ReportRevisitKeyboard.FieldInput(ReportRevisitTouch.Field.COMPANY_NOTE, InterimStatementsEvidence.PREFIX));
         DraftCapture draft = InterimStatementsEvidence.capture(page);
         page.click(Element.css("button[aria-label='Annual report for saved ZERO']"));
+        page.await(InterimStatementsEvidence.readyInterimSection());
         page.click(Element.css(".managed-company-sections button[aria-label='Interim section for ZERO']"));
         page.await(new Check("opening Interim keeps prefix and requires an explicit source load", new Script("document.querySelector('#interim-report-load')?.disabled===false&&document.querySelector('#managed-research-note')?.value===" + JSONObject.quote(InterimStatementsEvidence.PREFIX) + "&&" + InterimStatementsEvidence.counts(Stage.STARTUP).expression())));
         page.click(Element.css("#interim-report-load"));

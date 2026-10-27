@@ -22,57 +22,64 @@ const hooks = vi.hoisted(() => ({
   slots: [] as unknown[],
   layouts: [] as Array<() => void>,
 }));
+function directReference<T>(initial: T) {
+  const i = hooks.index++;
+  if (!(i in hooks.slots)) hooks.slots[i] = { current: initial };
+  return hooks.slots[i] as { current: T };
+}
+function directMemo<T>(factory: () => T, deps: React.DependencyList) {
+  const i = hooks.index++,
+    old = hooks.slots[i] as
+      { deps: React.DependencyList; value: T } | undefined;
+  if (!old || deps.some((value, at) => !Object.is(value, old.deps[at])))
+    hooks.slots[i] = { deps, value: factory() };
+  return (hooks.slots[i] as { value: T }).value;
+}
+function directState(initial: unknown) {
+  const i = hooks.index++;
+  if (!(i in hooks.slots))
+    hooks.slots[i] =
+      typeof initial === "function" ? (initial as () => unknown)() : initial;
+  return [
+    hooks.slots[i],
+    (value: unknown) => {
+      hooks.slots[i] = value;
+    },
+  ] as const;
+}
+function directLayout(
+  effect: () => void | (() => void),
+  deps: React.DependencyList,
+) {
+  const i = hooks.index++,
+    old = hooks.slots[i] as
+      | { kind: "layout"; deps: React.DependencyList; cleanup?: () => void }
+      | undefined;
+  if (!old || deps.some((value, at) => !Object.is(value, old.deps[at])))
+    hooks.layouts.push(() => {
+      old?.cleanup?.();
+      const cleanup = effect();
+      hooks.slots[i] = { kind: "layout", deps, cleanup };
+    });
+}
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
   return {
     ...actual,
     useId: () => (hooks.direct ? "statement-review-test" : actual.useId()),
-    useRef: <T,>(initial: T) => {
-      if (!hooks.direct) return actual.useRef(initial);
-      const i = hooks.index++;
-      if (!(i in hooks.slots)) hooks.slots[i] = { current: initial };
-      return hooks.slots[i];
-    },
-    useMemo: <T,>(factory: () => T, deps: React.DependencyList) => {
-      if (!hooks.direct) return actual.useMemo(factory, deps);
-      const i = hooks.index++;
-      const old = hooks.slots[i] as
-        { deps: React.DependencyList; value: T } | undefined;
-      if (!old || deps.some((value, at) => !Object.is(value, old.deps[at])))
-        hooks.slots[i] = { deps, value: factory() };
-      return (hooks.slots[i] as { value: T }).value;
-    },
-    useState: (initial: unknown) => {
-      if (!hooks.direct) return actual.useState(initial);
-      const i = hooks.index++;
-      if (!(i in hooks.slots))
-        hooks.slots[i] =
-          typeof initial === "function"
-            ? (initial as () => unknown)()
-            : initial;
-      return [
-        hooks.slots[i],
-        (value: unknown) => {
-          hooks.slots[i] = value;
-        },
-      ];
-    },
+    useRef: <T,>(initial: T) =>
+      hooks.direct ? directReference(initial) : actual.useRef(initial),
+    useMemo: <T,>(factory: () => T, deps: React.DependencyList) =>
+      hooks.direct ? directMemo(factory, deps) : actual.useMemo(factory, deps),
+    useState: (initial: unknown) =>
+      hooks.direct ? directState(initial) : actual.useState(initial),
     useLayoutEffect: (
       effect: () => void | (() => void),
       deps: React.DependencyList,
-    ) => {
-      if (!hooks.direct) return actual.useLayoutEffect(effect, deps);
-      const i = hooks.index++;
-      const old = hooks.slots[i] as
-        | { kind: "layout"; deps: React.DependencyList; cleanup?: () => void }
-        | undefined;
-      if (!old || deps.some((value, at) => !Object.is(value, old.deps[at])))
-        hooks.layouts.push(() => {
-          old?.cleanup?.();
-          const cleanup = effect();
-          hooks.slots[i] = { kind: "layout", deps, cleanup };
-        });
-    },
+    ) =>
+      hooks.direct
+        ? directLayout(effect, deps)
+        : actual.useLayoutEffect(effect, deps),
   };
 });
 function unmount() {

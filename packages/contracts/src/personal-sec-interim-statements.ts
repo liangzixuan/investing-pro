@@ -45,15 +45,19 @@ export interface PersonalSecInterimCanonicalRequestDto {
   readonly symbol: string;
 }
 
+function isRequestRecord(value: unknown): value is object {
+  if (value === null) return false;
+  if (typeof value !== "object") return false;
+  return Object.getPrototypeOf(value) === Object.prototype;
+}
+function isRequestField(field: PropertyDescriptor | undefined): boolean {
+  if (!field?.enumerable) return false;
+  return Object.hasOwn(field, "value");
+}
 function requestValues(
   value: unknown,
 ): Record<keyof PersonalSecInterimCanonicalRequestDto, unknown> | null {
-  if (
-    value === null ||
-    typeof value !== "object" ||
-    Object.getPrototypeOf(value) !== Object.prototype
-  )
-    return null;
+  if (!isRequestRecord(value)) return null;
   const fields = Object.getOwnPropertyDescriptors(value);
   const names = [
     "schemaVersion",
@@ -61,13 +65,8 @@ function requestValues(
     "listingId",
     "symbol",
   ];
-  if (
-    Reflect.ownKeys(fields).length !== names.length ||
-    !names.every(
-      (key) => fields[key]?.enumerable && Object.hasOwn(fields[key], "value"),
-    )
-  )
-    return null;
+  if (Reflect.ownKeys(fields).length !== names.length) return null;
+  if (!names.every((key) => isRequestField(fields[key]))) return null;
   return {
     schemaVersion: fields.schemaVersion!.value,
     catalogSnapshotSha256: fields.catalogSnapshotSha256!.value,
@@ -85,13 +84,11 @@ export function parseManagedSecInterimCanonicalRequest(
     const fields = requestValues(value);
     if (!fields) return null;
     const { schemaVersion, catalogSnapshotSha256, listingId, symbol } = fields;
-    if (
-      schemaVersion !== PERSONAL_SEC_INTERIM_CANONICAL_VERSION ||
-      !requestText(catalogSnapshotSha256, /^sha256:[a-f0-9]{64}$/u) ||
-      !requestText(listingId, /^[a-z0-9][a-z0-9._:-]{2,127}$/u) ||
-      !requestText(symbol, /^[A-Z0-9][A-Z0-9.-]{0,14}$/u)
-    )
+    if (schemaVersion !== PERSONAL_SEC_INTERIM_CANONICAL_VERSION) return null;
+    if (!requestText(catalogSnapshotSha256, /^sha256:[a-f0-9]{64}$/u))
       return null;
+    if (!requestText(listingId, /^[a-z0-9][a-z0-9._:-]{2,127}$/u)) return null;
+    if (!requestText(symbol, /^[A-Z0-9][A-Z0-9.-]{0,14}$/u)) return null;
     return Object.freeze({
       schemaVersion,
       catalogSnapshotSha256: catalogSnapshotSha256 as `sha256:${string}`,

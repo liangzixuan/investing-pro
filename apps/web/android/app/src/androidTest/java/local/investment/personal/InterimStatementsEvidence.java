@@ -71,6 +71,15 @@ final class InterimStatementsEvidence {
             ";const a=d.memberships;return Array.isArray(a)&&a.length===2&&expected.length===2&&a.every((row,i)=>Object.keys(row).length===Object.keys(expected[i]).length&&Object.keys(expected[i]).every(k=>Object.hasOwn(row,k)&&row[k]===expected[i][k]))" +
             "&&d.dirty===" + (stage == Stage.LOADED ? "true" : "false") + "&&d.baseVersion===" + (stage == Stage.LOADED ? 1 : 2) + ";})()");
     }
+    static Check readyInterimSection() {
+        return new Check("the committed Annual route retains the prefix and enables the exact Interim tab before one click", new Script(
+            "(() => {const b=document.querySelector('.managed-company-sections button[aria-label=\"Interim section for ZERO\"]'),r=b?.getBoundingClientRect();return document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO'" +
+            "&&new URL(location.href).searchParams.get('company')==='listing-zero'&&new URL(location.href).searchParams.get('section')==='annual'" +
+            "&&document.querySelector('.managed-company-sections button[aria-label=\"Annual section for ZERO\"]')?.getAttribute('aria-pressed')==='true'" +
+            "&&document.querySelector('#managed-research-note')?.value==="+JSONObject.quote(PREFIX)+"&&"+counts(Stage.STARTUP).expression()+
+            "&&b?.disabled===false&&b.textContent==='Interim'&&r.width>0&&r.height>0&&getComputedStyle(b).visibility==='visible';})()")).nativeReady();
+    }
+
     static Check readyBack() {
         return new Check("exact current Interim route and visible enabled Back are ready before the single hardware press", new Script(
             "(() => {const b=document.querySelector('.managed-company-visit .trial-toolbar > button'),r=b?.getBoundingClientRect();return document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO'" +

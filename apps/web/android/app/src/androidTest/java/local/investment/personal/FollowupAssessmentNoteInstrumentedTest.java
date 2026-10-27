@@ -266,7 +266,7 @@ public class FollowupAssessmentNoteInstrumentedTest {
         int sessions = state.sessions(), saves = state.saves();
         page.await(new Check("assessment note workflow has only startup catalogs, one explicit company resolve and the declared separate Watchlist Save", new Script(DIAGNOSTICS + ".load===" + sessions + " && " + DIAGNOSTICS + ".status===" + sessions + " && " + DIAGNOSTICS + ".marketsResolve===" + sessions +
             " && " + DIAGNOSTICS + ".resolve===1 && " + DIAGNOSTICS + ".save===" + saves + " && " + DIAGNOSTICS + ".search===0" +
-            " && " + DIAGNOSTICS + ".eod===0 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + DIAGNOSTICS + ".marketsEod===0" +
+            " && " + DIAGNOSTICS + ".eod===0 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + DIAGNOSTICS + ".interimReport===0 && " + DIAGNOSTICS + ".marketsEod===0" +
             " && " + DIAGNOSTICS + ".calendar===0 && " + DIAGNOSTICS + ".fed===0 && " + FOLLOWUPS + ".token===0 && " + FOLLOWUPS + ".signOut===0")));
     }
 
@@ -292,12 +292,13 @@ public class FollowupAssessmentNoteInstrumentedTest {
     private void assertUnloadedCompanySources() throws Exception {
         page.await(new Check("overview keeps exact independent source states, original dates and explicit actions", new Script("(() => { const overview = document.querySelector('.managed-company-evidence-actions');" +
             " const expected = [['Price',false,'2026-09-20T00:00:01.000Z'],['Annual',false,'2026-09-20T00:00:02.000Z'],['Filings',false,'2026-09-20T00:00:02.000Z']];" +
-            " return overview?.getAttribute('aria-label') === 'Company research sources' && overview.querySelectorAll('.managed-evidence-action-grid > section').length === 3" +
+            " return overview?.getAttribute('aria-label') === 'Company research sources' && overview.querySelectorAll('.managed-evidence-action-grid > section').length === 4" +
             " && expected.every(([title,loaded,clock]) => { const card = overview.querySelector('[aria-label=\"' + title + ' source\"]'); const buttons = [...(card?.querySelectorAll('.trial-actions > button') ?? [])]; const times = [...(card?.querySelectorAll('time') ?? [])];" +
             " return card?.getAttribute('aria-busy') === 'false' && card.querySelector('.managed-evidence-source-state')?.textContent === (loaded ? 'Source response loaded.' : 'Not loaded.')" +
             " && times.length === (loaded ? 1 : 0) && (!loaded || (times[0].dateTime === clock && times[0].textContent === clock))" +
             " && buttons.length === 2 && buttons[0].textContent === (loaded ? 'Refresh ' : 'Load ') + title + (title === 'Price' ? ' · One month' : '') && buttons[1].textContent === 'Inspect ' + title" +
             " && buttons.every(button => !button.disabled && button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44); })" +
+            " && " + FollowupsReviewSessionExpectations.unsupportedInterimSource() +
             " && overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Requested range: One month.')" +
             " && !overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range:')" +
             " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()")));

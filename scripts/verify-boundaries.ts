@@ -33,6 +33,44 @@ import {
   pnpmLockfileHeaderViolation,
 } from "./boundaries/dependency-policy";
 
+const managedSecInterimDelegateAnchors = new Map<string, readonly string[]>([
+  [
+    "apps/api/src/managed-sec-interim-service.ts",
+    ["constlisting=admitListing(catalog,request);return{request,listing}"],
+  ],
+  [
+    "apps/api/src/personal-sec-statement-company-facts.ts",
+    [
+      "consttaxonomy=sourceTaxonomy(value,cik)",
+      'consttaxonomy=issuerFacts(value,cik)["us-gaap"]',
+      'if(!isRecord(value))thrownewPersonalSecSourceError("invalid_response");if(normalizePersonalSecSourceCik(value.cik)!==cik)thrownewPersonalSecSourceError("invalid_response");if(!isRecord(value.facts))thrownewPersonalSecSourceError("invalid_response");returnvalue.facts',
+      'if(taxonomy===undefined)returnundefined;if(!isRecord(taxonomy))thrownewPersonalSecSourceError("invalid_response");returntaxonomy',
+      "constrows=conceptUnits(entry).USD",
+      'if(!isRecord(entry))thrownewPersonalSecSourceError("invalid_response");if(!isRecord(entry.units))thrownewPersonalSecSourceError("invalid_response");returnentry.units',
+    ],
+  ],
+  [
+    "apps/api/src/personal-sec-canonical-response-identity.ts",
+    ["assertSecurityCodes(value)"],
+  ],
+  [
+    "apps/api/src/personal-sec-interim-evidence-provider.ts",
+    [
+      "assertProviderFunctionType(typeofthis.#fetch);assertProviderFunctionType(typeofthis.#now);assertProviderFunctionType(typeofthis.#scheduler.wait)",
+      'if(type!=="function")thrownewTypeError(MESSAGE)',
+      "this.#admit(cik,signal);constclock=sourceCapture(this.#now);constcontroller=newAbortController()",
+      "returnawaitthis.#captureEvidence(cik,controller,clock)",
+      'this.#assertOpen(signal);if(this.#userAgent===undefined)fail("not_configured");assertCik(cik);if(this.#active!==undefined)fail("busy")',
+      'if(this.#closed)fail("aborted");if(signal?.aborted===true)fail("aborted")',
+      'if(typeofcik!=="string")fail("invalid_request");if(!/^\\d{10}$/u.test(cik))fail("invalid_request");if(/^0+$/u.test(cik))fail("invalid_request")',
+      "constfilings=capturedFilings(submissions);consttarget=capturedTarget(submissions,filings,cutoffAt)",
+      "consttargetScan=capturedScan(submissions,filings)",
+      "return{cutoffAt:capture(),capture}",
+      'signal?.addEventListener("abort",onAbort,{once:true});this.#active=controller;try',
+      'signal?.removeEventListener("abort",onAbort);if(this.#active===controller)this.#active=undefined',
+    ],
+  ],
+]);
 // Exact reviewed transport owners; route-only process restrictions remain separate.
 const publicMarketDataFetchOwners = new Set([
   "apps/api/src/personal-market-data-provider.ts",
@@ -48,6 +86,27 @@ const publicMarketDataFetchOwners = new Set([
   "apps/api/src/personal-sec-filing-context-provider.ts",
   "apps/api/src/personal-sec-quarter-assessment-provider.ts",
 ]);
+const managedSecDirectFetchServices = new Set([
+  "apps/api/src/managed-sec-annual-service.ts",
+  "apps/api/src/managed-sec-interim-service.ts",
+  "apps/api/src/managed-sec-filings-service.ts",
+]);
+const managedSecSubmissionsOwners = new Set([
+  "apps/api/src/personal-sec-filings-provider.ts",
+  "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
+  "apps/api/src/personal-sec-annual-evidence-provider.ts",
+  "apps/api/src/personal-sec-interim-evidence-provider.ts",
+  "apps/api/src/managed-sec-source-fetch.ts",
+  "apps/api/src/managed-sec-annual-service.ts",
+  "apps/api/src/managed-sec-interim-service.ts",
+  "apps/api/src/managed-sec-filings-service.ts",
+  "apps/api/src/personal-sec-filing-context-provider.ts",
+  "apps/api/src/personal-sec-quarter-assessment-provider.ts",
+]);
+function publicMarketDataGlobalFetchAllowed(path: string): boolean {
+  if (publicMarketDataFetchOwners.has(path)) return true;
+  return managedSecDirectFetchServices.has(path);
+}
 const marketDataProcessFreeRoutes = new Set([
   "apps/api/src/managed-sec-source-fetch.ts",
   "apps/api/src/managed-sec-source-services.ts",
@@ -7305,6 +7364,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
   }
   const interimIssue = managedSecInterimSourceBoundaryViolation(interimSources);
   if (interimIssue !== null) found.push(interimIssue);
+  found.push(...managedSecInterimDelegateMutationViolations(interimSources));
   // Each declared guard must reject its own removal, with all other modules intact.
   for (const [name, , anchors] of managedSecInterimBoundaryDefinitions()) {
     const path = `apps/api/src/${name}.ts`;
@@ -7551,10 +7611,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         ts.ScriptKind.TSX,
       );
       if (
-        !publicMarketDataFetchOwners.has(path) &&
-        path !== managedAnnualPath &&
-        path !== "apps/api/src/managed-sec-interim-service.ts" &&
-        path !== managedFilingsPath &&
+        !publicMarketDataGlobalFetchAllowed(path) &&
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
@@ -7575,16 +7632,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         );
       }
       if (
-        path !== "apps/api/src/personal-sec-filings-provider.ts" &&
-        path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
-        path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
-        path !== "apps/api/src/personal-sec-interim-evidence-provider.ts" &&
-        path !== "apps/api/src/managed-sec-source-fetch.ts" &&
-        path !== managedAnnualPath &&
-        path !== "apps/api/src/managed-sec-interim-service.ts" &&
-        path !== managedFilingsPath &&
-        path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
-        path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
+        !managedSecSubmissionsOwners.has(path) &&
         content.includes("data.sec.gov/submissions")
       ) {
         found.push(
@@ -10286,6 +10334,41 @@ function managedSecInterimBoundaryDefinitions(): readonly (readonly [
     ],
   ];
 }
+function managedSecInterimDelegateViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  for (const [path, anchors] of managedSecInterimDelegateAnchors) {
+    const content = sources.get(path);
+    if (content === undefined)
+      return `${path}: reviewed SEC delegate source is missing`;
+    const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+    for (const anchor of anchors) {
+      if (!compact.includes(anchor))
+        return `${path}: reviewed SEC delegate binding changed`;
+    }
+  }
+  return null;
+}
+function managedSecInterimDelegateMutationViolations(
+  sources: ReadonlyMap<string, string>,
+): string[] {
+  const found: string[] = [];
+  for (const [path, anchors] of managedSecInterimDelegateAnchors) {
+    const original = sources.get(path) ?? "";
+    for (const [index, anchor] of anchors.entries()) {
+      const changed = removeSecBoundaryAnchor(original, anchor);
+      const altered = new Map(sources);
+      altered.set(path, changed);
+      if (changed === original) {
+        found.push(`${path}: SEC delegate mutation ${index} was not applied`);
+        continue;
+      }
+      if (managedSecInterimSourceBoundaryViolation(altered) === null)
+        found.push(`${path}: SEC delegate refusal ${index} regressed`);
+    }
+  }
+  return found;
+}
 function managedSecInterimSourceBoundaryViolation(
   sources: ReadonlyMap<string, string>,
 ): string | null {
@@ -10345,7 +10428,48 @@ function managedSecInterimSourceBoundaryViolation(
     ].every((anchor) => compact.includes(anchor))
   )
     return "Interim target metadata must retain its exact five fields and complete 10-Q/amendment count";
-  return personalSecAnnualCanonicalBoundaryViolation(sources, "interim");
+  return (
+    managedSecInterimDelegateViolation(sources) ??
+    personalSecAnnualCanonicalBoundaryViolation(sources, "interim")
+  );
+}
+function unreviewedSecTemplate(
+  node: ts.Node,
+  source: ts.SourceFile,
+  urls: Set<string>,
+): boolean {
+  if (!ts.isTemplateExpression(node)) return false;
+  if (!/(?:https?|wss?):\/\//iu.test(node.head.text)) return false;
+  return !urls.delete(node.getText(source).replace(/\s+/gu, ""));
+}
+function secLiteralHasUrl(node: ts.Node): boolean {
+  if (!ts.isStringLiteralLike(node)) return false;
+  return /(?:https?|wss?):\/\//iu.test(node.text);
+}
+function secManagedFetchCall(
+  node: ts.Node,
+  source: ts.SourceFile,
+): node is ts.CallExpression {
+  if (!ts.isCallExpression(node)) return false;
+  if (node.expression.getText(source) === "fetch") return true;
+  return (
+    namedBoundaryPropertyAccess(
+      node.expression,
+      new Set(["fetch", "#fetch"]),
+    ) !== null
+  );
+}
+function secManagedFetchCallAllowed(
+  node: ts.CallExpression,
+  source: ts.SourceFile,
+  transport: boolean,
+): boolean {
+  if (!transport) return false;
+  if (node.expression.getText(source) !== "this.options.fetch") return false;
+  return (
+    node.arguments.map((argument) => argument.getText(source)).join(",") ===
+    "input,init"
+  );
 }
 function secManagedRawSinkViolation(
   content: string,
@@ -10369,33 +10493,11 @@ function secManagedRawSinkViolation(
   let invalid = false;
   let sinks = 0;
   const visit = (node: ts.Node): void => {
-    if (
-      ts.isTemplateExpression(node) &&
-      /(?:https?|wss?):\/\//iu.test(node.head.text) &&
-      !urls.delete(node.getText(source).replace(/\s+/gu, ""))
-    )
-      invalid = true;
-    if (
-      ts.isStringLiteralLike(node) &&
-      /(?:https?|wss?):\/\//iu.test(node.text)
-    )
-      invalid = true;
-    if (
-      ts.isCallExpression(node) &&
-      (node.expression.getText(source) === "fetch" ||
-        namedBoundaryPropertyAccess(
-          node.expression,
-          new Set(["fetch", "#fetch"]),
-        ) !== null)
-    ) {
+    if (unreviewedSecTemplate(node, source, urls)) invalid = true;
+    if (secLiteralHasUrl(node)) invalid = true;
+    if (secManagedFetchCall(node, source)) {
       sinks++;
-      if (
-        !transport ||
-        node.expression.getText(source) !== "this.options.fetch" ||
-        node.arguments.map((argument) => argument.getText(source)).join(",") !==
-          "input,init"
-      )
-        invalid = true;
+      if (!secManagedFetchCallAllowed(node, source, transport)) invalid = true;
     }
     ts.forEachChild(node, visit);
   };
@@ -12373,32 +12475,12 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     "apps/api/src/personal-sec-interim-canonical-response.test.ts",
   ]) {
     const source = await cycle2kText(path, found);
-    const altered = source.replace(
-      "lookupPersonalSecurityMasterListing",
-      "searchPersonalSecurityMaster",
-    );
-    const foreign = path.replace(/\.ts$/u, "-neighbor.ts");
     if (
-      personalSecurityMasterApiImportViolation(
+      managedInterimSecurityImportInvariantFails(
         path,
         source,
         allowedApiImporters,
-      ) !== null ||
-      personalSecurityMasterApiImportViolation(
-        foreign,
-        source,
-        allowedApiImporters,
-      ) === null ||
-      personalSecurityMasterApiImportViolation(
-        path,
-        altered,
-        allowedApiImporters,
-      ) === null ||
-      personalSecurityMasterApiImportViolation(
-        path,
-        `${source}\nimport * as unreviewed from "@research-cockpit/personal-security-master";`,
-        allowedApiImporters,
-      ) === null
+      )
     )
       found.push(`${path}: exact security-master importer refusal regressed`);
   }
@@ -13985,6 +14067,28 @@ function personalSecurityMasterSourcePreparationExternalReference(
   return false;
 }
 
+function managedInterimSecurityImportInvariantFails(
+  path: string,
+  source: string,
+  allowed: ReadonlyMap<string, readonly string[]>,
+): boolean {
+  const violation = (candidatePath: string, text: string) =>
+    personalSecurityMasterApiImportViolation(candidatePath, text, allowed);
+  if (violation(path, source) !== null) return true;
+  const foreign = path.replace(/\.ts$/u, "-neighbor.ts");
+  if (violation(foreign, source) === null) return true;
+  const altered = source.replace(
+    "lookupPersonalSecurityMasterListing",
+    "searchPersonalSecurityMaster",
+  );
+  if (violation(path, altered) === null) return true;
+  return (
+    violation(
+      path,
+      `${source}\nimport * as unreviewed from "@research-cockpit/personal-security-master";`,
+    ) === null
+  );
+}
 function personalSecurityMasterApiImportViolation(
   path: string,
   content: string,

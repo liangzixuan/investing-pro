@@ -30,6 +30,9 @@ function assertCodes(value: Identity): void {
   if (value.country !== "US") throw new TypeError("Invalid SEC identity.");
   if (!/^[A-Z0-9]{4}$/u.test(value.exchangeMic))
     throw new TypeError("Invalid SEC identity.");
+  assertSecurityCodes(value);
+}
+function assertSecurityCodes(value: Identity): void {
   if (!/^[A-Z0-9][A-Z0-9.-]{0,14}$/u.test(value.symbol))
     throw new TypeError("Invalid SEC identity.");
   if (!/^(?!0000000000)[0-9]{10}$/u.test(value.cik))

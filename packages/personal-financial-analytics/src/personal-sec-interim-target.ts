@@ -41,27 +41,28 @@ function filings(value: unknown): readonly Filing[] {
 const unresolved = (reason: Reason): Target =>
   Object.freeze({ status: "unresolved", reason });
 
-function selectedTarget(
-  candidates: readonly Filing[],
-  cutoffAt: string,
-): Target {
-  const first = candidates[0];
-  if (!first) return unresolved("no_observed_interim_target");
+function targetDateReason(first: Filing, cutoffAt: string): Reason | null {
   if (first.reportDate! > first.filedDate!)
-    return unresolved("future_or_inconsistent_dates");
-  if (first.acceptedAt === null && first.filedDate === cutoffAt.slice(0, 10))
-    return unresolved("cutoff_time_unresolved");
-  if (
-    first.acceptedAt !== null &&
-    first.acceptedAt.slice(0, 10) < first.reportDate!
-  )
-    return unresolved("future_or_inconsistent_dates");
+    return "future_or_inconsistent_dates";
+  if (first.acceptedAt === null) {
+    return first.filedDate === cutoffAt.slice(0, 10)
+      ? "cutoff_time_unresolved"
+      : null;
+  }
+  return first.acceptedAt.slice(0, 10) < first.reportDate!
+    ? "future_or_inconsistent_dates"
+    : null;
+}
+function selectionReason(
+  candidates: readonly Filing[],
+  first: Filing,
+): Reason | null {
   if (
     candidates.some(
       (row) => row.reportDate === first.reportDate && row.form === "10-Q/A",
     )
   )
-    return unresolved("amendment_not_supported");
+    return "amendment_not_supported";
   if (
     candidates.filter(
       (row) =>
@@ -69,7 +70,18 @@ function selectedTarget(
         row.filedDate === first.filedDate,
     ).length !== 1
   )
-    return unresolved("target_ambiguous");
+    return "target_ambiguous";
+  return null;
+}
+function selectedTarget(
+  candidates: readonly Filing[],
+  cutoffAt: string,
+): Target {
+  const first = candidates[0];
+  if (!first) return unresolved("no_observed_interim_target");
+  const reason =
+    targetDateReason(first, cutoffAt) ?? selectionReason(candidates, first);
+  if (reason) return unresolved(reason);
   return Object.freeze({
     status: "target",
     accessionNumber: first.accessionNumber,
@@ -79,6 +91,32 @@ function selectedTarget(
     acceptedAt: first.acceptedAt,
   });
 }
+function validRetrievalClock(cutoffAt: string, fetchedAt: string): boolean {
+  if (!timestamp(cutoffAt)) return false;
+  if (!timestamp(fetchedAt)) return false;
+  return fetchedAt >= cutoffAt;
+}
+function observedAtCutoff(row: Filing, cutoffAt: string): boolean {
+  if (row.filedDate! > cutoffAt.slice(0, 10)) return false;
+  if (row.acceptedAt === null) return true;
+  return Date.parse(row.acceptedAt) <= Date.parse(cutoffAt);
+}
+function selectObservedTarget(
+  interim: readonly Filing[],
+  cutoffAt: string,
+): Target {
+  if (interim.some((row) => row.filedDate === null))
+    return unresolved("filed_date_missing");
+  const observed = interim.filter((row) => observedAtCutoff(row, cutoffAt));
+  if (observed.some((row) => row.reportDate === null))
+    return unresolved("target_missing_report_date");
+  observed.sort(
+    (left, right) =>
+      lexical(right.reportDate!, left.reportDate!) ||
+      lexical(right.filedDate!, left.filedDate!),
+  );
+  return selectedTarget(observed, cutoffAt);
+}
 
 /** Select complete metadata before values. No fallback behind amendments or a failed target. */
 export function selectPersonalSecInterimTarget(
@@ -87,28 +125,13 @@ export function selectPersonalSecInterimTarget(
   fetchedAt: string,
 ): Target {
   if (value === null) return unresolved("submissions_unavailable");
-  if (!timestamp(cutoffAt) || !timestamp(fetchedAt) || fetchedAt < cutoffAt)
+  if (!validRetrievalClock(cutoffAt, fetchedAt))
     return unresolved("invalid_clock");
   try {
     const interim = filings(value).filter(
       (row) => row.form === "10-Q" || row.form === "10-Q/A",
     );
-    if (interim.some((row) => row.filedDate === null))
-      return unresolved("filed_date_missing");
-    const observed = interim.filter(
-      (row) =>
-        row.filedDate! <= cutoffAt.slice(0, 10) &&
-        (row.acceptedAt === null ||
-          Date.parse(row.acceptedAt) <= Date.parse(cutoffAt)),
-    );
-    if (observed.some((row) => row.reportDate === null))
-      return unresolved("target_missing_report_date");
-    observed.sort(
-      (left, right) =>
-        lexical(right.reportDate!, left.reportDate!) ||
-        lexical(right.filedDate!, left.filedDate!),
-    );
-    return selectedTarget(observed, cutoffAt);
+    return selectObservedTarget(interim, cutoffAt);
   } catch {
     return unresolved("invalid_submissions");
   }

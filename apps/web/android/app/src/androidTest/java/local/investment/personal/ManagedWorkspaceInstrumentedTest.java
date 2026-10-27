@@ -4455,12 +4455,13 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("overview keeps exact independent source states, original dates and explicit actions",
             "(() => { const overview = document.querySelector('.managed-company-evidence-actions');" +
             " const expected = [['Price'," + priceLoaded + ",'2026-09-20T00:00:01.000Z'],['Annual'," + annualLoaded + ",'2026-09-20T00:00:02.000Z'],['Filings'," + filingsLoaded + ",'2026-09-20T00:00:02.000Z']];" +
-            " return overview?.getAttribute('aria-label') === 'Company research sources' && overview.querySelectorAll('.managed-evidence-action-grid > section').length === 3" +
+            " return overview?.getAttribute('aria-label') === 'Company research sources' && overview.querySelectorAll('.managed-evidence-action-grid > section').length === 4" +
             " && expected.every(([title,loaded,clock]) => { const card = overview.querySelector('[aria-label=\"' + title + ' source\"]'); const buttons = [...(card?.querySelectorAll('.trial-actions > button') ?? [])]; const times = [...(card?.querySelectorAll('time') ?? [])];" +
             " return card?.getAttribute('aria-busy') === 'false' && card.querySelector('.managed-evidence-source-state')?.textContent === (loaded ? 'Source response loaded.' : 'Not loaded.')" +
             " && times.length === (loaded ? 1 : 0) && (!loaded || (times[0].dateTime === clock && times[0].textContent === clock))" +
             " && buttons.length === 2 && buttons[0].textContent === (loaded ? 'Refresh ' : 'Load ') + title + (title === 'Price' ? ' · One month' : '') && buttons[1].textContent === 'Inspect ' + title" +
             " && buttons.every(button => !button.disabled && button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44); })" +
+            " && " + FollowupsReviewSessionExpectations.unsupportedInterimSource() +
             " && overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Requested range: One month.')" +
             " && " + (priceLoaded ? "overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range: One month.')" : "!overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range:')") +
             " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
@@ -4483,7 +4484,7 @@ public class ManagedWorkspaceInstrumentedTest {
             DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) + " && " + DIAGNOSTICS + ".save === 0");
         awaitPage("captured report has no overview source request or Cancel actions",
             "document.querySelector('.managed-company-report .managed-company-evidence-actions') === null && " +
-            "[...document.querySelectorAll('.managed-company-report button')].every(button => !/^(Load|Refresh|Cancel|Inspect) (Price|Annual|Filings)(?: ·|$)/.test(button.textContent.trim())) && " +
+            "[...document.querySelectorAll('.managed-company-report button')].every(button => !/^(Load|Refresh|Cancel|Inspect) (Price|Annual|Interim|Filings)(?: ·|$)/.test(button.textContent.trim())) && " +
             DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
         retainAnnualNoteFrame("companyResearchReport", "#managed-prepared-report-heading",
             "#managed-prepared-report-heading, #managed-report-note-heading, .managed-company-report-note", 3);
@@ -9589,11 +9590,12 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFixtureReadCounts(annualReads, 1, lateAnnual);
         awaitPage("panel switching retains draft and exact EOD calls",
             DIAGNOSTICS + ".eod === " + eodReads + " && " + DIAGNOSTICS + ".eodAborted === 0" +
-            " && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".eodLateResolved === 0 && " + DIAGNOSTICS + ".interimReport === 0" +
             " && (document.querySelector('.managed-company-visit') === null || (" +
             "document.querySelector('.managed-company-identity strong')?.textContent === 'Zero Company'" +
             " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
-            " && document.querySelectorAll('.managed-company-sections button').length === 3" +
+            " && document.querySelectorAll('.managed-company-sections button').length === 4" +
+            " && [...document.querySelectorAll('.managed-company-sections button')].map(button => button.getAttribute('aria-label')).join('|') === 'Price section for ZERO|Annual section for ZERO|Interim section for ZERO|Filings section for ZERO'" +
             " && document.querySelectorAll('.managed-company-sections button[aria-pressed=true]').length === 1))" +
             " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
             " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
@@ -9633,10 +9635,10 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Company section controls did not scroll into view", sectionsScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String sectionsVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
             "'.managed-company-sections button, #managed-eod-heading')); const v = visualViewport;" +
-            " return v && targets.length === 4 && targets.every(e => { const r = e.getBoundingClientRect();" +
+            " return v && targets.length === 5 && targets.every(e => { const r = e.getBoundingClientRect();" +
             " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
             " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
-        awaitPage("all three section controls and active Price heading fully visible", sectionsVisible);
+        awaitPage("all four section controls and active Price heading fully visible", sectionsVisible);
         awaitPage("retained Price evidence before section controls capture", loadedEod);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
         retainScreenshot("researchCompanySections");

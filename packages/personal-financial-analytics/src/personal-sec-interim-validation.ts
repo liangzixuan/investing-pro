@@ -1,54 +1,60 @@
+function plainRecord(value: unknown): value is object {
+  if (value === null) return false;
+  if (typeof value !== "object") return false;
+  return Object.getPrototypeOf(value) === Object.prototype;
+}
+function dataField(field: PropertyDescriptor | undefined): boolean {
+  if (!field?.enumerable) return false;
+  return Object.hasOwn(field, "value");
+}
+function recordField(
+  key: PropertyKey,
+  descriptors: Record<string, PropertyDescriptor>,
+): boolean {
+  if (typeof key !== "string") return false;
+  return dataField(descriptors[key]);
+}
 export function record(
   value: unknown,
   keys?: readonly string[],
 ): Record<string, unknown> {
-  check(
-    value !== null &&
-      typeof value === "object" &&
-      Object.getPrototypeOf(value) === Object.prototype,
-  );
+  check(plainRecord(value));
   const descriptors = Object.getOwnPropertyDescriptors(value);
   const actual = Reflect.ownKeys(descriptors);
-  check(
-    actual.every(
-      (key) =>
-        typeof key === "string" &&
-        descriptors[key]?.enumerable &&
-        Object.hasOwn(descriptors[key], "value"),
-    ),
-  );
-  if (keys)
-    check(
-      actual.length === keys.length &&
-        keys.every((key) => Object.hasOwn(descriptors, key)),
-    );
+  check(actual.every((key) => recordField(key, descriptors)));
+  if (keys) {
+    check(actual.length === keys.length);
+    check(keys.every((key) => Object.hasOwn(descriptors, key)));
+  }
   return value as Record<string, unknown>;
 }
-export function array(value: unknown, maximum: number): readonly unknown[] {
-  check(
-    Array.isArray(value) && Object.getPrototypeOf(value) === Array.prototype,
-  );
+function arrayLength(value: unknown[], maximum: number): number {
   const length = Object.getOwnPropertyDescriptor(value, "length");
-  check(
-    length &&
-      Object.hasOwn(length, "value") &&
-      integer(length.value, 0, maximum),
-  );
-  const descriptors = Object.getOwnPropertyDescriptors(value),
-    keys = Reflect.ownKeys(descriptors);
-  check(
-    keys.length === length.value + 1 &&
-      keys.every(
-        (key) =>
-          key === "length" ||
-          (typeof key === "string" &&
-            /^(?:0|[1-9][0-9]*)$/u.test(key) &&
-            Number(key) < length.value &&
-            descriptors[key]?.enumerable &&
-            Object.hasOwn(descriptors[key], "value")),
-      ),
-  );
-  return value as readonly unknown[];
+  check(length);
+  check(Object.hasOwn(length, "value"));
+  check(integer(length.value, 0, maximum));
+  return length.value;
+}
+function arrayField(
+  key: PropertyKey,
+  descriptors: Record<string, PropertyDescriptor>,
+  length: number,
+): boolean {
+  if (key === "length") return true;
+  if (typeof key !== "string") return false;
+  if (!/^(?:0|[1-9][0-9]*)$/u.test(key)) return false;
+  if (Number(key) >= length) return false;
+  return dataField(descriptors[key]);
+}
+export function array(value: unknown, maximum: number): readonly unknown[] {
+  check(Array.isArray(value));
+  check(Object.getPrototypeOf(value) === Array.prototype);
+  const length = arrayLength(value, maximum);
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  check(keys.length === length + 1);
+  check(keys.every((key) => arrayField(key, descriptors, length)));
+  return value;
 }
 export function check(condition: unknown): asserts condition {
   if (!condition)
@@ -112,9 +118,9 @@ export function lexical(left: string, right: string): number {
 }
 
 export function freeze<T>(value: T): T {
-  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
-    Object.values(value).forEach(freeze);
-    Object.freeze(value);
-  }
-  return value;
+  if (value === null) return value;
+  if (typeof value !== "object") return value;
+  if (Object.isFrozen(value)) return value;
+  Object.values(value).forEach(freeze);
+  return Object.freeze(value);
 }

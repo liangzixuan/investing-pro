@@ -67,15 +67,7 @@ export function scanPersonalSecStatementCompanyFacts<Id extends string>(
   cik: string,
   context: ScanContext<Id>,
 ): PersonalSecStatementCompanyFacts<Id> {
-  if (
-    !isRecord(value) ||
-    normalizePersonalSecSourceCik(value.cik) !== cik ||
-    !isRecord(value.facts)
-  )
-    throw new PersonalSecSourceError("invalid_response");
-  const taxonomy = value.facts["us-gaap"];
-  if (taxonomy !== undefined && !isRecord(taxonomy))
-    throw new PersonalSecSourceError("invalid_response");
+  const taxonomy = sourceTaxonomy(value, cik);
   const scans: PersonalSecAnnualStatementConceptScanDto[] = [];
   const observations: PersonalSecStatementRawObservation<Id>[] = [];
   for (const { concept } of PERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY) {
@@ -88,6 +80,24 @@ export function scanPersonalSecStatementCompanyFacts<Id extends string>(
     scans: Object.freeze(scans),
     observations: Object.freeze(observations),
   });
+}
+
+function issuerFacts(value: unknown, cik: string): Record<string, unknown> {
+  if (!isRecord(value)) throw new PersonalSecSourceError("invalid_response");
+  if (normalizePersonalSecSourceCik(value.cik) !== cik)
+    throw new PersonalSecSourceError("invalid_response");
+  if (!isRecord(value.facts))
+    throw new PersonalSecSourceError("invalid_response");
+  return value.facts;
+}
+function sourceTaxonomy(
+  value: unknown,
+  cik: string,
+): Record<string, unknown> | undefined {
+  const taxonomy = issuerFacts(value, cik)["us-gaap"];
+  if (taxonomy === undefined) return undefined;
+  if (!isRecord(taxonomy)) throw new PersonalSecSourceError("invalid_response");
+  return taxonomy;
 }
 
 function scanConcept<Id extends string>(
@@ -185,14 +195,19 @@ function candidates(entry: unknown): Readonly<{
   absence: PersonalSecAnnualStatementAbsence | null;
 }> {
   if (entry === undefined) return { rows: [], absence: "concept_missing" };
-  if (!isRecord(entry) || !isRecord(entry.units))
-    throw new PersonalSecSourceError("invalid_response");
-  const rows = entry.units.USD;
+  const rows = conceptUnits(entry).USD;
   if (rows === undefined) return { rows: [], absence: "usd_missing" };
   if (!Array.isArray(rows))
     throw new PersonalSecSourceError("invalid_response");
   return { rows, absence: rows.length === 0 ? "empty_usd" : null };
 }
+function conceptUnits(entry: unknown): Record<string, unknown> {
+  if (!isRecord(entry)) throw new PersonalSecSourceError("invalid_response");
+  if (!isRecord(entry.units))
+    throw new PersonalSecSourceError("invalid_response");
+  return entry.units;
+}
+
 function compareRows(
   a: PersonalSecStatementRawObservation<string>,
   b: PersonalSecStatementRawObservation<string>,
