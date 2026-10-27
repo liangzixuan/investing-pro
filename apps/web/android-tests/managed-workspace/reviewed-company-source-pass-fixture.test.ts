@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ManagedResearchSelection } from "../../src/clerk-trial/managed-research-selection";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { companySnapshotEvidence } from "../../src/clerk-trial/managed-company-snapshot";
 import { prepareCompanyReport } from "../../src/clerk-trial/managed-company-report";
@@ -31,6 +32,9 @@ async function opened() {
   return { fixture, workspace, visit: workspace.getSnapshot().research! };
 }
 type Opened = Awaited<ReturnType<typeof opened>>;
+type Draft = NonNullable<
+  ReturnType<ManagedWorkspace["coordinator"]["getSnapshot"]>["draft"]
+>;
 async function pendingAnnual({ fixture, workspace, visit }: Opened) {
   const preview = workspace.prepareCompanySourcePass(visit, all);
   expect(preview).not.toBeNull();
@@ -74,174 +78,206 @@ async function cancelFirstRead(value: Opened) {
   return price;
 }
 
+function previewMissingSources({ fixture, workspace, visit }: Opened) {
+  const defaults = workspace.prepareCompanySourcePass(visit, all.slice(0, 3));
+  expect(defaults?.names).toEqual(["eod", "annual", "filings"]);
+  expect(
+    defaults?.rows.map((row) => [row.name, row.selected, row.disposition]),
+  ).toEqual([
+    ["eod", true, "missing"],
+    ["annual", true, "missing"],
+    ["filings", true, "missing"],
+    ["interim", false, "not_attempted"],
+  ]);
+  expect(fixture.getSnapshot()).toMatchObject({
+    eod: 0,
+    annual: 0,
+    filings: 0,
+    interimReport: 0,
+    save: 0,
+  });
+}
+
+async function completeReviewedSources(
+  { fixture, workspace, visit }: Opened,
+  price: ReturnType<ManagedWorkspace["eod"]["getSnapshot"]>["response"],
+) {
+  const reviewed = workspace.prepareCompanySourcePass(visit, [
+    "interim",
+    "filings",
+    "annual",
+    "eod",
+  ]);
+  expect(reviewed?.names).toEqual(all);
+  expect(reviewed?.rows[0]).toMatchObject({
+    disposition: "retained",
+    evidence: { completedAt: price!.completedAt },
+  });
+  expect(fixture.getSnapshot().annual).toBe(1);
+  await workspace.runCompanySourcePass(visit, reviewed!);
+  expect(fixture.reviewedCompanySourcePass!.getSnapshot()).toEqual({
+    order: ["eod", "annual", "annual", "filings", "interimReport"],
+    aborted: 1,
+    late: 1,
+  });
+  expect(workspace.companySourcePass.getSnapshot()).toMatchObject({
+    phase: "finished",
+    rows: [
+      { disposition: "retained" },
+      { disposition: "loaded" },
+      { disposition: "loaded" },
+      { disposition: "loaded" },
+    ],
+  });
+  expect(workspace.eod.getSnapshot().response).toBe(price);
+}
+
+async function retainCompleteSources({ fixture, workspace, visit }: Opened) {
+  const responses = [
+    workspace.eod.getSnapshot().response,
+    workspace.annual.getSnapshot().response,
+    workspace.filings.getSnapshot().response,
+    workspace.interim.getSnapshot().response,
+  ];
+  const retained = workspace.prepareCompanySourcePass(visit, all)!;
+  expect(retained.rows.every((row) => row.disposition === "retained")).toBe(
+    true,
+  );
+  await workspace.runCompanySourcePass(visit, retained);
+  expect([
+    workspace.eod.getSnapshot().response,
+    workspace.annual.getSnapshot().response,
+    workspace.filings.getSnapshot().response,
+    workspace.interim.getSnapshot().response,
+  ]).toEqual(responses);
+  expect(fixture.getSnapshot()).toMatchObject({
+    eod: 1,
+    annual: 2,
+    filings: 1,
+    interimReport: 1,
+    save: 0,
+  });
+}
+
+function appendCitedInterimCells(
+  { fixture, workspace }: Opened,
+  original: Draft,
+) {
+  workspace.switchToInterim();
+  const selected = workspace.getSnapshot().research!.selection;
+  const packet = workspace.interim.getSnapshot().response!;
+  expect(
+    packet.evidence.facts.observations
+      .filter(
+        (row) =>
+          row.concept === "RevenueFromContractWithCustomerExcludingAssessedTax",
+      )
+      .map((row) => [row.startDate, row.endDate, row.value]),
+  ).toEqual([
+    ["2026-04-01", "2026-06-30", "40"],
+    ["2026-01-01", "2026-06-30", "75"],
+  ]);
+  const proposal = workspace.prepareInterimStatementsNote(
+    selected,
+    packet,
+    fixture.interimReview!.selectedCells,
+    () => true,
+  );
+  expect(proposal.preview?.note).toBe(fixture.interimReview!.expectedNote);
+  expect(workspace.coordinator.getSnapshot().draft).toEqual(original);
+  expect(
+    workspace.appendInterimStatementsNote(proposal.preview!).appended,
+  ).toBe(true);
+  const expected = {
+    ...original,
+    memberships: original.memberships.map((member, index) =>
+      index === 0
+        ? { ...member, note: fixture.interimReview!.expectedNote }
+        : member,
+    ),
+  };
+  expect(workspace.coordinator.getSnapshot().draft).toEqual(expected);
+  return { selected, expected };
+}
+
+function captureDatedReport(
+  { fixture, workspace }: Opened,
+  selected: ManagedResearchSelection,
+) {
+  const evidence = companySnapshotEvidence(
+    selected,
+    workspace.eod.getSnapshot(),
+    workspace.annual.getSnapshot(),
+    workspace.filings.getSnapshot(),
+    workspace.interim.getSnapshot(),
+  );
+  const report = prepareCompanyReport(
+    selected,
+    evidence,
+    workspace.getResearchWatchlist(selected),
+    () => new Date("2026-09-21T12:00:00.000Z"),
+  );
+  const document = formatCompanyReportDocument(report!);
+  expect(document).not.toBeNull();
+  const captured = JSON.parse(document!.text) as {
+    authoredResearch: { note: unknown };
+    sources: { interim: unknown };
+  };
+  expect(captured.authoredResearch.note).toBe(
+    fixture.interimReview!.expectedNote,
+  );
+  expect(document!.text).toContain("2026-08-01T12:00:03.000Z");
+  expect(document!.text).toContain("2026-09-20T00:00:02.000Z");
+  expect(captured.sources.interim).not.toBeNull();
+}
+
+async function backAndSaveSeparately(
+  { fixture, workspace }: Opened,
+  expected: Draft,
+) {
+  workspace.closeResearch();
+  expect(workspace.coordinator.getSnapshot()).toMatchObject({
+    draft: expected,
+    baseVersion: 1,
+    dirty: true,
+  });
+  expect(fixture.getSnapshot().save).toBe(0);
+  await workspace.coordinator.save();
+  await workspace.coordinator.load();
+  expect(workspace.coordinator.getSnapshot()).toMatchObject({
+    draft: expected,
+    baseVersion: 2,
+    dirty: false,
+  });
+  expect(fixture.getSnapshot()).toMatchObject({
+    load: 2,
+    save: 1,
+    eod: 1,
+    annual: 2,
+    filings: 1,
+    interimReport: 1,
+    token: 0,
+    signOut: 0,
+    interimPortfolioLoad: 0,
+    interimFollowupsLoad: 0,
+  });
+}
+
 describe("invented reviewed company source pass native journey", () => {
   it("previews without reads, cancels remaining work, retains clocks, and continues through cited cells, report, Back and separate Save", async () => {
     const value = await opened();
-    const { fixture, workspace, visit } = value;
+    const { workspace } = value;
     try {
       const original = structuredClone(
         workspace.coordinator.getSnapshot().draft!,
       );
-      const defaults = workspace.prepareCompanySourcePass(
-        visit,
-        all.slice(0, 3),
-      );
-      expect(defaults?.names).toEqual(["eod", "annual", "filings"]);
-      expect(
-        defaults?.rows.map((row) => [row.name, row.selected, row.disposition]),
-      ).toEqual([
-        ["eod", true, "missing"],
-        ["annual", true, "missing"],
-        ["filings", true, "missing"],
-        ["interim", false, "not_attempted"],
-      ]);
-      expect(fixture.getSnapshot()).toMatchObject({
-        eod: 0,
-        annual: 0,
-        filings: 0,
-        interimReport: 0,
-        save: 0,
-      });
+      previewMissingSources(value);
       const price = await cancelFirstRead(value);
-      const reviewed = workspace.prepareCompanySourcePass(visit, [
-        "interim",
-        "filings",
-        "annual",
-        "eod",
-      ]);
-      expect(reviewed?.names).toEqual(all);
-      expect(reviewed?.rows[0]).toMatchObject({
-        disposition: "retained",
-        evidence: { completedAt: price!.completedAt },
-      });
-      expect(fixture.getSnapshot().annual).toBe(1);
-      await workspace.runCompanySourcePass(visit, reviewed!);
-      expect(fixture.reviewedCompanySourcePass!.getSnapshot()).toEqual({
-        order: ["eod", "annual", "annual", "filings", "interimReport"],
-        aborted: 1,
-        late: 1,
-      });
-      expect(workspace.companySourcePass.getSnapshot()).toMatchObject({
-        phase: "finished",
-        rows: [
-          { disposition: "retained" },
-          { disposition: "loaded" },
-          { disposition: "loaded" },
-          { disposition: "loaded" },
-        ],
-      });
-      expect(workspace.eod.getSnapshot().response).toBe(price);
-      const responses = [
-        workspace.eod.getSnapshot().response,
-        workspace.annual.getSnapshot().response,
-        workspace.filings.getSnapshot().response,
-        workspace.interim.getSnapshot().response,
-      ];
-      const retained = workspace.prepareCompanySourcePass(visit, all)!;
-      expect(retained.rows.every((row) => row.disposition === "retained")).toBe(
-        true,
-      );
-      await workspace.runCompanySourcePass(visit, retained);
-      expect([
-        workspace.eod.getSnapshot().response,
-        workspace.annual.getSnapshot().response,
-        workspace.filings.getSnapshot().response,
-        workspace.interim.getSnapshot().response,
-      ]).toEqual(responses);
-      expect(fixture.getSnapshot()).toMatchObject({
-        eod: 1,
-        annual: 2,
-        filings: 1,
-        interimReport: 1,
-        save: 0,
-      });
-
-      workspace.switchToInterim();
-      const selected = workspace.getSnapshot().research!.selection;
-      const packet = workspace.interim.getSnapshot().response!;
-      expect(
-        packet.evidence.facts.observations
-          .filter(
-            (row) =>
-              row.concept ===
-              "RevenueFromContractWithCustomerExcludingAssessedTax",
-          )
-          .map((row) => [row.startDate, row.endDate, row.value]),
-      ).toEqual([
-        ["2026-04-01", "2026-06-30", "40"],
-        ["2026-01-01", "2026-06-30", "75"],
-      ]);
-      const proposal = workspace.prepareInterimStatementsNote(
-        selected,
-        packet,
-        fixture.interimReview!.selectedCells,
-        () => true,
-      );
-      expect(proposal.preview?.note).toBe(fixture.interimReview!.expectedNote);
-      expect(workspace.coordinator.getSnapshot().draft).toEqual(original);
-      expect(
-        workspace.appendInterimStatementsNote(proposal.preview!).appended,
-      ).toBe(true);
-      const expected = {
-        ...original,
-        memberships: original.memberships.map((member, index) =>
-          index === 0
-            ? { ...member, note: fixture.interimReview!.expectedNote }
-            : member,
-        ),
-      };
-      expect(workspace.coordinator.getSnapshot().draft).toEqual(expected);
-      const evidence = companySnapshotEvidence(
-        selected,
-        workspace.eod.getSnapshot(),
-        workspace.annual.getSnapshot(),
-        workspace.filings.getSnapshot(),
-        workspace.interim.getSnapshot(),
-      );
-      const report = prepareCompanyReport(
-        selected,
-        evidence,
-        workspace.getResearchWatchlist(selected),
-        () => new Date("2026-09-21T12:00:00.000Z"),
-      );
-      const document = formatCompanyReportDocument(report!);
-      expect(document).not.toBeNull();
-      const captured = JSON.parse(document!.text) as {
-        authoredResearch: { note: unknown };
-        sources: { interim: unknown };
-      };
-      expect(captured.authoredResearch.note).toBe(
-        fixture.interimReview!.expectedNote,
-      );
-      expect(document!.text).toContain("2026-08-01T12:00:03.000Z");
-      expect(document!.text).toContain("2026-09-20T00:00:02.000Z");
-      expect(captured.sources.interim).not.toBeNull();
-      workspace.closeResearch();
-      expect(workspace.coordinator.getSnapshot()).toMatchObject({
-        draft: expected,
-        baseVersion: 1,
-        dirty: true,
-      });
-      expect(fixture.getSnapshot().save).toBe(0);
-      await workspace.coordinator.save();
-      await workspace.coordinator.load();
-      expect(workspace.coordinator.getSnapshot()).toMatchObject({
-        draft: expected,
-        baseVersion: 2,
-        dirty: false,
-      });
-      expect(fixture.getSnapshot()).toMatchObject({
-        load: 2,
-        save: 1,
-        eod: 1,
-        annual: 2,
-        filings: 1,
-        interimReport: 1,
-        token: 0,
-        signOut: 0,
-        interimPortfolioLoad: 0,
-        interimFollowupsLoad: 0,
-      });
+      await completeReviewedSources(value, price);
+      await retainCompleteSources(value);
+      const { selected, expected } = appendCitedInterimCells(value, original);
+      captureDatedReport(value, selected);
+      await backAndSaveSeparately(value, expected);
     } finally {
       workspace.sessionOwner.dispose();
     }

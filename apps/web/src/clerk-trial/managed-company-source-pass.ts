@@ -3,79 +3,36 @@ import type { ManagedCompanyFilings } from "./managed-company-filings";
 import type { ManagedEodHistory } from "./managed-eod-history";
 import type { ManagedInterimReport } from "./managed-interim-report";
 import type { ManagedResearchSelection } from "./managed-research-selection";
-import type {
-  CompanySourceOutcome,
-  CompanySourceOutcomes,
-  ManagedCompanySnapshotLoad,
-} from "./managed-company-snapshot-load";
-import { CompanySnapshotLoadOperation } from "./managed-company-snapshot-load-operation";
+import type { ManagedCompanySnapshotLoad } from "./managed-company-snapshot-load";
 import {
   companySnapshotLoadSources,
-  reviewedSourceNames,
   type CompanySnapshotLoadSource,
   type SnapshotLoadSource,
-  type SnapshotSourceState,
 } from "./managed-company-snapshot-load-sources";
+import {
+  CompanySourcePassRun,
+  ReviewedCompanySourcePlan,
+  type CompanySourcePassObservation,
+} from "./managed-company-source-pass-plan";
+import {
+  idleCompanySourcePass,
+  type CompanySourcePassPreview,
+  type ManagedCompanySourcePassState,
+} from "./managed-company-source-pass-state";
+export type {
+  CompanySourceDisposition,
+  CompanySourcePassRow,
+  CompanySourcePassPreview,
+  ManagedCompanySourcePassState,
+} from "./managed-company-source-pass-state";
 
-export type CompanySourceDisposition = CompanySourceOutcome | "missing";
-export interface CompanySourcePassRow {
-  readonly id: CompanySnapshotLoadSource;
-  readonly name: CompanySnapshotLoadSource;
-  readonly label: string;
-  readonly selected: boolean;
-  readonly disposition: CompanySourceDisposition;
-  readonly evidence: Readonly<{ completedAt: string | null; message: string }>;
-}
-export interface CompanySourcePassPreview {
-  readonly selection: ManagedResearchSelection;
-  readonly names: readonly CompanySnapshotLoadSource[];
-  readonly rows: readonly CompanySourcePassRow[];
-}
-export interface ManagedCompanySourcePassState {
-  readonly preview: CompanySourcePassPreview | null;
-  readonly phase:
-    "idle" | "preview" | "running" | "finished" | "cancelled" | "invalidated";
-  readonly rows: readonly CompanySourcePassRow[];
-  readonly message: string;
-}
-interface ReviewedPlan {
-  readonly handle: CompanySourcePassPreview;
-  readonly operation: CompanySnapshotLoadOperation;
-}
-interface PassRun {
-  readonly owner: object;
-  readonly plan: ReviewedPlan;
-  started: boolean;
-}
-function completedAt(state: SnapshotSourceState): string | null {
-  const response = state.response;
-  if (!response || typeof response !== "object") return null;
-  if ("completedAt" in response && typeof response.completedAt === "string")
-    return response.completedAt;
-  if (!("evidence" in response)) return null;
-  const evidence = response.evidence;
-  if (!evidence || typeof evidence !== "object" || !("generation" in evidence))
-    return null;
-  const generation = evidence.generation;
-  return generation &&
-    typeof generation === "object" &&
-    "completedAt" in generation &&
-    typeof generation.completedAt === "string"
-    ? generation.completedAt
-    : null;
-}
 /** Owns only a reviewed plan. All source reads use the existing bounded loader. */
 export class ManagedCompanySourcePass {
-  private state: ManagedCompanySourcePassState = Object.freeze({
-    preview: null,
-    phase: "idle",
-    rows: Object.freeze([]),
-    message: "",
-  });
+  private state = idleCompanySourcePass();
   private readonly sources: readonly SnapshotLoadSource[];
   private readonly listeners = new Set<() => void>();
-  private plan: ReviewedPlan | null = null;
-  private run: PassRun | null = null;
+  private plan: ReviewedCompanySourcePlan | null = null;
+  private run: CompanySourcePassRun | null = null;
   private preparing = false;
   private revision = 0;
   private tokens: readonly unknown[];
@@ -108,37 +65,6 @@ export class ManagedCompanySourcePass {
       listener();
     }
   }
-  private rows(
-    selection: ManagedResearchSelection,
-    names: readonly CompanySnapshotLoadSource[],
-    running: boolean,
-    outcomes: CompanySourceOutcomes = this.loader.getSnapshot().outcomes,
-    states?: readonly SnapshotSourceState[],
-  ) {
-    return Object.freeze(
-      this.sources.map((source, index) => {
-        const state = states?.[index] ?? source.model.getSnapshot();
-        const selected = names.includes(source.name);
-        let disposition: CompanySourceDisposition = selected
-          ? "missing"
-          : "not_attempted";
-        if (state.response !== null) disposition = "retained";
-        else if (!source.covered(selection)) disposition = "unsupported";
-        if (running && selected) disposition = outcomes[source.name];
-        return Object.freeze({
-          id: source.name,
-          name: source.name,
-          label: source.label,
-          selected,
-          disposition,
-          evidence: Object.freeze({
-            completedAt: completedAt(state),
-            message: state.message,
-          }),
-        });
-      }),
-    );
-  }
   private observed() {
     const tokens = this.sourceTokens();
     if (tokens.every((token, index) => token === this.tokens[index])) return;
@@ -161,164 +87,160 @@ export class ManagedCompanySourcePass {
   private loaderChanged() {
     const run = this.run;
     if (!run) return;
-    const result = this.loader.getReviewedResult(run.owner);
-    const load = result?.state ?? this.loader.getSnapshot();
-    if (!result && !this.loader.ownsReviewed(run.owner)) return;
-    if (!run.started && !load.running) return;
-    if (load.running) run.started = true;
-    const { selection, names } = run.plan.handle;
-    const rows = this.rows(
-      selection,
-      names,
-      true,
-      load.outcomes,
-      result?.sources,
-    );
-    if (!load.running) {
-      this.run = null;
-      this.tokens = this.sourceTokens();
-    }
+    const observation = run.observe(this.loader);
+    if (observation) this.publishRun(run, observation);
+  }
+  private publishRun(
+    run: CompanySourcePassRun,
+    observation: CompanySourcePassObservation,
+  ) {
+    const load = observation.state;
+    if (!load.running) this.releaseRun();
     this.publish({
       preview: null,
       phase: load.running ? "running" : "finished",
-      rows,
+      rows: run.rows(this.sources, observation),
       message: load.message,
     });
+  }
+  private releaseRun() {
+    this.run = null;
+    this.tokens = this.sourceTokens();
+  }
+  private busy() {
+    if (this.preparing) return true;
+    if (this.run) return true;
+    return this.loader.getSnapshot().running;
   }
   prepare(
     selection: ManagedResearchSelection,
     admitted: () => boolean,
     names: readonly CompanySnapshotLoadSource[],
   ): CompanySourcePassPreview | null {
-    if (this.preparing || this.run || this.loader.getSnapshot().running)
-      return null;
+    if (this.busy()) return null;
     this.preparing = true;
     try {
-      const revision = this.revision;
-      this.plan = null;
-      const valid = reviewedSourceNames(names);
-      if (!valid) {
-        this.invalidate();
-        return null;
-      }
-      const operation = new CompanySnapshotLoadOperation(
-        this.sources,
-        selection,
-        admitted,
-      );
-      const allowed = operation.admitted();
-      if (revision !== this.revision) return null;
-      if (!allowed || !operation.unchanged() || !operation.canStart()) {
-        this.invalidate();
-        return null;
-      }
-      const handle = Object.freeze({
-        selection: operation.captured,
-        names: valid,
-        rows: this.rows(operation.captured, valid, false),
-      });
-      const plan = { handle, operation };
-      this.plan = plan;
-      this.tokens = this.sourceTokens();
-      this.publish({
-        preview: handle,
-        phase: "preview",
-        rows: handle.rows,
-        message: "Review the selected missing sources, then run this pass.",
-      });
-      return this.plan === plan ? handle : null;
+      return this.capturePreview(selection, admitted, names);
     } finally {
       this.preparing = false;
     }
   }
-  async start(handle: CompanySourcePassPreview): Promise<void> {
+  private capturePreview(
+    selection: ManagedResearchSelection,
+    admitted: () => boolean,
+    names: readonly CompanySnapshotLoadSource[],
+  ) {
+    const revision = this.revision;
+    this.plan = null;
+    const plan = ReviewedCompanySourcePlan.capture(
+      this.sources,
+      selection,
+      admitted,
+      names,
+    );
+    if (!plan) return this.refusePreview();
+    const allowed = plan.admitted();
+    if (revision !== this.revision) return null;
+    if (!allowed) return this.refusePreview();
+    if (!plan.ready()) return this.refusePreview();
+    return this.publishPreview(plan);
+  }
+  private refusePreview() {
+    this.invalidate();
+    return null;
+  }
+  private publishPreview(plan: ReviewedCompanySourcePlan) {
+    this.plan = plan;
+    this.tokens = this.sourceTokens();
+    const handle = plan.handle;
+    this.publish({
+      preview: handle,
+      phase: "preview",
+      rows: handle.rows,
+      message: "Review the selected missing sources, then run this pass.",
+    });
+    return this.plan === plan ? handle : null;
+  }
+  private claim(handle: CompanySourcePassPreview) {
     const plan = this.plan;
-    if (!plan || plan.handle !== handle || this.run) return;
+    if (!plan) return null;
+    if (plan.handle !== handle) return null;
+    if (this.run) return null;
     // Consume before admission callbacks or notifications can reenter start.
     this.plan = null;
-    const run: PassRun = { owner: Object.freeze({}), plan, started: false };
+    const run = new CompanySourcePassRun(plan);
     this.run = run;
-    const allowed = plan.operation.admitted();
-    if (this.run !== run) return;
-    if (
-      !allowed ||
-      !plan.operation.unchanged() ||
-      !plan.operation.canStart() ||
-      this.loader.getSnapshot().running
-    ) {
-      this.run = null;
-      this.invalidate();
-      return;
-    }
+    return run;
+  }
+  private refuseRun() {
+    this.run = null;
+    this.invalidate();
+    return false;
+  }
+  private admitRun(run: CompanySourcePassRun) {
+    const allowed = run.plan.admitted();
+    if (this.run !== run) return false;
+    if (!allowed) return this.refuseRun();
+    return true;
+  }
+  private readyToStart(run: CompanySourcePassRun) {
+    if (!this.admitRun(run)) return false;
+    if (!run.plan.ready()) return this.refuseRun();
+    if (this.loader.getSnapshot().running) return this.refuseRun();
+    return true;
+  }
+  private announce(run: CompanySourcePassRun) {
     this.publish({
       preview: null,
       phase: "running",
-      rows: handle.rows,
+      rows: run.plan.handle.rows,
       message: "Starting reviewed company source pass…",
     });
-    if (this.run !== run) return;
-    const stillAllowed = plan.operation.admitted();
-    if (this.run !== run) return;
-    if (!stillAllowed || !plan.operation.unchanged()) {
-      this.run = null;
-      this.invalidate();
-      return;
-    }
+  }
+  private readyToRun(run: CompanySourcePassRun) {
+    if (this.run !== run) return false;
+    if (!this.admitRun(run)) return false;
+    if (!run.plan.unchanged()) return this.refuseRun();
+    if (this.loader.getSnapshot().running) return this.refuseRun();
+    return true;
+  }
+  async start(handle: CompanySourcePassPreview): Promise<void> {
+    const run = this.claim(handle);
+    if (!run) return;
+    if (!this.readyToStart(run)) return;
+    this.announce(run);
+    if (!this.readyToRun(run)) return;
     await this.loader.startReviewed(
       handle.selection,
-      () => this.run === run && plan.operation.admitted(),
+      () => this.run === run && run.plan.admitted(),
       handle.names,
       run.owner,
     );
-    if (this.run === run) {
-      const result = this.loader.getReviewedResult(run.owner);
-      this.run = null;
-      this.tokens = this.sourceTokens();
-      this.publish({
-        preview: null,
-        phase: "finished",
-        rows: this.rows(
-          handle.selection,
-          handle.names,
-          true,
-          result?.state.outcomes,
-          result?.sources,
-        ),
-        message: result?.state.message ?? this.loader.getSnapshot().message,
-      });
-    }
+    this.finishRun(run);
+  }
+  private finishRun(run: CompanySourcePassRun) {
+    if (this.run !== run) return;
+    const result = run.result(this.loader);
+    this.releaseRun();
+    this.publish({
+      preview: null,
+      phase: "finished",
+      rows: run.rows(this.sources, result),
+      message: result.state.message,
+    });
+  }
+  private cancelledRows(run: CompanySourcePassRun | null) {
+    return run ? run.cancelledRows(this.sources, this.loader) : this.state.rows;
   }
   cancel() {
     const run = this.run;
-    const hadPreview = this.plan !== null;
-    if (!run && !hadPreview) return;
+    if (!run && this.plan === null) return;
     const revision = ++this.revision;
     this.plan = null;
     this.run = null;
     if (run) this.loader.cancelReviewed(run.owner);
     if (revision !== this.revision) return;
-    const result = run ? this.loader.getReviewedResult(run.owner) : null;
-    const rows = run
-      ? result
-        ? this.rows(
-            run.plan.handle.selection,
-            run.plan.handle.names,
-            true,
-            result.state.outcomes,
-            result.sources,
-          )
-        : Object.freeze(
-            run.plan.handle.rows.map((row) =>
-              Object.freeze({
-                ...row,
-                disposition:
-                  row.disposition === "missing"
-                    ? ("not_attempted" as const)
-                    : row.disposition,
-              }),
-            ),
-          )
-      : this.state.rows;
+    const rows = this.cancelledRows(run);
     this.tokens = this.sourceTokens();
     this.publish({
       preview: null,
@@ -336,24 +258,19 @@ export class ManagedCompanySourcePass {
     if (run) this.loader.cancelReviewed(run.owner);
     if (revision !== this.revision) return;
     this.tokens = this.sourceTokens();
-    this.publish({
-      preview: null,
-      phase: "idle",
-      rows: Object.freeze([]),
-      message: "",
-    });
+    this.publish(idleCompanySourcePass());
+  }
+  private reconcilePlan(plan: ReviewedCompanySourcePlan) {
+    if (!plan.admitted()) {
+      this.invalidate();
+      return;
+    }
+    if (!plan.ready()) this.invalidate();
   }
   reconcile() {
     this.observed();
-    const plan = this.plan;
-    if (
-      plan &&
-      (!plan.operation.admitted() ||
-        !plan.operation.unchanged() ||
-        !plan.operation.canStart())
-    )
-      this.invalidate();
+    if (this.plan) this.reconcilePlan(this.plan);
     const run = this.run;
-    if (run && !run.plan.operation.admitted()) this.cancel();
+    if (run && !run.plan.admitted()) this.cancel();
   }
 }

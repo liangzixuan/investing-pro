@@ -44,12 +44,30 @@ export function reviewedSourceNames(
 }
 export interface SnapshotSourceState {
   readonly selection: ManagedResearchSelection | null;
-  readonly response: unknown;
+  readonly response:
+    | ManagedEodHistoryState["response"]
+    | ManagedAnnualReportState["response"]
+    | ManagedCompanyFilingsState["response"]
+    | ManagedInterimReportState["response"];
   readonly running: boolean;
   readonly catalogChanged: boolean;
   readonly error: boolean;
   readonly showingPrevious: boolean;
   readonly message: string;
+}
+
+function sourceResponseCompletedAt(
+  response: NonNullable<SnapshotSourceState["response"]>,
+): string {
+  if ("completedAt" in response) return response.completedAt;
+  return response.evidence.generation.completedAt;
+}
+/** Typed source packets retain the original model-admitted completion clock. */
+export function snapshotSourceEvidence(state: SnapshotSourceState) {
+  const response = state.response;
+  const completedAt =
+    response === null ? null : sourceResponseCompletedAt(response);
+  return Object.freeze({ completedAt, message: state.message });
 }
 interface SnapshotSourceModel {
   readonly getSnapshot: () => SnapshotSourceState;

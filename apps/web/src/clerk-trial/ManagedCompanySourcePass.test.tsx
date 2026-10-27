@@ -61,9 +61,15 @@ function find(
   for (const child of React.Children.toArray(tree)) {
     if (!React.isValidElement<Record<string, unknown>>(child)) continue;
     if (predicate(child)) return child;
-    if (child.props.children) {
+    const children =
+      typeof child.type === "function"
+        ? (child.type as (props: Record<string, unknown>) => React.ReactNode)(
+            child.props,
+          )
+        : (child.props.children as React.ReactNode);
+    if (children) {
       try {
-        return find(child.props.children as React.ReactNode, predicate);
+        return find(children, predicate);
       } catch {
         /* Continue through siblings. */
       }

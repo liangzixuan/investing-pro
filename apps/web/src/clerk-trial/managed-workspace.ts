@@ -1587,10 +1587,7 @@ export class ManagedWorkspace {
     // Model close notifications must never expose the visit with a cleared section.
     if (hadResearch)
       this.state = { ...this.state, research: null, companyRoute: null };
-    this.companySourcePass.clear();
-    if (this.researchOperation !== operation) return hadResearch;
-    this.companySnapshotLoad.clear();
-    if (this.researchOperation !== operation) return hadResearch;
+    if (!this.clearCompanySourceOperations(operation)) return hadResearch;
     this.valuation.activate(null);
     if (this.researchOperation !== operation) return hadResearch;
     if (!this.closeFinancialResearch(operation)) return hadResearch;
@@ -1598,6 +1595,12 @@ export class ManagedWorkspace {
     if (this.researchOperation !== operation) return hadResearch;
     this.eod.close();
     return hadResearch;
+  }
+  private clearCompanySourceOperations(operation: symbol) {
+    this.companySourcePass.clear();
+    if (this.researchOperation !== operation) return false;
+    this.companySnapshotLoad.clear();
+    return this.researchOperation === operation;
   }
   private closeFinancialResearch(operation: symbol) {
     this.annual.close();

@@ -99,6 +99,25 @@ async function fixture(supported = true) {
   };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
+/** Observe one actual terminal loader result, including synchronous replacement. */
+function onLoaderTerminal(
+  f: Fixture,
+  reason: string,
+  listener: (
+    state: ReturnType<ManagedCompanySnapshotLoad["getSnapshot"]>,
+  ) => void,
+) {
+  let consumed = false;
+  return f.loader.subscribe(() => {
+    if (consumed) return;
+    const state = f.loader.getSnapshot();
+    if (state.running) return;
+    if (!state.message.includes(reason)) return;
+    consumed = true;
+    listener(state);
+  });
+}
+
 function noReads(f: Fixture) {
   for (const read of [f.readPrice, f.readAnnual, f.readFilings, f.readInterim])
     expect(read).not.toHaveBeenCalled();
@@ -537,13 +556,7 @@ describe("reviewed company source pass", () => {
       deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
     f.readAnnual.mockReturnValue(replacement.promise);
     const next = { started: false, pending: Promise.resolve() };
-    f.loader.subscribe(() => {
-      if (
-        next.started ||
-        f.loader.getSnapshot().running ||
-        !f.loader.getSnapshot().message.includes("finished")
-      )
-        return;
+    onLoaderTerminal(f, "finished", () => {
       next.started = true;
       next.pending = f.loader.start(eodSelection, admitted);
       f.pass.cancel();
@@ -563,13 +576,7 @@ describe("reviewed company source pass", () => {
       .mockResolvedValueOnce(eodResponse())
       .mockReturnValueOnce(replacement.promise);
     const next = { started: false, pending: Promise.resolve() };
-    f.loader.subscribe(() => {
-      if (
-        next.started ||
-        f.loader.getSnapshot().running ||
-        !f.loader.getSnapshot().message.includes("finished")
-      )
-        return;
+    onLoaderTerminal(f, "finished", () => {
       next.started = true;
       f.price.open(eodSelection);
       next.pending = f.loader.start(eodSelection, admitted);
@@ -610,14 +617,7 @@ describe("reviewed company source pass", () => {
           pending: Promise.resolve(),
         };
         const original = { outcomes: f.loader.getSnapshot().outcomes };
-        f.loader.subscribe(() => {
-          const load = f.loader.getSnapshot();
-          if (
-            next.started ||
-            load.running ||
-            !load.message.includes("cancelled")
-          )
-            return;
+        onLoaderTerminal(f, "cancelled", (load) => {
           next.started = true;
           original.outcomes = load.outcomes;
           next.handle = f.pass.prepare(eodSelection, admitted, ["interim"]);
@@ -672,5 +672,44 @@ describe("reviewed company source pass", () => {
     expect(f.pass.getSnapshot().rows[0]!.evidence.completedAt).toBe(
       eodResponse().completedAt,
     );
+  });
+  it("refuses a reviewed Run when its announcement starts an all-retained legacy operation", async () => {
+    const f = await fixture();
+    await f.loader.start(eodSelection, admitted);
+    const snapshots = [
+      f.price.getSnapshot(),
+      f.annual.getSnapshot(),
+      f.filings.getSnapshot(),
+    ];
+    f.readPrice.mockClear();
+    f.readAnnual.mockClear();
+    f.readFilings.mockClear();
+    const handle = prepare(f, ["interim"]);
+    const replacement = { started: false, pending: Promise.resolve() };
+    f.pass.subscribe(() => {
+      if (replacement.started) return;
+      if (f.pass.getSnapshot().phase !== "running") return;
+      replacement.started = true;
+      replacement.pending = f.loader.start(eodSelection, admitted);
+    });
+    await f.pass.start(handle);
+    expect(replacement.started).toBe(true);
+    expect(f.pass.getSnapshot().phase).toBe("invalidated");
+    noReads(f);
+    await replacement.pending;
+    expect(f.loader.getSnapshot().message).toContain(
+      "No eligible missing sources",
+    );
+    expect(f.loader.getSnapshot().outcomes).toEqual({
+      eod: "retained",
+      annual: "retained",
+      filings: "retained",
+      interim: "not_attempted",
+    });
+    expect(f.price.getSnapshot()).toBe(snapshots[0]);
+    expect(f.annual.getSnapshot()).toBe(snapshots[1]);
+    expect(f.filings.getSnapshot()).toBe(snapshots[2]);
+    expect(f.pass.getSnapshot().phase).toBe("invalidated");
+    noReads(f);
   });
 });
