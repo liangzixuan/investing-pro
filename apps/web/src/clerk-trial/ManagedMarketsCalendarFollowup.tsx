@@ -1,16 +1,10 @@
-import {
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type Ref,
-} from "react";
+import { useSyncExternalStore, type Ref } from "react";
 import type { ResearchFollowup } from "@research-cockpit/contracts";
 import type { ManagedWorkspace } from "./managed-workspace";
-import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
 import type { ManagedMarketsNavigationProps } from "./ManagedMarketsNavigation";
 import { ManagedCalendarFollowupForm } from "./ManagedCalendarFollowupForm";
+import { useCalendarSourceChoice } from "./ManagedMarketsCalendarFollowupChoice";
 import "./managed-calendar-followup.css";
 
 export interface ManagedMarketsCalendarFollowupProps {
@@ -70,33 +64,11 @@ function useCalendarSources(workspace: ManagedWorkspace) {
     workspace.sessionOwner.getSnapshot,
   );
 }
-interface Choice {
-  capture: CalendarSourceCapture | null;
-  revision: number;
-  reason: string | null;
-}
 export function ManagedMarketsCalendarFollowup(
   props: ManagedMarketsCalendarFollowupProps,
 ) {
   useCalendarSources(props.workspace);
-  const [choice, setChoice] = useState<Choice>({
-    capture: null,
-    revision: 0,
-    reason: null,
-  });
-  const render = { props, choice };
-  const committed = useRef<typeof render | null>(null);
-  const focusFrom = useRef<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    committed.current = render;
-    return () => {
-      if (committed.current === render) committed.current = null;
-    };
-  });
-  const current = () =>
-    committed.current === render &&
-    props.isCurrent() &&
-    !props.navigationPending;
+  const controls = useCalendarSourceChoice(props);
   return (
     <>
       <ManagedMarketsDayView
@@ -105,37 +77,14 @@ export function ManagedMarketsCalendarFollowup(
         announcements={props.workspace.announcements}
         navigation={props.navigation}
         {...(props.headingRef ? { headingRef: props.headingRef } : {})}
-        onKeepCheck={(entry, selectionIsCurrent) => {
-          if (!current() || !selectionIsCurrent()) return;
-          const result = props.workspace.captureMarketsCalendarSource(
-            entry.key,
-            selectionIsCurrent,
-          );
-          if (!current() || !selectionIsCurrent()) return;
-          committed.current = null;
-          if (result.capture) {
-            focusFrom.current =
-              typeof document !== "undefined" &&
-              document.activeElement instanceof HTMLElement
-                ? document.activeElement
-                : null;
-            setChoice({
-              capture: result.capture,
-              revision: choice.revision + 1,
-              reason: null,
-            });
-          } else setChoice({ ...choice, reason: result.reason });
-        }}
+        onKeepCheck={controls.onKeepCheck}
       />
-      {choice.reason && <p role="status">{choice.reason}</p>}
+      {controls.choice.reason && <p role="status">{controls.choice.reason}</p>}
       <ManagedCalendarFollowupForm
-        key={choice.revision}
+        key={controls.choice.revision}
         {...props}
-        capture={choice.capture}
-        onClose={() => {
-          if (current() && focusFrom.current?.isConnected)
-            focusFrom.current.focus({ preventScroll: true });
-        }}
+        capture={controls.choice.capture}
+        onClose={controls.onClose}
       />
     </>
   );

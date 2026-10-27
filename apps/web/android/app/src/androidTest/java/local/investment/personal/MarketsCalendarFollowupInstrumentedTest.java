@@ -40,6 +40,11 @@ public class MarketsCalendarFollowupInstrumentedTest {
     private static final String RESOURCE="JSON.parse(document.querySelector('#fixture-followups-draft').textContent)";
     private static final String WATCHLIST="JSON.parse(document.querySelector('#fixture-workspace-draft').textContent)";
     private static final String EVIDENCE="JSON.parse(document.querySelector('#fixture-calendar-followup-evidence').textContent)";
+    private record WatchlistSnapshot(String encoded) {}
+    private record FollowupsSnapshot(String encoded) {}
+    private record DraftContext(WatchlistSnapshot watchlist, FollowupsSnapshot followups) {}
+    private record FollowupsCounts(int loads, int saves) {}
+    private record ReadCounts(int sessions, int feeds, int resolves, FollowupsCounts followups) {}
     private ActivityScenario<MainActivity> scenario;
     private ReportRevisitFixtureAssets assets;
     private ReportRevisitPage page;
@@ -66,10 +71,10 @@ public class MarketsCalendarFollowupInstrumentedTest {
             "document.querySelector('#fixture-calendar-followup-evidence')!==null && "+COUNTS+".load===1 && "+COUNTS+".status===1"+
             " && "+COUNTS+".marketsResolve===1 && "+RESOURCE+".entries===null && "+WATCHLIST+".memberships?.length===3")).nativeReady());
         scenario.onActivity(activity -> activity.getBridge().getWebView().clearHistory());
-        boundary(1,0,0,0,0);
+        boundary(new ReadCounts(1,0,0,new FollowupsCounts(0,0)));
     }
     @Test public void loadedUnknownTimeAnnouncementCreatesExactClassCQuestionThroughBackAndSeparateSave() throws Exception {
-        String originalWatchlist=authorIndependentNote();
+        WatchlistSnapshot originalWatchlist=authorIndependentNote();
         loadAndChooseAnnouncement();
         chooseClassC();
         authorAndLoad();
@@ -79,18 +84,18 @@ public class MarketsCalendarFollowupInstrumentedTest {
             "document.querySelector('#calendar-followup-check')===null && document.querySelector('#calendar-followup-create')===null"+
             " && "+EVIDENCE+".encodedFollowups==="+EVIDENCE+".originalEncodedFollowups && "+RESOURCE+".dirty===false")));
         reopenAfterCancel();preview();retainCompletePreviewFrame();
-        String expected=createExactlyOnce(originalWatchlist);
-        reviewResearchAndBack(expected,originalWatchlist);
-        saveAndFreshLoad(expected,originalWatchlist);
+        DraftContext drafts=new DraftContext(originalWatchlist,createExactlyOnce(originalWatchlist));
+        reviewResearchAndBack(drafts);
+        saveAndFreshLoad(drafts);
     }
-    private String authorIndependentNote() throws Exception {
+    private WatchlistSnapshot authorIndependentNote() throws Exception {
         page.click(Element.css("#fixture-calendar-followup-author-note"));
         page.await(new Check("independent original Watchlist order/notes stay dirty before any source action",new Script(
             WATCHLIST+".dirty===true && "+EVIDENCE+".watchlist.memberships.map(m=>m.listingId).join('|')==='listing-zero|listing-beta-a|listing-beta-c'"+
             " && "+EVIDENCE+".watchlist.memberships[0].note==="+JSONObject.quote(NOTE)+
             " && "+EVIDENCE+".watchlist.memberships[1].shareClassName==='Class A' && "+EVIDENCE+".watchlist.memberships[2].shareClassName==='Class C'")));
-        boundary(1,0,0,0,0);
-        return page.read(new Script(EVIDENCE+".encodedWatchlist"));
+        boundary(new ReadCounts(1,0,0,new FollowupsCounts(0,0)));
+        return new WatchlistSnapshot(page.read(new Script(EVIDENCE+".encodedWatchlist")));
     }
     private void loadAndChooseAnnouncement() throws Exception {
         page.await(new Check("calendar tool starts closed and cannot select a company automatically",new Script(
@@ -103,7 +108,7 @@ public class MarketsCalendarFollowupInstrumentedTest {
         page.await(new Check("only the exact selected unknown-time source opens the question form",new Script(
             "document.querySelector("+JSONObject.quote(ROOT+" > details")+")?.open===true && document.querySelector("+JSONObject.quote(ROOT+" > details > summary")+")?.textContent==='Keep a dated research check'"+
             " && document.querySelector('#calendar-followup-company')?.value===''")));
-        assertSourceEvidence();boundary(1,1,0,0,0);
+        assertSourceEvidence();boundary(new ReadCounts(1,1,0,new FollowupsCounts(0,0)));
     }
     private void chooseClassC() throws Exception {
         page.read(new Script("(()=>{const s=document.querySelector('#calendar-followup-company');s.scrollIntoView({block:'center',behavior:'instant'});s.focus({preventScroll:true});return 'focused';})()"));
@@ -133,7 +138,7 @@ public class MarketsCalendarFollowupInstrumentedTest {
             " && document.querySelector('#calendar-followup-due')?.value==="+JSONObject.quote(DUE)+
             " && document.querySelector('#calendar-followup-company')?.value==='listing-beta-c' && "+FOLLOWUPS+".load===1"+
             " && "+RESOURCE+".baseVersion===1 && "+EVIDENCE+".encodedFollowups==="+EVIDENCE+".originalEncodedFollowups")));
-        assertSourceEvidence();boundary(1,1,1,0,0);
+        assertSourceEvidence();boundary(new ReadCounts(1,1,0,new FollowupsCounts(1,0)));
     }
     private void assertSourceEvidence() throws Exception {
         page.await(new Check("full selected source keeps unknown publication and retrieved UTC separate from authored due date",new Script(
@@ -170,7 +175,7 @@ public class MarketsCalendarFollowupInstrumentedTest {
         new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario,FollowupsReportFrameCapture.Frame.MARKETS_CALENDAR_PREVIEW)).retain();
         page.await(new Check("the same complete preview remains current after its committed frame",new Script(visible)));
     }
-    private String createExactlyOnce(String watchlist) throws Exception {
+    private FollowupsSnapshot createExactlyOnce(WatchlistSnapshot watchlist) throws Exception {
         page.click(Element.css("#calendar-followup-create"));
         page.await(new Check("Create is consumed once and appends only Class C after both original entries",new Script(
             RESOURCE+".entries?.length===3 && "+RESOURCE+".dirty===true && document.querySelector('#calendar-followup-create')===null"+
@@ -183,19 +188,19 @@ public class MarketsCalendarFollowupInstrumentedTest {
             "document.querySelector('#calendar-followup-create')===null && document.querySelector('#calendar-followup-check')===null"+
             " && document.querySelector('#calendar-followup-status')?.textContent.includes('already has a follow-up')"+
             " && document.querySelector('#calendar-followup-review')?.textContent==='Review follow-up'")));
-        assertWatchlist(watchlist);boundary(1,1,1,0,0);
-        return page.read(new Script(EVIDENCE+".expectedEncodedFollowups"));
+        assertWatchlist(watchlist);boundary(new ReadCounts(1,1,0,new FollowupsCounts(1,0)));
+        return new FollowupsSnapshot(page.read(new Script(EVIDENCE+".expectedEncodedFollowups")));
     }
-    private void assertWatchlist(String encoded) throws Exception {
+    private void assertWatchlist(WatchlistSnapshot snapshot) throws Exception {
         page.await(new Check("whole independent dirty Watchlist remains byte-canonical and unsaved",new Script(
-            EVIDENCE+".encodedWatchlist==="+JSONObject.quote(encoded)+" && "+WATCHLIST+".dirty===true && "+COUNTS+".save===0")));
+            EVIDENCE+".encodedWatchlist==="+JSONObject.quote(snapshot.encoded())+" && "+WATCHLIST+".dirty===true && "+COUNTS+".save===0")));
     }
-    private void assertPayload(String expected) throws Exception {
+    private void assertPayload(FollowupsSnapshot snapshot) throws Exception {
         page.await(new Check("complete canonical encoded Follow-ups payload including both original entries equals its independent oracle",new Script(
-            EVIDENCE+".encodedFollowups==="+JSONObject.quote(expected)+" && "+RESOURCE+".entries?.length===3"+
+            EVIDENCE+".encodedFollowups==="+JSONObject.quote(snapshot.encoded())+" && "+RESOURCE+".entries?.length===3"+
             " && "+RESOURCE+".entries[2].dueOn==="+JSONObject.quote(DUE)+" && "+RESOURCE+".entries[2].result==='' && "+RESOURCE+".entries[2].status==='open'")));
     }
-    private void reviewResearchAndBack(String expected,String watchlist) throws Exception {
+    private void reviewResearchAndBack(DraftContext drafts) throws Exception {
         page.click(Element.css("#calendar-followup-review"));
         page.await(new Check("existing router bridge opens and selects only the newly created exact entry",new Script(
             "location.href==='https://localhost/' && document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Follow-ups'"+
@@ -212,13 +217,13 @@ public class MarketsCalendarFollowupInstrumentedTest {
         page.await(new Check("one hardware Back retains the selected Follow-ups entry and original source packet",new Script(
             "location.href==='https://localhost/' && document.querySelector('.managed-company-visit')===null && document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Follow-ups'"+
             " && "+RESOURCE+".selectedId==="+RESOURCE+".entries[2].id && "+EVIDENCE+".feed.fetchedAt==='2026-10-23T18:00:00.000Z'")));
-        assertPayload(expected);assertWatchlist(watchlist);boundary(1,1,1,0,1);
+        assertPayload(drafts.followups());assertWatchlist(drafts.watchlist());boundary(new ReadCounts(1,1,1,new FollowupsCounts(1,0)));
     }
-    private void saveAndFreshLoad(String expected,String watchlist) throws Exception {
+    private void saveAndFreshLoad(DraftContext drafts) throws Exception {
         page.click(Element.css("#managed-followups-save"));
         page.await(new Check("only explicit separate Follow-ups Save commits the whole canonical resource once",new Script(
             RESOURCE+".baseVersion===2 && "+RESOURCE+".dirty===false && "+FOLLOWUPS+".save===1 && "+FOLLOWUPS+".commits===1")));
-        assertPayload(expected);assertWatchlist(watchlist);boundary(1,1,1,1,1);
+        assertPayload(drafts.followups());assertWatchlist(drafts.watchlist());boundary(new ReadCounts(1,1,1,new FollowupsCounts(1,1)));
         page.click(Element.css("#fixture-followups-fresh-session"));
         page.await(new Check("fresh session has no implicit Follow-ups or source read and no saved Watchlist edit",new Script(
             FOLLOWUPS+".session===2 && "+RESOURCE+".entries===null && "+COUNTS+".status===2 && "+COUNTS+".marketsResolve===2"+
@@ -226,24 +231,24 @@ public class MarketsCalendarFollowupInstrumentedTest {
         openFollowups();page.click(Element.css("#managed-followups-load"));
         page.await(new Check("explicit fresh Load restores only the independently saved complete Follow-ups resource",new Script(
             FOLLOWUPS+".load===2 && "+RESOURCE+".baseVersion===2 && "+RESOURCE+".dirty===false")));
-        assertPayload(expected);boundary(2,1,2,1,1);
+        assertPayload(drafts.followups());boundary(new ReadCounts(2,1,1,new FollowupsCounts(2,1)));
     }
     private void openFollowups() throws Exception {
         page.click(Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='Follow-ups']"));
         page.await(new Check("visible Follow-ups workspace before explicit reload",new Script(
             "document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Follow-ups' && document.querySelector('#managed-followups-heading')?.checkVisibility()===true")));
     }
-    private void boundary(int sessions,int feeds,int loads,int saves,int resolves) throws Exception {
+    private void boundary(ReadCounts counts) throws Exception {
         page.await(new Check("fixed source/origin/CSP and all independent read/write counters remain exact",new Script(
             "location.origin==='https://localhost' && location.hash==='' && window.Capacitor?.getPlatform()==='android'"+
             " && document.querySelector('meta[name=investment-build-sha]')?.content==="+JSONObject.quote(sourceSha)+
             " && document.querySelector('meta[name=investment-android-test]')?.content==='managed-workspace'"+
             " && document.querySelector('meta[http-equiv=Content-Security-Policy]')?.content==="+JSONObject.quote(CSP)+
-            " && "+COUNTS+".load==="+sessions+" && "+COUNTS+".status==="+sessions+" && "+COUNTS+".marketsResolve==="+sessions+
-            " && "+COUNTS+".resolve==="+resolves+" && "+COUNTS+".fed==="+feeds+" && "+COUNTS+".save===0 && "+COUNTS+".eod===0 && "+COUNTS+".annual===0 && "+COUNTS+".filings===0"+
+            " && "+COUNTS+".load==="+counts.sessions()+" && "+COUNTS+".status==="+counts.sessions()+" && "+COUNTS+".marketsResolve==="+counts.sessions()+
+            " && "+COUNTS+".resolve==="+counts.resolves()+" && "+COUNTS+".fed==="+counts.feeds()+" && "+COUNTS+".save===0 && "+COUNTS+".eod===0 && "+COUNTS+".annual===0 && "+COUNTS+".filings===0"+
             " && "+COUNTS+".marketsEod===0 && "+COUNTS+".calendar===0 && "+COUNTS+".bls===0 && "+COUNTS+".search===0 && "+COUNTS+".token===0 && "+COUNTS+".signOut===0"+
             " && "+COUNTS+".portfolioLoad===0 && "+COUNTS+".portfolioSave===0 && "+COUNTS+".valuationLoad===0 && "+COUNTS+".valuationSave===0"+
-            " && "+FOLLOWUPS+".load==="+loads+" && "+FOLLOWUPS+".save==="+saves+" && "+FOLLOWUPS+".commits==="+saves+" && "+FOLLOWUPS+".replays===0 && "+FOLLOWUPS+".token===0 && "+FOLLOWUPS+".signOut===0")));
+            " && "+FOLLOWUPS+".load==="+counts.followups().loads()+" && "+FOLLOWUPS+".save==="+counts.followups().saves()+" && "+FOLLOWUPS+".commits==="+counts.followups().saves()+" && "+FOLLOWUPS+".replays===0 && "+FOLLOWUPS+".token===0 && "+FOLLOWUPS+".signOut===0")));
     }
     @After public void closeInventedCalendarQuestion() {
         try { if(scenario!=null){scenario.close();scenario=null;} }

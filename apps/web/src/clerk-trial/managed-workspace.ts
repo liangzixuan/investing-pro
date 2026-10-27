@@ -3225,8 +3225,9 @@ export class ManagedWorkspace {
   private calendarFollowupMemberReady(member: WatchlistMembership) {
     if (!this.calendarFollowupRouteReady() || !this.canEdit()) return false;
     const saved = this.coordinator.getSnapshot();
-    if (saved.phase !== "idle" || saved.uncertain || saved.replayPending)
-      return false;
+    if (saved.phase !== "idle") return false;
+    if (saved.uncertain) return false;
+    if (saved.replayPending) return false;
     const digest = this.currentWatchlistCatalogDigest();
     return (
       digest !== null &&

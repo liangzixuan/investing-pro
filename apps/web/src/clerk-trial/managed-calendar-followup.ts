@@ -77,99 +77,138 @@ interface CalendarSnapshots {
   readonly bea: ManagedBeaReleaseAgendaState;
   readonly fed: ManagedFedAnnouncementsState;
 }
-function resolveBls(
-  key: string,
-  state: ManagedBlsCalendarState,
-): CalendarFollowupSource | null {
-  const packet = state.calendar;
-  if (state.busy || !packet) return null;
-  const item = packet.events.find(
-    (row) => key === `bls:${JSON.stringify([row.series, row.scheduledAt])}`,
-  );
-  if (!item) return null;
-  return Object.freeze({
+type CalendarPacket = CalendarFollowupSource["packet"];
+type ScheduledSource = Exclude<CalendarFollowupSource, { kind: "fed" }>;
+type SourceFields = Pick<
+  CalendarFollowupEvidence,
+  "title" | "url" | "instant" | "timeKind" | "window"
+>;
+interface SourceAdapter<Packet extends CalendarPacket, Item> {
+  readonly id: Packet["source"]["id"];
+  readonly items: (packet: Packet) => readonly Item[];
+  readonly key: (item: Item) => string;
+  readonly capture: (
+    packet: Packet,
+    item: Item,
+    showingPrevious: boolean,
+  ) => CalendarFollowupSource;
+  readonly describe: (packet: Packet, item: Item) => SourceFields;
+}
+function scheduledKey(kind: "bls" | "bea", item: ScheduledSource["item"]) {
+  return `${kind}:${JSON.stringify([item.series, item.scheduledAt])}`;
+}
+function scheduledFields(
+  packet: ScheduledSource["packet"],
+  item: ScheduledSource["item"],
+): SourceFields {
+  return {
+    title: item.series,
+    url: packet.source.scheduleUrl,
+    instant: item.scheduledAt,
+    timeKind: "scheduled",
+    window: packet.window,
+  };
+}
+const blsAdapter: SourceAdapter<
+  ManagedBlsCalendarDto,
+  ManagedBlsCalendarEventDto
+> = {
+  id: "bls",
+  items: (packet) => packet.events,
+  key: (item) => scheduledKey("bls", item),
+  capture: (packet, item, showingPrevious) => ({
     kind: "bls",
     packet,
     item,
-    showingPrevious: state.showingPrevious,
-  });
-}
-function resolveBea(
-  key: string,
-  state: ManagedBeaReleaseAgendaState,
-): CalendarFollowupSource | null {
-  const packet = state.agenda;
-  if (state.busy || !packet) return null;
-  const item = packet.events.find(
-    (row) => key === `bea:${JSON.stringify([row.series, row.scheduledAt])}`,
-  );
-  if (!item) return null;
-  return Object.freeze({
+    showingPrevious,
+  }),
+  describe: scheduledFields,
+};
+const beaAdapter: SourceAdapter<
+  PersonalEconomicCalendarDto,
+  PersonalEconomicCalendarEventDto
+> = {
+  id: "bea",
+  items: (packet) => packet.events,
+  key: (item) => scheduledKey("bea", item),
+  capture: (packet, item, showingPrevious) => ({
     kind: "bea",
     packet,
     item,
-    showingPrevious: state.showingPrevious,
-  });
-}
-function resolveFed(
-  key: string,
-  state: ManagedFedAnnouncementsState,
-): CalendarFollowupSource | null {
-  const packet = state.announcements;
-  if (state.busy || !packet) return null;
-  const item = packet.items.find((row) => key === `fed:${row.url}`);
-  if (!item) return null;
-  return Object.freeze({
+    showingPrevious,
+  }),
+  describe: scheduledFields,
+};
+const fedAdapter: SourceAdapter<
+  PersonalMonetaryAnnouncementsDto,
+  PersonalMonetaryAnnouncementDto
+> = {
+  id: "federal-reserve-board",
+  items: (packet) => packet.items,
+  key: (item) => `fed:${item.url}`,
+  capture: (packet, item, showingPrevious) => ({
     kind: "fed",
     packet,
     item,
-    showingPrevious: state.showingPrevious,
-  });
+    showingPrevious,
+  }),
+  describe: (_packet, item) => ({
+    title: item.title,
+    url: item.url,
+    instant: item.publishedAt,
+    timeKind: "published",
+    window: null,
+  }),
+};
+function resolveSource<Packet extends CalendarPacket, Item>(
+  key: string,
+  state: { readonly busy: boolean; readonly showingPrevious: boolean },
+  packet: Packet | null,
+  adapter: SourceAdapter<Packet, Item>,
+): CalendarFollowupSource | null {
+  if (state.busy || !packet) return null;
+  const item = adapter.items(packet).find((row) => key === adapter.key(row));
+  if (!item) return null;
+  return Object.freeze(adapter.capture(packet, item, state.showingPrevious));
 }
 /** Resolve only the original item in one already admitted, idle source snapshot. */
 export function resolveCalendarFollowupSource(
   key: string,
   snapshots: CalendarSnapshots,
 ): CalendarFollowupSource | null {
-  if (key.startsWith("bls:")) return resolveBls(key, snapshots.bls);
-  if (key.startsWith("bea:")) return resolveBea(key, snapshots.bea);
-  if (key.startsWith("fed:")) return resolveFed(key, snapshots.fed);
+  if (key.startsWith("bls:"))
+    return resolveSource(
+      key,
+      snapshots.bls,
+      snapshots.bls.calendar,
+      blsAdapter,
+    );
+  if (key.startsWith("bea:"))
+    return resolveSource(key, snapshots.bea, snapshots.bea.agenda, beaAdapter);
+  if (key.startsWith("fed:"))
+    return resolveSource(
+      key,
+      snapshots.fed,
+      snapshots.fed.announcements,
+      fedAdapter,
+    );
   return null;
 }
-function scheduledEvidence(
-  source: Exclude<CalendarFollowupSource, { kind: "fed" }>,
+function sourceEvidence<Packet extends CalendarPacket, Item>(
+  source: {
+    readonly packet: Packet;
+    readonly item: Item;
+    readonly showingPrevious: boolean;
+  },
+  adapter: SourceAdapter<Packet, Item>,
 ): CalendarFollowupEvidence | null {
   const { packet, item } = source;
-  if (packet.source.id !== source.kind || !packet.events.includes(item))
+  if (packet.source.id !== adapter.id || !adapter.items(packet).includes(item))
     return null;
   return Object.freeze({
     sourceName: packet.source.name,
-    title: item.series,
-    url: packet.source.scheduleUrl,
-    instant: item.scheduledAt,
-    timeKind: "scheduled",
+    ...adapter.describe(packet, item),
     fetchedAt: packet.fetchedAt,
-    window: packet.window,
-    showingPrevious: source.showingPrevious,
-  });
-}
-function announcementEvidence(
-  source: Extract<CalendarFollowupSource, { kind: "fed" }>,
-): CalendarFollowupEvidence | null {
-  const { packet, item } = source;
-  if (
-    packet.source.id !== "federal-reserve-board" ||
-    !packet.items.includes(item)
-  )
-    return null;
-  return Object.freeze({
-    sourceName: packet.source.name,
-    title: item.title,
-    url: item.url,
-    instant: item.publishedAt,
-    timeKind: "published",
-    fetchedAt: packet.fetchedAt,
-    window: null,
     showingPrevious: source.showingPrevious,
   });
 }
@@ -178,8 +217,10 @@ export function calendarFollowupEvidence(
   source: CalendarFollowupSource,
 ): CalendarFollowupEvidence | null {
   if (typeof source.showingPrevious !== "boolean") return null;
-  if (source.kind === "fed") return announcementEvidence(source);
-  return scheduledEvidence(source);
+  if (source.kind === "fed") return sourceEvidence(source, fedAdapter);
+  if (source.kind === "bls") return sourceEvidence(source, blsAdapter);
+  if (source.kind === "bea") return sourceEvidence(source, beaAdapter);
+  return null;
 }
 function validAuthoredQuestion(question: string) {
   if ([...question].length > 500) return false;

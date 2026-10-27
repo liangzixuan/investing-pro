@@ -31,6 +31,16 @@ interface SourceOwner {
   readonly evidence: string;
   readonly selectionIsCurrent: () => boolean;
 }
+interface DraftOwner {
+  readonly watchlist: ReturnType<
+    ManagedWorkspace["coordinator"]["getSnapshot"]
+  >;
+  readonly saved: ReturnType<
+    ManagedWorkspace["followups"]["coordinator"]["getSnapshot"]
+  >;
+  readonly model: ReturnType<ManagedWorkspace["followups"]["getSnapshot"]>;
+  readonly activity: object;
+}
 const sourceStale =
   "Choose an item from the current, settled Markets day view again.";
 const memberStale =
@@ -145,14 +155,30 @@ export class ManagedMarketsCalendarFollowupContext {
   ) {
     return this.current(capture) && this.host.memberReady(member);
   }
+  private captureDrafts(): DraftOwner {
+    const workspace = this.host.workspace;
+    return {
+      watchlist: workspace.coordinator.getSnapshot(),
+      saved: workspace.followups.coordinator.getSnapshot(),
+      model: workspace.followups.getSnapshot(),
+      activity: workspace.followups.getDraftFileActivityRevision(),
+    };
+  }
+  private draftsCurrent(owner: DraftOwner) {
+    const workspace = this.host.workspace;
+    return (
+      workspace.coordinator.getSnapshot() === owner.watchlist &&
+      workspace.followups.coordinator.getSnapshot() === owner.saved &&
+      workspace.followups.getSnapshot() === owner.model &&
+      workspace.followups.getDraftFileActivityRevision() === owner.activity &&
+      !workspace.followups.hasDraftFileActivity()
+    );
+  }
   capturePort(capture: CalendarSourceCapture, member: WatchlistMembership) {
     if (!this.memberReady(capture, member))
       return { port: null, reason: memberStale };
     const workspace = this.host.workspace;
-    const watchlist = workspace.coordinator.getSnapshot();
-    const saved = workspace.followups.coordinator.getSnapshot();
-    const model = workspace.followups.getSnapshot();
-    const activity = workspace.followups.getDraftFileActivityRevision();
+    const drafts = this.captureDrafts();
     let retired = false;
     const port: CalendarFollowupPort = Object.freeze({
       model: workspace.followups,
@@ -160,12 +186,7 @@ export class ManagedMarketsCalendarFollowupContext {
       source: capture.source,
       isCurrent: () => {
         retired ||=
-          !this.memberReady(capture, member) ||
-          workspace.coordinator.getSnapshot() !== watchlist ||
-          workspace.followups.coordinator.getSnapshot() !== saved ||
-          workspace.followups.getSnapshot() !== model ||
-          workspace.followups.getDraftFileActivityRevision() !== activity ||
-          workspace.followups.hasDraftFileActivity();
+          !this.memberReady(capture, member) || !this.draftsCurrent(drafts);
         return !retired;
       },
     });

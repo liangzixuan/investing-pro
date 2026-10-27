@@ -59,13 +59,10 @@ function elements(node: React.ReactNode): React.ReactElement<Props>[] {
 }
 function unmount() {
   for (const slot of hooks.slots) {
-    if (
-      slot &&
-      typeof slot === "object" &&
-      "cleanup" in slot &&
-      typeof slot.cleanup === "function"
-    )
-      (slot.cleanup as () => void)();
+    if (!slot || typeof slot !== "object") continue;
+    if (!("cleanup" in slot)) continue;
+    if (typeof slot.cleanup !== "function") continue;
+    (slot.cleanup as () => void)();
   }
 }
 const workspaces: ManagedWorkspace[] = [];

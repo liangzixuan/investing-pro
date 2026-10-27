@@ -57,6 +57,7 @@ import {
 } from "./ManagedFilingsReviewEntry";
 import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
 import { ManagedMarketsCalendarFollowup } from "./ManagedMarketsCalendarFollowup";
+import { marketsFollowupNavigation } from "./managed-calendar-followup-navigation";
 import { ManagedMarketsBoard } from "./ManagedMarketsBoard";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { managedPortfolioEntryProps } from "./managed-portfolio-entry-props";
@@ -836,10 +837,13 @@ export function ManagedWorkspaceScreen({
     );
   };
   const marketsSectionNavigation = useManagedMarketsSections(isMarketsCurrent);
-  const reviewMarketsFollowup = (entry: FollowupReview["entry"]) => {
-    const request = workspace.reviewFollowup(entry, () => setView("followups"));
-    if (request) setFollowupReview(request);
-  };
+  const calendarFollowupNavigation = marketsFollowupNavigation({
+    workspace,
+    setView,
+    setReview: setFollowupReview,
+    watchlistNavigation,
+    followupsNavigation,
+  });
   const currentCatalog =
     discovery.snapshot?.snapshotSha256 === saved.draft?.snapshotSha256;
   const canReviewWatchlistMember = (member: WatchlistMembership) => {
@@ -1362,12 +1366,8 @@ export function ManagedWorkspaceScreen({
                     navigationPending={navigationPending}
                     headingRef={marketsSectionNavigation.targets.review.ref}
                     isCurrent={isMarketsCurrent}
-                    onReview={reviewMarketsFollowup}
-                    onManage={() => {
-                      if (!setView("followups")) return;
-                      setFollowupReview(null);
-                      followupsNavigation.current?.focus();
-                    }}
+                    onReview={calendarFollowupNavigation.review}
+                    onManage={calendarFollowupNavigation.manageFollowups}
                   />
                   <ManagedMarketsCalendarFollowup
                     workspace={workspace}
@@ -1375,11 +1375,10 @@ export function ManagedWorkspaceScreen({
                     headingRef={marketsSectionNavigation.targets.day.ref}
                     isCurrent={isMarketsCurrent}
                     navigationPending={navigationPending}
-                    onReview={reviewMarketsFollowup}
-                    onManageWatchlist={() => {
-                      if (!setView("watchlist")) return;
-                      watchlistNavigation.current?.focus();
-                    }}
+                    onReview={calendarFollowupNavigation.review}
+                    onManageWatchlist={
+                      calendarFollowupNavigation.manageWatchlist
+                    }
                   />
                   <ManagedBeaReleaseAgenda
                     model={workspace.agenda}
