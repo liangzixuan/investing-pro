@@ -1,0 +1,111 @@
+.clerk-trial.managed-frame .managed-calendar-followup {
+  min-width: 0;
+  padding: 12px;
+  margin-block: 16px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  background: var(--managed-surface);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame
+  .managed-calendar-followup
+  :is(summary, button, input) {
+  min-height: 44px;
+}
+.clerk-trial.managed-frame .managed-calendar-followup summary {
+  display: list-item;
+  align-content: center;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame
+  .managed-calendar-followup
+  :is(button, input, textarea) {
+  box-sizing: border-box;
+  max-width: 100%;
+  font: inherit;
+}
+.clerk-trial.managed-frame
+  .managed-calendar-followup
+  :is(button, p, dd, h3, h4) {
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-calendar-followup button {
+  margin: 4px 8px 4px 0;
+  white-space: normal;
+}
+.clerk-trial.managed-frame .managed-calendar-followup-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-calendar-followup-fields > div {
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-calendar-followup label {
+  display: block;
+  margin-block-end: 6px;
+}
+.clerk-trial.managed-frame .managed-calendar-followup :is(input, textarea) {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+  line-height: 1.5;
+}
+.clerk-trial.managed-frame .managed-calendar-followup textarea {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+.clerk-trial.managed-frame
+  .managed-calendar-followup
+  :is(summary, input, textarea, button, h3, h4):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame .managed-calendar-followup-preview {
+  min-width: 0;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-calendar-followup dl {
+  display: grid;
+  gap: 8px;
+}
+.clerk-trial.managed-frame .managed-calendar-followup dd {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .clerk-trial.managed-frame .managed-calendar-followup-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.clerk-trial.managed-frame .managed-calendar-followup select {
+  min-height: 44px;
+  max-width: 100%;
+  width: 100%;
+  font: inherit;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.clerk-trial.managed-frame .managed-calendar-followup select:focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame .managed-markets-day-view button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame #calendar-followup-check {
+  overflow: hidden;
+  resize: none;
+}

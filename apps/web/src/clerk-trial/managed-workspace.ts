@@ -1,3 +1,5 @@
+import { ManagedMarketsCalendarFollowupContext } from "./managed-calendar-followup-context";
+import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { FilingsFollowupPort } from "./managed-filings-followup";
 import { captureFollowupReviewNoteContext } from "./managed-followup-review-note-context";
 import { captureCompanyReportRevisitTargetContext } from "./company-report-revisit-target";
@@ -348,6 +350,7 @@ export class ManagedWorkspace {
   readonly companySnapshotLoad: ManagedCompanySnapshotLoad;
   readonly markets: ManagedMarkets;
   readonly marketsSourceReview: ManagedMarketsSourceReview;
+  private readonly calendarFollowupContext: ManagedMarketsCalendarFollowupContext;
   readonly watchlistPrices: ManagedWatchlistPrices;
   readonly blsCalendar: ManagedBlsCalendar;
   readonly agenda: ManagedBeaReleaseAgenda;
@@ -569,6 +572,16 @@ export class ManagedWorkspace {
       bea: this.agenda,
       fed: this.announcements,
       available: () => this.marketsReviewAvailable(),
+    });
+    this.calendarFollowupContext = new ManagedMarketsCalendarFollowupContext({
+      workspace: this,
+      available: () => this.calendarFollowupRouteReady(),
+      memberReady: (member) => this.calendarFollowupMemberReady(member),
+      revision: () => ({
+        navigation: this.navigationRevision,
+        view: this.viewRevision,
+        catalog: this.state.snapshot,
+      }),
     });
     this.watchlistPrices = new ManagedWatchlistPrices(
       (request, signal) => api.eodHistory(request, signal),
@@ -823,6 +836,7 @@ export class ManagedWorkspace {
   }
   private clear() {
     this.retired = true;
+    this.calendarFollowupContext.retire();
     this.marketsSourceReview.retire();
     this.cancelFollowupOpening();
     this.followupResearch = null;
@@ -3195,6 +3209,56 @@ export class ManagedWorkspace {
       appended: true,
       message: `Annual comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
+  }
+  private calendarFollowupRouteReady() {
+    return (
+      this.marketsReviewAvailable() &&
+      this.canNavigate() &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.state.snapshot !== null &&
+      !this.state.read &&
+      !this.state.reviewing &&
+      !this.state.review &&
+      !this.fileCatalogReviewRequired
+    );
+  }
+  private calendarFollowupWatchlistReady(
+    saved: ReturnType<ManagedWorkspace["coordinator"]["getSnapshot"]>,
+  ) {
+    return saved.phase === "idle" && !saved.uncertain && !saved.replayPending;
+  }
+  private calendarFollowupMemberReady(member: WatchlistMembership) {
+    if (!this.calendarFollowupRouteReady() || !this.canEdit()) return false;
+    const saved = this.coordinator.getSnapshot();
+    if (!this.calendarFollowupWatchlistReady(saved)) return false;
+    const digest = this.currentWatchlistCatalogDigest();
+    return (
+      digest !== null &&
+      saved.draft?.snapshotSha256 === digest &&
+      saved.draft.memberships.includes(member)
+    );
+  }
+  captureMarketsCalendarSource(key: string, selectionIsCurrent: () => boolean) {
+    return this.calendarFollowupContext.capture(key, selectionIsCurrent);
+  }
+  captureMarketsCalendarFollowup(
+    capture: CalendarSourceCapture,
+    member: WatchlistMembership,
+  ) {
+    return this.calendarFollowupContext.capturePort(capture, member);
+  }
+  canLoadMarketsCalendarFollowups(
+    capture: CalendarSourceCapture,
+    member: WatchlistMembership,
+  ) {
+    return this.calendarFollowupContext.canLoad(capture, member);
+  }
+  loadMarketsCalendarFollowups(
+    capture: CalendarSourceCapture,
+    member: WatchlistMembership,
+    formIsCurrent: () => boolean,
+  ) {
+    return this.calendarFollowupContext.load(capture, member, formIsCurrent);
   }
   private filingsFollowupSourceIsCurrent(
     selection: ManagedResearchSelection,

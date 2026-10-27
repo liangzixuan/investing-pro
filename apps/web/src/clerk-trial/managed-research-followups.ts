@@ -222,13 +222,19 @@ export class ManagedResearchFollowups {
         copy: (payload) => this.copyForReview(payload),
         capture,
         load: async (signal) => {
-          if (this.initialNextCheckLoad && !this.initialNextCheckLoad())
+          const nextCheckLoad = this.initialNextCheckLoad;
+          if (nextCheckLoad && !nextCheckLoad())
             throw new TrialApiError("aborted");
           if (this.retired || signal.aborted)
             throw new TrialApiError("aborted");
           const holdingLoad = this.initialHoldingCheckLoad;
           if (holdingLoad && !holdingLoad()) throw new TrialApiError("aborted");
           const loaded = await api.loadFollowups(signal);
+          if (
+            nextCheckLoad &&
+            (this.initialNextCheckLoad !== nextCheckLoad || !nextCheckLoad())
+          )
+            throw new TrialApiError("aborted");
           if (
             holdingLoad &&
             (this.initialHoldingCheckLoad !== holdingLoad || !holdingLoad())

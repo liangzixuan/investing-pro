@@ -1,3 +1,13 @@
+import { useSyncExternalStore } from "react";
+import {
+  encodeMainWatchlistPayload,
+  encodeResearchFollowupsPayload,
+} from "@research-cockpit/contracts";
+import {
+  calendarFollowupWatchlistNote,
+  calendarFollowupExpected,
+  calendarFollowupOriginal,
+} from "./calendar-followup-fixture";
 import { MarketsSourceReviewFixtureControls } from "./markets-source-review-fixture-controls";
 import { HoldingFollowupFixtureControls } from "./holding-followup-fixture-controls";
 import { App } from "@capacitor/app";
@@ -57,12 +67,71 @@ function useFixtureWorkspace(session: TrialSession) {
 
   return workspace;
 }
+function CalendarFollowupFixtureControls({
+  workspace,
+}: {
+  workspace: ManagedWorkspace;
+}) {
+  const watchlist = useSyncExternalStore(
+    workspace.coordinator.subscribe,
+    workspace.coordinator.getSnapshot,
+  );
+  const followups = useSyncExternalStore(
+    workspace.followups.coordinator.subscribe,
+    workspace.followups.coordinator.getSnapshot,
+  );
+  const feed = useSyncExternalStore(
+    workspace.announcements.subscribe,
+    workspace.announcements.getSnapshot,
+  );
+  return (
+    <aside aria-label="Invented calendar follow-up controls">
+      <button
+        id="fixture-calendar-followup-author-note"
+        disabled={watchlist.baseVersion !== 1 || watchlist.dirty}
+        onClick={() =>
+          workspace.note("listing-zero", calendarFollowupWatchlistNote)
+        }
+      >
+        Author independent invented calendar note
+      </button>
+      <pre id="fixture-calendar-followup-evidence" hidden>
+        {JSON.stringify({
+          watchlist: watchlist.draft,
+          encodedWatchlist: watchlist.draft
+            ? encodeMainWatchlistPayload(watchlist.draft)
+            : null,
+          followups: followups.draft,
+          encodedFollowups: followups.draft
+            ? encodeResearchFollowupsPayload(followups.draft)
+            : null,
+          originalEncodedFollowups: encodeResearchFollowupsPayload(
+            calendarFollowupOriginal(fixture),
+          ),
+          expectedEncodedFollowups: followups.draft?.entries[2]
+            ? encodeResearchFollowupsPayload(
+                calendarFollowupExpected(
+                  fixture,
+                  followups.draft.entries[2].id,
+                ),
+              )
+            : null,
+          feed: feed.announcements,
+        })}
+      </pre>
+    </aside>
+  );
+}
+
 function DraftAndRevisitControls({
   workspace,
 }: Pick<MountedProps, "workspace">) {
   return (
     <>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
+      {workspace && scenario === "markets-calendar-followup" && (
+        <CalendarFollowupFixtureControls workspace={workspace} />
+      )}
       {workspace && fixture.sourceReview && (
         <MarketsSourceReviewFixtureControls
           workspace={workspace}

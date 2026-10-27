@@ -21,6 +21,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         FOLLOWUPS_REVIEW_REPORT("followups-review-report"),
         HOLDING_FOLLOWUP("holding-followup"),
         MARKETS_SOURCE_REVIEW("markets-source-review"),
+        MARKETS_CALENDAR_FOLLOWUP("markets-calendar-followup"),
         FOLLOWUP_ASSESSMENT_NOTE("followup-assessment-note");
         final String marker;
         Scenario(String marker) { this.marker = marker; }

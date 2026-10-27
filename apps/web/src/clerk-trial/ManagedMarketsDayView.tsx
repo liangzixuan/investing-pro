@@ -39,8 +39,14 @@ function SourceTime({ instant }: { readonly instant: string }) {
 }
 function Entries({
   entries,
+  current,
+  onKeepCheck,
 }: {
   readonly entries: readonly MarketsDayEntry[];
+  readonly current: () => boolean;
+  readonly onKeepCheck:
+    | ((entry: MarketsDayEntry, selectionIsCurrent: () => boolean) => void)
+    | null;
 }) {
   return (
     <ul>
@@ -63,6 +69,18 @@ function Entries({
               "Publication time unknown. This item is not assigned to a date."
             )}
           </p>
+          {onKeepCheck && (
+            <button
+              type="button"
+              className="trial-secondary"
+              data-calendar-entry-key={entry.key}
+              onClick={() => {
+                if (current()) onKeepCheck(entry, current);
+              }}
+            >
+              Keep a dated check
+            </button>
+          )}
         </li>
       ))}
     </ul>
@@ -75,12 +93,16 @@ export function ManagedMarketsDayView({
   announcements: feedModel,
   navigation,
   headingRef,
+  onKeepCheck,
 }: {
   readonly blsCalendar: ManagedBlsCalendar;
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
   readonly navigation: ManagedMarketsNavigationProps;
   readonly headingRef?: Ref<HTMLHeadingElement>;
+  readonly onKeepCheck:
+    | ((entry: MarketsDayEntry, selectionIsCurrent: () => boolean) => void)
+    | null;
 }) {
   const agenda = useSyncExternalStore(
     agendaModel.subscribe,
@@ -373,13 +395,21 @@ export function ManagedMarketsDayView({
               <h3>
                 <time dateTime={group.date}>{group.label}</time>
               </h3>
-              <Entries entries={group.entries} />
+              <Entries
+                entries={group.entries}
+                current={current}
+                onKeepCheck={onKeepCheck}
+              />
             </section>
           ))}
           {view.unknown.length > 0 && (
             <section aria-label="Unknown publication time">
               <h3>Unknown publication time</h3>
-              <Entries entries={view.unknown} />
+              <Entries
+                entries={view.unknown}
+                current={current}
+                onKeepCheck={onKeepCheck}
+              />
             </section>
           )}
         </>

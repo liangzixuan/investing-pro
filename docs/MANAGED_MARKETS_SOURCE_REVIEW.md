@@ -1,8 +1,11 @@
 # Markets source review pass
 
-This M1/M3 source candidate follows Android 1.47. Original source checks,
-synthetic native acceptance and client delivery remain pending. The pass
-coordinates the existing Markets source controls and their request authorities.
+Android 1.48 provides this M1/M3 workflow from accepted main
+`3808fe9ddc0da3cbb5499474bd8a68a233dbf77d`. Original required checks, the complete
+synthetic native 93-case scope and guarded APK verification passed. Installation
+and physical-phone acceptance remain separate. The pass coordinates the
+existing Markets source controls and their request authorities. The next layer
+connects a loaded item to an [authored dated check](MANAGED_CALENDAR_FOLLOWUP.md).
 
 ## Review, start and inspect
 

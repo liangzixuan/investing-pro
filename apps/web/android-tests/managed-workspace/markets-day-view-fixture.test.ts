@@ -60,6 +60,7 @@ it("composes both admitted sources with two real dirty drafts and fences each fa
         blsCalendar: workspace.blsCalendar,
         agenda: workspace.agenda,
         announcements: workspace.announcements,
+        onKeepCheck: null,
         navigation,
       }),
     );

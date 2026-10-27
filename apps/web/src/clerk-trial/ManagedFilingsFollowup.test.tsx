@@ -515,6 +515,31 @@ it("keeps both raw fields after failed Load, consumes its old callback and allow
   expect(f.api.loadFollowups).toHaveBeenCalledTimes(2);
   expect(f.api.saveFollowups).not.toHaveBeenCalled();
 });
+function expectNoRetiredReadAdmission(fixture: FollowupFixture) {
+  const state = fixture.model.coordinator.getSnapshot();
+  expect(state.draft).toBeNull();
+  expect(state.saved).toBeNull();
+  expect(state.phase).toBe("idle");
+  expect(fixture.api.saveFollowups).not.toHaveBeenCalled();
+  expect(prepareFilingsFollowup).not.toHaveBeenCalled();
+  expect(fixture.previews).toHaveLength(0);
+}
+function expectRetiredLoadUi(
+  fixture: FollowupFixture,
+  boundary: string,
+  heldView: ReturnType<FollowupFixture["render"]>,
+) {
+  const view = boundary === "unmount" ? heldView : fixture.render();
+  expect(view.byId("preview")).toBeUndefined();
+  expect(view.byId("create")).toBeUndefined();
+  if (boundary === "unmount") return;
+  const question =
+    boundary === "edit"
+      ? "Corrected question"
+      : "  Cafe\u0301 東京 😀 capacity?  ";
+  expect(view.byId("question").props).toHaveProperty("value", question);
+  expect(view.byId("due").props).toHaveProperty("value", "2026-12-31");
+}
 it.each(["close", "cancel", "edit", "unmount", "response", "route"])(
   "retires a held Load UI after %s without automatically previewing or creating",
   async (boundary) => {
@@ -545,9 +570,63 @@ it.each(["close", "cancel", "edit", "unmount", "response", "route"])(
     );
     if (boundary !== "route")
       expect(vi.mocked(f.actions.load).mock.calls[0]![2]()).toBe(false);
-    // The existing shared-resource loader retains a valid read already dispatched.
-    expect(f.model.coordinator.getSnapshot().draft!.entries).toEqual([]);
-    expect(f.api.saveFollowups).not.toHaveBeenCalled();
-    expect(prepareFilingsFollowup).not.toHaveBeenCalled();
+    // A dispatched initial read is not admitted after its source/form owner retires.
+    expectNoRetiredReadAdmission(f);
+    expectRetiredLoadUi(f, boundary, view);
   },
 );
+it("requires a fresh explicit Load after a retired read, then permits independent Preview and Create", async () => {
+  const f = await fixture(false);
+  let finish!: (value: unknown) => void;
+  f.api.loadFollowups.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const oldLoad = f.written().byId("load").props.onClick!;
+  oldLoad();
+  f.render().byId("cancel").props.onClick!();
+  expect(vi.mocked(f.actions.load).mock.calls[0]![2]()).toBe(false);
+  finish({ version: 0, payload: { schemaVersion: 1, entries: [] } });
+  await vi.waitFor(() =>
+    expect(f.model.coordinator.getSnapshot().phase).toBe("idle"),
+  );
+  expectNoRetiredReadAdmission(f);
+  oldLoad();
+  expect(f.api.loadFollowups).toHaveBeenCalledOnce();
+  const retry = f.render();
+  expect(retry.byId("question").props).toHaveProperty(
+    "value",
+    "  Cafe\u0301 東京 😀 capacity?  ",
+  );
+  expect(retry.byId("due").props).toHaveProperty("value", "2026-12-31");
+  expect(retry.byId("prepare").props.disabled).toBe(true);
+  expect(retry.byId("load").props.disabled).toBe(false);
+  retry.byId("load").props.onClick!();
+  await vi.waitFor(() =>
+    expect(f.model.coordinator.getSnapshot().draft).not.toBeNull(),
+  );
+  const ready = f.render();
+  expect(f.api.loadFollowups).toHaveBeenCalledTimes(2);
+  expect(f.model.coordinator.getSnapshot().saved?.version).toBe(0);
+  expect(prepareFilingsFollowup).not.toHaveBeenCalled();
+  expect(ready.byId("preview")).toBeUndefined();
+  expect(ready.byId("create")).toBeUndefined();
+  expect(ready.byId("question").props).toHaveProperty(
+    "value",
+    "  Cafe\u0301 東京 😀 capacity?  ",
+  );
+  expect(ready.byId("due").props).toHaveProperty("value", "2026-12-31");
+  ready.byId("prepare").props.onClick!();
+  expect(prepareFilingsFollowup).toHaveBeenCalledOnce();
+  const preview = f.previews[0]!;
+  f.render().byId("create").props.onClick!();
+  expect(f.model.coordinator.getSnapshot().draft!.entries).toHaveLength(1);
+  expect(f.model.coordinator.getSnapshot().draft!.entries[0]).toMatchObject({
+    check: preview.check,
+    dueOn: "2026-12-31",
+    listing: preview.listing,
+  });
+  expect(f.member.note).toBe("Independent watchlist note");
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+});

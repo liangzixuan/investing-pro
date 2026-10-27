@@ -29,12 +29,19 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 26 Android delivery
 
-The next M1/M3 candidate is an [explicit Markets source review pass](MANAGED_MARKETS_SOURCE_REVIEW.md).
-Review a named plan for the existing admitted board and BLS, BEA and Fed sources,
-start selected work explicitly, and inspect complete, partial and unattempted
-results with their original clocks. It reuses current source actions, budgets,
-retention and research views. It adds no provider, coverage, schema or fee.
-Original source, synthetic native and client acceptance remain pending.
+The next M3/M4 candidate is a [dated check from a Markets calendar item](MANAGED_CALENDAR_FOLLOWUP.md).
+Choose an already loaded BLS/BEA/Fed item and an independent exact My Watchlist
+company, preview the full question/citation and UTC due date, then create one
+Follow-ups draft entry. Existing exact-entry Research/Back and separate
+Save/fresh Load complete the workflow. Source, synthetic native and client
+acceptance remain pending. It adds no provider, coverage, schema or fee.
+
+Android 1.48 now delivers the [explicit Markets source review pass](MANAGED_MARKETS_SOURCE_REVIEW.md)
+from accepted main `3808fe9ddc0da3cbb5499474bd8a68a233dbf77d`. Original required
+checks, the complete synthetic native 93-case scope and all guarded APK checks
+passed. Inspect selected board and public-source reads with their original
+identities, clocks and complete, partial or unattempted results. Installation
+remains an owner action; automated checks do not establish phone acceptance.
 
 Android 1.47 now delivers [holding research and a dated Follow-ups check](MANAGED_HOLDING_FOLLOWUP.md)
 from accepted main `e8f05b6989949affcd5c066f18fb8c22fb4b5364`. Original required
