@@ -1,3 +1,4 @@
+import type { ManagedInterimReport } from "./managed-interim-report";
 import type { ManagedAnnualReport } from "./managed-annual-report";
 import type { ManagedCompanyFilings } from "./managed-company-filings";
 import type { ManagedEodHistory } from "./managed-eod-history";
@@ -9,6 +10,7 @@ import {
 } from "./managed-company-snapshot-load-operation";
 import {
   companySnapshotLoadSources,
+  reviewedSourceNames,
   snapshotSourceAlreadyPresent,
   snapshotSourceStopMessage,
   type CompanySnapshotLoadSource,
@@ -16,26 +18,65 @@ import {
   type SnapshotSourceState,
 } from "./managed-company-snapshot-load-sources";
 export type { CompanySnapshotLoadSource } from "./managed-company-snapshot-load-sources";
+export type CompanySourceOutcome =
+  | "not_attempted"
+  | "retained"
+  | "unsupported"
+  | "running"
+  | "loaded"
+  | "failed"
+  | "cancelled";
+export type CompanySourceOutcomes = Readonly<
+  Record<CompanySnapshotLoadSource, CompanySourceOutcome>
+>;
+const emptyOutcomes = (): CompanySourceOutcomes =>
+  Object.freeze({
+    eod: "not_attempted",
+    annual: "not_attempted",
+    filings: "not_attempted",
+    interim: "not_attempted",
+  });
 export interface ManagedCompanySnapshotLoadState {
+  readonly outcomes: CompanySourceOutcomes;
   readonly running: boolean;
   readonly active: CompanySnapshotLoadSource | null;
   readonly message: string;
 }
 const idle = (): ManagedCompanySnapshotLoadState =>
-  Object.freeze({ running: false, active: null, message: "" });
+  Object.freeze({
+    running: false,
+    active: null,
+    message: "",
+    outcomes: emptyOutcomes(),
+  });
 /** One explicit sequential pass through eligible missing company sources. */
 export class ManagedCompanySnapshotLoad {
   private state = idle();
   private readonly listeners = new Set<() => void>();
   private operation: CompanySnapshotLoadOperation | null = null;
   private revision = 0;
+  private reviewedOwner: object | null = null;
+  private readonly reviewedResults = new WeakMap<
+    object,
+    {
+      readonly state: ManagedCompanySnapshotLoadState;
+      readonly sources: readonly SnapshotSourceState[];
+    }
+  >();
+  getReviewedResult(owner: object) {
+    return this.reviewedResults.get(owner) ?? null;
+  }
+  ownsReviewed(owner: object) {
+    return this.reviewedOwner === owner && this.operation !== null;
+  }
   private readonly sources: readonly SnapshotLoadSource[];
   constructor(
     price: ManagedEodHistory,
     annual: ManagedAnnualReport,
     filings: ManagedCompanyFilings,
+    interim: ManagedInterimReport,
   ) {
-    this.sources = companySnapshotLoadSources(price, annual, filings);
+    this.sources = companySnapshotLoadSources(price, annual, filings, interim);
     for (const source of this.sources)
       source.model.subscribe(() => this.observed(source));
   }
@@ -57,25 +98,66 @@ export class ManagedCompanySnapshotLoad {
     return operation === undefined || this.current(operation);
   }
   private notify(
-    next: ManagedCompanySnapshotLoadState,
+    next: Omit<ManagedCompanySnapshotLoadState, "outcomes"> & {
+      readonly outcomes?: CompanySourceOutcomes;
+    },
     operation?: CompanySnapshotLoadOperation,
   ) {
     if (operation && !this.current(operation)) return false;
     const revision = this.revision;
-    this.state = Object.freeze(next);
+    this.state = Object.freeze({
+      ...next,
+      outcomes: next.outcomes ?? this.state.outcomes,
+    });
     for (const listener of this.listeners) {
       if (!this.notificationCurrent(revision, operation)) return false;
       listener();
     }
     return this.notificationCurrent(revision, operation);
   }
+  private outcome(
+    source: CompanySnapshotLoadSource,
+    outcome: CompanySourceOutcome,
+  ) {
+    this.state = Object.freeze({
+      ...this.state,
+      outcomes: Object.freeze({ ...this.state.outcomes, [source]: outcome }),
+    });
+  }
   private stop(message: string, cancelOwned = true) {
     const operation = this.operation;
+    const owner = this.reviewedOwner;
     const revision = ++this.revision;
     this.operation = null;
+    this.reviewedOwner = null;
+    if (
+      operation?.active &&
+      this.state.outcomes[operation.active.source.name] === "running"
+    )
+      this.outcome(operation.active.source.name, "cancelled");
+    if (owner)
+      this.reviewedResults.set(
+        owner,
+        Object.freeze({
+          state: Object.freeze({
+            ...this.state,
+            running: false,
+            active: null,
+            message,
+          }),
+          sources: Object.freeze(
+            this.sources.map((source) => source.model.getSnapshot()),
+          ),
+        }),
+      );
     if (cancelOwned) operation?.cancelOwned();
     if (revision === this.revision)
       this.notify({ running: false, active: null, message });
+  }
+  cancelReviewed(owner: object) {
+    if (this.reviewedOwner !== owner || !this.operation) return false;
+    this.cancel();
+    return true;
   }
   cancel() {
     if (this.operation)
@@ -91,10 +173,13 @@ export class ManagedCompanySnapshotLoad {
     }
   }
   private interrupted(operation: CompanySnapshotLoadOperation) {
-    if (this.operation === operation)
+    if (this.operation === operation) {
+      if (operation.active)
+        this.outcome(operation.active.source.name, "failed");
       this.stop(
         "Missing-source load stopped because the company visit or source state changed.",
       );
+    }
   }
   private ready(operation: CompanySnapshotLoadOperation) {
     if (!this.current(operation)) {
@@ -146,6 +231,7 @@ export class ManagedCompanySnapshotLoad {
     state: SnapshotSourceState,
   ) {
     active.owned = false;
+    this.outcome(active.source.name, "failed");
     this.stop(snapshotSourceStopMessage(active.source, state), false);
   }
   private openMissing(
@@ -174,6 +260,7 @@ export class ManagedCompanySnapshotLoad {
     operation: CompanySnapshotLoadOperation,
     source: SnapshotLoadSource,
   ) {
+    this.outcome(source.name, "running");
     const announced = this.notify(
       {
         running: true,
@@ -193,12 +280,14 @@ export class ManagedCompanySnapshotLoad {
     active: SnapshotSourceAttempt,
   ) {
     if (!active.succeeded()) {
+      this.outcome(active.source.name, "failed");
       this.stop(
         `${active.source.label} stopped. ${active.source.model.getSnapshot().message}`,
         false,
       );
       return false;
     }
+    this.outcome(active.source.name, "loaded");
     operation.active = null;
     return true;
   }
@@ -219,7 +308,15 @@ export class ManagedCompanySnapshotLoad {
     source: SnapshotLoadSource,
   ) {
     if (!this.ready(operation)) return false;
-    if (snapshotSourceAlreadyPresent(source, operation.captured)) return true;
+    if (snapshotSourceAlreadyPresent(source, operation.captured)) {
+      this.outcome(
+        source.name,
+        source.model.getSnapshot().response !== null
+          ? "retained"
+          : "unsupported",
+      );
+      return true;
+    }
     const active = operation.begin(source);
     if (!this.prepareSource(operation, active)) return false;
     if (!this.announceSource(operation, source)) return false;
@@ -250,32 +347,76 @@ export class ManagedCompanySnapshotLoad {
       false,
     );
   }
-  private async loadSequential(operation: CompanySnapshotLoadOperation) {
-    for (const source of this.sources)
+  private async loadSequential(
+    operation: CompanySnapshotLoadOperation,
+    queue: readonly SnapshotLoadSource[],
+  ) {
+    for (const source of queue)
       if (!(await this.attempt(operation, source))) return;
     this.finished(operation);
   }
   private failed(operation: CompanySnapshotLoadOperation) {
-    if (this.operation === operation)
+    if (this.operation === operation) {
+      if (operation.active)
+        this.outcome(operation.active.source.name, "failed");
       this.stop(
         "Missing-source load stopped. Inspect the source before trying again.",
       );
+    }
   }
   async start(
     selection: ManagedResearchSelection,
     admitted: () => boolean,
   ): Promise<void> {
+    return this.run(
+      selection,
+      admitted,
+      this.sources.slice(0, 3),
+      this.sources.slice(0, 3),
+    );
+  }
+  async startReviewed(
+    selection: ManagedResearchSelection,
+    admitted: () => boolean,
+    names: readonly CompanySnapshotLoadSource[],
+    owner?: object,
+  ): Promise<void> {
+    const valid = reviewedSourceNames(names);
+    if (!valid) return;
+    return this.run(
+      selection,
+      admitted,
+      this.sources,
+      this.sources.filter((source) => valid.includes(source.name)),
+      owner,
+    );
+  }
+  private async run(
+    selection: ManagedResearchSelection,
+    admitted: () => boolean,
+    watched: readonly SnapshotLoadSource[],
+    queue: readonly SnapshotLoadSource[],
+    owner?: object,
+  ): Promise<void> {
     if (this.operation) return;
     this.revision++;
+    this.state = Object.freeze({ ...this.state, outcomes: emptyOutcomes() });
+    for (const source of queue) {
+      if (source.model.getSnapshot().response !== null)
+        this.outcome(source.name, "retained");
+      else if (!source.covered(selection))
+        this.outcome(source.name, "unsupported");
+    }
     const operation = new CompanySnapshotLoadOperation(
-      this.sources,
+      watched,
       selection,
       admitted,
     );
     this.operation = operation;
+    this.reviewedOwner = owner ?? null;
     try {
       if (!this.begin(operation)) return;
-      await this.loadSequential(operation);
+      await this.loadSequential(operation, queue);
     } catch {
       this.failed(operation);
     }

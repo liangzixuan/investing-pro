@@ -429,6 +429,12 @@ jobs:
           ))
           if len(required) != 96:
               raise SystemExit("The interim journey must extend all 95 existing native tests.")
+          required.add((
+              "local.investment.personal.CompanySnapshotLoadingInstrumentedTest",
+              "reviewedCompanySourcesKeepDatedEvidenceThroughInterimCellsReportBackAndSeparateSave",
+          ))
+          if len(required) != 97:
+              raise SystemExit("The reviewed company source pass must extend all 96 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ManagedCompanySnapshotLoading } from "./ManagedCompanySnapshotLoading";
 import { ManagedCompanySnapshotLoad } from "./managed-company-snapshot-load";
 import { ManagedEodHistory } from "./managed-eod-history";
+import { ManagedInterimReport } from "./managed-interim-report";
 import { ManagedAnnualReport } from "./managed-annual-report";
 import { ManagedCompanyFilings } from "./managed-company-filings";
 import { eodSelection, eodResponse } from "./eod-history-fixture";
@@ -42,7 +43,18 @@ describe("explicit company snapshot loading controls", () => {
       undefined,
       options,
     );
-    const model = new ManagedCompanySnapshotLoad(price, annual, filings);
+    const interim = new ManagedInterimReport(
+      vi.fn(),
+      vi.fn(),
+      undefined,
+      options,
+    );
+    const model = new ManagedCompanySnapshotLoad(
+      price,
+      annual,
+      filings,
+      interim,
+    );
     const props = {
       model,
       navigationPending: false,

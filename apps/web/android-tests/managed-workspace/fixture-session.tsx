@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { ReviewedCompanySourcePassFixtureControls } from "./reviewed-company-source-pass-fixture-controls";
 import {
   encodeMainWatchlistPayload,
   encodeResearchFollowupsPayload,
@@ -145,6 +146,15 @@ function DraftAndRevisitControls({
           controls={fixture.sourceReview}
         />
       )}
+      {workspace &&
+        fixture.reviewedCompanySourcePass &&
+        fixture.interimReview && (
+          <ReviewedCompanySourcePassFixtureControls
+            workspace={workspace}
+            controls={fixture.reviewedCompanySourcePass}
+            metadata={fixture.interimReview}
+          />
+        )}
       {workspace && fixture.companySnapshotLoading && (
         <CompanySnapshotLoadingFixtureControls workspace={workspace} />
       )}

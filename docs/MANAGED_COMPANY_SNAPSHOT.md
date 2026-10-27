@@ -2,7 +2,7 @@
 
 ## Load and inspect sources
 
-The always-visible **Research sources** area shows Price, Annual and Filings for
+The always-visible **Research sources** area shows Price, Annual, Interim and Filings for
 the current company visit. **Load** or **Refresh** selects that source's section
 and starts one explicit request through its existing model. **Cancel** stops
 that source's pending local work. **Inspect** opens the section without a
@@ -58,6 +58,36 @@ report preparation, Research/Back and independent Save keep their existing rules
 No new source, coverage, provider entitlement, saved resource or server limit is
 added. Integration, native runtime checks and delivery of this candidate remain
 separate from the previously delivered individual source actions.
+
+## Reviewed company source pass
+
+**Reviewed company source pass** keeps source choices and a plan beside the
+existing controls. Price, Annual and Filings are checked initially. Select
+Interim explicitly when wanted. **Preview company source pass** shows the exact
+company, selected sources, missing reads and retained or unsupported packets.
+Preview makes no source request or saved change.
+
+**Run reviewed company source pass** consumes that exact preview once. Eligible
+missing sources run in Price, Annual, Filings, Interim order, one at a time,
+through their existing models and shared admission limits. Loaded packets,
+including refused or retained previous responses and old Price ranges, are kept
+with their original dates. Use the separate source Refresh to replace one.
+Interim remains excluded from **Load missing company sources**.
+
+Rows show retained, unsupported, running, loaded, failed, cancelled and not
+attempted outcomes with each response's own completion time. A source refusal,
+cooldown or failed request stops the remaining reads. Cancel stops only this
+pass's current read. There is no retry, scheduled resume or background request.
+Completed rows keep their original clocks; a later source change retires the
+result without substituting newer clocks into it.
+
+Changing choices, Price range, source state, company visit, catalog, navigation
+or session retires the preview, including a change followed by an exact return.
+Run never retargets a stale plan to a new visit or share class. Individual source
+actions and section navigation retain their existing behavior. Financial views,
+full cited-note preview, captured reports, Research/Back and separate Review/Save
+continue to use the same admitted evidence. This adds no API resource, provider,
+coverage entitlement, fee or persisted source-pass state.
 
 ## Read the loaded snapshot
 

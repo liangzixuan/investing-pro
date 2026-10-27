@@ -16,6 +16,8 @@ import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import { ManagedCompanyReport } from "./ManagedCompanyReport";
 import { ManagedCompanySnapshot } from "./ManagedCompanySnapshot";
 import { ManagedCompanySnapshotLoading } from "./ManagedCompanySnapshotLoading";
+import { ManagedCompanySourcePass } from "./ManagedCompanySourcePass";
+import type { ComponentProps } from "react";
 import type { ManagedCompanySnapshotLoad } from "./managed-company-snapshot-load";
 import { ManagedCompanyEvidenceActions } from "./ManagedCompanyEvidenceActions";
 import type { ManagedCompanyFilings as FilingsModel } from "./managed-company-filings";
@@ -61,6 +63,11 @@ export function ManagedCompanyResearch({
   eod,
   onSection,
   onRequestSource,
+  sourcePass,
+  onPreviewSourcePass,
+  onRunSourcePass,
+  onCancelSourcePass,
+  onClearSourcePass,
   snapshotLoad,
   onLoadSnapshot,
   onCancelSnapshot,
@@ -106,6 +113,13 @@ export function ManagedCompanyResearch({
   eod: EodModel;
   onSection: (section: ManagedResearchVisit["section"]) => void;
   onRequestSource: (section: ManagedResearchVisit["section"]) => Promise<void>;
+  sourcePass: ComponentProps<typeof ManagedCompanySourcePass>["model"];
+  onPreviewSourcePass: ComponentProps<
+    typeof ManagedCompanySourcePass
+  >["onPreview"];
+  onRunSourcePass: ComponentProps<typeof ManagedCompanySourcePass>["onRun"];
+  onCancelSourcePass: () => void;
+  onClearSourcePass: () => void;
   snapshotLoad: ManagedCompanySnapshotLoad;
   onLoadSnapshot: () => Promise<void>;
   onCancelSnapshot: () => void;
@@ -203,6 +217,15 @@ export function ManagedCompanyResearch({
         navigationPending={navigationPending}
         onLoad={onLoadSnapshot}
         onCancel={onCancelSnapshot}
+      />
+      <ManagedCompanySourcePass
+        key={`${research.selection.catalogSnapshotSha256}:${listing.listingId}`}
+        model={sourcePass}
+        navigationPending={navigationPending}
+        onPreview={onPreviewSourcePass}
+        onRun={onRunSourcePass}
+        onCancel={onCancelSourcePass}
+        onClear={onClearSourcePass}
       />
       <ManagedCompanySnapshot
         navigationPending={navigationPending}

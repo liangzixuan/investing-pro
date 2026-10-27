@@ -135,6 +135,7 @@ export class CompanySnapshotLoadOperation {
     return this.active;
   }
   changed(source: SnapshotLoadSource): SnapshotSourceState | null {
+    if (!this.sources.includes(source)) return null;
     const state = source.model.getSnapshot();
     if (state === this.views.get(source)) return null;
     this.claimStart(source, state);

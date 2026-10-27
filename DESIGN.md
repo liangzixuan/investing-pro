@@ -11,6 +11,15 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Reviewed company source pass
+
+Keep the source choices and explicit Preview/Run controls beside the existing
+missing-source action. Leave Interim unchecked initially. Show exact company
+identity, declared missing-read order, retained packets and each source's
+original completion time. Use plain outcomes for partial and unattempted work.
+Keep Cancel available while the pass runs. Wrap long identities and messages,
+use 44px targets and visible focus, and stack result cards on narrow screens.
+
 ## Reported interim financial review
 
 Keep one explicit source load and adjacent filing identity, original clocks and

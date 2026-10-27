@@ -14,6 +14,11 @@ type SourceActions = Pick<
   | "filingsFollowupActions"
   | "holdingFollowupActions"
   | "holdingPosition"
+  | "sourcePass"
+  | "onPreviewSourcePass"
+  | "onRunSourcePass"
+  | "onCancelSourcePass"
+  | "onClearSourcePass"
   | "snapshotLoad"
   | "onLoadSnapshot"
   | "onCancelSnapshot"
@@ -34,6 +39,17 @@ export function managedCompanySourceActionsProps(
     ...(visit.selection.origin === "portfolio"
       ? holdingQuestionActions(workspace, visit, navigation)
       : {}),
+    sourcePass: workspace.companySourcePass,
+    onPreviewSourcePass: (names) => {
+      if (navigation?.invalid || navigation?.isPending()) return;
+      workspace.prepareCompanySourcePass(visit, names);
+    },
+    onRunSourcePass: async (preview) => {
+      if (navigation?.invalid || navigation?.isPending()) return;
+      await workspace.runCompanySourcePass(visit, preview);
+    },
+    onCancelSourcePass: () => workspace.cancelCompanySourcePass(visit),
+    onClearSourcePass: () => workspace.clearCompanySourcePass(visit),
     snapshotLoad: workspace.companySnapshotLoad,
     onLoadSnapshot: async () => {
       if (navigation?.invalid || navigation?.isPending()) return;

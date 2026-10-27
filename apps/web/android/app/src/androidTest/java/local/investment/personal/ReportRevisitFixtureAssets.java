@@ -18,6 +18,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
     enum Scenario {
         REPORT_REVISIT("report-revisit"), PORTFOLIO_REVIEW_REPORT("portfolio-review-report"),
         COMPANY_SNAPSHOT_LOADING("company-snapshot-loading"),
+        REVIEWED_COMPANY_SOURCE_PASS("reviewed-company-source-pass"),
         FOLLOWUPS_REVIEW_REPORT("followups-review-report"),
         HOLDING_FOLLOWUP("holding-followup"),
         PORTFOLIO_COMPOSITION_REVIEW("portfolio-composition-review"),

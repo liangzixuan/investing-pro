@@ -1,0 +1,71 @@
+.managed-company-source-pass {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--managed-line);
+  border-radius: 0.75rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.managed-company-source-pass h3,
+.managed-company-source-pass p {
+  margin: 0;
+}
+.managed-company-source-pass fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.managed-company-source-pass legend {
+  margin-bottom: 0.5rem;
+}
+.managed-company-source-pass-choices,
+.managed-company-source-pass-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.managed-company-source-pass-choices label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  cursor: pointer;
+}
+.managed-company-source-pass-choices input {
+  width: 20px;
+  height: 20px;
+}
+.managed-company-source-pass button {
+  min-height: 44px;
+  white-space: normal;
+}
+.managed-company-source-pass :focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.managed-company-source-pass-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.managed-company-source-pass-results li {
+  display: grid;
+  gap: 0.35rem;
+  border-top: 1px solid var(--managed-line);
+  padding-top: 0.75rem;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .managed-company-source-pass-results {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .managed-company-source-pass-actions button {
+    width: 100%;
+  }
+}
