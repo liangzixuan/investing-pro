@@ -33,6 +33,7 @@ const allowedScenarios = [
   "annual-operating-comparison",
   "company-snapshot",
   "company-snapshot-loading",
+  "reviewed-company-source-pass",
   "report-revisit",
   "research-followups",
   "followups-review-session",
@@ -91,6 +92,7 @@ if (scenario === "company-direct-entry")
 export const fixture = await createFixture(scenario ?? "default");
 export const nativeReport =
   scenario === "company-snapshot" ||
+  scenario === "reviewed-company-source-pass" ||
   scenario === "annual-statements" ||
   scenario === "interim-statements"
     ? createNativeReportFixture()

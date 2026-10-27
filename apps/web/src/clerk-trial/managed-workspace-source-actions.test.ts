@@ -651,3 +651,113 @@ describe("explicit exact-visit research source actions", () => {
     noAuxiliaryReads(api);
   });
 });
+
+describe("reviewed source pass within its exact company visit", () => {
+  it("previews without reads or draft changes, consumes once and retains original clocks", async () => {
+    const { workspace, api } = await fixture();
+    const captured = visit(workspace);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    const plan = workspace.prepareCompanySourcePass(captured, [
+      "filings",
+      "eod",
+      "annual",
+    ]);
+    expect(plan!.names).toEqual(["eod", "annual", "filings"]);
+    expect(
+      plan!.rows.filter((row) => row.selected).map((row) => row.disposition),
+    ).toEqual(["missing", "missing", "missing"]);
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    expect(api.interimReport).not.toHaveBeenCalled();
+    await workspace.runCompanySourcePass(captured, plan!);
+    expect(workspace.companySourcePass.getSnapshot().phase).toBe("finished");
+    expect(api.eodHistory).toHaveBeenCalledOnce();
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    expect(api.interimReport).not.toHaveBeenCalled();
+    const rows = workspace.companySourcePass.getSnapshot().rows;
+    expect(
+      rows
+        .filter((row) => row.selected)
+        .every((row) => row.disposition === "loaded"),
+    ).toBe(true);
+    expect(rows.find((row) => row.name === "eod")!.evidence.completedAt).toBe(
+      workspace.eod.getSnapshot().response!.completedAt,
+    );
+    await workspace.runCompanySourcePass(captured, plan!);
+    const retained = workspace.prepareCompanySourcePass(captured, [
+      "eod",
+      "annual",
+      "filings",
+    ]);
+    expect(
+      retained!.rows
+        .filter((row) => row.selected)
+        .every((row) => row.disposition === "retained"),
+    ).toBe(true);
+    await workspace.runCompanySourcePass(captured, retained!);
+    expect(api.eodHistory).toHaveBeenCalledOnce();
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    noAuxiliaryReads(api);
+  });
+  it("does not revive a plan after navigation blocks then returns", async () => {
+    const { workspace, api } = await fixture();
+    const captured = visit(workspace);
+    const plan = workspace.prepareCompanySourcePass(captured, ["eod"]);
+    workspace.setNavigationBlocked(true);
+    workspace.setNavigationBlocked(false);
+    await workspace.runCompanySourcePass(captured, plan!);
+    expect(workspace.companySourcePass.getSnapshot().phase).toBe("invalidated");
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+  it("cancels its pending read and fences late completion before the next source", async () => {
+    const { workspace, api } = await fixture();
+    const pending = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+    vi.mocked(api.eodHistory).mockReturnValue(pending.promise);
+    const captured = visit(workspace);
+    const plan = workspace.prepareCompanySourcePass(captured, [
+      "eod",
+      "annual",
+      "filings",
+    ]);
+    const running = workspace.runCompanySourcePass(captured, plan!);
+    workspace.cancelCompanySourcePass(captured);
+    pending.resolve(eodResponse());
+    await running;
+    expect(workspace.companySourcePass.getSnapshot().phase).toBe("cancelled");
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    expect(workspace.eod.getSnapshot().response).toBeNull();
+  });
+  it("refuses a busy preview and clears no unrelated legacy read", async () => {
+    const { workspace, api } = await fixture();
+    const pending = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+    vi.mocked(api.eodHistory).mockReturnValue(pending.promise);
+    const captured = visit(workspace);
+    const legacy = workspace.loadCompanySnapshot(captured);
+    expect(
+      workspace.prepareCompanySourcePass(captured, ["interim"]),
+    ).toBeNull();
+    workspace.clearCompanySourcePass(captured);
+    expect(workspace.eod.getSnapshot().running).toBe(true);
+    pending.resolve(eodResponse());
+    await legacy;
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    expect(api.interimReport).not.toHaveBeenCalled();
+  });
+  it("retires the old visit plan after a same-issuer share-class replacement", async () => {
+    const { workspace, api } = await fixture();
+    const captured = visit(workspace);
+    const plan = workspace.prepareCompanySourcePass(captured, ["eod"]);
+    workspace.openDiscoveryAnnual(other);
+    await workspace.runCompanySourcePass(captured, plan!);
+    expect(
+      workspace.getSnapshot().research!.selection.listing.shareClassId,
+    ).toBe(other.shareClassId);
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+});

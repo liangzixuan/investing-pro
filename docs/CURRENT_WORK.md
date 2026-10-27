@@ -5,17 +5,31 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: reported interim financial review
+## Selected next: reviewed company source pass
+
+The [company source pass](MANAGED_COMPANY_SNAPSHOT.md#reviewed-company-source-pass)
+adds an explicit missing-read plan for Price, Annual and Filings, with optional
+Interim. Preview makes no request. Run consumes that plan once and uses the
+existing models in declared order. Each retained or new response keeps its
+original completion time, qualifications and outcome. Cancellation, source or
+visit changes retire the plan. Existing individual source actions and the
+three-source missing load remain available. Integration and native acceptance
+are in progress; this source work has not been delivered to Android.
+
+## Accepted and delivered: reported interim financial review
 
 The [interim workflow](MANAGED_INTERIM_STATEMENTS.md) will connect an explicit
 supported 10-Q evidence load through all three reported-concept views, a full
 selected-cell note preview and the captured company report. Exact start/end
 identity keeps same-end quarterly and year-to-date flows separate. Unknown
 classification remains explicit; no period subtraction or TTM is inferred.
-Source implementation and affected local checks pass. The complete Android
-fixture suite passes, and the native CI roster preserves all 95 prior cases plus
-the interim journey. Hosted Android execution, API activation and client delivery
-remain pending. No new live source or owner-record acceptance is claimed.
+[PR 248](https://github.com/liangzixuan/investing-pro/pull/248) merged at
+`341689c840617fd617bd37e7e4ea8df11c7343bd`. Original PR and main checks passed,
+including all 96 synthetic native cases. The managed API is active from that
+revision. Android 1.51.0/code52 is provided locally; the guarded existing-signer
+build and all four automated package checks passed. No installation, physical
+phone, browser or authenticated owner-record acceptance is claimed. The website
+and prior releases are preserved.
 
 ## Accepted and delivered: dated Portfolio composition
 

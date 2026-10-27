@@ -48,6 +48,11 @@ import type { AuthoredValuationScenario } from "@research-cockpit/personal-marke
 import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
 import { ManagedCompanySnapshotLoad } from "./managed-company-snapshot-load";
 import {
+  ManagedCompanySourcePass,
+  type CompanySourcePassPreview,
+} from "./managed-company-source-pass";
+import type { CompanySnapshotLoadSource } from "./managed-company-snapshot-load-sources";
+import {
   encodeMainWatchlistPayload,
   isMainWatchlistPayload,
   MANAGED_CATALOG_RESOLVE_LIMITS,
@@ -360,6 +365,7 @@ export class ManagedWorkspace {
     readonly ManagedEodIdentity[] | undefined;
   readonly eod: ManagedEodHistory;
   readonly companySnapshotLoad: ManagedCompanySnapshotLoad;
+  readonly companySourcePass: ManagedCompanySourcePass;
   readonly markets: ManagedMarkets;
   readonly marketsSourceReview: ManagedMarketsSourceReview;
   private readonly calendarFollowupContext: ManagedMarketsCalendarFollowupContext;
@@ -587,6 +593,14 @@ export class ManagedWorkspace {
       this.eod,
       this.annual,
       this.filings,
+      this.interim,
+    );
+    this.companySourcePass = new ManagedCompanySourcePass(
+      this.companySnapshotLoad,
+      this.eod,
+      this.annual,
+      this.filings,
+      this.interim,
     );
     this.markets = new ManagedMarkets(
       api,
@@ -687,6 +701,7 @@ export class ManagedWorkspace {
   }
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
+    this.companySourcePass.reconcile();
     this.marketsSourceReview.reconcile();
     this.followups.syncCatalog(this.state.snapshot?.snapshotSha256 ?? null);
     this.syncFollowupsReview();
@@ -704,6 +719,7 @@ export class ManagedWorkspace {
     try {
       this.followupsReview.setAvailable(false);
       this.navigationRevision++;
+      this.companySourcePass.reconcile();
       this.companySnapshotLoad.cancel();
       this.cancelFollowupOpening();
       this.navigationBlocked = blocked;
@@ -1571,6 +1587,8 @@ export class ManagedWorkspace {
     // Model close notifications must never expose the visit with a cleared section.
     if (hadResearch)
       this.state = { ...this.state, research: null, companyRoute: null };
+    this.companySourcePass.clear();
+    if (this.researchOperation !== operation) return hadResearch;
     this.companySnapshotLoad.clear();
     if (this.researchOperation !== operation) return hadResearch;
     this.valuation.activate(null);
@@ -2121,19 +2139,47 @@ export class ManagedWorkspace {
   switchToEod() {
     this.switchResearch("eod");
   }
-  async loadCompanySnapshot(visit: ManagedResearchVisit): Promise<void> {
+  private companySourceAdmission(visit: ManagedResearchVisit) {
     const operation = this.researchOperation;
     const revision = this.navigationRevision;
-    const admitted = () =>
+    return () =>
       this.state.research === visit &&
       this.researchOperation === operation &&
       this.navigationRevision === revision &&
       this.researchSourceRouteReady(visit.selection) &&
       this.canUseResearchSource(visit.selection);
+  }
+  prepareCompanySourcePass(
+    visit: ManagedResearchVisit,
+    names: readonly CompanySnapshotLoadSource[],
+  ): CompanySourcePassPreview | null {
+    const admitted = this.companySourceAdmission(visit);
+    if (!admitted()) return null;
+    return this.companySourcePass.prepare(visit.selection, admitted, names);
+  }
+  async runCompanySourcePass(
+    visit: ManagedResearchVisit,
+    preview: CompanySourcePassPreview,
+  ): Promise<void> {
+    if (!this.companySourceAdmission(visit)()) return;
+    await this.companySourcePass.start(preview);
+  }
+  cancelCompanySourcePass(visit: ManagedResearchVisit): void {
+    if (this.state.research === visit) this.companySourcePass.cancel();
+  }
+  clearCompanySourcePass(visit: ManagedResearchVisit): void {
+    if (this.state.research === visit) this.companySourcePass.clear();
+  }
+  async loadCompanySnapshot(visit: ManagedResearchVisit): Promise<void> {
+    const admitted = this.companySourceAdmission(visit);
+    if (!admitted()) return;
+    this.companySourcePass.clear();
     if (!admitted()) return;
     await this.companySnapshotLoad.start(visit.selection, admitted);
   }
   cancelCompanySnapshot(visit: ManagedResearchVisit): void {
+    if (this.state.research !== visit) return;
+    this.companySourcePass.cancel();
     if (this.state.research === visit) this.companySnapshotLoad.cancel();
   }
   async requestResearchSource(
@@ -2150,6 +2196,8 @@ export class ManagedWorkspace {
       this.researchOperation === operation &&
       this.state.research?.selection === selection &&
       this.canUseResearchSource(selection);
+    if (!admitted()) return;
+    this.companySourcePass.clear();
     if (!admitted()) return;
     this.companySnapshotLoad.cancel();
     if (!admitted()) return;
@@ -2179,8 +2227,10 @@ export class ManagedWorkspace {
       )
     )
       return;
+    this.companySourcePass.cancel();
+    if (this.state.research !== visit) return;
     this.companySnapshotLoad.cancel();
-    this[section].cancel();
+    if (this.state.research === visit) this[section].cancel();
   }
   private researchSourceRouteReady(selection: ManagedResearchSelection) {
     const route = this.state.companyRoute;
@@ -2215,6 +2265,8 @@ export class ManagedWorkspace {
       this.researchOperation === operation &&
       this.canUseResearchSource(research.selection) &&
       admit();
+    if (!current()) return null;
+    this.companySourcePass.cancel();
     if (!current()) return null;
     this.companySnapshotLoad.cancel();
     if (!current()) return null;

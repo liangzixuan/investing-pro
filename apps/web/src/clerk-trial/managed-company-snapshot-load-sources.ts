@@ -10,11 +10,38 @@ import type {
   ManagedEodHistory,
   ManagedEodHistoryState,
 } from "./managed-eod-history";
+import type {
+  ManagedInterimReport,
+  ManagedInterimReportState,
+} from "./managed-interim-report";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import type { PersonalSecAnnualCanonicalResponseDto } from "@research-cockpit/contracts";
 import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
 
-export type CompanySnapshotLoadSource = "eod" | "annual" | "filings";
+export type CompanySnapshotLoadSource =
+  "eod" | "annual" | "filings" | "interim";
+export const companySourceOrder = Object.freeze([
+  "eod",
+  "annual",
+  "filings",
+  "interim",
+] as const);
+export function reviewedSourceNames(
+  names: readonly CompanySnapshotLoadSource[],
+): readonly CompanySnapshotLoadSource[] | null {
+  if (!Array.isArray(names) || names.length === 0 || names.length > 4)
+    return null;
+  if (new Set(names).size !== names.length) return null;
+  if (
+    names.some(
+      (name: unknown) => !companySourceOrder.some((source) => source === name),
+    )
+  )
+    return null;
+  return Object.freeze(
+    companySourceOrder.filter((name) => names.includes(name)),
+  );
+}
 export interface SnapshotSourceState {
   readonly selection: ManagedResearchSelection | null;
   readonly response: unknown;
@@ -53,7 +80,9 @@ function acceptedPrice(state: ManagedEodHistoryState) {
   return state.response?.range === state.selectedRange;
 }
 function availableAnnualSources(
-  response: PersonalSecAnnualCanonicalResponseDto | null,
+  response:
+    | PersonalSecAnnualCanonicalResponseDto
+    | ManagedInterimReportState["response"],
 ) {
   if (!response) return false;
   const evidence = response.evidence;
@@ -67,6 +96,13 @@ function acceptedAnnual(state: ManagedAnnualReportState) {
   if (state.view === null) return false;
   if (state.checkingSeed) return false;
   return availableAnnualSources(state.response);
+}
+function acceptedInterim(state: ManagedInterimReportState) {
+  return (
+    freshResponse(state) &&
+    state.view !== null &&
+    availableAnnualSources(state.response)
+  );
 }
 function acceptedFilings(state: ManagedCompanyFilingsState) {
   if (!freshResponse(state)) return false;
@@ -104,8 +140,20 @@ export function companySnapshotLoadSources(
   price: ManagedEodHistory,
   annual: ManagedAnnualReport,
   filings: ManagedCompanyFilings,
+  interim: ManagedInterimReport,
 ): readonly SnapshotLoadSource[] {
-  return [priceSource(price), annualSource(annual), filingsSource(filings)];
+  return [
+    priceSource(price),
+    annualSource(annual),
+    filingsSource(filings),
+    {
+      name: "interim",
+      label: "Interim",
+      model: interim,
+      covered: (selection) => interim.hasCoverage(selection),
+      accepted: () => acceptedInterim(interim.getSnapshot()),
+    },
+  ];
 }
 export function snapshotSourceIdle(state: SnapshotSourceState) {
   if (state.running) return false;

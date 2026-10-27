@@ -10,6 +10,7 @@ import { ManagedEodHistory } from "./managed-eod-history";
 import { ManagedAnnualReport } from "./managed-annual-report";
 import { ManagedCompanyFilings } from "./managed-company-filings";
 import { ManagedSecAccess } from "./managed-sec-access";
+import { unloadedInterim } from "./test-managed-interim-model";
 import { ManagedCompanySnapshotLoad } from "./managed-company-snapshot-load";
 import { eodSelection, eodResponse } from "./eod-history-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
@@ -54,7 +55,12 @@ async function fixture(covered = true) {
   const filings = new ManagedCompanyFilings(readFilings, vi.fn(), access, {
     coverage,
   });
-  const model = new ManagedCompanySnapshotLoad(price, annual, filings);
+  const model = new ManagedCompanySnapshotLoad(
+    price,
+    annual,
+    filings,
+    unloadedInterim(),
+  );
   return {
     model,
     price,

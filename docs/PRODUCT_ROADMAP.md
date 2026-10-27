@@ -29,12 +29,18 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 27 Android delivery
 
-The next M2 outcome is [reported interim financial review](MANAGED_INTERIM_STATEMENTS.md).
-Connect one explicit supported interim read through Income, Balance sheet and
-Cash flow inspection, full selected-cell note preview, company report and
-independent Save. Exact reported periods, source clocks and unavailable values
-remain visible. This does not infer discrete quarters, period differences or TTM.
-Source implementation, native acceptance and API/client activation are separate.
+The next M2 outcome is a [reviewed company source pass](MANAGED_COMPANY_SNAPSHOT.md#reviewed-company-source-pass).
+Preview selected missing Price, Annual, Filings and optional Interim reads, then
+run them one at a time. Keep each retained packet's dates and each attempted or
+unattempted outcome visible. Continue through financial views, cited note and
+report, Research/Back and independent Review/Save. Existing admission budgets
+and source limits remain in force.
+
+Android 1.51 and the managed API deliver [reported interim financial review](MANAGED_INTERIM_STATEMENTS.md)
+from main `341689c840617fd617bd37e7e4ea8df11c7343bd`. Original required checks,
+all 96 synthetic native cases and full guarded APK verification passed. Exact
+reported periods, source clocks and unavailable values remain visible; no period
+subtraction or TTM is inferred. Installation remains an owner action.
 
 Android 1.50 delivers [dated Portfolio composition](MANAGED_PORTFOLIO_COMPOSITION.md)
 from main `cfa11b08aa10eeb0100fb25afc79038a6d69ebe5`. All original required

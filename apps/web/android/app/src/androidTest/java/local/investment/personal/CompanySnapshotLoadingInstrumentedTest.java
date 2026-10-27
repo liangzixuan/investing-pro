@@ -12,10 +12,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.Rule;
+import org.junit.rules.TestName;
 
 /** Invented source packets and explicit fixture-authored note; real workspace, source models and Back. */
 @RunWith(AndroidJUnit4.class)
 public class CompanySnapshotLoadingInstrumentedTest {
+    @Rule public TestName testName = new TestName();
+    private static final String REVIEWED_JOURNEY = "reviewedCompanySourcesKeepDatedEvidenceThroughInterimCellsReportBackAndSeparateSave";
+    private static final String PASS = "JSON.parse(document.querySelector('#fixture-company-pass-evidence').textContent)";
     private static final String COUNTS = "JSON.parse(document.querySelector('#fixture-diagnostics').textContent)";
     private static final String EVIDENCE = "JSON.parse(document.querySelector('#fixture-company-snapshot-evidence').textContent)";
     private static final String DRAFT = "JSON.parse(document.querySelector('#fixture-workspace-draft').textContent)";
@@ -35,7 +40,8 @@ public class CompanySnapshotLoadingInstrumentedTest {
 
     @Before public void launchInventedSnapshotLoading() throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
-        assets = new ReportRevisitFixtureAssets(ReportRevisitFixtureAssets.Scenario.COMPANY_SNAPSHOT_LOADING);
+        boolean reviewed = REVIEWED_JOURNEY.equals(testName.getMethodName());
+        assets = new ReportRevisitFixtureAssets(reviewed ? ReportRevisitFixtureAssets.Scenario.REVIEWED_COMPANY_SOURCE_PASS : ReportRevisitFixtureAssets.Scenario.COMPANY_SNAPSHOT_LOADING);
         assets.prepare();
         scenario = ActivityScenario.launch(MainActivity.class);
         page = new ReportRevisitPage(scenario);
@@ -44,7 +50,8 @@ public class CompanySnapshotLoadingInstrumentedTest {
             verifyWebViewGuards(activity);
             activity.getBridge().setServerBasePath(assets.directory().getAbsolutePath());
         });
-        page.awaitStartup(new ReportRevisitPage.Check("source-bound invented scenario starts without source reads", new ReportRevisitPage.Script("document.querySelector('#fixture-company-snapshot-evidence')!==null && " + COUNTS + ".load===1 && " + COUNTS + ".status===1 && document.querySelector('#managed-note-0')?.disabled===false && " + zeroSources())).nativeReady());
+        if (reviewed) page.awaitStartup(new ReportRevisitPage.Check("reviewed company pass starts in the disconnected fixture with no source read", new ReportRevisitPage.Script("document.querySelector('#fixture-company-pass-evidence')!==null&&document.querySelector('#fixture-interim-report-metadata')!==null&&document.querySelector('#managed-note-0')?.disabled===false&&" + COUNTS + ".load===1&&" + COUNTS + ".status===1&&" + zeroSources() + "&&" + COUNTS + ".interimReport===0&&location.origin==='https://localhost'&&document.querySelector('meta[http-equiv=Content-Security-Policy]')?.content.includes(\"connect-src 'none'\")")).nativeReady());
+        else page.awaitStartup(new ReportRevisitPage.Check("source-bound invented scenario starts without source reads", new ReportRevisitPage.Script("document.querySelector('#fixture-company-snapshot-evidence')!==null && " + COUNTS + ".load===1 && " + COUNTS + ".status===1 && document.querySelector('#managed-note-0')?.disabled===false && " + zeroSources())).nativeReady());
         scenario.onActivity(activity -> activity.getBridge().getWebView().clearHistory());
     }
     private void verifyDisconnectedIdentity(MainActivity activity) {
@@ -76,6 +83,86 @@ public class CompanySnapshotLoadingInstrumentedTest {
         retainNativeFrame();
         returnAndSaveIndependently(draft);
     }
+
+    @Test public void reviewedCompanySourcesKeepDatedEvidenceThroughInterimCellsReportBackAndSeparateSave() throws Exception {
+        page.click(ReportRevisitPage.Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='My Watchlist']"));
+        page.click(ReportRevisitPage.Element.css(".managed-watchlist-choices li:first-child .managed-watchlist-choice"));
+        page.click(ReportRevisitPage.Element.css("#fixture-company-pass-author-note"));
+        InterimStatementsEvidence.DraftCapture draft = InterimStatementsEvidence.capture(page);
+        page.click(ReportRevisitPage.Element.css("button[aria-label='Annual report for saved ZERO']"));
+        passAwait("default source choices require explicit preview with Interim unselected", "document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO'&&(()=>{const c=[...document.querySelectorAll('.managed-company-source-pass input[type=checkbox]')];return c.length===4&&c.slice(0,3).every(x=>x.checked)&&!c[3].checked;})()&&" + zeroSources() + "&&" + COUNTS + ".interimReport===0");
+        passClick("Preview company source pass");
+        passAwait("preview captures exact identity, selected missing order and no source effect", PASS + ".pass.phase==='preview'&&JSON.stringify(" + PASS + ".pass.preview.names)==='[\"eod\",\"annual\",\"filings\"]'&&" + PASS + ".pass.preview.selection.listing.listingId==='listing-zero'&&JSON.stringify(" + PASS + ".pass.rows.map(r=>r.disposition))==='[\"missing\",\"missing\",\"missing\",\"not_attempted\"]'&&" + zeroSources() + "&&" + COUNTS + ".interimReport===0&&" + COUNTS + ".save===0");
+        page.click(ReportRevisitPage.Element.xpath("//section[@aria-label='Reviewed company source pass']//label[normalize-space(.)='Interim']/input"));
+        passAwait("changing the optional choice retires the old review before Run", PASS + ".pass.preview===null&&[...document.querySelectorAll('.managed-company-source-pass button')].find(b=>b.textContent==='Run reviewed company source pass')?.disabled===true&&" + zeroSources());
+        passClick("Preview company source pass");
+        passAwait("new explicit preview includes optional Interim without requests", "JSON.stringify(" + PASS + ".pass.preview?.names)==='[\"eod\",\"annual\",\"filings\",\"interim\"]'&&" + PASS + ".pass.rows.every(r=>r.selected&&r.disposition==='missing')&&" + zeroSources());
+        passClick("Run reviewed company source pass");
+        passAwait("one ordered pass loads Price and owns one pending Annual before Filings or Interim", PASS + ".annualRunning===true&&" + PASS + ".price!==null&&" + PASS + ".annual===null&&" + PASS + ".pass.phase==='running'&&JSON.stringify(" + PASS + ".counts.order)==='[\"eod\",\"annual\"]'&&" + COUNTS + ".filings===0&&" + COUNTS + ".interimReport===0");
+        String price = page.read(new ReportRevisitPage.Script("JSON.stringify(" + PASS + ".price)"));
+        passClick("Cancel reviewed company source pass");
+        passAwait("Cancel aborts only pending Annual and stops all remaining reads", PASS + ".counts.aborted===1&&" + PASS + ".pass.phase==='cancelled'&&JSON.stringify(" + PASS + ".pass.rows.map(r=>r.disposition))==='[\"loaded\",\"cancelled\",\"not_attempted\",\"not_attempted\"]'&&" + COUNTS + ".filings===0&&" + COUNTS + ".interimReport===0&&" + COUNTS + ".save===0");
+        page.click(ReportRevisitPage.Element.css("#fixture-company-pass-settle-late"));
+        passAwait("late cancelled Annual packet cannot publish or resume the pass", PASS + ".counts.late===1&&" + PASS + ".annual===null&&" + PASS + ".annualRunning===false&&" + COUNTS + ".annual===1&&" + COUNTS + ".filings===0&&" + COUNTS + ".interimReport===0");
+        passClick("Preview company source pass");
+        passAwait("explicit fresh preview retains Price and original completion time", PASS + ".pass.rows[0].disposition==='retained'&&" + PASS + ".pass.rows[0].evidence.completedAt===" + PASS + ".price.completedAt&&" + PASS + ".pass.rows.slice(1).every(r=>r.disposition==='missing')");
+        passClick("Run reviewed company source pass");
+        passAwait("fresh pass completes Annual, Filings and Interim sequentially with no Price refresh or Save", PASS + ".pass.phase==='finished'&&JSON.stringify(" + PASS + ".counts.order)==='[\"eod\",\"annual\",\"annual\",\"filings\",\"interimReport\"]'&&" + reviewedCounts(0, 1) + "&&JSON.stringify(" + PASS + ".price)===" + JSONObject.quote(price) + "&&" + PASS + ".pass.rows.every(r=>r.evidence.completedAt!==null)");
+        String packets = page.read(new ReportRevisitPage.Script("JSON.stringify([" + PASS + ".price," + PASS + ".annual," + PASS + ".filings," + PASS + ".interim])"));
+        passClick("Preview company source pass");
+        passAwait("complete retained preview declares zero missing reads", PASS + ".pass.rows.every(r=>r.disposition==='retained')&&document.querySelector('.managed-company-source-pass')?.textContent.includes('No missing reads')");
+        passClick("Run reviewed company source pass");
+        passAwait("all retained packets keep their original bytes and source clocks", PASS + ".pass.phase==='finished'&&JSON.stringify([" + PASS + ".price," + PASS + ".annual," + PASS + ".filings," + PASS + ".interim])===" + JSONObject.quote(packets) + "&&" + reviewedCounts(0, 1));
+        inspectReviewedInterimAndAppend(draft);
+        captureReviewedCompanyReport(draft, packets);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        page.await(new ReportRevisitPage.Check("hardware Back restores exact unsaved complete note without source requests", new ReportRevisitPage.Script("document.querySelector('.managed-company-visit')===null&&" + InterimStatementsEvidence.exactDraft(draft, InterimStatementsEvidence.Stage.LOADED).expression() + "&&" + reviewedCounts(0, 1))).nativeReady());
+        page.click(ReportRevisitPage.Element.css("#managed-unsaved-review > summary"));
+        passAwait("separate whole-draft Review shows the full cited note before Save", "document.querySelector('#managed-unsaved-review')?.textContent.includes(" + JSONObject.quote(draft.completeNote()) + ")&&" + reviewedCounts(0, 1));
+        page.click(ReportRevisitPage.Element.xpath("//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']"));
+        passAwait("only explicit Watchlist Save acknowledges version two", InterimStatementsEvidence.exactDraft(draft, InterimStatementsEvidence.Stage.SAVED).expression() + "&&" + reviewedCounts(1, 1));
+        page.click(ReportRevisitPage.Element.xpath("//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']"));
+        passAwait("fresh saved read retains complete memberships and cited note", InterimStatementsEvidence.exactDraft(draft, InterimStatementsEvidence.Stage.RELOADED).expression() + "&&" + reviewedCounts(1, 2));
+        assertEquals("The same native document survives the complete reviewed source journey", draft.origin(), page.read(new ReportRevisitPage.Script("String(performance.timeOrigin)")));
+    }
+    private void passClick(String label) throws Exception {
+        page.click(ReportRevisitPage.Element.xpath("//section[@aria-label='Reviewed company source pass']//button[normalize-space(.)='" + label + "']"));
+    }
+    private void passAwait(String label, String expression) throws Exception {
+        page.await(new ReportRevisitPage.Check(label, new ReportRevisitPage.Script(expression)));
+    }
+    private String reviewedCounts(int saves, int loads) {
+        return "(()=>{const d=" + COUNTS + ";return d.eod===1&&d.annual===2&&d.filings===1&&d.interimReport===1&&d.save===" + saves + "&&d.load===" + loads + "&&d.status===1&&['token','signOut','search','resolve','marketsEod','calendar','fed','interimPortfolioLoad','interimPortfolioSave','interimFollowupsLoad','interimFollowupsSave'].every(k=>d[k]===0);})()";
+    }
+    private void inspectReviewedInterimAndAppend(InterimStatementsEvidence.DraftCapture draft) throws Exception {
+        page.click(ReportRevisitPage.Element.css(".managed-company-snapshot > summary"));
+        passAwait("loaded snapshot keeps the original independent Price and Annual clocks", "document.querySelector('[aria-label=\"Snapshot price\"]')?.textContent.includes('101.5')&&document.querySelector('[aria-label=\"Snapshot revenue basis Revenues\"]')?.textContent.includes('1000')&&document.querySelector('.managed-company-snapshot')?.textContent.includes('2026-09-20T00:00:02.000Z')");
+        page.click(ReportRevisitPage.Element.css(".managed-company-sections button[aria-label='Interim section for ZERO']"));
+        page.await(new ReportRevisitPage.Check("reported income retains both same-end windows", InterimStatementsEvidence.income()));
+        page.await(new ReportRevisitPage.Check("Interim retains original report and independent source clocks", InterimStatementsEvidence.originalClocks()));
+        page.click(ReportRevisitPage.Element.css(InterimStatementsEvidence.Cell.REVENUE_QUARTER.selector() + " input[type=checkbox]"));
+        page.click(ReportRevisitPage.Element.css("#interim-view-cash"));
+        page.await(new ReportRevisitPage.Check("cash retains its exact six-month duration", InterimStatementsEvidence.cell(InterimStatementsEvidence.Cell.OPERATING_CASH)));
+        page.click(ReportRevisitPage.Element.css(InterimStatementsEvidence.Cell.OPERATING_CASH.selector() + " input[type=checkbox]"));
+        page.click(ReportRevisitPage.Element.css("#interim-view-balance"));
+        page.await(new ReportRevisitPage.Check("Assets retains its instant balance date", InterimStatementsEvidence.cell(InterimStatementsEvidence.Cell.ASSETS)));
+        page.click(ReportRevisitPage.Element.css(InterimStatementsEvidence.Cell.ASSETS.selector() + " input[type=checkbox]"));
+        page.click(ReportRevisitPage.Element.css(".managed-interim-note > summary"));
+        page.click(ReportRevisitPage.Element.css("#interim-note-preview"));
+        page.await(new ReportRevisitPage.Check("complete proposed note contains the three exact cited cells", InterimStatementsEvidence.completePreview(draft)));
+        page.click(ReportRevisitPage.Element.css("#interim-note-append"));
+        passAwait("explicit Append changes only the chosen note without saving or loading", InterimStatementsEvidence.exactDraft(draft, InterimStatementsEvidence.Stage.LOADED).expression() + "&&" + reviewedCounts(0, 1));
+    }
+    private void captureReviewedCompanyReport(InterimStatementsEvidence.DraftCapture draft, String packets) throws Exception {
+        page.click(ReportRevisitPage.Element.css(".managed-company-report > summary"));
+        page.click(ReportRevisitPage.Element.xpath("//details[contains(@class,'managed-company-report')]/div/button[normalize-space(.)='Prepare research report']"));
+        passAwait("explicit report preparation captures the complete authored note", "document.querySelector('#managed-prepared-report-heading')?.textContent==='Research report · ZERO'&&document.querySelector('.managed-company-report-note')?.textContent===" + JSONObject.quote(draft.completeNote()));
+        page.click(ReportRevisitPage.Element.css(".managed-report-document > summary"));
+        passAwait("one read-only schema-six report retains all four exact packets and independent dates", "(()=>{const f=document.querySelector('#managed-report-document');if(!f?.readOnly)return false;const d=JSON.parse(f.value);return d.schemaVersion==='6.0.0'&&d.authoredResearch.note===" + JSONObject.quote(draft.completeNote()) + "&&JSON.stringify([d.sources.price.response,d.sources.annual.response,d.sources.filings.response,d.sources.interim.response])===" + JSONObject.quote(packets) + "&&d.sources.interim.statements.statements.length===3&&f.value.includes('2026-08-01T12:00:03.000Z')&&f.value.includes('2026-09-20T00:00:02.000Z')&&" + reviewedCounts(0, 1) + ";})()");
+        page.await(InterimStatementsEvidence.readyBack());
+    }
+
 
     private CapturedDraft authorFixtureNoteAndOpenExactCompany() throws Exception {
         page.click(ReportRevisitPage.Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='My Watchlist']"));

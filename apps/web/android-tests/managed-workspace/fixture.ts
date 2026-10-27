@@ -1,4 +1,8 @@
 import {
+  createReviewedCompanySourcePassNativeFixture,
+  type ReviewedCompanySourcePassControls,
+} from "./reviewed-company-source-pass-fixture";
+import {
   createInterimStatementsNativeFixture,
   type NativeInterimStatementsMetadata,
 } from "./interim-statements-fixture";
@@ -2129,6 +2133,7 @@ export type NativeFinancialReviewMetadata = {
   readonly generation: SharedNativeFixture["generations"]["initial"];
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
+  readonly reviewedCompanySourcePass?: ReviewedCompanySourcePassControls;
   readonly sourceReview?: SourceReviewFixtureControls;
   readonly companySnapshotLoading?: SnapshotLoadingFixtureControls;
   readonly filingsReview?: {
@@ -2356,6 +2361,13 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "reviewed-company-source-pass",
+    async () =>
+      createReviewedCompanySourcePassNativeFixture(
+        await createSharedFixture("company-snapshot"),
+      ),
+  ],
+  [
     "company-snapshot-loading",
     async () =>
       createCompanySnapshotLoadingNativeFixture(
@@ -2471,6 +2483,7 @@ export async function createFixture(
     | "portfolio-composition-review"
     | "followups-review-report"
     | "company-snapshot-loading"
+    | "reviewed-company-source-pass"
     | "followups-review-session"
     | "markets-source-review"
     | "markets-calendar-followup"
