@@ -85,7 +85,7 @@ function fill(f: Awaited<ReturnType<typeof setup>>) {
   return v.calculate()!;
 }
 describe("fixed native valuation and dated Price fixture", () => {
-  it("uses real Calculate, explicit Price, exact whole-note Append, schema5 report, Review/Save and fresh read", async () => {
+  it("uses real Calculate, explicit Price, exact whole-note Append, schema6 report, Review/Save and fresh read", async () => {
     const f = await setup();
     const calculation = fill(f);
     expect(f.fixture.getSnapshot()).toMatchObject({
@@ -114,6 +114,7 @@ describe("fixed native valuation and dated Price fixture", () => {
         f.workspace.eod.getSnapshot(),
         f.workspace.annual.getSnapshot(),
         f.workspace.filings.getSnapshot(),
+        f.workspace.interim.getSnapshot(),
       ),
       f.workspace.getResearchWatchlist(selection),
       () => new Date("2026-10-17T00:00:00.000Z"),
@@ -122,7 +123,7 @@ describe("fixed native valuation and dated Price fixture", () => {
     const doc = formatCompanyReportDocument(report)!;
     const parsed: unknown = JSON.parse(doc.text);
     expect(parsed).toMatchObject({
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       authoredResearch: { note: valuationPriceExpectedNote },
       valuationPrice: {
         reference: {

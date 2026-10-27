@@ -42,6 +42,7 @@ async function fixture() {
     price.getSnapshot(),
     annual.getSnapshot(),
     filings.getSnapshot(),
+    null,
   );
   const result = prepareCompanyReport(
     eodSelection,

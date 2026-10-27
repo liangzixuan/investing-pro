@@ -129,6 +129,7 @@ describe("invented operating-results acceptance", () => {
         workspace.eod.getSnapshot(),
         workspace.annual.getSnapshot(),
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       );
     const noteState = () => workspace.getResearchWatchlist(selection);
     expect(prepareCompanyReport(selection, evidence(), noteState())).toBeNull();

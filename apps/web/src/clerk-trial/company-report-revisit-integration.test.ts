@@ -41,6 +41,7 @@ async function unopenedSourceFixture() {
   });
   let routeActive = true;
   const props: CompanyReportRevisitProps = {
+    interim: workspace.interim,
     selection,
     price: workspace.eod,
     annual: workspace.annual,

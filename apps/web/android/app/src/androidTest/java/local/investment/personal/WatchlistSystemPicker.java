@@ -4,6 +4,10 @@ import static org.junit.Assert.*;
 
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.UiAutomation;
+import android.content.Context;
+import java.nio.ByteBuffer;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import android.graphics.Rect;
 import android.os.SystemClock;
 import android.util.Log;
@@ -435,6 +439,48 @@ final class WatchlistSystemPicker {
         assertEquals("Only the fixed invented current-format company report can be selected",
             "Investment-research-ZERO-XNAS-20261015T000000000Z.json", displayName);
         selectInventedDocument(displayName);
+    }
+
+    /** Owns the fresh capture bytes; this is separate from the legacy fixed archive. */
+    record CapturedReport(Context context, String filename, byte[] document) {
+        CapturedReport {
+            java.util.Objects.requireNonNull(context);
+            java.util.Objects.requireNonNull(filename);
+            document = java.util.Objects.requireNonNull(document).clone();
+        }
+        @Override public byte[] document() { return document.clone(); }
+    }
+
+    void openCapturedInventedReportDocument(CapturedReport captured) throws Exception {
+        requireCapturedReport(captured);
+        WatchlistTestDocuments.Output output = capturedReportOutput(captured);
+        assertEquals(SavedWatchlistTestDocumentsProvider.AUTHORITY, output.uri.getAuthority());
+        assertEquals("application/json", captured.context().getContentResolver().getType(output.uri));
+        assertEquals(captured.document.length, output.size);
+        assertArrayEquals(captured.document, WatchlistTestDocuments.readReport(captured.context(), output));
+        selectInventedDocument(captured.filename());
+    }
+
+    private static void requireCapturedReport(CapturedReport captured) throws Exception {
+        assertTrue(captured.filename().matches("Investment-research-ZERO-XNAS-[0-9]{8}T[0-9]{9}Z\\.json"));
+        assertTrue(captured.document.length > 0);
+        assertTrue(captured.document.length <= InvestmentCompanyReportPlugin.MAX_REPORT_BYTES);
+        String text = StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(captured.document)).toString();
+        assertArrayEquals(captured.document, ChosenDocumentPolicyKt.strictDocumentBytes(text, InvestmentCompanyReportPlugin.MAX_REPORT_BYTES));
+        assertTrue(CompanyReportDocumentPolicy.INSTANCE.acceptsText(captured.filename(), text));
+    }
+
+    private static WatchlistTestDocuments.Output capturedReportOutput(CapturedReport captured) {
+        WatchlistTestDocuments.Output match = null;
+        for (WatchlistTestDocuments.Output output : WatchlistTestDocuments.outputs(captured.context())) {
+            if (!captured.filename().equals(output.name)) continue;
+            assertNull("The exact captured invented JSON output must be unique", match);
+            match = output;
+        }
+        assertNotNull("The exact captured invented JSON output exists", match);
+        return match;
     }
 
     private void selectInventedDocument(String displayName) throws Exception {

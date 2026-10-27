@@ -194,6 +194,7 @@ describe("invented balance-sheet acceptance", () => {
         workspace.eod.getSnapshot(),
         workspace.annual.getSnapshot(),
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       );
     const report = () =>
       prepareCompanyReport(
@@ -472,6 +473,7 @@ describe("balance-sheet history cancellation and replacement", () => {
         workspace.eod.getSnapshot(),
         model.getSnapshot(),
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       ),
       workspace.getResearchWatchlist(selection),
     );

@@ -76,6 +76,7 @@ async function fixture() {
       workspace.eod.getSnapshot(),
       workspace.annual.getSnapshot(),
       workspace.filings.getSnapshot(),
+      workspace.interim.getSnapshot(),
     );
   const report = prepareCompanyReport(
     selection,

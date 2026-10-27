@@ -26,7 +26,7 @@ export function ManagedCompanyReportRevisit(props: CompanyReportRevisitProps) {
     >
       <summary>Revisit a saved report</summary>
       <p>
-        Select a format 5 JSON report for this exact company. Compare its full
+        Select a format 6 JSON report for this exact company. Compare its full
         note and original source provenance with a new current capture. Files
         stay in this company visit. Opening a report makes no source request or
         saved change.

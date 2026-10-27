@@ -59,6 +59,7 @@ async function setup() {
       workspace.eod.getSnapshot(),
       workspace.annual.getSnapshot(),
       workspace.filings.getSnapshot(),
+      workspace.interim.getSnapshot(),
     );
   return { fixture, workspace, open, selection, evidence };
 }
@@ -196,7 +197,7 @@ describe("invented native authored valuation scenario", () => {
       authoredResearch: { note: unknown };
       sources: Record<string, unknown>;
     };
-    expect(parsed.schemaVersion).toBe("5.0.0");
+    expect(parsed.schemaVersion).toBe("6.0.0");
     expect(parsed.valuation).toEqual(capture);
     expect(capture.dcfDraft.forecastYears).toBe("5");
     expect(capture.exitDraft.horizonYears).toBe("5");

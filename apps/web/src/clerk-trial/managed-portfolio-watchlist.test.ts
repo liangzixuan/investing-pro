@@ -90,6 +90,9 @@ async function fixture(value = ledger, approve = true) {
     Promise.reject(new Error("Unexpected source or resource request")),
   );
   const api = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
     load: vi.fn<ManagedApi["load"]>(() =>
       Promise.resolve({ version: 1, payload: structuredClone(saved) }),

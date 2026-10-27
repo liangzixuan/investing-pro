@@ -40,7 +40,7 @@ internal object WatchlistDocumentPolicy : ChosenDocumentPolicy {
 
 internal object CompanyReportDocumentPolicy : ChosenDocumentPolicy {
     const val PURPOSE = "investment.company-research"
-    const val MAX_BYTES = 2850816
+    const val MAX_BYTES = 5996544
     override val mimeType = "application/json"
     override val maxBytes = MAX_BYTES
     override val failureMessage = "Report save unavailable"
@@ -80,7 +80,7 @@ internal object CompanyReportDocumentPolicy : ChosenDocumentPolicy {
             }
             reader.endObject()
             require(reader.peek() == JsonToken.END_DOCUMENT)
-            purpose == PURPOSE && schema == "5.0.0" && listing != null &&
+            purpose == PURPOSE && schema == "6.0.0" && listing != null &&
                 reportFilename(listing.first, listing.second, preparedAt) == filename
         }
     } catch (_: Exception) {

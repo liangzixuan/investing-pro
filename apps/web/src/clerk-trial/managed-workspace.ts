@@ -1,3 +1,14 @@
+import { captureManagedInterimNote } from "./managed-interim-note-context";
+import { ManagedInterimReport } from "./managed-interim-report";
+import {
+  isManagedInterimStatementsNoteCurrent,
+  appendManagedInterimStatementsNote,
+  retireManagedInterimStatementsNote,
+  type ManagedInterimCellSelection,
+  type ManagedInterimNotePreparation,
+  type PreparedManagedInterimStatementsNote,
+} from "./managed-interim-statements-note";
+import type { PersonalSecInterimCanonicalResponseDto } from "@research-cockpit/contracts";
 import { ManagedMarketsCalendarFollowupContext } from "./managed-calendar-followup-context";
 import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { FilingsFollowupPort } from "./managed-filings-followup";
@@ -173,7 +184,7 @@ export interface CatalogReview {
 }
 export interface ManagedResearchVisit {
   readonly selection: ManagedResearchSelection;
-  readonly section: "annual" | "eod" | "filings";
+  readonly section: "annual" | "interim" | "eod" | "filings";
 }
 export interface ResearchCompanyNavigationState {
   readonly members: readonly WatchlistMembership[];
@@ -188,7 +199,7 @@ export interface ResearchWatchlistState {
 }
 export interface CompanyRouteState {
   readonly listingId: string;
-  readonly section: "annual" | "eod" | "filings";
+  readonly section: "annual" | "interim" | "eod" | "filings";
   readonly status:
     "waiting_catalog" | "resolving" | "unavailable" | "error" | "open";
   readonly message: string;
@@ -337,6 +348,7 @@ export class ManagedWorkspace {
   readonly valuation = new ManagedValuationWorkbench();
   readonly valuationAssumptions: ManagedValuationAssumptions;
   readonly annual: ManagedAnnualReport;
+  readonly interim: ManagedInterimReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
   readonly financialScreen: ManagedFinancialScreen;
   readonly filings: ManagedCompanyFilings;
@@ -383,6 +395,8 @@ export class ManagedWorkspace {
   private readonly financialReview = new ManagedFinancialReview();
   private readonly priceStudiesNote = new ManagedPriceStudiesNote();
   private readonly valuationNotePreviews = new WeakSet<PreparedValuationNote>();
+  private readonly interimStatementsPreviews =
+    new WeakSet<PreparedManagedInterimStatementsNote>();
   private readonly annualStatementsPreviews =
     new WeakSet<PreparedManagedAnnualStatementsNote>();
   private readonly reportWatchlistRevisions = new WeakMap<object, symbol>();
@@ -396,6 +410,7 @@ export class ManagedWorkspace {
       priceCoverage?: readonly ManagedEodIdentity[];
       financialScreenListingIds?: readonly string[];
       researchCoverage?: ManagedResearchCoverage;
+      interimIssuers?: readonly string[];
     } = {},
   ) {
     const researchOptions = {
@@ -474,6 +489,20 @@ export class ManagedWorkspace {
       this.secAccess,
       researchOptions,
     );
+    this.interim = new ManagedInterimReport(
+      (request, signal) => api.interimReport(request, signal),
+      (error) => this.coordinator.readError(error),
+      this.secAccess,
+      {
+        ...researchOptions,
+        ...(options.interimIssuers
+          ? { interimIssuers: options.interimIssuers }
+          : {}),
+      },
+    );
+    this.interim.subscribe(() => {
+      if (this.interim.getSnapshot().catalogChanged) this.invalidateCatalog();
+    });
     this.annualComparison = new ManagedWatchlistAnnualComparison(
       (request, signal) => api.annualReport(request, signal),
       (error) => this.coordinator.readError(error),
@@ -847,6 +876,7 @@ export class ManagedWorkspace {
     this.valuation.retire();
     this.closeResearch();
     this.annual.retire();
+    this.interim.retire();
     this.annualComparison.retire();
     this.financialScreen.retire();
     this.filings.retire();
@@ -1247,9 +1277,7 @@ export class ManagedWorkspace {
     if (
       !route ||
       !isManagedCompanyListingId(route.listingId) ||
-      (route.section !== "annual" &&
-        route.section !== "eod" &&
-        route.section !== "filings")
+      !["annual", "interim", "eod", "filings"].includes(route.section)
     ) {
       this.closeResearch();
       return;
@@ -1509,6 +1537,7 @@ export class ManagedWorkspace {
       this.eod.open(selection, options.priceSeed);
     if (!owns()) return;
     if (section === "annual") this.annual.open(selection, options.annualSeed);
+    if (section === "interim") this.interim.open(selection);
     if (!owns()) return;
     if (section === "filings")
       this.filings.open(selection, options.filingsSeed);
@@ -1546,12 +1575,17 @@ export class ManagedWorkspace {
     if (this.researchOperation !== operation) return hadResearch;
     this.valuation.activate(null);
     if (this.researchOperation !== operation) return hadResearch;
-    this.annual.close();
-    if (this.researchOperation !== operation) return hadResearch;
+    if (!this.closeFinancialResearch(operation)) return hadResearch;
     this.filings.close();
     if (this.researchOperation !== operation) return hadResearch;
     this.eod.close();
     return hadResearch;
+  }
+  private closeFinancialResearch(operation: symbol) {
+    this.annual.close();
+    if (this.researchOperation !== operation) return false;
+    this.interim.close();
+    return this.researchOperation === operation;
   }
   private canSwitchResearch(selection: ManagedResearchSelection | null) {
     if (
@@ -2078,6 +2112,9 @@ export class ManagedWorkspace {
     this.openResearch(capture.selection, "eod", { admit: () => current() });
     if (this.preparedFollowup === capture) this.preparedFollowup = null;
   }
+  switchToInterim() {
+    this.switchResearch("interim");
+  }
   switchToAnnual() {
     this.switchResearch("annual");
   }
@@ -2158,6 +2195,7 @@ export class ManagedWorkspace {
       this.canSwitchResearch(selection) &&
       !this.filings.getSnapshot().catalogChanged &&
       !this.annual.getSnapshot().catalogChanged &&
+      !this.interim.getSnapshot().catalogChanged &&
       !this.eod.getSnapshot().catalogChanged
     );
   }
@@ -2544,6 +2582,78 @@ export class ManagedWorkspace {
       };
     this.annualStatementsPreviews.delete(preview);
     return appendManagedAnnualStatementsNote(preview);
+  }
+  prepareInterimStatementsNote(
+    selection: ManagedResearchSelection,
+    response: PersonalSecInterimCanonicalResponseDto,
+    cells: readonly ManagedInterimCellSelection[],
+    selectionIsCurrent: () => boolean,
+  ): ManagedInterimNotePreparation {
+    const capture = {
+      selection,
+      visit: this.state.research,
+      operation: this.researchOperation,
+      navigationRevision: this.navigationRevision,
+    };
+    const visitCurrent = () => this.interimNoteVisitCurrent(capture);
+    const proposal = captureManagedInterimNote({
+      response,
+      cells,
+      source: this.interim.getSnapshot,
+      watchlist: () => this.getResearchWatchlist(selection),
+      visitCurrent,
+      selectionCurrent: selectionIsCurrent,
+      apply: (note, previous) => this.noteResearch(selection, note, previous),
+    });
+    if (proposal.preview) this.interimStatementsPreviews.add(proposal.preview);
+    return proposal;
+  }
+  private interimNoteVisitCurrent(capture: {
+    readonly selection: ManagedResearchSelection;
+    readonly visit: ManagedResearchVisit | null;
+    readonly operation: symbol;
+    readonly navigationRevision: number;
+  }) {
+    if (this.retired || this.researchOperation !== capture.operation)
+      return false;
+    if (this.navigationRevision !== capture.navigationRevision) return false;
+    if (!this.interimNoteVisitMatches(capture)) return false;
+    return (
+      this.researchSourceRouteReady(capture.selection) &&
+      this.canUseResearchSource(capture.selection)
+    );
+  }
+  private interimNoteVisitMatches(capture: {
+    readonly selection: ManagedResearchSelection;
+    readonly visit: ManagedResearchVisit | null;
+  }) {
+    if (this.state.research !== capture.visit) return false;
+    return (
+      capture.visit?.section === "interim" &&
+      capture.visit.selection === capture.selection
+    );
+  }
+  interimStatementsPreviewIsCurrent(
+    preview: PreparedManagedInterimStatementsNote,
+  ) {
+    return (
+      this.interimStatementsPreviews.has(preview) &&
+      isManagedInterimStatementsNoteCurrent(preview)
+    );
+  }
+  appendInterimStatementsNote(preview: PreparedManagedInterimStatementsNote) {
+    if (!this.interimStatementsPreviews.has(preview))
+      return {
+        appended: false,
+        message:
+          "Preview these statement cells in the current workspace before appending.",
+      };
+    this.interimStatementsPreviews.delete(preview);
+    return appendManagedInterimStatementsNote(preview);
+  }
+  cancelInterimStatementsNote(preview: PreparedManagedInterimStatementsNote) {
+    this.interimStatementsPreviews.delete(preview);
+    retireManagedInterimStatementsNote(preview);
   }
   prepareFinancialReview(
     selection: ManagedResearchSelection,

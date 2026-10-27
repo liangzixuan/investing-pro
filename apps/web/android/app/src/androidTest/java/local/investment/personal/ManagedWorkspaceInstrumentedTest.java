@@ -499,7 +499,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("schema5 captures all six comparisons and original graphs once with exact assumptions, source and methodology",
             "(() => { const field=document.querySelector('#managed-report-document'); if(!field?.readOnly)return false; const d=JSON.parse(field.value), c=d.valuationPrice, p=d.sources.price.response, v=d.valuation;" +
-            " const base=(model)=>c.rows.find(row=>row.model===model && row.scenario==='base'); return d.schemaVersion==='5.0.0' && d.authoredResearch.note===" + JSONObject.quote(expected) +
+            " const base=(model)=>c.rows.find(row=>row.model===model && row.scenario==='base'); return d.schemaVersion==='6.0.0' && d.authoredResearch.note===" + JSONObject.quote(expected) +
             " && d.listing.listingId==='listing-zero' && d.listing.shareClassId==='class-zero' && d.catalogSnapshotSha256==='sha256:'+'a'.repeat(64)" +
             " && d.sources.annual.status==='not_loaded' && d.sources.filings.status==='not_loaded' && d.sources.price.status==='loaded'" +
             " && p.provider==='Tiingo' && p.currency==='USD' && p.priceBasis==='raw_close' && p.range==='1m' && p.window.startDate==='2026-08-20' && p.window.endDate==='2026-09-20'" +
@@ -654,7 +654,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-report-document > summary");
         awaitPage("schema two report keeps exact authored assumptions, complete results and both sensitivity grids without sources",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), v = d.valuation;" +
-            " return d.schemaVersion === '5.0.0' && d.authoredResearch.note === " + JSONObject.quote(prefix) +
+            " return d.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(prefix) +
             " && d.listing.listingId === 'listing-zero' && v.dcfDraft.startingUnleveredCashFlowUsd === '100' && v.exitDraft.cash === '100'" +
             " && v.dcfInput.forecastYears === 5 && v.exitInput.horizonYears === 5" +
             " && v.dcfResult.scenarios.base.valuePerShareUsd === '140.00' && v.exitResult.scenarios.base.valuePerShare === '19.00'" +
@@ -701,7 +701,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-company-report > summary");
         click(".managed-company-report .trial-actions button:first-child");
         click(".managed-report-document > summary");
-        awaitPage("new report captures the saved note together with the retained raw valuation", "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value); return d.schemaVersion === '5.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
+        awaitPage("new report captures the saved note together with the retained raw valuation", "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value); return d.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
             " && d.valuation.dcfDraft.waccPercent === '10' && d.valuation.exitDraft.cash === '100' && d.valuation.dcfResult.sensitivity.cells.length === 25 && d.valuation.exitResult.sensitivity.cells.length === 25; })()");
         retainAnnualNoteFrame("authoredValuationReport", "#managed-prepared-report-heading", "#managed-prepared-report-heading", 1);
         click("#managed-signout-open");
@@ -4000,7 +4000,7 @@ public class ManagedWorkspaceInstrumentedTest {
             awaitPage("the complete prepared JSON contains the exact unsaved Unicode draft and loaded source",
                 "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly || !field.value) return false;" +
                 " const report = JSON.parse(field.value); return report.authoredResearch.note === " + JSONObject.quote(note) +
-                " && report.purpose === 'investment.company-research' && report.schemaVersion === '5.0.0'" +
+                " && report.purpose === 'investment.company-research' && report.schemaVersion === '6.0.0'" +
                 " && report.listing.listingId === 'listing-zero' && report.listing.symbol === 'ZERO' && report.listing.exchangeMic === 'XNAS'" +
                 " && report.sources.annual.response.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
                 " && report.sources.price.status === 'not_loaded' && report.sources.filings.status === 'not_loaded'; })()");
@@ -4453,17 +4453,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertCompanySourceOverview(boolean priceLoaded, boolean annualLoaded, boolean filingsLoaded) throws Exception {
         awaitPage("overview keeps exact independent source states, original dates and explicit actions",
-            "(() => { const overview = document.querySelector('.managed-company-evidence-actions');" +
-            " const expected = [['Price'," + priceLoaded + ",'2026-09-20T00:00:01.000Z'],['Annual'," + annualLoaded + ",'2026-09-20T00:00:02.000Z'],['Filings'," + filingsLoaded + ",'2026-09-20T00:00:02.000Z']];" +
-            " return overview?.getAttribute('aria-label') === 'Company research sources' && overview.querySelectorAll('.managed-evidence-action-grid > section').length === 3" +
-            " && expected.every(([title,loaded,clock]) => { const card = overview.querySelector('[aria-label=\"' + title + ' source\"]'); const buttons = [...(card?.querySelectorAll('.trial-actions > button') ?? [])]; const times = [...(card?.querySelectorAll('time') ?? [])];" +
-            " return card?.getAttribute('aria-busy') === 'false' && card.querySelector('.managed-evidence-source-state')?.textContent === (loaded ? 'Source response loaded.' : 'Not loaded.')" +
-            " && times.length === (loaded ? 1 : 0) && (!loaded || (times[0].dateTime === clock && times[0].textContent === clock))" +
-            " && buttons.length === 2 && buttons[0].textContent === (loaded ? 'Refresh ' : 'Load ') + title + (title === 'Price' ? ' · One month' : '') && buttons[1].textContent === 'Inspect ' + title" +
-            " && buttons.every(button => !button.disabled && button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44); })" +
-            " && overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Requested range: One month.')" +
-            " && " + (priceLoaded ? "overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range: One month.')" : "!overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range:')") +
-            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
+            FollowupsReviewSessionExpectations.companySourceOverview(priceLoaded, annualLoaded, filingsLoaded));
     }
 
     private void assertPreparedCompanyReport() throws Exception {
@@ -4483,7 +4473,7 @@ public class ManagedWorkspaceInstrumentedTest {
             DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) + " && " + DIAGNOSTICS + ".save === 0");
         awaitPage("captured report has no overview source request or Cancel actions",
             "document.querySelector('.managed-company-report .managed-company-evidence-actions') === null && " +
-            "[...document.querySelectorAll('.managed-company-report button')].every(button => !/^(Load|Refresh|Cancel|Inspect) (Price|Annual|Filings)(?: ·|$)/.test(button.textContent.trim())) && " +
+            "[...document.querySelectorAll('.managed-company-report button')].every(button => !/^(Load|Refresh|Cancel|Inspect) (Price|Annual|Interim|Filings)(?: ·|$)/.test(button.textContent.trim())) && " +
             DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
         retainAnnualNoteFrame("companyResearchReport", "#managed-prepared-report-heading",
             "#managed-prepared-report-heading, #managed-report-note-heading, .managed-company-report-note", 3);
@@ -4511,7 +4501,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("report JSON retains the exact draft, complete admitted packets and source clocks",
             "(() => { const field = document.querySelector('#managed-report-document'); " +
             "if (!field?.readOnly || !field.value) return false; const value = JSON.parse(field.value); " +
-            "return value.purpose === 'investment.company-research' && value.schemaVersion === '5.0.0' && " +
+            "return value.purpose === 'investment.company-research' && value.schemaVersion === '6.0.0' && " +
             "value.authoredResearch.status === 'watchlist_draft' && value.authoredResearch.note === " + JSONObject.quote(NOTE) + " && " +
             "value.listing.listingId === 'listing-zero' && value.listing.symbol === 'ZERO' && " +
             "value.sources.price.response.completedAt === '2026-09-20T00:00:01.000Z' && " +
@@ -7427,7 +7417,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " if (!m) return false; const available = [m.selectedWindowReturn,m.maximumDrawdown];" +
             " const refused = [m.trailing20SessionAnnualizedVolatility,m.smaTrend.sma20,m.smaTrend.sma50,m.smaTrend.sma200,m.trailing252SessionCloseRangePosition];" +
             " const all = [...available,...refused];" +
-            " return d.purpose === 'investment.company-research' && d.schemaVersion === '5.0.0'" +
+            " return d.purpose === 'investment.company-research' && d.schemaVersion === '6.0.0'" +
             " && d.authoredResearch.status === 'watchlist_draft' && d.authoredResearch.note === " + JSONObject.quote(PRICE_STUDIES_NOTE) +
             " && d.listing.listingId === 'listing-zero' && d.listing.symbol === 'ZERO' && d.catalogSnapshotSha256 === 'sha256:'+'a'.repeat(64)" +
             " && d.sources.annual.status === 'not_loaded' && d.sources.filings.status === 'not_loaded' && d.valuation === null" +
@@ -7541,7 +7531,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("complete report retains the operating graph, raw revenue and missing net income",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
             " const doc = JSON.parse(field.value), annual = doc.sources.annual.response;" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '5.0.0' && annual.schemaVersion === '6.0.0'" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '6.0.0' && annual.schemaVersion === '6.0.0'" +
             " && annual.evidence.facts.observations.find(row => row.concept === 'OperatingIncomeLoss').value === '-250.125'" +
             " && doc.sources.annual.financials.operatingResults.resolution.margins.length === 3" +
             " && annual.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').length === 3 && annual.evidence.facts.observations.filter(row => row.concept !== 'OperatingIncomeLoss').every(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax'].includes(row.concept))" +
@@ -7705,7 +7695,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("schema4 captures all32 scans and95 original observations once with exact selected-cell references",
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false; const d = JSON.parse(field.value), a = d.sources.annual, e = a.response.evidence;" +
             " const rows = e.facts.observations, ids = new Set(rows.map(row => row.id));" +
-            " return d.schemaVersion === '5.0.0' && a.response.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
+            " return d.schemaVersion === '6.0.0' && a.response.schemaVersion === '6.0.0' && d.authoredResearch.note === " + JSONObject.quote(expected) +
             " && e.facts.scans.length === 32 && rows.length === 95 && ids.size === 95 && rows.every(row => !('metric' in row))" +
             " && field.value.split(String.fromCharCode(34) + 'observations' + String.fromCharCode(34) + ':').length === 2 && a.statements.statements.reduce((count,s) => count+s.rows.length,0) === 32" +
             " && a.statements.statements.length === 3 && a.statements.statements.every(s => s.columns.map(c => c.endDate).join('|') === '2025-12-31|2024-12-31|2023-12-31')" +
@@ -7989,7 +7979,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
             " const doc = JSON.parse(field.value), annual = doc.sources.annual.response, e = annual.evidence, b = doc.sources.annual.financials.balanceSheet;" +
             " const keys = ['totalAssets','totalLiabilities','shareholdersEquity'], concepts = ['Assets','Liabilities','StockholdersEquity'], amounts = ['1000.125','1200.25','-200.125'];" +
-            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '5.0.0' && annual.schemaVersion === '6.0.0'" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '6.0.0' && annual.schemaVersion === '6.0.0'" +
             " && annual.security.symbol === 'ZERO' && annual.security.listingId === 'listing-zero' && e.facts.observations.filter(row => ['Revenues','SalesRevenueNet','RevenueFromContractWithCustomerExcludingAssessedTax','NetIncomeLoss'].includes(row.concept)).length === 0 && doc.sources.annual.financials.income.resolution.pairs.length === 0" +
             " && keys.every((key,i) => { const observations = e.facts.observations.filter(row => row.concept === concepts[i]), value = b.resolution[key], row = observations[0];" +
             " return observations.length === [3,2,3][i] && row.value === amounts[i] && row.concept === concepts[i] && row.unit === 'USD' && row.startDate === null && row.durationDays === null" +
@@ -9589,11 +9579,12 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFixtureReadCounts(annualReads, 1, lateAnnual);
         awaitPage("panel switching retains draft and exact EOD calls",
             DIAGNOSTICS + ".eod === " + eodReads + " && " + DIAGNOSTICS + ".eodAborted === 0" +
-            " && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".eodLateResolved === 0 && " + DIAGNOSTICS + ".interimReport === 0" +
             " && (document.querySelector('.managed-company-visit') === null || (" +
             "document.querySelector('.managed-company-identity strong')?.textContent === 'Zero Company'" +
             " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
-            " && document.querySelectorAll('.managed-company-sections button').length === 3" +
+            " && document.querySelectorAll('.managed-company-sections button').length === 4" +
+            " && [...document.querySelectorAll('.managed-company-sections button')].map(button => button.getAttribute('aria-label')).join('|') === 'Price section for ZERO|Annual section for ZERO|Interim section for ZERO|Filings section for ZERO'" +
             " && document.querySelectorAll('.managed-company-sections button[aria-pressed=true]').length === 1))" +
             " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
             " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
@@ -9633,10 +9624,10 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Company section controls did not scroll into view", sectionsScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String sectionsVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
             "'.managed-company-sections button, #managed-eod-heading')); const v = visualViewport;" +
-            " return v && targets.length === 4 && targets.every(e => { const r = e.getBoundingClientRect();" +
+            " return v && targets.length === 5 && targets.every(e => { const r = e.getBoundingClientRect();" +
             " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
             " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
-        awaitPage("all three section controls and active Price heading fully visible", sectionsVisible);
+        awaitPage("all four section controls and active Price heading fully visible", sectionsVisible);
         awaitPage("retained Price evidence before section controls capture", loadedEod);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
         retainScreenshot("researchCompanySections");

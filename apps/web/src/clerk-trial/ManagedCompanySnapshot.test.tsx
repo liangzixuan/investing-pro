@@ -1,3 +1,4 @@
+import { unloadedInterim } from "./test-managed-interim-model";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { parseAnnualComparisonFixture } from "./test-canonical-annual-comparison-fixture";
 import * as React from "react";
@@ -58,10 +59,12 @@ async function fixture(
       price.getSnapshot(),
       annual.getSnapshot(),
       filings.getSnapshot(),
+      null,
     );
   const html = () =>
     renderToStaticMarkup(
       <ManagedCompanySnapshot
+        interim={unloadedInterim()}
         navigationPending={false}
         selection={eodSelection}
         price={price}
@@ -71,6 +74,7 @@ async function fixture(
       />,
     );
   return {
+    interim: unloadedInterim(),
     price,
     annual,
     filings,
@@ -428,8 +432,14 @@ describe("loaded company snapshot", () => {
           f.price.getSnapshot(),
           f.annual.getSnapshot(),
           f.filings.getSnapshot(),
+          null,
         ),
-      ).toEqual({ price: null, annual: null, filings: null });
+      ).toEqual({
+        interim: null,
+        price: null,
+        annual: null,
+        filings: null,
+      });
       expect(f.evidence().price?.response).not.toBeNull();
       expect(f.evidence().annual?.response).not.toBeNull();
       expect(f.evidence().filings?.response).not.toBeNull();
@@ -446,8 +456,14 @@ describe("loaded company snapshot", () => {
         { ...f.price.getSnapshot(), catalogChanged: true },
         { ...f.annual.getSnapshot(), catalogChanged: true },
         { ...f.filings.getSnapshot(), catalogChanged: true },
+        null,
       ),
-    ).toEqual({ price: null, annual: null, filings: null });
+    ).toEqual({
+      interim: null,
+      price: null,
+      annual: null,
+      filings: null,
+    });
   });
 
   it("section actions only delegate explicit navigation", async () => {
@@ -493,7 +509,7 @@ describe("loaded company snapshot", () => {
       ];
     }
     const buttons = elements(node).filter((n) => n.type === "button");
-    expect(buttons).toHaveLength(3);
+    expect(buttons).toHaveLength(4);
     const held = CompanySnapshotView({
       navigationPending: true,
       evidence: f.evidence(),
@@ -503,13 +519,18 @@ describe("loaded company snapshot", () => {
       elements(held)
         .filter((n) => n.type === "button")
         .map((n) => n.props.disabled),
-    ).toEqual([true, true, true]);
+    ).toEqual([true, true, true, true]);
     expect(renderToStaticMarkup(held).replaceAll(' disabled=""', "")).toBe(
       renderToStaticMarkup(node),
     );
     expect(f.onSection).not.toHaveBeenCalled();
     for (const button of buttons) (button.props.onClick as () => void)();
-    expect(f.onSection.mock.calls).toEqual([["eod"], ["annual"], ["filings"]]);
+    expect(f.onSection.mock.calls).toEqual([
+      ["eod"],
+      ["annual"],
+      ["interim"],
+      ["filings"],
+    ]);
     expect(f.readAnnual).not.toHaveBeenCalled();
     expect(f.readPrice).not.toHaveBeenCalled();
     expect(f.readFilings).not.toHaveBeenCalled();
@@ -528,6 +549,7 @@ describe("loaded company snapshot", () => {
     f.price.open(selection);
     const html = renderToStaticMarkup(
       <ManagedCompanySnapshot
+        interim={unloadedInterim()}
         navigationPending={false}
         selection={selection}
         price={f.price}

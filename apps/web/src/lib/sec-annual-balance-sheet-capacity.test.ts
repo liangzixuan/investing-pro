@@ -140,7 +140,12 @@ it("admits all 1000 observations and preserves the complete captured report insi
   const note = "My exact 東京 📈 draft\n<unverified>  ";
   const report = prepareCompanyReport(
     eodSelection,
-    { annual: state, price: null, filings: null },
+    {
+      interim: null,
+      annual: state,
+      price: null,
+      filings: null,
+    },
     {
       member: { ...eodSelection.listing, note },
       canEdit: true,
@@ -165,7 +170,7 @@ it("admits all 1000 observations and preserves the complete captured report insi
     };
     authoredResearch: { note: unknown };
   };
-  expect(decoded.schemaVersion).toBe("5.0.0");
+  expect(decoded.schemaVersion).toBe("6.0.0");
   expect(decoded.sources.annual.response).toEqual(state.response);
   expect(decoded.sources.annual.statements).toEqual(view.statements);
   expect(decoded.sources.annual.financials.balanceSheet).toEqual(

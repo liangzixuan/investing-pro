@@ -42,7 +42,7 @@ final class ReportRevisitReadObservation {
           const heading=document.querySelector('#managed-report-revisit-heading');
           const status=outer?.querySelector('[role=status]')?.textContent??'';
           const messages=['','Reading selected report…','File accepted for this company. Its contents and claims remain unverified.',
-            'Select a complete format 5 company report JSON for this exact company. The file was not accepted.',
+            'Select a complete format 6 company report JSON for this exact company. The file was not accepted.',
             'The company, source or draft changed. Capture the current report and preview again.',
             'Open this company with a current Watchlist draft before selecting a report.'];
           const number=value=>Number.isSafeInteger(value)&&value>=0&&value<=1000000 ? value : -1;
@@ -61,7 +61,7 @@ final class ReportRevisitReadObservation {
             if (Object.keys(value).length!==3) throw new Error();
             if (!['idle','preparing','choosing','written','cancelled','failed'].includes(value.phase)) throw new Error();
             if (!['','Investment-research-ZERO-XNAS-20261015T000000000Z.json'].includes(value.filename)) throw new Error();
-            if (!Number.isSafeInteger(value.byteLength) || value.byteLength<0 || value.byteLength>2850816) throw new Error();
+            if (!Number.isSafeInteger(value.byteLength) || value.byteLength<0 || value.byteLength>5996544) throw new Error();
             writer={present:true,phase:value.phase,filename:value.filename,byteLength:value.byteLength};
           }
           observation={rootPresent:!!report,outerPresent:!!outer,outerOpen:outer?.open===true,
@@ -144,7 +144,7 @@ final class ReportRevisitReadObservation {
         if (!WRITER_NAMES.contains(filename)) throw new IllegalArgumentException();
         safe.put("phase", phase);
         safe.put("filename", filename);
-        copyInteger(source, safe, "byteLength", new IntegerRange(0, 2850816));
+        copyInteger(source, safe, "byteLength", new IntegerRange(0, 5996544));
         requireWriterPresence(safe);
         return safe;
     }

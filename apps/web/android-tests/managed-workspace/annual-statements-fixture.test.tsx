@@ -361,6 +361,7 @@ describe("invented complete standardized annual statement journey", () => {
         workspace.eod.getSnapshot(),
         source,
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       ),
       workspace.getResearchWatchlist(selection),
       () => new Date("2026-10-16T00:00:00.000Z"),
@@ -368,7 +369,7 @@ describe("invented complete standardized annual statement journey", () => {
     const document = formatCompanyReportDocument(report)!;
     const parsed: unknown = JSON.parse(document.text);
     expect(parsed).toMatchObject({
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       authoredResearch: { note: f.annualStatements.expectedNote },
       sources: { annual: { response, statements: source.view!.statements } },
     });

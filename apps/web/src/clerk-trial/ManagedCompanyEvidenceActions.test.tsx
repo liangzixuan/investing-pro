@@ -1,3 +1,4 @@
+import { unloadedInterim } from "./test-managed-interim-model";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -59,6 +60,7 @@ async function fixture(
     filings.open(eodSelection);
   }
   const props = {
+    interim: unloadedInterim(),
     navigationPending: false,
     selection: eodSelection,
     price,

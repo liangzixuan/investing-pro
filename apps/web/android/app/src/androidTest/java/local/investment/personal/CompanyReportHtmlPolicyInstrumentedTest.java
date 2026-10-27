@@ -75,7 +75,7 @@ public class CompanyReportHtmlPolicyInstrumentedTest {
             + "<meta name=\"investment-report-filename\" content=\"" + FILENAME + "\">"
             + "<title>Company research · ZERO</title><style>" + STYLE
             + "</style></head><body><main><p>invented note Café 東京 📈 &lt;script&gt;</p>"
-            + "<details><summary>Complete captured JSON</summary><pre>{&quot;schemaVersion&quot;:&quot;5.0.0&quot;}</pre></details>"
+            + "<details><summary>Complete captured JSON</summary><pre>{&quot;schemaVersion&quot;:&quot;6.0.0&quot;}</pre></details>"
             + "</main></body></html>\n";
     }
 

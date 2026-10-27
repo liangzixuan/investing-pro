@@ -1,4 +1,9 @@
-import { createHash } from "node:crypto";
+import {
+  assertSecCanonicalRecord,
+  assertSecCanonicalRows as assertRows,
+  digestSecCanonicalText as digest,
+  freezeSecCanonicalGraph as freeze,
+} from "./personal-sec-canonical-input";
 import {
   serializePersonalSecAnnualStatementObservation,
   PERSONAL_SEC_ANNUAL_STATEMENT_FACT_LIMITS,
@@ -24,16 +29,8 @@ export interface PersonalSecAnnualCanonicalInput {
   readonly submissions: PersonalSecSourceSubmissions | undefined;
 }
 
-function digest(text: string): `sha256:${string}` {
-  return `sha256:${createHash("sha256").update(text).digest("hex")}`;
-}
-function freeze<T>(value: T): T {
-  if (value !== null && typeof value === "object") {
-    for (const child of Object.values(value)) freeze(child);
-    Object.freeze(value);
-  }
-  return value;
-}
+const assertRecord = (value: unknown, fields: readonly string[]) =>
+  assertSecCanonicalRecord(value, fields, "annual");
 
 /** Assemble one owned graph from the existing two captured SEC source results. */
 export function createPersonalSecAnnualCanonicalEvidence(
@@ -54,7 +51,11 @@ export function createPersonalSecAnnualCanonicalEvidence(
     "sources",
   ]);
   assertRecord(input.facts, ["registryVersion", "scans", "observations"]);
-  assertRows(input.facts.observations);
+  assertRows(
+    input.facts.observations,
+    PERSONAL_SEC_ANNUAL_STATEMENT_FACT_LIMITS.observations,
+    "annual",
+  );
   const candidate: PersonalSecAnnualCanonicalEvidenceDto = {
     cik: input.cik,
     generation: {
@@ -86,74 +87,4 @@ export function createPersonalSecAnnualCanonicalEvidence(
     sha256: digest(serializePersonalSecAnnualCanonicalGeneration(owned)),
   };
   return freeze({ ...owned, generation });
-}
-
-/** Check raw descriptors before composition can flatten or invoke a supplied field. */
-function assertRecord(value: unknown, expected: readonly string[]): void {
-  if (
-    value === null ||
-    typeof value !== "object" ||
-    Object.getPrototypeOf(value) !== Object.prototype
-  )
-    throw new TypeError("Invalid canonical annual source input.");
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const keys = Reflect.ownKeys(descriptors);
-  if (
-    keys.length !== expected.length ||
-    !expected.every((key) => Object.hasOwn(descriptors, key)) ||
-    !keys.every(
-      (key) =>
-        typeof key === "string" &&
-        descriptors[key]?.enumerable &&
-        Object.hasOwn(descriptors[key], "value"),
-    )
-  )
-    throw new TypeError("Invalid canonical annual source input.");
-}
-function assertRows(value: unknown): void {
-  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype)
-    throw new TypeError("Invalid canonical annual source rows.");
-  const length = Object.getOwnPropertyDescriptor(value, "length");
-  if (
-    !length ||
-    !Object.hasOwn(length, "value") ||
-    !Number.isSafeInteger(length.value) ||
-    length.value < 0 ||
-    length.value > PERSONAL_SEC_ANNUAL_STATEMENT_FACT_LIMITS.observations
-  )
-    throw new TypeError("Invalid canonical annual source rows.");
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const keys = Reflect.ownKeys(descriptors);
-  if (
-    keys.length !== length.value + 1 ||
-    !keys.every(
-      (key) =>
-        key === "length" ||
-        (typeof key === "string" &&
-          /^(?:0|[1-9][0-9]*)$/u.test(key) &&
-          Number(key) < length.value &&
-          descriptors[key]?.enumerable &&
-          Object.hasOwn(descriptors[key], "value")),
-    )
-  )
-    throw new TypeError("Invalid canonical annual source rows.");
-  for (const row of value)
-    assertRecord(row, [
-      "id",
-      "taxonomy",
-      "concept",
-      "unit",
-      "value",
-      "startDate",
-      "endDate",
-      "durationDays",
-      "periodBasis",
-      "filingFocusYear",
-      "filingFocusPeriod",
-      "frame",
-      "accessionNumber",
-      "form",
-      "filedDate",
-      "sourceLocator",
-    ]);
 }

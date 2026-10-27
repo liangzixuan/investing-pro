@@ -207,23 +207,46 @@ final class FollowupsReviewSessionExpectations {
         int sessions = counts.sessions(), resolves = counts.resolves();
         return DIAGNOSTICS + ".load===" + sessions + " && " + DIAGNOSTICS + ".status===" + sessions + " && " + DIAGNOSTICS + ".marketsResolve===" + sessions +
             " && " + DIAGNOSTICS + ".resolve===" + resolves + " && " + DIAGNOSTICS + ".save===0 && " + DIAGNOSTICS + ".search===0" +
-            " && " + DIAGNOSTICS + ".eod===0 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + DIAGNOSTICS + ".marketsEod===0" +
+            " && " + DIAGNOSTICS + ".eod===0 && " + DIAGNOSTICS + ".annual===0 && " + DIAGNOSTICS + ".filings===0 && " + DIAGNOSTICS + ".interimReport===0 && " + DIAGNOSTICS + ".marketsEod===0" +
             " && " + DIAGNOSTICS + ".calendar===0 && " + DIAGNOSTICS + ".fed===0 && " + FOLLOWUPS + ".token===0 && " + FOLLOWUPS + ".signOut===0";
+    }
+
+    static String companySourceOverview(boolean priceLoaded, boolean annualLoaded, boolean filingsLoaded) {
+        return "(() => { const overview = document.querySelector('.managed-company-evidence-actions');" +
+            " const expected = [['Price'," + priceLoaded + ",'2026-09-20T00:00:01.000Z'],['Annual'," + annualLoaded + ",'2026-09-20T00:00:02.000Z'],['Filings'," + filingsLoaded + ",'2026-09-20T00:00:02.000Z']];" +
+            " return overview?.getAttribute('aria-label') === 'Company research sources' && overview.querySelectorAll('.managed-evidence-action-grid > section').length === 4" +
+            " && expected.every(([title,loaded,clock]) => { const card = overview.querySelector('[aria-label=\"' + title + ' source\"]'); const buttons = [...(card?.querySelectorAll('.trial-actions > button') ?? [])]; const times = [...(card?.querySelectorAll('time') ?? [])];" +
+            " return card?.getAttribute('aria-busy') === 'false' && card.querySelector('.managed-evidence-source-state')?.textContent === (loaded ? 'Source response loaded.' : 'Not loaded.')" +
+            " && times.length === (loaded ? 1 : 0) && (!loaded || (times[0].dateTime === clock && times[0].textContent === clock))" +
+            " && buttons.length === 2 && buttons[0].textContent === (loaded ? 'Refresh ' : 'Load ') + title + (title === 'Price' ? ' · One month' : '') && buttons[1].textContent === 'Inspect ' + title" +
+            " && buttons.every(button => !button.disabled && button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44); })" +
+            " && " + FollowupsReviewSessionExpectations.unsupportedInterimSource() +
+            " && overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Requested range: One month.')" +
+            " && " + (priceLoaded ? "overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range: One month.')" : "!overview.querySelector('[aria-label=\"Price source\"]')?.textContent.includes('Loaded range:')") +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
     }
 
     static String unloadedSources(CompanyReview review) {
         boolean priceSupported = review.check() == Check.ZERO;
         return "(() => { const overview=document.querySelector('.managed-company-evidence-actions');" +
-            " const expected=[['Price'," + priceSupported + "],['Annual',true],['Filings',true]];" +
-            " if(overview?.getAttribute('aria-label')!=='Company research sources'||overview.querySelectorAll('.managed-evidence-action-grid > section').length!==3)return false;" +
+            " const expected=[['Price'," + priceSupported + "],['Annual',true],['Interim',false],['Filings',true]];" +
+            " if(overview?.getAttribute('aria-label')!=='Company research sources'||overview.querySelectorAll('.managed-evidence-action-grid > section').length!==4)return false;" +
             " const valid=expected.every(([title,supported])=>{const card=overview.querySelector('[aria-label=\"'+title+' source\"]'),buttons=[...(card?.querySelectorAll('.trial-actions > button')??[])];" +
             " const labels=supported?['Load '+title+(title==='Price'?' · One month':''),'Inspect '+title]:['Inspect '+title];" +
             " return card?.getAttribute('aria-busy')==='false'&&card.querySelector('.managed-evidence-source-state')?.textContent===(supported?'Not loaded.':'Unsupported listing.')" +
             " && card.querySelectorAll('time').length===0&&!card.textContent.includes('Loaded range:')" +
             " && buttons.length===labels.length&&buttons.every((button,i)=>button.textContent===labels[i]&&!button.disabled&&button.getBoundingClientRect().height>=44&&button.getBoundingClientRect().width>=44);});" +
             " const price=overview.querySelector('[aria-label=\"Price source\"]');" +
-            " return valid&&(" + priceSupported + "?price.textContent.includes('Requested range: One month.'):!price.textContent.includes('Requested range:'))" +
+            " return valid&&" + DIAGNOSTICS + ".interimReport===0&&(" + priceSupported + "?price.textContent.includes('Requested range: One month.'):!price.textContent.includes('Requested range:'))" +
             " && document.documentElement.scrollWidth<=document.documentElement.clientWidth;})()";
+    }
+
+    static String unsupportedInterimSource() {
+        return "(() => { const card=document.querySelector('.managed-company-evidence-actions [aria-label=\"Interim source\"]'),buttons=[...(card?.querySelectorAll('.trial-actions > button')??[])];" +
+            " return card?.getAttribute('aria-busy')==='false'&&card.querySelector('.managed-evidence-source-state')?.textContent==='Unsupported listing.'" +
+            " && card.querySelectorAll('time').length===0&&!card.textContent.includes('Loaded range:')" +
+            " && buttons.length===1&&buttons[0].textContent==='Inspect Interim'&&!buttons[0].disabled" +
+            " && buttons[0].getBoundingClientRect().height>=44&&buttons[0].getBoundingClientRect().width>=44&&" + DIAGNOSTICS + ".interimReport===0;})()";
     }
 
     static String identityOpen() {

@@ -95,6 +95,9 @@ function deferred<T>() {
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),

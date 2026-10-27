@@ -95,6 +95,7 @@ async function loaded(input?: PersonalSecAnnualCanonicalResponseDto) {
   await annual.load();
   expect(annual.getSnapshot().response).not.toBeNull();
   const evidence = () => ({
+    interim: null,
     price: null,
     annual: annual.getSnapshot(),
     filings: null,
@@ -143,7 +144,7 @@ function fullHtml(
   };
 }
 
-describe("canonical statements in captured schema5 company reports", () => {
+describe("canonical statements in captured schema6 company reports", () => {
   it("keeps three flow periods and two balance dates with missing income and independent negative equity", async () => {
     const conceptRows: NonNullable<ReportAnnualFixtureOptions["conceptRows"]> =
       {};
@@ -211,7 +212,7 @@ describe("canonical statements in captured schema5 company reports", () => {
     );
     const document = formatCompanyReportDocument(f.report)!;
     const data = parseReport(document.text);
-    expect(data.schemaVersion).toBe("5.0.0");
+    expect(data.schemaVersion).toBe("6.0.0");
     const captured = data.sources.annual;
     const source = f.annual.getSnapshot();
     expect(captured.response).toEqual(source.response);
@@ -409,10 +410,10 @@ describe("canonical statements in captured schema5 company reports", () => {
       } else expect(result.bytes).not.toBeNull();
       const expected =
         rowsPerConcept === 60
-          ? { wire: 2072519, json: 2445275, html: 8950096 }
+          ? { wire: 2072519, json: 2445335, html: 8950265 }
           : escapedMetadata
-            ? { wire: 1728729, json: 2042205, html: 7474886 }
-            : { wire: 1231479, json: 1544355, html: 4175618 };
+            ? { wire: 1728729, json: 2042265, html: 7475055 }
+            : { wire: 1231479, json: 1544415, html: 4175787 };
       expect({
         wire: wireBytes,
         json: result.json.byteLength,

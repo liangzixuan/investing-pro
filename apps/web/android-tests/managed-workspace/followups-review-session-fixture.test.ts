@@ -100,7 +100,12 @@ function assertUnloadedCompanySources(
   workspace: ManagedWorkspace,
   selection: ManagedResearchSelection,
 ) {
-  const models = [workspace.eod, workspace.annual, workspace.filings];
+  const models = [
+    workspace.eod,
+    workspace.annual,
+    workspace.filings,
+    workspace.interim,
+  ];
   const before = models.map((model) => model.getSnapshot());
   const onRequest = vi.fn();
   const onOpen = vi.fn();
@@ -111,6 +116,7 @@ function assertUnloadedCompanySources(
       price: workspace.eod,
       annual: workspace.annual,
       filings: workspace.filings,
+      interim: workspace.interim,
       navigationPending: false,
       onRequest,
       onOpen,
@@ -122,11 +128,12 @@ function assertUnloadedCompanySources(
   const priceSupported = selection.listing.listingId === "listing-zero";
   expect(overview.attr("aria-label")).toBe("Company research sources");
   expect(overview.find(".managed-evidence-action-grid > section")).toHaveLength(
-    3,
+    4,
   );
   for (const [title, supported] of [
     ["Price", priceSupported],
     ["Annual", true],
+    ["Interim", false],
     ["Filings", true],
   ] as const) {
     const card = overview.find(`section[aria-label="${title} source"]`);

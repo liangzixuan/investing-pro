@@ -41,6 +41,7 @@ describe("invented operating history lifetime", () => {
         workspace.eod.getSnapshot(),
         workspace.annual.getSnapshot(),
         workspace.filings.getSnapshot(),
+        workspace.interim.getSnapshot(),
       );
     const history = () =>
       resolvePersonalSecAnnualCanonicalOperatingHistory(

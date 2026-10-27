@@ -47,7 +47,7 @@ export function ManagedCompanyReport({
   readReportWatchlist?: (
     selection: ManagedResearchSelection,
   ) => ResearchWatchlistState;
-  onSection: (section: "eod" | "annual" | "filings") => void;
+  onSection: (section: "eod" | "annual" | "interim" | "filings") => void;
 }) {
   const evidence = useCompanySnapshotEvidence(models);
   const valuationState = useSyncExternalStore(
@@ -124,6 +124,7 @@ export function ManagedCompanyReport({
                   models.price.getSnapshot(),
                   models.annual.getSnapshot(),
                   models.filings.getSnapshot(),
+                  models.interim.getSnapshot(),
                 ),
                 readReportWatchlist(models.selection),
                 valuation?.getSnapshot().calculation ?? null,
@@ -157,7 +158,7 @@ export function CompanyReportView({
   revisit?: ReactNode;
   onPrepare: () => void;
   onClear: () => void;
-  onSection: (section: "eod" | "annual" | "filings") => void;
+  onSection: (section: "eod" | "annual" | "interim" | "filings") => void;
 }) {
   const [open, setOpen] = useState(false);
   return (

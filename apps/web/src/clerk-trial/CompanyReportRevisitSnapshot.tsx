@@ -1,3 +1,5 @@
+import { archivedInterimEvidence } from "./managed-company-report-archive";
+import { InterimStatementsReportView } from "./InterimStatementsReportView";
 import type {
   CompanyReportRevisitSnapshot,
   CompanyReportSourceProvenance,
@@ -59,7 +61,12 @@ function sourceReferences(source: CompanyReportSourceProvenance) {
     </ul>
   );
 }
-const sourceLabels = { price: "Price", annual: "Annual", filings: "Filings" };
+const sourceLabels = {
+  price: "Price",
+  annual: "Annual",
+  interim: "Interim",
+  filings: "Filings",
+};
 function sourceProvenance(
   source: CompanyReportSourceProvenance,
   title: string,
@@ -93,6 +100,7 @@ export function CompanyReportRevisitSnapshotView({
   snapshot: CompanyReportRevisitSnapshot;
   title: string;
 }) {
+  const interim = archivedInterimEvidence(snapshot);
   return (
     <section aria-label={title}>
       <h4>{title}</h4>
@@ -100,6 +108,12 @@ export function CompanyReportRevisitSnapshotView({
       <h5>Whole authored Watchlist note</h5>
       <p className="managed-company-report-note">{noteText(snapshot.note)}</p>
       {snapshot.sources.map((source) => sourceProvenance(source, title))}
+      {interim && (
+        <InterimStatementsReportView
+          evidence={interim.response.evidence}
+          statements={interim.statements}
+        />
+      )}
     </section>
   );
 }

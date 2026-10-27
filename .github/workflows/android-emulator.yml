@@ -423,6 +423,12 @@ jobs:
           ))
           if len(required) != 95:
               raise SystemExit("The composition journey must extend all 94 existing native tests.")
+          required.add((
+              "local.investment.personal.InterimStatementsInstrumentedTest",
+              "interimReportedPeriodsKeepDistinctWindowsThroughNotesReportsBackAndSave",
+          ))
+          if len(required) != 96:
+              raise SystemExit("The interim journey must extend all 95 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

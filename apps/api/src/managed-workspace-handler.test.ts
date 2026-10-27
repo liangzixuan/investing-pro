@@ -1,3 +1,7 @@
+import {
+  ManagedSecInterimServiceError,
+  type ManagedSecInterimService,
+} from "./managed-sec-interim-service";
 import type { ManagedBlsCalendarService } from "./managed-bls-calendar-service";
 import { createHash } from "node:crypto";
 import * as contracts from "@research-cockpit/contracts";
@@ -2100,3 +2104,149 @@ function inventedBlsCalendar(): contracts.ManagedBlsCalendarDto {
     source: contracts.MANAGED_BLS_CALENDAR_SOURCE,
   };
 }
+
+describe("managed interim read-onlyPOST boundary", () => {
+  const path = "/v1/managed/sec-interim-evidence";
+  const value = {
+    schemaVersion: "1.0.0" as const,
+    catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
+    listingId: "listing-demo",
+    symbol: "DEMO",
+  };
+  function setup() {
+    const f = fixture();
+    const load = vi
+      .fn<ManagedSecInterimService["load"]>()
+      .mockRejectedValue(new ManagedSecInterimServiceError("unavailable"));
+    const assertActive = vi.fn<ManagedSecInterimService["assertActive"]>();
+    const handler = createManagedWorkspaceHandler({
+      auth: f.auth,
+      catalog: { status: f.status, search: f.search, resolve: f.resolve },
+      openRepository: f.openRepository,
+      openFollowupsRepository,
+      interim: { load, assertActive },
+    });
+    const post = (body: unknown = value) =>
+      new Request(`https://managed.invalid${path}`, {
+        method: "POST",
+        headers: { origin: ORIGIN, "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    return { ...f, handler, load, assertActive, post };
+  }
+  it("authenticates before parsing/dispatch and never opens any workspace repository", async () => {
+    const f = setup();
+    f.auth.mockResolvedValue({ status: "unauthenticated" });
+    expect((await f.handler(f.post({ invalid: true }))).status).toBe(401);
+    expect(f.load).not.toHaveBeenCalled();
+    expect(f.openRepository).not.toHaveBeenCalled();
+  });
+  it.each([
+    { schemaVersion: "6.0.0" },
+    { cik: "0000320193" },
+    { url: "https://evil.example.test" },
+    { symbol: "bad symbol" },
+  ])("admits only the four exact v1fields %j", async (patch) => {
+    const f = setup();
+    expect((await f.handler(f.post({ ...value, ...patch }))).status).toBe(400);
+    expect(f.load).not.toHaveBeenCalled();
+  });
+  it("dispatches the owned request/principal/signal without watchlist writes", async () => {
+    const f = setup();
+    const result = await f.handler(f.post());
+    expect(result.status).toBe(503);
+    expect(await result.json()).toEqual({ error: "unavailable" });
+    expect(f.load).toHaveBeenCalledExactlyOnceWith(
+      value,
+      OWNER,
+      expect.any(AbortSignal),
+    );
+    expect(f.openRepository).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["invalid_request", 400],
+    ["catalog_changed", 409],
+    ["not_configured", 503],
+    ["request_timeout", 408],
+  ] as const)(
+    "retains interim %s asfinite read-only status",
+    async (code, status) => {
+      const f = setup();
+      f.load.mockRejectedValue(new ManagedSecInterimServiceError(code));
+      const result = await f.handler(f.post());
+      expect(result.status).toBe(status);
+      expect(await result.json()).toEqual({ error: code });
+    },
+  );
+  it("retains the shared cooldown and checks both response-size and late-publication boundaries", async () => {
+    const f = setup();
+    f.load.mockRejectedValueOnce(
+      new ManagedSecInterimServiceError(
+        "rate_limited",
+        "2026-10-01T12:00:20.000Z",
+      ),
+    );
+    let result = await f.handler(f.post());
+    expect(result.status).toBe(429);
+    expect(await result.json()).toEqual({
+      error: "rate_limited",
+      nextAllowedAt: "2026-10-01T12:00:20.000Z",
+    });
+    f.load.mockResolvedValue({
+      oversized: "x".repeat(2097152),
+    } as unknown as Awaited<ReturnType<ManagedSecInterimService["load"]>>);
+    expect((await f.handler(f.post())).status).toBe(503);
+    f.load.mockResolvedValue(
+      {} as Awaited<ReturnType<ManagedSecInterimService["load"]>>,
+    );
+    f.assertActive
+      .mockImplementationOnce(() => undefined)
+      .mockImplementationOnce(() => {
+        throw new ManagedSecInterimServiceError("request_timeout");
+      });
+    result = await f.handler(f.post());
+    expect(result.status).toBe(408);
+    expect(f.openRepository).not.toHaveBeenCalled();
+  });
+  it("keeps exact nativepreflight/method/query/byte controls without entering the service", async () => {
+    const f = setup();
+    expect(
+      (
+        await f.handler(
+          new Request(`https://managed.invalid${path}`, {
+            method: "OPTIONS",
+            headers: {
+              origin: NATIVE_ORIGIN,
+              "access-control-request-method": "POST",
+              "access-control-request-headers": "Authorization, Content-Type",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(204);
+    expect(f.auth).not.toHaveBeenCalled();
+    expect(
+      (
+        await f.handler(
+          new Request(`https://managed.invalid${path}`, {
+            headers: { origin: ORIGIN },
+          }),
+        )
+      ).status,
+    ).toBe(405);
+    expect(
+      (
+        await f.handler(
+          new Request(`https://managed.invalid${path}?x=1`, {
+            method: "POST",
+            headers: { origin: ORIGIN },
+          }),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (await f.handler(f.post({ ...value, symbol: "A".repeat(4096) }))).status,
+    ).toBe(413);
+    expect(f.load).not.toHaveBeenCalled();
+  });
+});

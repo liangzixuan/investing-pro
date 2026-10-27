@@ -27,7 +27,7 @@ const document: CompanyReportHtmlDocument = Object.freeze({
 owned.add(document);
 const jsonText = JSON.stringify({
   purpose: "investment.company-research",
-  schemaVersion: "5.0.0",
+  schemaVersion: "6.0.0",
   preparedAt: "2026-10-15T00:00:00.000Z",
   listing: { symbol: "ZERO", exchangeMic: "XNAS" },
 });

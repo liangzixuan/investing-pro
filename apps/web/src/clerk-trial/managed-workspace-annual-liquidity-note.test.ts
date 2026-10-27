@@ -114,6 +114,9 @@ async function fixture(packet?: Report, loadAnnual = true) {
   const unexpected = () =>
     Promise.reject(new Error("Unexpected unrelated fixture request"));
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),

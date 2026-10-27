@@ -33,6 +33,50 @@ import {
   pnpmLockfileHeaderViolation,
 } from "./boundaries/dependency-policy";
 
+const managedSecInterimDelegateAnchors = new Map<string, readonly string[]>([
+  [
+    "apps/api/src/managed-sec-interim-service.ts",
+    ["constlisting=admitListing(catalog,request);return{request,listing}"],
+  ],
+  [
+    "apps/api/src/personal-sec-statement-company-facts.ts",
+    [
+      "consttaxonomy=sourceTaxonomy(value,cik)",
+      'consttaxonomy=issuerFacts(value,cik)["us-gaap"]',
+      "if(!isRecord(value))invalidSource();if(normalizePersonalSecSourceCik(value.cik)!==cik)invalidSource();if(!isRecord(value.facts))invalidSource();returnvalue.facts",
+      "if(taxonomy===undefined)returnundefined;if(!isRecord(taxonomy))invalidSource();returntaxonomy",
+      "constrows=conceptUnits(entry).USD",
+      "if(!isRecord(entry))invalidSource();if(!isRecord(entry.units))invalidSource();returnentry.units",
+      "if(!Array.isArray(rows))invalidSource()",
+      'functioninvalidSource():never{thrownewPersonalSecSourceError("invalid_response");}',
+    ],
+  ],
+  [
+    "apps/api/src/personal-sec-canonical-response-identity.ts",
+    [
+      "if(!FORMATTED_FIELDS.every(([field,format])=>format.test(value[field])))invalidIdentity()",
+      'constFORMATTED_FIELDS=[["exchangeMic",/^[A-Z0-9]{4}$/u],["symbol",/^[A-Z0-9][A-Z0-9.-]{0,14}$/u],["cik",/^(?!0000000000)[0-9]{10}$/u],["issuerId",/^[a-z0-9][a-z0-9._:-]{2,127}$/u],["listingId",/^[a-z0-9][a-z0-9._:-]{2,127}$/u]]asconst',
+      'functioninvalidIdentity():never{thrownewTypeError("InvalidSECidentity.");}',
+    ],
+  ],
+  [
+    "apps/api/src/personal-sec-interim-evidence-provider.ts",
+    [
+      "assertProviderFunctionType(typeofthis.#fetch);assertProviderFunctionType(typeofthis.#now);assertProviderFunctionType(typeofthis.#scheduler.wait)",
+      'if(type!=="function")thrownewTypeError(MESSAGE)',
+      "this.#admit(cik,signal);constclock=sourceCapture(this.#now);constcontroller=newAbortController()",
+      "returnawaitthis.#captureEvidence(cik,controller,clock)",
+      'this.#assertOpen(signal);if(this.#userAgent===undefined)fail("not_configured");assertCik(cik);if(this.#active!==undefined)fail("busy")',
+      'if(this.#closed)fail("aborted");if(signal?.aborted===true)fail("aborted")',
+      'if(typeofcik!=="string")fail("invalid_request");if(!/^\\d{10}$/u.test(cik))fail("invalid_request");if(/^0+$/u.test(cik))fail("invalid_request")',
+      "constfilings=capturedFilings(submissions);consttarget=capturedTarget(submissions,filings,cutoffAt)",
+      "consttargetScan=capturedScan(submissions,filings)",
+      "return{cutoffAt:capture(),capture}",
+      'signal?.addEventListener("abort",onAbort,{once:true});this.#active=controller;try',
+      'signal?.removeEventListener("abort",onAbort);if(this.#active===controller)this.#active=undefined',
+    ],
+  ],
+]);
 // Exact reviewed transport owners; route-only process restrictions remain separate.
 const publicMarketDataFetchOwners = new Set([
   "apps/api/src/personal-market-data-provider.ts",
@@ -43,10 +87,36 @@ const publicMarketDataFetchOwners = new Set([
   "apps/api/src/personal-sec-filings-provider.ts",
   "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
   "apps/api/src/personal-sec-annual-evidence-provider.ts",
+  "apps/api/src/personal-sec-interim-evidence-provider.ts",
+  "apps/api/src/managed-sec-source-fetch.ts",
   "apps/api/src/personal-sec-filing-context-provider.ts",
   "apps/api/src/personal-sec-quarter-assessment-provider.ts",
 ]);
+const managedSecDirectFetchServices = new Set([
+  "apps/api/src/managed-sec-annual-service.ts",
+  "apps/api/src/managed-sec-interim-service.ts",
+  "apps/api/src/managed-sec-filings-service.ts",
+]);
+const managedSecSubmissionsOwners = new Set([
+  "apps/api/src/personal-sec-filings-provider.ts",
+  "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
+  "apps/api/src/personal-sec-annual-evidence-provider.ts",
+  "apps/api/src/personal-sec-interim-evidence-provider.ts",
+  "apps/api/src/managed-sec-source-fetch.ts",
+  "apps/api/src/managed-sec-annual-service.ts",
+  "apps/api/src/managed-sec-interim-service.ts",
+  "apps/api/src/managed-sec-filings-service.ts",
+  "apps/api/src/personal-sec-filing-context-provider.ts",
+  "apps/api/src/personal-sec-quarter-assessment-provider.ts",
+]);
+function publicMarketDataGlobalFetchAllowed(path: string): boolean {
+  if (publicMarketDataFetchOwners.has(path)) return true;
+  return managedSecDirectFetchServices.has(path);
+}
 const marketDataProcessFreeRoutes = new Set([
+  "apps/api/src/managed-sec-source-fetch.ts",
+  "apps/api/src/managed-sec-source-services.ts",
+  "apps/api/src/managed-sec-interim-service.ts",
   "apps/api/src/workspace-monetary-announcements-routes.ts",
   "apps/api/src/workspace-economic-calendar-routes.ts",
   "apps/api/src/workspace-market-data-routes.ts",
@@ -5752,6 +5822,9 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/personal-sec-annual-canonical-response.ts",
     "apps/api/src/personal-sec-annual-evidence-provider.ts",
     "apps/api/src/personal-sec-annual-statement-company-facts.ts",
+    "apps/api/src/personal-sec-statement-company-facts.ts",
+    "apps/api/src/personal-sec-canonical-input.ts",
+    "apps/api/src/personal-sec-canonical-response-identity.ts",
     "apps/api/src/personal-sec-filing-context-parser.ts",
     "apps/api/src/personal-sec-filing-context-provider.ts",
     "apps/api/src/personal-sec-filings-provider.ts",
@@ -6435,19 +6508,74 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     found.push(
       "scripts/verify-boundaries.ts: SEC annual evidence provider boundary classifier regressed",
     );
+  const interimProviderPath =
+    "apps/api/src/personal-sec-interim-evidence-provider.ts";
+  const interimProvider = await readFile(
+    join(root, interimProviderPath),
+    "utf8",
+  );
+  const toAnnualProvider = (content: string) =>
+    content
+      .replaceAll("Interim", "Annual")
+      .replaceAll("INTERIM", "ANNUAL")
+      .replaceAll("interim", "annual");
+  if (
+    personalSecAnnualEvidenceProviderViolation(
+      toAnnualProvider(interimProvider),
+    ) !== null
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: Interim provider positive case regressed",
+    );
+  const interimProviderMutations = [
+    interimProvider.replace(
+      "data.sec.gov/submissions",
+      "unreviewed.example/submissions",
+    ),
+    interimProvider.replace(
+      "data.sec.gov/api/xbrl/companyfacts",
+      "data.sec.gov/api/xbrl/frames",
+    ),
+    interimProvider.replace(
+      "maximumBytes: LIMITS.responseBytes",
+      "maximumBytes: Number.POSITIVE_INFINITY",
+    ),
+    interimProvider.replace("targetAccession(target)", "unreviewedAccession"),
+    interimProvider.replace(
+      "scheduler: this.#scheduler,",
+      "scheduler: unreviewedScheduler,",
+    ),
+    interimProvider.replace("this.#active?.abort()", "void this.#active"),
+    interimProvider.replace(
+      'if (this.#active !== undefined) fail("busy");',
+      "",
+    ),
+    `${interimProvider}\nvoid globalThis.fetch(unreviewedUrl);`,
+    `${interimProvider}\nvoid this.#load(unreviewedUrl, signal, normalize, capture);`,
+    `${interimProvider}\nimport "node:https";`,
+  ];
+  for (const [index, changed] of interimProviderMutations.entries())
+    if (
+      changed === interimProvider ||
+      personalSecAnnualEvidenceProviderViolation(toAnnualProvider(changed)) ===
+        null
+    )
+      found.push(
+        `scripts/verify-boundaries.ts: Interim provider refusal case ${String(index + 1)} regressed`,
+      );
   const canonicalCases: readonly (readonly [string, string, string])[] = [
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "normalizePersonalSecSourceCik(value.cik) !== cik",
       "false",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "rows.length > LIMITS.candidateRowsPerConcept",
       "false",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "normalizePersonalSecSourceFactFields(raw)",
       "unreviewedFactFields(raw)",
     ],
@@ -6458,53 +6586,101 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     ],
     [
       "personal-sec-annual-statement-company-facts",
-      'createHash("sha256").update(serialized).digest("hex")',
+      'createHash("sha256").update(key).digest("hex")',
       'createHash("sha256").update("unbound").digest("hex")',
     ],
     [
-      "personal-sec-annual-statement-company-facts",
-      '      if (unique.has(serialized)) {\n        duplicateRows++;\n        continue;\n      }\n      const id =\n        `sec-fact:${createHash("sha256").update(serialized).digest("hex")}` as const;',
-      '      const id =\n        `sec-fact:${createHash("sha256").update(serialized).digest("hex")}` as const;\n      if (unique.has(serialized)) {\n        duplicateRows++;\n        continue;\n      }',
+      "personal-sec-statement-company-facts",
+      "const { key: serialized, id } = context.identify(fields);",
+      "const { id: serialized, key: id } = context.identify(fields);",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "if (unique.has(serialized))",
       "if (false)",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "        duplicateRows++;\n        continue;",
       "        duplicateRows++;",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "        serialized,\n        Object.freeze({",
       "        id,\n        Object.freeze({",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "sourceLocator: `/facts/us-gaap/${concept}/units/USD/${index}`",
       'sourceLocator: "unbound"',
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "? selected.sort(compareRows)\n        : []",
       "? selected\n        : []",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "? selected.sort(compareRows)\n        : []",
       "? selected.sort(compareRows)\n        : selected ?? []",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
-      "row.accessionNumber === accession",
+      "personal-sec-statement-company-facts",
+      "row.accessionNumber === context.accession",
       "true",
     ],
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       "selected.length <= LIMITS.observationsPerConcept",
       "true",
+    ],
+    ["personal-sec-canonical-input", "length.value > maximum", "false"],
+    [
+      "personal-sec-canonical-input",
+      'Object.hasOwn(descriptors[key], "value")',
+      "true",
+    ],
+    [
+      "personal-sec-canonical-input",
+      "Object.getPrototypeOf(value) !== Object.prototype",
+      "false",
+    ],
+    [
+      "personal-sec-canonical-input",
+      "keys.length !== expected.length",
+      "false",
+    ],
+    [
+      "personal-sec-canonical-input",
+      "keys.length !== length.value + 1",
+      "false",
+    ],
+    ["personal-sec-canonical-input", "Number(key) < length.value", "true"],
+    [
+      "personal-sec-canonical-input",
+      "Object.values(value).every(isSecCanonicalGraphFrozen)",
+      "true",
+    ],
+    [
+      "personal-sec-canonical-response-identity",
+      "Object.getOwnPropertyDescriptors(value)",
+      "unreviewedDescriptors(value)",
+    ],
+    [
+      "personal-sec-canonical-response-identity",
+      'Object.hasOwn(item, "value")',
+      "true",
+    ],
+    [
+      "personal-sec-canonical-response-identity",
+      "if (!item?.enumerable)",
+      "if (false)",
+    ],
+    ["personal-sec-canonical-response-identity", 'country !== "US"', "false"],
+    [
+      "personal-sec-canonical-response-identity",
+      'issuerId: readField(data, "issuerId"),',
+      "...value,",
     ],
     [
       "personal-sec-annual-canonical-evidence",
@@ -6518,7 +6694,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     ],
     [
       "personal-sec-annual-canonical-evidence",
-      "assertRows(input.facts.observations);",
+      "PERSONAL_SEC_ANNUAL_STATEMENT_FACT_LIMITS.observations,",
       "",
     ],
     [
@@ -6553,7 +6729,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     ],
     [
       "personal-sec-annual-canonical-response",
-      "evidence.cik !== security.cik || !frozen(evidence)",
+      "evidence.cik !== security.cik || !isSecCanonicalGraphFrozen(evidence)",
       "false",
     ],
     [
@@ -6572,8 +6748,8 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "false",
     ],
     [
-      "personal-sec-annual-canonical-response",
-      "country: value.country,",
+      "personal-sec-canonical-response-identity",
+      'issuerName: readField(data, "issuerName"),',
       "...value,",
     ],
     [
@@ -6614,6 +6790,48 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     )
       found.push(
         `scripts/verify-boundaries.ts: canonical annual source case ${String(index + 1)} regressed`,
+      );
+  }
+  const interimCanonicalSources = new Map(runtimeSources);
+  for (const name of [
+    "personal-sec-interim-statement-company-facts",
+    "personal-sec-interim-canonical-evidence",
+    "personal-sec-interim-canonical-response",
+  ]) {
+    const path = `apps/api/src/${name}.ts`;
+    interimCanonicalSources.set(path, await readFile(join(root, path), "utf8"));
+  }
+  if (
+    personalSecAnnualCanonicalBoundaryViolation(
+      interimCanonicalSources,
+      "interim",
+    ) !== null
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: canonical Interim source positive case regressed",
+    );
+  for (const [index, [name, before, after]] of canonicalCases.entries()) {
+    if (name.startsWith("workspace-")) continue;
+    const translate = (text: string) =>
+      text
+        .replaceAll("Annual", "Interim")
+        .replaceAll("ANNUAL", "INTERIM")
+        .replaceAll("annual", "interim")
+        .replaceAll("sec-fact:", "sec-interim-fact:");
+    const path = `apps/api/src/${translate(name)}.ts`;
+    const original = (interimCanonicalSources.get(path) ?? "").replaceAll(
+      "\r\n",
+      "\n",
+    );
+    const changed = original.replace(translate(before), translate(after));
+    const altered = new Map(interimCanonicalSources);
+    altered.set(path, changed);
+    if (
+      changed === original ||
+      personalSecAnnualCanonicalBoundaryViolation(altered, "interim") === null
+    )
+      found.push(
+        `scripts/verify-boundaries.ts: canonical Interim source case ${String(index + 1)} regressed`,
       );
   }
   const contextParser =
@@ -7067,6 +7285,9 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "scripts/verify-boundaries.ts: BEA browser provider/source-link boundary regressed",
     );
   for (const file of [
+    "personal-sec-statement-company-facts.ts",
+    "personal-sec-canonical-input.ts",
+    "personal-sec-canonical-response-identity.ts",
     "personal-sec-primary-document.ts",
     "personal-sec-source-json.ts",
     "personal-sec-quarter-operation.ts",
@@ -7088,6 +7309,17 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       );
   }
   for (const file of [
+    "personal-sec-interim-evidence-provider",
+    "personal-sec-interim-statement-company-facts",
+    "personal-sec-interim-canonical-evidence",
+    "personal-sec-interim-canonical-response",
+    "personal-sec-statement-company-facts",
+    "personal-sec-canonical-input",
+    "personal-sec-canonical-response-identity",
+    "managed-source-service-errors",
+    "managed-sec-interim-service",
+    "managed-sec-source-fetch",
+    "managed-sec-source-services",
     "personal-sec-quarter-assessment-provider",
     "personal-sec-quarter-operation",
     "personal-sec-primary-document",
@@ -7121,6 +7353,58 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
   const found: string[] = [];
   const providerPath = "apps/api/src/personal-market-data-provider.ts";
   const secProviderPath = "apps/api/src/personal-sec-financial-provider.ts";
+  const interimSources = new Map<string, string>();
+  const interimNames = [
+    ...managedSecInterimBoundaryDefinitions().map(([name]) => name),
+    "personal-sec-interim-evidence-provider",
+    "personal-sec-interim-statement-company-facts",
+    "personal-sec-interim-canonical-evidence",
+    "personal-sec-interim-canonical-response",
+    "personal-sec-statement-company-facts",
+    "personal-sec-canonical-input",
+    "personal-sec-canonical-response-identity",
+  ];
+  for (const name of interimNames) {
+    const path = `apps/api/src/${name}.ts`;
+    interimSources.set(path, await readFile(join(root, path), "utf8"));
+  }
+  const interimIssue = managedSecInterimSourceBoundaryViolation(interimSources);
+  if (interimIssue !== null) found.push(interimIssue);
+  found.push(...managedSecInterimDelegateMutationViolations(interimSources));
+  // Each declared guard must reject its own removal, with all other modules intact.
+  for (const [name, , anchors] of managedSecInterimBoundaryDefinitions()) {
+    const path = `apps/api/src/${name}.ts`;
+    const original = interimSources.get(path)!;
+    for (const [index, anchor] of anchors.entries()) {
+      const changed = removeSecBoundaryAnchor(original, anchor);
+      const altered = new Map(interimSources);
+      altered.set(path, changed);
+      if (
+        changed === original ||
+        managedSecInterimSourceBoundaryViolation(altered) === null
+      )
+        found.push(
+          `${path}: SEC source refusal case ${String(index + 1)} regressed`,
+        );
+    }
+  }
+  for (const path of interimSources.keys()) {
+    if (
+      path.endsWith("managed-workspace-handler.ts") ||
+      path.endsWith("managed-workspace-function.ts")
+    )
+      continue;
+    const altered = new Map(interimSources);
+    altered.set(
+      path,
+      `${interimSources.get(path)!}\nvoid globalThis.fetch(unreviewedUrl);`,
+    );
+    if (
+      managedSecInterimSourceBoundaryViolation(altered) === null &&
+      secManagedRawSinkViolation(altered.get(path)!, false) === false
+    )
+      found.push(`${path}: SEC source sink refusal regressed`);
+  }
   const managedAnnualPath = "apps/api/src/managed-sec-annual-service.ts";
   const managedAnnual = await readFile(join(root, managedAnnualPath), "utf8");
   const managedFilingsPath = "apps/api/src/managed-sec-filings-service.ts";
@@ -7232,17 +7516,11 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       "MANAGED_SEC_ANNUAL_ISSUERS.includes",
       "MANAGED_SEC_FILINGS_ISSUERS.includes",
     ),
-    managedAnnual.replace(
-      "data.sec.gov/submissions",
-      "unreviewed.example/submissions",
-    ),
-    managedAnnual.replace(
-      "data.sec.gov/api/xbrl/companyfacts",
-      "data.sec.gov/api/xbrl/frames",
-    ),
+    managedAnnual.replace("createManagedSecSourceFetch({", "unreviewedFetch({"),
+    managedAnnual.replace("cik: listing.cik,", "cik: unreviewedCik,"),
     `${managedAnnual}\nconst extra = "https://unreviewed.example/source";`,
     `${managedAnnual}\nvoid globalThis.fetch(unreviewedUrl);`,
-    managedAnnual.replace("fetch(input, init)", "fetch(unreviewedUrl, init)"),
+    managedAnnual.replace("guard,", "guard: unreviewedGuard,"),
     managedAnnual.replace(
       "parseManagedSecAnnualCanonicalRequest(input)",
       "parseManagedSecAnnualEvidenceRequest(input)",
@@ -7256,11 +7534,11 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       "        guard();\n        return prepared.response;",
       "        return prepared.response;",
     ),
-    managedAnnual.replace("count >= 2", "count >= 3"),
     managedAnnual.replace(
-      "  const stop = (): never => {\n    controller.abort();",
-      "  const stop = (): never => {\n    void controller;",
+      "fetch: options.fetch ?? globalThis.fetch",
+      "fetch: unreviewedFetch",
     ),
+    managedAnnual.replace("provider.close();", "void provider;"),
     managedAnnual.replace(
       "options.startedAt + 9_500",
       "options.startedAt + 95_000",
@@ -7339,9 +7617,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         ts.ScriptKind.TSX,
       );
       if (
-        !publicMarketDataFetchOwners.has(path) &&
-        path !== managedAnnualPath &&
-        path !== managedFilingsPath &&
+        !publicMarketDataGlobalFetchAllowed(path) &&
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
@@ -7362,13 +7638,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         );
       }
       if (
-        path !== "apps/api/src/personal-sec-filings-provider.ts" &&
-        path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
-        path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
-        path !== managedAnnualPath &&
-        path !== managedFilingsPath &&
-        path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
-        path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
+        !managedSecSubmissionsOwners.has(path) &&
         content.includes("data.sec.gov/submissions")
       ) {
         found.push(
@@ -9505,16 +9775,13 @@ function personalSecAnnualEvidenceProviderViolation(
 /** The canonical graph layers are pure, closed and bounded before either route delivers it. */
 function personalSecAnnualCanonicalBoundaryViolation(
   sources: ReadonlyMap<string, string>,
+  workflow: "annual" | "interim" = "annual",
 ): string | null {
-  const definitions: readonly (readonly [
-    string,
-    readonly string[],
-    readonly string[],
-  ])[] = [
+  type Definition = readonly [string, readonly string[], readonly string[]];
+  const shared: readonly Definition[] = [
     [
-      "personal-sec-annual-statement-company-facts",
+      "personal-sec-statement-company-facts",
       [
-        "node:crypto",
         "@research-cockpit/contracts",
         "./personal-sec-quarterly-evidence-provider",
       ],
@@ -9523,27 +9790,87 @@ function personalSecAnnualCanonicalBoundaryViolation(
         "for(const{concept}ofPERSONAL_SEC_ANNUAL_STATEMENT_REGISTRY)",
         "rows.length>LIMITS.candidateRowsPerConcept",
         "constsource=normalizePersonalSecSourceFactFields(raw)",
-        "constserialized=serializePersonalSecAnnualStatementObservation(fields)",
-        'if(unique.has(serialized)){duplicateRows++;continue;}constid=`sec-fact:${createHash("sha256").update(serialized).digest("hex")}`asconst',
+        "const{key:serialized,id}=context.identify(fields)",
+        "if(unique.has(serialized)){duplicateRows++;continue;}",
         "unique.set(serialized,Object.freeze({id,...fields,sourceLocator:`/facts/us-gaap/${concept}/units/USD/${index}`}))",
-        ".filter((row)=>row.accessionNumber===accession)",
+        ".filter((row)=>row.accessionNumber===context.accession)",
         "selected!==null&&selected.length<=LIMITS.observationsPerConcept?selected.sort(compareRows):[]",
         "omittedSelected:selected===null?null:selected.length-observations.length",
         "observations:Object.freeze(observations)",
+        "candidateRows:rows.length,inspectedRows:rows.length,invalidRows,duplicateRows,uniqueObservations:all.length",
+      ],
+    ],
+    [
+      "personal-sec-canonical-input",
+      ["node:crypto"],
+      [
+        '`sha256:${createHash("sha256").update(text).digest("hex")}`',
+        "for(constchildofObject.values(value))freezeSecCanonicalGraph(child);Object.freeze(value)",
+        "Object.isFrozen(value)&&Object.values(value).every(isSecCanonicalGraphFrozen)",
+        "Object.getPrototypeOf(value)!==Object.prototype",
+        "constdescriptors=Object.getOwnPropertyDescriptors(value)",
+        "keys.length!==expected.length",
+        "!expected.every((key)=>Object.hasOwn(descriptors,key))",
+        'if(keys.length!==expected.length||!expected.every((key)=>Object.hasOwn(descriptors,key))||!keys.every((key)=>typeofkey==="string"&&descriptors[key]?.enumerable&&Object.hasOwn(descriptors[key],"value")))',
+        "Object.getPrototypeOf(value)!==Array.prototype",
+        "!Number.isSafeInteger(length.value)||length.value<0||length.value>maximum",
+        "keys.length!==length.value+1",
+        "Number(key)<length.value",
+        'for(constrowofvalue)assertSecCanonicalRecord(row,["id","taxonomy","concept","unit","value","startDate","endDate","durationDays","periodBasis","filingFocusYear","filingFocusPeriod","frame","accessionNumber","form","filedDate","sourceLocator"],context)',
+      ],
+    ],
+    [
+      "personal-sec-canonical-response-identity",
+      ["@research-cockpit/contracts"],
+      [
+        "Object.getPrototypeOf(value)!==Object.prototype",
+        "constdata=Object.getOwnPropertyDescriptors(value)",
+        'constcountry=readField(data,"country")',
+        'exchangeMic:readField(data,"exchangeMic"),issuerId:readField(data,"issuerId"),issuerName:readField(data,"issuerName"),listingId:readField(data,"listingId"),securityName:readField(data,"securityName"),symbol:readField(data,"symbol"),cik:readField(data,"cik")',
+        "assertFormattedFields(result);assertNames(result);returnObject.freeze(result)",
+        "if(!item?.enumerable)",
+        'if(!Object.hasOwn(item,"value"))',
+        'constvalue:unknown=item.value;if(typeofvalue!=="string")',
+        'if(country!=="US")',
+        '["exchangeMic",/^[A-Z0-9]{4}$/u]',
+        '["symbol",/^[A-Z0-9][A-Z0-9.-]{0,14}$/u]',
+        '["cik",/^(?!0000000000)[0-9]{10}$/u]',
+        '["issuerId",/^[a-z0-9][a-z0-9._:-]{2,127}$/u]',
+        '["listingId",/^[a-z0-9][a-z0-9._:-]{2,127}$/u]',
+        "if(!name(value.issuerName))",
+        "if(!name(value.securityName))",
+        'if(value!==value.trim().normalize("NFC"))returnfalse',
+        "length===0||length>512",
+        "return!/[\\p{Cc}\\p{Cf}\\p{Cs}]/u.test(value)",
+      ],
+    ],
+  ];
+  const annual: readonly Definition[] = [
+    [
+      "personal-sec-annual-statement-company-facts",
+      [
+        "node:crypto",
+        "@research-cockpit/contracts",
+        "./personal-sec-statement-company-facts",
+      ],
+      [
+        'returnscanPersonalSecStatementCompanyFacts(value,cik,{accession,identify(fields){constkey=serializePersonalSecAnnualStatementObservation(fields);return{key,id:`sec-fact:${createHash("sha256").update(key).digest("hex")}`asconst};}})',
+        "unavailablePersonalSecStatementCompanyFacts<`sec-fact:${string}`>",
       ],
     ],
     [
       "personal-sec-annual-canonical-evidence",
       [
-        "node:crypto",
+        "./personal-sec-canonical-input",
         "@research-cockpit/contracts",
         "@research-cockpit/personal-financial-analytics",
         "./personal-sec-annual-statement-company-facts",
         "./personal-sec-source-filing",
       ],
       [
+        'assertSecCanonicalRecord(value,fields,"annual")',
         'assertRecord(input,["cik","generation","target","targetScan","facts","submissions"])',
-        "assertRows(input.facts.observations)",
+        'assertRows(input.facts.observations,PERSONAL_SEC_ANNUAL_STATEMENT_FACT_LIMITS.observations,"annual")',
         "filing:joinPersonalSecSourceFiling(row,input.submissions)",
         "assertPersonalSecAnnualCanonicalEvidence(candidate)",
         "constowned=structuredClone(candidate)",
@@ -9551,31 +9878,33 @@ function personalSecAnnualCanonicalBoundaryViolation(
         "if(row.id!==expected)",
         "sha256:digest(serializePersonalSecAnnualCanonicalGeneration(owned))",
         "returnfreeze({...owned,generation})",
-        "length.value>PERSONAL_SEC_ANNUAL_STATEMENT_FACT_LIMITS.observations",
       ],
     ],
     [
       "personal-sec-annual-canonical-response",
       [
-        "node:crypto",
+        "./personal-sec-canonical-input",
+        "./personal-sec-canonical-response-identity",
         "@research-cockpit/contracts",
         "@research-cockpit/personal-financial-analytics",
       ],
       [
         "constrequest=parseManagedSecAnnualCanonicalRequest(input)",
         "request.catalogSnapshotSha256!==catalogSnapshotSha256",
+        "security=readSecCanonicalPublicIdentity(listing)",
         "request.listingId!==security.listingId||request.symbol!==security.symbol",
         "assertPersonalSecAnnualCanonicalEvidence(evidence)",
-        "evidence.cik!==security.cik||!frozen(evidence)",
+        "evidence.cik!==security.cik||!isSecCanonicalGraphFrozen(evidence)",
         'row.id!==digest(serializePersonalSecAnnualStatementObservation(row)).replace(/^sha256:/u,"sec-fact:")',
         "evidence.generation.sha256!==digest(serializePersonalSecAnnualCanonicalGeneration(evidence))",
         "constbody=JSON.stringify(response)",
         'constbyteLength=Buffer.byteLength(body,"utf8")',
         "if(byteLength>MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes)",
         'thrownewPersonalSecAnnualCanonicalResponseError("response_too_large")',
-        "returnObject.freeze({country:value.country,exchangeMic:value.exchangeMic,issuerId:value.issuerId,issuerName:value.issuerName,listingId:value.listingId,securityName:value.securityName,symbol:value.symbol,cik:value.cik})",
       ],
     ],
+  ];
+  const routes: readonly Definition[] = [
     [
       "workspace-sec-annual-evidence-routes",
       [
@@ -9599,6 +9928,25 @@ function personalSecAnnualCanonicalBoundaryViolation(
         'request.raw.off("aborted",abort);reply.raw.off("close",abort)',
       ],
     ],
+  ];
+  const definitions: readonly Definition[] = [
+    ...shared,
+    ...annual.map(([name, imports, anchors]): Definition =>
+      workflow === "annual"
+        ? [name, imports, anchors]
+        : [
+            name.replaceAll("annual", "interim"),
+            imports.map((item) => item.replaceAll("annual", "interim")),
+            anchors.map((item) =>
+              item
+                .replaceAll("Annual", "Interim")
+                .replaceAll("ANNUAL", "INTERIM")
+                .replaceAll("annual", "interim")
+                .replaceAll("sec-fact:", "sec-interim-fact:"),
+            ),
+          ],
+    ),
+    ...(workflow === "annual" ? routes : []),
   ];
   for (const [name, imports, anchors] of definitions) {
     const path = `apps/api/src/${name}.ts`;
@@ -9780,6 +10128,388 @@ function managedEodTokenLocationAllowed(path: string): boolean {
   );
 }
 
+/** Exact managed SEC composition and its shared two-GET transport. */
+function removeSecBoundaryAnchor(content: string, anchor: string): string {
+  const positions: number[] = [];
+  let compact = "";
+  for (let index = 0; index < content.length; index++) {
+    const char = content[index]!;
+    if (/\s/u.test(char)) continue;
+    if (char === "," && /^[\s]*[\]})]/u.test(content.slice(index + 1)))
+      continue;
+    positions.push(index);
+    compact += char;
+  }
+  const start = compact.indexOf(anchor);
+  if (start < 0) return content;
+  const from = positions[start]!;
+  const through = positions[start + anchor.length - 1]! + 1;
+  return `${content.slice(0, from)}unreviewedGuard${content.slice(through)}`;
+}
+function managedSecInterimBoundaryDefinitions(): readonly (readonly [
+  string,
+  readonly string[],
+  readonly string[],
+])[] {
+  return [
+    [
+      "managed-sec-source-fetch",
+      [],
+      [
+        "this.options=Object.freeze({cik:options.cik,contact:options.contact,fetch:options.fetch,controller:options.controller,guard:options.guard})",
+        "`https://data.sec.gov/submissions/CIK${options.cik}.json`",
+        "`https://data.sec.gov/api/xbrl/companyfacts/CIK${options.cik}.json`",
+        "this.options.guard();consturl=requestUrl(input);if(this.#count>=2)this.#stop();if(url!==this.#urls[this.#count])this.#stop();if(!fixedRequest(init,this.options.contact))this.#stop();this.#count++;returnthis.#read(input,init!,url)",
+        'this.options.controller.abort();thrownewError("ManagedSECrequestboundaryrejected.")',
+        "constresponse=awaitthis.options.fetch(input,init)",
+        "if(!(responseinstanceofResponse))this.#stop()",
+        "this.#guardResponse(response,url)",
+        "this.options.guard();}catch(error){cancelBody(response);throwerror;}",
+        "if(!response.ok){cancelBody(response);this.#stop();}",
+        "if(response.redirected){cancelBody(response);this.#stop();}",
+        'if(response.url!==""&&response.url!==url){cancelBody(response);this.#stop();}',
+        'requestSignal.addEventListener("abort",bodyFailed,{once:true})',
+        'requestSignal.removeEventListener("abort",bodyFailed)',
+        "if(init===undefined)returnfalse",
+        "if(!fixedRequestMode(init))returnfalse",
+        "if(init.body!==undefined)returnfalse",
+        "if(init.signal?.aborted!==false)returnfalse",
+        'headers.get("user-agent")===contact&&headers.get("accept")==="application/json"',
+        'if(init.method!=="GET")returnfalse',
+        'if(init.redirect!=="error")returnfalse',
+        'if(init.credentials!=="omit")returnfalse',
+        'returninit.cache==="no-store"',
+        "{highWaterMark:0}",
+        'lifetime.bodyFailed();lifetime.release();stream.error(newError("ManagedSECbodyfailed"))',
+      ],
+    ],
+    [
+      "managed-sec-interim-service",
+      [
+        "@research-cockpit/contracts",
+        "@research-cockpit/personal-security-master",
+        "./managed-sec-admission",
+        "./managed-sec-config",
+        "./managed-sec-issuers",
+        "./managed-sec-source-fetch",
+        "./personal-sec-interim-evidence-provider",
+        "./personal-sec-interim-canonical-response",
+        "./personal-sec-request-scheduler",
+        "./watchlist-repository",
+      ],
+      [
+        "Promise.race([work,aborted])",
+        'signal.removeEventListener("abort",stop)',
+        'signal.addEventListener("abort",stop,{once:true})',
+        "if(signal.aborted)stop()",
+        "constelapsed=monotonic()-options.startedAt",
+        "if(!Number.isFinite(elapsed))",
+        "elapsed<0||elapsed>=limit",
+        "constrequest=parseManagedSecInterimCanonicalRequest(input)",
+        "if(request===null)",
+        "request.catalogSnapshotSha256!==catalog.snapshotSha256",
+        "lookupPersonalSecurityMasterListing(catalog,request.listingId)",
+        "if(listing===null)",
+        "if(listing.symbol!==request.symbol)",
+        "if(!MANAGED_SEC_INTERIM_ISSUERS.includes(listing.cik))",
+        "Math.floor(2_000-(clock.monotonic()-options.startedAt))",
+        "clock.active(admissionSignal,2_000)",
+        "options.openAdmission(admissionSignal,remaining)",
+        "operation.admission.reserve(principal,options.enteredAt,admissionSignal)",
+        "awaitoperation?.close()",
+        "clearTimeout(timer);controller.abort()",
+        "clock.monotonic()+7_500,options.startedAt+9_500",
+        "this.signal=AbortSignal.any([signal,this.controller.signal])",
+        "if(this.signal.aborted)",
+        'if(this.signal.aborted)thrownewManagedSecInterimServiceError("request_timeout");if(this.clockExpired())thrownewManagedSecInterimServiceError("request_timeout")',
+        "if(!Number.isFinite(current))returntrue",
+        "returncurrent<this.startedAt||current>=this.deadline",
+        "clearTimeout(this.timer);this.controller.abort()",
+        "assertActive:(signal)=>clock.active(signal,10_000)",
+        "clock.active(signal,2_000);constadmitted=admitRequest(input,options.catalog)",
+        "if(options.configuration===null)",
+        "awaitreserveRead(options,principal,signal,clock);clock.active(signal,2_000)",
+        "createManagedSecSourceFetch({cik:admitted.listing.cik,contact,fetch:options.fetch??globalThis.fetch,controller:lifetime.controller,guard:lifetime.guard})",
+        "provider.loadEvidence(admitted.listing.cik,lifetime.signal)",
+        "lifetime.guard();constencoded=encodePersonalSecInterimCanonicalResponse(admitted.request,options.catalog.snapshotSha256,admitted.listing,evidence);lifetime.guard();returnencoded.response",
+        "provider.close();lifetime.close()",
+      ],
+    ],
+    [
+      "managed-sec-source-services",
+      [
+        "@research-cockpit/contracts",
+        "./managed-sec-annual-service",
+        "./managed-sec-interim-service",
+        "./managed-sec-filings-service",
+      ],
+      [
+        "caseMANAGED_SEC_ANNUAL_EVIDENCE_PATH:return{annual:createManagedSecAnnualService(options)}",
+        "caseMANAGED_SEC_INTERIM_EVIDENCE_PATH:return{interim:createManagedSecInterimService(options)}",
+        "caseMANAGED_SEC_FILINGS_PATH:return{filings:createManagedSecFilingsService(options)}",
+        "default:return{}",
+        "caseMANAGED_SEC_ANNUAL_EVIDENCE_PATH:returnawaitManagedSecAnnual(work,signal)",
+        "caseMANAGED_SEC_INTERIM_EVIDENCE_PATH:returnawaitManagedSecInterim(work,signal)",
+        "caseMANAGED_SEC_FILINGS_PATH:returnawaitManagedSecFilings(work,signal)",
+        'caseMANAGED_SEC_FILINGS_PATH:returnawaitManagedSecFilings(work,signal);default:thrownewTypeError("UnknownmanagedSECroute.")',
+        'returnnewManagedSecAnnualServiceError("request_timeout")',
+        'returnnewManagedSecInterimServiceError("request_timeout")',
+        'returnnewManagedSecFilingsServiceError("request_timeout")',
+      ],
+    ],
+    [
+      "managed-source-service-errors",
+      [
+        "./managed-sec-annual-service",
+        "./managed-sec-interim-service",
+        "./managed-sec-filings-service",
+        "./managed-eod-service",
+        "./managed-economic-calendar-service",
+        "./managed-monetary-announcements-service",
+      ],
+      [
+        "constDATA_ERRORS=[ManagedSecAnnualServiceError,ManagedSecInterimServiceError,ManagedSecFilingsServiceError,ManagedEodServiceError]asconst",
+        "constSOURCE_ERRORS=[...DATA_ERRORS,ManagedEconomicCalendarServiceError,ManagedMonetaryAnnouncementsServiceError]asconst",
+        "returnDATA_ERRORS.some((kind)=>errorinstanceofkind)",
+        "returnSOURCE_ERRORS.some((kind)=>errorinstanceofkind)",
+      ],
+    ],
+    [
+      "managed-workspace-handler",
+      [
+        "node:crypto",
+        "@research-cockpit/contracts",
+        "./clerk-trial-auth",
+        "./portfolio-repository",
+        "./research-followups-repository",
+        "./valuation-assumptions-repository",
+        "./managed-workspace-catalog",
+        "./managed-sec-interim-service",
+        "./managed-source-service-errors",
+        "./managed-sec-annual-service",
+        "./managed-sec-filings-service",
+        "./managed-eod-service",
+        "./managed-bls-calendar-service",
+        "./managed-economic-calendar-service",
+        "./managed-monetary-announcements-service",
+        "./watchlist-repository",
+      ],
+      [
+        'if(route.path===MANAGED_SEC_INTERIM_EVIDENCE_PATH){constcommand=parseManagedSecInterimCanonicalRequest(awaitreadJson(request,MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.requestBytes));if(command===null)thrownewRequestFailure(400,"invalid_request");requireActiveRequest(request);if(options.interim===undefined)thrownewManagedSecInterimServiceError("not_configured");constresult=awaitoptions.interim.load(command,auth.principal,request.signal);options.interim.assertActive(request.signal);response=jsonResponse(result,MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.responseBytes,headers);options.interim.assertActive(request.signal);returnresponse;}',
+      ],
+    ],
+    [
+      "managed-workspace-function",
+      [
+        "@research-cockpit/contracts",
+        "node-appwrite",
+        "./appwrite-transport",
+        "./appwrite-versioned-row-store",
+        "./managed-valuation-assumptions-storage",
+        "./managed-valuation-assumptions-config",
+        "./appwrite-portfolio-repository",
+        "./managed-portfolio-config",
+        "./appwrite-research-followups-repository",
+        "./appwrite-watchlist-repository",
+        "./clerk-trial-auth",
+        "./clerk-trial-config",
+        "./managed-sec-config",
+        "./managed-sec-admission",
+        "./managed-sec-source-services",
+        "./managed-source-service-errors",
+        "./managed-eod-config",
+        "./managed-eod-admission",
+        "./managed-eod-service",
+        "./managed-bls-calendar-service",
+        "./managed-economic-calendar-service",
+        "./managed-monetary-announcements-service",
+        "./managed-workspace-catalog",
+        "./managed-workspace-handler",
+      ],
+      [
+        "req.path===MANAGED_SEC_INTERIM_EVIDENCE_PATH?MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.requestBytes",
+        "SOURCE_PATHS.includes(req.path)?newAbortController():undefined",
+        "Math.max(1,10_000-(performance.now()-startedAt))",
+        "...createManagedSecRouteServices(req.path,{configuration:secConfiguration,catalog:getManagedWorkspaceCatalog(),enteredAt,startedAt,openAdmission:openSecAdmission})",
+        'tableId:"sec_annual_budget",rowId:"observed-annual-v1"',
+        "awaitManagedSecRoute(req.path,handle(request),sourceController.signal)",
+        "performance.now()-startedAt>=10_000",
+        "managedSecRouteTimeout(req.path)",
+        "sourceController?.abort()",
+      ],
+    ],
+  ];
+}
+function managedSecInterimDelegateViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  for (const [path, anchors] of managedSecInterimDelegateAnchors) {
+    const content = sources.get(path);
+    if (content === undefined)
+      return `${path}: reviewed SEC delegate source is missing`;
+    const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+    for (const anchor of anchors) {
+      if (!compact.includes(anchor))
+        return `${path}: reviewed SEC delegate binding changed`;
+    }
+  }
+  return null;
+}
+function managedSecInterimDelegateMutationViolations(
+  sources: ReadonlyMap<string, string>,
+): string[] {
+  const found: string[] = [];
+  for (const [path, anchors] of managedSecInterimDelegateAnchors) {
+    const original = sources.get(path) ?? "";
+    for (const [index, anchor] of anchors.entries()) {
+      const changed = removeSecBoundaryAnchor(original, anchor);
+      const altered = new Map(sources);
+      altered.set(path, changed);
+      if (changed === original) {
+        found.push(`${path}: SEC delegate mutation ${index} was not applied`);
+        continue;
+      }
+      if (managedSecInterimSourceBoundaryViolation(altered) === null)
+        found.push(`${path}: SEC delegate refusal ${index} regressed`);
+    }
+  }
+  return found;
+}
+function managedSecInterimSourceBoundaryViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  for (const [
+    name,
+    imports,
+    anchors,
+  ] of managedSecInterimBoundaryDefinitions()) {
+    const content = sources.get(`apps/api/src/${name}.ts`) ?? "";
+    const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+    if (
+      JSON.stringify(collectModuleSpecifiers(content)) !==
+        JSON.stringify(imports) ||
+      anchors.some((anchor) => !compact.includes(anchor))
+    )
+      return `${name}: managed SEC source guards changed`;
+    if (
+      !["managed-workspace-handler", "managed-workspace-function"].includes(
+        name,
+      ) &&
+      secManagedRawSinkViolation(content, name === "managed-sec-source-fetch")
+    )
+      return `${name}: managed SEC raw sink or endpoint changed`;
+  }
+  for (const [path, content] of sources) {
+    if (
+      !/apps\/api\/src\/personal-sec-(?:interim-(?:statement-company-facts|canonical-evidence|canonical-response)|statement-company-facts|canonical-input|canonical-response-identity)\.ts$/u.test(
+        path,
+      )
+    )
+      continue;
+    if (secManagedRawSinkViolation(content, false))
+      return `${path}: canonical helpers cannot acquire sources`;
+    const source = ts.createSourceFile(
+      path,
+      content,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    if (findIdentifiers(source, new Set(["process"])).length !== 0)
+      return `${path}: canonical helpers cannot read process state`;
+  }
+  const provider =
+    sources.get("apps/api/src/personal-sec-interim-evidence-provider.ts") ?? "";
+  const annualShape = provider
+    .replaceAll("Interim", "Annual")
+    .replaceAll("INTERIM", "ANNUAL")
+    .replaceAll("interim", "annual");
+  if (personalSecAnnualEvidenceProviderViolation(annualShape) !== null)
+    return "Interim must retain the independently admitted two-source provider";
+  const compact = provider.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+  if (
+    ![
+      "return{accessionNumber,form:filing.form,filedDate:filing.filedDate,reportDate:filing.reportDate,acceptedAt:filing.acceptedAt}",
+      'filing.form==="10-Q"||filing.form==="10-Q/A"',
+    ].every((anchor) => compact.includes(anchor))
+  )
+    return "Interim target metadata must retain its exact five fields and complete 10-Q/amendment count";
+  return (
+    managedSecInterimDelegateViolation(sources) ??
+    personalSecAnnualCanonicalBoundaryViolation(sources, "interim")
+  );
+}
+function unreviewedSecTemplate(
+  node: ts.Node,
+  source: ts.SourceFile,
+  urls: Set<string>,
+): boolean {
+  if (!ts.isTemplateExpression(node)) return false;
+  if (!/(?:https?|wss?):\/\//iu.test(node.head.text)) return false;
+  return !urls.delete(node.getText(source).replace(/\s+/gu, ""));
+}
+function secLiteralHasUrl(node: ts.Node): boolean {
+  if (!ts.isStringLiteralLike(node)) return false;
+  return /(?:https?|wss?):\/\//iu.test(node.text);
+}
+function secManagedFetchCall(
+  node: ts.Node,
+  source: ts.SourceFile,
+): node is ts.CallExpression {
+  if (!ts.isCallExpression(node)) return false;
+  if (node.expression.getText(source) === "fetch") return true;
+  return (
+    namedBoundaryPropertyAccess(
+      node.expression,
+      new Set(["fetch", "#fetch"]),
+    ) !== null
+  );
+}
+function secManagedFetchCallAllowed(
+  node: ts.CallExpression,
+  source: ts.SourceFile,
+  transport: boolean,
+): boolean {
+  if (!transport) return false;
+  if (node.expression.getText(source) !== "this.options.fetch") return false;
+  return (
+    node.arguments.map((argument) => argument.getText(source)).join(",") ===
+    "input,init"
+  );
+}
+function secManagedRawSinkViolation(
+  content: string,
+  transport: boolean,
+): boolean {
+  const source = ts.createSourceFile(
+    "managed-sec.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const urls = new Set(
+    transport
+      ? [
+          "`https://data.sec.gov/submissions/CIK${options.cik}.json`",
+          "`https://data.sec.gov/api/xbrl/companyfacts/CIK${options.cik}.json`",
+        ]
+      : [],
+  );
+  let invalid = false;
+  let sinks = 0;
+  const visit = (node: ts.Node): void => {
+    if (unreviewedSecTemplate(node, source, urls)) invalid = true;
+    if (secLiteralHasUrl(node)) invalid = true;
+    if (secManagedFetchCall(node, source)) {
+      sinks++;
+      if (!secManagedFetchCallAllowed(node, source, transport)) invalid = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid || urls.size !== 0 || sinks !== (transport ? 1 : 0);
+}
 function managedSecAnnualServiceCapabilityViolation(
   content: string,
 ): string | null {
@@ -9793,9 +10523,8 @@ function managedSecAnnualServiceCapabilityViolation(
     "constproviderDeadline=Math.min(monotonic()+7_500,options.startedAt+9_500)",
     "provider.loadEvidence(listing.cik,providerSignal)",
     "guard();constprepared=encodePersonalSecAnnualCanonicalResponse(request,options.catalog.snapshotSha256,listing,evidence);guard();returnprepared.response",
-    'count>=2||url!==urls[count]||init?.method!=="GET"||init.redirect!=="error"||init.credentials!=="omit"||init.cache!=="no-store"',
-    'conststop=():never=>{controller.abort();thrownewManagedSecAnnualServiceError("unavailable");}',
     "provider.close();controller.abort()",
+    "createManagedSecSourceFetch({cik:listing.cik,contact,fetch:options.fetch??globalThis.fetch,controller,guard})",
   ];
   if (
     JSON.stringify(collectModuleSpecifiers(content)) !==
@@ -9808,6 +10537,7 @@ function managedSecAnnualServiceCapabilityViolation(
         "./personal-sec-annual-evidence-provider",
         "./personal-sec-annual-canonical-response",
         "./personal-sec-request-scheduler",
+        "./managed-sec-source-fetch",
         "./watchlist-repository",
       ]) ||
     required.some((anchor) => !compact.includes(anchor))
@@ -9820,10 +10550,7 @@ function managedSecAnnualServiceCapabilityViolation(
     true,
     ts.ScriptKind.TS,
   );
-  const urls = new Set([
-    "`https://data.sec.gov/submissions/CIK${cik}.json`",
-    "`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`",
-  ]);
+  const urls = new Set<string>();
   let invalid = false;
   let transports = 0;
   const visit = (node: ts.Node): void => {
@@ -9859,7 +10586,7 @@ function managedSecAnnualServiceCapabilityViolation(
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return invalid || urls.size !== 0 || transports !== 1
+  return invalid || urls.size !== 0 || transports !== 0
     ? "managed annual service must retain its two fixed SEC endpoints and sole guarded fetch sink"
     : null;
 }
@@ -10993,7 +11720,7 @@ function personalMarketDataWebViolation(content: string): boolean {
         specifier.includes("bea-release-provider") ||
         specifier.includes("fed-monetary-announcements-provider") ||
         specifier === "@rgrove/parse-xml" ||
-        /managed-sec-(?:admission|config|issuers|annual-service|filings-service)(?:\.|$)/u.test(
+        /managed-sec-(?:admission|config|issuers|annual-service|interim-service|source-fetch|source-services|filings-service)(?:\.|$)/u.test(
           specifier,
         ) ||
         personalSecPrivateRuntimeImport(specifier) ||
@@ -11008,6 +11735,14 @@ function personalSecPrivateRuntimeImport(specifier: string): boolean {
       specifier,
     ) ||
     [
+      "personal-sec-interim-evidence-provider",
+      "personal-sec-interim-statement-company-facts",
+      "personal-sec-interim-canonical-evidence",
+      "personal-sec-interim-canonical-response",
+      "personal-sec-statement-company-facts",
+      "personal-sec-canonical-input",
+      "personal-sec-canonical-response-identity",
+      "managed-source-service-errors",
       "personal-sec-annual-statement-company-facts",
       "personal-sec-annual-canonical-evidence",
       "personal-sec-annual-canonical-response",
@@ -11560,6 +12295,17 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/managed-sec-interim-service.ts",
+      [
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/personal-sec-interim-canonical-response.test.ts",
+      ["lookupPersonalSecurityMasterListing"],
+    ],
+    [
       "apps/api/src/managed-sec-filings-service.ts",
       [
         "lookupPersonalSecurityMasterListing",
@@ -11730,6 +12476,20 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     found.push(
       "scripts/verify-boundaries.ts: managed annual security-master import classifier regressed",
     );
+  for (const path of [
+    "apps/api/src/managed-sec-interim-service.ts",
+    "apps/api/src/personal-sec-interim-canonical-response.test.ts",
+  ]) {
+    const source = await cycle2kText(path, found);
+    if (
+      managedInterimSecurityImportInvariantFails(
+        path,
+        source,
+        allowedApiImporters,
+      )
+    )
+      found.push(`${path}: exact security-master importer refusal regressed`);
+  }
   const managedFilingsPath = "apps/api/src/managed-sec-filings-service.ts";
   const managedFilingsSource = await cycle2kText(managedFilingsPath, found);
   const managedFilingsImports = [
@@ -13313,6 +14073,28 @@ function personalSecurityMasterSourcePreparationExternalReference(
   return false;
 }
 
+function managedInterimSecurityImportInvariantFails(
+  path: string,
+  source: string,
+  allowed: ReadonlyMap<string, readonly string[]>,
+): boolean {
+  const violation = (candidatePath: string, text: string) =>
+    personalSecurityMasterApiImportViolation(candidatePath, text, allowed);
+  if (violation(path, source) !== null) return true;
+  const foreign = path.replace(/\.ts$/u, "-neighbor.ts");
+  if (violation(foreign, source) === null) return true;
+  const altered = source.replace(
+    "lookupPersonalSecurityMasterListing",
+    "searchPersonalSecurityMaster",
+  );
+  if (violation(path, altered) === null) return true;
+  return (
+    violation(
+      path,
+      `${source}\nimport * as unreviewed from "@research-cockpit/personal-security-master";`,
+    ) === null
+  );
+}
 function personalSecurityMasterApiImportViolation(
   path: string,
   content: string,

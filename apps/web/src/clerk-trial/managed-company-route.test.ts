@@ -9,7 +9,7 @@ describe("managed company query routes", () => {
   it.each(["listing-zero", "listing:goog.xnas", "listing:googl.xnas"])(
     "round-trips the exact canonical listing %s in all research sections",
     (listingId) => {
-      for (const section of ["eod", "annual", "filings"] as const) {
+      for (const section of ["eod", "annual", "interim", "filings"] as const) {
         const href = managedCompanyHref(listingId, section);
         const url = new URL(href, "https://example.test");
         expect(url.pathname).toBe("/");

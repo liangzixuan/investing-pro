@@ -34,7 +34,7 @@ function htmlDelivery() {
 const text =
   JSON.stringify({
     purpose: "investment.company-research",
-    schemaVersion: "5.0.0",
+    schemaVersion: "6.0.0",
     preparedAt: "2026-10-15T00:00:00.000Z",
     listing: { symbol: "ZERO", exchangeMic: "XNAS" },
     authoredResearch: {
@@ -244,7 +244,7 @@ describe("browser company report delivery", () => {
   it.each([
     ...["2.0.0", "3.0.0", "4.0.0"].map((schema) => {
       const oldText = text.replace(
-        '"schemaVersion":"5.0.0"',
+        '"schemaVersion":"6.0.0"',
         `"schemaVersion":"${schema}"`,
       );
       return {

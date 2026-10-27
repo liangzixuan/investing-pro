@@ -1,3 +1,4 @@
+import { interimResearchProps } from "./managed-interim-research-props";
 import type { ComponentProps } from "react";
 import type { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import type {
@@ -8,6 +9,8 @@ import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 type SourceActions = Pick<
   ComponentProps<typeof ManagedCompanyResearch>,
+  | "interim"
+  | "interimStatementsActions"
   | "filingsFollowupActions"
   | "holdingFollowupActions"
   | "holdingPosition"
@@ -26,6 +29,7 @@ export function managedCompanySourceActionsProps(
   navigation: ManagedCompanyNavigation | undefined,
 ): SourceActions {
   return {
+    ...interimResearchProps(workspace, visit),
     filingsFollowupActions: filingQuestionActions(workspace, visit),
     ...(visit.selection.origin === "portfolio"
       ? holdingQuestionActions(workspace, visit, navigation)
@@ -81,6 +85,7 @@ function selectCompanySourceSection(
   return (section) => {
     if (workspace.getSnapshot().research?.selection !== visit.selection) return;
     if (navigation) navigation.section(section);
+    else if (section === "interim") workspace.switchToInterim();
     else if (section === "annual") workspace.switchToAnnual();
     else if (section === "eod") workspace.switchToEod();
     else if (section === "filings") workspace.switchToFilings();

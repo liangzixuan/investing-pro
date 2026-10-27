@@ -124,6 +124,9 @@ function fixture(initial: ManagedPortfolioPayload | null = null) {
     ? { version: 1, payload: initial }
     : { version: 0, payload: null };
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),

@@ -100,6 +100,9 @@ function fixtureApi(value: ManagedPortfolioPayload) {
     Promise.reject(new Error("Unexpected source or resource request")),
   );
   const api = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
     load: watchlist.load,
     save: watchlist.save,

@@ -50,6 +50,9 @@ function useFixtureWorkspace(session: TrialSession) {
   useLayoutEffect(() => {
     const current = new ManagedWorkspace(fixture.api, session, undefined, {
       researchCoverage: fixture.researchCoverage,
+      ...(fixture.interimReview
+        ? { interimIssuers: fixture.interimReview.issuers }
+        : {}),
       marketsCohort: fixture.marketsCohort,
       priceCoverage: fixture.priceCoverage,
       ...(fixture.screenComparison
@@ -220,6 +223,11 @@ export function FixtureSession({ session, onFreshSession }: Props) {
           <p role="status">Loading your workspace…</p>
         )}
       </TrialFrame>
+      {fixture.interimReview && (
+        <pre id="fixture-interim-report-metadata" hidden>
+          {JSON.stringify(fixture.interimReview)}
+        </pre>
+      )}
       <DraftAndRevisitControls workspace={workspace} />
       <NativeDeliveryControls workspace={workspace} />
       <draftFileSession.Controls

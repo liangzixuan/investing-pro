@@ -32,7 +32,7 @@ export interface ManagedCompanyNavigation {
   isPending: () => boolean;
   returnFocus: number;
   open: (action: () => void) => void;
-  section: (section: "annual" | "eod" | "filings") => void;
+  section: (section: "annual" | "interim" | "eod" | "filings") => void;
   view: (view: WorkspaceView) => boolean;
   back: () => void;
   hasCompanyRoute: () => boolean;
@@ -184,9 +184,10 @@ export function useManagedCompanyNavigation(
   );
 
   const section = useCallback(
-    (next: "annual" | "eod" | "filings") => {
+    (next: "annual" | "interim" | "eod" | "filings") => {
       if (pendingNavigation.current || !workspace.canNavigate()) return;
       if (next === "annual") workspace.switchToAnnual();
+      else if (next === "interim") workspace.switchToInterim();
       else if (next === "eod") workspace.switchToEod();
       else if (next === "filings") workspace.switchToFilings();
       else return;

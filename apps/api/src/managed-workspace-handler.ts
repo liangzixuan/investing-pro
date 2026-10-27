@@ -30,6 +30,8 @@ import {
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_LIMITS,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_SEC_FILINGS_LIMITS,
@@ -58,6 +60,7 @@ import {
   parseManagedWatchlistCommand,
   parseManagedWatchlistReceipt,
   parseManagedSecAnnualCanonicalRequest,
+  parseManagedSecInterimCanonicalRequest,
   type ManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
 
@@ -82,6 +85,11 @@ import {
   type ValuationAssumptionsPrincipal,
 } from "./valuation-assumptions-repository";
 import type { ManagedCatalogService } from "./managed-workspace-catalog";
+import {
+  ManagedSecInterimServiceError,
+  type ManagedSecInterimService,
+} from "./managed-sec-interim-service";
+import { isManagedSecDataServiceError } from "./managed-source-service-errors";
 import {
   ManagedSecAnnualServiceError,
   type ManagedSecAnnualService,
@@ -131,6 +139,7 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly auth: ClerkTrialAuth;
   readonly catalog: ManagedCatalogService;
   readonly annual?: ManagedSecAnnualService;
+  readonly interim?: ManagedSecInterimService;
   readonly filings?: ManagedSecFilingsService;
   readonly eod?: ManagedEodService;
   readonly blsCalendar?: ManagedBlsCalendarService;
@@ -169,6 +178,7 @@ const PATHS: readonly string[] = [
   MANAGED_CATALOG_RESOLVE_PATH,
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_INTERIM_EVIDENCE_PATH,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_BLS_CALENDAR_PATH,
@@ -231,6 +241,7 @@ function methods(path: string): readonly string[] {
     return ["GET", "POST"];
   return path === MANAGED_CATALOG_RESOLVE_PATH ||
     path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH ||
+    path === MANAGED_SEC_INTERIM_EVIDENCE_PATH ||
     path === MANAGED_SEC_FILINGS_PATH ||
     path === MANAGED_EOD_HISTORY_PATH
     ? ["POST"]
@@ -251,6 +262,7 @@ function admitRoute(request: Request) {
         MANAGED_WATCHLIST_PATH,
         MANAGED_CATALOG_RESOLVE_PATH,
         MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+        MANAGED_SEC_INTERIM_EVIDENCE_PATH,
         MANAGED_SEC_FILINGS_PATH,
         MANAGED_EOD_HISTORY_PATH,
       ] as readonly string[]
@@ -561,11 +573,7 @@ function errorResponse(
   ) {
     code = error.code;
     status = code === "request_timeout" ? 408 : 503;
-  } else if (
-    error instanceof ManagedSecAnnualServiceError ||
-    error instanceof ManagedSecFilingsServiceError ||
-    error instanceof ManagedEodServiceError
-  ) {
+  } else if (isManagedSecDataServiceError(error)) {
     if (
       error instanceof ManagedSecFilingsServiceError &&
       parseManagedSecFilingsError(
@@ -746,6 +754,31 @@ export function createManagedWorkspaceHandler(
           headers,
         );
         options.annual.assertActive(request.signal);
+        return response;
+      }
+      if (route.path === MANAGED_SEC_INTERIM_EVIDENCE_PATH) {
+        const command = parseManagedSecInterimCanonicalRequest(
+          await readJson(
+            request,
+            MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.requestBytes,
+          ),
+        );
+        if (command === null) throw new RequestFailure(400, "invalid_request");
+        requireActiveRequest(request);
+        if (options.interim === undefined)
+          throw new ManagedSecInterimServiceError("not_configured");
+        const result = await options.interim.load(
+          command,
+          auth.principal,
+          request.signal,
+        );
+        options.interim.assertActive(request.signal);
+        response = jsonResponse(
+          result,
+          MANAGED_SEC_INTERIM_EVIDENCE_LIMITS.responseBytes,
+          headers,
+        );
+        options.interim.assertActive(request.signal);
         return response;
       }
       if (route.path === MANAGED_SEC_FILINGS_PATH) {

@@ -8,7 +8,10 @@ import {
   prepareCompanyReport,
   companyReportIsCurrent,
 } from "./managed-company-report";
-import { formatCompanyReportDocument } from "./managed-company-report-document";
+import {
+  COMPANY_REPORT_DOCUMENT_MAX_BYTES,
+  formatCompanyReportDocument,
+} from "./managed-company-report-document";
 import { CompanyReportRevisit } from "./company-report-revisit";
 import type { ResearchWatchlistState } from "./managed-workspace";
 
@@ -47,6 +50,7 @@ async function fixture() {
       price.getSnapshot(),
       annual.getSnapshot(),
       filings.getSnapshot(),
+      null,
     );
   const report = () =>
     prepareCompanyReport(eodSelection, evidence(), watchlist(), now)!;
@@ -174,7 +178,7 @@ describe("private report revisit read and whole-note lifecycle", () => {
   });
   it("checks advertised bytes before reading and refuses false actual bytes", async () => {
     const f = await fixture();
-    for (const size of [0, -1, 2_850_817, 1.5]) {
+    for (const size of [0, -1, COMPANY_REPORT_DOCUMENT_MAX_BYTES + 1, 1.5]) {
       const file = { size, arrayBuffer: vi.fn() };
       await f.controller.readFile(file);
       expect(file.arrayBuffer).not.toHaveBeenCalled();

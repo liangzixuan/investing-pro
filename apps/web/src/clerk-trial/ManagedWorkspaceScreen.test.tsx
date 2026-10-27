@@ -402,6 +402,9 @@ function fixture(
   priceCoverage = [eodSelection.listing, ...payload.memberships],
 ) {
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),
@@ -3160,7 +3163,7 @@ describe("managed workspace screen", () => {
     const tree = elements(ManagedCompanyResearch(company.props));
     const nav = tree.find((node) => node.type === "nav")!;
     const sections = elements(nav).filter((node) => node.type === "button");
-    expect(sections).toHaveLength(3);
+    expect(sections).toHaveLength(4);
     expect(
       sections.every(
         (node) => (node.props as React.ComponentProps<"button">).disabled,

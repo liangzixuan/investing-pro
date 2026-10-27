@@ -83,6 +83,9 @@ async function fixture(withPrice = false) {
   const unexpected = () =>
     Promise.reject(new Error("Unexpected source or unrelated storage request"));
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     loadValuationAssumptions: vi
       .fn<ManagedApi["loadValuationAssumptions"]>()
       .mockRejectedValue(
@@ -145,6 +148,7 @@ async function fixture(withPrice = false) {
       workspace.eod.getSnapshot(),
       workspace.annual.getSnapshot(),
       workspace.filings.getSnapshot(),
+      null,
     );
   const prepare = () =>
     workspace.prepareValuationNote(selection(), "dcf", "base");
@@ -251,7 +255,7 @@ describe("composed authored valuation workflow", () => {
     const doc = formatCompanyReportDocument(report)!;
     expect(isCompanyReportDocument(doc)).toBe(true);
     const parsed: unknown = JSON.parse(doc.text);
-    expect(parsed).toHaveProperty("schemaVersion", "5.0.0");
+    expect(parsed).toHaveProperty("schemaVersion", "6.0.0");
     expect(parsed).toHaveProperty("authoredResearch.note", preview.note);
     expect(parsed).toHaveProperty("valuation", capture);
     expect(parsed).toHaveProperty(
@@ -263,6 +267,7 @@ describe("composed authored valuation workflow", () => {
       25,
     );
     expect(parsed).toHaveProperty("sources", {
+      interim: { status: "not_loaded", lastAttemptFailed: false },
       price: { status: "not_loaded", lastAttemptFailed: false },
       annual: { status: "not_loaded", lastAttemptFailed: false },
       filings: { status: "not_loaded", lastAttemptFailed: false },
@@ -521,7 +526,7 @@ function pendingPrice() {
   return { promise, resolve };
 }
 describe("composed authored valuation with explicitly dated Price", () => {
-  it("opts in to a whole dated-comparison note, appends once, captures schema5, Reviews/Saves and reads the exact note in a fresh workspace", async () => {
+  it("opts in to a whole dated-comparison note, appends once, captures schema6, Reviews/Saves and reads the exact note in a fresh workspace", async () => {
     const f = await pricedFixture();
     const before = f.workspace.coordinator.getSnapshot().draft;
     const without = f.workspace.prepareValuationNote(
@@ -547,7 +552,7 @@ describe("composed authored valuation with explicitly dated Price", () => {
     const doc = formatCompanyReportDocument(report)!;
     expect(isCompanyReportDocument(doc)).toBe(true);
     const parsed: unknown = JSON.parse(doc.text);
-    expect(parsed).toHaveProperty("schemaVersion", "5.0.0");
+    expect(parsed).toHaveProperty("schemaVersion", "6.0.0");
     expect(parsed).toHaveProperty("authoredResearch.note", preview.note);
     expect(parsed).toHaveProperty("sources.price.response", f.packet);
     expect(parsed).toHaveProperty("valuationPrice.reference", {

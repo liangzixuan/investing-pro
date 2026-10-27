@@ -160,6 +160,9 @@ async function settle() {
 }
 function fixture() {
   const api: ManagedApi = {
+    interimReport: vi
+      .fn<() => Promise<never>>()
+      .mockRejectedValue(new Error("Unexpected interim read")),
     loadValuationAssumptions: () =>
       Promise.reject(
         new Error("Unexpected invented valuation assumptions read"),
@@ -270,6 +273,52 @@ function direct(search = "?company=listing-zero&section=price") {
 }
 
 describe("managed company URL navigation", () => {
+  it("routes the rendered Interim section to its real model without a source read and keeps the authored draft", async () => {
+    const f = fixture();
+    await f.ready();
+    f.workspace.setView("watchlist");
+    let nav = f.render();
+    const member = f.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    nav.open(() => f.workspace.openWatchlistAnnual(member));
+    nav = f.render();
+    const selection = f.workspace.getSnapshot().research!.selection;
+    f.workspace.noteResearch(
+      selection,
+      "Thèse café 📈 retained through Interim",
+    );
+    const draft = f.workspace.coordinator.getSnapshot().draft;
+    nav.section("interim");
+    expect(f.workspace.getSnapshot().research?.section).toBe("interim");
+    expect(f.workspace.interim.getSnapshot().selection).toStrictEqual(
+      selection,
+    );
+    expect(mount.entries[mount.cursor]?.search).toBe(
+      "?company=listing-zero&section=interim",
+    );
+    expect(nav.isPending()).toBe(true);
+    nav = f.render();
+    expect(nav.isPending()).toBe(false);
+    expect(f.workspace.getSnapshot().companyRoute?.section).toBe("interim");
+    expect(f.workspace.interim.getSnapshot()).toMatchObject({
+      running: false,
+      response: null,
+    });
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(draft);
+    for (const read of [
+      f.api.interimReport,
+      f.api.annualReport,
+      f.api.eodHistory,
+      f.api.recentFilings,
+    ])
+      expect(read).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+    nav.back();
+    f.render();
+    expect(f.workspace.getSnapshot().research).toBeNull();
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(mount.navigate).toHaveBeenLastCalledWith(-1);
+  });
+
   it("loads explicit company sources while the applied URL keeps outer workspace navigation blocked", async () => {
     const f = fixture();
     await f.ready();
@@ -416,7 +465,7 @@ describe("managed company URL navigation", () => {
     f.workspace.coordinator.retire();
     expect(f.workspace.announcements.getSnapshot().announcements).toBeNull();
   });
-  it.each(["price", "annual", "filings"])(
+  it.each(["price", "annual", "interim", "filings"])(
     "resolves a cold %s link after catalog readiness without source loads and replaces it on Back",
     async (section) => {
       direct(`?company=listing-zero&section=${section}`);
@@ -429,6 +478,10 @@ describe("managed company URL navigation", () => {
       await settle();
       let nav = f.render();
       expect(f.api.resolve).toHaveBeenCalledTimes(1);
+      expect(f.workspace.getSnapshot().research?.section).toBe(
+        section === "price" ? "eod" : section,
+      );
+      expect(f.api.interimReport).not.toHaveBeenCalled();
       expect(f.workspace.getSnapshot().research?.selection).toMatchObject({
         origin: "route",
         cik: null,
@@ -498,7 +551,7 @@ describe("managed company URL navigation", () => {
     ).toBe("Unsent invented note");
   });
 
-  it.each(["annual", "eod", "filings"] as const)(
+  it.each(["annual", "interim", "eod", "filings"] as const)(
     "replaces companies in %s and returns once to the original watchlist",
     async (section) => {
       const f = fixture();
@@ -556,6 +609,7 @@ describe("managed company URL navigation", () => {
       for (const read of [
         f.api.eodHistory,
         f.api.annualReport,
+        f.api.interimReport,
         f.api.recentFilings,
         f.api.resolve,
         f.api.save,

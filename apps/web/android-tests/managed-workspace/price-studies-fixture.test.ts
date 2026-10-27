@@ -86,6 +86,7 @@ function captureReport(f: Awaited<ReturnType<typeof setup>>) {
       f.workspace.eod.getSnapshot(),
       f.workspace.annual.getSnapshot(),
       f.workspace.filings.getSnapshot(),
+      f.workspace.interim.getSnapshot(),
     ),
     f.workspace.getResearchWatchlist(f.visit().selection),
   )!;
@@ -130,7 +131,7 @@ function assertReportDocument(
   const text = formatCompanyReportDocument(report)!.text;
   const parsed: unknown = JSON.parse(text);
   expect(parsed).toMatchObject({
-    schemaVersion: "5.0.0",
+    schemaVersion: "6.0.0",
     authoredResearch: { note: priceStudiesNoteDraft },
     sources: {
       price: {

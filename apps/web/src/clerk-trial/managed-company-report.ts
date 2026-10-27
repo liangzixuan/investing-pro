@@ -1,3 +1,5 @@
+import { isOwnedSecInterimCanonicalResponse } from "../lib/sec-interim-canonical-response";
+import { getManagedInterimView } from "./managed-interim-view";
 import { isOwnedSecAnnualCanonicalResponse } from "../lib/sec-annual-canonical-response";
 import { getManagedAnnualView } from "./managed-annual-view";
 import {
@@ -61,7 +63,12 @@ export function companyReportBlock(
     return "Valuation inputs no longer match this company.";
   if (member && !membershipMatchesResult(member, selection.listing))
     return "The watchlist note no longer matches this company.";
-  const states = [evidence.price, evidence.annual, evidence.filings];
+  const states = [
+    evidence.price,
+    evidence.annual,
+    evidence.interim,
+    evidence.filings,
+  ];
   if (
     states.some(
       (source) =>
@@ -73,12 +80,20 @@ export function companyReportBlock(
     return "Source evidence no longer matches this company.";
   if (states.some((source) => source?.running) || evidence.annual?.checkingSeed)
     return "Wait for source loads to finish before preparing this report.";
-  if (!companyReportAnnualEvidenceIsOwned(evidence.annual))
-    return "Annual results no longer match their admitted source.";
+  const canonicalProblem = canonicalReportProblem(evidence);
+  if (canonicalProblem) return canonicalProblem;
   if (!companyReportPriceEvidenceIsOwned(selection, evidence.price))
     return "Price results no longer match their admitted company source.";
   if (!valuation && !states.some((source) => source?.response))
     return "Load at least one company source or calculate authored valuation assumptions before preparing this report.";
+  return null;
+}
+
+function canonicalReportProblem(evidence: CompanyReportEvidence) {
+  if (!companyReportInterimEvidenceIsOwned(evidence.interim))
+    return "Interim results no longer match their admitted source.";
+  if (!companyReportAnnualEvidenceIsOwned(evidence.annual))
+    return "Annual results no longer match their admitted source.";
   return null;
 }
 
@@ -128,6 +143,7 @@ export function companyReportIsCurrent(
     companyReportPriceStudiesIsOwned(report) &&
     report.evidence.price === evidence.price &&
     report.evidence.annual === evidence.annual &&
+    report.evidence.interim === evidence.interim &&
     report.evidence.filings === evidence.filings &&
     report.note === (watchlist.member?.note ?? null) &&
     report.watchlistRevision === watchlist.revision
@@ -228,5 +244,41 @@ export function companyReportAnnualEvidenceIsOwned(
     security.securityName === listing.securityName &&
     security.country === listing.country &&
     security.exchangeMic === listing.exchangeMic
+  );
+}
+
+/** Require the decoder-owned canonical graph and its exact cached derived view. */
+export function companyReportInterimEvidenceIsOwned(
+  source: CompanyReportEvidence["interim"],
+): boolean {
+  if (!source) return true;
+  if (source.response === null) return source.view === null;
+  if (source.view === null || source.selection === null) return false;
+  if (!isOwnedSecInterimCanonicalResponse(source.response)) return false;
+  if (source.view.canonical !== source.response.evidence) return false;
+  if (getManagedInterimView(source.response) !== source.view) return false;
+  return interimReportIdentityMatches(source.response, source.selection);
+}
+function interimReportIdentityMatches(
+  response: NonNullable<
+    NonNullable<CompanyReportEvidence["interim"]>["response"]
+  >,
+  selection: ManagedResearchSelection,
+) {
+  if (response.catalogSnapshotSha256 !== selection.catalogSnapshotSha256)
+    return false;
+  if (selection.cik !== null && response.security.cik !== selection.cik)
+    return false;
+  const fields = [
+    "listingId",
+    "symbol",
+    "issuerId",
+    "issuerName",
+    "securityName",
+    "country",
+    "exchangeMic",
+  ] as const;
+  return fields.every(
+    (key) => response.security[key] === selection.listing[key],
   );
 }
