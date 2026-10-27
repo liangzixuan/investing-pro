@@ -243,3 +243,10 @@ export {
   type AuthoredPortfolioCloseReviewLine,
   type AuthoredPortfolioCloseReviewResult,
 } from "./authored-portfolio-close-review";
+
+export {
+  AUTHORED_PORTFOLIO_CLOSE_COMPOSITION_METHOD,
+  type AuthoredPortfolioCloseComposition,
+  type AuthoredPortfolioCloseCompositionHolding,
+  type AuthoredPortfolioCloseCompositionUnavailableReason,
+} from "./authored-portfolio-close-composition";

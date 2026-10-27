@@ -4,6 +4,7 @@ import type {
   PortfolioCloseState,
 } from "./managed-portfolio-close-review";
 import { PortfolioIdentity } from "./ManagedPortfolioLedgerDetails";
+import { PortfolioCloseComposition } from "./PortfolioCloseComposition";
 
 type Review = AuthoredPortfolioCloseReviewResult | null | undefined;
 type Research = (listingId: string, opener: HTMLButtonElement) => void;
@@ -236,7 +237,16 @@ function LoadedReview({
     <>
       <p role="status">{state.message}</p>
       <ObservedDate state={state} onDate={onDate} />
-      {review && <Totals review={review} />}
+      {review && (
+        <>
+          <Totals review={review} />
+          <PortfolioCloseComposition
+            id="portfolio-close-composition"
+            review={review}
+            rows={state.rows}
+          />
+        </>
+      )}
       {!state.rows.length && <p>No current positive holdings.</p>}
       <Holdings state={state} review={review} onResearch={onResearch} />
     </>

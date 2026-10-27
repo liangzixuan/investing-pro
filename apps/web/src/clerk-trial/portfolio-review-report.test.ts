@@ -31,6 +31,56 @@ function twoHoldings() {
   });
 }
 describe("owned completed Portfolio report capture", () => {
+  it("freezes the canonical composition with the report's whole captured review", () => {
+    const input = portfolioReviewReportFixture();
+    const report = preparePortfolioReviewReport(input)!;
+    expect(report.review.composition).toEqual(input.review.composition);
+    expect(report.review.composition).toMatchObject({
+      status: "available",
+      totalValueUsd: "213.00",
+      cashUsd: "10.00",
+      cashPercent: "4.69",
+      holdings: [
+        {
+          listingId: eodSelection.listing.listingId,
+          valueUsd: "203.00",
+          percent: "95.31",
+        },
+      ],
+    });
+    expect(Object.isFrozen(report.review.composition)).toBe(true);
+    expect(Object.isFrozen(report.review.composition.holdings)).toBe(true);
+    expect(Object.isFrozen(report.review.composition.holdings[0])).toBe(true);
+  });
+  it.each([
+    ["status", "unavailable"],
+    ["reason", "zero_total"],
+    ["totalValueUsd", "203.00"],
+    ["cashUsd", "0.00"],
+    ["cashPercent", "0.00"],
+    ["method", "priced_subset"],
+  ])("refuses forged composition %s instead of capturing it", (key, value) => {
+    const input = structuredClone(portfolioReviewReportFixture());
+    expect(Reflect.set(input.review.composition, key, value)).toBe(true);
+    expect(preparePortfolioReviewReport(input)).toBeNull();
+  });
+  it("refuses a forged per-listing percentage or priced-subset composition", () => {
+    const complete = structuredClone(portfolioReviewReportFixture());
+    expect(
+      Reflect.set(
+        complete.review.composition.holdings[0]!,
+        "percent",
+        "100.00",
+      ),
+    ).toBe(true);
+    expect(preparePortfolioReviewReport(complete)).toBeNull();
+    const partial = structuredClone(twoHoldings());
+    expect(partial.review.composition.status).toBe("unavailable");
+    expect(
+      Reflect.set(partial.review.composition.holdings[0]!, "percent", "100.00"),
+    ).toBe(true);
+    expect(preparePortfolioReviewReport(partial)).toBeNull();
+  });
   it("copies and freezes exact ledger, holdings, raw packet and half-up values without changing input", () => {
     const input = structuredClone(portfolioReviewReportFixture());
     const before = JSON.stringify(input);

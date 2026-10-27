@@ -11,6 +11,20 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Dated Portfolio composition
+
+Place **Composition at this close** beside the existing dated holdings values.
+Use the same readable table in the current review and captured report. Keep each
+exact listing/share class, USD line value, authored-cash row and percentage next
+to its complete denominator and original dates. Wrap identities and long values
+at narrow widths. Use explicit text for unavailable percentages and the reason;
+keep readable line values when composition is unavailable.
+
+Explain independent two-decimal half-up percentage rounding without adjusting
+rows to force 100%. Keep the existing labelled Research, next-check preview,
+Back, separate Save and report controls with their 44px targets and focus.
+Composition introduces no automatic source read, saved selection or verdict.
+
 ## A dated check from a Markets calendar item
 
 Give each loaded day-view item a labelled **Keep a dated check** action. Open

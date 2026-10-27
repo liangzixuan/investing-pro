@@ -60,7 +60,11 @@ function useFixtureWorkspace(session: TrialSession) {
         : {}),
     });
     setWorkspace(current);
-    if (scenario !== "holding-followup") void current.coordinator.load();
+    if (
+      scenario !== "holding-followup" &&
+      scenario !== "portfolio-composition-review"
+    )
+      void current.coordinator.load();
     void current.refreshCatalog();
     return () => current.sessionOwner.dispose();
   }, [session]);
@@ -168,12 +172,14 @@ function NativeDeliveryControls({
 function ResourceControls({ workspace, onFreshSession }: MountedProps) {
   return (
     <>
-      {workspace && scenario === "holding-followup" && (
-        <HoldingFollowupFixtureControls
-          workspace={workspace}
-          onFreshSession={onFreshSession}
-        />
-      )}
+      {workspace &&
+        (scenario === "holding-followup" ||
+          scenario === "portfolio-composition-review") && (
+          <HoldingFollowupFixtureControls
+            workspace={workspace}
+            onFreshSession={onFreshSession}
+          />
+        )}
       {workspace && fixture.portfolio && (
         <PortfolioFixtureControls
           workspace={workspace}

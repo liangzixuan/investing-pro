@@ -20,6 +20,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         COMPANY_SNAPSHOT_LOADING("company-snapshot-loading"),
         FOLLOWUPS_REVIEW_REPORT("followups-review-report"),
         HOLDING_FOLLOWUP("holding-followup"),
+        PORTFOLIO_COMPOSITION_REVIEW("portfolio-composition-review"),
         MARKETS_SOURCE_REVIEW("markets-source-review"),
         MARKETS_CALENDAR_FOLLOWUP("markets-calendar-followup"),
         FOLLOWUP_ASSESSMENT_NOTE("followup-assessment-note");

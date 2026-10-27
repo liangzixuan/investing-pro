@@ -251,6 +251,9 @@ describe("Dated holdings review committed UI", () => {
     const f = fixture();
     let node = f.render();
     expect(f.read).not.toHaveBeenCalled();
+    expect(renderToStaticMarkup(node)).not.toContain(
+      "portfolio-close-composition",
+    );
     expect(button(node, "Load holding closes").props.disabled).toBe(false);
     const loading = vi.spyOn(f.models[0]!, "load");
     click(button(node, "Load holding closes"));
@@ -259,6 +262,9 @@ describe("Dated holdings review committed UI", () => {
     const html = renderToStaticMarkup(node);
     expect(html).toContain("203.00");
     expect(html).toContain("213.00");
+    expect(html).toContain('id="portfolio-close-composition"');
+    expect(html).toContain("95.31%");
+    expect(html).toContain("4.69%");
     expect(html).toContain("2026-09-19");
     expect(html).toContain("raw_close");
     expect(html).toContain("2026-08-20");
@@ -274,6 +280,8 @@ describe("Dated holdings review committed UI", () => {
     });
     node = f.render();
     expect(renderToStaticMarkup(node)).toContain("200.50");
+    expect(renderToStaticMarkup(node)).toContain("95.25%");
+    expect(renderToStaticMarkup(node)).toContain("4.75%");
     const opener = {} as HTMLButtonElement;
     click(button(node, "Research ZERO"), { currentTarget: opener });
     expect(f.onResearch).toHaveBeenCalledExactlyOnceWith(

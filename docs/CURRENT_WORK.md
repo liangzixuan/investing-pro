@@ -1,19 +1,36 @@
 # Current work
 
-Updated October 26, 2026. This is the current capability and delivery record.
+Updated October 27, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: a dated check from a Markets calendar item
+## Selected next: dated Portfolio composition review
 
-The [calendar Follow-ups workflow](MANAGED_CALENDAR_FOLLOWUP.md) is the next
-M3/M4 candidate. Choose one loaded BLS/BEA/Fed item and independently choose an
-exact My Watchlist company. Preview the full question, citation and UTC due
-date, create one independent Follow-ups draft entry, then use the existing
-exact-entry Research/Back and separate Save/fresh Load. Original source,
-synthetic native and client acceptance remain pending. Existing source reads,
-resource limits and recovery safeguards remain.
+The [composition workflow](MANAGED_PORTFOLIO_COMPOSITION.md) adds exact holding
+and authored-cash shares of one complete positive dated total. Continue through
+existing exact-company research, a dated next check, Back and separate Saves.
+The existing private reading report captures the same complete calculation.
+Missing cash or prices and zero totals keep all percentages unavailable. No
+partial subset is normalized to 100%. Source, synthetic native and client
+acceptance remain pending. Existing sources, storage and budgets remain.
+
+## Accepted and delivered: a dated check from a Markets calendar item
+
+[PR 246](https://github.com/liangzixuan/investing-pro/pull/246) merged at
+`004e7a3cb1f045ed8013c41849802f794246f32b`. The original required PR/main
+checks and complete synthetic native 94-case scope passed. The
+[calendar workflow](MANAGED_CALENDAR_FOLLOWUP.md) keeps a complete cited question
+for an independently chosen exact Watchlist company, then uses Research/Back
+and separate Follow-ups Save/fresh Load. Original source clocks, unknown times
+and the authored UTC due date remain distinct.
+
+Android 1.49.0/code50 is provided locally. Its guarded build, complete input,
+asset and notice checks, existing production signature, compiled XML and all
+DEX checks passed. The delivered APK matches the guarded APK. Narrow checker
+corrections retained original failures and reused the signed artifact. No
+installation or physical-device acceptance is claimed. API, website, prior
+releases, owner data and unrelated checkouts remain unchanged.
 
 ## Accepted and delivered: an explicit Markets source review pass
 

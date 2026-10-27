@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PortfolioReviewReportSnapshot } from "./PortfolioReviewReportSnapshot";
+import { PortfolioCloseComposition } from "./PortfolioCloseComposition";
 import { preparePortfolioReviewReport } from "./portfolio-review-report";
 import {
   portfolioReviewReportFixture,
@@ -8,6 +9,43 @@ import {
 } from "./portfolio-review-report-fixture";
 
 describe("read-only captured Portfolio report", () => {
+  it("uses the same complete composition table with a distinct captured ID and full JSON appendix", () => {
+    const input = portfolioReviewReportFixture();
+    const report = preparePortfolioReviewReport(input)!;
+    const captured = renderToStaticMarkup(
+      <PortfolioReviewReportSnapshot report={report} />,
+    );
+    const live = renderToStaticMarkup(
+      <PortfolioCloseComposition
+        id="portfolio-close-composition"
+        review={report.review}
+        rows={report.sourceRows}
+      />,
+    );
+    expect(captured).toContain(
+      live.replaceAll(
+        'id="portfolio-close-composition',
+        'id="portfolio-report-composition',
+      ),
+    );
+    expect(captured).toContain('id="portfolio-report-composition"');
+    expect(captured).not.toContain('id="portfolio-close-composition"');
+    expect(captured).toContain("95.31%");
+    expect(captured).toContain("4.69%");
+    expect(captured).toContain(
+      "displayed_usd_cents_over_complete_total_percent_half_up_2dp",
+    );
+    const appendix = captured
+      .match(/<pre>([\s\S]*)<\/pre>/u)![1]!
+      .replaceAll("&quot;", '"')
+      .replaceAll("&#x27;", "'")
+      .replaceAll("&gt;", ">")
+      .replaceAll("&lt;", "<")
+      .replaceAll("&amp;", "&");
+    expect(JSON.parse(appendix)).toMatchObject({
+      review: { composition: report.review.composition },
+    });
+  });
   it("contains full ledger and raw source appendix, every identity field, unknowns and original clocks", () => {
     const f = portfolioReviewReportFixture();
     const input = portfolioReviewReportInput({
