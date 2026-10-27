@@ -49,13 +49,19 @@ function sourceDisposition(
   return selected ? "missing" : "not_attempted";
 }
 /** Project only captured source evidence; this never opens or loads a model. */
-export function companySourcePassRows(
-  sources: readonly SnapshotLoadSource[],
-  selection: ManagedResearchSelection,
-  names: readonly CompanySnapshotLoadSource[],
-  outcomes?: CompanySourceOutcomes,
-  states?: readonly SnapshotSourceState[],
-): readonly CompanySourcePassRow[] {
+export function companySourcePassRows({
+  sources,
+  selection,
+  names,
+  outcomes,
+  states,
+}: {
+  readonly sources: readonly SnapshotLoadSource[];
+  readonly selection: ManagedResearchSelection;
+  readonly names: readonly CompanySnapshotLoadSource[];
+  readonly outcomes?: CompanySourceOutcomes;
+  readonly states?: readonly SnapshotSourceState[] | undefined;
+}): readonly CompanySourcePassRow[] {
   return Object.freeze(
     sources.map((source, index) => {
       const state = states?.[index] ?? source.model.getSnapshot();

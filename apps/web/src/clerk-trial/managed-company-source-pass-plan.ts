@@ -34,7 +34,11 @@ export class ReviewedCompanySourcePlan {
     this.handle = Object.freeze({
       selection: this.operation.captured,
       names,
-      rows: companySourcePassRows(sources, this.operation.captured, names),
+      rows: companySourcePassRows({
+        sources,
+        selection: this.operation.captured,
+        names,
+      }),
     });
   }
   static capture(
@@ -90,13 +94,13 @@ export class CompanySourcePassRun {
     observation: CompanySourcePassObservation,
   ) {
     const { selection, names } = this.plan.handle;
-    return companySourcePassRows(
+    return companySourcePassRows({
       sources,
       selection,
       names,
-      observation.state.outcomes,
-      observation.sources,
-    );
+      outcomes: observation.state.outcomes,
+      states: observation.sources,
+    });
   }
   cancelledRows(
     sources: readonly SnapshotLoadSource[],
