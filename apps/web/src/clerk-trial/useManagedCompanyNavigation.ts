@@ -187,6 +187,7 @@ export function useManagedCompanyNavigation(
     (next: "annual" | "interim" | "eod" | "filings") => {
       if (pendingNavigation.current || !workspace.canNavigate()) return;
       if (next === "annual") workspace.switchToAnnual();
+      else if (next === "interim") workspace.switchToInterim();
       else if (next === "eod") workspace.switchToEod();
       else if (next === "filings") workspace.switchToFilings();
       else return;

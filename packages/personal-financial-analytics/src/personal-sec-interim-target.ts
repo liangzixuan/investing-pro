@@ -41,14 +41,28 @@ function filings(value: unknown): readonly Filing[] {
 const unresolved = (reason: Reason): Target =>
   Object.freeze({ status: "unresolved", reason });
 
-function targetDateReason(first: Filing, cutoffAt: string): Reason | null {
+interface RetrievalWindow {
+  readonly cutoffAt: string;
+  readonly fetchedAt: string;
+}
+interface ObservedCutoff {
+  readonly dateUtc: string;
+  readonly epochMilliseconds: number;
+}
+/** Missing acceptance time cannot establish observation within the cutoff day. */
+function unknownAcceptanceReason(
+  first: Filing,
+  cutoff: ObservedCutoff,
+): Reason | null {
+  return first.filedDate === cutoff.dateUtc ? "cutoff_time_unresolved" : null;
+}
+function targetDateReason(
+  first: Filing,
+  cutoff: ObservedCutoff,
+): Reason | null {
   if (first.reportDate! > first.filedDate!)
     return "future_or_inconsistent_dates";
-  if (first.acceptedAt === null) {
-    return first.filedDate === cutoffAt.slice(0, 10)
-      ? "cutoff_time_unresolved"
-      : null;
-  }
+  if (first.acceptedAt === null) return unknownAcceptanceReason(first, cutoff);
   return first.acceptedAt.slice(0, 10) < first.reportDate!
     ? "future_or_inconsistent_dates"
     : null;
@@ -75,12 +89,12 @@ function selectionReason(
 }
 function selectedTarget(
   candidates: readonly Filing[],
-  cutoffAt: string,
+  cutoff: ObservedCutoff,
 ): Target {
   const first = candidates[0];
   if (!first) return unresolved("no_observed_interim_target");
   const reason =
-    targetDateReason(first, cutoffAt) ?? selectionReason(candidates, first);
+    targetDateReason(first, cutoff) ?? selectionReason(candidates, first);
   if (reason) return unresolved(reason);
   return Object.freeze({
     status: "target",
@@ -91,23 +105,23 @@ function selectedTarget(
     acceptedAt: first.acceptedAt,
   });
 }
-function validRetrievalClock(cutoffAt: string, fetchedAt: string): boolean {
-  if (!timestamp(cutoffAt)) return false;
-  if (!timestamp(fetchedAt)) return false;
-  return fetchedAt >= cutoffAt;
+function validRetrievalClock(window: RetrievalWindow): boolean {
+  if (!timestamp(window.cutoffAt)) return false;
+  if (!timestamp(window.fetchedAt)) return false;
+  return window.fetchedAt >= window.cutoffAt;
 }
-function observedAtCutoff(row: Filing, cutoffAt: string): boolean {
-  if (row.filedDate! > cutoffAt.slice(0, 10)) return false;
+function observedAtCutoff(row: Filing, cutoff: ObservedCutoff): boolean {
+  if (row.filedDate! > cutoff.dateUtc) return false;
   if (row.acceptedAt === null) return true;
-  return Date.parse(row.acceptedAt) <= Date.parse(cutoffAt);
+  return Date.parse(row.acceptedAt) <= cutoff.epochMilliseconds;
 }
 function selectObservedTarget(
   interim: readonly Filing[],
-  cutoffAt: string,
+  cutoff: ObservedCutoff,
 ): Target {
   if (interim.some((row) => row.filedDate === null))
     return unresolved("filed_date_missing");
-  const observed = interim.filter((row) => observedAtCutoff(row, cutoffAt));
+  const observed = interim.filter((row) => observedAtCutoff(row, cutoff));
   if (observed.some((row) => row.reportDate === null))
     return unresolved("target_missing_report_date");
   observed.sort(
@@ -115,7 +129,7 @@ function selectObservedTarget(
       lexical(right.reportDate!, left.reportDate!) ||
       lexical(right.filedDate!, left.filedDate!),
   );
-  return selectedTarget(observed, cutoffAt);
+  return selectedTarget(observed, cutoff);
 }
 
 /** Select complete metadata before values. No fallback behind amendments or a failed target. */
@@ -125,13 +139,17 @@ export function selectPersonalSecInterimTarget(
   fetchedAt: string,
 ): Target {
   if (value === null) return unresolved("submissions_unavailable");
-  if (!validRetrievalClock(cutoffAt, fetchedAt))
-    return unresolved("invalid_clock");
+  const retrieval: RetrievalWindow = { cutoffAt, fetchedAt };
+  if (!validRetrievalClock(retrieval)) return unresolved("invalid_clock");
   try {
     const interim = filings(value).filter(
       (row) => row.form === "10-Q" || row.form === "10-Q/A",
     );
-    return selectObservedTarget(interim, cutoffAt);
+    const cutoff: ObservedCutoff = {
+      dateUtc: cutoffAt.slice(0, 10),
+      epochMilliseconds: Date.parse(cutoffAt),
+    };
+    return selectObservedTarget(interim, cutoff);
   } catch {
     return unresolved("invalid_submissions");
   }

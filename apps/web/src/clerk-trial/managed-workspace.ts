@@ -1278,6 +1278,7 @@ export class ManagedWorkspace {
       !route ||
       !isManagedCompanyListingId(route.listingId) ||
       (route.section !== "annual" &&
+        route.section !== "interim" &&
         route.section !== "eod" &&
         route.section !== "filings")
     ) {

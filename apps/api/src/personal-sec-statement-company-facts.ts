@@ -83,11 +83,9 @@ export function scanPersonalSecStatementCompanyFacts<Id extends string>(
 }
 
 function issuerFacts(value: unknown, cik: string): Record<string, unknown> {
-  if (!isRecord(value)) throw new PersonalSecSourceError("invalid_response");
-  if (normalizePersonalSecSourceCik(value.cik) !== cik)
-    throw new PersonalSecSourceError("invalid_response");
-  if (!isRecord(value.facts))
-    throw new PersonalSecSourceError("invalid_response");
+  if (!isRecord(value)) invalidSource();
+  if (normalizePersonalSecSourceCik(value.cik) !== cik) invalidSource();
+  if (!isRecord(value.facts)) invalidSource();
   return value.facts;
 }
 function sourceTaxonomy(
@@ -96,7 +94,7 @@ function sourceTaxonomy(
 ): Record<string, unknown> | undefined {
   const taxonomy = issuerFacts(value, cik)["us-gaap"];
   if (taxonomy === undefined) return undefined;
-  if (!isRecord(taxonomy)) throw new PersonalSecSourceError("invalid_response");
+  if (!isRecord(taxonomy)) invalidSource();
   return taxonomy;
 }
 
@@ -197,14 +195,12 @@ function candidates(entry: unknown): Readonly<{
   if (entry === undefined) return { rows: [], absence: "concept_missing" };
   const rows = conceptUnits(entry).USD;
   if (rows === undefined) return { rows: [], absence: "usd_missing" };
-  if (!Array.isArray(rows))
-    throw new PersonalSecSourceError("invalid_response");
+  if (!Array.isArray(rows)) invalidSource();
   return { rows, absence: rows.length === 0 ? "empty_usd" : null };
 }
 function conceptUnits(entry: unknown): Record<string, unknown> {
-  if (!isRecord(entry)) throw new PersonalSecSourceError("invalid_response");
-  if (!isRecord(entry.units))
-    throw new PersonalSecSourceError("invalid_response");
+  if (!isRecord(entry)) invalidSource();
+  if (!isRecord(entry.units)) invalidSource();
   return entry.units;
 }
 
@@ -219,4 +215,9 @@ function compareRows(
     a.accessionNumber.localeCompare(b.accessionNumber) ||
     a.id.localeCompare(b.id)
   );
+}
+
+/** Structural source failures retain one status throughout envelope and concept admission. */
+function invalidSource(): never {
+  throw new PersonalSecSourceError("invalid_response");
 }

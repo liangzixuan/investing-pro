@@ -59,13 +59,11 @@ type IdentifiedRow = Record<string, unknown> & { concept: string };
 function validateObservationIdentity(
   row: Record<string, unknown>,
 ): asserts row is IdentifiedRow {
-  check(
-    matches(row.id, /^sec-interim-fact:[a-f0-9]{64}$/u) &&
-      typeof row.concept === "string" &&
-      positions.has(row.concept) &&
-      row.taxonomy === "us-gaap" &&
-      row.unit === "USD",
-  );
+  check(matches(row.id, /^sec-interim-fact:[a-f0-9]{64}$/u));
+  check(typeof row.concept === "string");
+  check(positions.has(row.concept));
+  check(row.taxonomy === "us-gaap");
+  check(row.unit === "USD");
   check(
     typeof row.value === "string" &&
       row.value.length <= limits.decimalCharacters &&
@@ -74,15 +72,15 @@ function validateObservationIdentity(
   );
 }
 function validateObservationMetadata(row: Record<string, unknown>): void {
+  check(row.periodBasis === "unresolved");
   check(
-    row.periodBasis === "unresolved" &&
-      (row.filingFocusYear === null ||
-        integer(row.filingFocusYear, 1000, 9999)) &&
-      (row.filingFocusPeriod === null ||
-        sourceText(row.filingFocusPeriod, 32)) &&
-      (row.frame === null || sourceText(row.frame, 128)) &&
-      form(row.form),
+    row.filingFocusYear === null || integer(row.filingFocusYear, 1000, 9999),
   );
+  check(
+    row.filingFocusPeriod === null || sourceText(row.filingFocusPeriod, 32),
+  );
+  check(row.frame === null || sourceText(row.frame, 128));
+  check(form(row.form));
 }
 function validateObservationSource(
   row: IdentifiedRow,
