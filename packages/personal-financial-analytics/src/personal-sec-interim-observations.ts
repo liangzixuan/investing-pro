@@ -22,6 +22,13 @@ const filingStatuses = [
   "not_in_current_submissions",
   "submissions_unavailable",
 ];
+// Preserve wire-field order and short-circuit before reading the next field.
+const filingMetadataRules = [
+  ["form", form],
+  ["filedDate", date],
+  ["reportDate", date],
+  ["acceptedAt", (value: unknown) => timestamp(value, false)],
+] as const;
 const positions = new Map(
   registry.map((entry, index) => [entry.concept as string, index]),
 );
@@ -136,10 +143,11 @@ function validateFilingJoin(row: Row, evidence: Evidence): void {
   }
 }
 function validateFilingMetadata(filing: Record<string, unknown>): void {
-  check(filing.form === null || form(filing.form));
-  check(filing.filedDate === null || date(filing.filedDate));
-  check(filing.reportDate === null || date(filing.reportDate));
-  check(filing.acceptedAt === null || timestamp(filing.acceptedAt, false));
+  check(
+    filingMetadataRules.every(
+      ([field, valid]) => filing[field] === null || valid(filing[field]),
+    ),
+  );
 }
 function validateMatchedFiling(
   row: Row,

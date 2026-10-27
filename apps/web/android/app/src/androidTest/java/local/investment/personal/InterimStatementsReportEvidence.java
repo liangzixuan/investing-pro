@@ -100,7 +100,8 @@ final class InterimStatementsReportEvidence {
     private void reopen(Capture captured) throws Exception {
         request.page.click(Element.css(".managed-report-revisit > summary"));
         new ReportRevisitTouch(request.page).fileChooser();
-        new WatchlistSystemPicker().openInventedReportDocument(captured.filename+".json");
+        new WatchlistSystemPicker().openCapturedInventedReportDocument(new WatchlistSystemPicker.CapturedReport(
+            request.context, captured.filename+".json", captured.document.getBytes(StandardCharsets.UTF_8)));
         request.page.await(new Check("reopened report is read-only and retains the original full note, periods and clocks",new Script("(()=>{const s=document.querySelector('[aria-label=\"Archived report\"]'),p=s?.querySelector('[aria-label=\"Archived report interim provenance\"]'),t=p?.textContent??'';return document.querySelector('#managed-report-revisit-heading')?.textContent==='Reopened report · ZERO'&&s?.querySelector('.managed-company-report-note')?.textContent==="+JSONObject.quote(request.draft.completeNote())+"&&s.querySelectorAll('input,textarea,button,a').length===0&&!!s.querySelector('[aria-label=\"Captured interim reported-period views\"]')&&['USD 40','USD 75','USD 9','USD 120','2026-04-01','2026-01-01','2026-06-30','Quarter/YTD classification not established.'].every(x=>s.querySelector('[aria-label=\"Captured interim reported-period views\"]').textContent.includes(x))&&['2026-06-30','2026-07-30','2026-08-01T12:00:00.000Z','2026-08-01T12:00:01.000Z','2026-08-01T12:00:02.000Z','2026-08-01T12:00:03.000Z','0000000001-26-000002'].every(x=>t.includes(x))&&document.querySelector('[aria-label=\"Current report capture\"]')===null;})()")));
     }
 }
