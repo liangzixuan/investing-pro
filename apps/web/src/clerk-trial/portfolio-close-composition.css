@@ -23,15 +23,26 @@
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
-.portfolio-close-composition th:first-child {
-  width: 50%;
-}
-.portfolio-close-composition :is(th, td) {
-  padding: 10px;
-  text-align: left;
+.managed-frame
+  .managed-valuation-table.portfolio-composition-table
+  :is(th, td) {
+  min-width: 0;
+  padding: 8px 6px;
+  text-align: right;
   vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
   border-bottom: 1px solid var(--managed-line);
 }
-.portfolio-close-composition small {
+.managed-frame
+  .managed-valuation-table.portfolio-composition-table
+  th:first-child {
+  width: 46%;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.portfolio-close-composition :is(small, .portfolio-composition-company) {
   display: block;
 }

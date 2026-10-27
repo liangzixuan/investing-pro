@@ -1,7 +1,7 @@
 import type { AuthoredPortfolioCloseReviewResult } from "@research-cockpit/personal-market-analytics";
 import type { PersonalPortfolioIdentity } from "@research-cockpit/contracts";
 import type { PortfolioCloseRow } from "./managed-portfolio-close-review";
-import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
+import { identityLabels } from "./ManagedListingIdentity";
 import "./portfolio-close-composition.css";
 
 type Composition = AuthoredPortfolioCloseReviewResult["composition"];
@@ -23,7 +23,12 @@ function ExactHolding({ listing }: { listing: PersonalPortfolioIdentity }) {
   return (
     <details>
       <summary>
-        <ListingIdentity member={listing} />
+        <strong>
+          {listing.symbol} · {listing.shareClassName}
+        </strong>{" "}
+        <span className="portfolio-composition-company">
+          {listing.issuerName}
+        </span>
       </summary>
       <ul>
         {Object.entries(identityLabels).map(([key, label]) => (
@@ -97,7 +102,7 @@ function CompositionTable({
           <tr>
             <th scope="col">Exact holding</th>
             <th scope="col">Value (USD)</th>
-            <th scope="col">Share of complete value</th>
+            <th scope="col">Share (%)</th>
           </tr>
         </thead>
         <tbody>

@@ -1,3 +1,4 @@
+import { load } from "cheerio";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -61,6 +62,13 @@ function cellValues(html: string, attribute: string) {
   ].map((match) => match[1]);
 }
 
+function ruleBody(css: string, selector: string) {
+  const normalized = css.replace(/\s+/gu, " ");
+  const fragments = normalized.split(`${selector} {`);
+  expect(fragments).toHaveLength(2);
+  return fragments[1]!.split("}")[0]!;
+}
+
 describe("shared read-only composition at one observed close", () => {
   it("keeps exact share classes, displayed cents, complete cash denominator and independent rounding", () => {
     const input = fixture();
@@ -71,7 +79,7 @@ describe("shared read-only composition at one observed close", () => {
       'data-method="displayed_usd_cents_over_complete_total_percent_half_up_2dp"',
     );
     expect(html).toContain("Composition at this close");
-    expect(html).toContain("Share of complete value");
+    expect(html).toContain("Share (%)");
     expect(html).toContain('id="portfolio-close-composition-total">USD 3.00');
     expect(cellValues(html, "data-composition-value")).toEqual([
       "USD 1.00",
@@ -95,6 +103,36 @@ describe("shared read-only composition at one observed close", () => {
     expect(html).toContain("may not add to 100%");
     expect(JSON.stringify(input)).toBe(before);
     expect(html).not.toMatch(/<button|<input|<select|<script|<a /iu);
+  });
+  it("keeps ticker, exact share class and company visible with all identity metadata in the disclosure", () => {
+    const input = fixture();
+    const $ = load(markup(input));
+    for (const listing of input.ledger.identities) {
+      const row = $("tr[data-listing-id]").filter(
+        (_, element) =>
+          $(element).attr("data-listing-id") === listing.listingId,
+      );
+      expect(row.find("summary strong").text().trim()).toBe(
+        `${listing.symbol} · ${listing.shareClassName}`,
+      );
+      expect(row.find("summary .portfolio-composition-company").text()).toBe(
+        listing.issuerName,
+      );
+      expect(row.find("summary").text()).not.toContain(listing.exchangeMic);
+      expect(row.find("details li")).toHaveLength(11);
+      for (const value of Object.values(listing))
+        expect(row.find("details ul").text()).toContain(value);
+    }
+    const css = readFileSync(
+      new URL("./portfolio-close-composition.css", import.meta.url),
+      "utf8",
+    );
+    expect(
+      ruleBody(
+        css,
+        ".portfolio-close-composition :is(small, .portfolio-composition-company)",
+      ),
+    ).toContain("display: block;");
   });
   it("shows unknown cash without turning priced holdings into 100 percent", () => {
     const html = markup(fixture(null));
@@ -226,5 +264,136 @@ describe("shared read-only composition at one observed close", () => {
     ])
       expect(css).toContain(rule);
     expect(html).not.toContain("<style");
+  });
+  it("keeps concise column headings, row scopes and the complete cash-inclusive denominator", () => {
+    const $ = load(markup());
+    expect(
+      $("thead th")
+        .map((_, cell) => $(cell).text())
+        .get(),
+    ).toEqual(["Exact holding", "Value (USD)", "Share (%)"]);
+    expect($("thead th[scope=col]")).toHaveLength(3);
+    expect($("tbody th[scope=row]")).toHaveLength(3);
+    expect($("tbody tr").last().is("[data-composition-cash]")).toBe(true);
+    expect($("tbody tr").last().find("[data-composition-share]").text()).toBe(
+      "33.33%",
+    );
+    expect($("dt").text()).toBe("Complete value including authored cash");
+    expect($("p").text()).toContain(
+      "divided by the complete value including authored cash",
+    );
+    expect($("[role=region]").attr("aria-label")).toBe(
+      "Holding values and shares of complete value",
+    );
+  });
+  it("overrides the actual shared minimum width and first-cell nowrap only for composition", () => {
+    const common = readFileSync(
+      new URL("./managed-valuation-workbench.css", import.meta.url),
+      "utf8",
+    );
+    const local = readFileSync(
+      new URL("./portfolio-close-composition.css", import.meta.url),
+      "utf8",
+    );
+    const sharedCells = ".managed-frame .managed-valuation-table :is(th, td)";
+    const scopedCells =
+      ".managed-frame .managed-valuation-table.portfolio-composition-table :is(th, td)";
+    const sharedFirst =
+      ".managed-frame .managed-valuation-table th:first-child";
+    const scopedFirst =
+      ".managed-frame .managed-valuation-table.portfolio-composition-table th:first-child";
+    expect(ruleBody(common, sharedCells)).toContain("min-width: 110px;");
+    expect(ruleBody(common, sharedFirst)).toContain("white-space: nowrap;");
+    expect(ruleBody(common, sharedFirst)).toContain("overflow-wrap: normal;");
+    // The same selector plus one semantic class outranks the shared rule in either import order.
+    expect(scopedCells.replace(".portfolio-composition-table", "")).toBe(
+      sharedCells,
+    );
+    expect(scopedFirst.replace(".portfolio-composition-table", "")).toBe(
+      sharedFirst,
+    );
+    for (const declaration of [
+      "min-width: 0;",
+      "white-space: normal;",
+      "overflow-wrap: anywhere;",
+      "word-break: normal;",
+      "padding: 8px 6px;",
+    ])
+      expect(ruleBody(local, scopedCells)).toContain(declaration);
+    for (const declaration of [
+      "width: 46%;",
+      "text-align: left;",
+      "white-space: normal;",
+      "overflow-wrap: anywhere;",
+    ])
+      expect(ruleBody(local, scopedFirst)).toContain(declaration);
+    const $ = load(
+      `<div class="managed-frame">${markup()}<div id="ordinary-valuation" class="managed-valuation-table"><table><tr><th>Existing valuation</th><td>42.00</td></tr></table></div></div>`,
+    );
+    expect($(sharedCells)).toHaveLength(14);
+    expect($(scopedCells)).toHaveLength(12);
+    expect($(scopedFirst)).toHaveLength(4);
+    expect(
+      $(scopedCells).filter(
+        (_, cell) => $(cell).closest("#ordinary-valuation").length > 0,
+      ),
+    ).toHaveLength(0);
+    expect(local).not.toMatch(
+      /font-size\s*:|text-overflow\s*:|overflow(?:-x|-y)?\s*:\s*(?:hidden|clip)|white-space\s*:\s*nowrap/iu,
+    );
+  });
+  it("retains every long identity and large numeric cell in both shared-component contexts", () => {
+    const issuer = `Invented ${"UnbrokenIssuer".repeat(7)} Café 東京`;
+    const input = fixture("1000000000000.00", "9".repeat(40), issuer);
+    for (const id of [
+      "portfolio-close-composition",
+      "portfolio-report-composition",
+    ] as const) {
+      const $ = load(
+        renderToStaticMarkup(
+          <PortfolioCloseComposition
+            id={id}
+            review={input.review}
+            rows={input.state.rows}
+          />,
+        ),
+      );
+      expect($("section").attr("id")).toBe(id);
+      expect(
+        $("tbody tr[data-listing-id]")
+          .map((_, row) => $(row).attr("data-listing-id"))
+          .get(),
+      ).toEqual(input.ledger.identities.map((listing) => listing.listingId));
+      for (const listing of input.ledger.identities) {
+        const row = $("tbody tr").filter(
+          (_, element) =>
+            $(element).attr("data-listing-id") === listing.listingId,
+        );
+        expect(row.find("summary").text()).toBe(
+          `${listing.symbol} · ${listing.shareClassName} ${listing.issuerName}`,
+        );
+        for (const value of Object.values(listing))
+          expect(row.find("th").text()).toContain(value);
+      }
+      expect(
+        $("[data-composition-value]")
+          .map((_, cell) => $(cell).text())
+          .get(),
+      ).toEqual([
+        ...input.review.composition.holdings.map(
+          (row) => `USD ${row.valueUsd}`,
+        ),
+        `USD ${input.review.composition.cashUsd}`,
+      ]);
+      expect(
+        $("[data-composition-share]")
+          .map((_, cell) => $(cell).text())
+          .get(),
+      ).toEqual([
+        ...input.review.composition.holdings.map((row) => `${row.percent}%`),
+        `${input.review.composition.cashPercent}%`,
+      ]);
+      expect($("[hidden], [aria-hidden=true], [style]")).toHaveLength(0);
+    }
   });
 });

@@ -113,10 +113,7 @@ public class PortfolioCompositionReviewInstrumentedTest {
             " && s.querySelector('[data-composition-cash] [data-composition-value]')?.textContent==='USD 100.00' && s.querySelector('[data-composition-cash] [data-composition-share]')?.textContent==='50.00%' && document.getElementById("+JSONObject.quote(id+"-total")+")?.textContent==='USD 200.00';})()")));
     }
     private void retainCompositionFrame() throws Exception {
-        page.read(new Script("(()=>{const s=document.querySelector('#portfolio-close-composition'),a=s.querySelector('h3').getBoundingClientRect(),b=s.querySelector('.portfolio-composition-table').getBoundingClientRect(),v=visualViewport;window.scrollBy({top:a.top-Math.max(0,(v.height-(b.bottom-a.top))/2),behavior:'instant'});return 'positioned';})()"));
-        page.await(new Check("complete composition heading, dates, denominator and every value/percentage fit the native frame",new Script(
-            "(()=>{const s=document.querySelector('#portfolio-close-composition'),v=visualViewport,r=s.getBoundingClientRect(),a=s.querySelector('h3').getBoundingClientRect(),b=s.querySelector('.portfolio-composition-table').getBoundingClientRect(),w=document.documentElement.clientWidth;return w===412 && document.documentElement.scrollWidth<=w+1 && s.checkVisibility() && [r.left,r.right,r.top,r.bottom,v.width,v.height].every(Number.isFinite) && r.left>=v.offsetLeft && r.right<=v.offsetLeft+v.width && a.top>=v.offsetTop && b.bottom<=v.offsetTop+v.height && s.querySelector('[role=region]')?.tabIndex===0 && [...s.querySelectorAll('[data-composition-value],[data-composition-share],th[scope=col]')].every(e=>{const b=e.getBoundingClientRect();return e.checkVisibility() && b.left>=v.offsetLeft && b.right<=v.offsetLeft+v.width;});})()")).nativeReady());
-        new PortfolioReportFrameCapture(new PortfolioReportFrameCapture.Request(scenario,PortfolioReportFrameCapture.Frame.COMPOSITION)).retain();
+        new PortfolioCompositionFrameEvidence(new PortfolioCompositionFrameEvidence.Request(scenario,page)).retain();
     }
     private PortfolioCompositionReportEvidence.CapturedReport captureAndWriteCompleteReport() throws Exception {
         report(ReportAction.CAPTURE);assertComposition(CompositionSurface.CAPTURED);

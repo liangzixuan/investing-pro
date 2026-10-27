@@ -101,6 +101,15 @@ function button(node: React.ReactNode, label: string) {
 function click(node: Element, event: unknown = { currentTarget: {} }) {
   (node.props.onClick as (event: unknown) => void)(event);
 }
+function firstHoldingRowLastCell(root: Element) {
+  const body = nodes(root, true).find((node) => node.type === "tbody");
+  const row = nodes(body, true).find((node) => node.type === "tr");
+  const cell = nodes(row, true)
+    .filter((node) => node.type === "td")
+    .at(-1);
+  if (!cell) throw new Error("Expected rendered holding row cell");
+  return renderToStaticMarkup(cell);
+}
 function fixture(cashUsd: string | null = "10.00") {
   let active = true;
   const listing = {
@@ -211,6 +220,46 @@ function fixture(cashUsd: string | null = "10.00") {
   };
 }
 describe("Dated holdings review committed UI", () => {
+  it("scopes original provenance to its named table when composition adds an earlier table", async () => {
+    const f = fixture();
+    await f.models[0]!.load();
+    const node = f.render();
+    const broadCell = firstHoldingRowLastCell(node);
+    expect(broadCell).toContain("95.31%");
+    expect(broadCell).not.toContain("Completed");
+    const provenanceRegion = nodes(node, true).find(
+      (item) =>
+        item.props["aria-label"] ===
+        "Holding close values and source provenance",
+    );
+    expect(provenanceRegion?.props.role).toBe("region");
+    expect(provenanceRegion).toBeDefined();
+    const provenanceCell = firstHoldingRowLastCell(provenanceRegion!);
+    for (const original of [
+      "Provider / basis",
+      "Tiingo",
+      "raw_close",
+      "USD",
+      "2026-08-20",
+      "2026-09-20",
+      "Request started",
+      "2026-09-20T00:00:00.000Z",
+      "Completed",
+      "2026-09-20T00:00:01.000Z",
+    ])
+      expect(provenanceCell).toContain(original);
+    expect(provenanceCell).not.toContain("95.31%");
+    const opener = {} as HTMLButtonElement;
+    click(button(provenanceRegion, "Research ZERO"), {
+      currentTarget: opener,
+    });
+    expect(f.onResearch).toHaveBeenCalledExactlyOnceWith(
+      f.saved.draft,
+      f.context.ledger.identities[0],
+      opener,
+    );
+    expect(f.read).toHaveBeenCalledTimes(1);
+  });
   it("closes the retained disclosure before exact-company research so Back requires explicit reopening", () => {
     const onResearch = vi.fn();
     const props = {
