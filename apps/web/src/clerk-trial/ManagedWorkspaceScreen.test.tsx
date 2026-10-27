@@ -46,7 +46,7 @@ import { ManagedCompanyEvidenceActions } from "./ManagedCompanyEvidenceActions";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedMarketsBoard } from "./ManagedMarketsBoard";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
-import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
+import { ManagedMarketsCalendarFollowup } from "./ManagedMarketsCalendarFollowup";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedResearchNote } from "./ManagedResearchNote";
@@ -2072,10 +2072,13 @@ describe("managed workspace screen", () => {
     expect(nav.props.targets.calendar.ref).toBe(agenda.props.headingRef);
     expect(nav.props.targets.announcements.ref).toBe(fed.props.headingRef);
     const day = nodes.find(
-      (node) => node.type === ManagedMarketsDayView,
-    ) as React.ReactElement<React.ComponentProps<typeof ManagedMarketsDayView>>;
-    expect(day.props.agenda).toBe(workspace.agenda);
-    expect(day.props.announcements).toBe(workspace.announcements);
+      (node) => node.type === ManagedMarketsCalendarFollowup,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedMarketsCalendarFollowup>
+    >;
+    expect(day.props.workspace).toBe(workspace);
+    expect(day.props.workspace.agenda).toBe(workspace.agenda);
+    expect(day.props.workspace.announcements).toBe(workspace.announcements);
     expect(day.props.navigation.targets).toBe(nav.props.targets);
     expect(day.props.navigation.isCurrent).toBe(nav.props.isCurrent);
     expect(day.props.headingRef).toBe(nav.props.targets.day.ref);

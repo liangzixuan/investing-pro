@@ -167,7 +167,11 @@ public class MarketsCalendarFollowupInstrumentedTest {
         assertSourceEvidence();
     }
     private void retainCompletePreviewFrame() throws Exception {
-        page.read(new Script("(()=>{document.querySelector('[aria-label=\"Calendar next check preview\"]').scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});return 'positioned';})()"));
+        page.read(new Script("(()=>{const p=document.querySelector('[aria-label=\"Calendar next check preview\"]'),v=visualViewport;"+
+            "const targets=p?[...p.querySelectorAll(':scope > h4,:scope > label,#calendar-followup-check,:scope > p:first-of-type,:scope > p:nth-of-type(2),:scope > p:nth-of-type(3)')]:[];"+
+            "if(!v||targets.length!==6)return 'unavailable';const rects=targets.map(e=>e.getBoundingClientRect());"+
+            "const top=Math.min(...rects.map(r=>r.top)),bottom=Math.max(...rects.map(r=>r.bottom)),left=Math.min(...rects.map(r=>r.left)),right=Math.max(...rects.map(r=>r.right));"+
+            "window.scrollBy({top:(top+bottom-v.height)/2-v.offsetTop,left:(left+right-v.width)/2-v.offsetLeft,behavior:'instant'});return 'positioned';})()"));
         String visible="(()=>{const p=document.querySelector('[aria-label=\"Calendar next check preview\"]'),v=visualViewport,t=p?.querySelector('#calendar-followup-check');"+
             "const targets=p?[...p.querySelectorAll(':scope > h4,:scope > label,#calendar-followup-check,:scope > p:first-of-type,:scope > p:nth-of-type(2),:scope > p:nth-of-type(3)')]:[];"+
             "return v&&t?.value==="+JSONObject.quote(CHECK)+"&&t.readOnly&&t.scrollHeight<=t.clientHeight+1&&targets.length===6&&targets.every(e=>{const r=e.getBoundingClientRect();return e.checkVisibility()&&r.width>0&&r.height>0&&r.left>=v.offsetLeft&&r.right<=v.offsetLeft+v.width&&r.top>=v.offsetTop&&r.bottom<=v.offsetTop+v.height;});})()";
