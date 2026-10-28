@@ -50,6 +50,49 @@ percentage points and exit multiple
 by -2, -1, 0, 1 and 2 times. Other inputs stay fixed. Each cell keeps its own
 result or refusal; a refused cell cannot inherit a neighboring value.
 
+## Apply a reported Annual revenue basis
+
+The source candidate adds **Use reported Annual revenue as a model basis** inside
+the workbench. Load Annual explicitly, then choose one of its three named revenue
+concepts. The choice starts empty. An admitted positive USD revenue value can be
+used even when operating income or a related margin is unavailable. Unsupported,
+missing, nonpositive or out-of-model-range values keep an explicit refusal.
+
+1. Inspect the exact value and start/end period, filing/accession, original cutoff,
+   completion time and separate Company Facts/Submissions capture times. Historical
+   and retained previous evidence keep their qualifications.
+   The SEC source CIK stays separate from the model CIK, which can be unavailable.
+2. Select **Preview starting revenue change**. Compare the complete current and
+   proposed raw inputs for both models, including full company/share-class identity,
+   CIK, catalog and model versions. The only proposed change is exit-model Starting
+   revenue. Preview makes no request, calculation or saved change.
+3. Select **Apply reported revenue to authored inputs** once. This replaces that
+   one field with the exact reported decimal text. A changed field clears prior
+   calculation. If the raw value already matches exactly, Apply attaches the source
+   reference and keeps the current inputs and calculation. Growth, margins, shares,
+   cash, debt and all DCF fields stay authored and unchanged.
+4. Calculate separately. A current applied Annual reference joins the complete
+   Exit multiple note preview automatically. Inspect the entire note before its
+   explicit append. DCF notes do not inherit it. Optional dated Price context keeps
+   its existing choice. The whole note must fit the existing 2,000-code-point limit;
+   an oversized note is refused in full without truncation.
+5. Capture the report and use Back. Save raw model inputs through their independent
+   Load, Stage, Review and Save controls; save the cited note through Watchlist Save.
+   Neither Save performs the other. Saved inputs and draft files contain raw authored
+   maps only, with no Annual packet or source reference. The existing report retains
+   the Annual packet, cited authored note and calculated inputs/results.
+
+Any editor, source, choice, company, navigation or session change withdraws a
+pending Apply preview. Returning to an earlier value does not revive it. After
+Apply, edits to other assumptions and explicit calculation retain its source
+reference. Changing Starting revenue, restoring/discarding inputs, leaving the
+company, source changes or session retirement permanently retire that reference.
+Prepare a new preview and apply again to attach a new one. Reported operating
+cash flow or cash after PP&E is never mapped into DCF cash flow automatically.
+
+Source and automated native acceptance remain separate from client delivery,
+browser layout and physical-phone acceptance. This increment has not been released.
+
 ## Keep a result in the research workflow
 
 The workbench also supports a [dated raw-close comparison](MANAGED_VALUATION_PRICE_CONTEXT.md)

@@ -1,3 +1,6 @@
+import { ManagedValuationRevenueBasisPanel } from "./ManagedValuationRevenueBasisPanel";
+import type { ManagedValuationRevenueBasisActions } from "./use-valuation-revenue-basis-review";
+import type { ManagedAnnualReport } from "./managed-annual-report";
 import {
   useId,
   useLayoutEffect,
@@ -52,6 +55,8 @@ export interface ManagedValuationWorkbenchProps {
   readonly noteActions: ManagedValuationNoteActions;
   readonly watchlist: ResearchWatchlistState;
   readonly price?: ManagedEodHistory;
+  readonly annual?: ManagedAnnualReport;
+  readonly revenueBasisActions?: ManagedValuationRevenueBasisActions;
   readonly onOpenPrice?: () => void;
 }
 const subscribeWithoutPrice = () => () => {};
@@ -253,6 +258,8 @@ export function ManagedValuationWorkbench({
   watchlist,
   price,
   onOpenPrice,
+  annual,
+  revenueBasisActions,
 }: ManagedValuationWorkbenchProps) {
   const id = useId();
   const state = useSyncExternalStore(
@@ -378,6 +385,15 @@ export function ManagedValuationWorkbench({
               Wait for company navigation to finish before editing or
               calculating.
             </p>
+          )}
+          {annual && revenueBasisActions && (
+            <ManagedValuationRevenueBasisPanel
+              model={model}
+              annual={annual}
+              selection={selection}
+              actions={revenueBasisActions}
+              disabled={disabled}
+            />
           )}
           <ValuationInputs
             id={id}

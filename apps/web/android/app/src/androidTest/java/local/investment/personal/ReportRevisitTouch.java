@@ -67,6 +67,12 @@ final class ReportRevisitTouch {
         Geometry geometry = new Geometry(page.read(new ReportRevisitPage.Script("JSON.stringify((()=>{const input=document.querySelector('" + selector + "');input.scrollIntoView({block:'center',behavior:'instant'});const r=input.getBoundingClientRect(),v=visualViewport,x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio,finite:[x,y,r.width,r.height,v.width,v.height,v.scale,devicePixelRatio].every(Number.isFinite)&&r.width>0&&r.height>0,visible:r.left>=v.offsetLeft&&r.right<=v.offsetLeft+v.width&&r.top>=v.offsetTop&&r.bottom<=v.offsetTop+v.height,hit:input.contains(document.elementFromPoint(x,y))};})())")));
         dispatch(new Target(field.description, geometry));
     }
+    record ControlledField(String selector, String description) {}
+    void input(ControlledField field) throws Exception {
+        String selector = field.selector;
+        Geometry geometry = new Geometry(page.read(new ReportRevisitPage.Script("JSON.stringify((()=>{const input=document.querySelector("+JSONObject.quote(selector)+");input.scrollIntoView({block:'center',behavior:'instant'});const r=input.getBoundingClientRect(),v=visualViewport,x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio,finite:[x,y,r.width,r.height,v.width,v.height,v.scale,devicePixelRatio].every(Number.isFinite)&&r.width>0&&r.height>0,visible:r.left>=v.offsetLeft&&r.right<=v.offsetLeft+v.width&&r.top>=v.offsetTop&&r.bottom<=v.offsetTop+v.height,hit:input.contains(document.elementFromPoint(x,y))};})())")));
+        dispatch(new Target(field.description, geometry));
+    }
     private record Target(String description, Geometry geometry) {}
     private static final class Geometry {
         final JSONObject value;

@@ -203,3 +203,11 @@
     padding: 12px;
   }
 }
+
+.managed-frame .managed-valuation-revenue-basis {
+  min-width: 0;
+  margin-block: 16px;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+}

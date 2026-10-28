@@ -29,6 +29,7 @@ const allowedScenarios = [
   "interim-statements",
   "authored-valuation",
   "saved-valuation",
+  "annual-revenue-model-basis",
   "annual-balance-sheet",
   "annual-operating-comparison",
   "company-snapshot",
@@ -93,6 +94,7 @@ export const fixture = await createFixture(scenario ?? "default");
 export const nativeReport =
   scenario === "company-snapshot" ||
   scenario === "reviewed-company-source-pass" ||
+  scenario === "annual-revenue-model-basis" ||
   scenario === "annual-statements" ||
   scenario === "interim-statements"
     ? createNativeReportFixture()

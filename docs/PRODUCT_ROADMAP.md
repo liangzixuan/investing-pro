@@ -29,12 +29,20 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 27 Android delivery
 
-The next M2 outcome is a [reviewed company source pass](MANAGED_COMPANY_SNAPSHOT.md#reviewed-company-source-pass).
-Preview selected missing Price, Annual, Filings and optional Interim reads, then
-run them one at a time. Keep each retained packet's dates and each attempted or
-unattempted outcome visible. Continue through financial views, cited note and
-report, Research/Back and independent Review/Save. Existing admission budgets
-and source limits remain in force.
+The next M2/M4 outcome connects an admitted [Annual revenue basis to the authored
+valuation workbench](MANAGED_VALUATION_WORKBENCH.md#apply-a-reported-annual-revenue-basis).
+Choose the exact reported concept, review complete before/after inputs and apply
+only exit-model Starting revenue. Continue through authored calculation, a cited
+note/report, Back and independent raw-input and Watchlist Saves. Preserve source
+periods, filing identity, unavailable values and original clocks. This source
+candidate introduces no inferred cash flow, provider valuation or automatic Save.
+
+Android 1.52 delivers the [reviewed company source pass](MANAGED_COMPANY_SNAPSHOT.md#reviewed-company-source-pass)
+from `91017480663b260d219a0191bb18df6cc15ae93f`. Original required checks,
+all 97 synthetic native cases and the guarded existing-signer build plus full
+package checks passed. Source choices, retained packets and partial outcomes
+keep their separate dates. Installation remains an owner action; API and website
+are unchanged.
 
 Android 1.51 and the managed API deliver [reported interim financial review](MANAGED_INTERIM_STATEMENTS.md)
 from main `341689c840617fd617bd37e7e4ea8df11c7343bd`. Original required checks,

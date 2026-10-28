@@ -533,3 +533,57 @@ describe("complete authored input capture and restore", () => {
     expect(workbench.captureInputs()).toBeNull();
   });
 });
+
+describe("opaque starting-revenue field lifetime", () => {
+  it("keeps the field capture through other input edits and Calculate but rejects forged captures", () => {
+    const model = new ManagedValuationWorkbench();
+    model.activate(valuationSelection());
+    fillValuation(model);
+    const capture = model.captureBaseRevenue()!;
+    model.setDcfField("waccPercent", "11");
+    model.setExitField("cash", "21");
+    model.calculate();
+    expect(model.isBaseRevenueCaptureCurrent(capture)).toBe(true);
+    expect(model.isBaseRevenueCaptureCurrent({ ...capture })).toBe(false);
+  });
+  it("allows only the exact next field transition after Apply", () => {
+    const model = new ManagedValuationWorkbench();
+    model.activate(valuationSelection());
+    const first = model.captureBaseRevenue()!;
+    model.setExitField("baseRevenue", "100");
+    const after = model.captureBaseRevenueAfterApply(first, "100")!;
+    expect(model.isBaseRevenueCaptureCurrent(after)).toBe(true);
+    model.setExitField("baseRevenue", "101");
+    model.setExitField("baseRevenue", "100");
+    expect(model.isBaseRevenueCaptureCurrent(after)).toBe(false);
+    expect(model.captureBaseRevenueAfterApply(first, "100")).toBeNull();
+  });
+  it("retires a rejected oversized starting-revenue edit without reviving its original text", () => {
+    const model = new ManagedValuationWorkbench();
+    model.activate(valuationSelection());
+    model.setExitField("baseRevenue", "100");
+    const capture = model.captureBaseRevenue()!;
+    expect(model.setExitField("baseRevenue", "1".repeat(513))).toBe(false);
+    model.setExitField("baseRevenue", "100");
+    expect(model.isBaseRevenueCaptureCurrent(capture)).toBe(false);
+  });
+  it("retires same-text restores and context out-and-back while preserving saved input schema", () => {
+    const model = new ManagedValuationWorkbench();
+    const selection = valuationSelection();
+    model.activate(selection);
+    fillValuation(model);
+    const first = model.captureBaseRevenue()!,
+      inputs = model.captureInputs()!;
+    expect(model.restoreDraftInputs(inputs.entry, model.getSnapshot())).toBe(
+      true,
+    );
+    expect(model.isBaseRevenueCaptureCurrent(first)).toBe(false);
+    const second = model.captureBaseRevenue()!;
+    model.activate(null);
+    model.activate(selection);
+    expect(model.isBaseRevenueCaptureCurrent(second)).toBe(false);
+    expect(Object.keys(model.captureInputs()!.entry)).toEqual(
+      Object.keys(inputs.entry),
+    );
+  });
+});

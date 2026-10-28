@@ -435,6 +435,12 @@ jobs:
           ))
           if len(required) != 97:
               raise SystemExit("The reviewed company source pass must extend all 96 existing native tests.")
+          required.add((
+              "local.investment.personal.AnnualRevenueModelBasisInstrumentedTest",
+              "annualRevenueBasisKeepsAuthoredInputsCitationReportBackAndSeparateSaves",
+          ))
+          if len(required) != 98:
+              raise SystemExit("The Annual revenue model basis journey must extend all 97 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

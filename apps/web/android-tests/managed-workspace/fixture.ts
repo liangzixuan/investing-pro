@@ -1,4 +1,8 @@
 import {
+  annualRevenueModelInputs,
+  createAnnualRevenueModelBasisNativeFixture,
+} from "./annual-revenue-model-basis-fixture";
+import {
   createReviewedCompanySourcePassNativeFixture,
   type ReviewedCompanySourcePassControls,
 } from "./reviewed-company-source-pass-fixture";
@@ -2160,7 +2164,7 @@ export interface SavedValuationNativeControls {
   readonly subscribe: (listener: () => void) => () => void;
   readonly saved: () => ManagedValuationAssumptionsDto;
 }
-const savedValuationInputs = parseValuationAssumptionEntry({
+export const savedValuationInputs = parseValuationAssumptionEntry({
   catalogSnapshotSha256: digest,
   listing: identity,
   cik: null,
@@ -2216,7 +2220,9 @@ function refuseSavedValuation(): never {
   throw new Error("Unexpected invented saved valuation operation");
 }
 class SavedValuationNativeStore implements SavedValuationNativeControls {
-  readonly expected = savedValuationInputs!;
+  constructor(
+    readonly expected: ValuationAssumptionEntry = savedValuationInputs!,
+  ) {}
   private stored: ManagedValuationAssumptionsDto = {
     version: 0,
     payload: { schemaVersion: 1, entries: [] },
@@ -2293,10 +2299,13 @@ class SavedValuationNativeStore implements SavedValuationNativeControls {
     return Promise.resolve(resolved);
   }
 }
-function createSavedValuationNativeFixture(
+export function createSavedValuationNativeFixture(
   base: SharedNativeFixture,
-): ManagedNativeFixture {
-  const store = new SavedValuationNativeStore();
+  expected: ValuationAssumptionEntry = savedValuationInputs!,
+): ManagedNativeFixture & {
+  readonly savedValuation: SavedValuationNativeControls;
+} {
+  const store = new SavedValuationNativeStore(expected);
   return {
     ...base,
     api: {
@@ -2315,6 +2324,16 @@ const nativeFixtureFactories = new Map<
   string,
   () => Promise<ManagedNativeFixture>
 >([
+  [
+    "annual-revenue-model-basis",
+    async () =>
+      createAnnualRevenueModelBasisNativeFixture(
+        createSavedValuationNativeFixture(
+          await createSharedFixture("annual-note"),
+          annualRevenueModelInputs(savedValuationInputs),
+        ),
+      ),
+  ],
   [
     "markets-calendar-followup",
     async () =>
@@ -2477,6 +2496,7 @@ export async function createFixture(
     | "financial-screen"
     | "valuation-price"
     | "saved-valuation"
+    | "annual-revenue-model-basis"
     | "portfolio-ledger"
     | "portfolio-close-review"
     | "portfolio-review-report"

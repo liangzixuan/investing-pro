@@ -1,9 +1,16 @@
+import {
+  bindAnnualPacket,
+  replaceConceptRows,
+  type TestAnnualPacket,
+} from "../lib/test-personal-sec-annual-api-fixture";
+import { annualReportPacket } from "./test-annual-report-fixture";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
 import type {
   MainWatchlistPayload,
+  ManagedValuationAssumptionsDto,
   ManagedCatalogSnapshotDto,
 } from "@research-cockpit/contracts";
 import type { ManagedApi } from "./managed-api";
@@ -755,4 +762,288 @@ describe("composed authored valuation with explicitly dated Price", () => {
     expect(f.workspace.eod.getSnapshot().showingPrevious).toBe(false);
     expect(f.api.eodHistory).toHaveBeenCalledTimes(3);
   });
+});
+
+async function revenueFixture() {
+  const f = await fixture();
+  const raw = structuredClone(await annualReportPacket()) as TestAnnualPacket;
+  replaceConceptRows(raw, "Revenues", [{ value: "1000" }]);
+  const packet = await bindAnnualPacket(raw);
+  vi.mocked(f.api.annualReport).mockResolvedValue(packet);
+  await f.workspace.annual.load();
+  f.fill();
+  f.workspace.valuation.setExitField("baseRevenue", "1000.00");
+  const prepare = () =>
+    f.workspace.prepareAnnualRevenueBasis(f.selection(), "Revenues");
+  return { ...f, packet, prepareBasis: prepare };
+}
+
+describe("Annual revenue through the authored valuation workflow", () => {
+  it("applies one raw field, calculates separately, includes the complete citation in note/report, and saves each resource explicitly", async () => {
+    const f = await revenueFixture();
+    const model = f.workspace.valuation;
+    const before = model.captureInputs()!.entry;
+    const calculate = vi.spyOn(model, "calculate");
+    const preview = f.prepareBasis().preview!;
+    expect(preview).not.toBeNull();
+    expect(preview.beforeRevenue).toBe("1000.00");
+    expect(preview.afterRevenue).toBe("1000");
+    expect(model.captureInputs()!.entry).toEqual(before);
+    expect(f.workspace.applyAnnualRevenueBasis(preview).applied).toBe(true);
+    expect(f.workspace.applyAnnualRevenueBasis(preview).applied).toBe(false);
+    expect(model.captureInputs()!.entry).toEqual({
+      ...before,
+      exit: {
+        ...before.exit,
+        inputs: { ...before.exit.inputs, baseRevenue: "1000" },
+      },
+    });
+    expect(calculate).not.toHaveBeenCalled();
+    expect(model.getSnapshot().calculation).toBeNull();
+    model.setExitField("cash", "101");
+    const context = f.workspace.getAppliedAnnualRevenueBasis(f.selection())!;
+    expect(context).not.toBeNull();
+    expect(context.source.cutoffAt).toBe(f.packet.evidence.generation.cutoffAt);
+    model.calculate();
+    const note = f.workspace.prepareValuationNote(
+      f.selection(),
+      "exit",
+      "base",
+    ).preview!;
+    expect(note).not.toBeNull();
+    expect(note.excerpt).toContain(context.excerpt);
+    expect(note.note).toBe(`${member.note} ${note.excerpt}`);
+    const dcf = f.workspace.prepareValuationNote(
+      f.selection(),
+      "dcf",
+      "base",
+    ).preview!;
+    expect(dcf.excerpt).not.toContain("Annual revenue basis");
+    expect(f.workspace.appendValuationNote(note).appended).toBe(true);
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.saveValuationAssumptions).not.toHaveBeenCalled();
+    const report = f.report()!;
+    const doc = formatCompanyReportDocument(report)!;
+    expect(isCompanyReportDocument(doc)).toBe(true);
+    const parsed = JSON.parse(doc.text) as unknown;
+    expect(parsed).toHaveProperty("schemaVersion", "6.0.0");
+    expect(parsed).toHaveProperty("authoredResearch.note", note.note);
+    expect(parsed).toHaveProperty("valuation.exitDraft.baseRevenue", "1000");
+    expect(parsed).toHaveProperty("sources.annual.status", "loaded");
+    expect(doc.text).toContain(f.packet.evidence.generation.cutoffAt);
+    expect(
+      load(
+        renderToStaticMarkup(
+          <CompanyReportHtmlView report={report} jsonText={doc.text} />,
+        ),
+      ).text(),
+    ).toContain(context.excerpt);
+
+    let saved: ManagedValuationAssumptionsDto = {
+      version: 0,
+      payload: { schemaVersion: 1, entries: [] },
+    };
+    vi.mocked(f.api.loadValuationAssumptions).mockImplementation(() =>
+      Promise.resolve(structuredClone(saved)),
+    );
+    vi.mocked(f.api.saveValuationAssumptions).mockImplementation((command) => {
+      saved = {
+        version: command.expectedVersion + 1,
+        payload: structuredClone(command.payload),
+      };
+      return Promise.resolve({ ...structuredClone(saved), replayed: false });
+    });
+    vi.mocked(f.api.resolve).mockImplementation((request) =>
+      Promise.resolve({
+        snapshotSha256: request.snapshotSha256,
+        results: request.listingIds.map((listingId) => ({
+          listingId,
+          listing: listingId === member.listingId ? eodSelection.listing : null,
+        })),
+      }),
+    );
+    const assumptions = f.workspace.valuationAssumptions;
+    await assumptions.coordinator.load();
+    await assumptions.prepareStage();
+    const stage = assumptions.getSnapshot().stageReview!;
+    expect(stage).not.toBeNull();
+    expect(assumptions.stageCurrent(stage)).toBe(true);
+    expect(f.api.saveValuationAssumptions).not.toHaveBeenCalled();
+    await assumptions.coordinator.save();
+    expect(f.api.saveValuationAssumptions).toHaveBeenCalledOnce();
+    expect(saved.payload.entries[0]).toEqual(model.captureInputs()!.entry);
+    expect(JSON.stringify(saved)).not.toContain("Annual revenue basis");
+    expect(JSON.stringify(saved)).not.toContain("observationIds");
+    expect(f.api.save).not.toHaveBeenCalled();
+    await assumptions.coordinator.load();
+    expect(assumptions.coordinator.getSnapshot().saved!.payload).toEqual(
+      saved.payload,
+    );
+    const departingSelection = f.selection();
+    f.workspace.closeResearch();
+    expect(
+      f.workspace.getAppliedAnnualRevenueBasis(departingSelection),
+    ).toBeNull();
+    await f.workspace.coordinator.save();
+    expect(f.api.save).toHaveBeenCalledOnce();
+    await f.workspace.coordinator.load();
+    expect(
+      f.workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe(note.note);
+    f.open();
+    expect(model.getSnapshot().exitDraft.baseRevenue).toBe("1000");
+    expect(f.workspace.getAppliedAnnualRevenueBasis(f.selection())).toBeNull();
+    expect(f.api.annualReport).toHaveBeenCalledOnce();
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+    expect(f.api.recentFilings).not.toHaveBeenCalled();
+    expect(f.api.interimReport).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "editor round trip",
+    "source reload",
+    "section round trip",
+    "navigation round trip",
+    "visit round trip",
+    "retire",
+  ] as const)(
+    "permanently withdraws a pending preview after %s",
+    async (boundary) => {
+      const f = await revenueFixture();
+      const preview = f.prepareBasis().preview!;
+      const before = f.workspace.valuation.captureInputs()!.entry;
+      if (boundary === "editor round trip") {
+        f.workspace.valuation.setExitField("cash", "102");
+        f.workspace.valuation.setExitField("cash", before.exit.inputs.cash);
+      }
+      if (boundary === "source reload") await f.workspace.annual.load();
+      if (boundary === "section round trip") {
+        f.workspace.switchToEod();
+        f.workspace.switchToAnnual();
+      }
+      if (boundary === "navigation round trip") {
+        f.workspace.setNavigationBlocked(true);
+        f.workspace.setNavigationBlocked(false);
+      }
+      if (boundary === "visit round trip") {
+        f.workspace.closeResearch();
+        f.open();
+      }
+      if (boundary === "retire") f.workspace.sessionOwner.retire();
+      expect(f.workspace.annualRevenueBasisPreviewIsCurrent(preview)).toBe(
+        false,
+      );
+      expect(f.workspace.applyAnnualRevenueBasis(preview).applied).toBe(false);
+      if (boundary !== "retire")
+        expect(f.workspace.valuation.captureInputs()!.entry).toEqual(before);
+      expect(f.api.save).not.toHaveBeenCalled();
+      expect(f.api.saveValuationAssumptions).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "base revenue round trip",
+    "source reload",
+    "navigation round trip",
+    "visit round trip",
+    "retire",
+  ] as const)(
+    "retires applied citation and any complete note after %s",
+    async (boundary) => {
+      const f = await revenueFixture();
+      const selection = f.selection();
+      expect(
+        f.workspace.applyAnnualRevenueBasis(f.prepareBasis().preview!).applied,
+      ).toBe(true);
+      f.workspace.valuation.calculate();
+      const note = f.workspace.prepareValuationNote(
+        f.selection(),
+        "exit",
+        "base",
+      ).preview!;
+      expect(note).not.toBeNull();
+      if (boundary === "base revenue round trip") {
+        f.workspace.valuation.setExitField("baseRevenue", "1001");
+        f.workspace.valuation.setExitField("baseRevenue", "1000");
+        f.workspace.valuation.calculate();
+      }
+      if (boundary === "source reload") await f.workspace.annual.load();
+      if (boundary === "navigation round trip") {
+        f.workspace.setNavigationBlocked(true);
+        f.workspace.setNavigationBlocked(false);
+      }
+      if (boundary === "visit round trip") {
+        f.workspace.closeResearch();
+        f.open();
+      }
+      if (boundary === "retire") f.workspace.sessionOwner.retire();
+      expect(f.workspace.getAppliedAnnualRevenueBasis(selection)).toBeNull();
+      expect(f.workspace.valuationNotePreviewIsCurrent(note)).toBe(false);
+      expect(f.workspace.appendValuationNote(note).appended).toBe(false);
+      expect(f.api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses the complete oversized cited note without truncating it or changing the editor", async () => {
+    const f = await revenueFixture();
+    f.workspace.applyAnnualRevenueBasis(f.prepareBasis().preview!);
+    f.workspace.valuation.calculate();
+    const whole = f.workspace.prepareValuationNote(
+      f.selection(),
+      "exit",
+      "base",
+    ).preview!;
+    expect(whole).not.toBeNull();
+    f.workspace.noteResearch(f.selection(), "📈".repeat(2000));
+    const before = f.workspace.valuation.captureInputs()!.entry;
+    const result = f.workspace.prepareValuationNote(
+      f.selection(),
+      "exit",
+      "base",
+    );
+    expect(result.preview).toBeNull();
+    expect(result.reason).toMatch(/2[,.]?000/u);
+    expect(f.workspace.valuation.captureInputs()!.entry).toEqual(before);
+    expect(f.workspace.getResearchWatchlist(f.selection()).member!.note).toBe(
+      "📈".repeat(2000),
+    );
+    expect(f.api.save).not.toHaveBeenCalled();
+  });
+});
+
+it("withdraws an uncited Exit note after same-value source Apply while retaining the unchanged DCF preview", async () => {
+  const f = await revenueFixture();
+  f.workspace.valuation.setExitField("baseRevenue", "1000");
+  const calculation = f.workspace.valuation.calculate();
+  const exit = f.workspace.prepareValuationNote(
+    f.selection(),
+    "exit",
+    "base",
+  ).preview!;
+  const dcf = f.workspace.prepareValuationNote(
+    f.selection(),
+    "dcf",
+    "base",
+  ).preview!;
+  expect(exit.excerpt).not.toContain("Annual revenue basis");
+  expect(dcf.excerpt).not.toContain("Annual revenue basis");
+  const before = f.workspace.coordinator.getSnapshot().draft;
+  expect(
+    f.workspace.applyAnnualRevenueBasis(f.prepareBasis().preview!).applied,
+  ).toBe(true);
+  expect(f.workspace.valuation.getSnapshot().calculation).toBe(calculation);
+  expect(f.workspace.valuationNotePreviewIsCurrent(exit)).toBe(false);
+  expect(f.workspace.appendValuationNote(exit).appended).toBe(false);
+  expect(f.workspace.coordinator.getSnapshot().draft).toBe(before);
+  expect(f.workspace.valuationNotePreviewIsCurrent(dcf)).toBe(true);
+  const cited = f.workspace.prepareValuationNote(
+    f.selection(),
+    "exit",
+    "base",
+  ).preview!;
+  expect(cited.excerpt).toContain("SEC source CIK 0000000001;");
+  expect(cited.excerpt).toContain("Annual revenue basis");
+  expect(f.api.annualReport).toHaveBeenCalledOnce();
+  expect(f.api.save).not.toHaveBeenCalled();
+  expect(f.api.saveValuationAssumptions).not.toHaveBeenCalled();
 });

@@ -62,6 +62,17 @@ final class ReportRevisitKeyboard {
             "document.querySelector(" + JSONObject.quote(selector) + ")?.value === " + JSONObject.quote(input.text))));
         closeSoftKeyboard();
     }
+    record ControlledInput(String selector, String description, String text) {}
+    void enter(ControlledInput input) throws Exception {
+        touch.input(new ReportRevisitTouch.ControlledField(input.selector, input.description));
+        page.await(new ReportRevisitPage.Check("input focused: " + input.description, new ReportRevisitPage.Script(
+            "document.activeElement===document.querySelector("+JSONObject.quote(input.selector)+")")));
+        awaitNativeEditor();
+        commitNativeText(input.text);
+        page.await(new ReportRevisitPage.Check("native input value: " + input.description, new ReportRevisitPage.Script(
+            "document.querySelector("+JSONObject.quote(input.selector)+")?.value==="+JSONObject.quote(input.text))));
+        closeSoftKeyboard();
+    }
     private void selectCompletePrevious(Edit edit, String focused) throws Exception {
         onView(isAssignableFrom(WebView.class)).perform(pressKey(new EspressoKey.Builder().withKeyCode(KeyEvent.KEYCODE_A).withCtrlPressed(true).build()));
         page.await(new ReportRevisitPage.Check("native select all covers the complete old assessment", new ReportRevisitPage.Script(focused + " && document.activeElement.selectionStart===0 && document.activeElement.selectionEnd===" + edit.previous.text.length())));

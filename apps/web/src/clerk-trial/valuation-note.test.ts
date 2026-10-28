@@ -1,3 +1,4 @@
+import type { AppliedValuationRevenueBasis } from "./managed-valuation-revenue-basis";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
 import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
@@ -378,3 +379,21 @@ describe("valuation note preview capability", () => {
     ).not.toBeNull();
   });
 });
+
+it.each(["exit", "dcf"] as const)(
+  "refuses a manufactured Annual revenue context for %s notes",
+  (model) => {
+    const f = fixture();
+    const result = prepareValuationNote({
+      ...f.options,
+      model,
+      annualRevenueBasis: {} as AppliedValuationRevenueBasis,
+    });
+    expect(result.preview).toBeNull();
+    expect(result.reason).toContain("current Annual revenue basis");
+    expect(f.apply).not.toHaveBeenCalled();
+    expect(
+      prepareValuationNote({ ...f.options, model }).preview,
+    ).not.toBeNull();
+  },
+);

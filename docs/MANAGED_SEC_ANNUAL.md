@@ -40,6 +40,13 @@ including other changes. Existing request lifetimes, response validation and
 source budgets remain unchanged. [Current work](CURRENT_WORK.md) records the
 release and its limits.
 
+The source candidate also supports an [explicit Annual revenue basis for authored
+valuation](MANAGED_VALUATION_WORKBENCH.md#apply-a-reported-annual-revenue-basis).
+Choose one exact reported concept, preview complete before/after inputs and apply
+only exit-model Starting revenue. Original filing identity, periods and clocks
+stay attached to the current cited Exit note. Calculate, append, report capture
+and the two independent Saves remain explicit. No DCF cash flow is inferred.
+
 Android Back uses the same close action as Back to workspace: it cancels a
 pending read, keeps the watchlist draft and restores focus to the opening
 control. The native listener belongs to the active workspace and is removed

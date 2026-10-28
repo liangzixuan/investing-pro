@@ -19,6 +19,7 @@ import {
   type AuthoredExitMultipleInput,
   type AuthoredExitMultipleResult,
 } from "@research-cockpit/research-core/valuation";
+import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { getManagedResearchCoverageCik } from "./managed-research-eligibility";
 
@@ -67,6 +68,10 @@ export interface ManagedValuationInputCapture {
   readonly entry: ValuationAssumptionEntry;
   readonly revision: symbol;
 }
+export interface ManagedValuationBaseRevenueCapture {
+  readonly value: string;
+  readonly revision: symbol;
+}
 const dcfFields: readonly DcfField[] = [
   "startingUnleveredCashFlowUsd",
   "enterpriseToEquityBridgeUsd",
@@ -113,6 +118,16 @@ export class ManagedValuationWorkbench {
   private calculation: ManagedValuationCalculation | null = null;
   private readonly rejectedFields = new Set<string>();
   private editorRevision = Symbol();
+  private baseRevenueRevision = Symbol();
+  private previousBaseRevenueRevision: symbol | null = null;
+  private lastBaseRevenueEdit: ManagedValuationSnapshot | null = null;
+  private readonly baseRevenueCaptures = new WeakMap<
+    ManagedValuationBaseRevenueCapture,
+    {
+      readonly owner: ManagedResearchSelection;
+      readonly context: ManagedResearchSelection;
+    }
+  >();
   private savedInputRevision: symbol | null = null;
   private retainedInputs = false;
   private readonly inputCaptures = new WeakMap<
@@ -148,6 +163,11 @@ export class ManagedValuationWorkbench {
       this.calculation = null;
       this.editorRevision = Symbol();
     }
+    if (
+      !sameRevenueContext(owner, this.snapshot.owner) ||
+      !sameRevenueContext(context, this.snapshot.context)
+    )
+      this.retireBaseRevenueCapture();
     this.publish({ ...this.snapshot, owner, context });
   }
   private nextOwner(
@@ -168,6 +188,7 @@ export class ManagedValuationWorkbench {
       return;
     this.calculation = null;
     this.editorRevision = Symbol();
+    this.retireBaseRevenueCapture();
     this.retainedInputs = false;
     this.savedInputRevision = null;
     this.rejectedFields.clear();
@@ -234,9 +255,12 @@ export class ManagedValuationWorkbench {
     )
       return false;
     if (this.snapshot.exitDraft[field] === value) return true;
-    this.edited({
+    if (field === "baseRevenue") this.retireBaseRevenueCapture();
+    const published = this.edited({
       exitDraft: freeze({ ...this.snapshot.exitDraft, [field]: value }),
     });
+    if (field === "baseRevenue" && this.snapshot === published)
+      this.lastBaseRevenueEdit = published;
     return true;
   }
   setExitScenario(
@@ -297,6 +321,50 @@ export class ManagedValuationWorkbench {
     captures.set(this.calculation, this.getSnapshot);
     this.publish(this.snapshot);
     return this.calculation;
+  }
+  private retireBaseRevenueCapture() {
+    this.lastBaseRevenueEdit = null;
+    this.previousBaseRevenueRevision = this.baseRevenueRevision;
+    this.baseRevenueRevision = Symbol();
+  }
+  captureBaseRevenue(): ManagedValuationBaseRevenueCapture | null {
+    const { owner, context, editable, exitDraft } = this.snapshot;
+    if (!editable || !owner || !context) return null;
+    const capture = Object.freeze({
+      value: exitDraft.baseRevenue,
+      revision: this.baseRevenueRevision,
+    });
+    this.baseRevenueCaptures.set(capture, { owner, context });
+    return capture;
+  }
+  private baseRevenueOwnerCurrent(capture: ManagedValuationBaseRevenueCapture) {
+    const owned = this.baseRevenueCaptures.get(capture);
+    if (!owned || !this.snapshot.editable) return false;
+    if (!sameRevenueContext(owned.owner, this.snapshot.owner)) return false;
+    return sameRevenueContext(owned.context, this.snapshot.context);
+  }
+  isBaseRevenueCaptureCurrent(
+    capture: ManagedValuationBaseRevenueCapture,
+  ): boolean {
+    if (!this.baseRevenueOwnerCurrent(capture)) return false;
+    if (capture.revision !== this.baseRevenueRevision) return false;
+    return capture.value === this.snapshot.exitDraft.baseRevenue;
+  }
+  /** Accept only this one field transition; a reentrant change and return cannot revive it. */
+  captureBaseRevenueAfterApply(
+    before: ManagedValuationBaseRevenueCapture,
+    value: string,
+  ): ManagedValuationBaseRevenueCapture | null {
+    if (!this.baseRevenueOwnerCurrent(before)) return null;
+    if (this.snapshot.exitDraft.baseRevenue !== value) return null;
+    const expected =
+      before.value === value
+        ? this.baseRevenueRevision
+        : this.previousBaseRevenueRevision;
+    if (before.revision !== expected) return null;
+    if (before.value !== value && this.lastBaseRevenueEdit !== this.snapshot)
+      return null;
+    return this.captureBaseRevenue();
   }
   captureInputs(): ManagedValuationInputCapture | null {
     const snapshot = this.snapshot;
@@ -384,6 +452,7 @@ export class ManagedValuationWorkbench {
     if (!sameSelection(owner, context)) return false;
     this.calculation = null;
     this.editorRevision = Symbol();
+    this.retireBaseRevenueCapture();
     this.savedInputRevision = confirmed ? this.editorRevision : null;
     this.retainedInputs = true;
     this.rejectedFields.clear();
@@ -402,6 +471,7 @@ export class ManagedValuationWorkbench {
     if (this.snapshot.retired) return;
     this.calculation = null;
     this.editorRevision = Symbol();
+    this.retireBaseRevenueCapture();
     this.retainedInputs = false;
     this.savedInputRevision = null;
     this.rejectedFields.clear();
@@ -429,26 +499,30 @@ export class ManagedValuationWorkbench {
       fields.includes(field) &&
       typeof value === "string";
     if (!valid) return false;
-    if ([...value].length > VALUATION_DRAFT_FIELD_MAX_CODE_POINTS) {
-      this.rejectedFields.add(key);
-      this.calculation = null;
-      this.editorRevision = Symbol();
-      this.publish({
-        ...this.snapshot,
-        dirty: true,
-        inputIssue: this.rejectedInputMessage(),
-      });
-      return false;
-    }
-    if (this.rejectedFields.delete(key)) {
-      this.editorRevision = Symbol();
-      const published = this.publish({
-        ...this.snapshot,
-        inputIssue: this.rejectedInputMessage(),
-      });
-      if (this.snapshot !== published) return false;
-    }
-    return true;
+    if ([...value].length > VALUATION_DRAFT_FIELD_MAX_CODE_POINTS)
+      return this.rejectOversizedField(key);
+    return this.clearRejectedField(key);
+  }
+  private rejectOversizedField(key: string): false {
+    if (key === "exit.baseRevenue") this.retireBaseRevenueCapture();
+    this.rejectedFields.add(key);
+    this.calculation = null;
+    this.editorRevision = Symbol();
+    this.publish({
+      ...this.snapshot,
+      dirty: true,
+      inputIssue: this.rejectedInputMessage(),
+    });
+    return false;
+  }
+  private clearRejectedField(key: string): boolean {
+    if (!this.rejectedFields.delete(key)) return true;
+    this.editorRevision = Symbol();
+    const published = this.publish({
+      ...this.snapshot,
+      inputIssue: this.rejectedInputMessage(),
+    });
+    return this.snapshot === published;
   }
   private rejectedInputMessage() {
     return this.rejectedFields.size
@@ -457,10 +531,10 @@ export class ManagedValuationWorkbench {
   }
   private edited(
     change: Partial<Pick<ManagedValuationSnapshot, "dcfDraft" | "exitDraft">>,
-  ): void {
+  ): ManagedValuationSnapshot {
     this.calculation = null;
     this.editorRevision = Symbol();
-    this.publish({ ...this.snapshot, ...change, dirty: true });
+    return this.publish({ ...this.snapshot, ...change, dirty: true });
   }
   private publish(next: ManagedValuationSnapshot): ManagedValuationSnapshot {
     const editable = !next.retired && sameSelection(next.owner, next.context);
@@ -547,6 +621,13 @@ function sameSelection(
     compatibleCik(left.cik, right.cik) &&
     membershipMatchesResult({ ...left.listing, note: "" }, right.listing)
   );
+}
+function sameRevenueContext(
+  left: ManagedResearchSelection | null,
+  right: ManagedResearchSelection | null,
+) {
+  if (left === null || right === null) return left === right;
+  return companyEvidenceSelectionMatches(left, right);
 }
 function compatibleCik(left: string | null, right: string | null): boolean {
   if (left === null || right === null) return true;
