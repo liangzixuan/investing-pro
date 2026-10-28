@@ -1,3 +1,4 @@
+import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { ManagedFinancialDiscovery } from "./ManagedFinancialDiscovery";
 import {
   createManagedResearchCoverageFixture,
@@ -492,6 +493,16 @@ function elements(
   node: React.ReactNode,
 ): React.ReactElement<{ children?: React.ReactNode }>[] {
   if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];
+  const dated =
+    node.type === ManagedMarketsDatedChecks
+      ? elements(
+          ManagedMarketsDatedChecks(
+            node.props as React.ComponentProps<
+              typeof ManagedMarketsDatedChecks
+            >,
+          ),
+        )
+      : [];
   const board =
     node.type === ManagedMarketsBoard
       ? elements(
@@ -503,6 +514,7 @@ function elements(
   return [
     node,
     ...board,
+    ...dated,
     ...React.Children.toArray(node.props.children).flatMap(elements),
   ];
 }

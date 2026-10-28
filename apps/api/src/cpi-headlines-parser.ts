@@ -105,29 +105,39 @@ function documentRoot(text: string): XmlElement {
   if (roots.length !== 1 || !root) invalid();
   return root;
 }
-function feedParts(root: XmlElement) {
-  const entries: XmlElement[] = [],
-    metadata = new Map<string, XmlElement>();
-  const allowed = [
-    "id",
-    "title",
-    "subtitle",
-    "updated",
-    "logo",
-    "icon",
-    "author",
-    "rights",
-  ];
-  for (const node of elements(root)) {
-    if (node.name === "entry") entries.push(node);
-    else {
-      if (!allowed.includes(node.name) || metadata.has(node.name)) invalid();
-      metadata.set(node.name, node);
+const CPI_FEED_METADATA = new Set([
+  "id",
+  "title",
+  "subtitle",
+  "updated",
+  "logo",
+  "icon",
+  "author",
+  "rights",
+]);
+/** Keep entry bounds and unique source metadata in one feed-owned collection. */
+class CpiFeedParts {
+  private readonly entries: XmlElement[] = [];
+  private readonly metadata = new Map<string, XmlElement>();
+  accept(node: XmlElement) {
+    if (node.name === "entry") {
+      this.entries.push(node);
+      return;
     }
+    if (!CPI_FEED_METADATA.has(node.name)) invalid();
+    if (this.metadata.has(node.name)) invalid();
+    this.metadata.set(node.name, node);
   }
-  if (entries.length > MANAGED_CPI_HEADLINES_LIMITS.inputEntries) invalid();
-  const feedUpdatedAt = feedMetadata(metadata);
-  return { entries, feedUpdatedAt };
+  complete() {
+    const entries = this.entries;
+    if (entries.length > MANAGED_CPI_HEADLINES_LIMITS.inputEntries) invalid();
+    return { entries, feedUpdatedAt: feedMetadata(this.metadata) };
+  }
+}
+function feedParts(root: XmlElement) {
+  const parts = new CpiFeedParts();
+  for (const node of elements(root)) parts.accept(node);
+  return parts.complete();
 }
 function feedMetadata(metadata: Map<string, XmlElement>): string | null {
   if (scalar(required(metadata, "id")) !== "bls.gov:feed:cpi") invalid();

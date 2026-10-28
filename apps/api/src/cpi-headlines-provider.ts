@@ -141,30 +141,43 @@ async function readBoundedText(response: Response, signal: AbortSignal) {
 }
 function admittedBody(response: Response): ReadableStream<Uint8Array> {
   const length = response.headers.get("content-length");
-  if (
-    length !== null &&
-    (!/^(?:0|[1-9]\d*)$/u.test(length) || Number(length) > MAX_BYTES)
-  ) {
+  if (invalidDeclaredLength(length)) {
     void response.body?.cancel().catch(() => undefined);
     fail("invalid_response");
   }
   if (response.body === null) fail("invalid_response");
   return response.body;
 }
+function invalidDeclaredLength(length: string | null): boolean {
+  if (length === null) return false;
+  if (!/^(?:0|[1-9]\d*)$/u.test(length)) return true;
+  return Number(length) > MAX_BYTES;
+}
+/** Own the complete bounded body before decoding; no partial source is admitted. */
+class CpiSourceChunks {
+  private readonly chunks: Uint8Array[] = [];
+  private size = 0;
+  append(value: unknown) {
+    if (!(value instanceof Uint8Array)) fail("invalid_response");
+    this.size += value.byteLength;
+    if (this.size > MAX_BYTES) fail("invalid_response");
+    this.chunks.push(value);
+  }
+  complete() {
+    if (this.size === 0) fail("invalid_response");
+    return concatenate(this.chunks, this.size);
+  }
+}
 async function readBytes(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   signal: AbortSignal,
 ) {
-  const chunks: Uint8Array[] = [];
-  let size = 0;
+  const chunks = new CpiSourceChunks();
   try {
     while (true) {
       const result = await withAbort(reader.read(), signal);
       if (result.done) break;
-      if (!(result.value instanceof Uint8Array)) fail("invalid_response");
-      size += result.value.byteLength;
-      if (size > MAX_BYTES) fail("invalid_response");
-      chunks.push(result.value);
+      chunks.append(result.value);
     }
   } catch (error) {
     void reader.cancel().catch(() => undefined);
@@ -172,8 +185,7 @@ async function readBytes(
   } finally {
     reader.releaseLock();
   }
-  if (size === 0) fail("invalid_response");
-  return concatenate(chunks, size);
+  return chunks.complete();
 }
 function concatenate(chunks: readonly Uint8Array[], size: number) {
   const bytes = new Uint8Array(size);

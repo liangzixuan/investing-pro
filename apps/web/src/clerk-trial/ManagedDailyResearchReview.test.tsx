@@ -1,3 +1,4 @@
+import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
 import { ManagedResearchFollowup } from "./ManagedResearchFollowup";
 import { inventedManagedResearchCoverage } from "./test-managed-research-coverage-fixture";
@@ -88,6 +89,18 @@ function nodes(
 ): React.ReactElement<Record<string, unknown>>[] {
   return React.Children.toArray(node).flatMap((item) => {
     if (!React.isValidElement<Record<string, unknown>>(item)) return [];
+    if (item.type === ManagedMarketsDatedChecks) {
+      return [
+        item,
+        ...nodes(
+          ManagedMarketsDatedChecks(
+            item.props as unknown as React.ComponentProps<
+              typeof ManagedMarketsDatedChecks
+            >,
+          ),
+        ),
+      ];
+    }
     if (item.type === ManagedFollowupAssessment) {
       return nodes(
         ManagedFollowupAssessment(

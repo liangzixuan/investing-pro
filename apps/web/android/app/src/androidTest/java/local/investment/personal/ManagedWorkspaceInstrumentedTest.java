@@ -3599,14 +3599,15 @@ public class ManagedWorkspaceInstrumentedTest {
             " source:document.querySelector('.bea-agenda-source a')?.href," +
             " busy:document.querySelector('.bea-release-agenda [aria-busy]')?.getAttribute('aria-busy')})";
         String originalPacket = readFixtureString(packet);
-        awaitPage("Markets offers six labelled native-sized section links",
+        awaitPage("Markets offers seven labelled native-sized section links",
             "(() => { const links = [...document.querySelectorAll('nav[aria-label=\"On Markets\"] > a')];" +
-            " return links.length === 6 && links.map(a => a.textContent).join('|') === 'Company board|Research checks due|Markets day view|Economic calendar|BLS release calendar|Fed announcements'" +
+            " return links.length === 7 && links.map(a => a.textContent).join('|') === 'Company board|Research checks due|Published CPI headlines|Markets day view|Economic calendar|BLS release calendar|Fed announcements'" +
             " && links.every(a => { const r = a.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }); })()");
-        for (String section : new String[] {"board", "review", "day", "calendar", "bls", "announcements"}) {
+        for (String section : new String[] {"board", "review", "cpi", "day", "calendar", "bls", "announcements"}) {
             String selector = "nav[aria-label='On Markets'] > a[data-markets-jump='" + section + "']";
             String targetId = section.equals("board") ? "managed-markets-heading" :
                 section.equals("review") ? "managed-daily-research-heading" :
+                section.equals("cpi") ? "managed-cpi-heading" :
                 section.equals("day") ? "managed-markets-day-heading" :
                 section.equals("calendar") ? "bea-agenda-title" :
                 section.equals("bls") ? "bls-calendar-title" : "fed-announcements-title";

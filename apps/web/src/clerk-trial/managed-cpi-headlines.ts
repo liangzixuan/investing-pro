@@ -77,9 +77,7 @@ export class ManagedCpiHeadlines {
       !operation.signal.aborted
     );
   }
-  async load(): Promise<ManagedSourceReadResult> {
-    if (this.retired) return "retired";
-    if (!this.active || this.operation) return "not_started";
+  private beginLoad() {
     const operation = new AbortController();
     this.operation = operation;
     this.update({
@@ -88,61 +86,83 @@ export class ManagedCpiHeadlines {
       error: null,
       message: "Loading published CPI headlines…",
     });
-    let result: ManagedSourceReadResult = "cancelled";
-    try {
-      if (this.current(operation)) {
-        const value = await this.read(operation.signal);
-        if (this.current(operation)) {
-          const parsed = parseManagedCpiHeadlines(value);
-          if (!parsed) throw new TrialApiError("invalid_response");
-          const headlines = Object.freeze({
-            ...parsed,
-            source: Object.freeze({ ...parsed.source }),
-            items: Object.freeze(
-              parsed.items.map((item) => Object.freeze({ ...item })),
-            ),
-          });
-          this.update({
-            headlines,
-            showingPrevious: false,
-            error: null,
-            message: "CPI headlines loaded. Refresh explicitly to check again.",
-          });
-          result = "accepted";
-        }
-      }
-    } catch (error) {
-      if (this.current(operation)) {
-        if (
-          error instanceof TrialApiError &&
-          ["unauthenticated", "access_denied", "origin_denied"].includes(
-            error.code,
-          )
-        ) {
-          this.readError(error);
-          this.retire();
-          result = "retired";
-        } else {
-          this.update({
-            showingPrevious: this.state.headlines !== null,
-            error:
-              error instanceof TrialApiError &&
-              error.code === "invalid_response"
-                ? "invalid_response"
-                : "unavailable",
-            message:
-              "The CPI headlines read failed. Any previous packet keeps its original clocks.",
-          });
-          result = "failed";
-        }
-      }
-    } finally {
-      if (this.current(operation)) {
-        this.operation = null;
-        this.update({ busy: false });
-      }
+    return operation;
+  }
+  private accept(value: unknown) {
+    const parsed = parseManagedCpiHeadlines(value);
+    if (!parsed) throw new TrialApiError("invalid_response");
+    const headlines = Object.freeze({
+      ...parsed,
+      source: Object.freeze({ ...parsed.source }),
+      items: Object.freeze(
+        parsed.items.map((item) => Object.freeze({ ...item })),
+      ),
+    });
+    this.update({
+      headlines,
+      showingPrevious: false,
+      error: null,
+      message: "CPI headlines loaded. Refresh explicitly to check again.",
+    });
+  }
+  private async readPacket(
+    operation: AbortController,
+  ): Promise<ManagedSourceReadResult> {
+    if (!this.current(operation)) return "cancelled";
+    const value = await this.read(operation.signal);
+    if (!this.current(operation)) return "cancelled";
+    this.accept(value);
+    return "accepted";
+  }
+  private failedRead(error: unknown): ManagedSourceReadResult {
+    if (sessionFailure(error)) {
+      this.readError(error);
+      this.retire();
+      return "retired";
     }
+    this.update({
+      showingPrevious: this.state.headlines !== null,
+      error: responseError(error),
+      message:
+        "The CPI headlines read failed. Any previous packet keeps its original clocks.",
+    });
+    return "failed";
+  }
+  private finishLoad(operation: AbortController) {
+    if (!this.current(operation)) return;
+    this.operation = null;
+    this.update({ busy: false });
+  }
+  private readResult(
+    operation: AbortController,
+    result: ManagedSourceReadResult,
+  ): ManagedSourceReadResult {
     if (this.retired) return "retired";
     return !this.active || operation.signal.aborted ? "cancelled" : result;
   }
+  async load(): Promise<ManagedSourceReadResult> {
+    if (this.retired) return "retired";
+    if (!this.active || this.operation) return "not_started";
+    const operation = this.beginLoad();
+    let result: ManagedSourceReadResult = "cancelled";
+    try {
+      result = await this.readPacket(operation);
+    } catch (error) {
+      if (this.current(operation)) result = this.failedRead(error);
+    } finally {
+      this.finishLoad(operation);
+    }
+    return this.readResult(operation, result);
+  }
+}
+function sessionFailure(error: unknown): error is TrialApiError {
+  return (
+    error instanceof TrialApiError &&
+    ["unauthenticated", "access_denied", "origin_denied"].includes(error.code)
+  );
+}
+function responseError(error: unknown): "invalid_response" | "unavailable" {
+  return error instanceof TrialApiError && error.code === "invalid_response"
+    ? "invalid_response"
+    : "unavailable";
 }

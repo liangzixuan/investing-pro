@@ -1,12 +1,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   encodeMainWatchlistPayload,
   encodeResearchFollowupsPayload,
   parseManagedCpiHeadlines,
   type ManagedResearchFollowupsCommand,
+  type ResearchFollowup,
 } from "@research-cockpit/contracts";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { prepareCalendarFollowup } from "../../src/clerk-trial/managed-calendar-followup";
@@ -128,6 +129,242 @@ function diagnostic(f: Mounted) {
   };
 }
 
+type SourcePort = Awaited<ReturnType<typeof loaded>>["port"];
+type WatchlistState = ReturnType<
+  ManagedWorkspace["coordinator"]["getSnapshot"]
+>;
+type CommandMutation = (raw: Record<string, unknown>) => void;
+
+function createCitedCheck(
+  f: Mounted,
+  port: SourcePort,
+  encodedWatchlist: string,
+) {
+  expect(f.workspace.followups.coordinator.getSnapshot().draft).toEqual(
+    cpiFollowupOriginal(f.fixture),
+  );
+  noOtherEffects(f.fixture);
+  const cancelled = preview(port);
+  cancelled.cancel();
+  expect(cancelled.create()).toBeNull();
+  const check = preview(port);
+  expect(check.dueOn).toBe(cpiFollowupDueOn);
+  expect(check.listing).toEqual(
+    f.fixture.researchCoverage.listings[0]!.listing,
+  );
+  const entry = check.create()!;
+  expect(entry).not.toBeNull();
+  expect(check.create()).toBeNull();
+  const expected = encodeResearchFollowupsPayload(
+    cpiFollowupExpected(f.fixture, entry.id),
+  );
+  expect(diagnostic(f)).toMatchObject({
+    encodedWatchlist,
+    encodedFollowups: expected,
+    expectedEncodedFollowups: expected,
+    packet: cpiFollowupPacket(),
+  });
+  return { entry, expected };
+}
+async function reviewResearchAndBack(
+  f: Mounted,
+  entry: ResearchFollowup,
+  watchlist: WatchlistState,
+) {
+  const review = f.workspace.reviewFollowup(entry, () => {
+    f.workspace.setView("followups");
+    return true;
+  });
+  expect(review?.entry).toBe(entry);
+  expect(f.workspace.followups.getSnapshot()).toMatchObject({
+    selectedId: entry.id,
+    filter: "open",
+  });
+  const prepared = await f.workspace.prepareFollowupResearch(entry);
+  expect(prepared).not.toBeNull();
+  f.workspace.openFollowupResearch(prepared!);
+  expect(f.workspace.getSnapshot().research?.selection.listing).toEqual(
+    entry.listing,
+  );
+  f.workspace.closeResearch();
+  expect(f.workspace.getSnapshot()).toMatchObject({
+    view: "followups",
+    research: null,
+  });
+  noOtherEffects(f.fixture, 1, 1);
+  expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
+}
+async function saveSeparateFollowups(
+  f: Mounted,
+  watchlist: WatchlistState,
+  encodedWatchlist: string,
+  expected: string,
+) {
+  await f.workspace.followups.coordinator.save();
+  expect(f.fixture.followups!.getSnapshot()).toMatchObject({
+    load: 1,
+    save: 1,
+    commits: 1,
+  });
+  expect(diagnostic(f)).toMatchObject({
+    encodedWatchlist,
+    encodedFollowups: expected,
+    expectedEncodedFollowups: expected,
+  });
+  expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
+  expect(watchlist.dirty).toBe(true);
+}
+async function freshExplicitLoad(f: Mounted, expected: string) {
+  f.workspace.sessionOwner.dispose();
+  const fresh = owner(f.fixture, true);
+  await fresh.coordinator.load();
+  await fresh.refreshCatalog();
+  expect(fresh.cpiHeadlines.getSnapshot().headlines).toBeNull();
+  expect(fresh.followups.coordinator.getSnapshot().draft).toBeNull();
+  expect(fresh.coordinator.getSnapshot().draft!.memberships[0]!.note).toBe(
+    "Original independent CPI note",
+  );
+  await fresh.followups.coordinator.load();
+  expect(diagnostic({ fixture: f.fixture, workspace: fresh })).toMatchObject({
+    encodedFollowups: expected,
+    expectedEncodedFollowups: expected,
+    packet: null,
+  });
+  expect(fresh.followups.coordinator.getSnapshot()).toMatchObject({
+    baseVersion: 2,
+    dirty: false,
+  });
+  noOtherEffects(f.fixture, 2, 1);
+}
+async function preparedSaveCommand(
+  f: Mounted,
+): Promise<ManagedResearchFollowupsCommand> {
+  const { port } = await loaded(f);
+  const entry = preview(port).create()!;
+  f.workspace.reviewFollowup(entry, () => {
+    f.workspace.setView("followups");
+    return true;
+  });
+  const prepared = await f.workspace.prepareFollowupResearch(entry);
+  expect(prepared).not.toBeNull();
+  const command: ManagedResearchFollowupsCommand = {
+    expectedVersion: 1,
+    idempotencyKey: "40000000-0000-4000-8000-000000000001",
+    payload: cpiFollowupExpected(f.fixture, entry.id),
+  };
+  return command;
+}
+function envelopeChanges(
+  command: ManagedResearchFollowupsCommand,
+): CommandMutation[] {
+  return [
+    (x: Record<string, unknown>) => {
+      x.extra = true;
+    },
+    (x: Record<string, unknown>) => {
+      delete x.idempotencyKey;
+    },
+    (x: Record<string, unknown>) => {
+      x.expectedVersion = "1";
+    },
+    (x: Record<string, unknown>) => {
+      x.expectedVersion = 0;
+    },
+    (x: Record<string, unknown>) => {
+      x.payload = { ...command.payload, extra: true };
+    },
+  ];
+}
+function orderedEntryChanges(
+  command: ManagedResearchFollowupsCommand,
+): CommandMutation[] {
+  return [
+    (x: Record<string, unknown>) => {
+      x.payload = {
+        ...command.payload,
+        entries: [...command.payload.entries].reverse(),
+      };
+    },
+    (x: Record<string, unknown>) => {
+      x.payload = {
+        ...command.payload,
+        entries: command.payload.entries.slice(1),
+      };
+    },
+  ];
+}
+function citedEntryChanges(
+  f: Mounted,
+  command: ManagedResearchFollowupsCommand,
+): CommandMutation[] {
+  return [
+    (x: Record<string, unknown>) => {
+      x.payload = {
+        ...command.payload,
+        entries: command.payload.entries.map((e, i) =>
+          i === 2 ? { ...e, check: cpiFollowupQuestion } : e,
+        ),
+      };
+    },
+    (x: Record<string, unknown>) => {
+      x.payload = {
+        ...command.payload,
+        entries: command.payload.entries.map((e, i) =>
+          i === 2 ? { ...e, dueOn: "2027-01-01" } : e,
+        ),
+      };
+    },
+    (x: Record<string, unknown>) => {
+      x.payload = {
+        ...command.payload,
+        entries: command.payload.entries.map((e, i) =>
+          i === 2 ? { ...e, listing: f.fixture.marketsCohort[0] } : e,
+        ),
+      };
+    },
+  ];
+}
+function assertSaveRefused(
+  f: Mounted,
+  command: ManagedResearchFollowupsCommand,
+  change: CommandMutation,
+) {
+  const raw = structuredClone(command) as unknown as Record<string, unknown>;
+  change(raw);
+  expect(() =>
+    f.fixture.api.saveFollowups(
+      raw as unknown as ManagedResearchFollowupsCommand,
+      new AbortController().signal,
+    ),
+  ).toThrow("Unexpected invented");
+  expect(f.fixture.followups!.getSnapshot()).toMatchObject({
+    save: 0,
+    commits: 0,
+  });
+}
+async function saveReorderedCanonicalPayload(
+  f: Mounted,
+  command: ManagedResearchFollowupsCommand,
+) {
+  const reordered = {
+    ...command,
+    payload: {
+      entries: command.payload.entries.map((e) => {
+        const { result, ...rest } = e;
+        return { result, ...rest };
+      }),
+      schemaVersion: 1 as const,
+    },
+  };
+  await expect(
+    f.fixture.api.saveFollowups(reordered, new AbortController().signal),
+  ).resolves.toMatchObject({ version: 2 });
+  expect(() =>
+    f.fixture.api.saveFollowups(command, new AbortController().signal),
+  ).toThrow("Unexpected invented");
+  noOtherEffects(f.fixture, 1, 1);
+}
+
 describe("invented native CPI headline-to-check fixture", () => {
   it("opens Markets and chooses no source or company automatically", async () => {
     const f = await setup();
@@ -189,188 +426,21 @@ describe("invented native CPI headline-to-check fixture", () => {
     const watchlist = f.workspace.coordinator.getSnapshot();
     const encodedWatchlist = encodeMainWatchlistPayload(watchlist.draft!);
     const { port } = await loaded(f);
-    expect(f.workspace.followups.coordinator.getSnapshot().draft).toEqual(
-      cpiFollowupOriginal(f.fixture),
-    );
-    noOtherEffects(f.fixture);
-    const cancelled = preview(port);
-    cancelled.cancel();
-    expect(cancelled.create()).toBeNull();
-    const check = preview(port);
-    expect(check.dueOn).toBe(cpiFollowupDueOn);
-    expect(check.listing).toEqual(
-      f.fixture.researchCoverage.listings[0]!.listing,
-    );
-    const entry = check.create()!;
-    expect(entry).not.toBeNull();
-    expect(check.create()).toBeNull();
-    const expected = encodeResearchFollowupsPayload(
-      cpiFollowupExpected(f.fixture, entry.id),
-    );
-    expect(diagnostic(f)).toMatchObject({
-      encodedWatchlist,
-      encodedFollowups: expected,
-      expectedEncodedFollowups: expected,
-      packet: cpiFollowupPacket(),
-    });
-    const review = f.workspace.reviewFollowup(entry, () => {
-      f.workspace.setView("followups");
-      return true;
-    });
-    expect(review?.entry).toBe(entry);
-    expect(f.workspace.followups.getSnapshot()).toMatchObject({
-      selectedId: entry.id,
-      filter: "open",
-    });
-    const prepared = await f.workspace.prepareFollowupResearch(entry);
-    expect(prepared).not.toBeNull();
-    f.workspace.openFollowupResearch(prepared!);
-    expect(f.workspace.getSnapshot().research?.selection.listing).toEqual(
-      entry.listing,
-    );
-    f.workspace.closeResearch();
-    expect(f.workspace.getSnapshot()).toMatchObject({
-      view: "followups",
-      research: null,
-    });
-    noOtherEffects(f.fixture, 1, 1);
-    expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
-    await f.workspace.followups.coordinator.save();
-    expect(f.fixture.followups!.getSnapshot()).toMatchObject({
-      load: 1,
-      save: 1,
-      commits: 1,
-    });
-    expect(diagnostic(f)).toMatchObject({
-      encodedWatchlist,
-      encodedFollowups: expected,
-      expectedEncodedFollowups: expected,
-    });
-    expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
-    expect(watchlist.dirty).toBe(true);
-    f.workspace.sessionOwner.dispose();
-    const fresh = owner(f.fixture, true);
-    await fresh.coordinator.load();
-    await fresh.refreshCatalog();
-    expect(fresh.cpiHeadlines.getSnapshot().headlines).toBeNull();
-    expect(fresh.followups.coordinator.getSnapshot().draft).toBeNull();
-    expect(fresh.coordinator.getSnapshot().draft!.memberships[0]!.note).toBe(
-      "Original independent CPI note",
-    );
-    await fresh.followups.coordinator.load();
-    expect(diagnostic({ fixture: f.fixture, workspace: fresh })).toMatchObject({
-      encodedFollowups: expected,
-      expectedEncodedFollowups: expected,
-      packet: null,
-    });
-    expect(fresh.followups.coordinator.getSnapshot()).toMatchObject({
-      baseVersion: 2,
-      dirty: false,
-    });
-    noOtherEffects(f.fixture, 2, 1);
+    const { entry, expected } = createCitedCheck(f, port, encodedWatchlist);
+    await reviewResearchAndBack(f, entry, watchlist);
+    await saveSeparateFollowups(f, watchlist, encodedWatchlist, expected);
+    await freshExplicitLoad(f, expected);
   });
   it("refuses malformed RAM command envelopes and every altered complete resource before admitting one canonical Save", async () => {
     const f = await setup();
-    const { port } = await loaded(f);
-    const entry = preview(port).create()!;
-    f.workspace.reviewFollowup(entry, () => {
-      f.workspace.setView("followups");
-      return true;
-    });
-    const prepared = await f.workspace.prepareFollowupResearch(entry);
-    expect(prepared).not.toBeNull();
-    const command: ManagedResearchFollowupsCommand = {
-      expectedVersion: 1,
-      idempotencyKey: "40000000-0000-4000-8000-000000000001",
-      payload: cpiFollowupExpected(f.fixture, entry.id),
-    };
+    const command = await preparedSaveCommand(f);
     const changes = [
-      (x: Record<string, unknown>) => {
-        x.extra = true;
-      },
-      (x: Record<string, unknown>) => {
-        delete x.idempotencyKey;
-      },
-      (x: Record<string, unknown>) => {
-        x.expectedVersion = "1";
-      },
-      (x: Record<string, unknown>) => {
-        x.expectedVersion = 0;
-      },
-      (x: Record<string, unknown>) => {
-        x.payload = { ...command.payload, extra: true };
-      },
-      (x: Record<string, unknown>) => {
-        x.payload = {
-          ...command.payload,
-          entries: [...command.payload.entries].reverse(),
-        };
-      },
-      (x: Record<string, unknown>) => {
-        x.payload = {
-          ...command.payload,
-          entries: command.payload.entries.slice(1),
-        };
-      },
-      (x: Record<string, unknown>) => {
-        x.payload = {
-          ...command.payload,
-          entries: command.payload.entries.map((e, i) =>
-            i === 2 ? { ...e, check: cpiFollowupQuestion } : e,
-          ),
-        };
-      },
-      (x: Record<string, unknown>) => {
-        x.payload = {
-          ...command.payload,
-          entries: command.payload.entries.map((e, i) =>
-            i === 2 ? { ...e, dueOn: "2027-01-01" } : e,
-          ),
-        };
-      },
-      (x: Record<string, unknown>) => {
-        x.payload = {
-          ...command.payload,
-          entries: command.payload.entries.map((e, i) =>
-            i === 2 ? { ...e, listing: f.fixture.marketsCohort[0] } : e,
-          ),
-        };
-      },
+      ...envelopeChanges(command),
+      ...orderedEntryChanges(command),
+      ...citedEntryChanges(f, command),
     ];
-    for (const change of changes) {
-      const raw = structuredClone(command) as unknown as Record<
-        string,
-        unknown
-      >;
-      change(raw);
-      expect(() =>
-        f.fixture.api.saveFollowups(
-          raw as unknown as ManagedResearchFollowupsCommand,
-          new AbortController().signal,
-        ),
-      ).toThrow("Unexpected invented");
-      expect(f.fixture.followups!.getSnapshot()).toMatchObject({
-        save: 0,
-        commits: 0,
-      });
-    }
-    const reordered = {
-      ...command,
-      payload: {
-        entries: command.payload.entries.map((e) => {
-          const { result, ...rest } = e;
-          return { result, ...rest };
-        }),
-        schemaVersion: 1 as const,
-      },
-    };
-    await expect(
-      f.fixture.api.saveFollowups(reordered, new AbortController().signal),
-    ).resolves.toMatchObject({ version: 2 });
-    expect(() =>
-      f.fixture.api.saveFollowups(command, new AbortController().signal),
-    ).toThrow("Unexpected invented");
-    noOtherEffects(f.fixture, 1, 1);
+    for (const change of changes) assertSaveRefused(f, command, change);
+    await saveReorderedCanonicalPayload(f, command);
   });
   it("refuses unrelated financial reads and independent writes with explicit zero-effect diagnostics", async () => {
     const fixture = await createFixture("cpi-headline-followup");
@@ -412,4 +482,84 @@ describe("invented native CPI headline-to-check fixture", () => {
       valuationSave: 1,
     });
   });
+});
+
+it("derives independent exact Markets cohort counts from startup, return and fresh-session visits", async () => {
+  const fixture = await createFixture("cpi-headline-followup");
+  const workspace = owner(fixture);
+  const mounted = { fixture, workspace };
+  const settled = async (w: ManagedWorkspace) => {
+    await vi.waitFor(() => {
+      expect(w.markets.getSnapshot().resolving).toBe(false);
+      expect(w.markets.getSnapshot().rows).toHaveLength(3);
+    });
+  };
+  await workspace.coordinator.load();
+  await workspace.refreshCatalog();
+  await settled(workspace);
+  // ManagedMarkets.enter resolves once for an active catalog-owned Markets visit.
+  expect(fixture.getSnapshot()).toMatchObject({
+    load: 1,
+    status: 1,
+    marketsResolve: 1,
+    cpi: 0,
+    resolve: 0,
+    save: 0,
+  });
+  workspace.setView("watchlist");
+  workspace.note("listing-zero", cpiFollowupWatchlistNote);
+  workspace.setView("markets");
+  await settled(workspace);
+  // Leaving clears the visit. Returning adds one cohort resolution, not a new session.
+  expect(fixture.getSnapshot()).toMatchObject({
+    load: 1,
+    status: 1,
+    marketsResolve: 2,
+    cpi: 0,
+    resolve: 0,
+    save: 0,
+  });
+  workspace.setView("markets");
+  await settled(workspace);
+  expect(fixture.getSnapshot().marketsResolve).toBe(2);
+  const watchlist = workspace.coordinator.getSnapshot();
+  const { port } = await loaded(mounted);
+  const entry = preview(port).create()!;
+  expect(entry).not.toBeNull();
+  await reviewResearchAndBack(mounted, entry, watchlist);
+  expect(fixture.getSnapshot().marketsResolve).toBe(2);
+  noOtherEffects(fixture, 1, 1);
+  await workspace.followups.coordinator.save();
+  expect(fixture.followups!.getSnapshot()).toMatchObject({
+    load: 1,
+    save: 1,
+    commits: 1,
+    replays: 0,
+  });
+  expect(fixture.getSnapshot().marketsResolve).toBe(2);
+  workspace.sessionOwner.dispose();
+  const fresh = owner(fixture, true);
+  await fresh.coordinator.load();
+  await fresh.refreshCatalog();
+  await settled(fresh);
+  // A new workspace starts its own Markets visit: one startup + one return + one fresh startup.
+  expect(fixture.getSnapshot()).toMatchObject({
+    load: 2,
+    status: 2,
+    marketsResolve: 3,
+    cpi: 1,
+    resolve: 1,
+    save: 0,
+  });
+  expect(fresh.cpiHeadlines.getSnapshot().headlines).toBeNull();
+  fresh.setView("followups");
+  await fresh.followups.coordinator.load();
+  expect(fixture.getSnapshot().marketsResolve).toBe(3);
+  expect(fixture.followups!.getSnapshot()).toMatchObject({
+    load: 2,
+    save: 1,
+    commits: 1,
+    replays: 0,
+  });
+  noOtherEffects(fixture, 2, 1);
 });

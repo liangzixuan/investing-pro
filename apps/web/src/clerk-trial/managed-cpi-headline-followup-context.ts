@@ -86,9 +86,10 @@ export class ManagedCpiHeadlineFollowupContext {
       owner.selectionIsCurrent()
     );
   }
-  capture(key: string, selectionIsCurrent: () => boolean) {
-    if (!this.available() || !selectionIsCurrent())
-      return { capture: null, reason: sourceStale };
+  private sourceOwner(
+    key: string,
+    selectionIsCurrent: () => boolean,
+  ): SourceOwner | null {
     const sources = this.sources();
     const packet = sources.headlines;
     const item = packet?.items.find((row) => row.url === key);
@@ -102,7 +103,7 @@ export class ManagedCpiHeadlineFollowupContext {
           })
         : null;
     const evidence = source && calendarFollowupEvidence(source);
-    if (!source || !evidence) return { capture: null, reason: sourceStale };
+    if (!source || !evidence) return null;
     const owner: SourceOwner = {
       source,
       sources,
@@ -111,11 +112,12 @@ export class ManagedCpiHeadlineFollowupContext {
       evidence: JSON.stringify(evidence),
       selectionIsCurrent,
     };
-    if (!this.sourceCurrent(owner))
-      return { capture: null, reason: sourceStale };
+    return owner;
+  }
+  private ownedCapture(owner: SourceOwner) {
     let retired = false;
     const capture: CalendarSourceCapture = Object.freeze({
-      source,
+      source: owner.source,
       isCurrent: () => {
         retired ||= !this.sourceCurrent(owner);
         return !retired;
@@ -123,6 +125,14 @@ export class ManagedCpiHeadlineFollowupContext {
     });
     this.owners.set(capture, owner);
     return { capture, reason: null };
+  }
+  capture(key: string, selectionIsCurrent: () => boolean) {
+    if (!this.available() || !selectionIsCurrent())
+      return { capture: null, reason: sourceStale };
+    const owner = this.sourceOwner(key, selectionIsCurrent);
+    if (!owner || !this.sourceCurrent(owner))
+      return { capture: null, reason: sourceStale };
+    return this.ownedCapture(owner);
   }
   private current(capture: CalendarSourceCapture) {
     const owner = this.owners.get(capture);

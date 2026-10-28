@@ -47,7 +47,7 @@ public class ManagedCpiHeadlineFollowupTest {
     private static final String W="JSON.parse(document.querySelector('#fixture-workspace-draft').textContent)";
     private static final String E="JSON.parse(document.querySelector('#fixture-cpi-followup-evidence').textContent)";
     private static final String CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
-    private record Reads(int sessions,int cpi,int resolves,int followups,int saves) {}
+    private record Reads(String phase,int sessions,int marketsResolves,int cpi,int resolves,int followups,int saves) {}
     private ActivityScenario<MainActivity> scenario;
     private ReportRevisitFixtureAssets assets;
     private ReportRevisitPage page;
@@ -75,13 +75,13 @@ public class ManagedCpiHeadlineFollowupTest {
         page.awaitStartup(new Check("fixed invented startup has no CPI or Follow-ups read",new Script(
             "document.querySelector('#fixture-cpi-followup-evidence')!==null&&"+C+".load===1&&"+C+".status===1&&"+C+".marketsResolve===1&&"+R+".entries===null&&"+W+".memberships?.length===3")).nativeReady());
         scenario.onActivity(activity->activity.getBridge().getWebView().clearHistory());
-        boundary(new Reads(1,0,0,0,0));
+        boundary(new Reads("startup",1,1,0,0,0,0));
     }
     @Test public void publishedRawClocksKeepIndependentExactCitedCheckThroughReviewResearchBackAndSeparateSave() throws Exception {
         String document=page.read(new Script("String(performance.timeOrigin)"));
         authorWatchlistAndOpenMarkets();loadAndInspectClocks();chooseIndependentCompany();authorAndLoad();refuseOverflowAndStale();createOnce();reviewResearchAndBack();saveAndFreshLoad();
         assertEquals("same mounted native document owns this complete journey",document,page.read(new Script("String(performance.timeOrigin)")));
-        boundary(new Reads(2,1,1,2,1));
+        boundary(new Reads("fresh-followups-loaded",2,3,1,1,2,1));
     }
     private void authorWatchlistAndOpenMarkets() throws Exception {
         page.click(Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='My Watchlist']"));
@@ -94,7 +94,7 @@ public class ManagedCpiHeadlineFollowupTest {
         page.await(new Check("settled Markets panel starts unloaded with enabled manual Load and no destination form",new Script(
             "location.href==='https://localhost/'&&document.querySelector('#managed-cpi-heading')?.textContent==='Published CPI headlines'&&document.querySelector('#cpi-headlines-load')?.textContent==='Load CPI headlines'&&document.querySelector('#cpi-headlines-load')?.disabled===false&&document.querySelector('#cpi-followup-company')===null")).nativeReady());
         keyboard.enter(new ReportRevisitKeyboard.ControlledInput("#cpi-headlines-filter","filter only already loaded CPI headlines","Invented"));
-        boundary(new Reads(1,0,0,0,0));
+        boundary(new Reads("first-markets-return",1,2,0,0,0,0));
     }
     private void loadAndInspectClocks() throws Exception {
         page.click(Element.css("#cpi-headlines-load"));
@@ -103,11 +103,11 @@ public class ManagedCpiHeadlineFollowupTest {
         chooseSource("Invented CPI headline with unknown feed clocks");
         page.await(new Check("null published and updated clocks remain explicitly Unknown beside independent root and retrieval clocks",new Script(
             "(()=>{const s=document.querySelector('[aria-label=\"Selected CPI headline source\"]');const has=(k,v)=>[...s.querySelectorAll('dl > div')].some(d=>d.querySelector('dt')?.textContent===k&&d.querySelector('dd')?.textContent===v);return has('Feed published time','Unknown')&&has('Feed updated time','Unknown')&&has('Feed-level updated time',"+JSONObject.quote(FEED_UPDATED)+")&&has('Retrieved (UTC)',"+JSONObject.quote(FETCHED)+")&&document.querySelector('#cpi-followup-company')?.value==='';})()")));
-        boundary(new Reads(1,1,0,0,0));
+        boundary(new Reads("unknown-headline-choice",1,2,1,0,0,0));
         chooseSource(TITLE);assertSource();
         page.await(new Check("source choice never infers company relevance or reads a destination resource",new Script(
             "document.querySelector('#cpi-followup-company')?.value===''&&document.querySelector('#managed-cpi-followup')?.textContent.includes('No company is selected automatically.')&&"+R+".entries===null")));
-        boundary(new Reads(1,1,0,0,0));
+        boundary(new Reads("known-headline-choice",1,2,1,0,0,0));
     }
     private void chooseSource(String title) {
         page.click(Element.xpath("//section[contains(@class,'managed-cpi-headlines')]//li[h3[normalize-space(.)='"+title+"']]//button[normalize-space(.)='Keep a dated check']"));
@@ -128,7 +128,7 @@ public class ManagedCpiHeadlineFollowupTest {
             .check((view,missing)->{if(missing!=null)throw missing;dialog.set(view.getRootView());}).perform(androidx.test.espresso.action.ViewActions.click());
         assertNotNull(dialog.get());
         page.await(new Check("only native company choice selects exact ZERO/Class A/XNAS",new Script("document.querySelector('#cpi-followup-company')?.value==='listing-zero'"),ReportRevisitPage.Readiness.NATIVE,dialog.get()));
-        keyboard.closeSoftKeyboard();boundary(new Reads(1,1,0,0,0));
+        keyboard.closeSoftKeyboard();boundary(new Reads("independent-company-choice",1,2,1,0,0,0));
     }
     private void authorAndLoad() throws Exception {
         keyboard.enter(new ReportRevisitKeyboard.ControlledInput("#cpi-followup-question","complete oversized question","x".repeat(500)));
@@ -138,7 +138,7 @@ public class ManagedCpiHeadlineFollowupTest {
         page.click(Element.css("#cpi-followup-load"));
         page.await(new Check("explicit initial Load retains full raw question/date/company and both original complete entries",new Script(
             "document.querySelector('#cpi-followup-question')?.value==='x'.repeat(500)&&document.querySelector('#cpi-followup-due')?.value==="+JSONObject.quote(DUE)+"&&document.querySelector('#cpi-followup-company')?.value==='listing-zero'&&"+F+".load===1&&"+R+".baseVersion===1&&"+R+".dirty===false&&"+E+".encodedFollowups==="+E+".originalEncodedFollowups")));
-        assertSource();boundary(new Reads(1,1,0,1,0));
+        assertSource();boundary(new Reads("initial-followups-loaded",1,2,1,0,1,0));
     }
     private void refuseOverflowAndStale() throws Exception {
         page.click(Element.css("#cpi-followup-preview"));
@@ -154,7 +154,7 @@ public class ManagedCpiHeadlineFollowupTest {
         page.click(Element.css("#managed-cpi-followup > details > summary"));
         page.await(new Check("explicit reopen retains the complete authored fields without another source read",new Script(
             "document.querySelector('#cpi-followup-question')?.value==="+JSONObject.quote(QUESTION)+"&&document.querySelector('#cpi-followup-due')?.value==="+JSONObject.quote(DUE)+"&&document.querySelector('#cpi-followup-company')?.value==='listing-zero'")));
-        boundary(new Reads(1,1,0,1,0));
+        boundary(new Reads("authored-form-reopened",1,2,1,0,1,0));
     }
     private void preview() throws Exception {
         page.click(Element.css("#cpi-followup-preview"));
@@ -187,7 +187,7 @@ public class ManagedCpiHeadlineFollowupTest {
         page.click(Element.css("#cpi-followup-preview"));
         page.await(new Check("duplicate attempt refuses before Create or overwrite",new Script(
             "document.querySelector('#cpi-followup-create')===null&&document.querySelector('#cpi-followup-check')===null&&document.querySelector('#cpi-followup-status')?.textContent.includes('already has a follow-up')&&document.querySelector('#cpi-followup-review')?.textContent==='Review follow-up'")));
-        assertDrafts();boundary(new Reads(1,1,0,1,0));
+        assertDrafts();boundary(new Reads("draft-created",1,2,1,0,1,0));
     }
     private void reviewResearchAndBack() throws Exception {
         page.click(Element.css("#cpi-followup-review"));
@@ -200,13 +200,13 @@ public class ManagedCpiHeadlineFollowupTest {
         keyboard.closeSoftKeyboard();pressBack();
         page.await(new Check("one hardware Back retains the selected global check and original CPI packet",new Script(
             "location.href==='https://localhost/'&&document.querySelector('.managed-company-visit')===null&&document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Follow-ups'&&"+R+".selectedId==="+JSONObject.quote(id)+"&&document.querySelector('#managed-followup-check')?.value==="+JSONObject.quote(CHECK)+"&&"+E+".packet.fetchedAt==="+JSONObject.quote(FETCHED)+"&&"+E+".packet.items[0].publishedAt==="+JSONObject.quote(PUBLISHED)+"&&"+E+".packet.items[0].updatedAt==="+JSONObject.quote(UPDATED))));
-        assertDrafts();boundary(new Reads(1,1,1,1,0));
+        assertDrafts();boundary(new Reads("research-back",1,2,1,1,1,0));
     }
     private void saveAndFreshLoad() throws Exception {
         page.click(Element.css("#managed-followups-save"));
         page.await(new Check("only separate explicit Follow-ups Save commits the full canonical resource once",new Script(
             R+".baseVersion===2&&"+R+".dirty===false&&"+F+".save===1&&"+F+".commits===1")));
-        assertDrafts();boundary(new Reads(1,1,1,1,1));
+        assertDrafts();boundary(new Reads("followups-saved",1,2,1,1,1,1));
         page.click(Element.css("#fixture-followups-fresh-session"));
         page.await(new Check("explicit fresh invented session discards local drafts but neither reloads CPI nor saves the independent note",new Script(
             F+".session===2&&"+R+".entries===null&&"+F+".load===1&&"+C+".load===2&&"+W+".memberships[0].note==='Original independent CPI note'&&"+E+".packet===null")));
@@ -235,9 +235,9 @@ public class ManagedCpiHeadlineFollowupTest {
         keyboard.closeSoftKeyboard();
     }
     private void boundary(Reads reads) throws Exception {
-        page.await(new Check("fixed source/origin/CSP and every independent read/write counter remain exact",new Script(
+        page.await(new Check("fixed source/origin/CSP and every independent read/write counter remain exact: "+reads.phase(),new Script(
             "location.origin==='https://localhost'&&location.hash===''&&window.Capacitor?.getPlatform()==='android'&&document.querySelector('meta[name=investment-build-sha]')?.content==="+JSONObject.quote(sourceSha)+"&&document.querySelector('meta[name=investment-android-test]')?.content==='managed-workspace'&&document.querySelector('meta[http-equiv=Content-Security-Policy]')?.content==="+JSONObject.quote(CSP)+
-            "&&"+C+".load==="+reads.sessions()+"&&"+C+".status==="+reads.sessions()+"&&"+C+".marketsResolve==="+reads.sessions()+"&&"+C+".cpi==="+reads.cpi()+"&&"+C+".resolve==="+reads.resolves()+"&&"+C+".save===0&&"+C+".eod===0&&"+C+".annual===0&&"+C+".interimReport===0&&"+C+".filings===0&&"+C+".marketsEod===0&&"+C+".calendar===0&&"+C+".bls===0&&"+C+".fed===0&&"+C+".search===0&&"+C+".portfolioLoad===0&&"+C+".portfolioSave===0&&"+C+".valuationLoad===0&&"+C+".valuationSave===0&&"+C+".token===0&&"+C+".signOut===0&&"+F+".load==="+reads.followups()+"&&"+F+".save==="+reads.saves()+"&&"+F+".commits==="+reads.saves()+"&&"+F+".replays===0&&"+F+".token===0&&"+F+".signOut===0")));
+            "&&"+C+".load==="+reads.sessions()+"&&"+C+".status==="+reads.sessions()+"&&"+C+".marketsResolve==="+reads.marketsResolves()+"&&"+C+".cpi==="+reads.cpi()+"&&"+C+".resolve==="+reads.resolves()+"&&"+C+".save===0&&"+C+".eod===0&&"+C+".annual===0&&"+C+".interimReport===0&&"+C+".filings===0&&"+C+".marketsEod===0&&"+C+".calendar===0&&"+C+".bls===0&&"+C+".fed===0&&"+C+".search===0&&"+C+".portfolioLoad===0&&"+C+".portfolioSave===0&&"+C+".valuationLoad===0&&"+C+".valuationSave===0&&"+C+".token===0&&"+C+".signOut===0&&"+F+".load==="+reads.followups()+"&&"+F+".save==="+reads.saves()+"&&"+F+".commits==="+reads.saves()+"&&"+F+".replays===0&&"+F+".token===0&&"+F+".signOut===0")));
     }
     @After public void closeInventedCpiQuestion(){try{if(scenario!=null){scenario.close();scenario=null;}}finally{if(assets!=null)assets.close();}}
 }

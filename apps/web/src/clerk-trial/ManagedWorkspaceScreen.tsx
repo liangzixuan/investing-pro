@@ -1,3 +1,4 @@
+import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { managedResearchDraftProps } from "./managed-research-draft-props";
 import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
@@ -50,14 +51,11 @@ import {
   type ManagedWatchlistEditorHandle,
   type ManagedWatchlistEditorProps,
 } from "./ManagedWatchlistEditor";
-import { ManagedDailyResearchReview } from "./ManagedDailyResearchReview";
 import {
   ManagedFilingsReviewEntry,
   watchlistFilingsActions,
 } from "./ManagedFilingsReviewEntry";
 import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
-import { ManagedCpiHeadlines } from "./ManagedCpiHeadlines";
-import { ManagedMarketsCalendarFollowup } from "./ManagedMarketsCalendarFollowup";
 import { marketsFollowupNavigation } from "./managed-calendar-followup-navigation";
 import { ManagedMarketsBoard } from "./ManagedMarketsBoard";
 import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
@@ -1362,34 +1360,12 @@ export function ManagedWorkspaceScreen({
                       watchlistNavigation.current?.focus();
                     }}
                   />
-                  <ManagedDailyResearchReview
+                  <ManagedMarketsDatedChecks
                     workspace={workspace}
-                    navigationPending={navigationPending}
-                    headingRef={marketsSectionNavigation.targets.review.ref}
-                    isCurrent={isMarketsCurrent}
-                    onReview={calendarFollowupNavigation.review}
-                    onManage={calendarFollowupNavigation.manageFollowups}
-                  />
-                  <ManagedCpiHeadlines
-                    headingRef={marketsSectionNavigation.targets.cpi.ref}
-                    workspace={workspace}
+                    sections={marketsSectionNavigation}
                     isCurrent={isMarketsCurrent}
                     navigationPending={navigationPending}
-                    onReview={calendarFollowupNavigation.review}
-                    onManageWatchlist={
-                      calendarFollowupNavigation.manageWatchlist
-                    }
-                  />
-                  <ManagedMarketsCalendarFollowup
-                    workspace={workspace}
-                    navigation={marketsSectionNavigation}
-                    headingRef={marketsSectionNavigation.targets.day.ref}
-                    isCurrent={isMarketsCurrent}
-                    navigationPending={navigationPending}
-                    onReview={calendarFollowupNavigation.review}
-                    onManageWatchlist={
-                      calendarFollowupNavigation.manageWatchlist
-                    }
+                    navigation={calendarFollowupNavigation}
                   />
                   <ManagedBeaReleaseAgenda
                     model={workspace.agenda}
