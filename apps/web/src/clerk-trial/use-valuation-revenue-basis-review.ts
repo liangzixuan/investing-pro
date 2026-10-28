@@ -65,17 +65,20 @@ function applyBasis(commands: ReviewCommands) {
   commands.setPreview(null);
   commands.setMessage(result.message);
 }
-interface ReviewLifetimeOptions {
-  model: ManagedValuationWorkbench;
-  selection: ManagedResearchSelection;
-  actions: ManagedValuationRevenueBasisActions;
+interface ReviewLifetimeOptions extends RevenueBasisReviewOptions {
+  state: ReturnType<ManagedValuationWorkbench["getSnapshot"]>;
+  sourceState: ReturnType<ManagedAnnualReport["getSnapshot"]>;
   preview: PreparedValuationRevenueBasis | null;
   reset: () => void;
 }
 function useBasisReviewLifetime({
   model,
+  annual,
   selection,
   actions,
+  disabled,
+  state,
+  sourceState,
   preview,
   reset,
 }: ReviewLifetimeOptions) {
@@ -99,7 +102,24 @@ function useBasisReviewLifetime({
   useLayoutEffect(() => {
     if (preview) previewElement.current?.focus();
   }, [preview]);
-  return { live, previewElement };
+  const commandContext = {
+    model,
+    annual,
+    selection,
+    disabled,
+    state,
+    sourceState,
+  };
+  const latestCommandContext = useRef(commandContext);
+  latestCommandContext.current = commandContext;
+  const canAct = () => {
+    if (!live.current) return false;
+    if (latestCommandContext.current !== commandContext) return false;
+    if (disabled) return false;
+    if (model.getSnapshot() !== state) return false;
+    return annual.getSnapshot() === sourceState;
+  };
+  return { canAct, previewElement };
 }
 export function useValuationRevenueBasisReview({
   model,
@@ -123,10 +143,14 @@ export function useValuationRevenueBasisReview({
     null,
   );
   const [message, setMessage] = useState("");
-  const { live, previewElement } = useBasisReviewLifetime({
+  const { canAct, previewElement } = useBasisReviewLifetime({
     model,
+    annual,
     selection,
     actions,
+    disabled,
+    state,
+    sourceState,
     preview,
     reset: () => {
       setConcept("");
@@ -134,23 +158,6 @@ export function useValuationRevenueBasisReview({
       setMessage("");
     },
   });
-  const commandContext = {
-    model,
-    annual,
-    selection,
-    disabled,
-    state,
-    sourceState,
-  };
-  const latestCommandContext = useRef(commandContext);
-  latestCommandContext.current = commandContext;
-  const canAct = () => {
-    if (!live.current) return false;
-    if (latestCommandContext.current !== commandContext) return false;
-    if (disabled) return false;
-    if (model.getSnapshot() !== state) return false;
-    return annual.getSnapshot() === sourceState;
-  };
   const commands = {
     canAct,
     actions,
