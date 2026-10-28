@@ -1,4 +1,9 @@
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
+import {
+  annualRevenueBasisContextIsOwned,
+  annualRevenueBasisExcerpt,
+  type AppliedValuationRevenueBasis,
+} from "./managed-valuation-revenue-basis";
 import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
 import type { ManagedEodHistoryState } from "./managed-eod-history";
 import type { ManagedResearchSelection } from "./managed-research-selection";
@@ -30,6 +35,7 @@ export interface ValuationNoteCapture {
   readonly note: string;
   readonly selection?: ManagedResearchSelection;
   readonly includePriceComparison?: boolean;
+  readonly annualRevenueBasis?: AppliedValuationRevenueBasis | null;
   readonly price?: ManagedEodHistoryState | null;
   readonly isCurrent: () => boolean;
   readonly apply: (note: string) => void;
@@ -84,7 +90,14 @@ export function prepareValuationNote(
     return refuse(
       "Load this company's Price and use a valid scenario before including its dated comparison.",
     );
-  const excerpt = valuation + comparison.text;
+  const revenueBasis = input.annualRevenueBasis
+    ? valuationRevenueBasisExcerpt(input)
+    : { text: "", current: () => true };
+  if (revenueBasis === null)
+    return refuse(
+      "Apply a current Annual revenue basis to this exit model before including its source.",
+    );
+  const excerpt = valuation + comparison.text + revenueBasis.text;
   if (normalizeWatchlistNote(input.note)!.endsWith(excerpt))
     return refuse("This valuation is already at the end of the note draft.");
   const note = input.note ? `${input.note} ${excerpt}` : excerpt;
@@ -92,7 +105,11 @@ export function prepareValuationNote(
     return refuse(
       "The complete note must fit the existing single-line, 2,000-character limit. Shorten the note before adding this valuation.",
     );
-  if (!safelyCurrent(() => current() && comparison.current()))
+  if (
+    !safelyCurrent(
+      () => current() && comparison.current() && revenueBasis.current(),
+    )
+  )
     return refuse(stale);
   const preview = Object.freeze({
     note,
@@ -103,12 +120,37 @@ export function prepareValuationNote(
   // Copy callbacks so later mutation of a caller's options cannot retarget append.
   const isCurrent = input.isCurrent;
   previews.set(preview, {
-    current: () => Boolean(guard?.() && isCurrent() && comparison.current()),
+    current: () =>
+      Boolean(
+        guard?.() &&
+        isCurrent() &&
+        comparison.current() &&
+        revenueBasis.current(),
+      ),
     apply: input.apply,
   });
   return { preview, reason: null };
 }
 
+function valuationRevenueBasisExcerpt(
+  input: ValuationNoteCapture,
+): { text: string; current: () => boolean } | null {
+  const context = input.annualRevenueBasis;
+  const selection = input.selection ?? input.capture.owner;
+  if (
+    input.model !== "exit" ||
+    !context ||
+    !annualRevenueBasisContextIsOwned(context, selection, input.capture)
+  )
+    return null;
+  const excerpt = annualRevenueBasisExcerpt(context);
+  if (!excerpt) return null;
+  return {
+    text: ` ${excerpt}`,
+    current: () =>
+      annualRevenueBasisContextIsOwned(context, selection, input.capture),
+  };
+}
 function valuationPriceExcerpt(
   input: ValuationNoteCapture,
 ): { text: string; current: () => boolean } | null {

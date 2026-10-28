@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Annual revenue to authored starting revenue
+
+Place the basis choice in an initially closed workbench disclosure. Start with
+an empty choice. Show full USD, the exact reported concept and period, filing
+identity and each original source clock beside historical/retained qualifications.
+Focus the complete preview. Reuse full raw-input and identity readouts for current
+and proposed maps, with two columns that stack on narrow screens. Keep 44px
+controls, visible focus and wrapping values. Apply changes one field once;
+Calculate, complete note append, report capture and each Save remain separate.
+
 ## Reviewed company source pass
 
 Keep the source choices and explicit Preview/Run controls beside the existing

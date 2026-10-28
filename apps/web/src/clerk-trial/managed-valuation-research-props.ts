@@ -11,6 +11,7 @@ type ValuationResearchProps = Pick<
   | "valuation"
   | "valuationAssumptions"
   | "valuationNoteActions"
+  | "valuationRevenueBasisActions"
   | "valuationDraftFiles"
 >;
 
@@ -37,6 +38,15 @@ export function managedValuationResearchProps(
       : null,
     valuation: workspace.valuation,
     valuationAssumptions: workspace.valuationAssumptions,
+    valuationRevenueBasisActions: {
+      prepare: (concept) =>
+        workspace.prepareAnnualRevenueBasis(selection, concept),
+      isCurrent: (preview) =>
+        workspace.annualRevenueBasisPreviewIsCurrent(preview),
+      apply: (preview) => workspace.applyAnnualRevenueBasis(preview),
+      retirePreview: () => workspace.retireAnnualRevenueBasisPreview(),
+      getApplied: () => workspace.getAppliedAnnualRevenueBasis(selection),
+    },
     valuationNoteActions: {
       prepare: (model, scenario, includePriceComparison) =>
         workspace.prepareValuationNote(

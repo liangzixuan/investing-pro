@@ -46,6 +46,7 @@ import {
   ManagedValuationWorkbench,
   type ManagedValuationNoteActions,
 } from "./ManagedValuationWorkbench";
+import type { ManagedValuationRevenueBasisActions } from "./ManagedValuationRevenueBasisPanel";
 import type { ManagedValuationWorkbench as ValuationModel } from "./managed-valuation-workbench";
 import type { ManagedValuationAssumptions as AssumptionsModel } from "./managed-valuation-assumptions";
 import { ManagedValuationAssumptions } from "./ManagedValuationAssumptions";
@@ -88,6 +89,7 @@ export function ManagedCompanyResearch({
   valuation,
   valuationAssumptions,
   valuationNoteActions,
+  valuationRevenueBasisActions,
   valuationDraftFiles,
   priceNoteActions,
   priceStudiesActions,
@@ -140,6 +142,7 @@ export function ManagedCompanyResearch({
   valuation?: ValuationModel;
   valuationAssumptions: AssumptionsModel;
   valuationNoteActions?: ManagedValuationNoteActions;
+  valuationRevenueBasisActions?: ManagedValuationRevenueBasisActions;
   valuationDraftFiles?: ReactNode;
   priceNoteActions: ManagedPriceNoteActions;
   priceStudiesActions?: ManagedPriceStudiesActions;
@@ -259,6 +262,10 @@ export function ManagedCompanyResearch({
             selection={research.selection}
             navigationPending={navigationPending}
             noteActions={valuationNoteActions}
+            annual={annual}
+            {...(valuationRevenueBasisActions
+              ? { revenueBasisActions: valuationRevenueBasisActions }
+              : {})}
             watchlist={watchlist}
             price={eod}
             onOpenPrice={() => onSection("eod")}

@@ -5,7 +5,19 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: reviewed company source pass
+## Selected next: Annual revenue to an authored model basis
+
+The [valuation workbench](MANAGED_VALUATION_WORKBENCH.md#apply-a-reported-annual-revenue-basis)
+adds an explicit choice among the admitted Annual revenue concepts. Preview the
+complete current and proposed inputs, then apply the chosen exact USD value to
+exit-model Starting revenue once. No other assumption is inferred. Calculation,
+the complete cited note/report and each existing Save remain separate actions.
+Original filing identity, periods and source clocks stay visible. The applied
+citation survives edits to other assumptions and expires on source, revenue,
+company, navigation or session changes. Implementation and automated acceptance
+are in progress; this increment has not been released.
+
+## Accepted and delivered: reviewed company source pass
 
 The [company source pass](MANAGED_COMPANY_SNAPSHOT.md#reviewed-company-source-pass)
 adds an explicit missing-read plan for Price, Annual and Filings, with optional
@@ -13,8 +25,13 @@ Interim. Preview makes no request. Run consumes that plan once and uses the
 existing models in declared order. Each retained or new response keeps its
 original completion time, qualifications and outcome. Cancellation, source or
 visit changes retire the plan. Existing individual source actions and the
-three-source missing load remain available. Integration and native acceptance
-are in progress; this source work has not been delivered to Android.
+three-source missing load remain available. [PR 249](https://github.com/liangzixuan/investing-pro/pull/249)
+merged at `91017480663b260d219a0191bb18df6cc15ae93f`. Original required
+PR/main checks and all 97 synthetic native cases passed. Android 1.52.0/code53
+is provided locally after the guarded existing-signer build and all four package
+checks passed. Narrow checker repairs reused the same signed APK and preserved
+the original failures. No installation, physical-phone, browser or authenticated
+owner-record acceptance is claimed. API, website and prior releases are preserved.
 
 ## Accepted and delivered: reported interim financial review
 

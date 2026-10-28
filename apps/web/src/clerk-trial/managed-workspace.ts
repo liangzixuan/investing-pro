@@ -33,6 +33,10 @@ import {
   type PreparedManagedAnnualStatementsNote,
 } from "./managed-annual-statements-note";
 import { ManagedValuationWorkbench } from "./managed-valuation-workbench";
+import {
+  ManagedValuationRevenueBasis,
+  type PreparedValuationRevenueBasis,
+} from "./managed-valuation-revenue-basis";
 import { ManagedValuationAssumptions } from "./managed-valuation-assumptions";
 import {
   ManagedFinancialScreen,
@@ -351,6 +355,9 @@ export class ManagedWorkspace {
   readonly portfolio: ManagedPortfolio;
   readonly sessionOwner: ManagedSessionOwner;
   readonly valuation = new ManagedValuationWorkbench();
+  private readonly valuationRevenueBasis = new ManagedValuationRevenueBasis(
+    this.valuation,
+  );
   readonly valuationAssumptions: ManagedValuationAssumptions;
   readonly annual: ManagedAnnualReport;
   readonly interim: ManagedInterimReport;
@@ -637,6 +644,7 @@ export class ManagedWorkspace {
         this.invalidateCatalog();
     });
     this.annual.subscribe(() => {
+      this.valuationRevenueBasis.invalidate();
       if (this.annual.getSnapshot().catalogChanged) this.invalidateCatalog();
     });
     this.eod.subscribe(() => {
@@ -702,6 +710,7 @@ export class ManagedWorkspace {
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
     this.companySourcePass.reconcile();
+    this.valuationRevenueBasis.reconcile();
     this.marketsSourceReview.reconcile();
     this.followups.syncCatalog(this.state.snapshot?.snapshotSha256 ?? null);
     this.syncFollowupsReview();
@@ -719,6 +728,7 @@ export class ManagedWorkspace {
     try {
       this.followupsReview.setAvailable(false);
       this.navigationRevision++;
+      this.valuationRevenueBasis.invalidate();
       this.companySourcePass.reconcile();
       this.companySnapshotLoad.cancel();
       this.cancelFollowupOpening();
@@ -889,6 +899,7 @@ export class ManagedWorkspace {
     this.followups.retire();
     this.portfolio.retire();
     this.valuationAssumptions.retire();
+    this.valuationRevenueBasis.invalidate();
     this.valuation.retire();
     this.closeResearch();
     this.annual.retire();
@@ -2753,6 +2764,42 @@ export class ManagedWorkspace {
   financialReviewPreviewIsCurrent(preview: PreparedFinancialReview) {
     return this.financialReview.isCurrent(preview);
   }
+  prepareAnnualRevenueBasis(
+    selection: ManagedResearchSelection,
+    concept: string,
+  ) {
+    const visit = this.state.research;
+    const annual = this.annual.getSnapshot();
+    const navigation = this.navigationRevision;
+    const isCurrent = () =>
+      !this.retired &&
+      this.navigationRevision === navigation &&
+      this.state.research === visit &&
+      visit?.selection === selection &&
+      this.researchSourceRouteReady(selection) &&
+      this.annual.getSnapshot() === annual &&
+      !annual.running &&
+      !annual.checkingSeed &&
+      !annual.catalogChanged;
+    return this.valuationRevenueBasis.prepare({
+      selection,
+      annual,
+      concept,
+      isCurrent,
+    });
+  }
+  annualRevenueBasisPreviewIsCurrent(preview: PreparedValuationRevenueBasis) {
+    return this.valuationRevenueBasis.isCurrent(preview);
+  }
+  applyAnnualRevenueBasis(preview: PreparedValuationRevenueBasis) {
+    return this.valuationRevenueBasis.apply(preview);
+  }
+  retireAnnualRevenueBasisPreview() {
+    this.valuationRevenueBasis.retirePreview();
+  }
+  getAppliedAnnualRevenueBasis(selection: ManagedResearchSelection) {
+    return this.valuationRevenueBasis.getApplied(selection);
+  }
   prepareValuationNote(
     selection: ManagedResearchSelection,
     model: "dcf" | "exit",
@@ -2804,6 +2851,8 @@ export class ManagedWorkspace {
       scenario,
       selection,
       includePriceComparison,
+      annualRevenueBasis:
+        model === "exit" ? this.getAppliedAnnualRevenueBasis(selection) : null,
       price,
       note: watchlist.member.note,
       isCurrent,
