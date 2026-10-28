@@ -134,8 +134,28 @@ public class ManagedValuationScenarioFollowupTest {
         page.click(Element.css("#valuation-followup-preview"));
         page.await(new Check("complete current preview retains exact model/version/scenario/value, UTC date, catalog and full listing identity",new Script("(()=>{const p=document.querySelector('[aria-label=\"Valuation follow-up preview\"]'),t=document.querySelector('#valuation-followup-check'),catalog=p?.querySelector('#valuation-followup-catalog');return t?.readOnly&&t.value==="+JSONObject.quote(CHECK)+"&&p.textContent.includes('Due date (UTC): "+DUE+"')&&p.textContent.includes('ZERO')&&p.textContent.includes('Class A')&&catalog?.textContent==='sha256:'+'a'.repeat(64)&&catalog.previousElementSibling?.textContent==='Catalog snapshot'&&['listing-zero','security-zero','class-zero','issuer-zero','XNAS'].every(v=>[...p.querySelectorAll('dd')].some(e=>e.textContent===v))&&p.textContent.includes('Create changes only the Follow-ups draft.')&&p.querySelector('button')?.getBoundingClientRect().height>=44&&document.activeElement===p.querySelector('h4');})()")));
     }
+    /** The native viewport shows the check control/date/listing/actions. Expanded identity and any internal text scroll have separate limits. */
+    private void retainCompletePreviewFrame() throws Exception {
+        page.click(Element.css("[aria-label='Valuation follow-up preview'] > details > summary"));
+        page.await(new Check("expanded complete identity keeps its exact catalog and stable listing/share-class fields",new Script("(()=>{const p=document.querySelector('[aria-label=\"Valuation follow-up preview\"]'),d=p?.querySelector('details'),catalog=p?.querySelector('#valuation-followup-catalog');return d?.open&&catalog?.textContent==='sha256:'+'a'.repeat(64)&&catalog.previousElementSibling?.textContent==='Catalog snapshot'&&['listing-zero','security-zero','class-zero','issuer-zero','XNAS'].every(v=>[...d.querySelectorAll('dd')].some(e=>e.textContent===v));})()")));
+        page.click(Element.css("[aria-label='Valuation follow-up preview'] > details > summary"));
+        String targets="#valuation-followup-check,:scope > p:first-of-type,:scope > p:nth-of-type(2),:scope > p:nth-of-type(3),#valuation-followup-create";
+        page.read(new Script("(()=>{const p=document.querySelector('[aria-label=\"Valuation follow-up preview\"]'),v=visualViewport,n=document.querySelector('.managed-navigation');"+
+            "const targets=p?[...p.querySelectorAll("+JSONObject.quote(targets)+")]:[];if(!v||targets.length!==5)return 'unavailable';"+
+            "const rects=targets.map(e=>e.getBoundingClientRect()),top=Math.min(...rects.map(r=>r.top)),bottom=Math.max(...rects.map(r=>r.bottom));"+
+            "const nav=n?.getBoundingClientRect(),lower=nav&&getComputedStyle(n).position==='fixed'?Math.min(v.offsetTop+v.height,nav.top):v.offsetTop+v.height;"+
+            "window.scrollBy({top:(top+bottom-v.offsetTop-lower)/2,behavior:'instant'});return 'positioned';})()"));
+        String visible="(()=>{const p=document.querySelector('[aria-label=\"Valuation follow-up preview\"]'),v=visualViewport,t=p?.querySelector('#valuation-followup-check');"+
+            "const targets=p?[...p.querySelectorAll("+JSONObject.quote(targets)+")]:[];return v&&p?.querySelector('details')?.open===false&&t?.readOnly&&t.value==="+JSONObject.quote(CHECK)+
+            "&&t.scrollWidth<=t.clientWidth+1&&document.documentElement.scrollWidth<=document.documentElement.clientWidth+1&&targets.length===5&&targets.every(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);"+
+            "return e.checkVisibility()&&r.width>0&&r.height>0&&r.left>=v.offsetLeft&&r.right<=v.offsetLeft+v.width&&r.top>=v.offsetTop&&r.bottom<=v.offsetTop+v.height&&e.contains(hit);});})()";
+        page.await(new Check("exact saved check control, UTC date, current listing, summary guidance and Create are unobscured before PixelCopy",new Script(visible)).nativeReady());
+        android.util.Log.i("ManagedValuationPreviewScope",page.read(new Script("JSON.stringify((()=>{const t=document.querySelector('#valuation-followup-check'),v=visualViewport;return {scope:'check-control-utc-date-inline-listing-guidance-create',expandedStableIdentity:'checked-functionally-before-capture-then-collapsed',textareaInternalVerticalScroll:t.scrollHeight>t.clientHeight+1,textareaClientHeight:t.clientHeight,textareaScrollHeight:t.scrollHeight,viewportWidth:v.width,viewportHeight:v.height};})())")));
+        new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario,FollowupsReportFrameCapture.Frame.VALUATION_SCENARIO_PREVIEW)).retain();
+        page.await(new Check("the same exact preview viewport remains current after its committed PixelCopy frame",new Script(visible)));
+    }
     private void createOnce() throws Exception {
-        preview(); String inputs=page.read(new Script("JSON.stringify("+V+")"));
+        preview(); retainCompletePreviewFrame(); String inputs=page.read(new Script("JSON.stringify("+V+")"));
         page.click(Element.css("#valuation-followup-create"));
         page.await(new Check("Create adds one exact open entry after both preserved share-class assessments and changes only Follow-ups draft",new Script(R+".entries.length===3&&"+R+".dirty===true&&"+R+".baseVersion===1&&document.querySelector('#valuation-followup-create')===null&&JSON.stringify("+R+".entries.slice(0,2))==="+JSONObject.quote(followups)+"&&JSON.stringify("+V+")==="+JSONObject.quote(inputs)+"&&"+R+".entries[2].check==="+JSONObject.quote(CHECK)+"&&"+R+".entries[2].dueOn==="+JSONObject.quote(DUE)+"&&"+R+".entries[2].listing.listingId==='listing-zero'&&"+R+".entries[2].result===''&&"+R+".entries[2].status==='open'&&"+R+".entries[2].completedOn===null")));
         followups=page.read(new Script("JSON.stringify("+R+".entries)"));

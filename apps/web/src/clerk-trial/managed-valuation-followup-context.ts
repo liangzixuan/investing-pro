@@ -105,32 +105,39 @@ export function captureValuationFollowupContext(
 
   const host = workspace.thesisFollowupContext(member.member, selection);
   let retired = false;
-  const unchanged = () => {
-    const active = workspace.sessionOwner.getSnapshot();
-    return (
-      routeCurrent() &&
-      host.isCurrent() &&
-      workspace.getSnapshot() === view &&
-      active.phase === "active" &&
-      (!includeFollowups || active === session) &&
-      workspace.coordinator.getSnapshot() === watchlist &&
-      workspace.valuation.getSnapshot() === editor &&
-      workspace.valuationAssumptions.getSnapshot() === assumptions &&
-      workspace.valuationAssumptions.coordinator.getSnapshot() ===
-        savedInputs &&
-      workspace.valuation.getDraftFileActivityRevision() === valuationFiles &&
-      !workspace.valuation.hasDraftFileActivity() &&
-      sources.every(
-        (source, index) => source.getSnapshot() === sourceStates[index],
-      ) &&
-      workspace.getAppliedAnnualRevenueBasis(selection) === appliedBasis &&
-      workspace.followups.getDraftFileActivityRevision() === followupFiles &&
-      !workspace.followups.hasDraftFileActivity() &&
-      (!includeFollowups ||
-        (workspace.followups.getSnapshot() === followups &&
-          workspace.followups.coordinator.getSnapshot() === savedFollowups))
+  const resources: [{ getSnapshot: () => unknown }, unknown][] = [
+    [workspace, view],
+    [workspace.coordinator, watchlist],
+    [workspace.valuation, editor],
+    [workspace.valuationAssumptions, assumptions],
+    [workspace.valuationAssumptions.coordinator, savedInputs],
+    ...sources.map(
+      (source, index): [{ getSnapshot: () => unknown }, unknown] => [
+        source,
+        sourceStates[index],
+      ],
+    ),
+  ];
+  if (includeFollowups)
+    resources.push(
+      [workspace.sessionOwner, session],
+      [workspace.followups, followups],
+      [workspace.followups.coordinator, savedFollowups],
     );
-  };
+  const filesCurrent = () =>
+    workspace.valuation.getDraftFileActivityRevision() === valuationFiles &&
+    !workspace.valuation.hasDraftFileActivity() &&
+    workspace.followups.getDraftFileActivityRevision() === followupFiles &&
+    !workspace.followups.hasDraftFileActivity();
+  const unchanged = () =>
+    routeCurrent() &&
+    host.isCurrent() &&
+    workspace.sessionOwner.getSnapshot().phase === "active" &&
+    resources.every(
+      ([resource, captured]) => resource.getSnapshot() === captured,
+    ) &&
+    filesCurrent() &&
+    workspace.getAppliedAnnualRevenueBasis(selection) === appliedBasis;
   return {
     port: Object.freeze({
       model: workspace.followups,

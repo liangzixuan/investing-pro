@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   encodeMainWatchlistPayload,
+  type ResearchFollowup,
+  type ResearchFollowupsPayload,
   encodeResearchFollowupsPayload,
 } from "@research-cockpit/contracts";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
@@ -83,10 +85,12 @@ function prepare(f: Mounted, question = valuationFollowupQuestion) {
   expect(context.reason).toBeNull();
   return prepareValuationFollowup(
     context.port!,
-    "exit",
-    "base",
-    question,
-    valuationFollowupDueOn,
+    {
+      model: "exit",
+      scenario: "base",
+      question: question,
+      dueOn: valuationFollowupDueOn,
+    },
     () => true,
   );
 }
@@ -110,6 +114,69 @@ function noOtherEffects(f: Mounted, loads = 1) {
     token: 0,
     signOut: 0,
   });
+}
+
+async function reviewCreated(
+  f: Mounted,
+  created: ResearchFollowup,
+  expected: ResearchFollowupsPayload,
+  before: string,
+) {
+  f.workspace.closeResearch();
+  f.workspace.setView("followups");
+  f.workspace.followups.select(created.id);
+  const prepared = await f.workspace.prepareFollowupResearch(created);
+  expect(prepared).not.toBeNull();
+  f.workspace.openFollowupResearch(prepared!);
+  expect(f.workspace.getSnapshot().research?.selection.listing).toEqual(
+    created.listing,
+  );
+  f.workspace.closeResearch();
+  expect(f.workspace.getSnapshot()).toMatchObject({
+    view: "followups",
+    research: null,
+  });
+  expect(f.workspace.followups.coordinator.getSnapshot().draft).toEqual(
+    expected,
+  );
+  expect(
+    encodeMainWatchlistPayload(f.workspace.coordinator.getSnapshot().draft!),
+  ).toBe(before);
+}
+async function saveAndReadFresh(
+  f: Mounted,
+  expected: ResearchFollowupsPayload,
+  watchlist: ReturnType<ManagedWorkspace["coordinator"]["getSnapshot"]>,
+) {
+  await f.workspace.followups.coordinator.save();
+  expect(f.workspace.followups.coordinator.getSnapshot()).toMatchObject({
+    baseVersion: 2,
+    dirty: false,
+    draft: expected,
+  });
+  f.workspace.sessionOwner.dispose();
+  const fresh = makeWorkspace(f.fixture, true);
+  await fresh.coordinator.load();
+  await fresh.refreshCatalog();
+  fresh.setView("followups");
+  expect(fresh.followups.coordinator.getSnapshot().draft).toBeNull();
+  await fresh.followups.coordinator.load();
+  expect(
+    encodeResearchFollowupsPayload(
+      fresh.followups.coordinator.getSnapshot().draft!,
+    ),
+  ).toBe(encodeResearchFollowupsPayload(expected));
+  expect(fresh.coordinator.getSnapshot().draft!.memberships[0]!.note).not.toBe(
+    watchlist.draft!.memberships[0]!.note,
+  );
+  expect(f.fixture.followups!.getSnapshot()).toMatchObject({
+    session: 2,
+    load: 2,
+    save: 1,
+    commits: 1,
+    replays: 0,
+  });
+  noOtherEffects(f, 2);
 }
 
 describe("isolated native authored valuation question fixture", () => {
@@ -187,55 +254,8 @@ describe("isolated native authored valuation question fixture", () => {
       save: 0,
       commits: 0,
     });
-    f.workspace.closeResearch();
-    f.workspace.setView("followups");
-    f.workspace.followups.select(created.id);
-    const prepared = await f.workspace.prepareFollowupResearch(created);
-    expect(prepared).not.toBeNull();
-    f.workspace.openFollowupResearch(prepared!);
-    expect(f.workspace.getSnapshot().research?.selection.listing).toEqual(
-      created.listing,
-    );
-    f.workspace.closeResearch();
-    expect(f.workspace.getSnapshot()).toMatchObject({
-      view: "followups",
-      research: null,
-    });
-    expect(f.workspace.followups.coordinator.getSnapshot().draft).toEqual(
-      expected,
-    );
-    expect(
-      encodeMainWatchlistPayload(f.workspace.coordinator.getSnapshot().draft!),
-    ).toBe(before);
-    await f.workspace.followups.coordinator.save();
-    expect(f.workspace.followups.coordinator.getSnapshot()).toMatchObject({
-      baseVersion: 2,
-      dirty: false,
-      draft: expected,
-    });
-    f.workspace.sessionOwner.dispose();
-    const fresh = makeWorkspace(f.fixture, true);
-    await fresh.coordinator.load();
-    await fresh.refreshCatalog();
-    fresh.setView("followups");
-    expect(fresh.followups.coordinator.getSnapshot().draft).toBeNull();
-    await fresh.followups.coordinator.load();
-    expect(
-      encodeResearchFollowupsPayload(
-        fresh.followups.coordinator.getSnapshot().draft!,
-      ),
-    ).toBe(encodeResearchFollowupsPayload(expected));
-    expect(
-      fresh.coordinator.getSnapshot().draft!.memberships[0]!.note,
-    ).not.toBe(watchlist.draft!.memberships[0]!.note);
-    expect(f.fixture.followups!.getSnapshot()).toMatchObject({
-      session: 2,
-      load: 2,
-      save: 1,
-      commits: 1,
-      replays: 0,
-    });
-    noOtherEffects(f, 2);
+    await reviewCreated(f, created, expected, before);
+    await saveAndReadFresh(f, expected, watchlist);
   });
 
   it("refuses a canonical whole-resource Save that changes an older share-class assessment", async () => {

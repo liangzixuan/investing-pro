@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, type RefObject } from "react";
+import type { RefObject } from "react";
+import { useValuationFollowupFocus } from "./use-valuation-followup-focus";
 import type { ManagedValuationWorkbench } from "./managed-valuation-workbench";
 import { isResearchFollowupDueDate } from "./managed-research-followups-date";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
@@ -188,27 +189,9 @@ function Load({ controls }: { controls: Controls }) {
 }
 export function ManagedValuationFollowup(props: Props) {
   const controls = useValuationFollowupReview(props);
-  const heading = useRef<HTMLHeadingElement | null>(null);
-  const previewButton = useRef<HTMLButtonElement | null>(null);
-  useLayoutEffect(() => {
-    const source = controls.lifetime.focusFrom;
-    controls.lifetime.focusFrom = null;
-    if (
-      !controls.preview ||
-      !source?.isConnected ||
-      source.ownerDocument.activeElement !== source
-    )
-      return;
-    heading.current?.focus({ preventScroll: true });
-    heading.current?.scrollIntoView({ block: "nearest" });
-  }, [controls.preview, controls.lifetime]);
+  const focus = useValuationFollowupFocus(controls);
   return (
-    <details
-      className="managed-valuation-followup"
-      onToggle={(event) => {
-        if (!event.currentTarget.open) controls.cancel();
-      }}
-    >
+    <details className="managed-valuation-followup" onToggle={focus.toggle}>
       <summary>Keep a dated valuation check</summary>
       <p>
         Choose one calculated authored scenario and add your own dated question.
@@ -225,7 +208,7 @@ export function ManagedValuationFollowup(props: Props) {
       <Load controls={controls} />
       <button
         id="valuation-followup-preview"
-        ref={previewButton}
+        ref={focus.previewButton}
         type="button"
         className="trial-secondary"
         disabled={!controls.canPrepare}
@@ -233,18 +216,13 @@ export function ManagedValuationFollowup(props: Props) {
       >
         Preview dated check
       </button>
-      <Preview controls={controls} heading={heading} />
+      <Preview controls={controls} heading={focus.heading} />
       <button
         id="valuation-followup-cancel"
         type="button"
         className="trial-secondary"
         disabled={controls.disabled}
-        onClick={(event) => {
-          const source = event.currentTarget;
-          const restore = source.ownerDocument.activeElement === source;
-          if (controls.cancel() && restore)
-            previewButton.current?.focus({ preventScroll: true });
-        }}
+        onClick={focus.cancel}
       >
         Cancel preview
       </button>

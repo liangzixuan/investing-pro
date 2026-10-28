@@ -4,6 +4,7 @@ import { load } from "cheerio";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
+  WatchlistMembership,
   ResearchFollowup,
   ResearchFollowupsPayload,
 } from "@research-cockpit/contracts";
@@ -182,6 +183,46 @@ function renderer(props: Props) {
   };
   return { render, edit, written, previewed, node, document };
 }
+interface FixtureActionsInput {
+  model: ManagedResearchFollowups;
+  valuation: ManagedValuationWorkbench;
+  member: WatchlistMembership;
+  lifetime: { current: boolean };
+}
+function fixtureCurrent(input: FixtureActionsInput) {
+  return (
+    input.lifetime.current &&
+    !input.valuation.hasDraftFileActivity() &&
+    !input.model.hasDraftFileActivity()
+  );
+}
+function fixturePort(input: FixtureActionsInput): ValuationFollowupPort | null {
+  const calculation = input.valuation.getSnapshot().calculation;
+  if (!calculation) return null;
+  if (!fixtureCurrent(input)) return null;
+  return {
+    model: input.model,
+    member: input.member,
+    calculation,
+    isCurrent: () => fixtureCurrent(input),
+  };
+}
+function fixtureActions(
+  input: FixtureActionsInput,
+): ManagedValuationFollowupActions {
+  return {
+    model: input.model,
+    getContext: vi.fn(() => {
+      const port = fixturePort(input);
+      return { port, reason: port ? null : "The valuation is unavailable." };
+    }),
+    canLoad: () =>
+      input.lifetime.current && input.model.canLoadForNextCheck(input.member),
+    load: vi.fn<ManagedValuationFollowupActions["load"]>((current) =>
+      input.model.loadForNextCheck(input.member, current),
+    ),
+  };
+}
 async function fixture(loaded = true) {
   const member = { ...filingsSelection.listing, note: "Keep Watchlist note" };
   const watchlist: MainWatchlistPayload = {
@@ -234,32 +275,7 @@ async function fixture(loaded = true) {
   valuation.calculate();
   const calculate = vi.spyOn(valuation, "calculate");
   const lifetime = { current: true };
-  const actions: ManagedValuationFollowupActions = {
-    model,
-    getContext: vi.fn(() => {
-      const calculation = valuation.getSnapshot().calculation;
-      const port: ValuationFollowupPort | null =
-        calculation &&
-        lifetime.current &&
-        !valuation.hasDraftFileActivity() &&
-        !model.hasDraftFileActivity()
-          ? {
-              model,
-              member,
-              calculation,
-              isCurrent: () =>
-                lifetime.current &&
-                !valuation.hasDraftFileActivity() &&
-                !model.hasDraftFileActivity(),
-            }
-          : null;
-      return { port, reason: port ? null : "The valuation is unavailable." };
-    }),
-    canLoad: () => lifetime.current && model.canLoadForNextCheck(member),
-    load: vi.fn<ManagedValuationFollowupActions["load"]>((current) =>
-      model.loadForNextCheck(member, current),
-    ),
-  };
+  const actions = fixtureActions({ model, valuation, member, lifetime });
   const props: Props = {
     valuation,
     actions,

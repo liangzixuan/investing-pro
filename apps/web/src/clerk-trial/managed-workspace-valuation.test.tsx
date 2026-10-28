@@ -1062,10 +1062,12 @@ it("retires a dated scenario preview when same-value Annual Apply changes its so
   expect(context.reason).toBeNull();
   const preview = prepareValuationFollowup(
     context.port!,
-    "exit",
-    "base",
-    "Does the next report support these assumptions?",
-    "2026-12-31",
+    {
+      model: "exit",
+      scenario: "base",
+      question: "Does the next report support these assumptions?",
+      dueOn: "2026-12-31",
+    },
     () => true,
   ).preview!;
   expect(preview).not.toBeNull();
@@ -1078,10 +1080,12 @@ it("retires a dated scenario preview when same-value Annual Apply changes its so
   const current = f.workspace.captureValuationFollowup(f.selection());
   const next = prepareValuationFollowup(
     current.port!,
-    "exit",
-    "base",
-    "Does the next report support these assumptions?",
-    "2026-12-31",
+    {
+      model: "exit",
+      scenario: "base",
+      question: "Does the next report support these assumptions?",
+      dueOn: "2026-12-31",
+    },
     () => true,
   ).preview!;
   expect(next.check).not.toContain("Annual revenue basis");

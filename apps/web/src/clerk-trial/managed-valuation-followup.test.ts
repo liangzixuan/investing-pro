@@ -126,7 +126,12 @@ async function fixture(entries: readonly ResearchFollowup[] = [], load = true) {
     date = dueOn,
     kind = "dcf",
     scenario = "base",
-  ) => prepareValuationFollowup(port, kind, scenario, raw, date, formCurrent);
+  ) =>
+    prepareValuationFollowup(
+      port,
+      { model: kind, scenario: scenario, question: raw, dueOn: date },
+      formCurrent,
+    );
   return {
     ...valuation,
     model,
@@ -249,10 +254,7 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
     expect(
       prepareValuationFollowup(
         { ...f.port, calculation: structuredClone(f.calculation) },
-        "dcf",
-        "base",
-        question,
-        dueOn,
+        { model: "dcf", scenario: "base", question: question, dueOn: dueOn },
         () => true,
       ).preview,
     ).toBeNull();
@@ -284,10 +286,7 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
       expect(
         prepareValuationFollowup(
           { ...f.port, calculation },
-          model,
-          "base",
-          question,
-          dueOn,
+          { model: model, scenario: "base", question: question, dueOn: dueOn },
           () => true,
         ).preview,
       ).toBeNull();
@@ -308,10 +307,7 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
       const calculation = f.workbench.calculate()!;
       const preview = prepareValuationFollowup(
         { ...f.port, calculation },
-        model,
-        "base",
-        question,
-        dueOn,
+        { model: model, scenario: "base", question: question, dueOn: dueOn },
         () => true,
       ).preview!;
       expect(preview.summary.valuePerShareUsd).toBe("0.00");
@@ -406,10 +402,7 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
     expect(
       prepareValuationFollowup(
         { ...f.port, member: { ...member, shareClassId: "foreign" } },
-        "dcf",
-        "base",
-        question,
-        dueOn,
+        { model: "dcf", scenario: "base", question: question, dueOn: dueOn },
         () => true,
       ).preview,
     ).toBeNull();
@@ -419,8 +412,11 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
     f.model.syncCatalog(foreign);
     const port = { ...f.port, isCurrent: () => true };
     expect(
-      prepareValuationFollowup(port, "dcf", "base", question, dueOn, () => true)
-        .preview,
+      prepareValuationFollowup(
+        port,
+        { model: "dcf", scenario: "base", question: question, dueOn: dueOn },
+        () => true,
+      ).preview,
     ).toBeNull();
   });
   it("owns the frozen preview receiver and consumes Cancel without mutation", async () => {
@@ -507,10 +503,7 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
     const mutable = { ...f.port };
     const preview = prepareValuationFollowup(
       mutable,
-      "dcf",
-      "base",
-      question,
-      dueOn,
+      { model: "dcf", scenario: "base", question: question, dueOn: dueOn },
       f.formCurrent,
     ).preview!;
     mutable.isCurrent = () => false;
@@ -559,10 +552,7 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
     };
     const preview = prepareValuationFollowup(
       port,
-      "dcf",
-      "base",
-      question,
-      dueOn,
+      { model: "dcf", scenario: "base", question: question, dueOn: dueOn },
       f.formCurrent,
     ).preview!;
     f.newEntryId.mockImplementation(() => {
@@ -582,8 +572,11 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
       },
     };
     expect(
-      prepareValuationFollowup(port, "dcf", "base", question, dueOn, () => true)
-        .preview,
+      prepareValuationFollowup(
+        port,
+        { model: "dcf", scenario: "base", question: question, dueOn: dueOn },
+        () => true,
+      ).preview,
     ).toBeNull();
     const create = vi
       .spyOn(f.model, "createNextCheck")
@@ -596,4 +589,25 @@ describe("one explicit authored valuation scenario in Follow-ups", () => {
     expect(create).toHaveBeenCalledOnce();
     noEffects(f);
   });
+});
+
+it("captures authored choice values before caller callbacks can mutate their object", async () => {
+  const f = await fixture();
+  const choice = { model: "dcf", scenario: "base", question, dueOn };
+  const prepared = prepareValuationFollowup(f.port, choice, () => {
+    choice.model = "exit";
+    choice.scenario = "expansion";
+    choice.question = "Changed outside the captured form";
+    choice.dueOn = "2027-01-01";
+    return true;
+  });
+  expect(prepared.reason).toBeNull();
+  const preview = prepared.preview!;
+  expect(preview.summary.model).toBe("dcf");
+  expect(preview.summary.scenario).toBe("base");
+  expect(preview.check).toContain(`Question: ${question} |`);
+  expect(preview.check).not.toContain("Changed outside");
+  expect(preview.dueOn).toBe(dueOn);
+  expect(preview.create()).toMatchObject({ check: preview.check, dueOn });
+  noEffects(f);
 });

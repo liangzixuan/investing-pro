@@ -104,10 +104,7 @@ async function fixture(load = true) {
     expect(captured.reason).toBeNull();
     const prepared = prepareValuationFollowup(
       captured.port!,
-      model,
-      scenario,
-      text,
-      dueOn,
+      { model: model, scenario: scenario, question: text, dueOn: dueOn },
       () => true,
     );
     expect(prepared.reason).toBeNull();
@@ -258,52 +255,80 @@ it.each([
   },
 );
 
-it.each([
-  "note",
-  "followups",
-  "saved-inputs",
-  "calculation",
-  "valuation-file",
-  "followup-file",
-  "navigation",
-  "visit",
-  "session",
-] as const)(
-  "permanently retires the preview after %s including round trips",
-  async (boundary) => {
-    const f = await fixture();
-    const preview = f.prepare();
-    if (boundary === "note") {
+type ValuationFixture = Awaited<ReturnType<typeof fixture>>;
+const retirements: {
+  name: string;
+  change: (f: ValuationFixture) => void | Promise<void>;
+}[] = [
+  {
+    name: "note",
+    change: (f) => {
       f.workspace.note(f.member.listingId, "changed");
       f.workspace.note(f.member.listingId, f.member.note);
-    }
-    if (boundary === "followups")
+    },
+  },
+  {
+    name: "followups",
+    change: (f) => {
       f.workspace.followups.coordinator.replaceDraft({
         schemaVersion: 1,
         entries: [],
       });
-    if (boundary === "saved-inputs")
-      await f.workspace.valuationAssumptions.coordinator.load();
-    if (boundary === "calculation") f.workspace.valuation.calculate();
-    if (boundary === "valuation-file") {
+    },
+  },
+  {
+    name: "saved-inputs",
+    change: (f) => f.workspace.valuationAssumptions.coordinator.load(),
+  },
+  {
+    name: "calculation",
+    change: (f) => {
+      f.workspace.valuation.calculate();
+    },
+  },
+  {
+    name: "valuation-file",
+    change: (f) => {
       const marker = {};
       f.workspace.valuation.beginDraftFileActivity(marker);
       f.workspace.valuation.endDraftFileActivity(marker);
-    }
-    if (boundary === "followup-file") {
+    },
+  },
+  {
+    name: "followup-file",
+    change: (f) => {
       const marker = {};
       f.workspace.followups.beginDraftFileActivity(marker);
       f.workspace.followups.endDraftFileActivity(marker);
-    }
-    if (boundary === "navigation") {
+    },
+  },
+  {
+    name: "navigation",
+    change: (f) => {
       f.workspace.setNavigationBlocked(true);
       f.workspace.setNavigationBlocked(false);
-    }
-    if (boundary === "visit") {
+    },
+  },
+  {
+    name: "visit",
+    change: (f) => {
       f.workspace.closeResearch();
       f.open();
-    }
-    if (boundary === "session") f.workspace.sessionOwner.dispose();
+    },
+  },
+  {
+    name: "session",
+    change: (f) => {
+      f.workspace.sessionOwner.dispose();
+    },
+  },
+];
+it.each(retirements)(
+  "permanently retires the preview after $name including round trips",
+  async ({ change }) => {
+    const f = await fixture();
+    const preview = f.prepare();
+    await change(f);
     expect(preview.isCurrent()).toBe(false);
     expect(preview.create()).toBeNull();
     expect(preview.isCurrent()).toBe(false);

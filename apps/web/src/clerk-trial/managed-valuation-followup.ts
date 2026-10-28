@@ -123,14 +123,50 @@ function ownedPreview(
   return preview;
 }
 
+export interface ValuationFollowupChoice {
+  readonly model: string;
+  readonly scenario: string;
+  readonly question: string;
+  readonly dueOn: string;
+}
+interface FollowupWriter {
+  member: WatchlistMembership;
+  digest: string;
+  prepare: ManagedResearchFollowups["prepareNextCheck"];
+  create: ManagedResearchFollowups["createNextCheck"];
+}
+function captureQuestion(
+  writer: FollowupWriter,
+  choice: ValuationFollowupChoice,
+  summary: ValuationFollowupScenarioSummary,
+  current: () => boolean,
+): ValuationFollowupPreparation {
+  const check = completeCheck(choice.question, summary);
+  if (check === null)
+    return refuse(
+      "The complete question and scenario summary must fit within 500 characters on one line. Nothing was clipped or changed.",
+    );
+  const prepared = writer.prepare(writer.member, check, choice.dueOn);
+  if (!current()) return refuse(stale);
+  if (!prepared.capture)
+    return refuse(prepared.reason ?? "Review Follow-ups before creating.");
+  if (prepared.capture.digest !== writer.digest) return refuse(stale);
+  return {
+    preview: ownedPreview(summary, prepared.capture, current, writer.create),
+    reason: null,
+  };
+}
 export function prepareValuationFollowup(
   port: ValuationFollowupPort,
-  model: string,
-  scenario: string,
-  question: string,
-  dueOn: string,
+  requested: ValuationFollowupChoice,
   formIsCurrent: () => boolean,
 ): ValuationFollowupPreparation {
+  const choice = Object.freeze({
+    model: requested.model,
+    scenario: requested.scenario,
+    question: requested.question,
+    dueOn: requested.dueOn,
+  });
   const { calculation, member, isCurrent } = port;
   const prepare = port.model.prepareNextCheck.bind(port.model);
   const create = port.model.createNextCheck.bind(port.model);
@@ -147,23 +183,19 @@ export function prepareValuationFollowup(
     );
   const selected = resolveValuationFollowupScenario(
     calculation,
-    model,
-    scenario,
+    choice.model,
+    choice.scenario,
   );
   if (!selected.summary) return refuse(selected.reason!);
-  const check = completeCheck(question, selected.summary);
-  if (check === null)
-    return refuse(
-      "The complete question and scenario summary must fit within 500 characters on one line. Nothing was clipped or changed.",
-    );
-  const prepared = prepare(member, check, dueOn);
-  if (!current()) return refuse(stale);
-  if (!prepared.capture)
-    return refuse(prepared.reason ?? "Review Follow-ups before creating.");
-  if (prepared.capture.digest !== calculation.owner.catalogSnapshotSha256)
-    return refuse(stale);
-  return {
-    preview: ownedPreview(selected.summary, prepared.capture, current, create),
-    reason: null,
-  };
+  return captureQuestion(
+    {
+      member,
+      digest: calculation.owner.catalogSnapshotSha256,
+      prepare,
+      create,
+    },
+    choice,
+    selected.summary,
+    current,
+  );
 }
