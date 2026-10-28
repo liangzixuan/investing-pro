@@ -1,12 +1,5 @@
-import {
-  PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS,
-  type PersonalSecAnnualRevenueConcept,
-  type PersonalSecAnnualCanonicalResponseDto,
-  type ValuationAssumptionEntry,
-} from "@research-cockpit/contracts";
-import { VALUATION_ARITHMETIC } from "@research-cockpit/research-core/valuation";
+import type { ValuationAssumptionEntry } from "@research-cockpit/contracts";
 import type { ManagedAnnualReportState } from "./managed-annual-report";
-import { getManagedAnnualView } from "./managed-annual-view";
 import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
@@ -16,28 +9,17 @@ import {
   type ManagedValuationBaseRevenueCapture,
   type ManagedValuationWorkbench,
 } from "./managed-valuation-workbench";
+import {
+  ANNUAL_REVENUE_BASIS_STALE as stale,
+  annualRevenueSourceExcerpt,
+  resolveAnnualRevenueBasis,
+  type AnnualRevenueBasisSource,
+} from "./managed-valuation-revenue-source";
+export {
+  resolveAnnualRevenueBasis,
+  type AnnualRevenueBasisSource,
+} from "./managed-valuation-revenue-source";
 
-export interface AnnualRevenueBasisSource {
-  readonly responseOrigin: NonNullable<
-    ManagedAnnualReportState["responseOrigin"]
-  >;
-  readonly concept: PersonalSecAnnualRevenueConcept;
-  readonly value: string;
-  readonly unit: "USD";
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly accessionNumber: string;
-  readonly filedDate: string;
-  readonly form: string;
-  readonly filingUrl: string;
-  readonly cutoffAt: string;
-  readonly completedAt: string;
-  readonly companyFactsCapturedAt: string;
-  readonly submissionsCapturedAt: string;
-  readonly currentUseEligible: boolean;
-  readonly showingPrevious: boolean;
-  readonly observationIds: readonly `sec-fact:${string}`[];
-}
 export interface PreparedValuationRevenueBasis {
   readonly selection: ManagedResearchSelection;
   readonly source: AnnualRevenueBasisSource;
@@ -65,159 +47,9 @@ interface PreviewCapture {
   readonly field: ManagedValuationBaseRevenueCapture;
   readonly current: () => boolean;
 }
-interface AppliedCapture {
-  readonly current: () => boolean;
-  retired: boolean;
-  checking: boolean;
-}
-const appliedCaptures = new WeakMap<
-  AppliedValuationRevenueBasis,
-  AppliedCapture
->();
-const stale =
-  "The source, assumptions or company visit changed. Preview the Annual revenue basis again.";
-const unavailable =
-  "Select an available positive Annual revenue basis that fits the authored model's decimal limits.";
-
-/** Match the existing model operand limits without running either authored calculator. */
-function positiveModelRevenue(value: string) {
-  if (value.length > VALUATION_ARITHMETIC.maximumDecimalLength) return false;
-  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/u.test(value)) return false;
-  const [whole, fraction = ""] = value.split(".");
-  if (fraction.length > VALUATION_ARITHMETIC.maximumFractionalDigits)
-    return false;
-  if (!/[1-9]/u.test(value)) return false;
-  const maximum = BigInt(VALUATION_ARITHMETIC.maximumAbsoluteOperand);
-  const integer = BigInt(whole!);
-  if (integer > maximum) return false;
-  return integer !== maximum || !/[1-9]/u.test(fraction);
-}
-function sourceReady(annual: ManagedAnnualReportState) {
-  if (!annual.supported || annual.catalogChanged) return false;
-  if (annual.running || annual.checkingSeed) return false;
-  if (annual.error && !annual.showingPrevious) return false;
-  if (annual.responseOrigin === null) return false;
-  return annual.response !== null;
-}
-function sourceIdentity(
-  selection: ManagedResearchSelection,
-  annual: ManagedAnnualReportState,
-) {
-  if (!companyEvidenceSelectionMatches(selection, annual.selection))
-    return false;
-  const response = annual.response;
-  if (
-    !response ||
-    response.catalogSnapshotSha256 !== selection.catalogSnapshotSha256
-  )
-    return false;
-  if (response.security.cik !== response.evidence.cik) return false;
-  if (selection.cik !== null && selection.cik !== response.security.cik)
-    return false;
-  return (
-    [
-      "country",
-      "exchangeMic",
-      "issuerId",
-      "issuerName",
-      "listingId",
-      "securityName",
-      "symbol",
-    ] as const
-  ).every((key) => response.security[key] === selection.listing[key]);
-}
-/** Resolve one manual revenue choice independently of operating-income availability. */
-export function resolveAnnualRevenueBasis(
-  selection: ManagedResearchSelection,
-  annual: ManagedAnnualReportState,
-  concept: string,
-): { source: AnnualRevenueBasisSource | null; reason: string | null } {
-  try {
-    if (
-      !PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.some((value) => value === concept)
-    )
-      return { source: null, reason: "Choose one named Annual revenue basis." };
-    if (!sourceReady(annual))
-      return {
-        source: null,
-        reason:
-          "Load a supported Annual report before previewing its revenue basis.",
-      };
-    if (!sourceIdentity(selection, annual))
-      return { source: null, reason: stale };
-    return resolveRevenue(annual, concept);
-  } catch {
-    return { source: null, reason: unavailable };
-  }
-}
-function sourceClocks(
-  generation: PersonalSecAnnualCanonicalResponseDto["evidence"]["generation"],
-) {
-  const facts = generation.sources.companyFacts,
-    submissions = generation.sources.submissions;
-  if (facts.status !== "available" || submissions.status !== "available")
-    return null;
-  if (facts.fetchedAt === null || submissions.fetchedAt === null) return null;
-  return {
-    cutoffAt: generation.cutoffAt,
-    completedAt: generation.completedAt,
-    companyFactsCapturedAt: facts.fetchedAt,
-    submissionsCapturedAt: submissions.fetchedAt,
-  };
-}
-function resolveRevenue(
-  annual: ManagedAnnualReportState,
-  concept: string,
-): { source: AnnualRevenueBasisSource | null; reason: string | null } {
-  const response = annual.response!;
-  const view = getManagedAnnualView(response);
-  const { target, generation } = response.evidence;
-  if (!view || target.status !== "target")
-    return { source: null, reason: unavailable };
-  const clocks = sourceClocks(generation);
-  if (!clocks) return { source: null, reason: unavailable };
-  const basis = view.operatingResults.resolution.margins.find(
-    (value) => value.concept === concept,
-  );
-  const revenue = basis?.revenue;
-  if (!basis || revenue?.status !== "available")
-    return { source: null, reason: unavailable };
-  if (revenue.unit !== "USD" || !positiveModelRevenue(revenue.value))
-    return { source: null, reason: unavailable };
-  return {
-    source: Object.freeze({
-      responseOrigin: annual.responseOrigin!,
-      concept: basis.concept,
-      value: revenue.value,
-      unit: revenue.unit,
-      startDate: revenue.startDate,
-      endDate: revenue.endDate,
-      accessionNumber: revenue.accessionNumber,
-      filedDate: target.filedDate,
-      form: target.form,
-      filingUrl: `https://www.sec.gov/Archives/edgar/data/${response.evidence.cik.replace(/^0+/u, "")}/${target.accessionNumber}-index.htm`,
-      ...clocks,
-      currentUseEligible: revenue.currentUseEligible,
-      showingPrevious: annual.showingPrevious,
-      observationIds: Object.freeze([...revenue.observationIds]),
-    }),
-    reason: null,
-  };
-}
-function excerpt(
-  selection: ManagedResearchSelection,
-  source: AnnualRevenueBasisSource,
-) {
-  return [
-    `Annual revenue basis for authored starting revenue: ${selection.listing.symbol} (${selection.listing.exchangeMic}); ${source.concept} USD ${source.value}, ${source.startDate} to ${source.endDate}.`,
-    `${source.form} filed ${source.filedDate}; accession ${source.accessionNumber}; ${source.filingUrl}.`,
-    `Original cutoff ${source.cutoffAt}; completed ${source.completedAt}; Company Facts captured ${source.companyFactsCapturedAt}; Submissions captured ${source.submissionsCapturedAt}.`,
-    source.currentUseEligible
-      ? "Current-use policy at original load: eligible."
-      : "Historical evidence; current-use policy at original load: unavailable.",
-    ...(source.showingPrevious ? ["Retained previous report."] : []),
-    "Chosen reported revenue supplies authored starting revenue only. No other assumption or DCF cash flow is inferred; source dates are unchanged.",
-  ].join(" ");
+interface AppliedDraftCapture {
+  readonly field: ManagedValuationBaseRevenueCapture;
+  readonly inputs: ManagedValuationInputCapture;
 }
 function safelyCurrent(current: () => boolean) {
   try {
@@ -232,14 +64,28 @@ function copySelection(selection: ManagedResearchSelection) {
     listing: Object.freeze({ ...selection.listing }),
   });
 }
+
+/** One opaque source authority becomes permanently retired after its first refusal. */
+class AppliedBasisOwnership {
+  private retired = false;
+  private checking = false;
+  constructor(private readonly current: () => boolean) {}
+  isCurrent() {
+    if (this.retired) return false;
+    if (this.checking) return false;
+    this.checking = true;
+    const current = safelyCurrent(this.current);
+    this.checking = false;
+    if (!current) this.retired = true;
+    return current;
+  }
+}
+const appliedCaptures = new WeakMap<
+  AppliedValuationRevenueBasis,
+  AppliedBasisOwnership
+>();
 function ownedSource(context: AppliedValuationRevenueBasis) {
-  const capture = appliedCaptures.get(context);
-  if (!capture || capture.retired || capture.checking) return false;
-  capture.checking = true;
-  const current = safelyCurrent(capture.current);
-  capture.checking = false;
-  if (!current) capture.retired = true;
-  return current;
+  return appliedCaptures.get(context)?.isCurrent() ?? false;
 }
 export function annualRevenueBasisContextIsOwned(
   context: AppliedValuationRevenueBasis,
@@ -249,7 +95,8 @@ export function annualRevenueBasisContextIsOwned(
   if (!appliedCaptures.has(context)) return false;
   if (!companyEvidenceSelectionMatches(selection, context.selection))
     return false;
-  if (!ownedSource(context) || !calculation) return false;
+  if (!ownedSource(context)) return false;
+  if (!calculation) return false;
   if (!companyEvidenceSelectionMatches(selection, calculation.owner))
     return false;
   if (calculation.exitDraft.baseRevenue !== context.baseRevenue) return false;
@@ -259,6 +106,34 @@ export function annualRevenueBasisExcerpt(
   context: AppliedValuationRevenueBasis,
 ): string | null {
   return ownedSource(context) ? context.excerpt : null;
+}
+
+function completePreview(
+  selection: ManagedResearchSelection,
+  source: AnnualRevenueBasisSource,
+  inputs: ManagedValuationInputCapture,
+  field: ManagedValuationBaseRevenueCapture,
+): PreparedValuationRevenueBasis {
+  const before = inputs.entry;
+  const after = Object.freeze({
+    ...before,
+    exit: Object.freeze({
+      ...before.exit,
+      inputs: Object.freeze({
+        ...before.exit.inputs,
+        baseRevenue: source.value,
+      }),
+    }),
+  });
+  return Object.freeze({
+    selection,
+    source,
+    before,
+    after,
+    beforeRevenue: field.value,
+    afterRevenue: source.value,
+    excerpt: annualRevenueSourceExcerpt(selection, source),
+  });
 }
 
 /** Explicit source choice and one-use input replacement; never calculates, reads or saves. */
@@ -332,59 +207,50 @@ export class ManagedValuationRevenueBasis {
   ) {
     const inputs = this.model.captureInputs(),
       field = this.model.captureBaseRevenue();
-    if (!inputs || !field) return { preview: null, reason: stale };
+    if (!inputs) return { preview: null, reason: stale };
+    if (!field) return { preview: null, reason: stale };
     const selection = copySelection(input.selection);
-    const before = inputs.entry;
-    const after = Object.freeze({
-      ...before,
-      exit: Object.freeze({
-        ...before.exit,
-        inputs: Object.freeze({
-          ...before.exit.inputs,
-          baseRevenue: source.value,
-        }),
-      }),
-    });
-    const handle = Object.freeze({
-      selection,
-      source,
-      before,
-      after,
-      beforeRevenue: field.value,
-      afterRevenue: source.value,
-      excerpt: excerpt(selection, source),
-    });
+    const handle = completePreview(selection, source, inputs, field);
     const current = () =>
       safelyCurrent(input.isCurrent) &&
       companyEvidenceSelectionMatches(input.selection, selection);
     const captured = { handle, inputs, field, current };
-    if (!current() || revision !== this.revision)
-      return { preview: null, reason: stale };
-    if (!this.model.isInputCaptureCurrent(inputs))
+    if (this.inspectPreview(captured, revision) !== "current")
       return { preview: null, reason: stale };
     this.preview = captured;
     return { preview: handle, reason: null };
   }
+  private inspectPreview(captured: PreviewCapture, revision: number) {
+    const current = safelyCurrent(captured.current);
+    if (revision !== this.revision) return "replaced";
+    if (!current) return "stale";
+    if (!this.model.isInputCaptureCurrent(captured.inputs)) return "stale";
+    return "current";
+  }
   isCurrent(preview: PreparedValuationRevenueBasis): boolean {
     const captured = this.preview;
-    if (!captured || captured.handle !== preview) return false;
-    const revision = this.revision;
-    const current = safelyCurrent(captured.current);
-    if (revision !== this.revision) return false;
-    if (!current || !this.model.isInputCaptureCurrent(captured.inputs)) {
-      this.retirePreview();
-      return false;
-    }
-    return true;
+    if (!captured) return false;
+    if (captured.handle !== preview) return false;
+    const state = this.inspectPreview(captured, this.revision);
+    if (state === "replaced") return false;
+    if (state === "current") return true;
+    this.retirePreview();
+    return false;
+  }
+  private claimPreview(preview: PreparedValuationRevenueBasis) {
+    const captured = this.preview;
+    if (!captured) return null;
+    if (captured.handle !== preview) return null;
+    if (this.applying) return null;
+    this.preview = null;
+    return captured;
   }
   apply(preview: PreparedValuationRevenueBasis): {
     applied: boolean;
     message: string;
   } {
-    const captured = this.preview;
-    if (!captured || captured.handle !== preview || this.applying)
-      return { applied: false, message: stale };
-    this.preview = null;
+    const captured = this.claimPreview(preview);
+    if (!captured) return { applied: false, message: stale };
     const revision = ++this.revision;
     this.applying = true;
     try {
@@ -394,31 +260,62 @@ export class ManagedValuationRevenueBasis {
     }
   }
   private applyCaptured(captured: PreviewCapture, revision: number) {
-    if (!safelyCurrent(captured.current) || revision !== this.revision)
-      return { applied: false, message: stale };
-    if (!this.model.isInputCaptureCurrent(captured.inputs))
+    if (this.inspectPreview(captured, revision) !== "current")
       return { applied: false, message: stale };
     this.applied = null;
-    const value = captured.handle.source.value;
-    if (!this.model.setExitField("baseRevenue", value))
+    if (!this.model.setExitField("baseRevenue", captured.handle.source.value))
       return { applied: false, message: stale };
     return this.attachApplied(captured, revision);
   }
-  private attachApplied(captured: PreviewCapture, revision: number) {
+  private captureAppliedDraft(
+    captured: PreviewCapture,
+  ): AppliedDraftCapture | null {
     const field = this.model.captureBaseRevenueAfterApply(
       captured.field,
       captured.handle.source.value,
     );
     const inputs = this.model.captureInputs();
-    if (!field || !inputs) return { applied: false, message: stale };
+    if (!field) return null;
+    if (!inputs) return null;
     if (JSON.stringify(inputs.entry) !== JSON.stringify(captured.handle.after))
+      return null;
+    return { field, inputs };
+  }
+  private attachmentCurrent(
+    captured: PreviewCapture,
+    draft: AppliedDraftCapture,
+    revision: number,
+  ) {
+    if (!safelyCurrent(captured.current)) return false;
+    if (revision !== this.revision) return false;
+    if (!this.model.isInputCaptureCurrent(draft.inputs)) return false;
+    return this.model.isBaseRevenueCaptureCurrent(draft.field);
+  }
+  private attachApplied(captured: PreviewCapture, revision: number) {
+    const draft = this.captureAppliedDraft(captured);
+    if (!draft) return { applied: false, message: stale };
+    if (!this.attachmentCurrent(captured, draft, revision))
       return { applied: false, message: stale };
-    if (!safelyCurrent(captured.current) || revision !== this.revision)
-      return { applied: false, message: stale };
-    if (!this.model.isInputCaptureCurrent(inputs))
-      return { applied: false, message: stale };
-    if (!this.model.isBaseRevenueCaptureCurrent(field))
-      return { applied: false, message: stale };
+    this.recordApplied(captured, draft.field);
+    return {
+      applied: true,
+      message:
+        "Annual revenue applied to authored starting revenue. Calculate separately; no other input was changed.",
+    };
+  }
+  private appliedContextCurrent(
+    context: AppliedValuationRevenueBasis,
+    field: ManagedValuationBaseRevenueCapture,
+    sourceCurrent: () => boolean,
+  ) {
+    if (this.applied !== context) return false;
+    if (!this.model.isBaseRevenueCaptureCurrent(field)) return false;
+    return safelyCurrent(sourceCurrent);
+  }
+  private recordApplied(
+    captured: PreviewCapture,
+    field: ManagedValuationBaseRevenueCapture,
+  ) {
     const context = Object.freeze({
       selection: captured.handle.selection,
       source: captured.handle.source,
@@ -426,18 +323,11 @@ export class ManagedValuationRevenueBasis {
       excerpt: captured.handle.excerpt,
     });
     this.applied = context;
-    appliedCaptures.set(context, {
-      current: () =>
-        this.applied === context &&
-        this.model.isBaseRevenueCaptureCurrent(field) &&
-        safelyCurrent(captured.current),
-      retired: false,
-      checking: false,
-    });
-    return {
-      applied: true,
-      message:
-        "Annual revenue applied to authored starting revenue. Calculate separately; no other input was changed.",
-    };
+    appliedCaptures.set(
+      context,
+      new AppliedBasisOwnership(() =>
+        this.appliedContextCurrent(context, field, captured.current),
+      ),
+    );
   }
 }

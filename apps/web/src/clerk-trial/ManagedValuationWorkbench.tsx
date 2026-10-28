@@ -1,7 +1,5 @@
-import {
-  ManagedValuationRevenueBasisPanel,
-  type ManagedValuationRevenueBasisActions,
-} from "./ManagedValuationRevenueBasisPanel";
+import { ManagedValuationRevenueBasisPanel } from "./ManagedValuationRevenueBasisPanel";
+import type { ManagedValuationRevenueBasisActions } from "./use-valuation-revenue-basis-review";
 import type { ManagedAnnualReport } from "./managed-annual-report";
 import {
   useId,

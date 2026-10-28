@@ -71,7 +71,7 @@ function change(tree: React.ReactNode, value: string) {
     currentTarget: { value },
   });
 }
-async function fixture() {
+async function fixture(mode: "default" | "source-unavailable" = "default") {
   const model = new ManagedValuationWorkbench();
   model.activate(eodSelection);
   for (const [key] of dcfFields) model.setDcfField(key, `Raw DCF ${key} 東京`);
@@ -81,7 +81,9 @@ async function fixture() {
     for (const [key] of exitScenarioFields)
       model.setExitScenario(scenario, key, `Exit ${scenario} ${key}`);
   }
-  const read = vi.fn().mockResolvedValue(await annualReportPacket());
+  const read = vi
+    .fn()
+    .mockResolvedValue(await annualReportPacket("left", { mode }));
   const annual = new ManagedAnnualReport(read, vi.fn(), undefined, {
     coverage: inventedManagedResearchCoverage,
   });
@@ -176,6 +178,12 @@ it("starts with no basis, previews full maps and original clocks, then applies o
     expect(markup).toContain(value);
   expect(markup).toContain(eodSelection.catalogSnapshotSha256);
   expect(markup).toContain("Explicit Annual load");
+  const selectedSource = elements(tree).find(
+    (node) => node.props["aria-label"] === "Selected reported revenue source",
+  )!;
+  expect(renderToStaticMarkup(selectedSource)).toContain(
+    "SEC source CIK 0000000001.",
+  );
   expect(markup).toContain(preview.source.companyFactsCapturedAt);
   expect(markup).toContain(preview.source.submissionsCapturedAt);
   for (const [key] of dcfFields)
@@ -231,12 +239,35 @@ it.each([
   );
 });
 
-it("refuses a saved Preview handler after unmount and makes no request for an unavailable choice", async () => {
+it("refuses a saved Preview handler after unmount", async () => {
   const f = await fixture();
   change(f.render(), "Revenues");
   const tree = f.render();
   f.unmount();
   click(tree, "Preview starting revenue change");
   expect(f.actions.prepare).not.toHaveBeenCalled();
+  expect(f.read).toHaveBeenCalledOnce();
+});
+
+it("shows unavailable admitted revenue without permitting an input change, calculation or new source read", async () => {
+  const f = await fixture("source-unavailable");
+  const before = f.model.captureInputs()!.entry;
+  const calculate = vi.spyOn(f.model, "calculate");
+  change(f.render(), "Revenues");
+  const tree = f.render();
+  expect(button(tree, "Preview starting revenue change").props.disabled).toBe(
+    true,
+  );
+  expect(renderToStaticMarkup(tree)).toContain(
+    "Select an available positive Annual revenue basis",
+  );
+  click(tree, "Preview starting revenue change");
+  expect(f.actions.prepare).toHaveBeenCalledOnce();
+  expect(renderToStaticMarkup(f.render())).not.toContain(
+    "Complete starting revenue change preview",
+  );
+  expect(f.model.captureInputs()!.entry).toEqual(before);
+  expect(f.actions.apply).not.toHaveBeenCalled();
+  expect(calculate).not.toHaveBeenCalled();
   expect(f.read).toHaveBeenCalledOnce();
 });

@@ -115,6 +115,8 @@ describe("explicit Annual revenue model basis", () => {
       )!.revenue;
       expect(revenue.status).toBe("available");
       expect(preview.source.concept).toBe(concept);
+      expect(preview.source.cik).toBe(source.evidence.cik);
+      expect(preview.source.cik).toBe(source.security.cik);
       expect(preview.before).toEqual(before.entry);
       expect(preview.after.dcf).toBe(preview.before.dcf);
       expect(preview.after.exit.inputs).toEqual({
@@ -139,6 +141,30 @@ describe("explicit Annual revenue model basis", () => {
       expect(Object.isFrozen(preview.after.exit.inputs)).toBe(true);
     },
   );
+  it("attaches the reference once without changing exact matching raw inputs or their current calculation", async () => {
+    const f = await fixture();
+    const value = f.prepare().preview!.source.value;
+    f.model.setExitField("baseRevenue", value);
+    const calculation = f.model.calculate()!;
+    const before = f.model.captureInputs()!.entry;
+    const calculate = vi.spyOn(f.model, "calculate");
+    const preview = f.prepare().preview!;
+    expect(preview.beforeRevenue).toBe(value);
+    expect(preview.afterRevenue).toBe(value);
+    expect(f.controller.apply(preview).applied).toBe(true);
+    expect(f.controller.apply(preview).applied).toBe(false);
+    expect(f.model.captureInputs()!.entry).toEqual(before);
+    expect(f.model.getSnapshot().calculation).toBe(calculation);
+    expect(calculate).not.toHaveBeenCalled();
+    expect(
+      annualRevenueBasisContextIsOwned(
+        f.controller.getApplied(eodSelection)!,
+        eodSelection,
+        calculation,
+      ),
+    ).toBe(true);
+    expect(f.read).toHaveBeenCalledOnce();
+  });
   it("uses admitted revenue even when operating income is unavailable", async () => {
     const packet = structuredClone(
       await annualReportPacket(),
@@ -503,5 +529,32 @@ describe("explicit Annual revenue model basis", () => {
         "Revenues",
       ).source,
     ).toBeNull();
+  });
+  it("retains the exact SEC source CIK without inferring an unknown model CIK", async () => {
+    const f = await fixture();
+    const selection = { ...eodSelection, cik: null };
+    f.annualModel.open(selection);
+    await f.annualModel.load();
+    f.model.activate(selection);
+    f.model.discardAndUse(selection);
+    fill(f.model);
+    f.input.selection = selection;
+    f.input.annual = f.annualModel.getSnapshot();
+    const preview = f.prepare().preview!;
+    expect(preview.source.cik).toBe("0000000001");
+    expect(preview.before.cik).toBeNull();
+    expect(preview.after.cik).toBeNull();
+    expect(preview.excerpt).toContain("SEC source CIK 0000000001;");
+    expect(f.controller.apply(preview).applied).toBe(true);
+    const context = f.controller.getApplied(selection)!;
+    expect(context.source.cik).toBe("0000000001");
+    expect(context.selection.cik).toBeNull();
+    expect(f.model.getSnapshot().owner!.cik).toBeNull();
+    expect(f.model.captureInputs()!.entry.cik).toBeNull();
+    const calculation = f.model.calculate()!;
+    expect(calculation.owner.cik).toBeNull();
+    expect(
+      annualRevenueBasisContextIsOwned(context, selection, calculation),
+    ).toBe(true);
   });
 });

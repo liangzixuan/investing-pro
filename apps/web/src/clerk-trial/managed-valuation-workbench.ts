@@ -499,27 +499,30 @@ export class ManagedValuationWorkbench {
       fields.includes(field) &&
       typeof value === "string";
     if (!valid) return false;
-    if ([...value].length > VALUATION_DRAFT_FIELD_MAX_CODE_POINTS) {
-      if (key === "exit.baseRevenue") this.retireBaseRevenueCapture();
-      this.rejectedFields.add(key);
-      this.calculation = null;
-      this.editorRevision = Symbol();
-      this.publish({
-        ...this.snapshot,
-        dirty: true,
-        inputIssue: this.rejectedInputMessage(),
-      });
-      return false;
-    }
-    if (this.rejectedFields.delete(key)) {
-      this.editorRevision = Symbol();
-      const published = this.publish({
-        ...this.snapshot,
-        inputIssue: this.rejectedInputMessage(),
-      });
-      if (this.snapshot !== published) return false;
-    }
-    return true;
+    if ([...value].length > VALUATION_DRAFT_FIELD_MAX_CODE_POINTS)
+      return this.rejectOversizedField(key);
+    return this.clearRejectedField(key);
+  }
+  private rejectOversizedField(key: string): false {
+    if (key === "exit.baseRevenue") this.retireBaseRevenueCapture();
+    this.rejectedFields.add(key);
+    this.calculation = null;
+    this.editorRevision = Symbol();
+    this.publish({
+      ...this.snapshot,
+      dirty: true,
+      inputIssue: this.rejectedInputMessage(),
+    });
+    return false;
+  }
+  private clearRejectedField(key: string): boolean {
+    if (!this.rejectedFields.delete(key)) return true;
+    this.editorRevision = Symbol();
+    const published = this.publish({
+      ...this.snapshot,
+      inputIssue: this.rejectedInputMessage(),
+    });
+    return this.snapshot === published;
   }
   private rejectedInputMessage() {
     return this.rejectedFields.size

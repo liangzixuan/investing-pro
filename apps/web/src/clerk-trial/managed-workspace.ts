@@ -2771,22 +2771,36 @@ export class ManagedWorkspace {
     const visit = this.state.research;
     const annual = this.annual.getSnapshot();
     const navigation = this.navigationRevision;
-    const isCurrent = () =>
-      !this.retired &&
-      this.navigationRevision === navigation &&
-      this.state.research === visit &&
-      visit?.selection === selection &&
-      this.researchSourceRouteReady(selection) &&
-      this.annual.getSnapshot() === annual &&
-      !annual.running &&
-      !annual.checkingSeed &&
-      !annual.catalogChanged;
+    const isCurrent = () => {
+      if (!this.annualRevenueBasisVisitIsCurrent(selection, visit, navigation))
+        return false;
+      if (this.annual.getSnapshot() !== annual) return false;
+      return this.annualRevenueBasisSourceIsSettled(annual);
+    };
     return this.valuationRevenueBasis.prepare({
       selection,
       annual,
       concept,
       isCurrent,
     });
+  }
+  private annualRevenueBasisVisitIsCurrent(
+    selection: ManagedResearchSelection,
+    visit: ManagedDiscoveryState["research"],
+    navigation: number,
+  ) {
+    if (this.retired) return false;
+    if (this.navigationRevision !== navigation) return false;
+    if (this.state.research !== visit) return false;
+    if (visit?.selection !== selection) return false;
+    return this.researchSourceRouteReady(selection);
+  }
+  private annualRevenueBasisSourceIsSettled(
+    annual: ReturnType<ManagedAnnualReport["getSnapshot"]>,
+  ) {
+    if (annual.running) return false;
+    if (annual.checkingSeed) return false;
+    return !annual.catalogChanged;
   }
   annualRevenueBasisPreviewIsCurrent(preview: PreparedValuationRevenueBasis) {
     return this.valuationRevenueBasis.isCurrent(preview);
@@ -2800,6 +2814,13 @@ export class ManagedWorkspace {
   getAppliedAnnualRevenueBasis(selection: ManagedResearchSelection) {
     return this.valuationRevenueBasis.getApplied(selection);
   }
+  private annualRevenueBasisForNote(
+    selection: ManagedResearchSelection,
+    model: "dcf" | "exit",
+  ) {
+    if (model === "dcf") return null;
+    return this.getAppliedAnnualRevenueBasis(selection);
+  }
   prepareValuationNote(
     selection: ManagedResearchSelection,
     model: "dcf" | "exit",
@@ -2809,6 +2830,7 @@ export class ManagedWorkspace {
     const watchlist = this.getResearchWatchlist(selection);
     const valuation = this.valuation.getSnapshot();
     const capture = valuation.calculation;
+    const annualRevenueBasis = this.annualRevenueBasisForNote(selection, model);
     if (
       !watchlist.canEdit ||
       !watchlist.member ||
@@ -2844,15 +2866,15 @@ export class ManagedWorkspace {
       !filings.running &&
       !filings.catalogChanged &&
       this.coordinator.getSnapshot() === saved &&
-      this.getResearchWatchlist(selection).canEdit;
+      this.getResearchWatchlist(selection).canEdit &&
+      this.annualRevenueBasisForNote(selection, model) === annualRevenueBasis;
     const proposal = prepareValuationNote({
       capture,
       model,
       scenario,
       selection,
       includePriceComparison,
-      annualRevenueBasis:
-        model === "exit" ? this.getAppliedAnnualRevenueBasis(selection) : null,
+      annualRevenueBasis,
       price,
       note: watchlist.member.note,
       isCurrent,

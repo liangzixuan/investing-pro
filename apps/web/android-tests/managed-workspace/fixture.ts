@@ -1,4 +1,7 @@
-import { createAnnualRevenueModelBasisNativeFixture } from "./annual-revenue-model-basis-fixture";
+import {
+  annualRevenueModelInputs,
+  createAnnualRevenueModelBasisNativeFixture,
+} from "./annual-revenue-model-basis-fixture";
 import {
   createReviewedCompanySourcePassNativeFixture,
   type ReviewedCompanySourcePassControls,
@@ -2325,7 +2328,10 @@ const nativeFixtureFactories = new Map<
     "annual-revenue-model-basis",
     async () =>
       createAnnualRevenueModelBasisNativeFixture(
-        await createSharedFixture("annual-note"),
+        createSavedValuationNativeFixture(
+          await createSharedFixture("annual-note"),
+          annualRevenueModelInputs(savedValuationInputs),
+        ),
       ),
   ],
   [

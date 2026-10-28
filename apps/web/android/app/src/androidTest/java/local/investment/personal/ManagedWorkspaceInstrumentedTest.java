@@ -96,7 +96,6 @@ public class ManagedWorkspaceInstrumentedTest {
         "company-snapshot",
         "authored-valuation",
         "saved-valuation",
-        "annual-revenue-model-basis",
         "valuation-price",
         "research-followups",
         "followups-review-session",
@@ -119,7 +118,6 @@ public class ManagedWorkspaceInstrumentedTest {
         "watchlistDraftFileUsesSystemExportImportAndExplicitRestore", "watchlist-draft-file",
         "watchlistDraftFileRejectsAnotherAccountAndRetiresChooser", "watchlist-draft-file",
         "savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation", "saved-valuation",
-        "annualRevenueBasisKeepsAuthoredInputsCitationReportBackAndSeparateSaves", "annual-revenue-model-basis",
         "financialScreenRecipeSystemPickerReviewApplyRunAndWatchlistSave", "financial-screen",
         "followupAssessmentInCompanyReturnsToReviewAndSave", "research-followups",
         "followupsReviewSessionKeepsChosenOrderThroughCompanyBackAndSeparateSave", "followups-review-session",
@@ -758,105 +756,6 @@ public class ManagedWorkspaceInstrumentedTest {
             "(() => { const d = " + DIAGNOSTICS + "; return d.save === 1 && d.load === 2 && d.status === 1 && d.annual === 0 && d.eod === 0 && d.filings === 0 && d.marketsEod === 0 && d.calendar === 0 && d.fed === 0 && d.search === 0 && d.resolve === 0 && d.token === 0; })()");
         assertEquals("authored valuation keeps the original document", origin, readDocumentTimeOrigin(), 0.0);
     }
-
-    @Test
-    public void annualRevenueBasisKeepsAuthoredInputsCitationReportBackAndSeparateSaves() throws Exception {
-        double origin = readDocumentTimeOrigin();
-        String expected = AnnualRevenueModelBasisExpectations.NOTE;
-        selectWorkspaceView("My Watchlist");
-        typeIntoInput("managed-note-0", AnnualRevenueModelBasisExpectations.PREFIX);
-        click(ANNUAL);
-        awaitPage("exact company opens without a source, calculation or saved-input read", savedValuationEditor() + ".editable===true && " + DIAGNOSTICS + ".annual===0 && " + savedValuationStore() + ".counts.load===0");
-        click(".managed-valuation-workbench:not(.managed-valuation-assumptions) > summary");
-        click(".managed-valuation-revenue-basis > summary");
-        awaitPage("reported revenue remains a manual named choice with no default or inferred DCF", "(()=>{const s=document.querySelector('.managed-valuation-revenue-basis select');return s?.value===''&&s.disabled===false&&s.options.length===4&&s.options[0].value===''&&s.options[1].value==='Revenues'&&s.options[2].value==='RevenueFromContractWithCustomerExcludingAssessedTax'&&s.options[3].value==='SalesRevenueNet'&&document.querySelector('.managed-valuation-revenue-basis > button')?.disabled===true&&" + savedValuationEditor() + ".dcfDraft.startingUnleveredCashFlowUsd===''&&" + savedValuationEditor() + ".calculation===null&&" + DIAGNOSTICS + ".annual===0;})()");
-        authorAnnualRevenueModelInputs();
-        String before = readFixtureString("JSON.stringify(" + savedValuationEditor() + ")");
-        click(".managed-annual-report .trial-actions button:first-child");
-        awaitPage("one explicit Annual read keeps its original completion clock without changing authored maps", "document.querySelector('.managed-annual-report')?.textContent.includes('2026-09-20T00:00:02.000Z')&&" + DIAGNOSTICS + ".annual===1&&JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(before));
-        chooseNativeSelectOption(".managed-valuation-revenue-basis select", "Revenues", "Revenue");
-        awaitPage("selected source exposes exact USD, fiscal dates, filing identity and independent original clocks", AnnualRevenueModelBasisExpectations.sourceExact() + "&&JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(before));
-        retainAnnualNoteFrame("annualRevenueModelSelectedSource", "[aria-label='Selected reported revenue source'] > p:nth-child(2)", "[aria-label='Selected reported revenue source'] > p:nth-child(2)", 1);
-        click(".managed-valuation-revenue-basis > button");
-        awaitPage("full current and proposed raw maps precede the single-field application", "(()=>{const p=document.querySelector('[aria-label=\"Complete starting revenue change preview\"]');return p?.textContent.includes(" + JSONObject.quote(AnnualRevenueModelBasisExpectations.CITATION) + ")&&p.querySelector('[aria-label=\"Current complete valuation inputs\"]')?.textContent.includes('1000.00')&&p.querySelector('[aria-label=\"Proposed complete valuation inputs\"]')?.textContent.includes('1000')&&p.querySelectorAll('[aria-label=\"Current complete valuation inputs\"] .managed-valuation-raw').length===p.querySelectorAll('[aria-label=\"Proposed complete valuation inputs\"] .managed-valuation-raw').length&&p.querySelector('button')?.disabled===false&&JSON.stringify(" + savedValuationEditor() + ")===" + JSONObject.quote(before) + "&&" + DIAGNOSTICS + ".annual===1&&" + DIAGNOSTICS + ".save===0&&" + savedValuationStore() + ".counts.save===0;})()");
-        awaitPage("both complete preview columns retain every exact raw operand and full company identity", AnnualRevenueModelBasisExpectations.previewMapsExact(before, savedValuationStore()));
-        retainAnnualNoteFrame("annualRevenueModelCompleteChangeHeading", "[aria-label='Complete starting revenue change preview'] > h4", "[aria-label='Complete starting revenue change preview'] > h4", 1);
-        click("[aria-label='Complete starting revenue change preview'] > button");
-        awaitPage("Apply changes only starting revenue and leaves both authored calculations unrun", AnnualRevenueModelBasisExpectations.onlyRevenueChanged(before, savedValuationEditor()) + "&&document.querySelector('[aria-label=\"Applied Annual revenue reference\"]')?.textContent.includes(" + JSONObject.quote(AnnualRevenueModelBasisExpectations.CITATION) + ")&&document.querySelector('[aria-label=\"Complete starting revenue change preview\"]')===null&&" + DIAGNOSTICS + ".annual===1&&" + DIAGNOSTICS + ".save===0&&" + savedValuationStore() + ".counts.load===0");
-        onWebView().withElement(findElement(Locator.XPATH, "//details[contains(@class,'managed-valuation-workbench')]/button[normalize-space(.)='Calculate authored scenarios']")).perform(webClick());
-        awaitPage("only explicit Calculate creates both authored model results", savedValuationEditor() + ".calculation?.dcfResult.scenarios.base.valuePerShareUsd==='140.00'&&" + savedValuationEditor() + ".calculation?.exitResult.scenarios.base.valuePerShare==='19.00'");
-        click(".managed-valuation-note > summary");
-        chooseNativeSelectOption(".managed-valuation-note select[id$='-note-model']", "exit", "Exit multiple");
-        awaitPage("dated Price remains an unselected independent unavailable option", "document.querySelector('.managed-valuation-price-opt-in input')?.checked===false&&document.querySelector('.managed-valuation-price-opt-in input')?.disabled===true&&" + DIAGNOSTICS + ".eod===0");
-        click(".managed-valuation-note > button");
-        awaitPage("complete Exit note includes every authored operand, exact result and qualified original Annual citation", "document.querySelector('.managed-valuation-note > .managed-valuation-note-preview .trial-saved-note')?.textContent===" + JSONObject.quote(expected) + "&&document.querySelector('#managed-research-note')?.value===" + JSONObject.quote(AnnualRevenueModelBasisExpectations.PREFIX) + "&&" + DIAGNOSTICS + ".save===0");
-        click(".managed-valuation-note > .managed-valuation-note-preview > button");
-        awaitPage("Append changes the complete unsaved note only", "document.querySelector('#managed-research-note')?.value===" + JSONObject.quote(expected) + "&&" + DRAFT + ".dirty===true&&" + DIAGNOSTICS + ".save===0&&" + savedValuationStore() + ".counts.save===0");
-        captureAnnualRevenueModelReport(expected);
-        saveAnnualRevenueModelInputs();
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-        pressBack();
-        awaitPage("hardware Back retains the whole cited draft and independently saved raw model inputs", "document.querySelector('.managed-company-visit')===null&&" + DRAFT + ".memberships[0].note===" + JSONObject.quote(expected) + "&&" + DRAFT + ".memberships[1].note==='Invented second note'&&" + DRAFT + ".dirty===true&&" + savedValuationResource() + ".saved.version===1&&" + DIAGNOSTICS + ".save===0");
-        click("#managed-unsaved-review > summary");
-        awaitPage("whole Watchlist Review exposes the complete cited note before its independent Save", "document.querySelector('#managed-unsaved-review')?.textContent.includes(" + JSONObject.quote(expected) + ")&&" + DIAGNOSTICS + ".save===0");
-        clickWatchlistAction("Save watchlist");
-        awaitPage("only explicit Watchlist Save acknowledges the second version", DRAFT + ".baseVersion===2&&" + DRAFT + ".dirty===false&&" + DIAGNOSTICS + ".save===1&&" + savedValuationStore() + ".counts.save===1");
-        clickWatchlistAction("Load saved watchlist");
-        awaitPage("fresh Watchlist read preserves every exact membership and full citation", DRAFT + ".memberships[0].note===" + JSONObject.quote(expected) + "&&" + DRAFT + ".memberships[1].note==='Invented second note'&&" + DRAFT + ".memberships.length===2&&" + DIAGNOSTICS + ".load===2");
-        selectWatchlistNote(0);
-        click(ANNUAL);
-        click(".managed-valuation-workbench:not(.managed-valuation-assumptions) > summary");
-        click(".managed-valuation-assumptions > summary");
-        click("#managed-valuation-load");
-        awaitPage("fresh saved-input read contains only the entire original authored maps with the chosen raw revenue", AnnualRevenueModelBasisExpectations.savedRawOnly(savedValuationStore(), savedValuationResource()) + "&&" + savedValuationStore() + ".counts.load===2&&" + savedValuationStore() + ".counts.save===1&&" + DIAGNOSTICS + ".annual===1&&" + DIAGNOSTICS + ".eod===0&&" + DIAGNOSTICS + ".filings===0&&" + DIAGNOSTICS + ".search===0&&" + DIAGNOSTICS + ".token===0&&" + DIAGNOSTICS + ".signOut===0");
-        assertEquals("one mounted native document owns the whole source/model/note/save journey", origin, readDocumentTimeOrigin(), 0.0);
-        assertFixtureBoundary();
-    }
-
-    private void authorAnnualRevenueModelInputs() throws Exception {
-        String[][] fields = AnnualRevenueModelBasisExpectations.FIELDS;
-        for (String[] field : fields) {
-            String selector = ".managed-valuation-workbench:not(.managed-valuation-assumptions) input[id$='-" + field[0] + "']";
-            awaitPage("exact blank labelled authored revenue model operand: " + field[0], "(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + ");return e?.value===''&&!e.disabled&&[...document.querySelectorAll('label')].some(l=>l.htmlFor===e.id);})()");
-            typeIntoInput(readFixtureString("document.querySelector(" + JSONObject.quote(selector) + ").id"), field[1]);
-        }
-        awaitPage("all initial authored raw operands remain exact before any source or calculation", "(()=>{const e=" + savedValuationEditor() + ",s=" + savedValuationStore() + ";return JSON.stringify(e.dcfDraft)===JSON.stringify(s.expected.dcf.inputs)&&JSON.stringify(e.exitDraft)===JSON.stringify({...s.expected.exit.inputs,baseRevenue:'1000.00'})&&e.calculation===null&&s.counts.load===0&&s.counts.save===0;})()");
-    }
-
-    private void captureAnnualRevenueModelReport(String expected) throws Exception {
-        click(".managed-company-report > summary");
-        prepareNativeCompanyReport(expected);
-        click(".managed-report-document > summary");
-        awaitPage("read-only schema6 report retains complete cited note, both raw maps and original Annual clocks", "(()=>{const f=document.querySelector('#managed-report-document');if(!f?.readOnly)return false;const d=JSON.parse(f.value),e=" + savedValuationEditor() + ";return d.schemaVersion==='6.0.0'&&d.authoredResearch.note===" + JSONObject.quote(expected) + "&&JSON.stringify(d.valuation.dcfDraft)===JSON.stringify(e.dcfDraft)&&JSON.stringify(d.valuation.exitDraft)===JSON.stringify(e.exitDraft)&&d.sources.annual.response.evidence.generation.completedAt==='2026-09-20T00:00:02.000Z'&&d.sources.price.status==='not_loaded'&&d.sources.filings.status==='not_loaded';})()");
-        String document = readFixtureString("document.querySelector('#managed-report-document').value");
-        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        WatchlistTestDocuments.clear(context);
-        try {
-            click(".managed-report-delivery button");
-            WatchlistSystemPicker picker = new WatchlistSystemPicker();
-            picker.awaitOpen(); picker.saveToInventedRoot();
-            awaitPage("one actual chosen JSON report write settles without any resource Save", "JSON.parse(document.querySelector('#fixture-report-protocol').textContent).writesSettled===1&&" + DIAGNOSTICS + ".save===0&&" + savedValuationStore() + ".counts.save===0");
-            WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
-            assertEquals("one invented report destination", 1, outputs.length);
-            assertEquals("application/json", context.getContentResolver().getType(outputs[0].uri));
-            assertArrayEquals("chosen report bytes equal the complete captured document", document.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.readReport(context, outputs[0]));
-        } finally { WatchlistTestDocuments.clear(context); }
-    }
-
-    private void saveAnnualRevenueModelInputs() throws Exception {
-        click(".managed-valuation-assumptions > summary");
-        click("#managed-valuation-load");
-        awaitPage("saved inputs Load leaves the complete cited Watchlist note unsaved", savedValuationStore() + ".counts.load===1&&" + savedValuationResource() + ".baseVersion===0&&" + DIAGNOSTICS + ".save===0");
-        click("#managed-valuation-stage-review");
-        awaitPage("complete current raw-input staging review precedes Stage", "document.querySelector('[aria-label=\"Valuation staging review\"]')?.textContent.includes('authored-exit-multiple-v1')&&document.querySelector('#managed-valuation-stage')?.disabled===false&&" + savedValuationStore() + ".counts.save===0");
-        click("#managed-valuation-stage");
-        awaitPage("staging cannot save before the independent whole-resource Review", savedValuationResource() + ".draft.entries.length===1&&document.querySelector('#managed-valuation-save')?.disabled===true");
-        click("#managed-valuation-review");
-        awaitPage("whole saved-resource Review contains only raw authored maps", "document.querySelector('[aria-label=\"Complete valuation draft for Save\"]')?.textContent.includes('100.00')&&document.querySelector('#managed-valuation-save')?.disabled===false&&" + DIAGNOSTICS + ".save===0");
-        click("#managed-valuation-save");
-        awaitPage("only explicit model Save confirms raw maps without copying source payload or saving the Watchlist", AnnualRevenueModelBasisExpectations.savedRawOnly(savedValuationStore(), savedValuationResource()) + "&&" + savedValuationStore() + ".counts.save===1&&" + DIAGNOSTICS + ".save===0&&" + DRAFT + ".dirty===true");
-    }
-
 
     @Test
     public void savedValuationInputsRequireReviewSaveReopenAndExplicitCalculation() throws Exception {

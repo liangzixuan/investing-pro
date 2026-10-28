@@ -61,13 +61,16 @@ missing, nonpositive or out-of-model-range values keep an explicit refusal.
 1. Inspect the exact value and start/end period, filing/accession, original cutoff,
    completion time and separate Company Facts/Submissions capture times. Historical
    and retained previous evidence keep their qualifications.
+   The SEC source CIK stays separate from the model CIK, which can be unavailable.
 2. Select **Preview starting revenue change**. Compare the complete current and
    proposed raw inputs for both models, including full company/share-class identity,
    CIK, catalog and model versions. The only proposed change is exit-model Starting
    revenue. Preview makes no request, calculation or saved change.
 3. Select **Apply reported revenue to authored inputs** once. This replaces that
-   one field with the exact reported decimal text and clears prior calculation.
-   Growth, margins, shares, cash, debt and all DCF fields stay authored and unchanged.
+   one field with the exact reported decimal text. A changed field clears prior
+   calculation. If the raw value already matches exactly, Apply attaches the source
+   reference and keeps the current inputs and calculation. Growth, margins, shares,
+   cash, debt and all DCF fields stay authored and unchanged.
 4. Calculate separately. A current applied Annual reference joins the complete
    Exit multiple note preview automatically. Inspect the entire note before its
    explicit append. DCF notes do not inherit it. Optional dated Price context keeps

@@ -1010,3 +1010,40 @@ describe("Annual revenue through the authored valuation workflow", () => {
     expect(f.api.save).not.toHaveBeenCalled();
   });
 });
+
+it("withdraws an uncited Exit note after same-value source Apply while retaining the unchanged DCF preview", async () => {
+  const f = await revenueFixture();
+  f.workspace.valuation.setExitField("baseRevenue", "1000");
+  const calculation = f.workspace.valuation.calculate();
+  const exit = f.workspace.prepareValuationNote(
+    f.selection(),
+    "exit",
+    "base",
+  ).preview!;
+  const dcf = f.workspace.prepareValuationNote(
+    f.selection(),
+    "dcf",
+    "base",
+  ).preview!;
+  expect(exit.excerpt).not.toContain("Annual revenue basis");
+  expect(dcf.excerpt).not.toContain("Annual revenue basis");
+  const before = f.workspace.coordinator.getSnapshot().draft;
+  expect(
+    f.workspace.applyAnnualRevenueBasis(f.prepareBasis().preview!).applied,
+  ).toBe(true);
+  expect(f.workspace.valuation.getSnapshot().calculation).toBe(calculation);
+  expect(f.workspace.valuationNotePreviewIsCurrent(exit)).toBe(false);
+  expect(f.workspace.appendValuationNote(exit).appended).toBe(false);
+  expect(f.workspace.coordinator.getSnapshot().draft).toBe(before);
+  expect(f.workspace.valuationNotePreviewIsCurrent(dcf)).toBe(true);
+  const cited = f.workspace.prepareValuationNote(
+    f.selection(),
+    "exit",
+    "base",
+  ).preview!;
+  expect(cited.excerpt).toContain("SEC source CIK 0000000001;");
+  expect(cited.excerpt).toContain("Annual revenue basis");
+  expect(f.api.annualReport).toHaveBeenCalledOnce();
+  expect(f.api.save).not.toHaveBeenCalled();
+  expect(f.api.saveValuationAssumptions).not.toHaveBeenCalled();
+});

@@ -46,7 +46,7 @@ import {
   ManagedValuationWorkbench,
   type ManagedValuationNoteActions,
 } from "./ManagedValuationWorkbench";
-import type { ManagedValuationRevenueBasisActions } from "./ManagedValuationRevenueBasisPanel";
+import type { ManagedValuationRevenueBasisActions } from "./use-valuation-revenue-basis-review";
 import type { ManagedValuationWorkbench as ValuationModel } from "./managed-valuation-workbench";
 import type { ManagedValuationAssumptions as AssumptionsModel } from "./managed-valuation-assumptions";
 import { ManagedValuationAssumptions } from "./ManagedValuationAssumptions";
