@@ -56,6 +56,7 @@ import {
   watchlistFilingsActions,
 } from "./ManagedFilingsReviewEntry";
 import { ManagedBlsCalendar } from "./ManagedBlsCalendar";
+import { ManagedCpiHeadlines } from "./ManagedCpiHeadlines";
 import { ManagedMarketsCalendarFollowup } from "./ManagedMarketsCalendarFollowup";
 import { marketsFollowupNavigation } from "./managed-calendar-followup-navigation";
 import { ManagedMarketsBoard } from "./ManagedMarketsBoard";
@@ -1368,6 +1369,16 @@ export function ManagedWorkspaceScreen({
                     isCurrent={isMarketsCurrent}
                     onReview={calendarFollowupNavigation.review}
                     onManage={calendarFollowupNavigation.manageFollowups}
+                  />
+                  <ManagedCpiHeadlines
+                    headingRef={marketsSectionNavigation.targets.cpi.ref}
+                    workspace={workspace}
+                    isCurrent={isMarketsCurrent}
+                    navigationPending={navigationPending}
+                    onReview={calendarFollowupNavigation.review}
+                    onManageWatchlist={
+                      calendarFollowupNavigation.manageWatchlist
+                    }
                   />
                   <ManagedMarketsCalendarFollowup
                     workspace={workspace}

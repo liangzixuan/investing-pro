@@ -145,6 +145,9 @@ async function fixture(
     return Promise.resolve({ ...structuredClone(stored), replayed: false });
   });
   const api: ManagedApi = {
+    cpiHeadlines: vi
+      .fn<ManagedApi["cpiHeadlines"]>()
+      .mockRejectedValue(new Error("Unexpected CPI headlines read")),
     interimReport: vi
       .fn<() => Promise<never>>()
       .mockRejectedValue(new Error("Unexpected interim read")),

@@ -29,13 +29,22 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 28 Android delivery
 
-The next M2/M4 outcome keeps a [dated check from one authored valuation scenario](MANAGED_VALUATION_WORKBENCH.md#keep-a-dated-valuation-check).
-Choose the model and scenario explicitly, write the question and UTC due date,
-then inspect the full saved text before creating one Follow-ups draft entry.
-Continue through existing company Research/Back and separate Follow-ups Save
-and fresh Load. Preserve exact listing/share-class identity, model version and
-the available calculated value. The concise estimate remains separate from
-source facts, full input maps and cited reports.
+The next M3/M4 outcome connects an official [CPI feed headline](MANAGED_CPI_HEADLINES.md)
+to one complete cited authored check for an independently chosen exact company.
+Explicit loading, original links, raw feed clocks or unknowns and separate
+retrieval time precede full question/date/identity review. Once-only draft
+creation uses existing Follow-ups Review, Research/Back and separate Save/fresh
+Load. CPI coverage remains distinct from scheduled events, all-BLS news and
+company relevance. Source qualification is complete; implementation and release
+acceptance remain in progress.
+
+Android 1.54 delivers the [dated valuation check](MANAGED_VALUATION_WORKBENCH.md#keep-a-dated-valuation-check)
+from `32fc478dfc1c82c0decd730c1c0c52565c518008`. Original required PR/main checks,
+all 99 synthetic native cases and the guarded existing-signer build plus all
+four signed-APK checks passed. The complete authored estimate summary retains
+exact model/version/scenario/value; full inputs and source evidence stay separate.
+Installation remains an owner action. API, website and earlier deliveries are
+preserved.
 
 Android 1.53 delivers the [Annual revenue model basis](MANAGED_VALUATION_WORKBENCH.md#apply-a-reported-annual-revenue-basis)
 from `b18ef60e5a38a410a7f808201a2c1354afea587e`. Original required checks,

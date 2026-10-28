@@ -5,16 +5,36 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: keep a dated valuation check
+## Selected next: a CPI headline into an authored company check
+
+The [CPI headline workflow](MANAGED_CPI_HEADLINES.md) will connect one fixed
+official BLS CPI feed to a complete cited question for an independently chosen
+exact Watchlist company. Keep raw feed published/updated clocks, unknowns,
+attribution and original links separate from retrieval and the authored UTC due
+date. Preview once, create an independent Follow-ups draft, then use existing
+Review, company Research/Back and separate Save/fresh Load.
+
+The official source format and bounded metadata reuse are qualified. Implementation
+and automated acceptance are in progress. No new source route, website or APK
+release is claimed. This is CPI feed coverage, not all BLS or company news.
+
+## Accepted and delivered: keep a dated valuation check
 
 The [valuation Follow-ups workflow](MANAGED_VALUATION_WORKBENCH.md#keep-a-dated-valuation-check)
-connects an explicitly chosen authored model/scenario to a complete dated
-question preview and one independent Follow-ups draft entry. Review the entry,
-open company research, return through Back, then Save and Load Follow-ups
-separately. The saved text includes a concise model/version/scenario/value
-summary and states that inputs and source evidence are excluded. It requires
-the exact editable My Watchlist listing. Implementation and automated source
-acceptance are in progress; this increment has not been released.
+connects an explicitly chosen available authored model/scenario to a complete
+dated question preview and one independent Follow-ups draft entry. Review the
+entry, open company research, return through Back, then Save and Load Follow-ups
+separately. The full text includes model/version/scenario/exact USD per share and
+states that inputs and source evidence are excluded. Exact editable My Watchlist
+identity and existing text, entry, recovery and lifetime limits remain.
+
+[PR 251](https://github.com/liangzixuan/investing-pro/pull/251) merged at
+`32fc478dfc1c82c0decd730c1c0c52565c518008`. Original required PR and actual-main
+checks passed, including all 99 synthetic native cases. Android 1.54.0/code55 is
+provided locally after one guarded existing-signer build and all four signed-APK
+checks passed. Delivered bytes match the guarded APK. No installation or physical
+phone acceptance is claimed. API, website, prior releases and owner records are
+preserved.
 
 ## Accepted and delivered: Annual revenue to an authored model basis
 

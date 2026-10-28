@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 const sections = {
   board: "Company board",
   review: "Research checks due",
+  cpi: "Published CPI headlines",
   day: "Markets day view",
   calendar: "Economic calendar",
   bls: "BLS release calendar",
@@ -28,6 +29,7 @@ export function useManagedMarketsSections(isCurrent: () => boolean) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const board = useRef<HTMLHeadingElement | null>(null);
   const review = useRef<HTMLHeadingElement | null>(null);
+  const cpi = useRef<HTMLHeadingElement | null>(null);
   const day = useRef<HTMLHeadingElement | null>(null);
   const calendar = useRef<HTMLHeadingElement | null>(null);
   const bls = useRef<HTMLHeadingElement | null>(null);
@@ -38,6 +40,7 @@ export function useManagedMarketsSections(isCurrent: () => boolean) {
     targets: {
       board: { id: "managed-markets-heading", ref: board },
       review: { id: "managed-daily-research-heading", ref: review },
+      cpi: { id: "managed-cpi-heading", ref: cpi },
       day: { id: "managed-markets-day-heading", ref: day },
       calendar: { id: "bea-agenda-title", ref: calendar },
       bls: { id: "bls-calendar-title", ref: bls },

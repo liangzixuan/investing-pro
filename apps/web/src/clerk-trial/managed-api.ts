@@ -1,4 +1,8 @@
 import {
+  MANAGED_CPI_HEADLINES_PATH,
+  MANAGED_CPI_HEADLINES_LIMITS,
+  parseManagedCpiHeadlines,
+  type ManagedCpiHeadlinesDto,
   MANAGED_VALUATION_ASSUMPTIONS_PATH,
   MANAGED_VALUATION_ASSUMPTIONS_LIMITS,
   parseManagedValuationAssumptions,
@@ -89,6 +93,7 @@ import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
 export interface ManagedApi {
+  cpiHeadlines: (signal?: AbortSignal) => Promise<ManagedCpiHeadlinesDto>;
   loadValuationAssumptions: (
     signal: AbortSignal,
   ) => Promise<ManagedValuationAssumptionsDto>;
@@ -198,7 +203,8 @@ type RequestKind =
   | "eod"
   | "calendar"
   | "filings"
-  | "announcements";
+  | "announcements"
+  | "cpi-headlines";
 const mutationKinds: readonly RequestKind[] = [
   "watchlist",
   "followups",
@@ -280,7 +286,11 @@ function responseError(
   kind: RequestKind,
 ): never {
   if (kind === "filings") filingsError(status, value);
-  if (kind === "calendar" || kind === "announcements") {
+  if (
+    kind === "calendar" ||
+    kind === "announcements" ||
+    kind === "cpi-headlines"
+  ) {
     if (
       value &&
       typeof value === "object" &&
@@ -420,7 +430,12 @@ export function createManagedApi(
     const abort = () => lifetime.abort();
     signal.addEventListener("abort", abort, { once: true });
     if (signal.aborted) abort();
-    const timer = setTimeout(abort, 20_000);
+    const timer = setTimeout(
+      abort,
+      kind === "cpi-headlines"
+        ? MANAGED_CPI_HEADLINES_LIMITS.operationMs
+        : 20_000,
+    );
     let rejectAbort: (() => void) | undefined;
     const aborted = new Promise<never>((_, reject) => {
       rejectAbort = () =>
@@ -546,6 +561,15 @@ export function createManagedApi(
         "filings",
       );
     },
+    cpiHeadlines: (signal = new AbortController().signal) =>
+      request(
+        MANAGED_CPI_HEADLINES_PATH,
+        signal,
+        MANAGED_CPI_HEADLINES_LIMITS.responseBytes,
+        parseManagedCpiHeadlines,
+        undefined,
+        "cpi-headlines",
+      ),
     monetaryAnnouncements: (signal) =>
       request(
         MANAGED_MONETARY_ANNOUNCEMENTS_PATH,

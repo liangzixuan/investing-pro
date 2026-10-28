@@ -11,6 +11,19 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## A CPI headline and an authored check
+
+Use a distinct Published CPI headlines panel with explicit Load, Refresh and
+Cancel controls. Keep source attribution, original links, feed published/updated
+clocks or unknowns, retrieval time and bounded coverage together. Use plain text
+to distinguish feed clocks from a verified release time. Wrap complete headlines,
+URLs and identities with visible focus, 44px targets and stacked narrow layouts.
+
+Keep the chosen headline beside the authored question and UTC date. Start the
+exact Watchlist destination empty. Focus the full citation and identity preview;
+show the combined text limit without clipping. Create changes one Follow-ups
+draft once. Review, Research/Back and each Save remain explicit and separate.
+
 ## A dated check from an authored valuation
 
 Place the initially closed disclosure below calculated results. Start Model and

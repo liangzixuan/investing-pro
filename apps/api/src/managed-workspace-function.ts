@@ -20,6 +20,7 @@ import {
   MANAGED_SEC_FILINGS_LIMITS,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_CPI_HEADLINES_PATH,
   MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
@@ -71,6 +72,11 @@ import {
   awaitManagedEod,
   ManagedEodServiceError,
 } from "./managed-eod-service";
+import {
+  createManagedCpiHeadlinesService,
+  awaitManagedCpiHeadlines,
+  ManagedCpiHeadlinesServiceError,
+} from "./managed-cpi-headlines-service";
 import { createManagedBlsCalendarService } from "./managed-bls-calendar-service";
 import {
   createManagedEconomicCalendarService,
@@ -131,6 +137,7 @@ const PATHS: readonly string[] = [
   MANAGED_SEC_INTERIM_EVIDENCE_PATH,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
+  MANAGED_CPI_HEADLINES_PATH,
   MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
@@ -140,6 +147,7 @@ const SOURCE_PATHS: readonly string[] = [
   MANAGED_SEC_INTERIM_EVIDENCE_PATH,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
+  MANAGED_CPI_HEADLINES_PATH,
   MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
@@ -257,6 +265,7 @@ export function createManagedWorkspaceFunction(
       return res.json({ error: "origin_denied" }, 403, headers);
     headers["access-control-allow-origin"] = origin;
     let dispatchedWrite = false;
+    const cpiHeadlines = req.path === MANAGED_CPI_HEADLINES_PATH;
     const eod = req.path === MANAGED_EOD_HISTORY_PATH;
     const blsCalendar = req.path === MANAGED_BLS_CALENDAR_PATH;
     const calendar = req.path === MANAGED_ECONOMIC_CALENDAR_PATH || blsCalendar;
@@ -331,6 +340,9 @@ export function createManagedWorkspaceFunction(
           startedAt,
           openAdmission: openSecAdmission,
         }),
+        ...(!cpiHeadlines
+          ? {}
+          : { cpiHeadlines: createManagedCpiHeadlinesService({ startedAt }) }),
         ...(!calendar
           ? {}
           : blsCalendar
@@ -483,23 +495,25 @@ export function createManagedWorkspaceFunction(
           req.path === MANAGED_VALUATION_ASSUMPTIONS_PATH ||
           req.path === MANAGED_RESEARCH_FOLLOWUPS_PATH);
       const response = await (sourceController
-        ? announcements
-          ? awaitManagedMonetaryAnnouncements(
-              handle(request),
-              sourceController.signal,
-            )
-          : calendar
-            ? awaitManagedEconomicCalendar(
+        ? cpiHeadlines
+          ? awaitManagedCpiHeadlines(handle(request), sourceController.signal)
+          : announcements
+            ? awaitManagedMonetaryAnnouncements(
                 handle(request),
                 sourceController.signal,
               )
-            : eod
-              ? awaitManagedEod(handle(request), sourceController.signal)
-              : awaitManagedSecRoute(
-                  req.path,
+            : calendar
+              ? awaitManagedEconomicCalendar(
                   handle(request),
                   sourceController.signal,
                 )
+              : eod
+                ? awaitManagedEod(handle(request), sourceController.signal)
+                : awaitManagedSecRoute(
+                    req.path,
+                    handle(request),
+                    sourceController.signal,
+                  )
         : handle(request));
       const body = await response.text();
       if (
@@ -507,13 +521,15 @@ export function createManagedWorkspaceFunction(
         (sourceController.signal.aborted ||
           performance.now() - startedAt >= 10_000)
       )
-        throw announcements
-          ? new ManagedMonetaryAnnouncementsServiceError("request_timeout")
-          : calendar
-            ? new ManagedEconomicCalendarServiceError("request_timeout")
-            : eod
-              ? new ManagedEodServiceError("request_timeout")
-              : managedSecRouteTimeout(req.path);
+        throw cpiHeadlines
+          ? new ManagedCpiHeadlinesServiceError("request_timeout")
+          : announcements
+            ? new ManagedMonetaryAnnouncementsServiceError("request_timeout")
+            : calendar
+              ? new ManagedEconomicCalendarServiceError("request_timeout")
+              : eod
+                ? new ManagedEodServiceError("request_timeout")
+                : managedSecRouteTimeout(req.path);
       return res.text(
         body,
         response.status,

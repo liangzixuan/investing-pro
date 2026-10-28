@@ -1079,3 +1079,5 @@ export * from "./managed-eod-history";
 export * from "./managed-sec-filings";
 
 export * from "./personal-sec-interim-statements";
+
+export * from "./managed-cpi-headlines";

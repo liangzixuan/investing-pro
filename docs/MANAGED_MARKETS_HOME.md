@@ -10,8 +10,9 @@ in [Current work](CURRENT_WORK.md).
 
 ## Move between Markets sections
 
-**On Markets** offers **Company board**, **Research checks due**, **Markets day view**, **Economic calendar** and **Fed
-announcements** below the Markets toolbar. Each link moves focus to that
+**On Markets** offers **Company board**, **Research checks due**, **Markets day view**,
+**Economic calendar**, **Fed announcements** and the source candidate's
+**Published CPI headlines** below the Markets toolbar. Each link moves focus to that
 section's heading and scrolls it into view. All sections stay on the same page.
 The links wrap on narrow screens and have a minimum target height of 44 pixels.
 
@@ -25,6 +26,21 @@ The app checks the heading and view again after focus moves. It stops if the
 view changes or the target is hidden, detached or no longer belongs to Markets.
 Loading a response does not trigger a jump. Browser and native verification,
 and delivery status, remain in [Current work](CURRENT_WORK.md).
+
+## CPI headline source candidate
+
+The [CPI workflow](MANAGED_CPI_HEADLINES.md) adds a distinct, explicitly loaded
+official headline panel. Read the complete title and original archive link with
+BLS attribution, raw feed published/updated times or unknowns, retrieval time
+and bounded coverage. A feed clock does not verify the economic release or
+embargo time. Filtering and the heading jump make no source request.
+
+Choose one headline and an exact editable Watchlist company independently.
+Preview the whole cited question and authored UTC date, create one Follow-ups
+draft entry, then use existing Review, Research/Back and separate Save/fresh
+Load. The existing day view and source-review pass retain their current sources.
+This candidate adds no automatic relevance, article body, revision alert or
+server cache. Source/API/client release acceptance remains in Current work.
 
 ## Review research checks due
 

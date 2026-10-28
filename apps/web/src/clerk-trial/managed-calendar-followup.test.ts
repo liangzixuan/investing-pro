@@ -73,14 +73,14 @@ function snapshots() {
     },
   };
 }
-function keyFor(source: CalendarFollowupSource) {
+function keyFor(source: Exclude<CalendarFollowupSource, { kind: "cpi" }>) {
   if (source.kind === "fed") return `fed:${source.item.url}`;
   return `${source.kind}:${JSON.stringify([source.item.series, source.item.scheduledAt])}`;
 }
 function sourceFor(
-  kind: CalendarFollowupSource["kind"],
+  kind: Exclude<CalendarFollowupSource["kind"], "cpi">,
   index = 0,
-): CalendarFollowupSource {
+): Exclude<CalendarFollowupSource, { kind: "cpi" }> {
   const p = packets();
   if (kind === "bls")
     return {

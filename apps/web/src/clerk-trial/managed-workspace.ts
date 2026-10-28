@@ -9,6 +9,8 @@ import {
   type PreparedManagedInterimStatementsNote,
 } from "./managed-interim-statements-note";
 import type { PersonalSecInterimCanonicalResponseDto } from "@research-cockpit/contracts";
+import { ManagedCpiHeadlines } from "./managed-cpi-headlines";
+import { ManagedCpiHeadlineFollowupContext } from "./managed-cpi-headline-followup-context";
 import { ManagedMarketsCalendarFollowupContext } from "./managed-calendar-followup-context";
 import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { FilingsFollowupPort } from "./managed-filings-followup";
@@ -376,6 +378,8 @@ export class ManagedWorkspace {
   readonly companySourcePass: ManagedCompanySourcePass;
   readonly markets: ManagedMarkets;
   readonly marketsSourceReview: ManagedMarketsSourceReview;
+  readonly cpiHeadlines: ManagedCpiHeadlines;
+  private readonly cpiFollowupContext: ManagedCpiHeadlineFollowupContext;
   private readonly calendarFollowupContext: ManagedMarketsCalendarFollowupContext;
   readonly watchlistPrices: ManagedWatchlistPrices;
   readonly blsCalendar: ManagedBlsCalendar;
@@ -571,6 +575,10 @@ export class ManagedWorkspace {
       if (this.filingsReview.getSnapshot().catalogChanged)
         this.invalidateCatalog();
     });
+    this.cpiHeadlines = new ManagedCpiHeadlines(
+      (signal) => api.cpiHeadlines(signal),
+      (error) => this.coordinator.readError(error),
+    );
     this.announcements = new ManagedFedAnnouncements(
       (signal) => api.monetaryAnnouncements(signal),
       (error) => this.coordinator.readError(error),
@@ -623,6 +631,16 @@ export class ManagedWorkspace {
       bea: this.agenda,
       fed: this.announcements,
       available: () => this.marketsReviewAvailable(),
+    });
+    this.cpiFollowupContext = new ManagedCpiHeadlineFollowupContext({
+      workspace: this,
+      available: () => this.calendarFollowupRouteReady(),
+      memberReady: (member) => this.calendarFollowupMemberReady(member),
+      revision: () => ({
+        navigation: this.navigationRevision,
+        view: this.viewRevision,
+        catalog: this.state.snapshot,
+      }),
     });
     this.calendarFollowupContext = new ManagedMarketsCalendarFollowupContext({
       workspace: this,
@@ -837,9 +855,11 @@ export class ManagedWorkspace {
       this.state.research ||
       this.state.companyRoute
     ) {
+      this.cpiHeadlines.leave();
       this.announcements.leave();
       this.blsCalendar.leave();
     } else {
+      this.cpiHeadlines.enter();
       this.announcements.enter();
       this.blsCalendar.enter();
     }
@@ -892,6 +912,8 @@ export class ManagedWorkspace {
   }
   private clear() {
     this.retired = true;
+    this.cpiFollowupContext.retire();
+    this.cpiHeadlines.retire();
     this.calendarFollowupContext.retire();
     this.marketsSourceReview.retire();
     this.cancelFollowupOpening();
@@ -3511,6 +3533,14 @@ export class ManagedWorkspace {
       saved.draft.memberships.includes(member)
     );
   }
+  captureCpiHeadlineSource(key: string, selectionIsCurrent: () => boolean) {
+    return this.cpiFollowupContext.capture(key, selectionIsCurrent);
+  }
+  private datedSourceContext(capture: CalendarSourceCapture) {
+    return capture.source.kind === "cpi"
+      ? this.cpiFollowupContext
+      : this.calendarFollowupContext;
+  }
   captureMarketsCalendarSource(key: string, selectionIsCurrent: () => boolean) {
     return this.calendarFollowupContext.capture(key, selectionIsCurrent);
   }
@@ -3518,20 +3548,24 @@ export class ManagedWorkspace {
     capture: CalendarSourceCapture,
     member: WatchlistMembership,
   ) {
-    return this.calendarFollowupContext.capturePort(capture, member);
+    return this.datedSourceContext(capture).capturePort(capture, member);
   }
   canLoadMarketsCalendarFollowups(
     capture: CalendarSourceCapture,
     member: WatchlistMembership,
   ) {
-    return this.calendarFollowupContext.canLoad(capture, member);
+    return this.datedSourceContext(capture).canLoad(capture, member);
   }
   loadMarketsCalendarFollowups(
     capture: CalendarSourceCapture,
     member: WatchlistMembership,
     formIsCurrent: () => boolean,
   ) {
-    return this.calendarFollowupContext.load(capture, member, formIsCurrent);
+    return this.datedSourceContext(capture).load(
+      capture,
+      member,
+      formIsCurrent,
+    );
   }
   private filingsFollowupSourceIsCurrent(
     selection: ManagedResearchSelection,

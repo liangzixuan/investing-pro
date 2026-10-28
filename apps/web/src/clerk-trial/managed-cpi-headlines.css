@@ -1,0 +1,67 @@
+.clerk-trial.managed-frame .managed-cpi-headlines {
+  margin-block: 16px;
+  padding: 16px;
+  min-width: 0;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  background: var(--managed-surface);
+  color: var(--managed-ink);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-cpi-headlines :is(button, input, a) {
+  min-height: 44px;
+  max-width: 100%;
+  font: inherit;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-cpi-headlines :is(button, input) {
+  padding: 10px 12px;
+}
+.clerk-trial.managed-frame .managed-cpi-headlines button {
+  margin: 4px 8px 4px 0;
+}
+.clerk-trial.managed-frame .managed-cpi-headlines label {
+  display: block;
+  margin-block: 12px 6px;
+}
+.clerk-trial.managed-frame .managed-cpi-headlines input {
+  width: 100%;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+}
+.clerk-trial.managed-frame .managed-cpi-headlines ul {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.clerk-trial.managed-frame .managed-cpi-headlines li {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+}
+.clerk-trial.managed-frame .managed-cpi-headlines a {
+  display: inline-flex;
+  align-items: center;
+}
+.clerk-trial.managed-frame
+  .managed-cpi-headlines
+  :is(button, input, a, h3, h4):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame .managed-cpi-complete-check {
+  overflow: hidden;
+  resize: none;
+}
+@media (max-width: 640px) {
+  .clerk-trial.managed-frame .managed-cpi-headlines ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

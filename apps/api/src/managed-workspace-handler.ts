@@ -40,6 +40,9 @@ import {
   parseManagedSecFilingsError,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_CPI_HEADLINES_PATH,
+  MANAGED_CPI_HEADLINES_LIMITS,
+  parseManagedCpiHeadlines,
   MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
@@ -102,6 +105,10 @@ import {
   ManagedEodServiceError,
   type ManagedEodService,
 } from "./managed-eod-service";
+import {
+  ManagedCpiHeadlinesServiceError,
+  type ManagedCpiHeadlinesService,
+} from "./managed-cpi-headlines-service";
 import type { ManagedBlsCalendarService } from "./managed-bls-calendar-service";
 import {
   ManagedEconomicCalendarServiceError,
@@ -142,6 +149,7 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly interim?: ManagedSecInterimService;
   readonly filings?: ManagedSecFilingsService;
   readonly eod?: ManagedEodService;
+  readonly cpiHeadlines?: ManagedCpiHeadlinesService;
   readonly blsCalendar?: ManagedBlsCalendarService;
   readonly calendar?: ManagedEconomicCalendarService;
   readonly announcements?: ManagedMonetaryAnnouncementsService;
@@ -181,6 +189,7 @@ const PATHS: readonly string[] = [
   MANAGED_SEC_INTERIM_EVIDENCE_PATH,
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
+  MANAGED_CPI_HEADLINES_PATH,
   MANAGED_BLS_CALENDAR_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
@@ -569,7 +578,8 @@ function errorResponse(
     code = error.code;
   } else if (
     error instanceof ManagedEconomicCalendarServiceError ||
-    error instanceof ManagedMonetaryAnnouncementsServiceError
+    error instanceof ManagedMonetaryAnnouncementsServiceError ||
+    error instanceof ManagedCpiHeadlinesServiceError
   ) {
     code = error.code;
     status = code === "request_timeout" ? 408 : 503;
@@ -671,6 +681,18 @@ export function createManagedWorkspaceHandler(
       if (auth.status !== "allowed")
         return fail(auth.status === "access_denied" ? 403 : 401, auth.status);
       requireActiveRequest(request);
+      if (route.path === MANAGED_CPI_HEADLINES_PATH) {
+        if (!options.cpiHeadlines) throw new Error("CPI service unavailable");
+        const result = await options.cpiHeadlines.load(request.signal);
+        options.cpiHeadlines.assertActive(request.signal);
+        response = jsonResponse(
+          parseManagedCpiHeadlines(result),
+          MANAGED_CPI_HEADLINES_LIMITS.responseBytes,
+          headers,
+        );
+        options.cpiHeadlines.assertActive(request.signal);
+        return response;
+      }
       if (route.path === MANAGED_BLS_CALENDAR_PATH) {
         if (!options.blsCalendar)
           throw new Error("Calendar service unavailable");

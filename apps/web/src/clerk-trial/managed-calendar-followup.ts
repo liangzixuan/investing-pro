@@ -1,5 +1,8 @@
 import {
   normalizeResearchFollowupCheck,
+  parseManagedCpiHeadlines,
+  type ManagedCpiHeadlineDto,
+  type ManagedCpiHeadlinesDto,
   type ManagedBlsCalendarDto,
   type ManagedBlsCalendarEventDto,
   type PersonalEconomicCalendarDto,
@@ -18,6 +21,12 @@ import type {
 } from "./managed-research-followups";
 
 export type CalendarFollowupSource =
+  | {
+      readonly kind: "cpi";
+      readonly packet: ManagedCpiHeadlinesDto;
+      readonly item: ManagedCpiHeadlineDto;
+      readonly showingPrevious: boolean;
+    }
   | {
       readonly kind: "bls";
       readonly packet: ManagedBlsCalendarDto;
@@ -64,7 +73,10 @@ export interface CalendarFollowupEvidence {
   readonly title: string;
   readonly url: string;
   readonly instant: string | null;
-  readonly timeKind: "scheduled" | "published";
+  readonly timeKind: "scheduled" | "published" | "feed-published";
+  readonly feedUpdatedAt?: string | null;
+  readonly itemUpdatedAt?: string | null;
+  readonly sourceId?: string;
   readonly fetchedAt: string;
   readonly window: {
     readonly fromInclusive: string;
@@ -78,7 +90,7 @@ interface CalendarSnapshots {
   readonly fed: ManagedFedAnnouncementsState;
 }
 type CalendarPacket = CalendarFollowupSource["packet"];
-type ScheduledSource = Exclude<CalendarFollowupSource, { kind: "fed" }>;
+type ScheduledSource = Exclude<CalendarFollowupSource, { kind: "fed" | "cpi" }>;
 type SourceFields = Pick<
   CalendarFollowupEvidence,
   "title" | "url" | "instant" | "timeKind" | "window"
@@ -217,6 +229,26 @@ export function calendarFollowupEvidence(
   source: CalendarFollowupSource,
 ): CalendarFollowupEvidence | null {
   if (typeof source.showingPrevious !== "boolean") return null;
+  if (source.kind === "cpi") {
+    if (
+      !parseManagedCpiHeadlines(source.packet) ||
+      !source.packet.items.includes(source.item)
+    )
+      return null;
+    return Object.freeze({
+      sourceName: source.packet.source.name,
+      title: source.item.title,
+      url: source.item.url,
+      instant: source.item.publishedAt,
+      timeKind: "feed-published",
+      itemUpdatedAt: source.item.updatedAt,
+      feedUpdatedAt: source.packet.feedUpdatedAt,
+      sourceId: source.item.sourceId,
+      fetchedAt: source.packet.fetchedAt,
+      window: null,
+      showingPrevious: source.showingPrevious,
+    });
+  }
   if (source.kind === "fed") return sourceEvidence(source, fedAdapter);
   if (source.kind === "bls") return sourceEvidence(source, blsAdapter);
   if (source.kind === "bea") return sourceEvidence(source, beaAdapter);
@@ -235,9 +267,11 @@ function completeCheck(
   const evidence = calendarFollowupEvidence(source);
   if (!evidence) return null;
   const citation =
-    source.kind === "fed"
-      ? `Fed announcement: ${evidence.title}; published ${evidence.instant ?? "unknown"}; ${evidence.url}`
-      : `${source.kind.toUpperCase()} schedule: ${evidence.title}; scheduled ${evidence.instant}; ${evidence.url}`;
+    source.kind === "cpi"
+      ? `U.S. Bureau of Labor Statistics CPI headline: ${evidence.title}. Feed published: ${evidence.instant ?? "unknown"}; feed updated: ${evidence.itemUpdatedAt ?? "unknown"}. ${evidence.url}`
+      : source.kind === "fed"
+        ? `Fed announcement: ${evidence.title}; published ${evidence.instant ?? "unknown"}; ${evidence.url}`
+        : `${source.kind.toUpperCase()} schedule: ${evidence.title}; scheduled ${evidence.instant}; ${evidence.url}`;
   const raw = `Question: ${question} | ${citation}`;
   if ([...raw].length > 500) return null;
   return normalizeResearchFollowupCheck(raw);

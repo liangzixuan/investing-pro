@@ -1,3 +1,4 @@
+import { CpiHeadlineFollowupFixtureDiagnostics } from "./cpi-headline-followup-fixture-diagnostics";
 import { ValuationScenarioFollowupFixtureDiagnostics } from "./valuation-scenario-followup-fixture-diagnostics";
 import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
 import { useSyncExternalStore } from "react";
@@ -167,6 +168,12 @@ export function FixtureDraftDiagnostics({
       <ValuationEditorDiagnostics valuation={values.valuation} />
       <ExportDocumentDiagnostics draft={values.draft} />
       <WatchlistDraftDiagnostics draft={values.draft} />
+      {scenario === "cpi-headline-followup" && (
+        <CpiHeadlineFollowupFixtureDiagnostics
+          workspace={workspace}
+          fixture={fixture}
+        />
+      )}
       {scenario === "valuation-scenario-followup" && (
         <ValuationScenarioFollowupFixtureDiagnostics
           model={workspace.followups}
