@@ -49,7 +49,9 @@ public class CompanyReportRevisitInstrumentedTest {
     @Test public void savedReportRevisitUsesLargeFileChooserAndExplicitWatchlistSave() throws Exception {
         String before = page.read(new ReportRevisitPage.Script("JSON.stringify(" + DRAFT + ")"));
         page.click(ReportRevisitPage.Element.css("#fixture-revisit-save"));
-        new WatchlistSystemPicker().saveToInventedRoot();
+        WatchlistSystemPicker initialSavePicker = new WatchlistSystemPicker();
+        initialSavePicker.awaitOpen(30_000);
+        initialSavePicker.saveToInventedRoot();
         page.await(new ReportRevisitPage.Check("invented large current-format report actually written", new ReportRevisitPage.Script(FILE + ".phase==='written' && " + FILE + ".byteLength>266240 && " + FILE + ".byteLength<2850816")));
         WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(InstrumentationRegistry.getInstrumentation().getTargetContext());
         assertEquals(1, outputs.length);
