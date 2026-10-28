@@ -46,13 +46,16 @@ class CpiInvocationBudget {
     const duration = this.clock.elapsed();
     if (signal.aborted)
       throw new ManagedCpiHeadlinesServiceError("request_timeout");
+    this.assertDuration(duration);
+  };
+  private assertDuration(duration: number) {
     if (!Number.isFinite(duration))
       throw new ManagedCpiHeadlinesServiceError("request_timeout");
     if (duration < 0)
       throw new ManagedCpiHeadlinesServiceError("request_timeout");
     if (duration >= MANAGED_CPI_HEADLINES_LIMITS.operationMs)
       throw new ManagedCpiHeadlinesServiceError("request_timeout");
-  };
+  }
   remainingMs() {
     return Math.max(
       1,

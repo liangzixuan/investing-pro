@@ -484,19 +484,20 @@ describe("invented native CPI headline-to-check fixture", () => {
   });
 });
 
-it("derives independent exact Markets cohort counts from startup, return and fresh-session visits", async () => {
+async function settledMarketsVisit(w: ManagedWorkspace) {
+  await vi.waitFor(() => {
+    expect(w.markets.getSnapshot().resolving).toBe(false);
+    expect(w.markets.getSnapshot().rows).toHaveLength(3);
+  });
+}
+
+async function startCohortVisit(): Promise<Mounted> {
   const fixture = await createFixture("cpi-headline-followup");
   const workspace = owner(fixture);
   const mounted = { fixture, workspace };
-  const settled = async (w: ManagedWorkspace) => {
-    await vi.waitFor(() => {
-      expect(w.markets.getSnapshot().resolving).toBe(false);
-      expect(w.markets.getSnapshot().rows).toHaveLength(3);
-    });
-  };
   await workspace.coordinator.load();
   await workspace.refreshCatalog();
-  await settled(workspace);
+  await settledMarketsVisit(workspace);
   // ManagedMarkets.enter resolves once for an active catalog-owned Markets visit.
   expect(fixture.getSnapshot()).toMatchObject({
     load: 1,
@@ -506,10 +507,14 @@ it("derives independent exact Markets cohort counts from startup, return and fre
     resolve: 0,
     save: 0,
   });
+  return mounted;
+}
+
+async function returnToCohortVisit({ fixture, workspace }: Mounted) {
   workspace.setView("watchlist");
   workspace.note("listing-zero", cpiFollowupWatchlistNote);
   workspace.setView("markets");
-  await settled(workspace);
+  await settledMarketsVisit(workspace);
   // Leaving clears the visit. Returning adds one cohort resolution, not a new session.
   expect(fixture.getSnapshot()).toMatchObject({
     load: 1,
@@ -520,8 +525,12 @@ it("derives independent exact Markets cohort counts from startup, return and fre
     save: 0,
   });
   workspace.setView("markets");
-  await settled(workspace);
+  await settledMarketsVisit(workspace);
   expect(fixture.getSnapshot().marketsResolve).toBe(2);
+}
+
+async function saveCohortCheck(mounted: Mounted) {
+  const { fixture, workspace } = mounted;
   const watchlist = workspace.coordinator.getSnapshot();
   const { port } = await loaded(mounted);
   const entry = preview(port).create()!;
@@ -537,11 +546,14 @@ it("derives independent exact Markets cohort counts from startup, return and fre
     replays: 0,
   });
   expect(fixture.getSnapshot().marketsResolve).toBe(2);
+}
+
+async function freshCohortVisit({ fixture, workspace }: Mounted) {
   workspace.sessionOwner.dispose();
   const fresh = owner(fixture, true);
   await fresh.coordinator.load();
   await fresh.refreshCatalog();
-  await settled(fresh);
+  await settledMarketsVisit(fresh);
   // A new workspace starts its own Markets visit: one startup + one return + one fresh startup.
   expect(fixture.getSnapshot()).toMatchObject({
     load: 2,
@@ -552,6 +564,13 @@ it("derives independent exact Markets cohort counts from startup, return and fre
     save: 0,
   });
   expect(fresh.cpiHeadlines.getSnapshot().headlines).toBeNull();
+  return fresh;
+}
+
+async function reloadCohortFollowups(
+  fixture: Fixture,
+  fresh: ManagedWorkspace,
+) {
   fresh.setView("followups");
   await fresh.followups.coordinator.load();
   expect(fixture.getSnapshot().marketsResolve).toBe(3);
@@ -562,4 +581,12 @@ it("derives independent exact Markets cohort counts from startup, return and fre
     replays: 0,
   });
   noOtherEffects(fixture, 2, 1);
+}
+
+it("derives independent exact Markets cohort counts from startup, return and fresh-session visits", async () => {
+  const mounted = await startCohortVisit();
+  await returnToCohortVisit(mounted);
+  await saveCohortCheck(mounted);
+  const fresh = await freshCohortVisit(mounted);
+  await reloadCohortFollowups(mounted.fixture, fresh);
 });
