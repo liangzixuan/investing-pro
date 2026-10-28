@@ -292,3 +292,40 @@ describe("isolated native authored valuation question fixture", () => {
     });
   });
 });
+
+it("refuses literal zero cash flow and preserves an available positive result rounded to zero", async () => {
+  const f = await loaded();
+  const draft = f.workspace.followups.coordinator.getSnapshot().draft;
+  const v = f.workspace.valuation;
+  v.setDcfField("startingUnleveredCashFlowUsd", "0");
+  v.setDcfField("enterpriseToEquityBridgeUsd", "0");
+  const unavailable = v.calculate()!;
+  expect(unavailable.dcfResult).toMatchObject({
+    status: "unavailable",
+    reason: "starting_cash_flow_nonpositive",
+  });
+  expect(
+    resolveValuationFollowupScenario(unavailable, "dcf", "base").summary,
+  ).toBeNull();
+  v.setDcfField("startingUnleveredCashFlowUsd", "0.000000000001");
+  v.setDcfField("dilutedShares", "1000000000000");
+  const available = v.calculate()!;
+  expect(available.dcfResult.status).toBe("available");
+  const context = f.workspace.captureValuationFollowup(f.selection);
+  expect(context.reason).toBeNull();
+  const preview = prepareValuationFollowup(
+    context.port!,
+    {
+      model: "dcf",
+      scenario: "base",
+      question: valuationFollowupQuestion,
+      dueOn: valuationFollowupDueOn,
+    },
+    () => true,
+  ).preview!;
+  expect(preview.summary.valuePerShareUsd).toBe("0.00");
+  expect(preview.check).toContain("USD/share 0.00. Summary only;");
+  preview.cancel();
+  expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(draft);
+  noOtherEffects(f);
+});
