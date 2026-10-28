@@ -71,6 +71,17 @@ function calculationFixture() {
   }
   return { workbench, calculation: workbench.calculate()! };
 }
+function fixturePreparer(
+  port: ValuationFollowupPort,
+  formCurrent: () => boolean,
+) {
+  return (raw = question, date = dueOn, model = "dcf", scenario = "base") =>
+    prepareValuationFollowup(
+      port,
+      { model, scenario, question: raw, dueOn: date },
+      formCurrent,
+    );
+}
 async function fixture(entries: readonly ResearchFollowup[] = [], load = true) {
   const valuation = calculationFixture();
   const initial: ResearchFollowupsPayload = { schemaVersion: 1, entries };
@@ -121,17 +132,7 @@ async function fixture(entries: readonly ResearchFollowup[] = [], load = true) {
       model.coordinator.getSnapshot() === saved,
   };
   const formCurrent = () => host.form === form;
-  const prepare = (
-    raw = question,
-    date = dueOn,
-    kind = "dcf",
-    scenario = "base",
-  ) =>
-    prepareValuationFollowup(
-      port,
-      { model: kind, scenario: scenario, question: raw, dueOn: date },
-      formCurrent,
-    );
+  const prepare = fixturePreparer(port, formCurrent);
   return {
     ...valuation,
     model,
