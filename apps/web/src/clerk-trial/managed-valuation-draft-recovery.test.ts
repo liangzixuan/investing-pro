@@ -353,3 +353,103 @@ it("continues restored inputs through separate explicit Load, staging review, St
   });
   expect(f.unexpected).not.toHaveBeenCalled();
 });
+
+it("keeps a replacement file read started by the old activity-end notification", async () => {
+  const f = await fixture();
+  const file = inputFile(entry(f));
+  await f.recovery.readFile(file);
+  const bytes = await file.arrayBuffer();
+  const pending = deferred<ArrayBuffer>();
+  const replacementFile = {
+    size: file.size,
+    arrayBuffer: vi.fn(() => pending.promise),
+  };
+  let armed = true;
+  let replacement: Promise<void> | undefined;
+  const stop = f.workspace.valuation.subscribeDraftFileActivity(() => {
+    if (armed && !f.workspace.valuation.hasDraftFileActivity()) {
+      armed = false;
+      replacement = f.recovery.readFile(replacementFile);
+    }
+  });
+  try {
+    f.recovery.cancel();
+    expect(replacementFile.arrayBuffer).toHaveBeenCalledOnce();
+    expect(f.recovery.getSnapshot().phase).toBe("reading");
+    expect(f.workspace.valuation.hasDraftFileActivity()).toBe(true);
+  } finally {
+    stop();
+    pending.resolve(bytes);
+    await replacement;
+  }
+  expect(f.recovery.getSnapshot().phase).toBe("review");
+  expect(f.recovery.getSnapshot().preview?.entry).toEqual(entry(f));
+});
+
+it("closes disposal before activity-end listeners can start another file read", async () => {
+  const f = await fixture();
+  const file = inputFile(entry(f));
+  await f.recovery.readFile(file);
+  const bytes = await file.arrayBuffer();
+  const pending = deferred<ArrayBuffer>();
+  const replacementFile = {
+    size: file.size,
+    arrayBuffer: vi.fn(() => pending.promise),
+  };
+  let armed = true;
+  let replacement: Promise<void> | undefined;
+  const stop = f.workspace.valuation.subscribeDraftFileActivity(() => {
+    if (armed && !f.workspace.valuation.hasDraftFileActivity()) {
+      armed = false;
+      replacement = f.recovery.readFile(replacementFile);
+    }
+  });
+  try {
+    f.recovery.dispose();
+    expect(f.recovery.getSnapshot().phase).toBe("retired");
+    expect(replacementFile.arrayBuffer).not.toHaveBeenCalled();
+    expect(f.workspace.valuation.hasDraftFileActivity()).toBe(false);
+  } finally {
+    stop();
+    pending.resolve(bytes);
+    await replacement;
+  }
+  expect(f.recovery.getSnapshot().phase).toBe("retired");
+  expect(f.workspace.valuation.hasDraftFileActivity()).toBe(false);
+});
+
+it("releases its file activity even when an idle subscriber throws", async () => {
+  const f = await fixture();
+  await f.recovery.readFile(inputFile(entry(f)));
+  const stop = f.recovery.subscribe(() => {
+    if (f.recovery.getSnapshot().phase === "idle")
+      throw new Error("Invented listener failure");
+  });
+  try {
+    expect(() => f.recovery.cancel()).toThrow("Invented listener failure");
+    expect(f.workspace.valuation.hasDraftFileActivity()).toBe(false);
+    expect(f.recovery.getSnapshot().preview).toBeNull();
+  } finally {
+    stop();
+  }
+});
+
+it("releases its owned file marker if the begin notification fails", async () => {
+  const f = await fixture();
+  const file = inputFile(entry(f));
+  const stop = f.workspace.valuation.subscribeDraftFileActivity(() => {
+    if (f.workspace.valuation.hasDraftFileActivity())
+      throw new Error("Invented begin listener failure");
+  });
+  try {
+    await expect(f.recovery.readFile(file)).rejects.toThrow(
+      "Invented begin listener failure",
+    );
+    expect(file.arrayBuffer).not.toHaveBeenCalled();
+    expect(f.workspace.valuation.hasDraftFileActivity()).toBe(false);
+    expect(f.recovery.getSnapshot().phase).toBe("idle");
+    expect(f.recovery.getSnapshot().canImport).toBe(true);
+  } finally {
+    stop();
+  }
+});

@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 27, 2026. This document defines the durable product goals and
+Updated October 28, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,15 +27,22 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority after the October 27 Android delivery
+## Current priority after the October 28 Android delivery
 
-The next M2/M4 outcome connects an admitted [Annual revenue basis to the authored
-valuation workbench](MANAGED_VALUATION_WORKBENCH.md#apply-a-reported-annual-revenue-basis).
-Choose the exact reported concept, review complete before/after inputs and apply
-only exit-model Starting revenue. Continue through authored calculation, a cited
-note/report, Back and independent raw-input and Watchlist Saves. Preserve source
-periods, filing identity, unavailable values and original clocks. This source
-candidate introduces no inferred cash flow, provider valuation or automatic Save.
+The next M2/M4 outcome keeps a [dated check from one authored valuation scenario](MANAGED_VALUATION_WORKBENCH.md#keep-a-dated-valuation-check).
+Choose the model and scenario explicitly, write the question and UTC due date,
+then inspect the full saved text before creating one Follow-ups draft entry.
+Continue through existing company Research/Back and separate Follow-ups Save
+and fresh Load. Preserve exact listing/share-class identity, model version and
+the available calculated value. The concise estimate remains separate from
+source facts, full input maps and cited reports.
+
+Android 1.53 delivers the [Annual revenue model basis](MANAGED_VALUATION_WORKBENCH.md#apply-a-reported-annual-revenue-basis)
+from `b18ef60e5a38a410a7f808201a2c1354afea587e`. Original required checks,
+all 98 synthetic native cases and the guarded existing-signer build plus all
+four package checks passed. Apply changes one authored revenue field; calculation,
+cited note/report and each Save remain separate. Installation remains an owner
+action. API, website and earlier deliveries are preserved.
 
 Android 1.52 delivers the [reviewed company source pass](MANAGED_COMPANY_SNAPSHOT.md#reviewed-company-source-pass)
 from `91017480663b260d219a0191bb18df6cc15ae93f`. Original required checks,

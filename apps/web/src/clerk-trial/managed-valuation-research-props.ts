@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { ManagedValuationFollowup } from "./ManagedValuationFollowup";
 import { ManagedValuationDraftFiles } from "./ManagedValuationDraftFiles";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ComponentProps } from "react";
@@ -13,6 +14,7 @@ type ValuationResearchProps = Pick<
   | "valuationNoteActions"
   | "valuationRevenueBasisActions"
   | "valuationDraftFiles"
+  | "valuationFollowup"
 >;
 
 export function managedValuationResearchProps(
@@ -26,6 +28,18 @@ export function managedValuationResearchProps(
   },
 ): ValuationResearchProps {
   return {
+    valuationFollowup: createElement(ManagedValuationFollowup, {
+      valuation: workspace.valuation,
+      owner: selection,
+      navigationPending: files?.navigationPending ?? false,
+      actions: {
+        model: workspace.followups,
+        getContext: () => workspace.captureValuationFollowup(selection),
+        canLoad: () => workspace.canLoadValuationFollowups(selection),
+        load: (formIsCurrent) =>
+          workspace.loadValuationFollowups(selection, formIsCurrent),
+      },
+    }),
     valuationDraftFiles: files?.accountScope
       ? createElement(ManagedValuationDraftFiles, {
           workspace,

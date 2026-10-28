@@ -104,7 +104,8 @@ function ValuationEditorDiagnostics({
 }: Pick<ReturnType<typeof useDraftObservations>, "valuation">) {
   return (
     <>
-      {fixture.valuationPrice && (
+      {(fixture.valuationPrice ||
+        scenario === "valuation-scenario-followup") && (
         <pre id="fixture-valuation-draft" hidden>
           {JSON.stringify(valuation)}
         </pre>

@@ -144,13 +144,19 @@ export class ManagedValuationDraftRecovery {
     this.transition = transition;
     const operation = this.operation;
     this.operation = null;
-    operation?.controller.abort();
-    this.publish({
-      phase: retired ? "retired" : "idle",
-      preview: null,
-      currentEditor: null,
-      message,
-    });
+    try {
+      operation?.controller.abort();
+      if (this.transition === transition && this.operation === null)
+        this.publish({
+          phase: retired ? "retired" : "idle",
+          preview: null,
+          currentEditor: null,
+          message,
+        });
+    } finally {
+      if (operation)
+        this.options.workspace.valuation.endDraftFileActivity(operation);
+    }
     return transition;
   }
   reconcile = () => {
@@ -177,6 +183,23 @@ export class ManagedValuationDraftRecovery {
       controller: new AbortController(),
     };
     this.operation = operation;
+    try {
+      this.options.workspace.valuation.beginDraftFileActivity(operation);
+    } catch (error) {
+      try {
+        if (this.operation === operation) {
+          this.operation = null;
+          operation.controller.abort();
+        }
+      } finally {
+        this.options.workspace.valuation.endDraftFileActivity(operation);
+      }
+      throw error;
+    }
+    if (!this.current(operation)) {
+      this.reconcile();
+      return null;
+    }
     return operation;
   }
   private finish(operation: Operation, message: string) {
@@ -307,11 +330,11 @@ export class ManagedValuationDraftRecovery {
   }
   dispose() {
     this.transition = {};
-    this.operation?.controller.abort();
-    this.operation = null;
-    this.scope = null;
     this.disposed = true;
     for (const unsubscribe of this.unsubscribers) unsubscribe();
+    const operation = this.operation;
+    this.operation = null;
+    this.scope = null;
     this.listeners.clear();
     this.state = Object.freeze({
       phase: "retired",
@@ -321,5 +344,11 @@ export class ManagedValuationDraftRecovery {
       canImport: false,
       message: "",
     });
+    try {
+      operation?.controller.abort();
+    } finally {
+      if (operation)
+        this.options.workspace.valuation.endDraftFileActivity(operation);
+    }
   }
 }

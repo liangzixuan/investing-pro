@@ -120,6 +120,16 @@ This is a client source workflow. Focused synthetic checks establish their
 recorded scope; source delivery, browser layout and physical-device acceptance
 remain separate.
 
+## Keep a question from an authored valuation
+
+The [valuation workflow](MANAGED_VALUATION_WORKBENCH.md#keep-a-dated-valuation-check)
+previews one chosen available model/scenario and a dated question for the exact
+editable Watchlist listing. The complete saved text includes the model/version,
+scenario and exact USD/share estimate, with inputs and source evidence explicitly
+excluded. Create changes only Follow-ups. Use the existing selected-entry
+review, company Research/Back and separate Save/fresh Load. It shares the existing
+500-code-point, one-check-per-listing, 20-entry and recovery limits.
+
 ## Keep a question from an observed filing
 
 The [filing-question workflow](MANAGED_FILINGS_REVIEW.md#keep-a-dated-question-from-a-filing)

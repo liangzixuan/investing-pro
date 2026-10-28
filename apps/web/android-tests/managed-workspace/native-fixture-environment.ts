@@ -30,6 +30,7 @@ const allowedScenarios = [
   "authored-valuation",
   "saved-valuation",
   "annual-revenue-model-basis",
+  "valuation-scenario-followup",
   "annual-balance-sheet",
   "annual-operating-comparison",
   "company-snapshot",

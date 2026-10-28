@@ -1,0 +1,82 @@
+.clerk-trial.managed-frame .managed-valuation-followup {
+  min-width: 0;
+  margin-block: 16px;
+  padding-block: 12px;
+  border-block-start: 1px solid var(--managed-line);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame
+  .managed-valuation-followup
+  :is(summary, button, input, select) {
+  min-height: 44px;
+}
+.clerk-trial.managed-frame .managed-valuation-followup summary {
+  display: list-item;
+  align-content: center;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame
+  .managed-valuation-followup
+  :is(button, input, textarea, select) {
+  box-sizing: border-box;
+  max-width: 100%;
+  font: inherit;
+}
+.clerk-trial.managed-frame .managed-valuation-followup :is(button, p, dd, h4) {
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-valuation-followup button {
+  margin: 4px 8px 4px 0;
+  white-space: normal;
+}
+.clerk-trial.managed-frame .managed-valuation-followup-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-valuation-followup-fields > div {
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-valuation-followup label {
+  display: block;
+  margin-block-end: 6px;
+}
+.clerk-trial.managed-frame
+  .managed-valuation-followup
+  :is(input, textarea, select) {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+  line-height: 1.5;
+}
+.clerk-trial.managed-frame .managed-valuation-followup textarea {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+.clerk-trial.managed-frame
+  .managed-valuation-followup
+  :is(summary, input, textarea, select, button, h4):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame .managed-valuation-followup-preview {
+  min-width: 0;
+  margin-block: 12px;
+}
+.clerk-trial.managed-frame .managed-valuation-followup dl {
+  display: grid;
+  gap: 8px;
+}
+.clerk-trial.managed-frame .managed-valuation-followup dd {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .clerk-trial.managed-frame .managed-valuation-followup-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

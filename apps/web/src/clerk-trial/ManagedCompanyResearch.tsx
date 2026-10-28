@@ -91,6 +91,7 @@ export function ManagedCompanyResearch({
   valuationNoteActions,
   valuationRevenueBasisActions,
   valuationDraftFiles,
+  valuationFollowup,
   priceNoteActions,
   priceStudiesActions,
   filingsNoteActions,
@@ -144,6 +145,7 @@ export function ManagedCompanyResearch({
   valuationNoteActions?: ManagedValuationNoteActions;
   valuationRevenueBasisActions?: ManagedValuationRevenueBasisActions;
   valuationDraftFiles?: ReactNode;
+  valuationFollowup?: ReactNode;
   priceNoteActions: ManagedPriceNoteActions;
   priceStudiesActions?: ManagedPriceStudiesActions;
   filingsNoteActions: ManagedFilingsNoteActions;
@@ -262,6 +264,7 @@ export function ManagedCompanyResearch({
             selection={research.selection}
             navigationPending={navigationPending}
             noteActions={valuationNoteActions}
+            followup={valuationFollowup}
             annual={annual}
             {...(valuationRevenueBasisActions
               ? { revenueBasisActions: valuationRevenueBasisActions }
