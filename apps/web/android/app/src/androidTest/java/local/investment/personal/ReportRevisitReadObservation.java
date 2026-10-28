@@ -237,23 +237,33 @@ final class ReportRevisitReadObservation {
     }
     private static String safeSyntheticFacts(Object value) {
         if (!(value instanceof JSONObject)) return null;
-        try {
-            JSONObject source = (JSONObject)value, safe = new JSONObject();
-            copyCode(source, safe, "scenario", Set.of("reviewed-company-source-pass", "valuation-scenario-followup"));
-            copyCode(source, safe, "route", Set.of("root", "company_annual", "company_interim", "company_price", "company_filings", "other"));
-            if ("reviewed-company-source-pass".equals(source.get("scenario"))) {
-                if (source.length() != 3) throw new IllegalArgumentException();
-                safe.put("sourcePass", safeSourcePassFacts(source.getJSONObject("sourcePass")));
-            } else {
-                if (source.length() != 6) throw new IllegalArgumentException();
-                safe.put("followups", safeResourceFacts(source.getJSONObject("followups"), 20));
-                safe.put("watchlist", safeResourceFacts(source.getJSONObject("watchlist"), 1000));
-                copyBoolean(source, safe, "canonicalPresent");
-                copyBoolean(source, safe, "canonicalNull");
-            }
-            String text = safe.toString();
-            return text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= MAX_OBSERVATION_BYTES ? text : null;
-        } catch (Exception malformed) { return null; }
+        try { return boundedSyntheticFacts((JSONObject)value); }
+        catch (Exception malformed) { return null; }
+    }
+    private static String boundedSyntheticFacts(JSONObject source) throws Exception {
+        String text = syntheticFactsEnvelope(source).toString();
+        return text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= MAX_OBSERVATION_BYTES ? text : null;
+    }
+    private static JSONObject syntheticFactsEnvelope(JSONObject source) throws Exception {
+        JSONObject safe = new JSONObject();
+        copyCode(source, safe, "scenario", Set.of("reviewed-company-source-pass", "valuation-scenario-followup"));
+        copyCode(source, safe, "route", Set.of("root", "company_annual", "company_interim", "company_price", "company_filings", "other"));
+        if ("reviewed-company-source-pass".equals(source.get("scenario")))
+            return sourcePassEnvelope(source, safe);
+        return followupsEnvelope(source, safe);
+    }
+    private static JSONObject sourcePassEnvelope(JSONObject source, JSONObject safe) throws Exception {
+        if (source.length() != 3) throw new IllegalArgumentException();
+        safe.put("sourcePass", safeSourcePassFacts(source.getJSONObject("sourcePass")));
+        return safe;
+    }
+    private static JSONObject followupsEnvelope(JSONObject source, JSONObject safe) throws Exception {
+        if (source.length() != 6) throw new IllegalArgumentException();
+        safe.put("followups", safeResourceFacts(source.getJSONObject("followups"), 20));
+        safe.put("watchlist", safeResourceFacts(source.getJSONObject("watchlist"), 1000));
+        copyBoolean(source, safe, "canonicalPresent");
+        copyBoolean(source, safe, "canonicalNull");
+        return safe;
     }
     private static JSONObject safeSourcePassFacts(JSONObject source) throws Exception {
         if (source.length() != 9) throw new IllegalArgumentException();
@@ -262,29 +272,38 @@ final class ReportRevisitReadObservation {
         copyBoolean(source, safe, "previewPresent");
         copyBoolean(source, safe, "listingExpected");
         copyInteger(source, safe, "choicesMask", new IntegerRange(-1, 15));
-        org.json.JSONArray names = source.getJSONArray("names"), safeNames = new org.json.JSONArray();
-        if (names.length() > 4) throw new IllegalArgumentException();
-        Set<String> sourceCodes = Set.of("eod", "annual", "filings", "interim", "other");
-        for (int index = 0; index < names.length(); index++) {
-            Object name = names.get(index);
-            if (!sourceCodes.contains(name)) throw new IllegalArgumentException();
-            safeNames.put(name);
-        }
-        safe.put("names", safeNames);
-        org.json.JSONArray rows = source.getJSONArray("rows"), safeRows = new org.json.JSONArray();
-        if (rows.length() > 4) throw new IllegalArgumentException();
-        for (int index = 0; index < rows.length(); index++) {
-            JSONObject row = rows.getJSONObject(index), safeRow = new JSONObject();
-            if (row.length() != 3) throw new IllegalArgumentException();
-            copyCode(row, safeRow, "name", sourceCodes);
-            copyBoolean(row, safeRow, "selected");
-            copyCode(row, safeRow, "disposition", Set.of("missing", "not_attempted", "retained", "unsupported", "running", "loaded", "failed", "cancelled", "other"));
-            safeRows.put(safeRow);
-        }
-        safe.put("rows", safeRows);
+        safe.put("names", safeSourceNames(source.getJSONArray("names")));
+        safe.put("rows", safeSourceRows(source.getJSONArray("rows")));
         copyCode(source, safe, "message", Set.of("empty", "review", "invalidated", "starting", "cancelled", "finished", "no_missing", "other"));
         copyBoolean(source, safe, "buttonPresent");
         copyBoolean(source, safe, "buttonDisabled");
+        return safe;
+    }
+    private static org.json.JSONArray safeSourceNames(org.json.JSONArray names) throws Exception {
+        if (names.length() > 4) throw new IllegalArgumentException();
+        org.json.JSONArray safe = new org.json.JSONArray();
+        Set<String> sourceCodes = Set.of("eod", "annual", "filings", "interim", "other");
+        for (int index = 0; index < names.length(); index++)
+            safe.put(safeSourceName(names.get(index), sourceCodes));
+        return safe;
+    }
+    private static Object safeSourceName(Object value, Set<String> allowed) {
+        if (!allowed.contains(value)) throw new IllegalArgumentException();
+        return value;
+    }
+    private static org.json.JSONArray safeSourceRows(org.json.JSONArray rows) throws Exception {
+        if (rows.length() > 4) throw new IllegalArgumentException();
+        org.json.JSONArray safe = new org.json.JSONArray();
+        for (int index = 0; index < rows.length(); index++)
+            safe.put(safeSourceRow(rows.getJSONObject(index)));
+        return safe;
+    }
+    private static JSONObject safeSourceRow(JSONObject source) throws Exception {
+        if (source.length() != 3) throw new IllegalArgumentException();
+        JSONObject safe = new JSONObject();
+        copyCode(source, safe, "name", Set.of("eod", "annual", "filings", "interim", "other"));
+        copyBoolean(source, safe, "selected");
+        copyCode(source, safe, "disposition", Set.of("missing", "not_attempted", "retained", "unsupported", "running", "loaded", "failed", "cancelled", "other"));
         return safe;
     }
     private static JSONObject safeResourceFacts(JSONObject source, int maximumEntries) throws Exception {
