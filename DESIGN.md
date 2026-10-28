@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## A dated check from an authored valuation
+
+Place the initially closed disclosure below calculated results. Start Model and
+Scenario empty. Keep the exact authored estimate beside question/date fields,
+with the full saved text, listing/share-class identity, catalog and authored UTC
+due date in the preview. Focus its heading and restore focus on Cancel. Use
+wrapping text, visible focus, 44px controls and columns that stack at narrow
+widths. Create updates one Follow-ups draft; existing navigation, Research/Back
+and each Save remain separate. Explain the concise summary's excluded inputs
+and source evidence without presenting it as a source fact.
+
 ## Annual revenue to authored starting revenue
 
 Place the basis choice in an initially closed workbench disclosure. Start with

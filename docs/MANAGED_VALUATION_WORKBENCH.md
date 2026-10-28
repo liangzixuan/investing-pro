@@ -50,9 +50,41 @@ percentage points and exit multiple
 by -2, -1, 0, 1 and 2 times. Other inputs stay fixed. Each cell keeps its own
 result or refusal; a refused cell cannot inherit a neighboring value.
 
+## Keep a dated valuation check
+
+The source candidate adds **Keep a dated valuation check** inside the workbench,
+below its results. The disclosure starts closed. Model and Scenario start empty;
+opening it makes no request, calculation or saved change.
+
+1. Calculate the current authored inputs explicitly. Choose one model and one
+   available scenario. The readout preserves its exact USD/share text, including
+   an available rounded zero. An unavailable model or scenario cannot supply an
+   estimate, even if another numeric result remains visible.
+2. Write a one-line research question and an authored UTC due date. If Follow-ups
+   has no draft, select **Load follow-ups for this question**. Choices and raw
+   fields stay in place. This action cannot replace loaded or unsaved work.
+3. Select **Preview dated check**. Inspect the complete saved question, model and
+   method version, scenario, exact value, listing/share class, catalog and due
+   date. The summary states that inputs and source evidence are not included.
+   The full text must fit 500 Unicode code points; controls, format characters
+   and oversized text are refused without clipping. Existing one-check-per-listing
+   and 20-entry limits apply.
+4. Select **Create follow-up draft** once. Only that draft changes. Open
+   Follow-ups through the existing navigation and inspect the selected entry.
+   Use its company Research action and Back, then Save Follow-ups separately.
+   A fresh Load reads the saved entry. Watchlist notes, model inputs and full
+   cited research reports retain their independent actions.
+
+This action requires the exact editable listing in My Watchlist. Holdings or
+general company links do not grant that destination. Source, model, applied
+Annual reference, draft, file/recovery, visit, form, navigation and session
+changes retire an old preview. Returning to old values does not revive it.
+The saved estimate is authored scenario context, not a source fact or a price
+target. It adds no calendar notification, background source read or monitoring.
+
 ## Apply a reported Annual revenue basis
 
-The source candidate adds **Use reported Annual revenue as a model basis** inside
+Android 1.53 provides **Use reported Annual revenue as a model basis** inside
 the workbench. Load Annual explicitly, then choose one of its three named revenue
 concepts. The choice starts empty. An admitted positive USD revenue value can be
 used even when operating income or a related margin is unavailable. Unsupported,

@@ -115,6 +115,9 @@ export function captureValuationCalculationGuard(
 /** One bounded, transient draft belongs to one full listing and catalog identity. */
 export class ManagedValuationWorkbench {
   private listeners = new Set<() => void>();
+  private readonly draftFileActivities = new Set<object>();
+  private draftFileActivityRevision = {};
+  private readonly draftFileListeners = new Set<() => void>();
   private calculation: ManagedValuationCalculation | null = null;
   private readonly rejectedFields = new Set<string>();
   private editorRevision = Symbol();
@@ -153,6 +156,28 @@ export class ManagedValuationWorkbench {
     };
   };
   hasDraft = (): boolean => this.snapshot.dirty;
+  hasDraftFileActivity = () => this.draftFileActivities.size > 0;
+  getDraftFileActivityRevision = () => this.draftFileActivityRevision;
+  subscribeDraftFileActivity = (listener: () => void) => {
+    this.draftFileListeners.add(listener);
+    return () => {
+      this.draftFileListeners.delete(listener);
+    };
+  };
+  beginDraftFileActivity(operation: object) {
+    if (this.snapshot.retired || this.draftFileActivities.has(operation))
+      return;
+    this.draftFileActivities.add(operation);
+    this.publishDraftFileActivity();
+  }
+  endDraftFileActivity(operation: object) {
+    if (!this.draftFileActivities.delete(operation)) return;
+    this.publishDraftFileActivity();
+  }
+  private publishDraftFileActivity() {
+    this.draftFileActivityRevision = {};
+    for (const listener of [...this.draftFileListeners]) listener();
+  }
 
   activate(selection: ManagedResearchSelection | null): void {
     if (this.snapshot.retired) return;

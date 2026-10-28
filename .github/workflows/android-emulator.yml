@@ -441,6 +441,12 @@ jobs:
           ))
           if len(required) != 98:
               raise SystemExit("The Annual revenue model basis journey must extend all 97 existing native tests.")
+          required.add((
+              "local.investment.personal.ManagedValuationScenarioFollowupTest",
+              "authoredScenarioKeepsExactDatedCheckThroughGlobalReviewResearchBackAndSeparateSave",
+          ))
+          if len(required) != 99:
+              raise SystemExit("The authored valuation question journey must extend all 98 existing native tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

@@ -1,21 +1,32 @@
 # Current work
 
-Updated October 27, 2026. This is the current capability and delivery record.
+Updated October 28, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: Annual revenue to an authored model basis
+## Selected next: keep a dated valuation check
 
-The [valuation workbench](MANAGED_VALUATION_WORKBENCH.md#apply-a-reported-annual-revenue-basis)
-adds an explicit choice among the admitted Annual revenue concepts. Preview the
-complete current and proposed inputs, then apply the chosen exact USD value to
-exit-model Starting revenue once. No other assumption is inferred. Calculation,
-the complete cited note/report and each existing Save remain separate actions.
-Original filing identity, periods and source clocks stay visible. The applied
-citation survives edits to other assumptions and expires on source, revenue,
-company, navigation or session changes. Implementation and automated acceptance
-are in progress; this increment has not been released.
+The [valuation Follow-ups workflow](MANAGED_VALUATION_WORKBENCH.md#keep-a-dated-valuation-check)
+connects an explicitly chosen authored model/scenario to a complete dated
+question preview and one independent Follow-ups draft entry. Review the entry,
+open company research, return through Back, then Save and Load Follow-ups
+separately. The saved text includes a concise model/version/scenario/value
+summary and states that inputs and source evidence are excluded. It requires
+the exact editable My Watchlist listing. Implementation and automated source
+acceptance are in progress; this increment has not been released.
+
+## Accepted and delivered: Annual revenue to an authored model basis
+
+The [Annual revenue workflow](MANAGED_VALUATION_WORKBENCH.md#apply-a-reported-annual-revenue-basis)
+provides an explicit concept choice, complete before/after input preview and
+one-use Apply to exit-model Starting revenue. Calculation, complete cited note,
+report capture and independent Saves remain separate. [PR 250](https://github.com/liangzixuan/investing-pro/pull/250)
+merged at `b18ef60e5a38a410a7f808201a2c1354afea587e`. Original required PR/main
+checks and all 98 synthetic native cases passed. Android 1.53.0/code54 is
+provided locally after one guarded existing-signer build and all four package
+checks passed. Installation and physical-phone acceptance are not claimed.
+API, website, prior releases and owner records are preserved.
 
 ## Accepted and delivered: reviewed company source pass
 

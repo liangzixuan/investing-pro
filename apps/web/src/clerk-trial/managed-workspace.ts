@@ -33,6 +33,7 @@ import {
   type PreparedManagedAnnualStatementsNote,
 } from "./managed-annual-statements-note";
 import { ManagedValuationWorkbench } from "./managed-valuation-workbench";
+import { captureValuationFollowupContext } from "./managed-valuation-followup-context";
 import {
   ManagedValuationRevenueBasis,
   type PreparedValuationRevenueBasis,
@@ -1766,7 +1767,7 @@ export class ManagedWorkspace {
     if (visit?.selection !== selection) return false;
     return this.researchOperation === operation;
   }
-  private holdingResearchRoute(selection: ManagedResearchSelection) {
+  private researchFollowupRoute(selection: ManagedResearchSelection) {
     const visit = this.state.research,
       operation = this.researchOperation;
     const navigation = this.navigationRevision,
@@ -1778,6 +1779,42 @@ export class ManagedWorkspace {
       this.viewRevision === view &&
       this.canUseResearchSource(selection);
   }
+  captureValuationFollowup(selection: ManagedResearchSelection) {
+    return captureValuationFollowupContext(
+      this,
+      selection,
+      this.researchFollowupRoute(selection),
+    );
+  }
+  canLoadValuationFollowups(selection: ManagedResearchSelection): boolean {
+    const { port } = captureValuationFollowupContext(
+      this,
+      selection,
+      this.researchFollowupRoute(selection),
+      false,
+    );
+    return (
+      port !== null &&
+      port.isCurrent() &&
+      this.followups.canLoadForNextCheck(port.member)
+    );
+  }
+  async loadValuationFollowups(
+    selection: ManagedResearchSelection,
+    formIsCurrent: () => boolean,
+  ): Promise<void> {
+    const { port } = captureValuationFollowupContext(
+      this,
+      selection,
+      this.researchFollowupRoute(selection),
+      false,
+    );
+    if (!port || !port.isCurrent()) return;
+    await this.followups.loadForNextCheck(
+      port.member,
+      () => port.isCurrent() && formIsCurrent() && port.isCurrent(),
+    );
+  }
   private holdingFollowupContext(
     selection: ManagedResearchSelection,
     includeFollowups = true,
@@ -1785,7 +1822,7 @@ export class ManagedWorkspace {
     return captureHoldingFollowupContext(
       this,
       selection,
-      this.holdingResearchRoute(selection),
+      this.researchFollowupRoute(selection),
       includeFollowups,
     );
   }

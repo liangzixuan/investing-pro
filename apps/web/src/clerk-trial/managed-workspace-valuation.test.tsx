@@ -1,3 +1,4 @@
+import { prepareValuationFollowup } from "./managed-valuation-followup";
 import {
   bindAnnualPacket,
   replaceConceptRows,
@@ -1046,4 +1047,50 @@ it("withdraws an uncited Exit note after same-value source Apply while retaining
   expect(f.api.annualReport).toHaveBeenCalledOnce();
   expect(f.api.save).not.toHaveBeenCalled();
   expect(f.api.saveValuationAssumptions).not.toHaveBeenCalled();
+});
+
+it("retires a dated scenario preview when same-value Annual Apply changes its source reference", async () => {
+  const f = await revenueFixture();
+  f.workspace.valuation.setExitField("baseRevenue", "1000");
+  const calculation = f.workspace.valuation.calculate();
+  vi.mocked(f.api.loadFollowups).mockResolvedValueOnce({
+    version: 0,
+    payload: { schemaVersion: 1, entries: [] },
+  });
+  await f.workspace.loadValuationFollowups(f.selection(), () => true);
+  const context = f.workspace.captureValuationFollowup(f.selection());
+  expect(context.reason).toBeNull();
+  const preview = prepareValuationFollowup(
+    context.port!,
+    {
+      model: "exit",
+      scenario: "base",
+      question: "Does the next report support these assumptions?",
+      dueOn: "2026-12-31",
+    },
+    () => true,
+  ).preview!;
+  expect(preview).not.toBeNull();
+  expect(
+    f.workspace.applyAnnualRevenueBasis(f.prepareBasis().preview!).applied,
+  ).toBe(true);
+  expect(f.workspace.valuation.getSnapshot().calculation).toBe(calculation);
+  expect(preview.isCurrent()).toBe(false);
+  expect(preview.create()).toBeNull();
+  const current = f.workspace.captureValuationFollowup(f.selection());
+  const next = prepareValuationFollowup(
+    current.port!,
+    {
+      model: "exit",
+      scenario: "base",
+      question: "Does the next report support these assumptions?",
+      dueOn: "2026-12-31",
+    },
+    () => true,
+  ).preview!;
+  expect(next.check).not.toContain("Annual revenue basis");
+  expect(next.check).toContain("source evidence not included");
+  expect(next.create()).not.toBeNull();
+  expect(f.api.save).not.toHaveBeenCalled();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
 });

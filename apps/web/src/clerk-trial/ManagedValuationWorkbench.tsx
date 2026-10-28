@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
 import { membershipMatchesResult } from "@research-cockpit/contracts";
 import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
@@ -58,6 +59,7 @@ export interface ManagedValuationWorkbenchProps {
   readonly annual?: ManagedAnnualReport;
   readonly revenueBasisActions?: ManagedValuationRevenueBasisActions;
   readonly onOpenPrice?: () => void;
+  readonly followup?: ReactNode;
 }
 const subscribeWithoutPrice = () => () => {};
 const snapshotWithoutPrice = () => null;
@@ -260,6 +262,7 @@ export function ManagedValuationWorkbench({
   onOpenPrice,
   annual,
   revenueBasisActions,
+  followup,
 }: ManagedValuationWorkbenchProps) {
   const id = useId();
   const state = useSyncExternalStore(
@@ -437,6 +440,7 @@ export function ManagedValuationWorkbench({
           {state.calculation && (
             <ManagedValuationResults calculation={state.calculation} />
           )}
+          {followup}
           <ManagedValuationPriceContext context={priceContext} />
           {onOpenPrice && (
             <button

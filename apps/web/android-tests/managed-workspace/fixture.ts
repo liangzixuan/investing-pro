@@ -1,3 +1,4 @@
+import { createValuationScenarioFollowupNativeFixture } from "./valuation-scenario-followup-fixture";
 import {
   annualRevenueModelInputs,
   createAnnualRevenueModelBasisNativeFixture,
@@ -2325,6 +2326,11 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "valuation-scenario-followup",
+    async () =>
+      createValuationScenarioFollowupNativeFixture(await createSharedFixture()),
+  ],
+  [
     "annual-revenue-model-basis",
     async () =>
       createAnnualRevenueModelBasisNativeFixture(
@@ -2497,6 +2503,7 @@ export async function createFixture(
     | "valuation-price"
     | "saved-valuation"
     | "annual-revenue-model-basis"
+    | "valuation-scenario-followup"
     | "portfolio-ledger"
     | "portfolio-close-review"
     | "portfolio-review-report"
