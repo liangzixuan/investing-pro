@@ -191,6 +191,7 @@ async function fixture() {
   const headings = {
     board: target("managed-markets-heading"),
     review: target("managed-daily-research-heading"),
+    cpi: target("managed-cpi-heading"),
     day: target("managed-markets-day-heading"),
     calendar: target("bea-agenda-title"),
     announcements: target("fed-announcements-title"),

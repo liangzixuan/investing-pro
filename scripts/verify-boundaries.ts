@@ -32,6 +32,7 @@ import {
   npmrcGitignoreViolation,
   pnpmLockfileHeaderViolation,
 } from "./boundaries/dependency-policy";
+import { cpiHeadlinesPolicyChecks } from "./boundaries/cpi-headlines-policy";
 
 const managedSecInterimDelegateAnchors = new Map<string, readonly string[]>([
   [
@@ -79,6 +80,7 @@ const managedSecInterimDelegateAnchors = new Map<string, readonly string[]>([
 ]);
 // Exact reviewed transport owners; route-only process restrictions remain separate.
 const publicMarketDataFetchOwners = new Set([
+  "apps/api/src/cpi-headlines-provider.ts",
   "apps/api/src/personal-market-data-provider.ts",
   "apps/api/src/personal-sec-financial-provider.ts",
   "apps/api/src/bls-release-provider.ts",
@@ -7429,6 +7431,18 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         "scripts/verify-boundaries.ts: fixed Portfolio builder must retain execution isolation",
       );
   }
+  found.push(
+    ...cpiHeadlinesPolicyChecks(
+      await readFile(
+        join(root, "apps/api/src/cpi-headlines-provider.ts"),
+        "utf8",
+      ),
+      await readFile(
+        join(root, "apps/api/src/cpi-headlines-parser.ts"),
+        "utf8",
+      ),
+    ),
+  );
   const managedEodPath = "apps/api/src/managed-eod-service.ts";
   const managedEod = await readFile(join(root, managedEodPath), "utf8");
   const managedEodMutations = [
@@ -10260,6 +10274,7 @@ function managedSecInterimBoundaryDefinitions(): readonly (readonly [
     [
       "managed-source-service-errors",
       [
+        "./managed-cpi-headlines-service",
         "./managed-sec-annual-service",
         "./managed-sec-interim-service",
         "./managed-sec-filings-service",
@@ -10269,7 +10284,7 @@ function managedSecInterimBoundaryDefinitions(): readonly (readonly [
       ],
       [
         "constDATA_ERRORS=[ManagedSecAnnualServiceError,ManagedSecInterimServiceError,ManagedSecFilingsServiceError,ManagedEodServiceError]asconst",
-        "constSOURCE_ERRORS=[...DATA_ERRORS,ManagedEconomicCalendarServiceError,ManagedMonetaryAnnouncementsServiceError]asconst",
+        "constSOURCE_ERRORS=[...DATA_ERRORS,ManagedEconomicCalendarServiceError,ManagedMonetaryAnnouncementsServiceError,ManagedCpiHeadlinesServiceError]asconst",
         "returnDATA_ERRORS.some((kind)=>errorinstanceofkind)",
         "returnSOURCE_ERRORS.some((kind)=>errorinstanceofkind)",
       ],
@@ -10289,6 +10304,7 @@ function managedSecInterimBoundaryDefinitions(): readonly (readonly [
         "./managed-sec-annual-service",
         "./managed-sec-filings-service",
         "./managed-eod-service",
+        "./managed-cpi-headlines-service",
         "./managed-bls-calendar-service",
         "./managed-economic-calendar-service",
         "./managed-monetary-announcements-service",
@@ -10320,6 +10336,7 @@ function managedSecInterimBoundaryDefinitions(): readonly (readonly [
         "./managed-eod-config",
         "./managed-eod-admission",
         "./managed-eod-service",
+        "./managed-cpi-headlines-service",
         "./managed-bls-calendar-service",
         "./managed-economic-calendar-service",
         "./managed-monetary-announcements-service",
@@ -11709,6 +11726,7 @@ function personalMarketDataWebViolation(content: string): boolean {
     content.includes(tokenEnvironmentLiteral) ||
     content.includes(["MANAGED_EOD", "TIINGO_TOKEN"].join("_")) ||
     content.includes("https://apps.bea.gov/API/signup/release_dates.json") ||
+    content.includes("https://www.bls.gov/feed/cpi.rss") ||
     content.includes(
       "https://www.federalreserve.gov/feeds/press_monetary.xml",
     ) ||
@@ -11719,6 +11737,9 @@ function personalMarketDataWebViolation(content: string): boolean {
         /managed-eod-(?:service|config|admission)(?:\.|$)/u.test(specifier) ||
         specifier.includes("bea-release-provider") ||
         specifier.includes("fed-monetary-announcements-provider") ||
+        specifier.includes("cpi-headlines-provider") ||
+        specifier.includes("cpi-headlines-parser") ||
+        specifier.includes("managed-cpi-headlines-service") ||
         specifier === "@rgrove/parse-xml" ||
         /managed-sec-(?:admission|config|issuers|annual-service|interim-service|source-fetch|source-services|filings-service)(?:\.|$)/u.test(
           specifier,

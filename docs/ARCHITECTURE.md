@@ -84,6 +84,18 @@ late result. Existing exact-entry review and company routes own Research/Back;
 Save remains with its independent coordinator. No new resource or request store
 is added.
 
+The [CPI headline candidate](MANAGED_CPI_HEADLINES.md) has a separate
+[read model](../apps/web/src/clerk-trial/managed-cpi-headlines.ts) and
+[Follow-ups context](../apps/web/src/clerk-trial/managed-cpi-headline-followup-context.ts).
+The workspace owns their session and navigation lifetimes. The fixed provider
+owns one bounded public request; its source-specific Atom parser and shared
+contract admit complete metadata without acquiring linked articles or images.
+Raw feed clocks, unknowns and retrieval time remain distinct. The Markets panel
+does not expand the existing day-view or source-review coordinator unions.
+Its source adapter reuses the complete cited-question preparation, form state,
+one-use creation and independent Follow-ups storage. Initial-load retention and
+source, draft, file, identity, route and session fences retain their own owners.
+
 The delivered [Markets home](MANAGED_MARKETS_HOME.md) adds a visit-scoped board
 model owned by the same workspace. It resolves a declared exact cohort and loads
 prices sequentially only on request. Board and EOD panel share one checked

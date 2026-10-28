@@ -161,6 +161,9 @@ function text(node: React.ReactNode): string {
 
 function fixture(initial = payload) {
   const api: ManagedApi = {
+    cpiHeadlines: vi
+      .fn<ManagedApi["cpiHeadlines"]>()
+      .mockRejectedValue(new Error("Unexpected CPI headlines read")),
     interimReport: vi
       .fn<() => Promise<never>>()
       .mockRejectedValue(new Error("Unexpected interim read")),

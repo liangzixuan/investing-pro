@@ -115,6 +115,9 @@ async function fixture(
   const unexpected = () =>
     Promise.reject(new Error("Unexpected unrelated invented fixture request"));
   const api: ManagedApi = {
+    cpiHeadlines: vi
+      .fn<ManagedApi["cpiHeadlines"]>()
+      .mockRejectedValue(new Error("Unexpected CPI headlines read")),
     interimReport: vi
       .fn<() => Promise<never>>()
       .mockRejectedValue(new Error("Unexpected interim read")),

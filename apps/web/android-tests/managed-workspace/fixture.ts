@@ -1,3 +1,4 @@
+import { createCpiHeadlineFollowupNativeFixture } from "./cpi-headline-followup-fixture";
 import { createValuationScenarioFollowupNativeFixture } from "./valuation-scenario-followup-fixture";
 import {
   annualRevenueModelInputs,
@@ -804,6 +805,9 @@ async function createSharedFixture(
     state.save === 1 &&
     state.load === 2;
   const api: ManagedApi = {
+    cpiHeadlines: () => {
+      throw new Error("Unexpected invented CPI headline read");
+    },
     blsCalendar: () =>
       Promise.reject(new Error("BLS requires an explicit fixture action")),
     loadValuationAssumptions: () =>
@@ -2326,6 +2330,11 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "cpi-headline-followup",
+    async () =>
+      createCpiHeadlineFollowupNativeFixture(await createSharedFixture()),
+  ],
+  [
     "valuation-scenario-followup",
     async () =>
       createValuationScenarioFollowupNativeFixture(await createSharedFixture()),
@@ -2504,6 +2513,7 @@ export async function createFixture(
     | "saved-valuation"
     | "annual-revenue-model-basis"
     | "valuation-scenario-followup"
+    | "cpi-headline-followup"
     | "portfolio-ledger"
     | "portfolio-close-review"
     | "portfolio-review-report"

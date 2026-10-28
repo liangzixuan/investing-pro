@@ -49,6 +49,9 @@ describe("managed session browser warning lifetime", () => {
         memberships: [],
       };
       const api: ManagedApi = {
+        cpiHeadlines: vi
+          .fn<ManagedApi["cpiHeadlines"]>()
+          .mockRejectedValue(new Error("Unexpected CPI headlines read")),
         interimReport: vi
           .fn<() => Promise<never>>()
           .mockRejectedValue(new Error("Unexpected interim read")),

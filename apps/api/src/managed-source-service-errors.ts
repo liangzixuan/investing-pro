@@ -1,3 +1,4 @@
+import { ManagedCpiHeadlinesServiceError } from "./managed-cpi-headlines-service";
 import { ManagedSecAnnualServiceError } from "./managed-sec-annual-service";
 import { ManagedSecInterimServiceError } from "./managed-sec-interim-service";
 import { ManagedSecFilingsServiceError } from "./managed-sec-filings-service";
@@ -12,7 +13,8 @@ type DataError =
 type SourceError =
   | DataError
   | ManagedEconomicCalendarServiceError
-  | ManagedMonetaryAnnouncementsServiceError;
+  | ManagedMonetaryAnnouncementsServiceError
+  | ManagedCpiHeadlinesServiceError;
 const DATA_ERRORS = [
   ManagedSecAnnualServiceError,
   ManagedSecInterimServiceError,
@@ -23,6 +25,7 @@ const SOURCE_ERRORS = [
   ...DATA_ERRORS,
   ManagedEconomicCalendarServiceError,
   ManagedMonetaryAnnouncementsServiceError,
+  ManagedCpiHeadlinesServiceError,
 ] as const;
 export function isManagedSecDataServiceError(
   error: unknown,

@@ -1,3 +1,4 @@
+import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { ManagedFinancialDiscovery } from "./ManagedFinancialDiscovery";
 import {
   createManagedResearchCoverageFixture,
@@ -402,6 +403,9 @@ function fixture(
   priceCoverage = [eodSelection.listing, ...payload.memberships],
 ) {
   const api: ManagedApi = {
+    cpiHeadlines: vi
+      .fn<ManagedApi["cpiHeadlines"]>()
+      .mockRejectedValue(new Error("Unexpected CPI headlines read")),
     interimReport: vi
       .fn<() => Promise<never>>()
       .mockRejectedValue(new Error("Unexpected interim read")),
@@ -489,6 +493,16 @@ function elements(
   node: React.ReactNode,
 ): React.ReactElement<{ children?: React.ReactNode }>[] {
   if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];
+  const dated =
+    node.type === ManagedMarketsDatedChecks
+      ? elements(
+          ManagedMarketsDatedChecks(
+            node.props as React.ComponentProps<
+              typeof ManagedMarketsDatedChecks
+            >,
+          ),
+        )
+      : [];
   const board =
     node.type === ManagedMarketsBoard
       ? elements(
@@ -500,6 +514,7 @@ function elements(
   return [
     node,
     ...board,
+    ...dated,
     ...React.Children.toArray(node.props.children).flatMap(elements),
   ];
 }

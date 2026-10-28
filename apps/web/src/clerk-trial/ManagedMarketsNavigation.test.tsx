@@ -38,6 +38,7 @@ afterEach(() => {
 const sections = [
   "board",
   "review",
+  "cpi",
   "day",
   "calendar",
   "bls",
@@ -81,6 +82,7 @@ function harness() {
   const nodes = {
     board: target("managed-markets-heading"),
     review: target("managed-daily-research-heading"),
+    cpi: target("managed-cpi-heading"),
     day: target("managed-markets-day-heading"),
     calendar: target("bea-agenda-title"),
     announcements: target("fed-announcements-title"),
@@ -139,7 +141,7 @@ function harness() {
 }
 
 describe("managed Markets section navigation", () => {
-  it("renders six named native links without running guards or moving focus", () => {
+  it("renders seven named native links without running guards or moving focus", () => {
     const h = harness();
     const html = renderToStaticMarkup(
       <ManagedMarketsNavigation {...h.props} />,
@@ -281,4 +283,26 @@ describe("managed Markets section navigation", () => {
     expect(h.nodes.calendar.focus).toHaveBeenCalledOnce();
     expect(h.nodes.calendar.scrollIntoView).not.toHaveBeenCalled();
   });
+});
+
+it("jumps to the CPI heading with current owned focus/visibility guards and no source request", () => {
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  try {
+    const h = harness();
+    const controls = h.render();
+    expect(
+      controls.find((link) => link.props["data-markets-jump"] === "cpi")?.props
+        .href,
+    ).toBe("#managed-cpi-heading");
+    h.activate(controls, "cpi");
+    expect(h.nodes.cpi.focus).toHaveBeenCalledOnce();
+    expect(h.nodes.cpi.scrollIntoView).toHaveBeenCalledOnce();
+    vi.mocked(h.props.isCurrent).mockReturnValue(false);
+    h.activate(controls, "cpi");
+    expect(h.nodes.cpi.focus).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
