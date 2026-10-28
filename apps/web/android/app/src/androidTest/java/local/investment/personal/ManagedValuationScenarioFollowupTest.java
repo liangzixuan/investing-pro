@@ -40,6 +40,7 @@ public class ManagedValuationScenarioFollowupTest {
     private static final String R="JSON.parse(document.querySelector('#fixture-followups-draft').textContent)";
     private static final String W="JSON.parse(document.querySelector('#fixture-workspace-draft').textContent)";
     private static final String V="JSON.parse(document.querySelector('#fixture-valuation-draft').textContent)";
+    private static final String CANONICAL_FOLLOWUPS="document.querySelector('#fixture-valuation-followup-canonical').textContent";
     private static final String CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
     private static final String EXIT_SHARES=".managed-valuation-workbench:not(.managed-valuation-assumptions) input[id$='-exit-dilutedShares']";
     private ActivityScenario<MainActivity> scenario;
@@ -50,6 +51,7 @@ public class ManagedValuationScenarioFollowupTest {
     private String sourceSha;
     private String watchlist;
     private String followups;
+    private String canonicalFollowups;
 
     @Before public void launchInventedValuationQuestion() throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
@@ -164,6 +166,7 @@ public class ManagedValuationScenarioFollowupTest {
         page.click(Element.css("#valuation-followup-create"));
         page.await(new Check("Create adds one exact open entry after both preserved share-class assessments and changes only Follow-ups draft",new Script(R+".entries.length===3&&"+R+".dirty===true&&"+R+".baseVersion===1&&document.querySelector('#valuation-followup-create')===null&&JSON.stringify("+R+".entries.slice(0,2))==="+JSONObject.quote(followups)+"&&JSON.stringify("+V+")==="+JSONObject.quote(inputs)+"&&"+R+".entries[2].check==="+JSONObject.quote(CHECK)+"&&"+R+".entries[2].dueOn==="+JSONObject.quote(DUE)+"&&"+R+".entries[2].listing.listingId==='listing-zero'&&"+R+".entries[2].result===''&&"+R+".entries[2].status==='open'&&"+R+".entries[2].completedOn===null")));
         followups=page.read(new Script("JSON.stringify("+R+".entries)"));
+        canonicalFollowups=page.read(new Script(CANONICAL_FOLLOWUPS));
         page.click(Element.css("#valuation-followup-preview"));
         page.await(new Check("an explicit duplicate attempt refuses before create or overwrite",new Script("document.querySelector('#valuation-followup-create')===null&&document.querySelector('#valuation-followup-status')?.textContent.includes('already has a follow-up')&&JSON.stringify("+R+".entries)==="+JSONObject.quote(followups))));
         assertDrafts(); boundary(1,0,1,0);
@@ -189,10 +192,10 @@ public class ManagedValuationScenarioFollowupTest {
         page.click(Element.css("#fixture-followups-fresh-session"));
         page.await(new Check("fresh session discards local drafts and performs no automatic Follow-ups load",new Script(F+".session===2&&"+R+".entries===null&&"+C+".load===2&&"+W+".memberships[0].note!=="+JSONObject.quote(NOTE)+"&&"+F+".load===1")));
         openFollowups(); page.click(Element.css("#managed-followups-load"));
-        page.await(new Check("explicit fresh Load restores the complete exact independently saved resource",new Script(R+".baseVersion===2&&"+R+".dirty===false&&JSON.stringify("+R+".entries)==="+JSONObject.quote(followups)+"&&"+F+".load===2")));
+        page.await(new Check("explicit fresh Load restores the complete exact independently saved resource",new Script(R+".baseVersion===2&&"+R+".dirty===false&&"+CANONICAL_FOLLOWUPS+"==="+JSONObject.quote(canonicalFollowups)+"&&"+F+".load===2")));
     }
     private void assertDrafts() throws Exception {
-        page.await(new Check("independent Watchlist stays unsaved and complete Follow-ups content is exact",new Script("JSON.stringify("+W+")==="+JSONObject.quote(watchlist)+"&&JSON.stringify("+R+".entries)==="+JSONObject.quote(followups))));
+        page.await(new Check("independent Watchlist stays unsaved and complete Follow-ups content is exact",new Script("JSON.stringify("+W+")==="+JSONObject.quote(watchlist)+"&&"+CANONICAL_FOLLOWUPS+"==="+JSONObject.quote(canonicalFollowups))));
     }
     private void openFollowups() throws Exception {
         page.click(Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='Follow-ups']"));

@@ -1,3 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
+import { ValuationScenarioFollowupFixtureDiagnostics } from "./valuation-scenario-followup-fixture-diagnostics";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   encodeMainWatchlistPayload,
@@ -116,6 +120,19 @@ function noOtherEffects(f: Mounted, loads = 1) {
   });
 }
 
+function canonicalReadout(workspace: ManagedWorkspace) {
+  const document = load(
+    renderToStaticMarkup(
+      createElement(ValuationScenarioFollowupFixtureDiagnostics, {
+        model: workspace.followups,
+      }),
+    ),
+  );
+  const readout = document("#fixture-valuation-followup-canonical");
+  expect(readout).toHaveLength(1);
+  expect(readout.is("[hidden]")).toBe(true);
+  return readout.text();
+}
 async function reviewCreated(
   f: Mounted,
   created: ResearchFollowup,
@@ -149,6 +166,9 @@ async function saveAndReadFresh(
   watchlist: ReturnType<ManagedWorkspace["coordinator"]["getSnapshot"]>,
 ) {
   await f.workspace.followups.coordinator.save();
+  expect(canonicalReadout(f.workspace)).toBe(
+    encodeResearchFollowupsPayload(expected),
+  );
   expect(f.workspace.followups.coordinator.getSnapshot()).toMatchObject({
     baseVersion: 2,
     dirty: false,
@@ -160,7 +180,11 @@ async function saveAndReadFresh(
   await fresh.refreshCatalog();
   fresh.setView("followups");
   expect(fresh.followups.coordinator.getSnapshot().draft).toBeNull();
+  expect(canonicalReadout(fresh)).toBe("null");
   await fresh.followups.coordinator.load();
+  expect(canonicalReadout(fresh)).toBe(
+    encodeResearchFollowupsPayload(expected),
+  );
   expect(
     encodeResearchFollowupsPayload(
       fresh.followups.coordinator.getSnapshot().draft!,
@@ -244,6 +268,9 @@ describe("isolated native authored valuation question fixture", () => {
     expect(created).not.toBeNull();
     expect(preview.create()).toBeNull();
     const expected = valuationFollowupExpected(f.fixture, created.id);
+    expect(canonicalReadout(f.workspace)).toBe(
+      encodeResearchFollowupsPayload(expected),
+    );
     expect(f.workspace.followups.coordinator.getSnapshot().draft).toEqual(
       expected,
     );

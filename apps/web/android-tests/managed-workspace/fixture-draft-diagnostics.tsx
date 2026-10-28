@@ -1,3 +1,4 @@
+import { ValuationScenarioFollowupFixtureDiagnostics } from "./valuation-scenario-followup-fixture-diagnostics";
 import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
 import { useSyncExternalStore } from "react";
 import type { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
@@ -166,6 +167,11 @@ export function FixtureDraftDiagnostics({
       <ValuationEditorDiagnostics valuation={values.valuation} />
       <ExportDocumentDiagnostics draft={values.draft} />
       <WatchlistDraftDiagnostics draft={values.draft} />
+      {scenario === "valuation-scenario-followup" && (
+        <ValuationScenarioFollowupFixtureDiagnostics
+          model={workspace.followups}
+        />
+      )}
     </aside>
   );
 }
