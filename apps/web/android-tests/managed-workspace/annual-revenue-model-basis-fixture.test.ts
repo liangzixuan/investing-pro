@@ -190,6 +190,21 @@ function watchlistCommand(f: Fixture) {
   };
 }
 type WatchlistCommand = ReturnType<typeof watchlistCommand>;
+type MembershipChange = {
+  readonly position: number;
+  readonly fields: Partial<WatchlistCommand["payload"]["memberships"][number]>;
+};
+function projectMembership(
+  command: WatchlistCommand,
+  change: MembershipChange,
+) {
+  command.payload = {
+    ...command.payload,
+    memberships: command.payload.memberships.map((member, position) =>
+      position === change.position ? { ...member, ...change.fields } : member,
+    ),
+  };
+}
 const refusedChanges: readonly [string, (command: WatchlistCommand) => void][] =
   [
     [
@@ -201,25 +216,19 @@ const refusedChanges: readonly [string, (command: WatchlistCommand) => void][] =
     [
       "clipped note",
       (command) => {
-        command.payload = {
-          ...command.payload,
-          memberships: command.payload.memberships.map((member, index) =>
-            index === 0
-              ? { ...member, note: annualRevenueModelExpectedNote.slice(0, -1) }
-              : member,
-          ),
-        };
+        projectMembership(command, {
+          position: 0,
+          fields: { note: annualRevenueModelExpectedNote.slice(0, -1) },
+        });
       },
     ],
     [
       "other note",
       (command) => {
-        command.payload = {
-          ...command.payload,
-          memberships: command.payload.memberships.map((member, index) =>
-            index === 1 ? { ...member, note: "Unrelated replacement" } : member,
-          ),
-        };
+        projectMembership(command, {
+          position: 1,
+          fields: { note: "Unrelated replacement" },
+        });
       },
     ],
     [
@@ -234,12 +243,10 @@ const refusedChanges: readonly [string, (command: WatchlistCommand) => void][] =
     [
       "identity",
       (command) => {
-        command.payload = {
-          ...command.payload,
-          memberships: command.payload.memberships.map((member, index) =>
-            index === 0 ? { ...member, symbol: "ALTERED" } : member,
-          ),
-        };
+        projectMembership(command, {
+          position: 0,
+          fields: { symbol: "ALTERED" },
+        });
       },
     ],
     [

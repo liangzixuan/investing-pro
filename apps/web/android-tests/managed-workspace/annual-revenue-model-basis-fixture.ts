@@ -98,9 +98,11 @@ class AnnualRevenueModelStore {
     if (this.loads !== 1) refuse();
     if (this.saves !== 0) refuse();
     if (this.saved?.version !== 1) refuse();
+    return this.original;
+  }
+  private requireSourceAndInputsReady() {
     if (this.snapshot.annual !== 1) refuse();
     if (this.base.savedValuation.getSnapshot().save !== 1) refuse();
-    return this.original;
   }
   private expectedPayload(
     original: MainWatchlistPayload,
@@ -116,6 +118,7 @@ class AnnualRevenueModelStore {
   }
   private captureSave(input: Parameters<Api["save"]>[0], signal: AbortSignal) {
     const original = this.requireSaveState(signal);
+    this.requireSourceAndInputsReady();
     const command = parseManagedWatchlistCommand(input);
     if (!command) return refuse();
     if (command.expectedVersion !== 1) return refuse();

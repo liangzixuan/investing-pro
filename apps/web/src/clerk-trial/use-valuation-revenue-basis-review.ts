@@ -65,6 +65,42 @@ function applyBasis(commands: ReviewCommands) {
   commands.setPreview(null);
   commands.setMessage(result.message);
 }
+interface ReviewLifetimeOptions {
+  model: ManagedValuationWorkbench;
+  selection: ManagedResearchSelection;
+  actions: ManagedValuationRevenueBasisActions;
+  preview: PreparedValuationRevenueBasis | null;
+  reset: () => void;
+}
+function useBasisReviewLifetime({
+  model,
+  selection,
+  actions,
+  preview,
+  reset,
+}: ReviewLifetimeOptions) {
+  const live = useRef(false);
+  const actionsRef = useRef(actions);
+  const resetRef = useRef(reset);
+  actionsRef.current = actions;
+  resetRef.current = reset;
+  const previewElement = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+      actionsRef.current.retirePreview();
+    };
+  }, []);
+  useLayoutEffect(() => {
+    actionsRef.current.retirePreview();
+    resetRef.current();
+  }, [model, selection]);
+  useLayoutEffect(() => {
+    if (preview) previewElement.current?.focus();
+  }, [preview]);
+  return { live, previewElement };
+}
 export function useValuationRevenueBasisReview({
   model,
   annual,
@@ -87,26 +123,17 @@ export function useValuationRevenueBasisReview({
     null,
   );
   const [message, setMessage] = useState("");
-  const live = useRef(false);
-  const actionsRef = useRef(actions);
-  actionsRef.current = actions;
-  const previewElement = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    live.current = true;
-    return () => {
-      live.current = false;
-      actionsRef.current.retirePreview();
-    };
-  }, []);
-  useLayoutEffect(() => {
-    actionsRef.current.retirePreview();
-    setConcept("");
-    setPreview(null);
-    setMessage("");
-  }, [model, selection]);
-  useLayoutEffect(() => {
-    if (preview) previewElement.current?.focus();
-  }, [preview]);
+  const { live, previewElement } = useBasisReviewLifetime({
+    model,
+    selection,
+    actions,
+    preview,
+    reset: () => {
+      setConcept("");
+      setPreview(null);
+      setMessage("");
+    },
+  });
   const commandContext = {
     model,
     annual,
