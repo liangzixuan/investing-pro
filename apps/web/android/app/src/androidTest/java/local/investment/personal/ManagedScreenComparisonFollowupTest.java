@@ -236,9 +236,52 @@ public class ManagedScreenComparisonFollowupTest {
         page.await(new Check("Review selects the exact created global entry before Save", new Script("document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Follow-ups'&&" + R + ".selectedId===" + JSONObject.quote(created.id()) + "&&document.querySelector('#managed-followup-check')?.value===" + JSONObject.quote(preview.check()) + "&&document.querySelector('#managed-followup-due')?.value===" + JSONObject.quote(DUE) + "&&document.querySelector('#managed-followup-editor-heading')?.textContent.includes('ONE')&&" + F + ".save===0")));
         page.click(Element.css("#managed-followup-research-" + created.id()));
         page.await(new Check("only Research resolves exact ONE without any further financial read", new Script("location.href==='https://localhost/?company=listing-one&section=price'&&document.querySelector('.managed-company-visit')?.textContent.includes('ONE')&&" + D + ".researchResolve===1&&" + C + ".resolve===2")).nativeReady());
+        page.await(new Check("the exact ONE company Back control is enabled and visible after navigation commits", new Script(
+            "(()=>{const b=document.querySelector('.managed-company-visit .trial-toolbar > button');return location.href==='https://localhost/?company=listing-one&section=price'&&b instanceof HTMLButtonElement&&b.textContent==='Back to workspace'&&!b.disabled&&b.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});})()")).nativeReady());
+        keyboard.closeSoftKeyboard();
         pressBack();
-        page.await(new Check("hardware Back returns to the same selected draft while retiring source preview", new Script("document.querySelector('.managed-company-visit')===null&&document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Follow-ups'&&" + R + ".selectedId===" + JSONObject.quote(created.id()) + "&&document.querySelector('#managed-followup-check')?.value===" + JSONObject.quote(preview.check()) + "&&document.querySelector('" + PREFIX + "check')===null&&" + D + ".followups.canonical===" + JSONObject.quote(created.canonical()))));
+        awaitResearchBack(new Check("hardware Back returns to the same selected draft while retiring source preview", new Script("document.querySelector('.managed-company-visit')===null&&document.querySelector('.managed-navigation [aria-current=page]')?.textContent==='Follow-ups'&&" + R + ".selectedId===" + JSONObject.quote(created.id()) + "&&document.querySelector('#managed-followup-check')?.value===" + JSONObject.quote(preview.check()) + "&&document.querySelector('" + PREFIX + "check')===null&&" + D + ".followups.canonical===" + JSONObject.quote(created.canonical()))), created, preview);
         unchanged(original); boundary(ReadPhase.RESEARCHED);
+    }
+    private void awaitResearchBack(Check condition, Created created, Preview preview) throws Exception {
+        try {
+            page.await(condition);
+        } catch (AssertionError original) {
+            String snapshot;
+            try {
+                JSONObject observed = new JSONObject(page.read(researchBackSnapshot(created, preview)));
+                observed.put("nativeAfterFailure", new JSONObject(researchBackNativeState()));
+                snapshot = observed.toString();
+                if (snapshot.length() > 4096)
+                    snapshot = "{\"diagnosticTooLarge\":true,\"utf16CodeUnits\":" + snapshot.length() + "}";
+            } catch (Exception | AssertionError diagnostic) {
+                original.addSuppressed(diagnostic);
+                android.util.Log.e("ComparisonResearchBack", "Diagnostic read failed; original hardware Back assertion retained.", diagnostic);
+                throw original;
+            }
+            android.util.Log.e("ComparisonResearchBack", snapshot);
+            AssertionError failure = new AssertionError(original.getMessage() + "\nResearch Back diagnostic: " + snapshot);
+            failure.initCause(original);
+            throw failure;
+        }
+    }
+    private Script researchBackSnapshot(Created created, Preview preview) {
+        return new Script("(()=>{const read=s=>document.querySelector(s),parse=s=>{try{return JSON.parse(read(s)?.textContent??'null');}catch(e){return {parseError:String(e)};}},r=parse('#fixture-followups-draft'),d=parse('#fixture-screen-comparison-followup'),c=parse('#fixture-diagnostics'),f=parse('#fixture-followups-diagnostics'),b=read('.managed-company-visit .trial-toolbar > button');" +
+            "const id=" + JSONObject.quote(created.id()) + ",expected=" + JSONObject.quote(preview.check()) + ",canonical=" + JSONObject.quote(created.canonical()) + ",entry=r?.entries?.find(e=>e.id===id);return JSON.stringify({observation:'after-original-Back-predicate-failed',location:location.href,companyPresent:!!read('.managed-company-visit'),companyHeading:read('#managed-company-heading')?.textContent??null,navLabel:read('.managed-navigation [aria-current=page]')?.textContent??null," +
+            "selectedId:r?.selectedId??null,expectedSelectedId:id,selectedIdEqualsExpected:r?.selectedId===id,check:read('#managed-followup-check')?.value??null,checkEqualsExpected:read('#managed-followup-check')?.value===expected,sourcePreviewPresent:!!read('#screen-comparison-followup-check'),canonicalEqualsExpected:d?.followups?.canonical===canonical," +
+            "createdEntryPresent:!!entry,createdEntryCheckEqualsExpected:entry?.check===expected,entries:r?.entries?.length??null,dirty:r?.dirty,baseVersion:r?.baseVersion,backPresent:!!b,backText:b?.textContent??null,backDisabled:b?.disabled??null,backVisible:b?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})??null,activeElement:document.activeElement?.id,documentHidden:document.hidden," +
+            "followups:{phase:r?.phase,owner:r?.owner,load:f?.load,save:f?.save,commits:f?.commits},sources:{resolve:c?.resolve,annual:c?.annual,save:c?.save},parseErrors:{draft:r?.parseError,context:d?.parseError,counters:c?.parseError,followups:f?.parseError}});})()");
+    }
+    private String researchBackNativeState() throws Exception {
+        AtomicReference<String> insets = new AtomicReference<>("{}");
+        scenario.onActivity(activity -> {
+            android.view.WindowInsets observed = activity.getWindow().getDecorView().getRootWindowInsets();
+            insets.set("{\"imeVisibleAtObservation\":" + (observed == null ? "null" : observed.isVisible(android.view.WindowInsets.Type.ime())) +
+                ",\"windowFocusAtObservation\":" + activity.hasWindowFocus() + "}");
+        });
+        JSONObject result = new JSONObject(insets.get());
+        result.put("activeWindow", new JSONObject(NativeReadinessFailureObservation.capture()));
+        return result.toString();
     }
     private void saveAndFreshLoad(Original original, Created created) throws Exception {
         page.click(Element.css("#managed-followups-save"));
