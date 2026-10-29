@@ -156,7 +156,9 @@ describe("invented chosen-review completion native fixture", () => {
       followups: { canonical: unknown; raw: { entries: { check: string }[] } };
     };
     expect(observed.followups.canonical).toBeNull();
-    expect(observed.followups.raw.entries[0].check).toBe("");
+    expect(observed.followups.raw.entries.map((entry) => entry.check)).toEqual([
+      "",
+    ]);
     expect(fixture.followups!.getSnapshot()).toMatchObject({
       save: 0,
       commits: 0,
