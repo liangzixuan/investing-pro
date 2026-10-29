@@ -46,6 +46,7 @@ const allowedScenarios = [
   "markets-calendar-followup",
   "filing-dated-question",
   "followup-assessment-note",
+  "filing-check-assessment",
   "portfolio-ledger",
   "portfolio-close-review",
   "portfolio-review-report",
@@ -124,7 +125,8 @@ export const nativeValuationDraftFile =
     : null;
 
 export const nativeFollowupsReviewReport =
-  scenario === "followups-review-report"
+  scenario === "followups-review-report" ||
+  scenario === "filing-check-assessment"
     ? createNativeFollowupsReviewReportFixture()
     : null;
 

@@ -86,6 +86,16 @@ hosted native 72-case gate and complete guarded APK verification passed. Phone
 installation, keyboard/Back acceptance and sustained use remain separate; no new
 browser or physical-device acceptance is claimed.
 
+### Cite a loaded filing in the assessment
+
+The [filing assessment increment](MANAGED_FILINGS_REVIEW.md#cite-a-filing-in-an-existing-assessment)
+previews the entire authored result plus a complete qualified reference from an
+explicitly chosen loaded filing. It applies once to the exact existing check
+owned by this Research visit. Completion, Review/Back and Save/fresh Load stay
+separate; My Watchlist does not change. The existing Follow-ups report includes
+the full saved result. Focused client checks pass; current-source native
+acceptance and delivery remain separate.
+
 ### Keep an assessment in the company note
 
 After writing a nonempty assessment during company research, open **Keep
@@ -123,7 +133,7 @@ remain separate.
 ## Keep a question from a screening comparison
 
 The [comparison check increment](MANAGED_SCREEN_COMPARISON.md#keep-a-dated-research-check)
-is in development. It captures two current loaded screening results, offers only
+is delivered in Android 1.57. It captures two current loaded screening results, offers only
 their exact current Watchlist members as destinations, and previews a complete
 dated question before one-use creation. Full statements and source evidence stay
 in the comparison preview and optional HTML report. The saved question and concise

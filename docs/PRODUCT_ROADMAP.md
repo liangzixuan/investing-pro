@@ -29,13 +29,25 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 29 Android delivery
 
-The next M4 outcome turns a [reviewed screening comparison into a dated check](MANAGED_SCREEN_COMPARISON.md#keep-a-dated-research-check).
+The next M4 outcome connects an existing due check to a
+[cited filing assessment](MANAGED_FILINGS_REVIEW.md#cite-a-filing-in-an-existing-assessment).
+Open the exact check's company Research visit, write an assessment, choose one
+already loaded filing and inspect the complete result before applying it once.
+Keep the full authored text and qualified citation within the existing result
+limit, with no clipping. Review/Back, completion and separate Save/fresh Load
+retain their current ownership. Focused client checks pass; required source and
+native acceptance and client delivery remain separate.
+
+Android 1.57 delivers the [comparison check workflow](MANAGED_SCREEN_COMPARISON.md#keep-a-dated-research-check).
 Capture two current loaded results, inspect their complete context, choose one
 compared company from the editable Watchlist, and preview an authored question
 and UTC due date. Create adds one Follow-ups draft entry; Review, Research/Back
-and Save/fresh Load remain explicit. The complete saved text must fit the existing
-500-character bound. Full statements and source evidence remain in the comparison
-preview and separate HTML report. Implementation and acceptance are in progress.
+and Save/fresh Load remain explicit. Full statements and source evidence stay
+in the comparison preview and separate HTML report. Accepted main
+`6b3f4a2c28835a8840b4d76c5fd98242fb97230a` passed its original required source
+checks and all 107 synthetic native cases. One guarded existing-signer build,
+all four signed-APK checks and exact local delivery passed. Installation remains
+an owner action. API, website and prior releases are preserved.
 
 Android 1.56 keeps a complete [two-company screening comparison](MANAGED_SCREEN_COMPARISON.md#capture-a-private-reading-report)
 as a private passive HTML reading copy. Capture two current loaded results,

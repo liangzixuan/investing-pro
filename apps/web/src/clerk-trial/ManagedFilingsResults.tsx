@@ -1,4 +1,8 @@
 import {
+  ManagedFilingsAssessment,
+  type ManagedFilingsAssessmentActions,
+} from "./ManagedFilingsAssessment";
+import {
   ManagedFilingsFollowup,
   type ManagedFilingsFollowupActions,
 } from "./ManagedFilingsFollowup";
@@ -35,6 +39,7 @@ export function ManagedFilingsResults({
   refreshComparison = null,
   noteActions,
   followupActions,
+  assessmentActions,
 }: {
   response: ManagedSecFilingsResponseDto;
   baseline?: ManagedFilingsAnnualBaseline | null;
@@ -43,6 +48,7 @@ export function ManagedFilingsResults({
   refreshComparison?: ManagedFilingsRefreshComparison | null;
   noteActions?: ManagedFilingsNoteActions;
   followupActions?: ManagedFilingsFollowupActions;
+  assessmentActions?: ManagedFilingsAssessmentActions;
 }) {
   const [filter, setFilter] = useState(() =>
     initialManagedFilingsFilter(response, baseline, refreshComparison),
@@ -67,6 +73,12 @@ export function ManagedFilingsResults({
       refreshComparison={comparison}
     >
       <ManagedFilingsSource response={response} />
+      {assessmentActions && (
+        <ManagedFilingsAssessment
+          response={response}
+          actions={assessmentActions}
+        />
+      )}
       {comparison && (
         <ManagedFilingsRefreshComparisonDetails comparison={comparison} />
       )}

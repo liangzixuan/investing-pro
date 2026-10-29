@@ -5,7 +5,19 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: keep a dated check from a screening comparison
+## Selected next: cite a filing in an existing assessment
+
+The [filing assessment workflow](MANAGED_FILINGS_REVIEW.md#cite-a-filing-in-an-existing-assessment)
+connects a loaded filing reference to the result of the exact check opened from
+Follow-ups. Write an assessment, choose one observed filing explicitly and preview
+the whole result with its complete qualified citation. Apply changes that result
+once. Review/Back, completion, Save and fresh Load remain separate actions.
+
+The client implementation and focused automated checks are complete. Required
+current-source CI, native execution and delivery remain separate. This workflow
+adds no source request, financial formula, storage resource, schema or API route.
+
+## Accepted and delivered: keep a dated check from a screening comparison
 
 The [comparison check workflow](MANAGED_SCREEN_COMPARISON.md#keep-a-dated-research-check)
 connects a complete captured comparison to an authored Follow-ups question. Inspect
@@ -16,8 +28,12 @@ Save remain separate. The full statement sets and source packets stay in the
 comparison preview and optional HTML file; the saved check contains the complete
 bounded question and a concise comparison reference.
 
-Implementation and automated acceptance are in progress. This client workflow adds
-no source request, financial formula, storage resource, schema or API route.
+[PR 254](https://github.com/liangzixuan/investing-pro/pull/254) merged at
+`6b3f4a2c28835a8840b4d76c5fd98242fb97230a`. Original required PR and actual-main
+checks passed, including all 107 synthetic native cases. Android 1.57.0/code58
+is provided locally after one guarded build with the existing signer and all
+four signed-APK checks. Installation and physical-device acceptance are not
+claimed. API, website and prior releases are preserved.
 
 ## Accepted and delivered: keep a complete screening comparison
 

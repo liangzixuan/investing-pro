@@ -12,6 +12,7 @@ type SourceActions = Pick<
   | "interim"
   | "interimStatementsActions"
   | "filingsFollowupActions"
+  | "filingsAssessmentActions"
   | "holdingFollowupActions"
   | "holdingPosition"
   | "sourcePass"
@@ -36,6 +37,15 @@ export function managedCompanySourceActionsProps(
   return {
     ...interimResearchProps(workspace, visit),
     filingsFollowupActions: filingQuestionActions(workspace, visit),
+    ...(visit.selection.origin === "followups"
+      ? {
+          filingsAssessmentActions: filingAssessmentActions(
+            workspace,
+            visit,
+            navigation,
+          ),
+        }
+      : {}),
     ...(visit.selection.origin === "portfolio"
       ? holdingQuestionActions(workspace, visit, navigation)
       : {}),
@@ -179,5 +189,28 @@ function reviewHoldingQuestion(
       visit.selection,
       navigation && (() => navigation.view("followups")),
     );
+  };
+}
+
+function filingAssessmentActions(
+  workspace: ManagedWorkspace,
+  visit: ManagedResearchVisit,
+  navigation: ManagedCompanyNavigation | undefined,
+): NonNullable<SourceActions["filingsAssessmentActions"]> {
+  return {
+    model: workspace.followups,
+    owner: visit.selection,
+    isCurrent: () =>
+      !navigation?.invalid &&
+      !navigation?.isPending() &&
+      workspace.getSnapshot().research?.selection === visit.selection,
+    getContext: (response) => {
+      if (navigation?.invalid || navigation?.isPending())
+        return {
+          port: null,
+          reason: "Finish navigation before citing this filing.",
+        };
+      return workspace.captureFilingsAssessment(visit.selection, response);
+    },
   };
 }

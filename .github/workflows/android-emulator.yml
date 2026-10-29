@@ -474,6 +474,13 @@ jobs:
           ))
           if len(required) != 107:
               raise SystemExit("The comparison dated-check journey must preserve all 106 existing native cases.")
+          filing_assessment_case = (
+              "local.investment.personal.ManagedFilingCheckAssessmentTest",
+              "dueCheckFilingAssessmentSurvivesReviewBackCompletionSaveFreshLoadAndHtml",
+          )
+          required.add(filing_assessment_case)
+          if len(required) != 108:
+              raise SystemExit("The filing assessment journey must preserve all 107 existing native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -496,6 +503,12 @@ jobs:
                       executed.add(identity)
               if not executed or combined.intersection(executed):
                   raise SystemExit("Native shard case sets are empty or overlap.")
+              assessment_frames = list(root.rglob("newFilingCheckAssessmentPreview.png"))
+              if filing_assessment_case in executed:
+                  if len(assessment_frames) != 1 or assessment_frames[0].stat().st_size == 0:
+                      raise SystemExit("The filing assessment shard must retain its scoped native preview frame.")
+              elif assessment_frames:
+                  raise SystemExit("The filing assessment preview frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],
