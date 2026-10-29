@@ -2,11 +2,11 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ScreenComparisonReportView } from "./ManagedFinancialScreenComparisonReport";
 import {
   comparisonCaptureReady,
   createScreenComparisonReportSource,
-  ScreenComparisonReportView,
-} from "./ManagedFinancialScreenComparisonReport";
+} from "./useManagedScreenComparisonReport";
 import { ScreenComparisonReportController } from "./screen-comparison-report-controller";
 import type {
   ScreenComparisonReportHtmlDocument,

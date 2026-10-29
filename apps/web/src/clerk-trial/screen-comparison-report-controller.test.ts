@@ -73,49 +73,47 @@ describe("comparison report delivery ownership", () => {
     expect(f.controller.getSnapshot().report).toBeNull();
     f.controller.dispose();
   });
-  it("aborts pending delivery and fences late completion after model inactive ABA", async () => {
-    const f = await setup();
-    let context: TextDocumentDeliveryContext | undefined;
-    let finish!: (value: TextDocumentDeliveryResult) => void;
-    f.deliver.mockImplementation((_document, ctx) => {
-      context = ctx;
-      return new Promise<TextDocumentDeliveryResult>((resolve) => {
-        finish = resolve;
+  const retirementCases: readonly {
+    title: string;
+    retire: (fixture: Awaited<ReturnType<typeof setup>>) => void;
+  }[] = [
+    {
+      title:
+        "aborts pending delivery and fences late completion after model inactive ABA",
+      retire: (f) => {
+        const digest = f.model.getSnapshot().catalogSnapshotSha256!;
+        f.model.reconcile(digest, false, false);
+        f.model.reconcile(digest, true, true);
+      },
+    },
+    {
+      title:
+        "catalog removal publishes retirement and aborts a pending writer before its late result",
+      retire: (f) => f.model.reconcile(null, false, false),
+    },
+  ];
+  for (const { title, retire } of retirementCases)
+    it(title, async () => {
+      const f = await setup();
+      let context: TextDocumentDeliveryContext | undefined;
+      let finish!: (value: TextDocumentDeliveryResult) => void;
+      f.deliver.mockImplementation((_document, ctx) => {
+        context = ctx;
+        return new Promise<TextDocumentDeliveryResult>((resolve) => {
+          finish = resolve;
+        });
       });
+      f.controller.prepare();
+      const task = f.controller.save();
+      retire(f);
+      expect(context!.signal.aborted).toBe(true);
+      expect(context!.isCurrent()).toBe(false);
+      expect(f.controller.getSnapshot().report).toBeNull();
+      finish("written");
+      await task;
+      expect(f.controller.getSnapshot().report).toBeNull();
+      f.controller.dispose();
     });
-    f.controller.prepare();
-    const task = f.controller.save();
-    const digest = f.model.getSnapshot().catalogSnapshotSha256!;
-    f.model.reconcile(digest, false, false);
-    f.model.reconcile(digest, true, true);
-    expect(context!.signal.aborted).toBe(true);
-    expect(context!.isCurrent()).toBe(false);
-    finish("written");
-    await task;
-    expect(f.controller.getSnapshot().report).toBeNull();
-    f.controller.dispose();
-  });
-  it("catalog removal publishes retirement and aborts a pending writer before its late result", async () => {
-    const f = await setup();
-    let context: TextDocumentDeliveryContext | undefined;
-    let finish!: (value: TextDocumentDeliveryResult) => void;
-    f.deliver.mockImplementation((_document, ctx) => {
-      context = ctx;
-      return new Promise<TextDocumentDeliveryResult>((resolve) => {
-        finish = resolve;
-      });
-    });
-    f.controller.prepare();
-    const task = f.controller.save();
-    f.model.reconcile(null, false, false);
-    expect(context!.signal.aborted).toBe(true);
-    expect(context!.isCurrent()).toBe(false);
-    expect(f.controller.getSnapshot().report).toBeNull();
-    finish("written");
-    await task;
-    expect(f.controller.getSnapshot().report).toBeNull();
-    f.controller.dispose();
-  });
   it.each(["cancel", "close"] as const)(
     "preserves replacement started reentrantly during %s abort",
     async (action) => {

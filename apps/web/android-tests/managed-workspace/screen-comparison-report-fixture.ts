@@ -31,12 +31,14 @@ export interface ScreenComparisonReportNativeMetadata {
   readonly subscribe: (listener: () => void) => () => void;
 }
 
-/** A separate synthetic report journey; the earlier comparison fixture stays exact. */
-export async function createScreenComparisonReportNativeFixture(
-  base: SharedNativeFixture,
-) {
-  const screen = await createScreenComparisonNativeFixture(base);
-  const packets = await Promise.all(
+type ReportScreen = Awaited<
+  ReturnType<typeof createScreenComparisonNativeFixture>
+>;
+type ReportPackets = ScreenComparisonReportNativeMetadata["packets"];
+type RefuseRead = (operation: Refusal) => Promise<never>;
+
+async function createDatedReportPackets(): Promise<ReportPackets> {
+  return Promise.all(
     (["left", "right"] as const).map((side) =>
       annualComparisonResponse(side, {
         cutoffAt: screenComparisonReportClocks[side],
@@ -45,6 +47,9 @@ export async function createScreenComparisonReportNativeFixture(
       }),
     ),
   );
+}
+
+function createReportRefusalTracker() {
   let refused: Refusals = {
     price: 0,
     filings: 0,
@@ -65,18 +70,39 @@ export async function createScreenComparisonReportNativeFixture(
       new Error(`Unexpected invented comparison report ${operation}`),
     );
   };
-  const api: ManagedApi = {
-    ...screen.api,
-    annualReport: async (input, signal) => {
-      // The established dispatcher retains exact request ownership and real pacing.
-      const admitted = await screen.api.annualReport(input, signal);
-      const packet = packets.find(
-        (row) => row.security.listingId === admitted.security.listingId,
-      );
-      if (!packet)
-        throw new Error("Unknown invented comparison report listing");
-      return structuredClone(packet);
+  return {
+    refuse,
+    getSnapshot: () => refused,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
+  };
+}
+
+function createReportAnnualRead(
+  screen: ReportScreen,
+  packets: ReportPackets,
+): ManagedApi["annualReport"] {
+  return async (input, signal) => {
+    // The established dispatcher retains exact request ownership and real pacing.
+    const admitted = await screen.api.annualReport(input, signal);
+    const packet = packets.find(
+      (row) => row.security.listingId === admitted.security.listingId,
+    );
+    if (!packet) throw new Error("Unknown invented comparison report listing");
+    return structuredClone(packet);
+  };
+}
+
+function createReportApi(
+  screen: ReportScreen,
+  packets: ReportPackets,
+  refuse: RefuseRead,
+): ManagedApi {
+  return {
+    ...screen.api,
+    annualReport: createReportAnnualRead(screen, packets),
     eodHistory: () => refuse("price"),
     recentFilings: () => refuse("filings"),
     interimReport: () => refuse("interim"),
@@ -93,16 +119,22 @@ export async function createScreenComparisonReportNativeFixture(
     saveValuationAssumptions: () => refuse("resourceSave"),
     save: () => refuse("resourceSave"),
   };
+}
+
+/** A separate synthetic report journey; the earlier comparison fixture stays exact. */
+export async function createScreenComparisonReportNativeFixture(
+  base: SharedNativeFixture,
+) {
+  const screen = await createScreenComparisonNativeFixture(base);
+  const packets = await createDatedReportPackets();
+  const tracker = createReportRefusalTracker();
   return {
     ...screen,
-    api,
+    api: createReportApi(screen, packets, tracker.refuse),
     screenComparisonReport: Object.freeze({
       packets,
-      getSnapshot: () => refused,
-      subscribe: (listener: () => void) => {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
-      },
+      getSnapshot: tracker.getSnapshot,
+      subscribe: tracker.subscribe,
     }),
   };
 }

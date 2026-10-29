@@ -1,104 +1,21 @@
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
-import type {
-  ManagedFinancialScreen,
-  ManagedFinancialScreenState,
-} from "./managed-financial-screen";
-import {
-  ScreenComparisonReportController,
-  type ScreenComparisonReportSource,
-} from "./screen-comparison-report-controller";
-import { formatScreenComparisonReportHtml } from "./screen-comparison-report-html";
+import { useId, useLayoutEffect, useRef, type RefObject } from "react";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import { ScreenComparisonReportSnapshot } from "./ScreenComparisonReportSnapshot";
+import {
+  comparisonCaptureReady,
+  useManagedScreenComparisonReport,
+  type ManagedScreenComparisonReportOptions,
+} from "./useManagedScreenComparisonReport";
 
-interface Props {
-  readonly model: ManagedFinancialScreen;
-  readonly screen: ManagedFinancialScreenState;
-  readonly delivery?: ScreenComparisonReportDeliveryAdapter;
-  readonly routeActive?: () => boolean;
-}
-const activeRoute = () => true;
-const empty = Object.freeze({ report: null, saving: false, message: "" });
-const emptySnapshot = () => empty;
-const noopSubscribe = () => () => {};
-
-/** Pending navigation fences delivery before a committed model retirement. */
-export function createScreenComparisonReportSource(
-  model: ManagedFinancialScreen,
-  routeActive: () => boolean,
-): ScreenComparisonReportSource {
-  return {
-    capture: () => {
-      if (!routeActive()) return null;
-      const capture = model.captureComparisonReport(new Date().toISOString());
-      if (!capture) return null;
-      let current = true;
-      return {
-        report: capture.report,
-        current: () => {
-          current = current && routeActive() && capture.current();
-          return current;
-        },
-      };
-    },
-    subscribe: model.subscribe,
-  };
-}
-
-function useReport({ model, delivery, routeActive = activeRoute }: Props) {
-  const [controller, setController] =
-    useState<ScreenComparisonReportController | null>(null);
-  useLayoutEffect(() => {
-    const next = new ScreenComparisonReportController(
-      createScreenComparisonReportSource(model, routeActive),
-      delivery,
-      formatScreenComparisonReportHtml,
-    );
-    setController(next);
-    return () => next.dispose();
-  }, [model, delivery, routeActive]);
-  useLayoutEffect(() => {
-    controller?.reconcile();
-  });
-  const state = useSyncExternalStore(
-    controller?.subscribe ?? noopSubscribe,
-    controller?.getSnapshot ?? emptySnapshot,
-    controller?.getSnapshot ?? emptySnapshot,
-  );
-  return { controller, state };
-}
-
-export function comparisonCaptureReady(
-  model: ManagedFinancialScreen,
-  screen: ManagedFinancialScreenState,
-) {
-  const { run, comparison } = screen;
-  if (!run || run.status === "running" || !comparison.left || !comparison.right)
-    return false;
-  if (comparison.left === comparison.right) return false;
-  return [comparison.left, comparison.right].every((row) => {
-    const response = row.report?.response;
-    return (
-      !!response &&
-      model.getSnapshot() === screen &&
-      model.canAdmitReport({ run, row, response })
-    );
-  });
-}
-
-type View = ReturnType<typeof useReport> & {
+type View = ReturnType<typeof useManagedScreenComparisonReport> & {
   readonly ready: boolean;
   readonly delivery: ScreenComparisonReportDeliveryAdapter | undefined;
 };
 
-export function ManagedFinancialScreenComparisonReport(props: Props) {
-  const view = useReport(props);
+export function ManagedFinancialScreenComparisonReport(
+  props: ManagedScreenComparisonReportOptions,
+) {
+  const view = useManagedScreenComparisonReport(props);
   return (
     <ScreenComparisonReportView
       {...view}
@@ -111,19 +28,97 @@ export function ManagedFinancialScreenComparisonReport(props: Props) {
   );
 }
 
+/** A stale rendered control cannot act on a replacement capture. */
+function reviewedController({ controller, state }: View) {
+  if (!controller) return null;
+  if (controller.getSnapshot() !== state) return null;
+  return controller;
+}
+
+function reportActions(
+  view: View,
+  captureButton: RefObject<HTMLButtonElement | null>,
+) {
+  return {
+    prepare: () => {
+      if (!view.ready) return;
+      reviewedController(view)?.prepare();
+    },
+    save: () => {
+      if (!view.ready) return;
+      void reviewedController(view)?.save();
+    },
+    close: () => {
+      const controller = reviewedController(view);
+      if (!controller) return;
+      controller.close();
+      captureButton.current?.focus();
+    },
+    cancel: () => reviewedController(view)?.cancel(),
+  };
+}
+type Actions = ReturnType<typeof reportActions>;
+
+function canCapture(view: View) {
+  if (!view.ready) return false;
+  if (!view.controller) return false;
+  return !view.state.saving;
+}
+function canSave(view: View) {
+  if (!view.ready) return false;
+  if (!view.delivery) return false;
+  return !view.state.saving;
+}
+
+function savedReportActions(view: View, actions: Actions) {
+  return (
+    <div className="trial-actions">
+      <button type="button" disabled={!canSave(view)} onClick={actions.save}>
+        Save comparison report (HTML)
+      </button>
+      <button type="button" onClick={actions.close}>
+        Close comparison report
+      </button>
+      {view.state.saving && (
+        <button type="button" onClick={actions.cancel}>
+          Cancel comparison report save
+        </button>
+      )}
+    </div>
+  );
+}
+
+function capturedReport(
+  view: View,
+  id: string,
+  heading: RefObject<HTMLHeadingElement | null>,
+  actions: Actions,
+) {
+  if (!view.state.report) return null;
+  return (
+    <section
+      id="managed-screen-comparison-report-captured"
+      aria-labelledby={`${id}-captured`}
+    >
+      <h4 id={`${id}-captured`} ref={heading} tabIndex={-1}>
+        Captured screening comparison
+      </h4>
+      <p>Review both complete statement sets and their original sources.</p>
+      <ScreenComparisonReportSnapshot report={view.state.report} />
+      {savedReportActions(view, actions)}
+    </section>
+  );
+}
+
 /** The preview and saved HTML use the same complete passive report component. */
-export function ScreenComparisonReportView({
-  controller,
-  state,
-  ready,
-  delivery,
-}: View) {
+export function ScreenComparisonReportView(view: View) {
   const id = useId();
   const captureButton = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const actions = reportActions(view, captureButton);
   useLayoutEffect(() => {
-    if (state.report) heading.current?.focus();
-  }, [state.report]);
+    if (view.state.report) heading.current?.focus();
+  }, [view.state.report]);
   return (
     <section
       id="managed-screen-comparison-report"
@@ -140,60 +135,13 @@ export function ScreenComparisonReportView({
       <button
         ref={captureButton}
         type="button"
-        disabled={!ready || !controller || state.saving}
-        onClick={() => {
-          if (ready && controller && controller.getSnapshot() === state)
-            controller.prepare();
-        }}
+        disabled={!canCapture(view)}
+        onClick={actions.prepare}
       >
         Capture comparison report
       </button>
-      {state.message && <p role="status">{state.message}</p>}
-      {state.report && (
-        <section
-          id="managed-screen-comparison-report-captured"
-          aria-labelledby={`${id}-captured`}
-        >
-          <h4 id={`${id}-captured`} ref={heading} tabIndex={-1}>
-            Captured screening comparison
-          </h4>
-          <p>Review both complete statement sets and their original sources.</p>
-          <ScreenComparisonReportSnapshot report={state.report} />
-          <div className="trial-actions">
-            <button
-              type="button"
-              disabled={!ready || !delivery || state.saving}
-              onClick={() => {
-                if (ready && controller && controller.getSnapshot() === state)
-                  void controller.save();
-              }}
-            >
-              Save comparison report (HTML)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!controller || controller.getSnapshot() !== state) return;
-                controller.close();
-                captureButton.current?.focus();
-              }}
-            >
-              Close comparison report
-            </button>
-            {state.saving && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (controller && controller.getSnapshot() === state)
-                    controller.cancel();
-                }}
-              >
-                Cancel comparison report save
-              </button>
-            )}
-          </div>
-        </section>
-      )}
+      {view.state.message && <p role="status">{view.state.message}</p>}
+      {capturedReport(view, id, heading, actions)}
     </section>
   );
 }

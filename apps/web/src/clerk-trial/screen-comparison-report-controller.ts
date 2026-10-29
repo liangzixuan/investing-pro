@@ -155,7 +155,9 @@ export class ScreenComparisonReportController {
   }
   async save() {
     const capture = this.capture;
-    if (!this.delivery || this.operation || !this.current(capture)) return;
+    if (!this.delivery) return;
+    if (this.operation) return;
+    if (!this.current(capture)) return;
     const operation = new AbortController();
     this.operation = operation;
     ++this.revision;

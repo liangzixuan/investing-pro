@@ -39,10 +39,11 @@ export function isPreparedScreenComparisonReport(
   return typeof value === "object" && value !== null && owned.has(value);
 }
 function freeze<T>(value: T): T {
-  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
-    for (const child of Object.values(value)) freeze(child);
-    Object.freeze(value);
-  }
+  if (value === null) return value;
+  if (typeof value !== "object") return value;
+  if (Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) freeze(child);
+  Object.freeze(value);
   return value;
 }
 export interface ScreenComparisonReportInput {
@@ -58,6 +59,7 @@ export function prepareScreenComparisonReport(
 ): PreparedScreenComparisonReport | null {
   try {
     const report = admitScreenComparisonReport(input);
+    if (!report) return null;
     if (
       new TextEncoder().encode(JSON.stringify(report)).byteLength >
       8 * 1024 * 1024

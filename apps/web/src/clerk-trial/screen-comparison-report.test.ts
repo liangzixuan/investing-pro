@@ -221,6 +221,41 @@ describe("screen-owned comparison report capture", () => {
     expect(captured.current()).toBe(false);
     unsubscribe();
   });
+  it("keeps malformed access failures as public null refusals and never reads the right source after left admission fails", async () => {
+    const f = await createScreenComparisonReportFixture();
+    const state = f.model.getSnapshot();
+    const left = { ...f.rows[0]!, report: null };
+    const readRight = vi.fn(() => {
+      throw new Error("Right source must not be read");
+    });
+    const right = {
+      ...f.rows[1]!,
+      get report() {
+        return readRight();
+      },
+    };
+    const input = {
+      preparedAt: new Date().toISOString(),
+      catalogSnapshotSha256: state.catalogSnapshotSha256!,
+      run: { ...state.run!, rows: [left, right] },
+      left,
+      right,
+    };
+    expect(prepareScreenComparisonReport(input)).toBeNull();
+    expect(readRight).not.toHaveBeenCalled();
+    const trap = vi.fn(() => {
+      throw new Error("Malformed input");
+    });
+    expect(
+      prepareScreenComparisonReport({
+        ...input,
+        get run() {
+          return trap();
+        },
+      }),
+    ).toBeNull();
+    expect(trap).toHaveBeenCalledOnce();
+  });
   it("refuses missing pairs and forged rows without inspecting getters, and retires on new runs", async () => {
     const f = await createScreenComparisonReportFixture();
     const capture = f.capture()!;

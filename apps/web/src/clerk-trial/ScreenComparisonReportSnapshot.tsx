@@ -9,6 +9,7 @@ import {
 import {
   isPreparedScreenComparisonReport,
   type PreparedScreenComparisonReport,
+  type ScreenComparisonReportCompany,
 } from "./screen-comparison-report";
 
 export function ScreenComparisonReportSnapshot({
@@ -39,19 +40,37 @@ export function ScreenComparisonReportSnapshot({
         <dt>Run completed</dt>
         <dd>{report.run.completedAt ?? "Not completed"}</dd>
       </dl>
+      <ComparisonCriteria criteria={report.criteria} />
+      {(["left", "right"] as const).map((side) => (
+        <ComparisonCompany key={side} side={side} company={report[side]} />
+      ))}
+      <details>
+        <summary>Complete captured comparison and source packets</summary>
+        <pre>{JSON.stringify(report, null, 2)}</pre>
+      </details>
+    </article>
+  );
+}
+
+function ComparisonCriteria({
+  criteria,
+}: {
+  readonly criteria: PreparedScreenComparisonReport["criteria"];
+}) {
+  return (
+    <>
       <h3>Complete screen criteria</h3>
       <p>
-        {report.criteria.sort.field === "symbol"
+        {criteria.sort.field === "symbol"
           ? "Ticker"
           : MANAGED_FINANCIAL_SCREEN_FIELDS.find(
-              (field) => field.key === report.criteria.sort.field,
+              (field) => field.key === criteria.sort.field,
             )!.label}{" "}
-        ·{" "}
-        {report.criteria.sort.direction === "asc" ? "ascending" : "descending"}
+        · {criteria.sort.direction === "asc" ? "ascending" : "descending"}
       </p>
-      {report.criteria.clauses.length ? (
+      {criteria.clauses.length ? (
         <ul>
-          {report.criteria.clauses.map((clause, index) => {
+          {criteria.clauses.map((clause, index) => {
             const field = MANAGED_FINANCIAL_SCREEN_FIELDS.find(
               (item) => item.key === clause.field,
             )!;
@@ -67,64 +86,87 @@ export function ScreenComparisonReportSnapshot({
       ) : (
         <p>No numeric filters.</p>
       )}
-      {(["left", "right"] as const).map((side) => {
-        const company = report[side];
+    </>
+  );
+}
+function ComparisonCompany({
+  side,
+  company,
+}: {
+  readonly side: "left" | "right";
+  readonly company: ScreenComparisonReportCompany;
+}) {
+  return (
+    <section aria-label={`${side} company`}>
+      <h3>
+        {side === "left" ? "Left company" : "Right company"}:{" "}
+        {company.listing.symbol} · {company.listing.issuerName}
+      </h3>
+      <h4>Complete listing identity</h4>
+      <dl>
+        {Object.entries(company.listing).map(([key, value]) => (
+          <div key={key}>
+            <dt>{identityLabels[key as keyof typeof identityLabels]}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+        <dt>SEC source CIK</dt>
+        <dd>{company.response.evidence.cik}</dd>
+      </dl>
+      <ComparisonCompanySources company={company} />
+      <ComparisonCompanyStatements company={company} />
+    </section>
+  );
+}
+function ComparisonCompanySources({
+  company,
+}: {
+  readonly company: ScreenComparisonReportCompany;
+}) {
+  return (
+    <>
+      <p>
+        Response origin: {company.responseOrigin ?? "Unknown"}.{" "}
+        {company.showingPrevious
+          ? "Retained previous response; original times unchanged."
+          : "Loaded response."}{" "}
+        {company.message}
+      </p>
+      {company.error && <p>Latest attempt reported an error.</p>}
+      {company.failure && <p>{company.failure}</p>}
+      <AnnualStatementsContext
+        evidence={company.response.evidence}
+        statements={company.view.statements}
+        presentation="report"
+      />
+    </>
+  );
+}
+function ComparisonCompanyStatements({
+  company,
+}: {
+  readonly company: ScreenComparisonReportCompany;
+}) {
+  return (
+    <>
+      {annualStatementOrder.map((group) => {
+        const statement = company.view.statements.statements.find(
+          (item) => item.id === group,
+        );
         return (
-          <section key={side} aria-label={`${side} company`}>
-            <h3>
-              {side === "left" ? "Left company" : "Right company"}:{" "}
-              {company.listing.symbol} · {company.listing.issuerName}
-            </h3>
-            <h4>Complete listing identity</h4>
-            <dl>
-              {Object.entries(company.listing).map(([key, value]) => (
-                <div key={key}>
-                  <dt>{identityLabels[key as keyof typeof identityLabels]}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-              <dt>SEC source CIK</dt>
-              <dd>{company.response.evidence.cik}</dd>
-            </dl>
-            <p>
-              Response origin: {company.responseOrigin ?? "Unknown"}.{" "}
-              {company.showingPrevious
-                ? "Retained previous response; original times unchanged."
-                : "Loaded response."}{" "}
-              {company.message}
-            </p>
-            {company.error && <p>Latest attempt reported an error.</p>}
-            {company.failure && <p>{company.failure}</p>}
-            <AnnualStatementsContext
-              evidence={company.response.evidence}
-              statements={company.view.statements}
-              presentation="report"
-            />
-            {annualStatementOrder.map((group) => {
-              const statement = company.view.statements.statements.find(
-                (item) => item.id === group,
-              );
-              return (
-                <section key={group}>
-                  <h4>{annualStatementLabels[group]}</h4>
-                  {statement ? (
-                    <AnnualStatementTable
-                      statement={statement}
-                      evidence={company.response.evidence}
-                    />
-                  ) : (
-                    <p>Statement unavailable.</p>
-                  )}
-                </section>
-              );
-            })}
+          <section key={group}>
+            <h4>{annualStatementLabels[group]}</h4>
+            {statement ? (
+              <AnnualStatementTable
+                statement={statement}
+                evidence={company.response.evidence}
+              />
+            ) : (
+              <p>Statement unavailable.</p>
+            )}
           </section>
         );
       })}
-      <details>
-        <summary>Complete captured comparison and source packets</summary>
-        <pre>{JSON.stringify(report, null, 2)}</pre>
-      </details>
-    </article>
+    </>
   );
 }
