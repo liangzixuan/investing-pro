@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## A loaded filing in an existing assessment
+
+Place **Cite a filing in this assessment** in an initially closed disclosure in
+company Filings for an existing Follow-ups check. Start the explicit filing
+choice empty. Focus the complete assessment preview; keep authored judgment,
+full qualified reference and original source clocks distinct. Preserve raw text
+and show whole-result refusals. Use labelled controls, wrapping identities and
+URLs, visible focus, 44px targets and stacked actions on narrow screens. Apply,
+Review/Back, completion and Save remain separate.
+
 ## A dated check from a screening comparison
 
 Place the initially closed check panel beside the comparison report controls.

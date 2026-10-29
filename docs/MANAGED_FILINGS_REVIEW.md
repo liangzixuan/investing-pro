@@ -74,6 +74,42 @@ its note retain their separate Save.
 This is a client source candidate. Current-source checks, hosted native
 acceptance and delivery remain separate events.
 
+## Cite a filing in an existing assessment
+
+Open **Research company** from the exact check in Follow-ups, including a check
+selected from Markets. Use **Record assessment** to write your assessment in that
+same draft. In Filings, open **Cite a filing in this assessment**, then explicitly
+choose one reference from the already loaded response. The choice starts empty.
+A general company link does not select a private check.
+
+**Preview complete assessment** shows the whole existing result and complete
+qualified filing reference. The citation retains form, accession, filing and
+report dates, index URL, exact listing, CIK, original request/window/retrieval/
+completion times and retained, truncated or older-history limits. It states that
+filing contents were not fetched and full window coverage is not established.
+These source facts do not verify the authored assessment or refresh its evidence.
+
+**Apply citation to assessment** changes only that existing entry's result once.
+It preserves the question, due date, completion state, other checks and My
+Watchlist. The full raw result and citation must fit the existing single-line
+2,000-code-point limit. Invalid, empty or oversized assessments are refused as
+a whole; nothing is clipped or changed. The complete citation cannot be added
+twice. Cancel changes nothing.
+
+Return with **Review follow-ups** or Back to the same selected check. Complete
+the check explicitly and **Save follow-ups** separately. A fresh Load restores
+the saved result; the existing Follow-ups HTML report includes it in full.
+This action makes no source request and does not complete or save the check.
+
+Changing the filing choice, either draft, packet or original row, catalog,
+company visit, route, session or draft-file state retires the preview. Pending
+Save and recovery pause the action. A retired preview cannot become current
+again when earlier text or state returns. Prepare a new preview after resolving
+the current state.
+
+This is a client source candidate. Focused synthetic verification, current-head
+native acceptance, client delivery and physical-device acceptance remain separate.
+
 ## Responses and limits
 
 An unloaded listing, an available response with no matching filings, an unsupported
@@ -127,6 +163,14 @@ adds one isolated journey that checks the complete question and citation,
 consume-once creation, retained group Back, separate Follow-ups Save and fresh
 Load, with no Watchlist Save or extra filing request. Its fixed invented resource
 refuses changed payloads and unexpected operations.
+
+The filing-assessment candidate adds one complete due-check journey: exact
+company Research, explicit filing choice, whole-result refusal and preview,
+one-use Apply, retained Review/Back, explicit completion, separate Save and fresh
+Load, then complete passive HTML readback. It uses independent invented citation
+and whole-resource expectations, preserving the other check and unsaved Watchlist.
+Its source compiles with the complete existing native test sources. Actual native
+execution and the scoped preview frame still require the current-source gate.
 
 Source checks, a passing current-source hosted native run and client delivery
 remain separate acceptance events. None establishes owner-account or physical-device

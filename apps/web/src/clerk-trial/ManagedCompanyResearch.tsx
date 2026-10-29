@@ -1,3 +1,4 @@
+import type { ManagedFilingsAssessmentActions } from "./ManagedFilingsAssessment";
 import { ManagedInterimReport } from "./ManagedInterimReport";
 import type { ManagedInterimStatementsActions } from "./ManagedInterimStatementsReview";
 import type { ManagedInterimReport as InterimModel } from "./managed-interim-report";
@@ -96,6 +97,7 @@ export function ManagedCompanyResearch({
   priceStudiesActions,
   filingsNoteActions,
   filingsFollowupActions,
+  filingsAssessmentActions,
   holdingFollowupActions,
   holdingPosition,
   companyNavigationState,
@@ -150,6 +152,7 @@ export function ManagedCompanyResearch({
   priceStudiesActions?: ManagedPriceStudiesActions;
   filingsNoteActions: ManagedFilingsNoteActions;
   filingsFollowupActions?: ManagedFilingsFollowupActions;
+  filingsAssessmentActions?: ManagedFilingsAssessmentActions;
   holdingFollowupActions?: ManagedHoldingFollowupActions;
   holdingPosition?: HoldingFollowupPreview["position"] | null;
   companyNavigationState: ResearchCompanyNavigationState;
@@ -353,6 +356,9 @@ export function ManagedCompanyResearch({
                 model={filings}
                 annual={annual}
                 noteActions={filingsNoteActions}
+                {...(filingsAssessmentActions
+                  ? { assessmentActions: filingsAssessmentActions }
+                  : {})}
                 {...(filingsFollowupActions
                   ? { followupActions: filingsFollowupActions }
                   : {})}

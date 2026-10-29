@@ -1126,3 +1126,71 @@ it("requires the route commit before Back even when the exact company URL and re
   expect(f.api.annualReport).not.toHaveBeenCalled();
   expect(f.api.save).not.toHaveBeenCalled();
 });
+it("keeps the exact Follow-ups check through committed Price to Filings navigation and refuses a pending section action", async () => {
+  const f = fixture();
+  await f.ready();
+  f.api.loadFollowups = vi.fn<ManagedApi["loadFollowups"]>().mockResolvedValue({
+    version: 0,
+    payload: { schemaVersion: 1, entries: [] },
+  });
+  await f.workspace.followups.coordinator.load();
+  f.workspace.setView("followups");
+  const watchlist = f.workspace.coordinator.getSnapshot();
+  f.workspace.followups.add(watchlist.draft!.memberships[0]!, "2026-10-30");
+  const added =
+    f.workspace.followups.coordinator.getSnapshot().draft!.entries[0]!;
+  const question = "Original filing question · Café 東京";
+  f.workspace.followups.edit(added, "check", question);
+  const draft = f.workspace.followups.coordinator.getSnapshot().draft!;
+  const entry = draft.entries[0]!;
+  let nav = f.render();
+  const prepared = await f.workspace.prepareFollowupResearch(entry);
+  expect(prepared).not.toBeNull();
+  nav.open(() => f.workspace.openFollowupResearch(prepared!));
+  const selection = f.workspace.getSnapshot().research!.selection;
+  expect(selection.origin).toBe("followups");
+  const priceHref = "?company=listing-zero&section=price";
+  expect(mount.entries[mount.cursor]!.search).toBe(priceHref);
+  mount.index = 0;
+  const beforeCommit = useManagedCompanyNavigation(f.workspace);
+  expect(beforeCommit.pending).toBe(true);
+  expect(beforeCommit.isPending()).toBe(true);
+  beforeCommit.section("filings");
+  expect(f.workspace.getSnapshot().research?.section).toBe("eod");
+  expect(mount.navigate).toHaveBeenCalledTimes(1);
+  expect(f.workspace.researchFollowupContext(selection)?.entry).toBe(entry);
+  f.render();
+  nav = f.render();
+  expect(nav.pending).toBe(false);
+  nav.section("filings");
+  const filingsHref = "?company=listing-zero&section=filings";
+  expect(mount.entries[mount.cursor]!.search).toBe(filingsHref);
+  expect(nav.isPending()).toBe(true);
+  const committing = f.render();
+  expect(committing.pending).toBe(true);
+  nav = f.render();
+  expect(nav.pending).toBe(false);
+  expect(f.workspace.getSnapshot().companyRoute).toMatchObject({
+    listingId: entry.listing.listingId,
+    section: "filings",
+    status: "open",
+  });
+  expect(f.workspace.getSnapshot().research?.section).toBe("filings");
+  expect(f.workspace.getSnapshot().research!.selection).toBe(selection);
+  expect(selection.listing).toEqual(entry.listing);
+  expect(selection.catalogSnapshotSha256).toBe(entry.catalogSnapshotSha256);
+  const context = f.workspace.researchFollowupContext(selection)!;
+  expect(context.entry).toBe(entry);
+  expect(context.entry.check).toBe(question);
+  expect(context.isCurrent()).toBe(true);
+  expect(context.editable).toBe(true);
+  expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(draft);
+  expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.api.loadFollowups).toHaveBeenCalledOnce();
+  expect(f.api.recentFilings).not.toHaveBeenCalled();
+  expect(f.api.eodHistory).not.toHaveBeenCalled();
+  expect(f.api.annualReport).not.toHaveBeenCalled();
+  expect(f.api.interimReport).not.toHaveBeenCalled();
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  expect(f.api.save).not.toHaveBeenCalled();
+});

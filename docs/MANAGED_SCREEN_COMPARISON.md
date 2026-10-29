@@ -79,7 +79,7 @@ acceptance.
 
 ## Keep a dated research check
 
-This client increment is in development. [Current work](CURRENT_WORK.md) records
+This workflow is accepted in source and provided in Android 1.57. [Current work](CURRENT_WORK.md) records
 source, automated and delivery acceptance separately.
 
 After reading two current loaded results, capture their comparison for a dated

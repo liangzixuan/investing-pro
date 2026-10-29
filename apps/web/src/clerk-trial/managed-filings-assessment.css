@@ -1,0 +1,75 @@
+.clerk-trial.managed-frame .filings-assessment {
+  min-width: 0;
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  background: var(--managed-surface);
+  color: var(--managed-ink);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .filings-assessment summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+.clerk-trial.managed-frame .filings-assessment select,
+.clerk-trial.managed-frame .filings-assessment textarea {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.75rem;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 6px;
+  background: var(--managed-surface);
+  color: var(--managed-ink);
+  font: inherit;
+}
+.clerk-trial.managed-frame .filings-assessment select {
+  margin-block: 0.5rem 1rem;
+}
+.clerk-trial.managed-frame .filings-assessment textarea {
+  resize: vertical;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .filings-assessment button {
+  min-height: 44px;
+  margin: 0.5rem 0.75rem 0.5rem 0;
+  white-space: normal;
+}
+.clerk-trial.managed-frame
+  .filings-assessment
+  :is(summary, select, textarea, button, a, h4):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame .filings-assessment-preview {
+  margin-block: 1rem;
+  padding-block: 1rem;
+  border-block: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .filings-assessment-preview dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem;
+}
+.clerk-trial.managed-frame .filings-assessment-preview dd {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+}
+.clerk-trial.managed-frame .filings-assessment-citation {
+  white-space: pre-wrap;
+}
+@media (max-width: 480px) {
+  .clerk-trial.managed-frame .filings-assessment {
+    padding: 0.75rem;
+  }
+  .clerk-trial.managed-frame .filings-assessment button {
+    width: 100%;
+    margin-inline: 0;
+  }
+}

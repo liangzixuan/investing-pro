@@ -119,6 +119,10 @@ import { getManagedWatchlistComparisonNoteEvidence } from "./managed-watchlist-c
 import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
 import { filingReferenceNoteExcerpt } from "./managed-filings-note";
 import {
+  createFilingsAssessmentPort,
+  type FilingsAssessmentPort,
+} from "./managed-filings-assessment";
+import {
   ManagedCompanyFilings,
   type ManagedCompanyFilingsSeed,
 } from "./managed-company-filings";
@@ -2409,6 +2413,103 @@ export class ManagedWorkspace {
         this.researchSourceRouteReady(selection) &&
         this.canUseResearchSource(selection),
     });
+  }
+  private filingsAssessmentSource(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+  ) {
+    const visit = this.state.research;
+    if (visit?.selection !== selection) return null;
+    if (visit.section !== "filings") return null;
+    const source = this.filings.getSnapshot();
+    if (source.response !== response) return null;
+    if (source.running || source.catalogChanged) return null;
+    if (!companyEvidenceSelectionMatches(selection, source.selection))
+      return null;
+    if (response.issuer.status !== "available") return null;
+    return source;
+  }
+  private filingsAssessmentEditsReady() {
+    if (!this.followups.canEdit()) return false;
+    if (this.followups.hasDraftFileActivity()) return false;
+    if (this.fileCatalogReviewRequired) return false;
+    const saved = this.followups.coordinator.getSnapshot();
+    if (saved.saved === null) return false;
+    if (saved.baseVersion !== saved.saved.version) return false;
+    const watchlist = this.coordinator.getSnapshot();
+    if (watchlist.phase !== "idle") return false;
+    return (
+      !watchlist.conflict && !watchlist.uncertain && !watchlist.replayPending
+    );
+  }
+  private filingsAssessmentLifetime(
+    followup: ManagedResearchFollowupContext,
+    source: ReturnType<ManagedCompanyFilings["getSnapshot"]>,
+  ) {
+    const visit = this.state.research;
+    const saved = this.followups.coordinator.getSnapshot();
+    const watchlist = this.coordinator.getSnapshot();
+    const session = this.sessionOwner.getSnapshot();
+    const activity = this.followups.getDraftFileActivityRevision();
+    const resourcesCurrent = () => {
+      if (this.state.research !== visit) return false;
+      if (this.followups.coordinator.getSnapshot() !== saved) return false;
+      if (this.coordinator.getSnapshot() !== watchlist) return false;
+      if (this.sessionOwner.getSnapshot() !== session) return false;
+      return this.followups.getDraftFileActivityRevision() === activity;
+    };
+    return () => {
+      if (!followup.isCurrent()) return false;
+      if (!resourcesCurrent()) return false;
+      if (this.filings.getSnapshot() !== source) return false;
+      return this.filingsAssessmentEditsReady();
+    };
+  }
+  captureFilingsAssessment(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+  ): { port: FilingsAssessmentPort | null; reason: string | null } {
+    const followup = this.researchFollowupContext(selection);
+    if (!followup)
+      return {
+        port: null,
+        reason:
+          "Open this company through the existing Follow-ups check first.",
+      };
+    if (!followup.editable || !this.filingsAssessmentEditsReady())
+      return {
+        port: null,
+        reason:
+          "Finish the pending action, file activity or draft recovery before adding a filing reference.",
+      };
+    const source = this.filingsAssessmentSource(selection, response);
+    if (!source)
+      return {
+        port: null,
+        reason:
+          "Choose an available, already loaded filing packet in this check's current company visit.",
+      };
+    const current = this.filingsAssessmentLifetime(followup, source);
+    let consumed = false;
+    const isCurrent = () => !consumed && current();
+    const port = createFilingsAssessmentPort({
+      entry: followup.entry,
+      response,
+      showingPrevious: source.showingPrevious,
+      isCurrent,
+      editAssessment: (raw) => {
+        if (!isCurrent()) return false;
+        consumed = true;
+        followup.editAssessment(raw);
+        return this.followups.currentEntry(followup.entry.id)?.result === raw;
+      },
+    });
+    return {
+      port,
+      reason: port
+        ? null
+        : "The current check or filing context changed. Capture it again.",
+    };
   }
   captureFollowupReviewNote(
     selection: ManagedResearchSelection,
