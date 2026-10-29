@@ -38,6 +38,7 @@ export const emptyScreenComparisonFollowup =
   });
 const STALE =
   "This comparison or check is no longer current. Capture or preview the current context again. Your question and date are retained.";
+const INACTIVE_ROUTE = "The comparison form is no longer on its active route.";
 
 /** Transient form and event ownership only; the domain context admits every action. */
 export class ScreenComparisonFollowupReview {
@@ -107,8 +108,8 @@ export class ScreenComparisonFollowupReview {
     this.committed = token;
     this.props = props;
     if (this.active()) return;
-    if (this.state.capture) return this.withdraw();
-    if (this.state.preview) this.withdraw();
+    if (this.state.capture) return this.withdraw(INACTIVE_ROUTE);
+    if (this.state.preview) this.withdraw(INACTIVE_ROUTE);
   }
   mount() {
     const w = this.workspace;
@@ -130,7 +131,13 @@ export class ScreenComparisonFollowupReview {
     this.releases.forEach((release) => release());
     this.listeners.clear();
   }
-  private withdraw() {
+  private withdraw(reason: string | null = null) {
+    const capture = this.state.capture;
+    const recorded =
+      reason ??
+      (capture
+        ? this.workspace.screenComparisonFollowup.retirementReason(capture)
+        : null);
     this.captureToken = {};
     this.formToken = {};
     this.state.preview?.cancel();
@@ -138,7 +145,7 @@ export class ScreenComparisonFollowupReview {
       ...this.state,
       capture: null,
       preview: null,
-      message: STALE,
+      message: recorded === null ? STALE : STALE + " " + recorded,
     });
   }
   private fence() {

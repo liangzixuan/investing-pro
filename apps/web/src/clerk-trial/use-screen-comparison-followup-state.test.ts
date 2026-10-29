@@ -241,4 +241,75 @@ describe("comparison dated-check form ownership", () => {
     f.review.capture();
     expect(f.followups.coordinator.getSnapshot().draft!.entries).toEqual([]);
   });
+
+  it("adds the recorded Watchlist retirement reason while retaining the raw authored fields", async () => {
+    const f = await fixture();
+    capture(f.review);
+    author(f.review);
+    f.review.edit("question", "Keep this raw\nquestion Café 東京 📈");
+    const captured = f.review.getSnapshot().capture!;
+    const draft = f.watchlist.getSnapshot().draft!;
+    f.watchlist.replaceDraft({
+      ...draft,
+      memberships: draft.memberships.map((member, index) =>
+        index === 0
+          ? { ...member, note: "Another unsaved Watchlist note." }
+          : member,
+      ),
+    });
+    const reason = f.context.retirementReason(captured);
+    expect(reason).toMatch(/Watchlist/i);
+    expect(f.review.getSnapshot()).toMatchObject({
+      capture: null,
+      preview: null,
+      side: "right",
+      question: "Keep this raw\nquestion Café 東京 📈",
+      dueOn: "2026-12-31",
+    });
+    expect(f.review.getSnapshot().message).toBe(
+      "This comparison or check is no longer current. Capture or preview the current context again. Your question and date are retained. " +
+        reason,
+    );
+    expect(f.watchlistSave).not.toHaveBeenCalled();
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  });
+
+  it("keeps the original generic guidance when no recorded retirement reason is available", async () => {
+    const f = await fixture();
+    capture(f.review);
+    author(f.review);
+    const captured = f.review.getSnapshot().capture!;
+    const read = vi.spyOn(f.context, "retirementReason").mockReturnValue(null);
+    f.state.available = false;
+    f.updates.emit();
+    expect(read).toHaveBeenCalledExactlyOnceWith(captured);
+    expect(f.review.getSnapshot()).toMatchObject({
+      capture: null,
+      preview: null,
+      question: "Does this comparison change my research? Café 東京 📈",
+      dueOn: "2026-12-31",
+      message:
+        "This comparison or check is no longer current. Capture or preview the current context again. Your question and date are retained.",
+    });
+    expect(f.followups.coordinator.getSnapshot().draft!.entries).toEqual([]);
+  });
+
+  it("distinguishes inactive committed navigation without evaluating a context retirement lookup", async () => {
+    const f = await fixture();
+    capture(f.review);
+    author(f.review);
+    const read = vi.spyOn(f.context, "retirementReason");
+    f.review.commit({}, { ...f.props, navigationPending: true });
+    expect(read).not.toHaveBeenCalled();
+    expect(f.review.getSnapshot()).toMatchObject({
+      capture: null,
+      preview: null,
+      side: "right",
+      question: "Does this comparison change my research? Café 東京 📈",
+      dueOn: "2026-12-31",
+      message:
+        "This comparison or check is no longer current. Capture or preview the current context again. Your question and date are retained. The comparison form is no longer on its active route.",
+    });
+    expect(f.followups.coordinator.getSnapshot().draft!.entries).toEqual([]);
+  });
 });

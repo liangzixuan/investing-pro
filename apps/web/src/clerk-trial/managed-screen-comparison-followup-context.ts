@@ -25,10 +25,14 @@ export interface ScreenComparisonFollowupHost {
 type WatchlistState = ReturnType<
   ManagedWorkspace["coordinator"]["getSnapshot"]
 >;
+interface SourceRetirement {
+  reason: string | null;
+}
 interface SourceOwner {
   readonly comparison: ScreenComparisonReportCapture;
   readonly revision: ReturnType<ScreenComparisonFollowupHost["revision"]>;
-  readonly epoch: object;
+  readonly epoch: SourceRetirement;
+  readonly retirement: SourceRetirement;
   readonly watchlist: WatchlistState;
   readonly fileActivity: object;
   readonly selectionIsCurrent: () => boolean;
@@ -54,9 +58,23 @@ const memberStale =
 const followupsStale =
   "Load Follow-ups here, or finish its save, file or recovery decision, before previewing this check.";
 
+const retirementReasons = {
+  screen: "The screening context changed.",
+  watchlist: "My Watchlist changed.",
+  revision: "Navigation or the catalog context changed.",
+  file: "A Follow-ups file operation started or ended.",
+  access: "The current workspace or session is no longer available.",
+  baseline:
+    "The captured My Watchlist baseline is no longer editable or current.",
+  report: "The captured comparison report is no longer current.",
+  selection: "The comparison form or selection is no longer current.",
+  check: "The comparison context could not be checked.",
+  closed: "This comparison workspace was closed.",
+};
+
 /** Own the current model capture independently of its explicit first Follow-ups read. */
 export class ManagedScreenComparisonFollowupContext {
-  private epoch: object = {};
+  private epoch: SourceRetirement = { reason: null };
   private retired = false;
   private readonly owners = new WeakMap<
     ScreenComparisonFollowupCapture,
@@ -74,22 +92,36 @@ export class ManagedScreenComparisonFollowupContext {
     this.unsubscribers = [
       w.subscribe(() => this.reconcileSource()),
       w.financialScreen.subscribe(() => {
-        this.epoch = {};
+        this.advanceEpoch(retirementReasons.screen);
       }),
       w.coordinator.subscribe(() => {
-        this.epoch = {};
+        this.advanceEpoch(retirementReasons.watchlist);
       }),
       w.followups.subscribe(() => this.reconcileSource()),
       w.sessionOwner.subscribe(() => this.reconcileSource()),
     ];
   }
+  private advanceEpoch(reason: string) {
+    if (this.epoch.reason === null) this.epoch.reason = reason;
+    this.epoch = { reason: null };
+  }
+  private recordRetirement(owner: SourceOwner, reason: string) {
+    if (owner.retirement.reason === null) owner.retirement.reason = reason;
+    return false;
+  }
+  retirementReason(capture: ScreenComparisonFollowupCapture): string | null {
+    const owner = this.owners.get(capture);
+    return owner?.retirement.reason ?? null;
+  }
   private reconcileSource() {
     const revision = this.host.revision();
     const activity =
       this.host.workspace.followups.getDraftFileActivityRevision();
-    if (!sameRevision(this.revision, revision)) this.epoch = {};
-    if (this.fileActivity !== activity) this.epoch = {};
-    if (!this.available()) this.epoch = {};
+    if (!sameRevision(this.revision, revision))
+      this.advanceEpoch(retirementReasons.revision);
+    if (this.fileActivity !== activity)
+      this.advanceEpoch(retirementReasons.file);
+    if (!this.available()) this.advanceEpoch(retirementReasons.access);
     this.revision = revision;
     this.fileActivity = activity;
   }
@@ -99,31 +131,43 @@ export class ManagedScreenComparisonFollowupContext {
     return this.host.workspace.sessionOwner.getSnapshot().phase === "active";
   }
   private sourceContextCurrent(owner: SourceOwner) {
-    if (owner.epoch !== this.epoch) return false;
-    if (!this.available()) return false;
-    return sameRevision(owner.revision, this.host.revision());
+    if (owner.epoch !== this.epoch)
+      return this.recordRetirement(owner, owner.epoch.reason!);
+    if (!this.available())
+      return this.recordRetirement(owner, retirementReasons.access);
+    if (!sameRevision(owner.revision, this.host.revision()))
+      return this.recordRetirement(owner, retirementReasons.revision);
+    return true;
   }
   private sourceResourcesCurrent(owner: SourceOwner) {
     const w = this.host.workspace;
-    if (w.coordinator.getSnapshot() !== owner.watchlist) return false;
+    if (w.coordinator.getSnapshot() !== owner.watchlist)
+      return this.recordRetirement(owner, retirementReasons.watchlist);
     if (
       !this.readiness.watchlistReady(
         owner.watchlist,
         owner.comparison.report.catalogSnapshotSha256,
       )
     )
-      return false;
+      return this.recordRetirement(owner, retirementReasons.baseline);
     if (w.followups.getDraftFileActivityRevision() !== owner.fileActivity)
-      return false;
-    return this.readiness.filesReady();
+      return this.recordRetirement(owner, retirementReasons.file);
+    if (!this.readiness.filesReady())
+      return this.recordRetirement(owner, retirementReasons.file);
+    return true;
+  }
+  private reportCurrent(owner: SourceOwner) {
+    if (owner.comparison.current()) return true;
+    return this.recordRetirement(owner, retirementReasons.report);
   }
   private sourceCurrent(owner: SourceOwner) {
     if (!this.sourceContextCurrent(owner)) return false;
     if (!this.sourceResourcesCurrent(owner)) return false;
-    if (!owner.comparison.current()) return false;
-    if (!owner.selectionIsCurrent()) return false;
+    if (!this.reportCurrent(owner)) return false;
+    if (!owner.selectionIsCurrent())
+      return this.recordRetirement(owner, retirementReasons.selection);
     if (!this.sourceContextCurrent(owner)) return false;
-    return owner.comparison.current() && this.sourceResourcesCurrent(owner);
+    return this.reportCurrent(owner) && this.sourceResourcesCurrent(owner);
   }
 
   private sourceOwner(
@@ -155,6 +199,7 @@ export class ManagedScreenComparisonFollowupContext {
       comparison,
       revision: this.host.revision(),
       epoch: this.epoch,
+      retirement: { reason: null },
       watchlist: w.coordinator.getSnapshot(),
       fileActivity: w.followups.getDraftFileActivityRevision(),
       selectionIsCurrent,
@@ -173,6 +218,7 @@ export class ManagedScreenComparisonFollowupContext {
         try {
           retired = !this.sourceCurrent(owner);
         } catch {
+          this.recordRetirement(owner, retirementReasons.check);
           retired = true;
         }
         return !retired;
@@ -311,7 +357,7 @@ export class ManagedScreenComparisonFollowupContext {
   retire() {
     if (this.retired) return;
     this.retired = true;
-    this.epoch = {};
+    this.advanceEpoch(retirementReasons.closed);
     for (const unsubscribe of this.unsubscribers) unsubscribe();
   }
 }
