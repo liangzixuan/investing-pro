@@ -89,10 +89,10 @@ public class ManagedFilingCheckAssessmentTest {
     }
     private void openExactResearchAndLoadFilings(Original original) throws Exception {
         page.click(Element.css("#managed-followups-review-research"));
-        page.await(new Check("Follow-ups-owned exact ZERO Research opens without a financial request",new Script("location.href==='https://localhost/?company=listing-zero&section=price'&&document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO'&&document.querySelector('.managed-research-followup-check')?.textContent==="+JSONObject.quote(QUESTION)+"&&"+D+".filings.response===null")).nativeReady());
+        page.await(new Check("Follow-ups-owned exact ZERO Research opens without a financial request",new Script("location.href==='https://localhost/?company=listing-zero&section=price'&&document.querySelector('#managed-company-heading')?.textContent==='Company research · ZERO'&&document.querySelector('.managed-research-followup-check')?.textContent==="+JSONObject.quote(QUESTION)+"&&"+D+".filings.response===null&&(()=>{const b=document.querySelector("+JSONObject.quote("button[aria-label='Filings section for ZERO']")+");return b instanceof HTMLButtonElement&&!b.disabled&&b.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});})()")).nativeReady());
         assertBoundary(Phase.RESEARCH);
         page.click(Element.css("button[aria-label='Filings section for ZERO']"));
-        page.await(new Check("section navigation preserves the same check and starts no source read",new Script("location.href==="+JSONObject.quote(FILINGS_URL)+"&&document.querySelector('#managed-filings-heading')!==null&&"+C+".filings===0&&document.querySelector('#managed-research-followup-heading')!==null")).nativeReady());
+        awaitFilingsNavigation(new Check("section navigation preserves the same check and starts no source read",new Script("location.href==="+JSONObject.quote(FILINGS_URL)+"&&document.querySelector('#managed-filings-heading')!==null&&"+C+".filings===0&&document.querySelector('#managed-research-followup-heading')!==null")).nativeReady());
         page.click(Element.xpath("//section[@aria-labelledby='managed-filings-heading']//button[normalize-space(.)='Load filings']"));
         page.await(new Check("one explicit read retains original clocks, coverage and packet before the initially closed citation tool",new Script(C+".filings===1&&"+D+".filings.response?.issuer.filings.length===2&&"+D+".filings.response.issuer.matchingFilings===2&&"+D+".filings.response.issuer.truncated===false&&"+D+".filings.showingPrevious===false&&"+D+".filings.responseOrigin==='request'&&document.querySelector('#filings-assessment')?.open===false")));
         page.click(Element.css("#managed-research-followup-assessment > summary"));
@@ -100,6 +100,19 @@ public class ManagedFilingCheckAssessmentTest {
         page.click(Element.css("#filings-assessment-toggle"));
         page.await(new Check("filing choice starts empty and contains both exact observed accessions without automatic selection",new Script("document.querySelector('#filings-assessment-filing')?.value===''&&document.querySelector('#filings-assessment-preview')?.disabled===true&&[...document.querySelector('#filings-assessment-filing').options].map(o=>o.value).join('|')==='|0000000001-26-000001|0000000001-26-000002'")));
         chooseFirstFiling();assertDrafts(original,RAW,Completion.open());assertBoundary(Phase.FILINGS);
+    }
+    private void awaitFilingsNavigation(Check condition) throws Exception {
+        try { page.await(condition); }
+        catch (AssertionError original) { logFilingsNavigationFailure(original);throw original; }
+    }
+    private void logFilingsNavigationFailure(AssertionError original) {
+        try {
+            String snapshot=page.read(new Script("JSON.stringify((()=>{const b=document.querySelector("+JSONObject.quote("button[aria-label='Filings section for ZERO']")+"),href=location.href;return {href:href.length<=2048?href:null,hrefTooLong:href.length>2048,filingsButton:{present:b instanceof HTMLButtonElement,disabled:b?.disabled??null,visible:b?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})??false},filingsHeadingPresent:document.querySelector('#managed-filings-heading')!==null,followupsHeadingPresent:document.querySelector('#managed-research-followup-heading')!==null,filingsRequests:"+C+".filings};})())"));
+            if(snapshot.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>4096) snapshot="{\"diagnosticTooLarge\":true}";
+            android.util.Log.e("FilingAssessmentNavigation",snapshot);
+        } catch (Exception | AssertionError diagnostic) {
+            original.addSuppressed(diagnostic);
+        }
     }
     private void refuseOverflowAndCancel(Original original) throws Exception {
         String overflow="x".repeat(1900);replace(ReportRevisitTouch.Field.FOLLOWUP_RESULT,overflow);
