@@ -290,7 +290,6 @@ export class ScreenComparisonFollowupReview {
       const prepared = prepareOwnedScreenComparisonFollowup(
         this.workspace.screenComparisonFollowup,
         this.state.capture,
-        this.state.side,
         this.state,
         current,
       );

@@ -15,8 +15,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-it("retains the captured source and authored form through real initial Follow-ups load publications", async () => {
-  vi.useFakeTimers();
+async function createControllerFixture() {
   const fixture = await createFixture("screen-comparison-followup");
   const w = new ManagedWorkspace(fixture.api, fixture.session, undefined, {
     researchCoverage: fixture.researchCoverage,
@@ -40,6 +39,12 @@ it("retains the captured source and authored form through real initial Follow-up
     review.dispose();
     w.sessionOwner.dispose();
   };
+  return { fixture, w, review };
+}
+
+type ControllerFixture = Awaited<ReturnType<typeof createControllerFixture>>;
+
+async function settleComparisonPair({ fixture, w }: ControllerFixture) {
   await w.coordinator.load();
   await w.refreshCatalog();
   w.setView("watchlist");
@@ -67,14 +72,9 @@ it("retains the captured source and authored form through real initial Follow-up
     "right",
     rows.find((r) => r.member.listing.listingId === "listing-one")!,
   );
-  review.setOpen(true);
-  review.capture();
-  review.edit("side", "right");
-  review.edit("question", comparisonFollowupQuestion);
-  review.edit("dueOn", comparisonFollowupDueOn);
-  const captured = review.getSnapshot().capture;
-  expect(captured).not.toBeNull();
-  expect(review.canLoad()).toBe(true);
+}
+
+function collectInitialLoadTrace({ fixture, w, review }: ControllerFixture) {
   const trace: unknown[] = [];
   const observe = () => {
     const s = review.getSnapshot(),
@@ -102,6 +102,26 @@ it("retains the captured source and authored form through real initial Follow-up
   };
   const release = review.subscribe(observe);
   observe();
+  return { trace, observe, release };
+}
+
+it("retains the captured source and authored form through real initial Follow-ups load publications", async () => {
+  vi.useFakeTimers();
+  const { fixture, w, review } = await createControllerFixture();
+  await settleComparisonPair({ fixture, w, review });
+  review.setOpen(true);
+  review.capture();
+  review.edit("side", "right");
+  review.edit("question", comparisonFollowupQuestion);
+  review.edit("dueOn", comparisonFollowupDueOn);
+  const captured = review.getSnapshot().capture;
+  expect(captured).not.toBeNull();
+  expect(review.canLoad()).toBe(true);
+  const { trace, observe, release } = collectInitialLoadTrace({
+    fixture,
+    w,
+    review,
+  });
   try {
     await review.load();
     observe();

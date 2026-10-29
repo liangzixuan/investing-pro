@@ -6,14 +6,17 @@ import {
   type ScreenComparisonFollowupPreparation,
 } from "./managed-screen-comparison-followup";
 
+type AuthoredComparisonChoice = ScreenComparisonFollowupChoice & {
+  readonly side: string;
+};
+
 function preparation(
   context: ManagedScreenComparisonFollowupContext,
   capture: ScreenComparisonFollowupCapture,
-  side: string,
-  choice: ScreenComparisonFollowupChoice,
+  choice: AuthoredComparisonChoice,
   current: () => boolean,
 ) {
-  const result = context.capturePort(capture, side);
+  const result = context.capturePort(capture, choice.side);
   if (!result.port) return { preview: null, reason: result.reason };
   return prepareScreenComparisonFollowup(result.port, choice, current);
 }
@@ -29,11 +32,10 @@ function currentPreparation(
 export function prepareOwnedScreenComparisonFollowup(
   context: ManagedScreenComparisonFollowupContext,
   capture: ScreenComparisonFollowupCapture,
-  side: string,
-  choice: ScreenComparisonFollowupChoice,
+  choice: AuthoredComparisonChoice,
   current: () => boolean,
 ) {
-  const prepared = preparation(context, capture, side, choice, current);
+  const prepared = preparation(context, capture, choice, current);
   if (currentPreparation(prepared, current)) return prepared;
   prepared.preview?.cancel();
   return null;
