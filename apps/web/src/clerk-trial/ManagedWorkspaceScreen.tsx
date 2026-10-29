@@ -1,3 +1,4 @@
+import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { managedResearchDraftProps } from "./managed-research-draft-props";
 import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
@@ -93,6 +94,7 @@ import {
 
 interface ManagedFileDeliveries {
   financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+  screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
@@ -243,6 +245,7 @@ function SessionWorkspace(props: SessionProps) {
 function definedSessionWorkspacePorts(initial: SessionProps) {
   const ports = {
     financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
+    screenComparisonReportDelivery: initial.screenComparisonReportDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     portfolioReviewReportDelivery: initial.portfolioReviewReportDelivery,
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
@@ -472,6 +475,7 @@ export function ManagedWorkspaceScreen({
   followupsReviewReportDelivery,
   valuationDraftFileDelivery,
   financialScreenRecipeDelivery,
+  screenComparisonReportDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -819,6 +823,7 @@ export function ManagedWorkspaceScreen({
     () => setView("watchlist"),
     financialScreenRecipeDelivery,
     recipesRouteActive,
+    screenComparisonReportDelivery,
   );
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();

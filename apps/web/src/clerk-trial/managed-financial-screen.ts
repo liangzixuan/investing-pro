@@ -1,3 +1,5 @@
+import { prepareScreenComparisonReport } from "./screen-comparison-report";
+import type { ScreenComparisonReportCapture } from "./screen-comparison-report-controller";
 import {
   parseManagedCatalogResolveResponse,
   type ManagedEodIdentity,
@@ -166,6 +168,7 @@ function validListingIds(value: unknown) {
 /** One explicit, finite annual cohort run. No saved draft or source cache is owned here. */
 export class ManagedFinancialScreen {
   private state = empty();
+  private comparisonReportRevision = Symbol();
   private readonly listeners = new Set<() => void>();
   private operation: Operation | null = null;
   private reader: ManagedAnnualReport | null = null;
@@ -214,6 +217,12 @@ export class ManagedFinancialScreen {
     return () => this.listeners.delete(listener);
   };
   private update(next: Partial<ManagedFinancialScreenState>) {
+    const reportInputs = { ...next };
+    delete reportInputs.shortlist;
+    delete reportInputs.message;
+    delete reportInputs.error;
+    if (Object.keys(reportInputs).length)
+      this.comparisonReportRevision = Symbol();
     this.state = Object.freeze({ ...this.state, ...next });
     for (const listener of this.listeners) listener();
   }
@@ -254,11 +263,14 @@ export class ManagedFinancialScreen {
     canRead: boolean,
   ) {
     if (this.retired) return;
+    let catalogReset = false;
     if (digest !== this.state.catalogSnapshotSha256) {
       this.cancel();
       if (this.retired) return;
       this.blocked = false;
+      this.comparisonReportRevision = Symbol();
       this.state = empty();
+      catalogReset = true;
     }
     if ((!active || !canRead) && this.operation) this.cancel();
     if (this.retired) return;
@@ -269,6 +281,7 @@ export class ManagedFinancialScreen {
         this.state.comparison.left !== null ||
         this.state.comparison.right !== null);
     if (
+      catalogReset ||
       accessRetired ||
       this.state.active !== active ||
       this.state.canRead !== (canRead && active && !!digest && !this.blocked) ||
@@ -559,6 +572,7 @@ export class ManagedFinancialScreen {
       message:
         "Screening cancelled. Captured results and staged choices are retained.",
     });
+    this.comparisonReportRevision = Symbol();
     this.state = cancelled;
     operation.controller.abort();
     reader?.cancel();
@@ -781,6 +795,64 @@ export class ManagedFinancialScreen {
       return;
     this.update({
       comparison: Object.freeze({ ...captured.comparison, [side]: row }),
+    });
+  }
+  private comparisonReportRow(
+    run: ManagedFinancialScreenRun,
+    row: ManagedFinancialScreenResultRow,
+  ) {
+    const response = row.report?.response;
+    if (!response) return false;
+    return this.canAdmitReport({ run, row, response });
+  }
+  private comparisonReportPair(state: ManagedFinancialScreenState) {
+    const run = state.run;
+    if (!run) return null;
+    if (run.status === "running") return null;
+    const { left, right } = state.comparison;
+    if (!left || !right) return null;
+    if (left === right) return null;
+    if (!this.comparisonReportRow(run, left)) return null;
+    if (!this.comparisonReportRow(run, right)) return null;
+    return { run, left, right };
+  }
+  private comparisonReportCurrent(
+    revision: symbol,
+    pair: {
+      run: ManagedFinancialScreenRun;
+      left: ManagedFinancialScreenResultRow;
+      right: ManagedFinancialScreenResultRow;
+    },
+  ) {
+    if (this.comparisonReportRevision !== revision) return false;
+    if (!this.accepts(this.state)) return false;
+    if (this.state.run !== pair.run) return false;
+    if (this.state.comparison.left !== pair.left) return false;
+    if (this.state.comparison.right !== pair.right) return false;
+    return (
+      this.comparisonReportRow(pair.run, pair.left) &&
+      this.comparisonReportRow(pair.run, pair.right)
+    );
+  }
+  captureComparisonReport(
+    preparedAt: string,
+  ): ScreenComparisonReportCapture | null {
+    const state = this.state;
+    if (!this.accepts(state)) return null;
+    if (state.pending || state.criteriaStaged) return null;
+    const pair = this.comparisonReportPair(state);
+    if (!pair) return null;
+    const revision = this.comparisonReportRevision;
+    const report = prepareScreenComparisonReport({
+      preparedAt,
+      catalogSnapshotSha256: state.catalogSnapshotSha256!,
+      ...pair,
+    });
+    if (!report) return null;
+    if (revision !== this.comparisonReportRevision) return null;
+    return Object.freeze({
+      report,
+      current: () => this.comparisonReportCurrent(revision, pair),
     });
   }
   admitReport(

@@ -1,3 +1,4 @@
+import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
 import { ManagedScreenShortlistWatchlist } from "./ManagedScreenShortlistWatchlist";
@@ -7,6 +8,7 @@ import type { ManagedWorkspace } from "./managed-workspace";
 interface Props {
   readonly workspace: ManagedWorkspace;
   readonly recipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+  readonly comparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   readonly recipesRouteActive: () => boolean;
   readonly navigationPending: boolean;
   readonly onOpenReport: (
@@ -24,6 +26,9 @@ export function ManagedFinancialDiscovery(props: Props) {
         model={props.workspace.financialScreen}
         onOpenReport={props.onOpenReport}
         recipesRouteActive={props.recipesRouteActive}
+        {...(props.comparisonReportDelivery
+          ? { comparisonReportDelivery: props.comparisonReportDelivery }
+          : {})}
         {...(props.recipeDelivery
           ? { recipeDelivery: props.recipeDelivery }
           : {})}
@@ -44,11 +49,13 @@ export function managedFinancialDiscoveryProps(
   onReviewWatchlist: () => void,
   recipeDelivery: ManagedFinancialScreenRecipeDeliveryAdapter | undefined,
   recipesRouteActive: () => boolean,
+  comparisonReportDelivery: ScreenComparisonReportDeliveryAdapter | undefined,
 ): Props {
   return {
     workspace,
     navigationPending,
     ...(recipeDelivery ? { recipeDelivery } : {}),
+    ...(comparisonReportDelivery ? { comparisonReportDelivery } : {}),
     recipesRouteActive,
     onReviewWatchlist,
     onOpenReport: (capture, opener) =>

@@ -3,6 +3,10 @@ import {
   type InvestmentFollowupsReviewReportPlugin,
 } from "./followups-review-report-delivery";
 import {
+  createNativeScreenComparisonReportAdapter,
+  type InvestmentScreenComparisonReportPlugin,
+} from "./screen-comparison-report-delivery";
+import {
   createNativeFinancialScreenRecipeAdapter,
   type InvestmentFinancialScreenRecipePlugin,
 } from "./financial-screen-recipe-delivery";
@@ -197,6 +201,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const screenComparisonReportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeScreenComparisonReportAdapter(
+            registerPlugin<InvestmentScreenComparisonReportPlugin>(
+              "InvestmentScreenComparisonReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const signInMessage =
     state.message ||
     (state.auth.status === "loading"
@@ -252,6 +267,9 @@ function NativeSession({
                 : {})}
               {...(financialScreenRecipeDelivery
                 ? { financialScreenRecipeDelivery }
+                : {})}
+              {...(screenComparisonReportDelivery
+                ? { screenComparisonReportDelivery }
                 : {})}
               {...(reportDelivery ? { reportDelivery } : {})}
             />

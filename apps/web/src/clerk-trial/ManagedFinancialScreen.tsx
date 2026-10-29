@@ -1,3 +1,5 @@
+import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
+import { ManagedFinancialScreenComparisonReport } from "./ManagedFinancialScreenComparisonReport";
 import { useId, useState, useSyncExternalStore } from "react";
 import {
   MANAGED_FINANCIAL_SCREEN_FIELDS,
@@ -40,10 +42,12 @@ export function ManagedFinancialScreen({
   model,
   onOpenReport,
   recipeDelivery,
+  comparisonReportDelivery,
   recipesRouteActive,
 }: {
   model: ScreenModel;
   recipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+  comparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   recipesRouteActive?: () => boolean;
   onOpenReport: (
     capture: ManagedFinancialScreenReportCapture,
@@ -526,6 +530,14 @@ export function ManagedFinancialScreen({
         model={model}
         state={state}
         onOpenReport={onOpenReport}
+      />
+      <ManagedFinancialScreenComparisonReport
+        model={model}
+        screen={state}
+        {...(comparisonReportDelivery
+          ? { delivery: comparisonReportDelivery }
+          : {})}
+        {...(recipesRouteActive ? { routeActive: recipesRouteActive } : {})}
       />
     </section>
   );

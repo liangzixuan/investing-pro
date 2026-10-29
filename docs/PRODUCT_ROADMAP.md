@@ -29,14 +29,20 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 28 Android delivery
 
-The next M3/M4 outcome connects an official [CPI feed headline](MANAGED_CPI_HEADLINES.md)
-to one complete cited authored check for an independently chosen exact company.
-Explicit loading, original links, raw feed clocks or unknowns and separate
-retrieval time precede full question/date/identity review. Once-only draft
-creation uses existing Follow-ups Review, Research/Back and separate Save/fresh
-Load. CPI coverage remains distinct from scheduled events, all-BLS news and
-company relevance. Source qualification is complete; implementation and release
-acceptance remain in progress.
+The next M2/M4 outcome keeps a complete [two-company screening comparison](MANAGED_SCREEN_COMPARISON.md#capture-a-private-reading-report)
+as a private passive HTML reading copy. Capture two current loaded results,
+inspect all three statement groups with each company's independent fiscal periods
+and clocks, then save separately. Research/Back and shortlist-to-Watchlist Review
+keep their current ownership. This extends a complete comparison-to-research
+workflow using existing sources; it adds no financial calculation or API route.
+Implementation and acceptance remain in progress.
+
+Android 1.55 and the managed API deliver the [CPI headline check](MANAGED_CPI_HEADLINES.md)
+from `0d72521c5631540c626b8cd63920f478624673de`. Original required PR/main checks,
+all 100 synthetic native cases, API source/deployment/access checks and the
+guarded existing-signer build plus all four signed-APK checks passed. Original
+source clocks, unknowns and an independently authored UTC due date stay separate.
+Installation remains an owner action. The website and prior releases are preserved.
 
 Android 1.54 delivers the [dated valuation check](MANAGED_VALUATION_WORKBENCH.md#keep-a-dated-valuation-check)
 from `32fc478dfc1c82c0decd730c1c0c52565c518008`. Original required PR/main checks,

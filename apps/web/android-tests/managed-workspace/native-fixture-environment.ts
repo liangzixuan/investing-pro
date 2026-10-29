@@ -1,3 +1,4 @@
+import { createNativeScreenComparisonReportFixture } from "./native-screen-comparison-report-fixture";
 import { createNativeFollowupsReviewReportFixture } from "./native-followups-review-report-fixture";
 import { Capacitor } from "@capacitor/core";
 import { createFixture } from "./fixture";
@@ -56,6 +57,7 @@ const allowedScenarios = [
   "price-comparison-note",
   "price-studies",
   "screen-comparison",
+  "screen-comparison-report",
   "financial-screen",
   "valuation-price",
   "company-filings",
@@ -123,4 +125,9 @@ export const nativeValuationDraftFile =
 export const nativeFollowupsReviewReport =
   scenario === "followups-review-report"
     ? createNativeFollowupsReviewReportFixture()
+    : null;
+
+export const nativeScreenComparisonReport =
+  scenario === "screen-comparison-report"
+    ? createNativeScreenComparisonReportFixture()
     : null;

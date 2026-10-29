@@ -453,6 +453,21 @@ jobs:
           ))
           if len(required) != 100:
               raise SystemExit("The CPI headline question journey must extend all 99 existing native tests.")
+          required.update({
+              ("local.investment.personal.ScreenComparisonReportHtmlPolicyInstrumentedTest", "admitsTheFixedHtmlMetadataAndCompleteEnvelope"),
+              ("local.investment.personal.ScreenComparisonReportHtmlPolicyInstrumentedTest", "refusesUnknownOptionsCrossFormatPurposeAndUnsafeFilename"),
+              ("local.investment.personal.ScreenComparisonReportHtmlPolicyInstrumentedTest", "reusesTheCompleteUtcCalendarAndExactChosenFilename"),
+              ("local.investment.personal.ScreenComparisonReportHtmlPolicyInstrumentedTest", "refusesChangedHeadCspStyleIdentityOrIncompleteEnvelope"),
+              ("local.investment.personal.ScreenComparisonReportHtmlPolicyInstrumentedTest", "inheritsTheEightMibStrictUtf8WriterBoundary"),
+          })
+          if len(required) != 105:
+              raise SystemExit("The comparison HTML policy must extend all 100 existing native tests with five strict policy cases.")
+          required.add((
+              "local.investment.personal.ManagedScreenComparisonReportTest",
+              "completeComparisonReportUsesChosenHtmlAndRetiresAcrossResearchBackWithoutDraftWrites",
+          ))
+          if len(required) != 106:
+              raise SystemExit("The complete comparison HTML journey must extend all 105 existing and new policy tests.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
