@@ -1,3 +1,7 @@
+import {
+  createScreenComparisonReportNativeFixture,
+  type ScreenComparisonReportNativeMetadata,
+} from "./screen-comparison-report-fixture";
 import { createCpiHeadlineFollowupNativeFixture } from "./cpi-headline-followup-fixture";
 import { createValuationScenarioFollowupNativeFixture } from "./valuation-scenario-followup-fixture";
 import {
@@ -2156,6 +2160,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly financialScreen?: NativeFinancialScreenMetadata;
   readonly valuationPrice?: NativeValuationPriceMetadata;
   readonly screenComparison?: NativeScreenComparisonMetadata;
+  readonly screenComparisonReport?: ScreenComparisonReportNativeMetadata;
   readonly savedValuation?: SavedValuationNativeControls;
 };
 
@@ -2329,6 +2334,11 @@ const nativeFixtureFactories = new Map<
   string,
   () => Promise<ManagedNativeFixture>
 >([
+  [
+    "screen-comparison-report",
+    async () =>
+      createScreenComparisonReportNativeFixture(await createSharedFixture()),
+  ],
   [
     "cpi-headline-followup",
     async () =>
@@ -2508,6 +2518,7 @@ export async function createFixture(
     | "interim-statements"
     | "price-studies"
     | "screen-comparison"
+    | "screen-comparison-report"
     | "financial-screen"
     | "valuation-price"
     | "saved-valuation"

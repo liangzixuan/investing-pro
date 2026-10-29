@@ -3035,6 +3035,7 @@ describe("managed workspace screen", () => {
         workspace,
         navigation,
         financialScreenRecipeDelivery: delivery,
+        screenComparisonReportDelivery: delivery,
       }),
     );
     const discovery = nodes.find(
@@ -3043,6 +3044,7 @@ describe("managed workspace screen", () => {
       React.ComponentProps<typeof ManagedFinancialDiscovery>
     >;
     expect(discovery.props.recipeDelivery).toBe(delivery);
+    expect(discovery.props.comparisonReportDelivery).toBe(delivery);
     const current = discovery.props.recipesRouteActive;
     const draft = workspace.coordinator.getSnapshot().draft;
     expect(current()).toBe(true);

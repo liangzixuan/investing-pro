@@ -1,6 +1,6 @@
+import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { managedResearchDraftProps } from "./managed-research-draft-props";
-import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import {
   managedResearchCompanyNavigationProps,
@@ -62,7 +62,7 @@ import { ManagedPortfolioEntry } from "./ManagedPortfolioEntry";
 import { managedPortfolioEntryProps } from "./managed-portfolio-entry-props";
 import {
   ManagedFinancialDiscovery,
-  managedFinancialDiscoveryProps,
+  useManagedFinancialDiscovery,
 } from "./ManagedFinancialDiscovery";
 import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import { managedFollowupsEntryProps } from "./managed-followups-entry-props";
@@ -93,6 +93,7 @@ import {
 
 interface ManagedFileDeliveries {
   financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+  screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
@@ -243,6 +244,7 @@ function SessionWorkspace(props: SessionProps) {
 function definedSessionWorkspacePorts(initial: SessionProps) {
   const ports = {
     financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
+    screenComparisonReportDelivery: initial.screenComparisonReportDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     portfolioReviewReportDelivery: initial.portfolioReviewReportDelivery,
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
@@ -472,6 +474,7 @@ export function ManagedWorkspaceScreen({
   followupsReviewReportDelivery,
   valuationDraftFileDelivery,
   financialScreenRecipeDelivery,
+  screenComparisonReportDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -811,15 +814,14 @@ export function ManagedWorkspaceScreen({
   };
   const retired = sessionState.phase !== "active";
   const navigationPending = navigation?.pending ?? false;
-  const recipesRouteActive = useManagedScreenRecipeRoute(workspace, navigation);
-  const financialDiscovery = managedFinancialDiscoveryProps(
+  const financialDiscovery = useManagedFinancialDiscovery({
     workspace,
-    navigationPending,
+    navigation,
     openResearch,
-    () => setView("watchlist"),
-    financialScreenRecipeDelivery,
-    recipesRouteActive,
-  );
+    onReviewWatchlist: () => setView("watchlist"),
+    recipeDelivery: financialScreenRecipeDelivery,
+    comparisonReportDelivery: screenComparisonReportDelivery,
+  });
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();
   const isMarketsCurrent = () => {

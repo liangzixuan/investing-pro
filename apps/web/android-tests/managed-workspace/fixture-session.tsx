@@ -27,6 +27,7 @@ import {
   nativeExport,
   nativePortfolioReviewReport,
   nativeFollowupsReviewReport,
+  nativeScreenComparisonReport,
   nativeDraftFile,
   nativeValuationDraftFile,
   nativeScreenRecipe,
@@ -35,6 +36,7 @@ import { nativeFixtureRouterPorts } from "./native-fixture-router-ports";
 import { FixtureDraftDiagnostics } from "./fixture-draft-diagnostics";
 import { ReportRevisitFixtureControls } from "./report-revisit-fixture-controls";
 import { PortfolioReviewReportFixtureControls } from "./portfolio-review-report-fixture-controls";
+import { ScreenComparisonReportFixtureControls } from "./screen-comparison-report-fixture-controls";
 import { FollowupsReviewReportFixtureControls } from "./followups-review-report-fixture-controls";
 import { PortfolioFixtureControls } from "./portfolio-fixture-controls";
 import { FollowupsFixtureControls } from "./followups-fixture-controls";
@@ -167,6 +169,9 @@ function NativeDeliveryControls({
 }: Pick<MountedProps, "workspace">) {
   return (
     <>
+      {workspace && nativeScreenComparisonReport && (
+        <ScreenComparisonReportFixtureControls workspace={workspace} />
+      )}
       {workspace && nativePortfolioReviewReport && (
         <PortfolioReviewReportFixtureControls workspace={workspace} />
       )}

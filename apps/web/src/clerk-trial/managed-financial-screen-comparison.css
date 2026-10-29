@@ -45,6 +45,24 @@
   outline-offset: 3px;
 }
 
+.managed-frame
+  #managed-screen-comparison-report-captured
+  :is(h2, h3, h4, dt, dd, li, summary) {
+  overflow-wrap: anywhere;
+}
+
+.managed-frame #managed-screen-comparison-report-captured dd {
+  min-width: 0;
+}
+
+.managed-frame #managed-screen-comparison-report-captured pre {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1100px) {
   .managed-frame .managed-screen-comparison-pair {
     grid-template-columns: minmax(0, 1fr);

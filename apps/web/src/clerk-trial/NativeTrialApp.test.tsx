@@ -1,3 +1,4 @@
+import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
@@ -128,6 +129,11 @@ async function mount(
   const exportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   const reportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   const draftFilePlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
+  const screenComparisonReportPlugin = {
+    choose: vi.fn(),
+    write: vi.fn(),
+    cancel: vi.fn(),
+  };
   const financialScreenRecipePlugin = {
     choose: vi.fn(),
     write: vi.fn(),
@@ -170,6 +176,7 @@ async function mount(
     ["InvestmentFollowupsDraftFile", followupsDraftFilePlugin],
     ["InvestmentValuationDraftFile", valuationDraftFilePlugin],
     ["InvestmentFinancialScreenRecipe", financialScreenRecipePlugin],
+    ["InvestmentScreenComparisonReport", screenComparisonReportPlugin],
   ]);
   hooks.register.mockImplementation((name: string) => plugins.get(name));
   const loading = NativeTrialApp({ config });
@@ -207,6 +214,7 @@ async function mount(
     followupsDraftFilePlugin,
     valuationDraftFilePlugin,
     financialScreenRecipePlugin,
+    screenComparisonReportPlugin,
     emit: (value: NativeAuthState) => emit(value),
   };
 }
@@ -225,6 +233,7 @@ function findScreen(node: ReactNode):
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+      screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     }>
   | undefined {
@@ -251,6 +260,7 @@ function findScreen(node: ReactNode):
         followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
         valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
         financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+        screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
         reportDelivery?: CompanyReportDeliveryAdapter;
       }>;
     }
@@ -307,6 +317,7 @@ describe("native shared workspace composition", () => {
         followupsDraftFilePlugin,
         valuationDraftFilePlugin,
         financialScreenRecipePlugin,
+        screenComparisonReportPlugin,
       } = await mount(config);
       const screen = findScreen(frame());
       expect(screen?.type).toBe(screenType);
@@ -331,6 +342,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentFollowupsDraftFile"],
               ["InvestmentValuationDraftFile"],
               ["InvestmentFinancialScreenRecipe"],
+              ["InvestmentScreenComparisonReport"],
             ]
           : [["InvestmentAuth"]],
       );
@@ -406,6 +418,14 @@ describe("native shared workspace composition", () => {
       );
       for (const method of Object.values(financialScreenRecipePlugin))
         expect(method).not.toHaveBeenCalled();
+      expect(typeof screen?.props.screenComparisonReportDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.screenComparisonReportDelivery).toBe(
+        screen?.props.screenComparisonReportDelivery,
+      );
+      for (const method of Object.values(screenComparisonReportPlugin))
+        expect(method).not.toHaveBeenCalled();
       expect(plugin.addListener).toHaveBeenCalledTimes(1);
       expect(plugin.getState).toHaveBeenCalledTimes(1);
       const html = renderToStaticMarkup(frame());
@@ -435,6 +455,9 @@ describe("native shared workspace composition", () => {
     emit({ ...signedIn, generation: 2 });
     const current = findScreen(frame())!;
     expect(current.key).toBe("2");
+    expect(current.props.screenComparisonReportDelivery).toBe(
+      previous.props.screenComparisonReportDelivery,
+    );
     expect(current.props.session.userId).toBe(previous.props.session.userId);
     expect(current.props.session.sessionId).toBe(
       previous.props.session.sessionId,

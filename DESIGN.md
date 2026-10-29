@@ -11,6 +11,20 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## A captured screening comparison
+
+Place **Capture comparison report** after the existing two-company comparison.
+Keep the full capture beside its separate HTML Save, Close and Cancel actions.
+Focus the captured heading after preparation and return focus to Capture on Close.
+Use the same complete statement view in the preview and passive file, with all
+three groups, exact identities, applied criteria and original independent clocks.
+Keep each company's fiscal periods separate and show unavailable values plainly.
+
+Wrap long identities and source references, retain labelled scrollable tables,
+visible focus and 44px controls, and stack sections on narrow screens. Capture
+does not edit a draft. Research/Back, shortlist Review and each Save stay explicit.
+Explain a whole-file refusal next to the report controls without clipping data.
+
 ## A CPI headline and an authored check
 
 Use a distinct Published CPI headlines panel with explicit Load, Refresh and

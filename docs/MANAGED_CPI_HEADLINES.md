@@ -1,9 +1,9 @@
 # CPI release headlines and a dated research check
 
-This M3/M4 candidate connects one official BLS CPI headline feed to an authored
-company question. Source implementation and automated acceptance are in progress.
-The new API route, website and Android client have not been released. Current
-delivered capabilities remain in [Current work](CURRENT_WORK.md).
+This M3/M4 workflow connects one official BLS CPI headline feed to an authored
+company question. Source, API and Android 1.55 delivery are accepted from
+`0d72521c5631540c626b8cd63920f478624673de`. The managed website remains at its prior
+release. [Current work](CURRENT_WORK.md) records verification and its limits.
 
 ## Read and choose
 
@@ -63,10 +63,10 @@ RSS Feeds. The documented URL returns UTF-8 Atom XML with an Atom namespace;
 the `.rss` suffix does not make it RSS 2.0. The separate Latest Numbers feed is
 a changing indicator summary and is not used as a release-headline list.
 
-The source candidate uses one credential-free GET to that exact feed, behind an
+The source adapter uses one credential-free GET to that exact feed, behind an
 authenticated, body-free and query-free `/v1/managed/cpi-headlines` route. It
 accepts no caller URL, redirect or hidden retry. The existing ten-second total
-operation lifetime starts at function entry and includes authentication. Proposed
+operation lifetime starts at function entry and includes authentication. The
 admission bounds are 256 KiB of source XML, 128 input entries and 64 KiB for the
 response. These are application limits, not provider guarantees.
 

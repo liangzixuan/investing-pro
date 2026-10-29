@@ -1,3 +1,6 @@
+import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
+import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
+import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
 import { ManagedScreenShortlistWatchlist } from "./ManagedScreenShortlistWatchlist";
@@ -7,6 +10,7 @@ import type { ManagedWorkspace } from "./managed-workspace";
 interface Props {
   readonly workspace: ManagedWorkspace;
   readonly recipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
+  readonly comparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   readonly recipesRouteActive: () => boolean;
   readonly navigationPending: boolean;
   readonly onOpenReport: (
@@ -24,6 +28,9 @@ export function ManagedFinancialDiscovery(props: Props) {
         model={props.workspace.financialScreen}
         onOpenReport={props.onOpenReport}
         recipesRouteActive={props.recipesRouteActive}
+        {...(props.comparisonReportDelivery
+          ? { comparisonReportDelivery: props.comparisonReportDelivery }
+          : {})}
         {...(props.recipeDelivery
           ? { recipeDelivery: props.recipeDelivery }
           : {})}
@@ -37,18 +44,34 @@ export function ManagedFinancialDiscovery(props: Props) {
   );
 }
 
-export function managedFinancialDiscoveryProps(
-  workspace: ManagedWorkspace,
-  navigationPending: boolean,
-  openResearch: (opener: HTMLButtonElement, action: () => void) => void,
-  onReviewWatchlist: () => void,
-  recipeDelivery: ManagedFinancialScreenRecipeDeliveryAdapter | undefined,
-  recipesRouteActive: () => boolean,
-): Props {
+interface DiscoveryOptions {
+  readonly workspace: ManagedWorkspace;
+  readonly navigation: ManagedCompanyNavigation | undefined;
+  readonly openResearch: (
+    opener: HTMLButtonElement,
+    action: () => void,
+  ) => void;
+  readonly onReviewWatchlist: () => void;
+  readonly recipeDelivery:
+    ManagedFinancialScreenRecipeDeliveryAdapter | undefined;
+  readonly comparisonReportDelivery:
+    ScreenComparisonReportDeliveryAdapter | undefined;
+}
+
+export function useManagedFinancialDiscovery({
+  workspace,
+  navigation,
+  openResearch,
+  onReviewWatchlist,
+  recipeDelivery,
+  comparisonReportDelivery,
+}: DiscoveryOptions): Props {
+  const recipesRouteActive = useManagedScreenRecipeRoute(workspace, navigation);
   return {
     workspace,
-    navigationPending,
+    navigationPending: navigation?.pending ?? false,
     ...(recipeDelivery ? { recipeDelivery } : {}),
+    ...(comparisonReportDelivery ? { comparisonReportDelivery } : {}),
     recipesRouteActive,
     onReviewWatchlist,
     onOpenReport: (capture, opener) =>

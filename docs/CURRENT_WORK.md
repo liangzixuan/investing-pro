@@ -5,18 +5,36 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: a CPI headline into an authored company check
+## Selected next: keep a complete screening comparison
 
-The [CPI headline workflow](MANAGED_CPI_HEADLINES.md) will connect one fixed
-official BLS CPI feed to a complete cited question for an independently chosen
-exact Watchlist company. Keep raw feed published/updated clocks, unknowns,
-attribution and original links separate from retrieval and the authored UTC due
-date. Preview once, create an independent Follow-ups draft, then use existing
-Review, company Research/Back and separate Save/fresh Load.
+The [screening comparison report](MANAGED_SCREEN_COMPARISON.md#capture-a-private-reading-report)
+will capture two independently dated Annual statement sets for a private passive
+HTML reading copy. Choose the exact loaded companies, inspect the whole capture,
+then save the report separately. Criteria, run status, original source clocks,
+full identities and all three statement groups stay attached. Research, Back,
+shortlist review and each draft Save keep their existing boundaries.
 
-The official source format and bounded metadata reuse are qualified. Implementation
-and automated acceptance are in progress. No new source route, website or APK
-release is claimed. This is CPI feed coverage, not all BLS or company news.
+Implementation and automated acceptance are in progress. This client workflow
+adds no source request, financial formula, online resource or API route. No new
+source merge, APK or website release is claimed for the comparison report.
+
+## Accepted and delivered: a CPI headline into an authored company check
+
+The [CPI headline workflow](MANAGED_CPI_HEADLINES.md) connects one fixed official
+BLS feed to a complete cited question for an independently chosen exact Watchlist
+company. It retains the original title, link, source ID and raw feed clocks or
+unknowns. Retrieval and the authored UTC due date remain separate. Preview,
+once-only draft creation, Review, company Research/Back and separate Save/fresh
+Load preserve the full citation. Feed clocks do not verify an embargo time.
+
+[PR 252](https://github.com/liangzixuan/investing-pro/pull/252) merged at
+`0d72521c5631540c626b8cd63920f478624673de`. All original required PR and actual-main
+checks passed, including all 100 synthetic native cases. The managed API is
+active from that revision after exact source, deployment and bounded access
+checks. Android 1.55.0/code56 is provided locally after one guarded existing-signer
+build and all four signed-APK checks passed. Delivered bytes match the guarded
+APK. Installation, physical-phone, authenticated provider and owner-record
+acceptance are not claimed. The website and prior releases are preserved.
 
 ## Accepted and delivered: keep a dated valuation check
 
