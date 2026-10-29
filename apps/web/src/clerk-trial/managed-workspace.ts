@@ -2038,7 +2038,7 @@ export class ManagedWorkspace {
     if (
       !active() ||
       this.navigationBlocked ||
-      (this.state.view !== "markets" && this.state.view !== "discover") ||
+      !this.isDatedFollowupReviewOrigin() ||
       this.state.research ||
       this.state.companyRoute ||
       !draft
@@ -3533,14 +3533,27 @@ export class ManagedWorkspace {
   }
   private screenComparisonFollowupRouteReady() {
     return (
-      !this.retired &&
-      !this.navigationBlocked &&
-      this.canNavigate() &&
-      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.screenComparisonFollowupAccessReady() &&
       this.state.view === "discover" &&
       this.state.snapshot !== null &&
       !this.state.research &&
       !this.state.companyRoute &&
+      this.sourceFollowupCatalogIdle()
+    );
+  }
+  private screenComparisonFollowupAccessReady() {
+    return (
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.canNavigate() &&
+      this.sessionOwner.getSnapshot().phase === "active"
+    );
+  }
+  private isDatedFollowupReviewOrigin() {
+    return this.state.view === "markets" || this.state.view === "discover";
+  }
+  private sourceFollowupCatalogIdle() {
+    return (
       !this.state.read &&
       !this.state.reviewing &&
       !this.state.review &&
@@ -3553,10 +3566,7 @@ export class ManagedWorkspace {
       this.canNavigate() &&
       this.sessionOwner.getSnapshot().phase === "active" &&
       this.state.snapshot !== null &&
-      !this.state.read &&
-      !this.state.reviewing &&
-      !this.state.review &&
-      !this.fileCatalogReviewRequired
+      this.sourceFollowupCatalogIdle()
     );
   }
   private calendarFollowupWatchlistReady(

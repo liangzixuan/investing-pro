@@ -2,6 +2,10 @@ import { useId, useLayoutEffect, useRef } from "react";
 import { ManagedScreenComparisonFollowupFields } from "./ManagedScreenComparisonFollowupFields";
 import { ManagedScreenComparisonFollowupPreview } from "./ManagedScreenComparisonFollowupPreview";
 import {
+  ManagedScreenComparisonFollowupReadiness,
+  ManagedScreenComparisonFollowupResult,
+} from "./ManagedScreenComparisonFollowupStatus";
+import {
   useScreenComparisonFollowupReview,
   type ScreenComparisonFollowupProps,
   type ScreenComparisonFollowupControls,
@@ -101,17 +105,7 @@ export function ManagedScreenComparisonFollowupView({
         )}
         <ManagedScreenComparisonFollowupFields controls={c} />
         <Load controls={c} />
-        {c.readinessReason && (
-          <p id="screen-comparison-followup-readiness" role="status">
-            {c.readinessReason}
-            {c.saved.draft !== null && (
-              <>
-                {" "}
-                Open Follow-ups to load the saved version or finish recovery.
-              </>
-            )}
-          </p>
-        )}
+        <ManagedScreenComparisonFollowupReadiness controls={c} />
         <div className="trial-actions">
           <button
             id="screen-comparison-followup-preview"
@@ -142,24 +136,7 @@ export function ManagedScreenComparisonFollowupView({
             Cancel preview
           </button>
         </div>
-        <p
-          id="screen-comparison-followup-status"
-          role="status"
-          aria-live="polite"
-        >
-          {c.state.message}
-        </p>
-        {c.state.created && (
-          <button
-            id="screen-comparison-followup-review"
-            type="button"
-            className="trial-secondary"
-            disabled={!c.canReview}
-            onClick={(event) => c.review(event.currentTarget)}
-          >
-            Review created follow-up
-          </button>
-        )}
+        <ManagedScreenComparisonFollowupResult controls={c} />
         <ManagedScreenComparisonFollowupPreview
           controls={c}
           heading={heading}

@@ -115,12 +115,9 @@ class ComparisonFollowupTransport {
     request: Parameters<ManagedApi["resolve"]>[0],
     signal: AbortSignal,
   ) {
-    if (
-      signal.aborted ||
-      this.researchResolve !== 0 ||
-      this.followups.getSnapshot().load !== 1
-    )
-      return this.refuse();
+    if (signal.aborted) return this.refuse();
+    if (this.researchResolve !== 0) return this.refuse();
+    if (this.followups.getSnapshot().load !== 1) return this.refuse();
     const { note: _note, ...listing } = annualComparisonMemberships.right;
     void _note;
     const parsed = parseManagedCatalogResolveResponse(

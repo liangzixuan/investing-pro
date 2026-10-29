@@ -14,6 +14,7 @@ import {
   ManagedScreenComparisonFollowupContext,
   type ScreenComparisonFollowupHost,
 } from "./managed-screen-comparison-followup-context";
+import type { PreparedScreenComparisonReport } from "./screen-comparison-report";
 import { prepareScreenComparisonFollowup } from "./managed-screen-comparison-followup";
 
 function signal() {
@@ -39,20 +40,21 @@ export function held<T>() {
 }
 export const followupId = (n: number) =>
   "00000000-0000-4000-8000-" + String(n).padStart(12, "0");
-export async function comparisonFollowupFixture(
-  loadFollowups = true,
-  entries: readonly ResearchFollowup[] = [],
-  screenOptions: Parameters<typeof createScreenComparisonReportFixture>[0] = {},
-) {
-  const screen = await createScreenComparisonReportFixture(screenOptions);
-  const report = screen.capture()!.report;
-  const session = {
+type ComparisonScreenFixture = Awaited<
+  ReturnType<typeof createScreenComparisonReportFixture>
+>;
+function comparisonSession() {
+  return {
     userId: "invented-comparison-user",
     sessionId: "invented-comparison-session",
     getToken: vi.fn(),
     signOut: vi.fn(),
   };
-  const payload: MainWatchlistPayload = {
+}
+function watchlistPayload(
+  report: PreparedScreenComparisonReport,
+): MainWatchlistPayload {
+  return {
     schemaVersion: 1,
     name: "My Watchlist",
     snapshotSha256: report.catalogSnapshotSha256,
@@ -61,6 +63,12 @@ export async function comparisonFollowupFixture(
       note: "Saved original note",
     })),
   };
+}
+async function watchlistFixture(
+  report: PreparedScreenComparisonReport,
+  session: ReturnType<typeof comparisonSession>,
+) {
+  const payload = watchlistPayload(report);
   const watchlistSave = vi.fn();
   const watchlist = new SaveCoordinator<MainWatchlistPayload>(
     {
@@ -94,6 +102,9 @@ export async function comparisonFollowupFixture(
         note: index === 0 ? "Keep this unsaved Watchlist note." : member.note,
       })),
   });
+  return { watchlist, watchlistSave };
+}
+function followupStore(entries: readonly ResearchFollowup[]) {
   let stored: { version: number; payload: ResearchFollowupsPayload } = {
     version: 0,
     payload: { schemaVersion: 1, entries },
@@ -113,8 +124,17 @@ export async function comparisonFollowupFixture(
       }),
     resolve: vi.fn<ManagedApi["resolve"]>(),
   };
+  return { api, stored: () => stored };
+}
+function followupsFixture(
+  report: PreparedScreenComparisonReport,
+  watchlist: SaveCoordinator<MainWatchlistPayload>,
+  session: ReturnType<typeof comparisonSession>,
+  entries: readonly ResearchFollowup[],
+) {
+  const store = followupStore(entries);
   let next = 100;
-  const followups = new ManagedResearchFollowups(api, session, {
+  const followups = new ManagedResearchFollowups(store.api, session, {
     getCreationContext: () => ({
       draft: watchlist.getSnapshot().draft,
       catalogSnapshotSha256: report.catalogSnapshotSha256,
@@ -122,7 +142,14 @@ export async function comparisonFollowupFixture(
     onRetire: vi.fn(),
     newEntryId: () => followupId(next++),
   });
-  if (loadFollowups) await followups.coordinator.load();
+  return { ...store, followups };
+}
+function comparisonHost(
+  screen: ComparisonScreenFixture,
+  report: PreparedScreenComparisonReport,
+  watchlist: SaveCoordinator<MainWatchlistPayload>,
+  followups: ManagedResearchFollowups,
+) {
   const updates = signal(),
     sessions = signal();
   const state = {
@@ -160,7 +187,9 @@ export async function comparisonFollowupFixture(
       catalog: state.catalog,
     }),
   };
-  const context = new ManagedScreenComparisonFollowupContext(host);
+  return { host, state, updates, sessions };
+}
+function comparisonActions(context: ManagedScreenComparisonFollowupContext) {
   const form = { current: true, source: true };
   const capture = () =>
     context.capture(new Date().toISOString(), () => form.source).capture!;
@@ -177,6 +206,32 @@ export async function comparisonFollowupFixture(
       { question, dueOn },
       () => form.current,
     );
+  return { form, capture, source, port, prepare };
+}
+export async function comparisonFollowupFixture(
+  loadFollowups = true,
+  entries: readonly ResearchFollowup[] = [],
+  screenOptions: Parameters<typeof createScreenComparisonReportFixture>[0] = {},
+) {
+  const screen = await createScreenComparisonReportFixture(screenOptions);
+  const report = screen.capture()!.report;
+  const session = comparisonSession();
+  const { watchlist, watchlistSave } = await watchlistFixture(report, session);
+  const { api, followups, stored } = followupsFixture(
+    report,
+    watchlist,
+    session,
+    entries,
+  );
+  if (loadFollowups) await followups.coordinator.load();
+  const { host, state, updates, sessions } = comparisonHost(
+    screen,
+    report,
+    watchlist,
+    followups,
+  );
+  const context = new ManagedScreenComparisonFollowupContext(host);
+  const actions = comparisonActions(context);
   return {
     screen,
     report,
@@ -189,12 +244,8 @@ export async function comparisonFollowupFixture(
     state,
     updates,
     sessions,
-    form,
-    source,
-    capture,
-    port,
-    prepare,
-    stored: () => stored,
+    ...actions,
+    stored,
   };
 }
 

@@ -814,17 +814,19 @@ export function ManagedWorkspaceScreen({
   };
   const retired = sessionState.phase !== "active";
   const navigationPending = navigation?.pending ?? false;
+  const calendarFollowupNavigation = marketsFollowupNavigation({
+    workspace,
+    setView,
+    setReview: setFollowupReview,
+    watchlistNavigation,
+    followupsNavigation,
+  });
   const financialDiscovery = useManagedFinancialDiscovery({
     workspace,
     navigation,
     openResearch,
     onReviewWatchlist: () => setView("watchlist"),
-    onReviewFollowup: (entry) => {
-      const review = workspace.reviewFollowup(entry, () =>
-        setView("followups"),
-      );
-      if (review) setFollowupReview(review);
-    },
+    onReviewFollowup: calendarFollowupNavigation.review,
     recipeDelivery: financialScreenRecipeDelivery,
     comparisonReportDelivery: screenComparisonReportDelivery,
   });
@@ -844,13 +846,6 @@ export function ManagedWorkspaceScreen({
     );
   };
   const marketsSectionNavigation = useManagedMarketsSections(isMarketsCurrent);
-  const calendarFollowupNavigation = marketsFollowupNavigation({
-    workspace,
-    setView,
-    setReview: setFollowupReview,
-    watchlistNavigation,
-    followupsNavigation,
-  });
   const currentCatalog =
     discovery.snapshot?.snapshotSha256 === saved.draft?.snapshotSha256;
   const canReviewWatchlistMember = (member: WatchlistMembership) => {

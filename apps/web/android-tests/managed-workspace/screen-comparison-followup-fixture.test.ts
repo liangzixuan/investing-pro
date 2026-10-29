@@ -132,18 +132,19 @@ function counts(
     resourceSave: 0,
   });
 }
+function diagnosticObject(value: unknown, message: string) {
+  if (typeof value !== "object") throw new Error(message);
+  if (value === null) throw new Error(message);
+  return value;
+}
 function diagnosticCanonical(text: string): string {
-  const value: unknown = JSON.parse(text);
-  if (typeof value !== "object" || value === null || !("followups" in value))
-    throw new Error("Missing invented Follow-ups diagnostic object");
-  const followups = value.followups;
-  if (
-    typeof followups !== "object" ||
-    followups === null ||
-    !("canonical" in followups) ||
-    typeof followups.canonical !== "string"
-  )
-    throw new Error("Missing complete invented Follow-ups canonical payload");
+  const missing = "Missing invented Follow-ups diagnostic object";
+  const incomplete = "Missing complete invented Follow-ups canonical payload";
+  const value = diagnosticObject(JSON.parse(text), missing);
+  if (!("followups" in value)) throw new Error(missing);
+  const followups = diagnosticObject(value.followups, incomplete);
+  if (!("canonical" in followups)) throw new Error(incomplete);
+  if (typeof followups.canonical !== "string") throw new Error(incomplete);
   return followups.canonical;
 }
 function prepare(

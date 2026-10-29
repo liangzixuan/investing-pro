@@ -4,6 +4,11 @@ import {
   emptyScreenComparisonFollowup,
   type ScreenComparisonFollowupProps,
 } from "./use-screen-comparison-followup-state";
+import {
+  screenComparisonFollowupActionStatus,
+  screenComparisonFollowupEvents,
+  screenComparisonFollowupReadout,
+} from "./use-screen-comparison-followup-events";
 export type { ScreenComparisonFollowupProps } from "./use-screen-comparison-followup-state";
 const empty = emptyScreenComparisonFollowup();
 const idle = { getSnapshot: () => empty, subscribe: () => () => {} };
@@ -30,39 +35,15 @@ export function useScreenComparisonFollowupReview(
   useLayoutEffect(() => {
     controller?.commit(token, props);
   });
-  const current = () => Boolean(controller?.current(token, state));
   return {
     state,
-    destinations: controller?.destinations() ?? [],
+    ...screenComparisonFollowupReadout(controller),
     saved: props.workspace.followups.coordinator.getSnapshot(),
-    disabled: !controller?.active() || props.navigationPending,
-    canCapture: Boolean(controller?.canCapture()) && !props.navigationPending,
-    canLoad: Boolean(controller?.canLoad()) && !props.navigationPending,
-    canPrepare: Boolean(controller?.canPrepare()) && !props.navigationPending,
-    readinessReason: controller?.readinessReason() ?? null,
-    canReview: Boolean(controller?.canReview()) && !props.navigationPending,
-    setOpen: (open: boolean) => {
-      if (controller?.currentDisclosure(token, state)) controller.setOpen(open);
-    },
-    capture: () => {
-      if (current()) controller?.capture();
-    },
-    edit: (field: "side" | "question" | "dueOn", value: string) => {
-      if (current()) controller?.edit(field, value);
-    },
-    load: () => {
-      if (current()) void controller?.load();
-    },
-    prepare: () => {
-      if (current()) controller?.prepare();
-    },
-    create: () => {
-      if (current() && state.preview) controller?.create(state.preview);
-    },
-    review: (opener: HTMLButtonElement) => {
-      if (current()) controller?.review(opener);
-    },
-    cancel: () => current() && Boolean(controller?.cancel()),
+    ...screenComparisonFollowupActionStatus(
+      controller,
+      props.navigationPending,
+    ),
+    ...screenComparisonFollowupEvents(controller, token, state),
   };
 }
 export type ScreenComparisonFollowupControls = ReturnType<

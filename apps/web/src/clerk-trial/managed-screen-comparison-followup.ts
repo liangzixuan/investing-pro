@@ -76,13 +76,17 @@ export function screenComparisonFollowupReference(
     ". Full criteria, statements and source evidence not included."
   );
 }
+/** Validate authored text before adding the complete bounded comparison reference. */
+function authoredQuestionIsValid(question: string) {
+  if (typeof question !== "string") return false;
+  if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(question)) return false;
+  return normalizeResearchFollowupCheck(question) !== null;
+}
 function completeQuestion(
   question: string,
   comparison: PreparedScreenComparisonReport,
 ) {
-  if (typeof question !== "string") return null;
-  if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(question)) return null;
-  if (normalizeResearchFollowupCheck(question) === null) return null;
+  if (!authoredQuestionIsValid(question)) return null;
   const reference = screenComparisonFollowupReference(comparison);
   if (reference === null) return null;
   const check = "Question: " + question + " | " + reference;

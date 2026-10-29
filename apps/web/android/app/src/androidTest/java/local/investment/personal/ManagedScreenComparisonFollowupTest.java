@@ -135,9 +135,17 @@ public class ManagedScreenComparisonFollowupTest {
             "(()=>{const s=document.querySelector('" + PREFIX + "company');return s?.value===''&&s.options.length===3&&[...s.options].map(o=>o.value).join('|')==='|left|right'&&[...s.options].slice(1).every(o=>!o.disabled)&&document.querySelector('" + PREFIX + "load')?.disabled===true;})()")));
         chooseRight(); replace(PREFIX + "question", QUESTION); replace(PREFIX + "due", DUE);
         page.click(Element.css(PREFIX + "load"));
-        page.await(new Check("only explicit initial Load retains the same capture, exact destination and authored fields", new Script(
-            F + ".load===1&&" + R + ".entries.length===2&&" + R + ".dirty===false&&" + R + ".baseVersion===1&&document.querySelector('" + PREFIX + "company')?.value==='right'&&document.querySelector('" + PREFIX + "question')?.value===" + JSONObject.quote(QUESTION) + "&&document.querySelector('" + PREFIX + "due')?.value===" + JSONObject.quote(DUE) + "&&document.querySelector('" + PREFIX + "preview')?.disabled===false&&document.querySelector('" + PREFIX + "load')===null")));
+        page.await(new Check("only explicit initial Load retains the same capture, exact destination and authored fields", withInitialLoadDiagnostics(new Script(
+            F + ".load===1&&" + R + ".entries.length===2&&" + R + ".dirty===false&&" + R + ".baseVersion===1&&document.querySelector('" + PREFIX + "company')?.value==='right'&&document.querySelector('" + PREFIX + "question')?.value===" + JSONObject.quote(QUESTION) + "&&document.querySelector('" + PREFIX + "due')?.value===" + JSONObject.quote(DUE) + "&&document.querySelector('" + PREFIX + "preview')?.disabled===false&&document.querySelector('" + PREFIX + "load')===null"))));
         boundary(ReadPhase.LOADED);
+    }
+    private Script withInitialLoadDiagnostics(Script condition) {
+        return new Script("(()=>{let ok=false,error=null;try{ok=(" + condition.expression() + ");}catch(e){error=String(e?.name)+': '+String(e?.message);}" +
+            "if(!ok){const read=s=>document.querySelector(s),parse=s=>{try{return JSON.parse(read(s)?.textContent??'null');}catch{return null;}},f=parse('#fixture-followups-diagnostics'),r=parse('#fixture-followups-draft'),d=parse('#fixture-screen-comparison-followup');" +
+            "const state={error,open:read('#screen-comparison-followup')?.open,side:read('#screen-comparison-followup-company')?.value,question:read('#screen-comparison-followup-question')?.value,dueOn:read('#screen-comparison-followup-due')?.value," +
+            "loadPresent:!!read('#screen-comparison-followup-load'),loadDisabled:read('#screen-comparison-followup-load')?.disabled,previewDisabled:read('#screen-comparison-followup-preview')?.disabled,status:read('#screen-comparison-followup-status')?.textContent," +
+            "followups:{calls:f?.load,save:f?.save,commits:f?.commits,phase:r?.phase,baseVersion:r?.baseVersion,dirty:r?.dirty,entries:r?.entries?.length??null,resourcePhase:d?.followups?.phase},rejected:d?.rejected,refusals:d?.refusals};" +
+            "const text=JSON.stringify(state),key='__investmentComparisonFollowupLoadDebug',seen=window[key]??(window[key]={count:0,last:null});if(seen.count<12&&seen.last!==text){seen.count++;seen.last=text;console.info('ScreenComparisonFollowupInitialLoad: '+(text.length<=4096?text:'diagnostic exceeds4096codeunits'));}}return ok;})()");
     }
     private void rejectOverflowAndRetiredForm() throws Exception {
         String prior = page.read(new Script(D + ".followups.canonical"));

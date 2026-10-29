@@ -13,6 +13,88 @@ async function fixture(load = true) {
   fixtures.push(f);
   return f;
 }
+type ComparisonFixture = Awaited<ReturnType<typeof fixture>>;
+type SourceRetirement = readonly [
+  string,
+  (
+    f: ComparisonFixture,
+    digest: ComparisonFixture["source"]["comparison"]["catalogSnapshotSha256"],
+  ) => void,
+];
+const sourceRetirements: readonly SourceRetirement[] = [
+  [
+    "pair",
+    (f) => {
+      f.screen.choose("left", null);
+      f.screen.choose("left", f.screen.rows[0]!);
+    },
+  ],
+  [
+    "criteria",
+    (f) => {
+      f.screen.model.stageCriteria(f.screen.model.getSnapshot());
+      f.screen.model.setCriteria(
+        f.screen.model.getSnapshot(),
+        DEFAULT_MANAGED_FINANCIAL_SCREEN_CRITERIA,
+      );
+    },
+  ],
+  [
+    "catalog",
+    (f, digest) => {
+      f.screen.model.reconcile(null, false, false);
+      f.screen.model.reconcile(digest, true, true);
+    },
+  ],
+  [
+    "inactive",
+    (f, digest) => {
+      f.screen.model.reconcile(digest, false, false);
+      f.screen.model.reconcile(digest, true, true);
+    },
+  ],
+  [
+    "Watchlist",
+    (f) => {
+      const draft = f.watchlist.getSnapshot().draft!;
+      f.watchlist.replaceDraft({
+        ...draft,
+        memberships: draft.memberships.map((member, index) =>
+          index === 0 ? { ...member, note: "Temporary authored note" } : member,
+        ),
+      });
+      f.watchlist.replaceDraft(draft);
+    },
+  ],
+  [
+    "navigation",
+    (f) => {
+      f.state.navigation++;
+      f.updates.emit();
+      f.state.navigation--;
+      f.updates.emit();
+    },
+  ],
+  [
+    "session",
+    (f) => {
+      f.state.sessionPhase = "expired";
+      f.sessions.emit();
+      f.state.sessionPhase = "active";
+      f.sessions.emit();
+    },
+  ],
+  [
+    "route",
+    (f) => {
+      f.state.available = false;
+      f.updates.emit();
+      f.state.available = true;
+      f.updates.emit();
+    },
+  ],
+];
+
 afterEach(() => {
   for (const f of fixtures.splice(0)) disposeComparisonFollowupFixture(f);
   vi.restoreAllMocks();
@@ -163,69 +245,17 @@ describe("comparison source and draft ownership", () => {
     expect(preview.create()).toBeNull();
     expect(f.capture().isCurrent()).toBe(true);
   });
-  it.each([
-    "pair",
-    "criteria",
-    "catalog",
-    "inactive",
-    "Watchlist",
-    "navigation",
-    "session",
-    "route",
-  ])("irreversibly retires old source on %s out-and-back", async (cause) => {
-    const f = await fixture();
-    const digest = f.source.comparison.catalogSnapshotSha256;
-    if (cause === "pair") {
-      f.screen.choose("left", null);
-      f.screen.choose("left", f.screen.rows[0]!);
-    }
-    if (cause === "criteria") {
-      f.screen.model.stageCriteria(f.screen.model.getSnapshot());
-      f.screen.model.setCriteria(
-        f.screen.model.getSnapshot(),
-        DEFAULT_MANAGED_FINANCIAL_SCREEN_CRITERIA,
-      );
-    }
-    if (cause === "catalog") {
-      f.screen.model.reconcile(null, false, false);
-      f.screen.model.reconcile(digest, true, true);
-    }
-    if (cause === "inactive") {
-      f.screen.model.reconcile(digest, false, false);
-      f.screen.model.reconcile(digest, true, true);
-    }
-    if (cause === "Watchlist") {
-      const draft = f.watchlist.getSnapshot().draft!;
-      f.watchlist.replaceDraft({
-        ...draft,
-        memberships: draft.memberships.map((member, index) =>
-          index === 0 ? { ...member, note: "Temporary authored note" } : member,
-        ),
-      });
-      f.watchlist.replaceDraft(draft);
-    }
-    if (cause === "navigation") {
-      f.state.navigation++;
-      f.updates.emit();
-      f.state.navigation--;
-      f.updates.emit();
-    }
-    if (cause === "session") {
-      f.state.sessionPhase = "expired";
-      f.sessions.emit();
-      f.state.sessionPhase = "active";
-      f.sessions.emit();
-    }
-    if (cause === "route") {
-      f.state.available = false;
-      f.updates.emit();
-      f.state.available = true;
-      f.updates.emit();
-    }
-    expect(f.source.isCurrent()).toBe(false);
-    expect(f.context.capturePort(f.source, "left").port).toBeNull();
-    expect(f.screen.read).toHaveBeenCalledTimes(2);
-  });
+  it.each(sourceRetirements)(
+    "irreversibly retires old source on %s out-and-back",
+    async (_cause, retireSource) => {
+      const f = await fixture();
+      const digest = f.source.comparison.catalogSnapshotSha256;
+      retireSource(f, digest);
+      expect(f.source.isCurrent()).toBe(false);
+      expect(f.context.capturePort(f.source, "left").port).toBeNull();
+      expect(f.screen.read).toHaveBeenCalledTimes(2);
+    },
+  );
   it("refuses during a pending Follow-ups Save and cannot revive the preceding action after settlement", async () => {
     const f = await fixture();
     f.prepare().preview!.create();

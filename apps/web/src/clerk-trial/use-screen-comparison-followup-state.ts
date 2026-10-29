@@ -1,11 +1,11 @@
 import type { ResearchFollowup } from "@research-cockpit/contracts";
 import type { ManagedWorkspace } from "./managed-workspace";
-import {
-  prepareScreenComparisonFollowup,
-  type ScreenComparisonFollowupCapture,
-  type ScreenComparisonFollowupPreview,
+import type {
+  ScreenComparisonFollowupCapture,
+  ScreenComparisonFollowupPreview,
 } from "./managed-screen-comparison-followup";
 import { comparisonCaptureReady } from "./useManagedScreenComparisonReport";
+import { prepareOwnedScreenComparisonFollowup } from "./use-screen-comparison-followup-preparation";
 
 export interface ScreenComparisonFollowupProps {
   workspace: ManagedWorkspace;
@@ -77,7 +77,8 @@ export class ScreenComparisonFollowupReview {
     return this.state.open && this.available();
   }
   setOpen(open: boolean) {
-    if (!this.alive || (open && !this.available())) return;
+    if (!this.alive) return;
+    if (open && !this.available()) return;
     if (open === this.state.open) return;
     this.captureToken = {};
     this.formToken = {};
@@ -105,8 +106,9 @@ export class ScreenComparisonFollowupReview {
   commit(token: object, props: ScreenComparisonFollowupProps) {
     this.committed = token;
     this.props = props;
-    if (!this.active() && (this.state.capture || this.state.preview))
-      this.withdraw();
+    if (this.active()) return;
+    if (this.state.capture) return this.withdraw();
+    if (this.state.preview) this.withdraw();
   }
   mount() {
     const w = this.workspace;
@@ -140,7 +142,8 @@ export class ScreenComparisonFollowupReview {
     });
   }
   private fence() {
-    if (this.creating || !this.alive) return;
+    if (this.creating) return;
+    if (!this.alive) return;
     if (this.state.capture && !this.state.capture.isCurrent())
       return this.withdraw();
     if (this.state.preview && !this.state.preview.isCurrent()) {
@@ -149,19 +152,22 @@ export class ScreenComparisonFollowupReview {
       this.publish({ ...this.state, preview: null, message: STALE });
       return;
     }
+    const created = this.currentCreatedEntry();
+    this.publish({ ...this.state, created });
+  }
+  private currentCreatedEntry() {
     const created = this.state.created;
-    const exists =
-      created &&
-      this.workspace.followups.coordinator
-        .getSnapshot()
-        .draft?.entries.includes(created);
-    this.publish({ ...this.state, created: exists ? created : null });
+    if (!created) return null;
+    const draft = this.workspace.followups.coordinator.getSnapshot().draft;
+    if (!draft) return null;
+    return draft.entries.includes(created) ? created : null;
+  }
+  private idle() {
+    return this.active() && !this.busy && !this.state.loading;
   }
   canCapture() {
     return (
-      this.active() &&
-      !this.busy &&
-      !this.state.loading &&
+      this.idle() &&
       comparisonCaptureReady(
         this.workspace.financialScreen,
         this.workspace.financialScreen.getSnapshot(),
@@ -181,7 +187,8 @@ export class ScreenComparisonFollowupReview {
         new Date().toISOString(),
         current,
       );
-      if (!current() || (result.capture && !result.capture.isCurrent())) return;
+      if (!current()) return;
+      if (result.capture && !result.capture.isCurrent()) return;
       this.publish({
         ...this.state,
         capture: result.capture,
@@ -213,17 +220,11 @@ export class ScreenComparisonFollowupReview {
       : [];
   }
   canLoad() {
-    return (
-      this.active() &&
-      !this.busy &&
-      !this.state.loading &&
-      Boolean(
-        this.state.capture &&
-        this.workspace.screenComparisonFollowup.canLoad(
-          this.state.capture,
-          this.state.side,
-        ),
-      )
+    if (!this.idle()) return false;
+    if (!this.state.capture) return false;
+    return this.workspace.screenComparisonFollowup.canLoad(
+      this.state.capture,
+      this.state.side,
     );
   }
   async load() {
@@ -259,13 +260,8 @@ export class ScreenComparisonFollowupReview {
     }
   }
   canPrepare() {
-    if (
-      !this.active() ||
-      this.busy ||
-      this.state.loading ||
-      !this.state.capture
-    )
-      return false;
+    if (!this.idle()) return false;
+    if (!this.state.capture) return false;
     return Boolean(
       this.workspace.screenComparisonFollowup.capturePort(
         this.state.capture,
@@ -274,8 +270,9 @@ export class ScreenComparisonFollowupReview {
     );
   }
   readinessReason() {
-    if (!this.active() || this.state.loading || !this.state.capture)
-      return null;
+    if (!this.active()) return null;
+    if (this.state.loading) return null;
+    if (!this.state.capture) return null;
     if (this.state.side !== "left" && this.state.side !== "right") return null;
     return this.workspace.screenComparisonFollowup.capturePort(
       this.state.capture,
@@ -290,17 +287,14 @@ export class ScreenComparisonFollowupReview {
     const token = this.formToken;
     const current = () => this.active() && this.formToken === token;
     try {
-      const result = this.workspace.screenComparisonFollowup.capturePort(
+      const prepared = prepareOwnedScreenComparisonFollowup(
+        this.workspace.screenComparisonFollowup,
         this.state.capture,
         this.state.side,
+        this.state,
+        current,
       );
-      const prepared = result.port
-        ? prepareScreenComparisonFollowup(result.port, this.state, current)
-        : { preview: null, reason: result.reason };
-      if (!current() || (prepared.preview && !prepared.preview.isCurrent())) {
-        prepared.preview?.cancel();
-        return;
-      }
+      if (!prepared) return;
       this.publish({
         ...this.state,
         preview: prepared.preview,
@@ -313,7 +307,9 @@ export class ScreenComparisonFollowupReview {
     }
   }
   create(preview: ScreenComparisonFollowupPreview) {
-    if (!this.active() || this.busy || this.state.preview !== preview) return;
+    if (!this.active()) return;
+    if (this.busy) return;
+    if (this.state.preview !== preview) return;
     this.busy = this.creating = true;
     const token = this.formToken;
     try {
