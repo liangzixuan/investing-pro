@@ -93,8 +93,10 @@ previews the entire authored result plus a complete qualified reference from an
 explicitly chosen loaded filing. It applies once to the exact existing check
 owned by this Research visit. Completion, Review/Back and Save/fresh Load stay
 separate; My Watchlist does not change. The existing Follow-ups report includes
-the full saved result. Focused client checks pass; current-source native
-acceptance and delivery remain separate.
+the full saved result. Android 1.58 provides this workflow from accepted main
+`448ec000a50f3af5ea06048c8a317f4e3ffb18c6` after original source checks, all 108
+synthetic native cases and complete signed-APK verification. Installation and
+physical-device acceptance remain separate.
 
 ### Keep an assessment in the company note
 
@@ -216,13 +218,22 @@ The full question remains beside the research sections. Price, Annual and Filing
 still require their own source actions. Return through **Review follow-ups** or
 Back to keep the chosen order, current position and authored assessment.
 
+The completion source increment adds **Complete this check** and **Reopen this
+check** beside the current check. Complete records the displayed assessed UTC
+day; Reopen clears that completion. Each changes only this entry and keeps the
+same review position and chosen order. The full authored result remains intact.
+An empty result follows the normal editor's existing completion rule. These
+actions read no source and save neither resource. When the focused action is
+replaced, focus returns to the current review heading after the intended change.
+Source/native acceptance and delivery for this increment remain separate.
+
 **Continue to next check** advances only after an explicit action. It requests no
 source and does not mark a check complete. **Finish and review full draft** shows
 every current check, including unchosen checks, full results and listing
-identities. Use the normal editor to complete or reopen checks, then **Save
-follow-ups** separately. Neither Finish nor opening company research saves either
-resource. A fresh session loads the saved checks without restoring temporary
-review choices.
+identities. The normal editor remains available. Use **Save follow-ups** separately;
+a fresh Load restores the saved statuses, dates and full results. Neither Finish
+nor opening company research saves either resource. A fresh session loads the
+saved checks without restoring temporary review choices.
 
 The temporary review follows local assessment and completion edits. A changed
 question, due date, listing identity, catalog, assessed UTC day, external draft

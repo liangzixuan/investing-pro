@@ -481,6 +481,13 @@ jobs:
           required.add(filing_assessment_case)
           if len(required) != 108:
               raise SystemExit("The filing assessment journey must preserve all 107 existing native cases.")
+          review_completion_case = (
+              "local.investment.personal.ManagedReviewCheckCompletionTest",
+              "currentReviewCompletionReopenContinueSaveLoadAndReport",
+          )
+          required.add(review_completion_case)
+          if len(required) != 109:
+              raise SystemExit("The chosen-review completion journey must preserve all 108 existing native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -509,6 +516,12 @@ jobs:
                       raise SystemExit("The filing assessment shard must retain its scoped native preview frame.")
               elif assessment_frames:
                   raise SystemExit("The filing assessment preview frame belongs only to its executed shard.")
+              completion_frames = list(root.rglob("newReviewCheckCompletionFocus.png"))
+              if review_completion_case in executed:
+                  if len(completion_frames) != 1 or completion_frames[0].stat().st_size == 0:
+                      raise SystemExit("The review completion shard must retain its scoped native focus frame.")
+              elif completion_frames:
+                  raise SystemExit("The review completion focus frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

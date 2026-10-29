@@ -140,6 +140,25 @@ function currentReviewCheck(
         >
           Open company research
         </button>
+        {state.selected.entry.status === "open" ? (
+          <button
+            id="managed-followups-review-complete"
+            className="trial-secondary"
+            disabled={!controls.canComplete}
+            onClick={(event) => controls.complete(event.currentTarget)}
+          >
+            Complete this check
+          </button>
+        ) : (
+          <button
+            id="managed-followups-review-reopen"
+            className="trial-secondary"
+            disabled={!controls.canReopen}
+            onClick={(event) => controls.reopen(event.currentTarget)}
+          >
+            Reopen this check
+          </button>
+        )}
         <button
           id="managed-followups-review-next"
           className="trial-secondary"

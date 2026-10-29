@@ -30,6 +30,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         CPI_HEADLINE_FOLLOWUP("cpi-headline-followup"),
         SCREEN_COMPARISON_REPORT("screen-comparison-report"),
         SCREEN_COMPARISON_FOLLOWUP("screen-comparison-followup"),
+        REVIEW_CHECK_COMPLETION("review-check-completion"),
         FILING_CHECK_ASSESSMENT("filing-check-assessment"),
         INTERIM_STATEMENTS("interim-statements");
         final String marker;

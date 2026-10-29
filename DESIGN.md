@@ -11,6 +11,15 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Completion in a chosen review
+
+Keep Complete this check or Reopen this check beside the current review's full
+question, assessment, status and assessed UTC day. Each action retains the current
+position and chosen order. Continue, Finish and Save stay separate. Preserve raw
+text, wrapping identities, visible focus and 44px targets. If an action removes
+the focused button, return focus to the current review heading after that exact
+change commits. Do not move focus for a different intervening change.
+
 ## A loaded filing in an existing assessment
 
 Place **Cite a filing in this assessment** in an initially closed disclosure in

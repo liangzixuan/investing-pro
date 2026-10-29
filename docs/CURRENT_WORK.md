@@ -5,7 +5,19 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: cite a filing in an existing assessment
+## Selected next: complete a check within a chosen review
+
+The [chosen Follow-ups review](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks)
+will let the owner complete or reopen its exact current check without leaving the
+chosen order. Keep the full question, result, identity and displayed assessed UTC
+day beside the action. Completion changes that entry only and retains the same
+position. Continue, Finish, Save and fresh Load remain separate actions.
+
+Implementation and focused verification are in progress. Required source/native
+acceptance and delivery remain separate. This increment reuses the existing draft
+completion methods and adds no source request, date rule, resource, schema or API.
+
+## Accepted and delivered: cite a filing in an existing assessment
 
 The [filing assessment workflow](MANAGED_FILINGS_REVIEW.md#cite-a-filing-in-an-existing-assessment)
 connects a loaded filing reference to the result of the exact check opened from
@@ -13,9 +25,15 @@ Follow-ups. Write an assessment, choose one observed filing explicitly and previ
 the whole result with its complete qualified citation. Apply changes that result
 once. Review/Back, completion, Save and fresh Load remain separate actions.
 
-The client implementation and focused automated checks are complete. Required
-current-source CI, native execution and delivery remain separate. This workflow
-adds no source request, financial formula, storage resource, schema or API route.
+[PR 255](https://github.com/liangzixuan/investing-pro/pull/255) merged at
+`448ec000a50f3af5ea06048c8a317f4e3ffb18c6`. Original required PR and actual-main
+checks passed, including all 108 synthetic native cases. Android 1.58.0/code59 is
+provided locally after one guarded build with the existing signer and all four
+APK checks. A qualified UTF-8 correction verified the same signed APK; the failed
+asset check and three unchanged passing checks remain recorded. No rebuild or
+re-signing occurred. Installation and physical-device acceptance are not claimed.
+API, website and prior releases are preserved. No source request, financial formula,
+storage resource, schema, dependency or API route was added.
 
 ## Accepted and delivered: keep a dated check from a screening comparison
 
@@ -297,10 +315,11 @@ passed all 12 job steps on its original attempt. It reused the exact archive and
 BrowserStack acceptance from
 [staging run 39454170915](https://github.com/liangzixuan/investing-pro/actions/runs/39454170915),
 attempt 1. Fresh metadata and the public entry page/source marker match the
-accepted website release. The API now publishes accepted source
-`ce7bc1025d1bd67fc55e841375a92770f7e20190`; fresh metadata and its downloaded
-source match the accepted archive. Existing settings and enabled Portfolio and
-valuation storage remain unchanged. The website was not updated.
+accepted website release. The API retains accepted source
+`0d72521c5631540c626b8cd63920f478624673de`. Its original activation and access
+checks are closed. Later client releases add no API route or activation and do
+not establish fresh authenticated provider availability. Existing settings and
+enabled Portfolio and valuation storage remain unchanged.
 
 The published website now supports explicit Load, complete Stage/Review/Save,
 then fresh-session load, comparison, Use and Calculate for editable valuation
@@ -310,9 +329,9 @@ authenticated owner Save. Filings now admits 17 issuers in production.
 
 Portfolio storage is also enabled. Its private invented-data qualification
 passed the fixed persistence and recovery phases. The October 20 API-only
-enablement reused its accepted source archive. The current API is ready and live,
-and its downloaded source matches the accepted ce7 archive. The website already contains the matching Portfolio
-workflow. No authenticated owner Portfolio Save was exercised during release.
+enablement reused its accepted source archive. The website already contains the
+matching Portfolio workflow. The later CPI API activation is recorded above; no
+authenticated owner Portfolio Save was exercised during these releases.
 
 Android 1.35.0, code 36, is provided locally from accepted source
 `73dc74af6d72141d60a5d749ef94133b1a361ec6` with the existing production signer.
