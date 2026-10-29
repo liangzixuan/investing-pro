@@ -23,6 +23,7 @@ export function useManagedFollowupsReviewControls(props: Props) {
     button: HTMLButtonElement;
     phase: FollowupsReviewState["phase"];
     position: number;
+    state?: FollowupsReviewState;
   } | null>(null);
   const routeCurrent = () => {
     const current = workspace.getSnapshot();
@@ -55,6 +56,7 @@ export function useManagedFollowupsReviewControls(props: Props) {
       !current() ||
       state.phase !== request.phase ||
       state.position !== request.position ||
+      (request.state && state !== request.state) ||
       !target?.isConnected
     )
       return;
@@ -75,8 +77,52 @@ export function useManagedFollowupsReviewControls(props: Props) {
     if (document.activeElement === button)
       transition.current = { button, phase, position };
   };
+  const assessmentClock = new Date(
+    workspace.followups.getSnapshot().assessmentTime ?? NaN,
+  );
+  const selected = routeCurrent() ? model.captureCurrent(state) : null;
+  const changeStatus = (
+    button: HTMLButtonElement,
+    status: ResearchFollowup["status"],
+  ) => {
+    if (!current()) return;
+    const entry = model.captureCurrent(state);
+    if (!entry || entry.status === status || !current()) return;
+    const ownsFocus = document.activeElement === button;
+    let publications = 0;
+    const unsubscribe = model.subscribe(() => {
+      publications++;
+    });
+    try {
+      if (status === "completed")
+        workspace.followups.complete(entry, assessmentClock);
+      else workspace.followups.reopen(entry);
+    } finally {
+      unsubscribe();
+    }
+    const next = model.getSnapshot();
+    // Reentrant notifications may already have moved or replaced this check.
+    if (
+      ownsFocus &&
+      publications === 1 &&
+      next.phase === "reviewing" &&
+      next.position === state.position &&
+      next.selected?.handle === state.selected?.handle &&
+      next.selected?.entry.status === status
+    )
+      transition.current = {
+        button,
+        phase: next.phase,
+        position: next.position,
+        state: next,
+      };
+  };
   return {
     heading,
+    canComplete: selected?.status === "open",
+    canReopen: selected?.status === "completed",
+    complete: (button: HTMLButtonElement) => changeStatus(button, "completed"),
+    reopen: (button: HTMLButtonElement) => changeStatus(button, "open"),
     canEnter: routeCurrent() && workspace.followups.getReviewContext() !== null,
     canStart: routeCurrent() && model.canStart(state),
     canContinue: routeCurrent() && model.canContinue(state),

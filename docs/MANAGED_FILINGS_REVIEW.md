@@ -169,8 +169,12 @@ company Research, explicit filing choice, whole-result refusal and preview,
 one-use Apply, retained Review/Back, explicit completion, separate Save and fresh
 Load, then complete passive HTML readback. It uses independent invented citation
 and whole-resource expectations, preserving the other check and unsaved Watchlist.
-Its source compiles with the complete existing native test sources. Actual native
-execution and the scoped preview frame still require the current-source gate.
+Its original PR and actual-main gates passed all 108 synthetic native cases.
+The root inspected the current preview's heading and start; full result and
+passive HTML readback are covered by the native journey. Android 1.58 is provided
+locally from `448ec000a50f3af5ea06048c8a317f4e3ffb18c6` after one guarded build
+with the existing signer and all four APK checks. The limited frame view does
+not establish whole-page or physical-device acceptance.
 
 Source checks, a passing current-source hosted native run and client delivery
 remain separate acceptance events. None establishes owner-account or physical-device

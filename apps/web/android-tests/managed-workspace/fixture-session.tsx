@@ -1,3 +1,4 @@
+import { ReviewCompletionFixtureDiagnostics } from "./review-check-completion-fixture-diagnostics";
 import { FilingAssessmentFixtureDiagnostics } from "./filing-check-assessment-fixture-diagnostics";
 import { useSyncExternalStore } from "react";
 import { ReviewedCompanySourcePassFixtureControls } from "./reviewed-company-source-pass-fixture-controls";
@@ -183,6 +184,13 @@ function NativeDeliveryControls({
       {workspace && nativePortfolioReviewReport && (
         <PortfolioReviewReportFixtureControls workspace={workspace} />
       )}
+      {workspace && fixture.reviewCompletion && nativeFollowupsReviewReport && (
+        <ReviewCompletionFixtureDiagnostics
+          workspace={workspace}
+          fixture={fixture}
+          report={nativeFollowupsReviewReport}
+        />
+      )}
       {workspace && fixture.filingAssessment && nativeFollowupsReviewReport && (
         <FilingAssessmentFixtureDiagnostics
           workspace={workspace}
@@ -192,7 +200,8 @@ function NativeDeliveryControls({
       )}
       {workspace &&
         nativeFollowupsReviewReport &&
-        !fixture.filingAssessment && (
+        !fixture.filingAssessment &&
+        !fixture.reviewCompletion && (
           <FollowupsReviewReportFixtureControls workspace={workspace} />
         )}
       {workspace && nativeReport && (

@@ -1,4 +1,8 @@
 import {
+  createReviewCompletionNativeFixture,
+  type ReviewCompletionMetadata,
+} from "./review-check-completion-fixture";
+import {
   createFilingAssessmentNativeFixture,
   type FilingAssessmentNativeMetadata,
 } from "./filing-check-assessment-fixture";
@@ -2170,6 +2174,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly screenComparison?: NativeScreenComparisonMetadata;
   readonly screenComparisonReport?: ScreenComparisonReportNativeMetadata;
   readonly filingAssessment?: FilingAssessmentNativeMetadata;
+  readonly reviewCompletion?: ReviewCompletionMetadata;
   readonly screenComparisonFollowup?: ScreenComparisonFollowupNativeMetadata;
   readonly savedValuation?: SavedValuationNativeControls;
 };
@@ -2344,6 +2349,11 @@ const nativeFixtureFactories = new Map<
   string,
   () => Promise<ManagedNativeFixture>
 >([
+  [
+    "review-check-completion",
+    async () =>
+      createReviewCompletionNativeFixture(await createSharedFixture()),
+  ],
   [
     "filing-check-assessment",
     async () =>
@@ -2539,6 +2549,7 @@ export async function createFixture(
     | "price-studies"
     | "screen-comparison"
     | "screen-comparison-report"
+    | "review-check-completion"
     | "filing-check-assessment"
     | "screen-comparison-followup"
     | "financial-screen"

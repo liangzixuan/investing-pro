@@ -29,14 +29,22 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 29 Android delivery
 
-The next M4 outcome connects an existing due check to a
-[cited filing assessment](MANAGED_FILINGS_REVIEW.md#cite-a-filing-in-an-existing-assessment).
-Open the exact check's company Research visit, write an assessment, choose one
-already loaded filing and inspect the complete result before applying it once.
-Keep the full authored text and qualified citation within the existing result
-limit, with no clipping. Review/Back, completion and separate Save/fresh Load
-retain their current ownership. Focused client checks pass; required source and
-native acceptance and client delivery remain separate.
+The next M4 outcome adds Complete and Reopen to the current check inside a
+[chosen Follow-ups review](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks).
+Research and Back retain the full authored result. Complete uses the displayed
+assessed UTC day, keeps the same position and changes only that entry. Reopen,
+Continue, Finish and Save/fresh Load remain explicit. Implementation and focused
+verification are in progress; source/native acceptance and delivery remain separate.
+
+Android 1.58 delivers the [cited filing assessment](MANAGED_FILINGS_REVIEW.md#cite-a-filing-in-an-existing-assessment).
+Open the exact check's Research visit, write an assessment, choose one already
+loaded filing and inspect the complete result before applying it once. Preserve
+the full qualified citation within the existing result limit without clipping.
+Accepted main `448ec000a50f3af5ea06048c8a317f4e3ffb18c6` passed its original
+source checks and all 108 synthetic native cases. One guarded existing-signer
+build, all four APK checks and exact local delivery passed. A narrow UTF-8 verifier
+correction reused the same signed APK and three unchanged passing processes.
+Installation remains an owner action; API, website and prior releases are preserved.
 
 Android 1.57 delivers the [comparison check workflow](MANAGED_SCREEN_COMPARISON.md#keep-a-dated-research-check).
 Capture two current loaded results, inspect their complete context, choose one
