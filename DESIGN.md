@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## A dated check from a screening comparison
+
+Place the initially closed check panel beside the comparison report controls.
+Capture the current pair explicitly. Start the destination empty and offer only
+exact compared Watchlist companies; explain unavailable choices. Keep the question
+and UTC date beside the complete saved text preview and full captured comparison.
+State which context is excluded from the saved check and retain separate HTML Save.
+Focus the preview heading, preserve raw invalid text and show a whole-text refusal.
+Use labelled controls, wrapping identities, visible focus, 44px targets and stacked
+fields on narrow screens. Create, Review, Research/Back and each Save stay explicit.
+
 ## A captured screening comparison
 
 Place **Capture comparison report** after the existing two-company comparison.

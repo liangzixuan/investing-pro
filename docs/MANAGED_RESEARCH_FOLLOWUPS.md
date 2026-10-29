@@ -120,6 +120,16 @@ This is a client source workflow. Focused synthetic checks establish their
 recorded scope; source delivery, browser layout and physical-device acceptance
 remain separate.
 
+## Keep a question from a screening comparison
+
+The [comparison check increment](MANAGED_SCREEN_COMPARISON.md#keep-a-dated-research-check)
+is in development. It captures two current loaded screening results, offers only
+their exact current Watchlist members as destinations, and previews a complete
+dated question before one-use creation. Full statements and source evidence stay
+in the comparison preview and optional HTML report. The saved question and concise
+comparison reference retain the existing 500-character bound. Review, company
+Research/Back and separate Save/fresh Load use the existing Follow-ups workflow.
+
 ## Keep a question from an authored valuation
 
 The [valuation workflow](MANAGED_VALUATION_WORKBENCH.md#keep-a-dated-valuation-check)

@@ -1087,3 +1087,42 @@ it("returns to the exact Portfolio draft without Watchlist additions or source r
   expect(f.api.resolve).toHaveBeenCalledOnce();
   expect(f.api.save).not.toHaveBeenCalled();
 });
+
+it("requires the route commit before Back even when the exact company URL and research model are already present", async () => {
+  const f = fixture();
+  await f.ready();
+  f.workspace.setView("followups");
+  const watchlist = f.workspace.coordinator.getSnapshot();
+  const member = watchlist.draft!.memberships[0]!;
+  const navigation = f.render();
+  navigation.open(() => f.workspace.openWatchlistEod(member));
+  const visit = f.workspace.getSnapshot().research;
+  expect(visit?.selection.listing.listingId).toBe("listing-zero");
+  expect(mount.entries[mount.cursor]!.search).toBe(
+    "?company=listing-zero&section=price",
+  );
+  expect(navigation.isPending()).toBe(true);
+  mount.index = 0;
+  const beforeCommit = useManagedCompanyNavigation(f.workspace);
+  expect(beforeCommit.pending).toBe(true);
+  expect(beforeCommit.isPending()).toBe(true);
+  beforeCommit.back();
+  expect(mount.navigate).toHaveBeenCalledTimes(1);
+  expect(f.workspace.getSnapshot().research).toBe(visit);
+  expect(mount.entries[mount.cursor]!.search).toBe(
+    "?company=listing-zero&section=price",
+  );
+  f.render();
+  const ready = f.render();
+  expect(ready.pending).toBe(false);
+  expect(ready.isPending()).toBe(false);
+  ready.back();
+  expect(mount.navigate).toHaveBeenLastCalledWith(-1);
+  f.render();
+  expect(f.workspace.getSnapshot().research).toBeNull();
+  expect(f.workspace.getSnapshot().view).toBe("followups");
+  expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
+  expect(f.api.eodHistory).not.toHaveBeenCalled();
+  expect(f.api.annualReport).not.toHaveBeenCalled();
+  expect(f.api.save).not.toHaveBeenCalled();
+});

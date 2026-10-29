@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 28, 2026. This document defines the durable product goals and
+Updated October 29, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,15 +27,26 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority after the October 28 Android delivery
+## Current priority after the October 29 Android delivery
 
-The next M2/M4 outcome keeps a complete [two-company screening comparison](MANAGED_SCREEN_COMPARISON.md#capture-a-private-reading-report)
+The next M4 outcome turns a [reviewed screening comparison into a dated check](MANAGED_SCREEN_COMPARISON.md#keep-a-dated-research-check).
+Capture two current loaded results, inspect their complete context, choose one
+compared company from the editable Watchlist, and preview an authored question
+and UTC due date. Create adds one Follow-ups draft entry; Review, Research/Back
+and Save/fresh Load remain explicit. The complete saved text must fit the existing
+500-character bound. Full statements and source evidence remain in the comparison
+preview and separate HTML report. Implementation and acceptance are in progress.
+
+Android 1.56 keeps a complete [two-company screening comparison](MANAGED_SCREEN_COMPARISON.md#capture-a-private-reading-report)
 as a private passive HTML reading copy. Capture two current loaded results,
 inspect all three statement groups with each company's independent fiscal periods
 and clocks, then save separately. Research/Back and shortlist-to-Watchlist Review
 keep their current ownership. This extends a complete comparison-to-research
 workflow using existing sources; it adds no financial calculation or API route.
-Implementation and acceptance remain in progress.
+Accepted main `c421d27e7c527a46cbafafbd96f8120cee426b93` passed its original
+required source checks and all 106 synthetic native cases. One guarded build with
+the existing signer, all four package checks and exact local delivery passed.
+Installation remains an owner action; API, website and prior releases are preserved.
 
 Android 1.55 and the managed API deliver the [CPI headline check](MANAGED_CPI_HEADLINES.md)
 from `0d72521c5631540c626b8cd63920f478624673de`. Original required PR/main checks,

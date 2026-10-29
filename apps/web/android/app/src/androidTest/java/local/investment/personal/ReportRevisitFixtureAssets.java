@@ -29,6 +29,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         VALUATION_SCENARIO_FOLLOWUP("valuation-scenario-followup"),
         CPI_HEADLINE_FOLLOWUP("cpi-headline-followup"),
         SCREEN_COMPARISON_REPORT("screen-comparison-report"),
+        SCREEN_COMPARISON_FOLLOWUP("screen-comparison-followup"),
         INTERIM_STATEMENTS("interim-statements");
         final String marker;
         Scenario(String marker) { this.marker = marker; }

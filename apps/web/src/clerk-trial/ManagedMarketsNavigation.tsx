@@ -1,4 +1,25 @@
+import type { ManagedWorkspace } from "./managed-workspace";
+import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 import { useLayoutEffect, useRef, type RefObject } from "react";
+
+/** Check the live workspace and captured navigation before a Markets section jump. */
+export function managedMarketsRouteCurrent(
+  workspace: ManagedWorkspace,
+  navigation: ManagedCompanyNavigation | undefined,
+  hasCompanyRoute: (() => boolean) | undefined,
+) {
+  const current = workspace.getSnapshot();
+  const phase = workspace.coordinator.getSnapshot().phase;
+  return (
+    phase !== "retired" &&
+    phase !== "signing_out" &&
+    current.view === "markets" &&
+    !current.research &&
+    !current.companyRoute &&
+    !navigation?.invalid &&
+    !hasCompanyRoute?.()
+  );
+}
 
 const sections = {
   board: "Company board",

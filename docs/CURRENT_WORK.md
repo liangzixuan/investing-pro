@@ -1,22 +1,41 @@
 # Current work
 
-Updated October 28, 2026. This is the current capability and delivery record.
+Updated October 29, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: keep a complete screening comparison
+## Selected next: keep a dated check from a screening comparison
+
+The [comparison check workflow](MANAGED_SCREEN_COMPARISON.md#keep-a-dated-research-check)
+connects a complete captured comparison to an authored Follow-ups question. Inspect
+the original comparison, choose one compared company already in the current editable
+Watchlist, enter a question and UTC due date, then preview the whole saved check.
+Create changes one Follow-ups draft once. Review, company Research/Back and each
+Save remain separate. The full statement sets and source packets stay in the
+comparison preview and optional HTML file; the saved check contains the complete
+bounded question and a concise comparison reference.
+
+Implementation and automated acceptance are in progress. This client workflow adds
+no source request, financial formula, storage resource, schema or API route.
+
+## Accepted and delivered: keep a complete screening comparison
 
 The [screening comparison report](MANAGED_SCREEN_COMPARISON.md#capture-a-private-reading-report)
-will capture two independently dated Annual statement sets for a private passive
+captures two independently dated Annual statement sets for a private passive
 HTML reading copy. Choose the exact loaded companies, inspect the whole capture,
 then save the report separately. Criteria, run status, original source clocks,
 full identities and all three statement groups stay attached. Research, Back,
 shortlist review and each draft Save keep their existing boundaries.
 
-Implementation and automated acceptance are in progress. This client workflow
-adds no source request, financial formula, online resource or API route. No new
-source merge, APK or website release is claimed for the comparison report.
+[PR 253](https://github.com/liangzixuan/investing-pro/pull/253) merged at
+`c421d27e7c527a46cbafafbd96f8120cee426b93`. Original required PR and actual-main
+checks passed, including all 106 synthetic native cases. Android 1.56.0/code57
+is provided locally after one guarded build with the existing signer and all
+four signed-APK checks. Two narrow checker corrections reused the same APK and
+retained the original failures and two unchanged passing checks. Installation
+and physical-device acceptance are not claimed. API, website and prior releases
+are preserved.
 
 ## Accepted and delivered: a CPI headline into an authored company check
 

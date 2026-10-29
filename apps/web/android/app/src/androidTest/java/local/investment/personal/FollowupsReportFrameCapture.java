@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** One absolute deadline covers visual readiness, a committed frame and PixelCopy ownership. */
 final class FollowupsReportFrameCapture {
-    enum Frame { CAPTURED, MARKETS_CALENDAR_PREVIEW, VALUATION_SCENARIO_PREVIEW, CPI_HEADLINE_PREVIEW, SCREEN_COMPARISON_PREVIEW }
+    enum Frame { CAPTURED, MARKETS_CALENDAR_PREVIEW, VALUATION_SCENARIO_PREVIEW, CPI_HEADLINE_PREVIEW, SCREEN_COMPARISON_PREVIEW, SCREEN_COMPARISON_FOLLOWUP_PREVIEW }
     record Request(ActivityScenario<MainActivity> scenario, Frame frame) {}
     private record WindowFrame(WebView webView, Window window) {}
     private record PixelResult(Bitmap bitmap, int result) {}
@@ -59,6 +59,7 @@ final class FollowupsReportFrameCapture {
         case VALUATION_SCENARIO_PREVIEW -> "newValuationScenarioCompleteCheckPreview";
         case CPI_HEADLINE_PREVIEW -> "newCpiHeadlineCompleteCheckPreview";
         case SCREEN_COMPARISON_PREVIEW -> "newScreenComparisonReportPreview";
+        case SCREEN_COMPARISON_FOLLOWUP_PREVIEW -> "newScreenComparisonCompleteCheckPreview";
     }; }
 
     private Bitmap capture() throws Exception {

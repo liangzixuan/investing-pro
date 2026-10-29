@@ -36,6 +36,7 @@ import { nativeFixtureRouterPorts } from "./native-fixture-router-ports";
 import { FixtureDraftDiagnostics } from "./fixture-draft-diagnostics";
 import { ReportRevisitFixtureControls } from "./report-revisit-fixture-controls";
 import { PortfolioReviewReportFixtureControls } from "./portfolio-review-report-fixture-controls";
+import { ScreenComparisonFollowupFixtureDiagnostics } from "./screen-comparison-followup-fixture-diagnostics";
 import { ScreenComparisonReportFixtureControls } from "./screen-comparison-report-fixture-controls";
 import { FollowupsReviewReportFixtureControls } from "./followups-review-report-fixture-controls";
 import { PortfolioFixtureControls } from "./portfolio-fixture-controls";
@@ -169,6 +170,12 @@ function NativeDeliveryControls({
 }: Pick<MountedProps, "workspace">) {
   return (
     <>
+      {workspace && fixture.screenComparisonFollowup && (
+        <ScreenComparisonFollowupFixtureDiagnostics
+          workspace={workspace}
+          fixture={fixture}
+        />
+      )}
       {workspace && nativeScreenComparisonReport && (
         <ScreenComparisonReportFixtureControls workspace={workspace} />
       )}

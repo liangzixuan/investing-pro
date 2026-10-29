@@ -66,7 +66,10 @@ import {
 } from "./ManagedFinancialDiscovery";
 import { ManagedFollowupsEntry } from "./ManagedFollowupsEntry";
 import { managedFollowupsEntryProps } from "./managed-followups-entry-props";
-import { useManagedMarketsSections } from "./ManagedMarketsNavigation";
+import {
+  managedMarketsRouteCurrent,
+  useManagedMarketsSections,
+} from "./ManagedMarketsNavigation";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
 import type { AnnualComparisonNoteCapture } from "./managed-watchlist-annual-comparison-note";
@@ -814,30 +817,6 @@ export function ManagedWorkspaceScreen({
   };
   const retired = sessionState.phase !== "active";
   const navigationPending = navigation?.pending ?? false;
-  const financialDiscovery = useManagedFinancialDiscovery({
-    workspace,
-    navigation,
-    openResearch,
-    onReviewWatchlist: () => setView("watchlist"),
-    recipeDelivery: financialScreenRecipeDelivery,
-    comparisonReportDelivery: screenComparisonReportDelivery,
-  });
-  const busy = saved.phase !== "idle";
-  const editable = workspace.canEdit();
-  const isMarketsCurrent = () => {
-    const current = workspace.getSnapshot();
-    const phase = coordinator.getSnapshot().phase;
-    return (
-      phase !== "retired" &&
-      phase !== "signing_out" &&
-      current.view === "markets" &&
-      !current.research &&
-      !current.companyRoute &&
-      !navigation?.invalid &&
-      !hasCompanyRoute?.()
-    );
-  };
-  const marketsSectionNavigation = useManagedMarketsSections(isMarketsCurrent);
   const calendarFollowupNavigation = marketsFollowupNavigation({
     workspace,
     setView,
@@ -845,6 +824,20 @@ export function ManagedWorkspaceScreen({
     watchlistNavigation,
     followupsNavigation,
   });
+  const financialDiscovery = useManagedFinancialDiscovery({
+    workspace,
+    navigation,
+    openResearch,
+    onReviewWatchlist: () => setView("watchlist"),
+    onReviewFollowup: calendarFollowupNavigation.review,
+    recipeDelivery: financialScreenRecipeDelivery,
+    comparisonReportDelivery: screenComparisonReportDelivery,
+  });
+  const busy = saved.phase !== "idle";
+  const editable = workspace.canEdit();
+  const isMarketsCurrent = () =>
+    managedMarketsRouteCurrent(workspace, navigation, hasCompanyRoute);
+  const marketsSectionNavigation = useManagedMarketsSections(isMarketsCurrent);
   const currentCatalog =
     discovery.snapshot?.snapshotSha256 === saved.draft?.snapshotSha256;
   const canReviewWatchlistMember = (member: WatchlistMembership) => {
