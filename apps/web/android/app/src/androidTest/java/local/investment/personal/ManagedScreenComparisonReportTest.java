@@ -69,19 +69,17 @@ public class ManagedScreenComparisonReportTest {
         int annual() { return this == INITIAL ? 0 : 2; }
     }
     private enum ScreenAction {
-        LOAD_COHORT, ADD_CRITERION, APPLY_CRITERIA, RUN, LEFT_ZERO, RIGHT_ONE, CLEAR_RIGHT, RESEARCH_ONE;
-        String label() {
-            return switch (this) {
-                case LOAD_COHORT -> "Load screening cohort";
-                case ADD_CRITERION -> "Add criterion";
-                case APPLY_CRITERIA -> "Apply criteria";
-                case RUN -> "Run screen (2 companies)";
-                case LEFT_ZERO -> "Compare left ZERO";
-                case RIGHT_ONE -> "Compare right ONE";
-                case CLEAR_RIGHT -> "Clear right company";
-                case RESEARCH_ONE -> "Research ONE from comparison";
-            };
-        }
+        LOAD_COHORT("Load screening cohort"),
+        ADD_CRITERION("Add criterion"),
+        APPLY_CRITERIA("Apply criteria"),
+        RUN("Run screen (2 companies)"),
+        LEFT_ZERO("Compare left ZERO"),
+        RIGHT_ONE("Compare right ONE"),
+        CLEAR_RIGHT("Clear right company"),
+        RESEARCH_ONE("Research ONE from comparison");
+        private final String label;
+        ScreenAction(String label) { this.label = label; }
+        String label() { return label; }
     }
     private enum ReportAction {
         CAPTURE, SAVE, CLOSE;
