@@ -11,6 +11,7 @@ import {
 import type { PersonalSecInterimCanonicalResponseDto } from "@research-cockpit/contracts";
 import { ManagedCpiHeadlines } from "./managed-cpi-headlines";
 import { ManagedCpiHeadlineFollowupContext } from "./managed-cpi-headline-followup-context";
+import { ManagedScreenComparisonFollowupContext } from "./managed-screen-comparison-followup-context";
 import { ManagedMarketsCalendarFollowupContext } from "./managed-calendar-followup-context";
 import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { FilingsFollowupPort } from "./managed-filings-followup";
@@ -380,6 +381,7 @@ export class ManagedWorkspace {
   readonly marketsSourceReview: ManagedMarketsSourceReview;
   readonly cpiHeadlines: ManagedCpiHeadlines;
   private readonly cpiFollowupContext: ManagedCpiHeadlineFollowupContext;
+  readonly screenComparisonFollowup: ManagedScreenComparisonFollowupContext;
   private readonly calendarFollowupContext: ManagedMarketsCalendarFollowupContext;
   readonly watchlistPrices: ManagedWatchlistPrices;
   readonly blsCalendar: ManagedBlsCalendar;
@@ -636,6 +638,29 @@ export class ManagedWorkspace {
       workspace: this,
       available: () => this.calendarFollowupRouteReady(),
       memberReady: (member) => this.calendarFollowupMemberReady(member),
+      revision: () => ({
+        navigation: this.navigationRevision,
+        view: this.viewRevision,
+        catalog: this.state.snapshot,
+      }),
+    });
+    this.screenComparisonFollowup = new ManagedScreenComparisonFollowupContext({
+      workspace: this,
+      available: () => this.screenComparisonFollowupRouteReady(),
+      memberReady: (member) => {
+        if (!this.screenComparisonFollowupRouteReady() || !this.canEdit())
+          return false;
+        const saved = this.coordinator.getSnapshot();
+        const digest = this.currentWatchlistCatalogDigest();
+        return (
+          saved.phase === "idle" &&
+          !saved.uncertain &&
+          !saved.replayPending &&
+          digest !== null &&
+          saved.draft?.snapshotSha256 === digest &&
+          saved.draft.memberships.includes(member)
+        );
+      },
       revision: () => ({
         navigation: this.navigationRevision,
         view: this.viewRevision,
@@ -912,6 +937,7 @@ export class ManagedWorkspace {
   }
   private clear() {
     this.retired = true;
+    this.screenComparisonFollowup.retire();
     this.cpiFollowupContext.retire();
     this.cpiHeadlines.retire();
     this.calendarFollowupContext.retire();
@@ -2012,7 +2038,7 @@ export class ManagedWorkspace {
     if (
       !active() ||
       this.navigationBlocked ||
-      this.state.view !== "markets" ||
+      (this.state.view !== "markets" && this.state.view !== "discover") ||
       this.state.research ||
       this.state.companyRoute ||
       !draft
@@ -3504,6 +3530,22 @@ export class ManagedWorkspace {
       appended: true,
       message: `Annual comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
+  }
+  private screenComparisonFollowupRouteReady() {
+    return (
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.canNavigate() &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.state.view === "discover" &&
+      this.state.snapshot !== null &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      !this.state.read &&
+      !this.state.reviewing &&
+      !this.state.review &&
+      !this.fileCatalogReviewRequired
+    );
   }
   private calendarFollowupRouteReady() {
     return (

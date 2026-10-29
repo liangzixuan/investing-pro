@@ -3,6 +3,8 @@ import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
 import { ManagedFinancialScreen } from "./ManagedFinancialScreen";
+import { ManagedScreenComparisonFollowup } from "./ManagedScreenComparisonFollowup";
+import type { ResearchFollowup } from "@research-cockpit/contracts";
 import { ManagedScreenShortlistWatchlist } from "./ManagedScreenShortlistWatchlist";
 import type { ManagedFinancialScreenReportCapture } from "./managed-financial-screen";
 import type { ManagedWorkspace } from "./managed-workspace";
@@ -18,6 +20,10 @@ interface Props {
     opener: HTMLButtonElement,
   ) => void;
   readonly onReviewWatchlist: () => void;
+  readonly onReviewFollowup: (
+    entry: ResearchFollowup,
+    opener: HTMLButtonElement,
+  ) => void;
 }
 
 /** Keep screening and the explicit draft handoff in the same discovery flow. */
@@ -34,6 +40,12 @@ export function ManagedFinancialDiscovery(props: Props) {
         {...(props.recipeDelivery
           ? { recipeDelivery: props.recipeDelivery }
           : {})}
+      />
+      <ManagedScreenComparisonFollowup
+        workspace={props.workspace}
+        routeActive={props.recipesRouteActive}
+        navigationPending={props.navigationPending}
+        onReview={props.onReviewFollowup}
       />
       <ManagedScreenShortlistWatchlist
         workspace={props.workspace}
@@ -52,6 +64,7 @@ interface DiscoveryOptions {
     action: () => void,
   ) => void;
   readonly onReviewWatchlist: () => void;
+  readonly onReviewFollowup: Props["onReviewFollowup"];
   readonly recipeDelivery:
     ManagedFinancialScreenRecipeDeliveryAdapter | undefined;
   readonly comparisonReportDelivery:
@@ -63,6 +76,7 @@ export function useManagedFinancialDiscovery({
   navigation,
   openResearch,
   onReviewWatchlist,
+  onReviewFollowup,
   recipeDelivery,
   comparisonReportDelivery,
 }: DiscoveryOptions): Props {
@@ -74,6 +88,7 @@ export function useManagedFinancialDiscovery({
     ...(comparisonReportDelivery ? { comparisonReportDelivery } : {}),
     recipesRouteActive,
     onReviewWatchlist,
+    onReviewFollowup,
     onOpenReport: (capture, opener) =>
       openResearch(opener, () => workspace.openFinancialScreenReport(capture)),
   };

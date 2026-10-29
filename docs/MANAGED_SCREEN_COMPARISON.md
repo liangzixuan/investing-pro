@@ -45,8 +45,8 @@ delivered surface.
 
 ## Capture a private reading report
 
-This client increment is in development. Source, native and delivery acceptance
-remain pending in [Current work](CURRENT_WORK.md).
+This workflow is accepted in source and provided in Android 1.56. See
+[Current work](CURRENT_WORK.md) for the separate delivery and device limits.
 
 1. Finish the screen, or wait for cancellation to settle, and choose two distinct
    loaded results. A running, foreign or stale result, or one without an admitted
@@ -76,3 +76,35 @@ uses the existing chosen-document writer with a report-specific purpose and
 header policy. Browser work remains stopped. Automated source and synthetic
 native checks establish their recorded scope, not installation or physical-phone
 acceptance.
+
+## Keep a dated research check
+
+This client increment is in development. [Current work](CURRENT_WORK.md) records
+source, automated and delivery acceptance separately.
+
+After reading two current loaded results, capture their comparison for a dated
+check. Choose **Left company** or **Right company** explicitly. A destination must
+already match an exact company in the current editable My Watchlist draft.
+An unrelated company or a different share class cannot receive this check.
+The shortlist-to-Watchlist review remains a separate action.
+
+Enter a research question and an independent UTC due date. If needed, use the
+explicit Follow-ups Load, then preview the current check. Inspect the complete
+listing identity, catalog, question and due date beside the captured comparison.
+Both complete statement sets retain their original fiscal periods, source clocks,
+criteria, references and partial-source qualifications.
+
+The complete saved check contains the question and a concise pair/capture
+reference. It must fit the existing 500 Unicode character limit on one line.
+Oversized or invalid text stays visible for correction; nothing is clipped.
+Full criteria, statements and source packets are excluded from the saved check.
+Use the separate HTML report to keep that complete comparison offline.
+
+**Create follow-up draft** creates one entry once. It changes no Watchlist note
+and makes no source request or online Save. Review the entry, open company
+Research and return through Back, then Save Follow-ups separately. A fresh Load
+can retrieve the saved entry through the existing Follow-ups workflow.
+
+Changes to the comparison, source, criteria, run, catalog, destination, question,
+date, draft, file review, access, route or session invalidate the pending action.
+Restoring earlier values cannot renew it. Capture and preview again explicitly.

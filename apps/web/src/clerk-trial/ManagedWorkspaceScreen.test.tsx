@@ -3011,6 +3011,61 @@ describe("managed workspace screen", () => {
     expect(api.save).not.toHaveBeenCalled();
   });
 
+  it("reviews the exact created comparison check from Discover and refuses a retained pending-navigation callback", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    vi.mocked(api.loadFollowups).mockResolvedValueOnce({
+      version: 0,
+      payload: { schemaVersion: 1, entries: [] },
+    });
+    await workspace.followups.coordinator.load();
+    const watchlist = workspace.coordinator.getSnapshot().draft;
+    const member = watchlist!.memberships[0]!;
+    workspace.followups.add(member, "2026-12-31");
+    const entry =
+      workspace.followups.coordinator.getSnapshot().draft!.entries[0]!;
+    workspace.setView("discover");
+    let pending = false;
+    const navigation: ManagedCompanyNavigation = {
+      pending: false,
+      isPending: () => pending,
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => false,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>((view) => {
+        workspace.setView(view);
+        return true;
+      }),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    const discovery = elements(
+      ManagedWorkspaceScreen({ workspace, navigation }),
+    ).find(
+      (node) => node.type === ManagedFinancialDiscovery,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedFinancialDiscovery>
+    >;
+    mounted.direct = false;
+    const opener = {} as HTMLButtonElement;
+    pending = true;
+    discovery.props.onReviewFollowup(entry, opener);
+    expect(workspace.getSnapshot().view).toBe("discover");
+    expect(navigation.view).not.toHaveBeenCalled();
+    pending = false;
+    discovery.props.onReviewFollowup(entry, opener);
+    expect(workspace.getSnapshot().view).toBe("followups");
+    expect(workspace.followups.getSnapshot().selectedId).toBe(entry.id);
+    expect(workspace.followups.currentEntry(entry.id)).toBe(entry);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(watchlist);
+    expect(api.saveFollowups).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+
   it("binds recipe delivery to the current Discover route before a navigation render commits", async () => {
     const { workspace, api } = fixture();
     await workspace.coordinator.load();

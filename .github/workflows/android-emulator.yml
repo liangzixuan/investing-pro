@@ -468,6 +468,12 @@ jobs:
           ))
           if len(required) != 106:
               raise SystemExit("The complete comparison HTML journey must extend all 105 existing and new policy tests.")
+          required.add((
+              "local.investment.personal.ManagedScreenComparisonFollowupTest",
+              "completeComparedPairCreatesOneDatedCheckThroughReviewResearchBackAndSeparateSave",
+          ))
+          if len(required) != 107:
+              raise SystemExit("The comparison dated-check journey must preserve all 106 existing native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

@@ -819,6 +819,12 @@ export function ManagedWorkspaceScreen({
     navigation,
     openResearch,
     onReviewWatchlist: () => setView("watchlist"),
+    onReviewFollowup: (entry) => {
+      const review = workspace.reviewFollowup(entry, () =>
+        setView("followups"),
+      );
+      if (review) setFollowupReview(review);
+    },
     recipeDelivery: financialScreenRecipeDelivery,
     comparisonReportDelivery: screenComparisonReportDelivery,
   });

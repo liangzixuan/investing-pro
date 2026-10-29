@@ -1,0 +1,62 @@
+.managed-frame .managed-screen-comparison-followup {
+  min-width: 0;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--managed-line);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-screen-comparison-followup-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.managed-frame
+  .managed-screen-comparison-followup
+  :is(input, select, textarea, button, summary) {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.managed-frame
+  .managed-screen-comparison-followup
+  :is(input, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+}
+.managed-frame .managed-screen-comparison-followup-preview {
+  margin-top: 16px;
+}
+.managed-frame .managed-screen-comparison-followup textarea {
+  white-space: pre-wrap;
+}
+.managed-frame
+  .managed-screen-comparison-followup
+  :is(h2, h3, h4, h5, dt, dd, li, summary) {
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-screen-comparison-followup dd {
+  min-width: 0;
+}
+.managed-frame .managed-screen-comparison-followup pre {
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.managed-frame #screen-comparison-followup-check {
+  overflow: hidden;
+  resize: none;
+}
+.managed-frame
+  .managed-screen-comparison-followup
+  :is(input, select, textarea, button, summary):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .managed-frame .managed-screen-comparison-followup-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

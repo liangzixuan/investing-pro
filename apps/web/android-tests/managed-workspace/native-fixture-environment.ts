@@ -58,6 +58,7 @@ const allowedScenarios = [
   "price-studies",
   "screen-comparison",
   "screen-comparison-report",
+  "screen-comparison-followup",
   "financial-screen",
   "valuation-price",
   "company-filings",
