@@ -157,3 +157,64 @@ it("retains the captured source and authored form through real initial Follow-up
     release();
   }
 });
+
+it("retains a new capture across initial Load after settled navigation changes without workspace publication", async () => {
+  vi.useFakeTimers();
+  const f = await createControllerFixture();
+  await settleComparisonPair(f);
+  const { fixture, w, review } = f;
+  const workspaceBefore = w.getSnapshot();
+  const screenBefore = w.financialScreen.getSnapshot();
+  const watchlistBefore = w.coordinator.getSnapshot();
+  const published = vi.fn();
+  const releasePublication = w.subscribe(published);
+  w.setNavigationBlocked(false);
+  releasePublication();
+  expect(published).not.toHaveBeenCalled();
+  expect(w.getSnapshot()).toBe(workspaceBefore);
+  expect(w.financialScreen.getSnapshot()).toBe(screenBefore);
+  review.setOpen(true);
+  review.capture();
+  review.edit("side", "right");
+  review.edit("question", comparisonFollowupQuestion);
+  review.edit("dueOn", comparisonFollowupDueOn);
+  const captured = review.getSnapshot().capture;
+  expect(captured).not.toBeNull();
+  expect(review.canLoad()).toBe(true);
+  const { trace, observe, release } = collectInitialLoadTrace(f);
+  try {
+    await review.load();
+    observe();
+    expect(review.getSnapshot(), JSON.stringify(trace)).toMatchObject({
+      capture: captured,
+      side: "right",
+      question: comparisonFollowupQuestion,
+      dueOn: comparisonFollowupDueOn,
+      loading: false,
+    });
+    expect(captured!.isCurrent(), JSON.stringify(trace)).toBe(true);
+    expect(fixture.followups!.getSnapshot()).toMatchObject({
+      load: 1,
+      save: 0,
+      commits: 0,
+    });
+    expect(w.followups.coordinator.getSnapshot()).toMatchObject({
+      phase: "idle",
+      baseVersion: 1,
+      dirty: false,
+    });
+    expect(w.followups.coordinator.getSnapshot().draft!.entries).toHaveLength(
+      2,
+    );
+    expect(review.canPrepare()).toBe(true);
+    expect(w.coordinator.getSnapshot()).toBe(watchlistBefore);
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 2,
+      resolve: 1,
+      save: 0,
+    });
+    expect(fixture.screenComparisonFollowup!.getSnapshot().rejected).toBe(0);
+  } finally {
+    release();
+  }
+});

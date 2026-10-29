@@ -178,6 +178,7 @@ export class ManagedScreenComparisonFollowupContext {
     reason: string | null;
   } {
     if (!this.available()) return { owner: null, reason: sourceStale };
+    this.reconcileSource();
     const w = this.host.workspace;
     const comparison = w.financialScreen.captureComparisonReport(preparedAt);
     if (!comparison) return { owner: null, reason: sourceStale };
