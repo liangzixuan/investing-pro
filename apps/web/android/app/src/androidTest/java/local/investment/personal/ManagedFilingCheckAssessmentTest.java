@@ -71,6 +71,9 @@ public class ManagedFilingCheckAssessmentTest {
     }
     private Original chooseExistingDueCheck() throws Exception {
         String savedWatchlist=page.read(new Script(D+".watchlist.canonical"));
+        page.click(Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='My Watchlist']"));
+        page.click(Element.css(".managed-watchlist-choices li:first-child .managed-watchlist-choice"));
+        page.await(new Check("explicit My Watchlist ZERO selection exposes the editable note before native input",new Script("(()=>{const e=document.querySelector('#managed-note-0'),r=e?.getBoundingClientRect();return location.href==='https://localhost/'&&e?.dataset.managedNoteListingId==='listing-zero'&&!e.disabled&&!e.readOnly&&e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&r.width>0&&r.height>0;})()")).nativeReady());
         replace(ReportRevisitTouch.Field.COMPANY_NOTE,NOTE);
         String unsaved=page.read(new Script(D+".watchlist.canonical"));assertNotEquals(savedWatchlist,unsaved);
         page.click(Element.xpath("//nav[@aria-label='Workspace']/button[normalize-space(.)='Follow-ups']"));
