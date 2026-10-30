@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   CompletePayload,
   ValuationConflictReview,
@@ -20,7 +21,7 @@ import {
 } from "./ValuationAssumptionsActions";
 export type { ManagedValuationAssumptionsProps } from "./useValuationAssumptionsView";
 export function ManagedValuationAssumptions(
-  props: ManagedValuationAssumptionsProps,
+  props: ManagedValuationAssumptionsProps & { collectionFiles?: ReactNode },
 ) {
   const view = useValuationAssumptionsView(props);
   return (
@@ -36,6 +37,7 @@ export function ManagedValuationAssumptions(
         <ValuationLoadStageActions view={view} />
         <ValuationSaveActions view={view} />
       </div>
+      {props.collectionFiles}
       <ValuationResourceStatus view={view} />
       <ValuationConflictReview view={view} />
       <ValuationStagingReview view={view} />

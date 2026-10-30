@@ -1,3 +1,5 @@
+import { ValuationCollectionRecoveryFixtureControls } from "./valuation-collection-recovery-fixture-controls";
+import { createNativeValuationCollectionDraftFileSession } from "./native-valuation-collection-file-fixture";
 import { ReviewCompletionFixtureDiagnostics } from "./review-check-completion-fixture-diagnostics";
 import { FilingAssessmentFixtureDiagnostics } from "./filing-check-assessment-fixture-diagnostics";
 import { useSyncExternalStore } from "react";
@@ -32,6 +34,7 @@ import {
   nativeScreenComparisonReport,
   nativeDraftFile,
   nativeValuationDraftFile,
+  nativeValuationCollectionDraftFile,
   nativeScreenRecipe,
 } from "./native-fixture-environment";
 import { nativeFixtureRouterPorts } from "./native-fixture-router-ports";
@@ -241,6 +244,12 @@ function ResourceControls({ workspace, onFreshSession }: MountedProps) {
 }
 export function FixtureSession({ session, onFreshSession }: Props) {
   const workspace = useFixtureWorkspace(session);
+  const [collectionFileSession] = useState(() =>
+    createNativeValuationCollectionDraftFileSession(
+      nativeValuationCollectionDraftFile,
+      session,
+    ),
+  );
   const [draftFileSession] = useState(() =>
     createNativeDraftFileSession(nativeDraftFile, session),
   );
@@ -258,6 +267,7 @@ export function FixtureSession({ session, onFreshSession }: Props) {
             {...nativeFixtureRouterPorts()}
             {...draftFileSession.routerProps}
             {...valuationDraftFileSession.routerProps}
+            {...collectionFileSession.routerProps}
             {...nativeScreenRecipe.routerProps}
           />
         ) : (
@@ -276,6 +286,13 @@ export function FixtureSession({ session, onFreshSession }: Props) {
         onFreshSession={onFreshSession}
       />
       <valuationDraftFileSession.Controls />
+      <collectionFileSession.Controls />
+      {workspace && fixture.collectionRecovery && (
+        <ValuationCollectionRecoveryFixtureControls
+          workspace={workspace}
+          onFreshSession={onFreshSession}
+        />
+      )}
       <nativeScreenRecipe.Controls />
       <ResourceControls workspace={workspace} onFreshSession={onFreshSession} />
     </>

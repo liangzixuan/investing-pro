@@ -1,5 +1,6 @@
 import { createNativeScreenComparisonReportFixture } from "./native-screen-comparison-report-fixture";
 import { createNativeFollowupsReviewReportFixture } from "./native-followups-review-report-fixture";
+import { createNativeValuationCollectionDraftFileFixture } from "./native-valuation-collection-file-fixture";
 import { Capacitor } from "@capacitor/core";
 import { createFixture } from "./fixture";
 import {
@@ -47,6 +48,7 @@ const allowedScenarios = [
   "filing-dated-question",
   "followup-assessment-note",
   "review-check-completion",
+  "valuation-collection-recovery",
   "filing-check-assessment",
   "portfolio-ledger",
   "portfolio-close-review",
@@ -120,6 +122,10 @@ export const nativeScreenRecipe = createNativeFinancialScreenRecipeSession(
     ? createNativeFinancialScreenRecipeFixture()
     : null,
 );
+export const nativeValuationCollectionDraftFile =
+  scenario === "valuation-collection-recovery"
+    ? createNativeValuationCollectionDraftFileFixture()
+    : null;
 export const nativeValuationDraftFile =
   scenario === "saved-valuation"
     ? createNativeValuationDraftFileFixture()

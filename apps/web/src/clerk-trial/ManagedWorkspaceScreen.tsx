@@ -94,7 +94,9 @@ import {
   type AndroidBackAdapter,
 } from "../mobile/android-back";
 
+import type { ManagedValuationCollectionDraftFileDeliveryAdapter } from "./valuation-collection-draft-file-delivery";
 interface ManagedFileDeliveries {
+  valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
   financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
@@ -253,6 +255,8 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
     followupsReviewReportDelivery: initial.followupsReviewReportDelivery,
     valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
+    valuationCollectionDraftFileDelivery:
+      initial.valuationCollectionDraftFileDelivery,
     androidBack: initial.androidBack,
     reportDelivery: initial.reportDelivery,
     exportDelivery: initial.exportDelivery,
@@ -476,6 +480,7 @@ export function ManagedWorkspaceScreen({
   followupsDraftFileDelivery,
   followupsReviewReportDelivery,
   valuationDraftFileDelivery,
+  valuationCollectionDraftFileDelivery,
   financialScreenRecipeDelivery,
   screenComparisonReportDelivery,
   reportDelivery,
@@ -1128,6 +1133,7 @@ export function ManagedWorkspaceScreen({
                     {
                       accountScope: draftFileScope,
                       delivery: valuationDraftFileDelivery,
+                      collectionDelivery: valuationCollectionDraftFileDelivery,
                       navigationPending,
                       routeActive: () =>
                         !navigation?.invalid && !navigation?.isPending(),

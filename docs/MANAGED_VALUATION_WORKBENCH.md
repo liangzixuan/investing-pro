@@ -143,6 +143,46 @@ Confirmed saved inputs remain in the separate resource described below. Load and
 compare them explicitly before replacing the editor. Saving a Watchlist note or
 capturing a report does not save editable workbench inputs.
 
+## Staged collection file recovery
+
+The source candidate adds **Valuation collection files** inside **Saved valuation
+inputs**. Its disclosure starts closed. It keeps every staged entry in one private
+JSON file, separate from the current company's editor file below.
+
+1. Load the current saved valuation inputs explicitly. Select **Capture valuation
+   collection** to capture every staged entry in its existing order. Capture does
+   not stage the editor or save online.
+2. Inspect the complete listing identities, CIK or unavailable value, catalog,
+   model versions and all authored text for both models. Empty collections and
+   unfinished inputs remain explicit. Select **Save captured collection file**
+   to choose the private file destination.
+3. In a fresh session, load the current saved valuation inputs, then select the
+   file. Selection reads the file locally. Compare the complete imported
+   collection with every entry in the current draft and its online save base.
+4. Select **Restore collection to valuation draft** once. This replaces only the
+   valuation resource draft. It retains the current loaded save base and leaves
+   the independent workbench inputs, calculation and unsaved state unchanged.
+   Cancel leaves the current draft unchanged.
+5. Use the existing catalog identity review, draft **Review**, **Save** and fresh
+   **Load** separately. Imported catalog claims cannot approve an identity for
+   Save. Conflicts and uncertain saves keep their existing recovery paths.
+
+The collection file excludes the workbench editor, calculated results, prices
+and source packets. It preserves admitted raw text without clipping or numeric
+conversion. The complete payload keeps its existing 20-entry and 262,144-byte
+limits; the file allows 262,347 UTF-8 bytes including its fixed envelope. Foreign
+scope, unsupported versions, malformed Unicode, duplicate keys, extra fields,
+size mismatch and complete-file or payload overflow refuse the whole file.
+
+Draft, saved-base, catalog, editor-file activity, route and session changes retire
+an old capture or comparison. Returning to old values does not revive it.
+Cancellation, late file completion and reentrant changes preserve newer work.
+Opening this disclosure makes no financial-source request or calculation.
+
+Local source integration checks passed. Hosted native execution and client
+delivery remain pending. Existing editor files and saved inputs retain their
+independent actions.
+
 ## Draft files for one valuation editor
 
 The source candidate adds explicit file recovery for the current company's

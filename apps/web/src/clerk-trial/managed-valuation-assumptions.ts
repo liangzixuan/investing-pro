@@ -30,6 +30,14 @@ import type { TrialSession } from "./session";
 type Entry = ValuationAssumptionEntry;
 type Payload = ValuationAssumptionsPayload;
 type Listing = Entry["listing"];
+export interface ValuationCollectionDraftContext {
+  readonly saved: VersionedPayload<Payload>;
+  readonly draft: Payload;
+  readonly baseVersion: number;
+  readonly save: SaveState<Payload>;
+  readonly editorFileRevision: object;
+  readonly catalog: ManagedCatalogSnapshotDto;
+}
 export interface ValuationStageReview {
   readonly capture: ManagedValuationInputCapture;
   readonly previous: Entry | null;
@@ -202,6 +210,10 @@ export class ManagedValuationAssumptions {
   private transition = {};
   private observedDraft: Payload | null = null;
   private stagedCapture: ManagedValuationInputCapture | null = null;
+  private readonly collectionActivities = new Set<object>();
+  private readonly fileContexts =
+    new WeakSet<ValuationCollectionDraftContext>();
+  private fileRestore: { draft: Payload | null } | null = null;
 
   constructor(
     private readonly api: Pick<
@@ -321,6 +333,8 @@ export class ManagedValuationAssumptions {
   private resourceChanged(): void {
     if (this.retired) return;
     const state = this.coordinator.getSnapshot();
+    if (this.fileRestore && this.fileRestore.draft === null)
+      this.fileRestore.draft = state.draft;
     if (state.draft !== this.observedDraft || state.phase !== "idle")
       this.clearReview();
     this.observedDraft = state.draft;
@@ -338,6 +352,8 @@ export class ManagedValuationAssumptions {
   private close(): void {
     if (this.retired) return;
     this.retired = true;
+    this.collectionActivities.clear();
+    this.fileRestore = null;
     this.clearReview();
     this.approvals.clear();
     this.stagedCapture = null;
@@ -373,7 +389,102 @@ export class ManagedValuationAssumptions {
     return true;
   }
   canEdit(): boolean {
-    return this.resourceEditable() && this.operation === null;
+    return (
+      this.resourceEditable() &&
+      this.operation === null &&
+      !this.hasCollectionFileActivity()
+    );
+  }
+  hasCollectionFileActivity() {
+    return this.collectionActivities.size > 0;
+  }
+  beginCollectionFileActivity(owner: object) {
+    if (this.retired || this.collectionActivities.has(owner)) return;
+    this.collectionActivities.add(owner);
+    this.update({});
+  }
+  endCollectionFileActivity(owner: object) {
+    if (this.collectionActivities.delete(owner)) this.update({});
+  }
+  getDraftFileContext(owner?: object): ValuationCollectionDraftContext | null {
+    const save = this.coordinator.getSnapshot(),
+      catalog = this.options.getCatalogSnapshot();
+    if (
+      !this.resourceEditable() ||
+      this.operation ||
+      this.hasReview() ||
+      this.state.reviewing ||
+      this.workbench.hasDraftFileActivity()
+    )
+      return null;
+    if ([...this.collectionActivities].some((active) => active !== owner))
+      return null;
+    if (
+      !save.saved ||
+      !save.draft ||
+      save.baseVersion === null ||
+      !save.latestLoaded ||
+      save.saved.version !== save.baseVersion ||
+      !catalog
+    )
+      return null;
+    const context = Object.freeze({
+      saved: save.saved,
+      draft: save.draft,
+      baseVersion: save.baseVersion,
+      save,
+      catalog,
+      editorFileRevision: this.workbench.getDraftFileActivityRevision(),
+    });
+    this.fileContexts.add(context);
+    return context;
+  }
+  restoreFileDraft(
+    captured: ValuationCollectionDraftContext,
+    value: Payload,
+    owner: object,
+  ): boolean {
+    if (
+      !this.fileContexts.has(captured) ||
+      !this.collectionActivities.has(owner)
+    )
+      return false;
+    const payload = parseValuationAssumptionsPayload(value);
+    const current = () => {
+      const context = this.getDraftFileContext(owner);
+      return (
+        context !== null &&
+        (
+          [
+            "saved",
+            "draft",
+            "baseVersion",
+            "save",
+            "catalog",
+            "editorFileRevision",
+          ] as const
+        ).every((key) => context[key] === captured[key])
+      );
+    };
+    if (!payload || !current()) return false;
+    this.fileContexts.delete(captured);
+    const token = this.clearReview();
+    this.approvals.clear();
+    this.stagedCapture = null;
+    this.notify();
+    if (this.transition !== token || !current()) return false;
+    const committed = { draft: null as Payload | null };
+    this.fileRestore = committed;
+    try {
+      this.coordinator.replaceDraft(payload);
+      return (
+        !this.retired &&
+        committed.draft !== null &&
+        this.coordinator.getSnapshot().draft === committed.draft
+      );
+    } finally {
+      if (this.fileRestore === committed) this.fileRestore = null;
+    }
   }
   private metadataApproved(entry: Entry): boolean {
     const previous = this.coordinator

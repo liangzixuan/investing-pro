@@ -5,17 +5,36 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Selected next: complete a check within a chosen review
+## Source candidate: recover the staged valuation collection from a file
+
+The [valuation collection recovery workflow](MANAGED_VALUATION_WORKBENCH.md#staged-collection-file-recovery)
+captures every staged entry in one private file. Explicit capture, complete
+review, file Save and fresh-session restore remain separate. Restore changes
+only the valuation resource draft, retains its loaded save base and preserves the
+workbench editor. Normal catalog review, Save and fresh Load remain explicit.
+
+Implementation and local integration checks are complete. Hosted native checks
+and source acceptance remain pending. This
+increment uses the existing resource and payload limits. It adds no provider
+request, saved-resource migration, API route, dependency or cost. Source, native
+and Android delivery acceptance remain separate.
+
+## Accepted and delivered: complete a check within a chosen review
 
 The [chosen Follow-ups review](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks)
-will let the owner complete or reopen its exact current check without leaving the
-chosen order. Keep the full question, result, identity and displayed assessed UTC
-day beside the action. Completion changes that entry only and retains the same
-position. Continue, Finish, Save and fresh Load remain separate actions.
+lets the owner complete or reopen its exact current check while keeping the
+chosen order and position. The full question, result, identity and captured
+assessed UTC day stay visible. Continue, Finish, Save and fresh Load are separate.
 
-Implementation and focused verification are in progress. Required source/native
-acceptance and delivery remain separate. This increment reuses the existing draft
-completion methods and adds no source request, date rule, resource, schema or API.
+[PR 256](https://github.com/liangzixuan/investing-pro/pull/256) merged at
+`0cf07006f957342db24fbc55f37a9c3e0dd94270`. Original required PR and actual-main
+checks passed, including all 109 synthetic native cases. Android 1.59.0/code60 is
+provided locally after one guarded build with the existing signer and all four
+APK checks. A narrow package-verifier correction used the same signed APK and
+retained the original failure and three unchanged passing checks. No rebuild or
+re-signing occurred. Installation and physical-device acceptance are not claimed.
+API, website and prior releases are preserved. No source request, date rule,
+resource, schema or API was added.
 
 ## Accepted and delivered: cite a filing in an existing assessment
 

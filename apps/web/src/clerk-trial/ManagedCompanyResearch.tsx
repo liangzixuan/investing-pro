@@ -92,6 +92,7 @@ export function ManagedCompanyResearch({
   valuationNoteActions,
   valuationRevenueBasisActions,
   valuationDraftFiles,
+  valuationCollectionFiles,
   valuationFollowup,
   priceNoteActions,
   priceStudiesActions,
@@ -147,6 +148,7 @@ export function ManagedCompanyResearch({
   valuationNoteActions?: ManagedValuationNoteActions;
   valuationRevenueBasisActions?: ManagedValuationRevenueBasisActions;
   valuationDraftFiles?: ReactNode;
+  valuationCollectionFiles?: ReactNode;
   valuationFollowup?: ReactNode;
   priceNoteActions: ManagedPriceNoteActions;
   priceStudiesActions?: ManagedPriceStudiesActions;
@@ -278,6 +280,7 @@ export function ManagedCompanyResearch({
           />
           {valuationDraftFiles}
           <ManagedValuationAssumptions
+            collectionFiles={valuationCollectionFiles}
             model={valuationAssumptions}
             workbench={valuation}
             navigationPending={navigationPending}

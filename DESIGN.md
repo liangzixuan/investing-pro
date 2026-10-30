@@ -11,6 +11,18 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Staged valuation collection files
+
+Keep collection file actions inside Saved valuation inputs, distinct from the
+current editor's file controls. Explain that the file contains every staged
+entry and excludes the editor, calculations and source packets. Capture and
+Restore each require a complete readout with full identities, raw model inputs
+and entry order. Compare the current draft and imported collection, including
+empty states. Use wrapping text, labelled regions, visible focus and 44px actions.
+Stack comparisons on narrow screens. Keep file Save, catalog review and online
+Save explicit. Move focus to a preview only after its exact current action commits;
+return it to the initiating control on cancellation when that control still exists.
+
 ## Completion in a chosen review
 
 Keep Complete this check or Reopen this check beside the current review's full
