@@ -276,6 +276,43 @@ function direct(search = "?company=listing-zero&section=price") {
 }
 
 describe("managed company URL navigation", () => {
+  it("admits draft-set Watchlist context only after the company route settles and retains route revisions across navigation ABA", async () => {
+    const f = fixture();
+    await f.ready();
+    f.workspace.setView("watchlist");
+    let nav = f.render();
+    const member = f.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    nav.open(() => f.workspace.openWatchlistAnnual(member));
+    expect(nav.isPending()).toBe(true);
+    expect(f.workspace.getResearchDraftSetRoute().blocked).toBe(true);
+    expect(f.workspace.getWatchlistResourceDraftContext()).toBeNull();
+    nav = f.render();
+    expect(nav.isPending()).toBe(false);
+    expect(f.workspace.getWatchlistDraftFileContext()).toBeNull();
+    expect(f.workspace.getWatchlistResourceDraftContext()).not.toBeNull();
+    const settled = f.workspace.getResearchDraftSetRoute();
+    nav.section("interim");
+    expect(nav.isPending()).toBe(true);
+    expect(f.workspace.getResearchDraftSetRoute().blocked).toBe(true);
+    expect(f.workspace.getWatchlistResourceDraftContext()).toBeNull();
+    nav = f.render();
+    expect(f.workspace.getWatchlistResourceDraftContext()).not.toBeNull();
+    nav.section("annual");
+    nav = f.render();
+    expect(f.workspace.getWatchlistResourceDraftContext()).not.toBeNull();
+    expect(f.workspace.getResearchDraftSetRoute().navigation).not.toBe(
+      settled.navigation,
+    );
+    nav.back();
+    expect(nav.isPending()).toBe(true);
+    expect(f.workspace.getWatchlistResourceDraftContext()).toBeNull();
+    f.render();
+    expect(f.workspace.getWatchlistDraftFileContext()).not.toBeNull();
+    expect(f.workspace.getWatchlistResourceDraftContext()).not.toBeNull();
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    f.workspace.sessionOwner.dispose();
+  });
   it("routes the rendered Interim section to its real model without a source read and keeps the authored draft", async () => {
     const f = fixture();
     await f.ready();

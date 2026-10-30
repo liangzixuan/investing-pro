@@ -1,3 +1,5 @@
+import { ResearchDraftSetFixtureControls } from "./research-draft-set-fixture-controls";
+import { createNativeResearchDraftSetFileSession } from "./native-research-draft-set-file-fixture";
 import { ValuationCollectionRecoveryFixtureControls } from "./valuation-collection-recovery-fixture-controls";
 import { createNativeValuationCollectionDraftFileSession } from "./native-valuation-collection-file-fixture";
 import { ReviewCompletionFixtureDiagnostics } from "./review-check-completion-fixture-diagnostics";
@@ -35,6 +37,7 @@ import {
   nativeDraftFile,
   nativeValuationDraftFile,
   nativeValuationCollectionDraftFile,
+  nativeResearchDraftSetFile,
   nativeScreenRecipe,
 } from "./native-fixture-environment";
 import { nativeFixtureRouterPorts } from "./native-fixture-router-ports";
@@ -244,6 +247,12 @@ function ResourceControls({ workspace, onFreshSession }: MountedProps) {
 }
 export function FixtureSession({ session, onFreshSession }: Props) {
   const workspace = useFixtureWorkspace(session);
+  const [researchDraftSetFileSession] = useState(() =>
+    createNativeResearchDraftSetFileSession(
+      nativeResearchDraftSetFile,
+      session,
+    ),
+  );
   const [collectionFileSession] = useState(() =>
     createNativeValuationCollectionDraftFileSession(
       nativeValuationCollectionDraftFile,
@@ -268,6 +277,7 @@ export function FixtureSession({ session, onFreshSession }: Props) {
             {...draftFileSession.routerProps}
             {...valuationDraftFileSession.routerProps}
             {...collectionFileSession.routerProps}
+            {...researchDraftSetFileSession.routerProps}
             {...nativeScreenRecipe.routerProps}
           />
         ) : (
@@ -287,6 +297,13 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       />
       <valuationDraftFileSession.Controls />
       <collectionFileSession.Controls />
+      <researchDraftSetFileSession.Controls />
+      {workspace && fixture.researchDraftSet && (
+        <ResearchDraftSetFixtureControls
+          workspace={workspace}
+          onFreshSession={onFreshSession}
+        />
+      )}
       {workspace && fixture.collectionRecovery && (
         <ValuationCollectionRecoveryFixtureControls
           workspace={workspace}

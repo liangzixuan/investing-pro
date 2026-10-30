@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Selected research draft-set files
+
+Use one workspace disclosure for a chosen set of loaded research drafts. Start
+with explicit resource selection and show why an unavailable resource cannot be
+included. Distinguish a loaded empty collection from an omitted or unloaded one.
+Show complete collection readouts before file Save and before each restore.
+Keep current and imported content labelled, with the current online save base.
+Each restore targets one resource and retains separate catalog review and Save.
+Use wrapping text, labelled regions, 44px controls and stacked comparisons on
+narrow screens. Move focus only for the exact action that owns the current view.
+
 ## Staged valuation collection files
 
 Keep collection file actions inside Saved valuation inputs, distinct from the

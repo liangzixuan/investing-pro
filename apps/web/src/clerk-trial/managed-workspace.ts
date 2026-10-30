@@ -190,6 +190,7 @@ import {
 import type { TrialSession } from "./session";
 import {
   captureWatchlistDraftFileContext,
+  captureWatchlistResourceDraftContext,
   type WatchlistDraftFileContext,
 } from "./managed-watchlist-draft-context";
 
@@ -392,6 +393,10 @@ export class ManagedWorkspace {
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
   private navigationBlocked = false;
+  private readonly watchlistFileActivities = new Set<object>();
+  private watchlistFileRevision = {};
+  private readonly watchlistFileContexts =
+    new WeakSet<WatchlistDraftFileContext>();
   private followupsNavigationDepth = 0;
   private viewRevision = 0;
   private navigationRevision = 0;
@@ -4059,6 +4064,94 @@ export class ManagedWorkspace {
   }
   watchlistFileCatalogReviewRequired() {
     return this.fileCatalogReviewRequired;
+  }
+  private researchDraftSetRouteReady() {
+    if (this.followupsNavigationDepth > 0) return false;
+    if (!this.navigationBlocked) return true;
+    const visit = this.state.research;
+    const route = this.state.companyRoute;
+    return (
+      visit !== null &&
+      route?.status === "open" &&
+      route.listingId === visit.selection.listing.listingId &&
+      route.section === visit.section &&
+      visit.selection.catalogSnapshotSha256 ===
+        this.state.snapshot?.snapshotSha256
+    );
+  }
+  getResearchDraftSetRoute() {
+    return {
+      navigation: this.navigationRevision,
+      view: this.viewRevision,
+      research: this.state.research,
+      companyRoute: this.state.companyRoute,
+      blocked: !this.researchDraftSetRouteReady(),
+    };
+  }
+  hasWatchlistDraftFileActivity(owner?: object) {
+    return [...this.watchlistFileActivities].some((active) => active !== owner);
+  }
+  getWatchlistDraftFileActivityRevision() {
+    return this.watchlistFileRevision;
+  }
+  beginWatchlistDraftFileActivity(owner: object) {
+    if (this.retired || this.watchlistFileActivities.has(owner)) return;
+    this.watchlistFileActivities.add(owner);
+    this.watchlistFileRevision = {};
+    this.update({});
+  }
+  endWatchlistDraftFileActivity(owner: object) {
+    if (!this.watchlistFileActivities.delete(owner)) return;
+    this.watchlistFileRevision = {};
+    this.update({});
+  }
+  getWatchlistResourceDraftContext(
+    owner?: object,
+  ): WatchlistDraftFileContext | null {
+    if (
+      !this.canEdit() ||
+      !this.researchDraftSetRouteReady() ||
+      this.hasWatchlistDraftFileActivity(owner)
+    )
+      return null;
+    if (this.sessionOwner.getSnapshot().phase !== "active") return null;
+    const context = captureWatchlistResourceDraftContext(
+      this.coordinator.getSnapshot(),
+      this.state,
+      true,
+    );
+    if (context) this.watchlistFileContexts.add(context);
+    return context;
+  }
+  restoreWatchlistResourceDraft(
+    captured: WatchlistDraftFileContext,
+    payload: MainWatchlistPayload,
+    owner: object,
+  ) {
+    if (
+      !this.watchlistFileContexts.has(captured) ||
+      !this.watchlistFileActivities.has(owner)
+    )
+      return false;
+    const current = this.getWatchlistResourceDraftContext(owner);
+    if (
+      !current ||
+      current.saved !== captured.saved ||
+      current.draft !== captured.draft ||
+      current.baseVersion !== captured.baseVersion ||
+      current.catalog !== captured.catalog
+    )
+      return false;
+    this.watchlistFileContexts.delete(captured);
+    this.fileCatalogReviewRequired = true;
+    this.validation = null;
+    const installed = this.coordinator.replaceDraft(payload);
+    this.update({});
+    return (
+      !this.retired &&
+      installed !== null &&
+      this.coordinator.getSnapshot().draft === installed
+    );
   }
   getWatchlistDraftFileContext(
     requireFresh = true,

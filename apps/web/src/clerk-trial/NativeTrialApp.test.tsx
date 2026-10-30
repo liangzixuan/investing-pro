@@ -1,3 +1,4 @@
+import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
@@ -140,6 +141,11 @@ async function mount(
     write: vi.fn(),
     cancel: vi.fn(),
   };
+  const researchDraftSetFilePlugin = {
+    choose: vi.fn(),
+    write: vi.fn(),
+    cancel: vi.fn(),
+  };
   const valuationCollectionDraftFilePlugin = {
     choose: vi.fn(),
     write: vi.fn(),
@@ -180,6 +186,7 @@ async function mount(
     ["InvestmentPortfolioReviewReport", portfolioReviewReportPlugin],
     ["InvestmentFollowupsReviewReport", followupsReviewReportPlugin],
     ["InvestmentFollowupsDraftFile", followupsDraftFilePlugin],
+    ["InvestmentResearchDraftSetFile", researchDraftSetFilePlugin],
     [
       "InvestmentValuationCollectionDraftFile",
       valuationCollectionDraftFilePlugin,
@@ -222,6 +229,7 @@ async function mount(
     portfolioReviewReportPlugin,
     followupsReviewReportPlugin,
     followupsDraftFilePlugin,
+    researchDraftSetFilePlugin,
     valuationCollectionDraftFilePlugin,
     valuationDraftFilePlugin,
     financialScreenRecipePlugin,
@@ -242,6 +250,7 @@ function findScreen(node: ReactNode):
       portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
       followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+      researchDraftSetFileDelivery?: ManagedResearchDraftSetFileDeliveryAdapter;
       valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
@@ -270,6 +279,7 @@ function findScreen(node: ReactNode):
         portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
         followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
         followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+        researchDraftSetFileDelivery?: ManagedResearchDraftSetFileDeliveryAdapter;
         valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
         valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
         financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
@@ -328,6 +338,7 @@ describe("native shared workspace composition", () => {
         portfolioReviewReportPlugin,
         followupsReviewReportPlugin,
         followupsDraftFilePlugin,
+        researchDraftSetFilePlugin,
         valuationCollectionDraftFilePlugin,
         valuationDraftFilePlugin,
         financialScreenRecipePlugin,
@@ -354,6 +365,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentPortfolioReviewReport"],
               ["InvestmentFollowupsReviewReport"],
               ["InvestmentFollowupsDraftFile"],
+              ["InvestmentResearchDraftSetFile"],
               ["InvestmentValuationCollectionDraftFile"],
               ["InvestmentValuationDraftFile"],
               ["InvestmentFinancialScreenRecipe"],
@@ -416,6 +428,14 @@ describe("native shared workspace composition", () => {
         screen?.props.followupsDraftFileDelivery,
       );
       for (const method of Object.values(followupsDraftFilePlugin))
+        expect(method).not.toHaveBeenCalled();
+      expect(typeof screen?.props.researchDraftSetFileDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.researchDraftSetFileDelivery).toBe(
+        screen?.props.researchDraftSetFileDelivery,
+      );
+      for (const method of Object.values(researchDraftSetFilePlugin))
         expect(method).not.toHaveBeenCalled();
       expect(
         typeof screen?.props.valuationCollectionDraftFileDelivery?.deliver,

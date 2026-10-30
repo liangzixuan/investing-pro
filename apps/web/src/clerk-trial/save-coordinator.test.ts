@@ -301,3 +301,25 @@ describe("shared save coordinator", () => {
     expect(controller.getSnapshot().dirty).toBe(true);
   });
 });
+
+it("returns the exact installed copy even when a listener replaces it reentrantly", async () => {
+  const f = fixture();
+  await f.controller.load();
+  const seen: Draft[] = [];
+  let replaced = false;
+  f.controller.subscribe(() => {
+    const current = f.controller.getSnapshot().draft;
+    if (current) seen.push(current);
+    if (!replaced) {
+      replaced = true;
+      f.controller.replaceDraft(draft("newer"));
+    }
+  });
+  const original = draft("older"),
+    installed = f.controller.replaceDraft(original);
+  expect(installed).toBe(seen[0]);
+  expect(installed).not.toBe(original);
+  expect(installed?.entries[0]?.note).toBe("older");
+  expect(f.controller.getSnapshot().draft?.entries[0]?.note).toBe("newer");
+  expect(f.controller.getSnapshot().draft).not.toBe(installed);
+});

@@ -433,6 +433,11 @@ export class ManagedResearchFollowups {
   hasDraftFileActivity() {
     return this.draftFileActivities.size > 0;
   }
+  ownsDraftFileActivity(owner: object) {
+    return (
+      this.draftFileActivities.size === 1 && this.draftFileActivities.has(owner)
+    );
+  }
   getDraftFileActivityRevision() {
     return this.draftFileActivityRevision;
   }
@@ -490,9 +495,19 @@ export class ManagedResearchFollowups {
       current.catalog !== captured.catalog
     )
       return false;
-    this.coordinator.replaceDraft(draft);
+    const installed = this.coordinator.replaceDraft(draft);
+    if (
+      this.retired ||
+      installed === null ||
+      this.coordinator.getSnapshot().draft !== installed
+    )
+      return false;
     this.select(null);
-    return !this.retired;
+    return (
+      !this.retired &&
+      installed !== null &&
+      this.coordinator.getSnapshot().draft === installed
+    );
   }
   private owns(entry: ResearchFollowup) {
     return this.canEdit() && this.currentEntry(entry.id) === entry;

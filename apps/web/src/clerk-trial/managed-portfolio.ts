@@ -313,6 +313,11 @@ export class ManagedPortfolio {
   hasDraftFileActivity() {
     return this.draftFileActivities.size > 0;
   }
+  ownsDraftFileActivity(owner: object) {
+    return (
+      this.draftFileActivities.size === 1 && this.draftFileActivities.has(owner)
+    );
+  }
   getDraftFileActivityRevision() {
     return this.draftFileActivityRevision;
   }
@@ -372,8 +377,12 @@ export class ManagedPortfolio {
     )
       return false;
     this.approval = null;
-    this.coordinator.replaceDraft({ ledger });
-    return !this.retired;
+    const installed = this.coordinator.replaceDraft({ ledger });
+    return (
+      !this.retired &&
+      installed !== null &&
+      this.coordinator.getSnapshot().draft === installed
+    );
   }
   getProjection() {
     const ledger = this.coordinator.getSnapshot().draft?.ledger;
