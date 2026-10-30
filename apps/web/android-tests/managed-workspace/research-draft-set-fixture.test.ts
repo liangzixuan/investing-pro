@@ -298,3 +298,46 @@ it("uses the actual current draft-set controller over all four native resource p
   expect(c.getSnapshot().rejected).toBe(0);
   third.close();
 });
+
+it("admits reordered object keys without changing valuation fields or entry order", async () => {
+  const f = await fixture(),
+    c = f.researchDraftSet!;
+  await load(f);
+  c.nextSession();
+  await load(f);
+  await review(f);
+  await f.api.savePortfolio(
+    {
+      expectedVersion: 7,
+      idempotencyKey: key,
+      payload: c.data.reviewed.portfolio,
+    },
+    signal(),
+  );
+  await review(f);
+  function reorder(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(reorder);
+    if (value !== null && typeof value === "object")
+      return Object.fromEntries(
+        Object.entries(value)
+          .reverse()
+          .map(([k, v]) => [k, reorder(v)]),
+      );
+    return value;
+  }
+  const payload = reorder(
+    c.data.reviewed.valuation,
+  ) as typeof c.data.reviewed.valuation;
+  expect(JSON.stringify(payload)).not.toBe(
+    JSON.stringify(c.data.reviewed.valuation),
+  );
+  await f.api.saveValuationAssumptions(
+    { expectedVersion: 9, idempotencyKey: key, payload },
+    signal(),
+  );
+  expect(c.saved().valuation).toEqual({
+    version: 10,
+    payload: c.data.reviewed.valuation,
+  });
+  expect(c.getSnapshot().rejected).toBe(0);
+});

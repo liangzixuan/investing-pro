@@ -1,5 +1,6 @@
 import {
   encodePortfolioPayload,
+  encodeValuationAssumptionsPayload,
   parseManagedPortfolioCommand,
   parseManagedPortfolioReceipt,
   parseManagedValuationAssumptionsCommand,
@@ -156,8 +157,8 @@ export function createResearchDraftSetFixture(
         counts.valuationSave === 0 &&
         counts.valuationReview === 1 &&
         command.expectedVersion === 9 &&
-        JSON.stringify(command.payload) ===
-          JSON.stringify(data.reviewed.valuation),
+        encodeValuationAssumptionsPayload(command.payload) ===
+          encodeValuationAssumptionsPayload(data.reviewed.valuation),
     );
     const receipt = parseManagedValuationAssumptionsReceipt(
       { version: 10, payload: command.payload, replayed: false },
