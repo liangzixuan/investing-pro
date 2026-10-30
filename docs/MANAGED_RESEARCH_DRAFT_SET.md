@@ -1,7 +1,8 @@
 # Research draft-set files
 
-Status: source merged in PR258. [Current work](CURRENT_WORK.md) records original
-main qualification and Android delivery separately.
+Status: source merged in PR258 and delivered in Android 1.61.
+[Current work](CURRENT_WORK.md) records original main qualification and client
+delivery separately. Phone acceptance of this release is not claimed.
 
 ## Intended workflow
 

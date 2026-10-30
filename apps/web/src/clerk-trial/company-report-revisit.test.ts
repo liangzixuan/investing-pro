@@ -312,3 +312,84 @@ describe("private report revisit read and whole-note lifecycle", () => {
     expect(f.controller.getSnapshot().message).toBe("");
   });
 });
+
+describe("read-only comparison capture", () => {
+  it("captures exact references without mutating state, time, sources or draft", async () => {
+    const f = await fixture();
+    expect(f.controller.captureComparison()).toBeNull();
+    await f.controller.readFile(f.file());
+    expect(f.controller.captureComparison()).toBeNull();
+    f.controller.captureCurrent();
+    f.controller.setAssessment("  Raw authored comparison 📈  ");
+    const state = f.controller.getSnapshot();
+    const capture = f.controller.captureComparison()!;
+    expect(capture.archive).toBe(state.archive);
+    expect(capture.current).toBe(state.current);
+    expect(capture.assessment).toBe(state.assessment);
+    expect(capture.isCurrent()).toBe(true);
+    expect(Object.isFrozen(capture)).toBe(true);
+    expect(f.controller.getSnapshot()).toBe(state);
+    expect(f.append).not.toHaveBeenCalled();
+    expect(f.readPrice).toHaveBeenCalledOnce();
+    expect(f.readOther).not.toHaveBeenCalled();
+  });
+  it.each([
+    "assessment",
+    "capture",
+    "clear",
+    "dispose",
+    "draft",
+    "source",
+    "active",
+    "note",
+  ] as const)(
+    "permanently retires captured comparison after %s",
+    async (kind) => {
+      const f = await fixture();
+      await f.preview();
+      const capture = f.controller.captureComparison()!;
+      if (kind === "assessment") {
+        f.controller.setAssessment("Changed");
+        f.controller.setAssessment(capture.assessment);
+      } else if (kind === "capture") f.controller.captureCurrent();
+      else if (kind === "clear") f.controller.clear();
+      else if (kind === "dispose") f.controller.dispose();
+      else if (kind === "draft") f.changeDraft();
+      else if (kind === "source") await f.price.load();
+      else if (kind === "note") f.controller.prepareNote();
+      else f.setActive(false);
+      expect(capture.isCurrent()).toBe(false);
+      f.setActive(true);
+      expect(capture.isCurrent()).toBe(false);
+      expect(f.append).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects reentrant mutation during current-owner validation", async () => {
+    const f = await fixture();
+    await f.preview();
+    const captured = f.controller.captureComparison()!;
+    let mutate = false;
+    const controller = new CompanyReportRevisit({
+      selection: eodSelection,
+      now,
+      active: () => {
+        if (mutate) {
+          mutate = false;
+          controller.setAssessment("Changed during capture");
+        }
+        return true;
+      },
+      capture: () => ({
+        report: captured.current,
+        reason: null,
+        isCurrent: () => true,
+        append: f.append,
+      }),
+    });
+    await controller.readFile(f.file());
+    controller.captureCurrent();
+    mutate = true;
+    expect(controller.captureComparison()).toBeNull();
+    expect(f.append).not.toHaveBeenCalled();
+  });
+});

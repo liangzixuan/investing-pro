@@ -1,3 +1,4 @@
+import type { CompanyReportComparisonCheckActions } from "./company-report-comparison-check-actions";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import type { ResearchWatchlistState } from "./managed-workspace";
 import type { ManagedValuationWorkbench } from "./managed-valuation-workbench";
@@ -11,6 +12,7 @@ import {
 
 export interface CompanyReportRevisitProps extends CompanyEvidenceModels {
   valuation?: ManagedValuationWorkbench;
+  comparisonCheck?: CompanyReportComparisonCheckActions;
   readWatchlist: (
     selection: ManagedResearchSelection,
   ) => ResearchWatchlistState;

@@ -52,6 +52,7 @@ const allowedScenarios = [
   "valuation-collection-recovery",
   "research-draft-set",
   "company-research-checks",
+  "report-comparison-check",
   "filing-check-assessment",
   "portfolio-ledger",
   "portfolio-close-review",
@@ -101,6 +102,8 @@ export const scenario = admitScenario(
 );
 // Fixed test input before the router mounts; no navigation or account bypass.
 if (scenario === "company-direct-entry")
+  history.replaceState(null, "", "/?company=listing-zero&section=annual");
+if (scenario === "report-comparison-check")
   history.replaceState(null, "", "/?company=listing-zero&section=annual");
 if (scenario === "company-research-checks")
   history.replaceState(null, "", "/?company=listing-zero&section=filings");

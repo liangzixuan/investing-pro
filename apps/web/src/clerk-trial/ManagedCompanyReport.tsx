@@ -1,4 +1,5 @@
 import { ManagedCompanyReportRevisit } from "./ManagedCompanyReportRevisit";
+import type { CompanyReportComparisonCheckActions } from "./company-report-comparison-check-actions";
 import type { CompanyReportRevisitTarget } from "./company-report-revisit";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ManagedResearchSelection } from "./managed-research-selection";
@@ -35,6 +36,7 @@ export function ManagedCompanyReport({
   reportDelivery,
   readReportWatchlist,
   reportRevisitTarget,
+  reportComparisonCheck,
   onSection,
   valuation,
   ...models
@@ -44,6 +46,7 @@ export function ManagedCompanyReport({
   watchlist: ResearchWatchlistState;
   reportDelivery?: CompanyReportDeliveryAdapter;
   reportRevisitTarget?: () => CompanyReportRevisitTarget | null;
+  reportComparisonCheck?: CompanyReportComparisonCheckActions;
   readReportWatchlist?: (
     selection: ManagedResearchSelection,
   ) => ResearchWatchlistState;
@@ -107,6 +110,9 @@ export function ManagedCompanyReport({
             {...(valuation ? { valuation } : {})}
             readWatchlist={readReportWatchlist}
             target={reportRevisitTarget}
+            {...(reportComparisonCheck
+              ? { comparisonCheck: reportComparisonCheck }
+              : {})}
           />
         ) : null
       }

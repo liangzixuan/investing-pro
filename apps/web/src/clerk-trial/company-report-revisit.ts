@@ -18,6 +18,12 @@ export interface CompanyReportRevisitCapture {
   readonly isCurrent: () => boolean;
   readonly append: (note: string, expectedNote: string) => boolean;
 }
+export interface CompanyReportComparisonCapture {
+  readonly archive: CompanyReportArchive;
+  readonly current: PreparedCompanyReport;
+  readonly assessment: string;
+  readonly isCurrent: () => boolean;
+}
 export interface CompanyReportRevisitOptions {
   readonly selection: ManagedResearchSelection;
   readonly active: () => boolean;
@@ -84,6 +90,37 @@ export class CompanyReportRevisit {
   }
   comparisonIsCurrent() {
     return this.active() && this.comparison?.isCurrent() === true;
+  }
+  /** Read-only ownership of the exact comparison; it cannot renew source dates. */
+  captureComparison(): CompanyReportComparisonCapture | null {
+    const state = this.state;
+    const comparison = this.comparison;
+    const revision = this.mutation;
+    if (!state.archive || !state.current || !comparison) return null;
+    let retired = false;
+    const unchanged = () =>
+      this.mutation === revision &&
+      this.state === state &&
+      this.comparison === comparison;
+    const isCurrent = () => {
+      if (retired) return false;
+      if (
+        !unchanged() ||
+        !this.active() ||
+        !comparison.isCurrent() ||
+        !unchanged()
+      ) {
+        retired = true;
+      }
+      return !retired;
+    };
+    if (!isCurrent()) return null;
+    return Object.freeze({
+      archive: state.archive,
+      current: state.current,
+      assessment: state.assessment,
+      isCurrent,
+    });
   }
   reconcile() {
     if (this.retired) return;

@@ -528,6 +528,13 @@ jobs:
           required.add(company_research_checks_case)
           if len(required) != 120:
               raise SystemExit("The company check journey must preserve all 119 prior native cases.")
+          report_comparison_check_case = (
+              "local.investment.personal.ManagedReportComparisonCheckTest",
+              "savedReportComparisonAppliesToExactCheckThroughReviewCompletionSaveFreshLoad",
+          )
+          required.add(report_comparison_check_case)
+          if len(required) != 121:
+              raise SystemExit("The saved-report comparison check journey must preserve all 120 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -580,6 +587,12 @@ jobs:
                       raise SystemExit("The company check shard must retain its scoped attachment frame.")
               elif company_check_frames:
                   raise SystemExit("The company check attachment frame belongs only to its executed shard.")
+              report_comparison_check_frames = list(root.rglob("newReportComparisonCheckPreview.png"))
+              if report_comparison_check_case in executed:
+                  if len(report_comparison_check_frames) != 1 or report_comparison_check_frames[0].stat().st_size == 0:
+                      raise SystemExit("The saved-report comparison check shard must retain its scoped complete assessment preview frame.")
+              elif report_comparison_check_frames:
+                  raise SystemExit("The saved-report comparison check preview frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

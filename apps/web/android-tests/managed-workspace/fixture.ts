@@ -1,4 +1,8 @@
 import {
+  createReportComparisonCheckFixture,
+  type ReportComparisonCheckFixture,
+} from "./report-comparison-check-fixture";
+import {
   createCompanyResearchChecksFixture,
   type CompanyResearchChecksFixture,
 } from "./company-research-checks-fixture";
@@ -2171,6 +2175,7 @@ export type NativeFinancialReviewMetadata = {
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
   readonly companyResearchChecks?: CompanyResearchChecksFixture;
+  readonly reportComparisonCheck?: ReportComparisonCheckFixture;
   readonly reviewedCompanySourcePass?: ReviewedCompanySourcePassControls;
   readonly sourceReview?: SourceReviewFixtureControls;
   readonly companySnapshotLoading?: SnapshotLoadingFixtureControls;
@@ -2364,6 +2369,13 @@ const nativeFixtureFactories = new Map<
   string,
   () => Promise<ManagedNativeFixture>
 >([
+  [
+    "report-comparison-check",
+    async () =>
+      createReportComparisonCheckFixture(
+        await createSharedFixture("company-snapshot"),
+      ),
+  ],
   [
     "company-research-checks",
     async () => createCompanyResearchChecksFixture(await createSharedFixture()),
@@ -2580,6 +2592,7 @@ export async function createFixture(
     | "review-check-completion"
     | "valuation-collection-recovery"
     | "company-research-checks"
+    | "report-comparison-check"
     | "research-draft-set"
     | "filing-check-assessment"
     | "screen-comparison-followup"

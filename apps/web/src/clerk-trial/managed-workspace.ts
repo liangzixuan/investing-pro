@@ -17,6 +17,7 @@ import { ManagedMarketsCalendarFollowupContext } from "./managed-calendar-follow
 import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { FilingsFollowupPort } from "./managed-filings-followup";
 import { captureFollowupReviewNoteContext } from "./managed-followup-review-note-context";
+import { captureCompanyReportComparisonCheckTarget } from "./company-report-comparison-check-target";
 import { captureCompanyReportRevisitTargetContext } from "./company-report-revisit-target";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
@@ -2757,6 +2758,16 @@ export class ManagedWorkspace {
       reason: null,
     };
   }
+  captureCompanyReportComparisonCheckTarget(
+    selection: ManagedResearchSelection,
+    routeActive: () => boolean,
+  ) {
+    return captureCompanyReportComparisonCheckTarget(
+      this,
+      selection,
+      routeActive,
+    );
+  }
   /** Capture the complete draft and visit before a local report review action. */
   captureCompanyReportRevisitTarget(
     selection: ManagedResearchSelection,
@@ -2768,6 +2779,7 @@ export class ManagedWorkspace {
       watchlist: () => this.getResearchWatchlist(selection),
       saved: () => this.coordinator.getSnapshot(),
       session: () => this.sessionOwner.getSnapshot(),
+      sessionOwner: () => this.sessionOwner,
       visit: () => this.state.research,
       lifetime: () => ({
         retired: this.retired,

@@ -92,6 +92,7 @@ function assessmentInput(controls: Controls) {
     <label>
       Your comparison assessment
       <textarea
+        id="managed-report-revisit-assessment"
         value={controls.state.assessment}
         onChange={(event) => {
           const value = event.currentTarget.value;
