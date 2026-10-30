@@ -1,3 +1,4 @@
+import { ReportComparisonCheckFixtureControls } from "./report-comparison-check-fixture-controls";
 import { CompanyResearchChecksFixtureControls } from "./company-research-checks-fixture-controls";
 import { ResearchDraftSetFixtureControls } from "./research-draft-set-fixture-controls";
 import { createNativeResearchDraftSetFileSession } from "./native-research-draft-set-file-fixture";
@@ -79,6 +80,7 @@ function useFixtureWorkspace(session: TrialSession) {
     if (
       scenario !== "holding-followup" &&
       scenario !== "company-research-checks" &&
+      scenario !== "report-comparison-check" &&
       scenario !== "portfolio-composition-review"
     )
       void current.coordinator.load();
@@ -313,6 +315,9 @@ export function FixtureSession({ session, onFreshSession }: Props) {
         />
       )}
       <nativeScreenRecipe.Controls />
+      {workspace && fixture.reportComparisonCheck && (
+        <ReportComparisonCheckFixtureControls workspace={workspace} />
+      )}
       {workspace && fixture.companyResearchChecks && (
         <CompanyResearchChecksFixtureControls workspace={workspace} />
       )}

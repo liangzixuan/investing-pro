@@ -1,3 +1,4 @@
+import { ManagedCompanyReportComparisonCheck } from "./ManagedCompanyReportComparisonCheck";
 import type { CompanyReportRevisitProps } from "./company-report-revisit-capture";
 import { projectCurrentCompanyReport } from "./managed-company-report-archive";
 import {
@@ -34,6 +35,12 @@ export function ManagedCompanyReportRevisit(props: CompanyReportRevisitProps) {
       {reportFileActions(controls, focus)}
       {state.message && <p role="status">{state.message}</p>}
       {reopenedReport(controls, focus, current, canCompare)}
+      {canCompare && controller && props.comparisonCheck && (
+        <ManagedCompanyReportComparisonCheck
+          controller={controller}
+          actions={props.comparisonCheck}
+        />
+      )}
     </details>
   );
 }

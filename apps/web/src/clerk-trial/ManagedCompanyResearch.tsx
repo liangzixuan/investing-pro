@@ -9,6 +9,7 @@ import {
 import type { HoldingFollowupPreview } from "./managed-holding-followup";
 import type { ManagedFilingsFollowupActions } from "./ManagedFilingsFollowup";
 import type { ReactNode } from "react";
+import type { CompanyReportComparisonCheckActions } from "./company-report-comparison-check-actions";
 import type { CompanyReportRevisitTarget } from "./company-report-revisit";
 import type { ManagedAnnualStatementsReviewActions } from "./ManagedAnnualStatementsReview";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
@@ -58,6 +59,7 @@ export function ManagedCompanyResearch({
   reportDelivery,
   readReportWatchlist,
   reportRevisitTarget,
+  reportComparisonCheck,
   annual,
   interim,
   interimStatementsActions,
@@ -110,6 +112,7 @@ export function ManagedCompanyResearch({
   navigationPending: boolean;
   reportDelivery?: CompanyReportDeliveryAdapter;
   reportRevisitTarget?: () => CompanyReportRevisitTarget | null;
+  reportComparisonCheck?: CompanyReportComparisonCheckActions;
   readReportWatchlist?: (
     selection: ManagedResearchSelection,
   ) => ResearchWatchlistState;
@@ -263,6 +266,7 @@ export function ManagedCompanyResearch({
         {...(reportDelivery ? { reportDelivery } : {})}
         {...(readReportWatchlist ? { readReportWatchlist } : {})}
         {...(reportRevisitTarget ? { reportRevisitTarget } : {})}
+        {...(reportComparisonCheck ? { reportComparisonCheck } : {})}
         onSection={onSection}
       />
       {valuation && valuationNoteActions && (

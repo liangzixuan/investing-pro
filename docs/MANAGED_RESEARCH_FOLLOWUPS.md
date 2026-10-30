@@ -60,8 +60,10 @@ immutable audit history or an automatic investment verdict.
 The current source increment keeps the full authored question, UTC due date and
 completion state beside the exact company's research sections. This context
 belongs to a visit opened through **Research company** from Follow-ups, including
-a check selected from the Markets due queue. A generic company link does not
-infer a private check from its ticker or URL.
+a check selected from the Markets due queue. During a generic company visit,
+[explicitly attach a matching loaded check](MANAGED_COMPANY_RESEARCH_CHECKS.md)
+to use the same assessment and Review controls. The link itself does not infer
+a private check from its ticker or URL.
 
 Open **Record assessment** to write **Your assessment** in the same Follow-ups
 draft. The editor shares the full screen's 2,000-code-point, single-line limit
@@ -97,6 +99,15 @@ the full saved result. Android 1.58 provides this workflow from accepted main
 `448ec000a50f3af5ea06048c8a317f4e3ffb18c6` after original source checks, all 108
 synthetic native cases and complete signed-APK verification. Installation and
 physical-device acceptance remain separate.
+
+### Assess a saved-report comparison
+
+The [report comparison check workflow](MANAGED_REPORT_COMPARISON_CHECK.md) is in
+development. Compare a private saved report with a current capture, write the
+assessment, and preview the complete result for the exact owned check. Apply,
+Review, Complete, Save and fresh Load remain explicit. The original source dates,
+file qualifications and full references remain visible within the existing result
+limit. The separate Watchlist comparison-note action does not save this check.
 
 ### Keep an assessment in the company note
 

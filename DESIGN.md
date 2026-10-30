@@ -11,6 +11,15 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## A report comparison in the current check
+
+Keep the two full dated captures in the report revisit disclosure. Place the
+explicit check action beside the authored comparison, with the exact question
+and complete current result. Show the full proposed result before apply and
+keep the Watchlist note action distinct. Use wrapping text, stacked narrow
+layouts, 44px controls and visible focus. Retired previews cannot apply or move
+focus. Review, completion and each resource Save remain explicit.
+
 ## An existing check in company research
 
 Keep personal context in an optional company-page section near identity and source

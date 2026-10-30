@@ -1,7 +1,8 @@
 # An existing check in company research
 
-Status: in development. [Current work](CURRENT_WORK.md) records source, native
-and client delivery acceptance separately.
+Status: source merged in PR259 and delivered in Android 1.61.
+[Current work](CURRENT_WORK.md) records source, native and client acceptance
+separately. Phone acceptance of this release is not claimed.
 
 ## Intended workflow
 

@@ -1,3 +1,4 @@
+import { companyReportComparisonCheckActions } from "./company-report-comparison-check-actions";
 import { ManagedCompanyResearchChecks } from "./ManagedCompanyResearchChecks";
 import type { ComponentProps } from "react";
 import type { ManagedCompanyResearch } from "./ManagedCompanyResearch";
@@ -19,9 +20,15 @@ export function managedResearchDraftProps(
   | "researchFollowup"
   | "companyResearchChecks"
   | "reportRevisitTarget"
+  | "reportComparisonCheck"
 > {
   const routeActive = () => !navigation?.invalid && !navigation?.isPending();
   return {
+    reportComparisonCheck: companyReportComparisonCheckActions(
+      workspace,
+      selection,
+      routeActive,
+    ),
     reportRevisitTarget: () =>
       workspace.captureCompanyReportRevisitTarget(selection, routeActive),
     watchlist: workspace.getResearchWatchlist(selection),

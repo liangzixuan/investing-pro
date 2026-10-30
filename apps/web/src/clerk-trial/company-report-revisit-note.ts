@@ -4,9 +4,8 @@ import {
   companyReportArchiveMatches,
   projectCurrentCompanyReport,
   type CompanyReportArchive,
-  type CompanyReportRevisitSnapshot,
 } from "./managed-company-report-archive";
-import { requiredDraftFileTime } from "./managed-watchlist-draft-file-validation";
+import { companyReportComparisonExcerpt } from "./company-report-comparison-excerpt";
 
 export interface CompanyReportRevisitNotePreparation {
   readonly preview: Readonly<{ note: string; excerpt: string }> | null;
@@ -35,22 +34,6 @@ export function prepareCompanyReportRevisitNote(input: {
     );
   }
 }
-function sourceDates(snapshot: CompanyReportRevisitSnapshot): string {
-  return snapshot.sources
-    .map((source) => {
-      if (source.status === "not_loaded") return `${source.source} not loaded`;
-      const completed = source.fields.find(
-        (field) => field.label === "Completed",
-      )!.value;
-      const window = source.fields.find((field) => field.label === "Window");
-      const period = window ? ` (${window.value})` : "";
-      const retained = source.retainedPrevious
-        ? "; retained previous, latest attempt unconfirmed"
-        : "";
-      return `${source.source} completed ${completed}${period}${retained}`;
-    })
-    .join("; ");
-}
 function prepare(
   input: Parameters<typeof prepareCompanyReportRevisitNote>[0],
 ): CompanyReportRevisitNotePreparation {
@@ -74,7 +57,10 @@ function prepare(
     );
   const issue = assessmentIssue(assessment);
   if (issue) return refuse(issue);
-  return completeProposal(captured.note, comparisonExcerpt(input, captured));
+  return completeProposal(
+    captured.note,
+    companyReportComparisonExcerpt(input, captured),
+  );
 }
 function assessmentIssue(assessment: string): string | null {
   if (!validNote(assessment))
@@ -82,20 +68,6 @@ function assessmentIssue(assessment: string): string | null {
   if (assessment.trim().length === 0)
     return "Write your assessment before preparing the comparison note.";
   return null;
-}
-function comparisonExcerpt(
-  input: Parameters<typeof prepareCompanyReportRevisitNote>[0],
-  captured: CompanyReportRevisitSnapshot,
-): string {
-  const { archive, assessment } = input;
-  const assessedAt = requiredDraftFileTime(input.assessedAt);
-  const references = captured.sources
-    .flatMap((source) => source.references.slice(0, 1))
-    .map((reference) => reference.url);
-  const citation = references.length
-    ? ` Current source references: ${[...new Set(references)].join("; ")}.`
-    : " Current source dates and raw-close windows remain those of the loaded packets.";
-  return `${captured.listing.symbol} ${captured.listing.exchangeMic} report revisit assessed ${assessedAt}: archived report prepared ${archive.preparedAt}; current report prepared ${captured.preparedAt}. Archived source dates: ${sourceDates(archive)}. Current source dates: ${sourceDates(captured)}. Authored assessment: ${assessment}${citation} The file is not authenticated; reopening renews no source dates. Imported calculations are unverified and were not used as current evidence.`;
 }
 function completeProposal(
   currentNote: string,

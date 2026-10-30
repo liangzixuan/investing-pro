@@ -1,0 +1,28 @@
+.managed-frame .managed-report-comparison-check {
+  min-width: 0;
+  margin-block: 24px;
+  padding-block: 16px;
+  border-block: 1px solid var(--managed-line);
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-report-comparison-raw {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-report-comparison-check :is(button, textarea) {
+  min-height: 44px;
+  max-width: 100%;
+}
+.managed-frame
+  .managed-report-comparison-check
+  :is(button, h4, h5, textarea):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 4px;
+}
+@media (max-width: 600px) {
+  .managed-frame .managed-report-comparison-check .trial-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

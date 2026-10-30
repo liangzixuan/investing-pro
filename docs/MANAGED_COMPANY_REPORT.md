@@ -174,6 +174,13 @@ scope. Disconnected clients do not receive either delivery capability. Durable
 report storage, verified claim citations, outside opinions and AI analysis remain
 separate M4 work.
 
+## Record a comparison in a research check
+
+The [report comparison check workflow](MANAGED_REPORT_COMPARISON_CHECK.md) is in
+development. It extends the existing revisit flow with an explicit destination
+for the current owned Follow-ups result, full preview and separate apply. The
+existing Watchlist note action and source/date qualifications remain.
+
 ## Revisit a saved report
 
 Android 1.38 adds an initially closed **Revisit a saved report**

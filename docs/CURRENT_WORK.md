@@ -5,16 +5,35 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: use an existing check during company research
+## In development: assess a report comparison in the current check
 
-The selected [company research checks workflow](MANAGED_COMPANY_RESEARCH_CHECKS.md)
-shows personal context from independently loaded drafts inside a company visit.
-Explicitly choose its matching check, keep the current source evidence and return
-path, write an assessment, then review and save the exact entry in Follow-ups.
-The current one-check-per-listing schema and separate resource saves remain.
-Implementation and its source, native and client acceptance are in progress.
+The selected [report comparison check workflow](MANAGED_REPORT_COMPARISON_CHECK.md)
+connects a private saved report and a current capture to the exact research
+check owned by this company visit. Preview the full resulting assessment, apply
+once, then Review, Complete, Save and freshly Load through Follow-ups. Original
+source dates and file qualifications remain explicit; each resource saves
+independently. Implementation and its source/native acceptance are in progress.
 
-## Merged source: recover a chosen set of research drafts
+## Accepted and delivered: use an existing check during company research
+
+The [company research checks workflow](MANAGED_COMPANY_RESEARCH_CHECKS.md) shows
+personal context from independently loaded drafts. Explicitly choose a matching
+check, retain the current source evidence and return path, write an assessment,
+then review and save the exact entry in Follow-ups.
+
+[PR 259](https://github.com/liangzixuan/investing-pro/pull/259) merged at
+`e4f0901f375bd3b27da7cfd222618368a2c6ba7c`. Original PR and main project checks
+passed, including all 120 synthetic native cases and a scoped current frame.
+Android 1.61.0/code62 is provided locally with both this workflow and research
+draft-set recovery. One guarded offline build with the existing signer, all
+four signed-APK checks and exact local copy/readback passed. A narrow package
+checker repair separated the native source parent from the prior delivered
+resource baseline, reused three unchanged passes and checked the same APK.
+The original failure remains recorded. No rebuild or re-signing occurred.
+Installation and phone acceptance are not claimed; API, website, saved work
+and prior releases are preserved. The CodeScene finding remains unsuppressed.
+
+## Accepted and delivered: recover a chosen set of research drafts
 
 The [research draft-set workflow](MANAGED_RESEARCH_DRAFT_SET.md) captures a chosen
 subset of loaded Watchlist, Portfolio, Follow-ups and staged valuation drafts in
@@ -28,7 +47,7 @@ Catalog review, online Save and fresh Load remain separate.
 passed on the final PR revision, including all 119 synthetic native cases. The
 separate CodeScene maintainability failure remains recorded; no threshold or
 protection was changed. All six original main project jobs passed. The source proof, native artifacts
-and scoped frame are accepted. Android delivery of this change remains pending.
+and scoped frame are accepted. Android 1.61 includes this workflow, as recorded above.
 
 ## Accepted and delivered: recover the staged valuation collection from a file
 

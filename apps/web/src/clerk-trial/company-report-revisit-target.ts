@@ -23,6 +23,7 @@ export interface CompanyReportRevisitTargetPort {
   readonly watchlist: () => ResearchWatchlistState;
   readonly saved: () => SaveState<MainWatchlistPayload>;
   readonly session: () => Readonly<ManagedSessionState>;
+  readonly sessionOwner: () => object;
   readonly visit: () => ManagedResearchVisit | null;
   readonly lifetime: () => ReportRevisitLifetime;
   readonly note: (note: string, expectedNote: string) => void;
@@ -32,6 +33,7 @@ interface ReportRevisitCapture {
   readonly watchlist: ResearchWatchlistState;
   readonly saved: SaveState<MainWatchlistPayload>;
   readonly session: Readonly<ManagedSessionState>;
+  readonly sessionOwner: object;
   readonly visit: ManagedResearchVisit | null;
   readonly lifetime: ReportRevisitLifetime;
 }
@@ -48,8 +50,13 @@ function workspaceRouteIsCurrent(
   return port.routeActive();
 }
 function sessionIsCurrent(capture: ReportRevisitCapture): boolean {
-  if (capture.port.session() !== capture.session) return false;
-  return capture.session.phase === "active";
+  // Resource dirty summaries can change inside this same workspace session.
+  // The captured visit/operation and active owner still fence session retirement.
+  return (
+    capture.port.sessionOwner() === capture.sessionOwner &&
+    capture.session.phase === "active" &&
+    capture.port.session().phase === "active"
+  );
 }
 function visitIsCurrent(capture: ReportRevisitCapture): boolean {
   if (capture.port.visit() !== capture.visit) return false;
@@ -105,12 +112,19 @@ export function captureCompanyReportRevisitTargetContext(
     watchlist,
     saved,
     session,
+    sessionOwner: port.sessionOwner(),
     visit,
     lifetime,
   };
+  let retired = false;
+  const isCurrent = () => {
+    if (retired) return false;
+    retired = !targetIsCurrent(capture);
+    return !retired;
+  };
   return {
-    isCurrent: () => targetIsCurrent(capture),
+    isCurrent,
     append: (note, expectedNote) =>
-      appendCapturedNote(capture, note, expectedNote),
+      isCurrent() && appendCapturedNote(capture, note, expectedNote),
   };
 }
