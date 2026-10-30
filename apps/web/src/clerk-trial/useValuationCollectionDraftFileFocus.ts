@@ -2,7 +2,8 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { ValuationCollectionRecoveryState } from "./managed-valuation-collection-recovery";
 interface FocusRequest {
   state: ValuationCollectionRecoveryState;
-  source: HTMLElement;
+  source: HTMLButtonElement;
+  ownedBeforeAction: boolean;
   to: "input" | "heading" | "capture";
 }
 export interface ValuationCollectionFileFocus {
@@ -12,10 +13,11 @@ export interface ValuationCollectionFileFocus {
   requested: RefObject<FocusRequest | null>;
   reading: RefObject<HTMLElement | null>;
 }
-function ownsFocus(source: HTMLElement) {
-  if (document.activeElement === source) return true;
-  if (source.isConnected) return false;
-  return document.activeElement === document.body;
+function ownsFocus(request: FocusRequest) {
+  if (!request.ownedBeforeAction) return false;
+  if (document.activeElement === request.source) return true;
+  if (document.activeElement !== document.body) return false;
+  return request.source.disabled || !request.source.isConnected;
 }
 function focusCommittedRequest(
   focus: ValuationCollectionFileFocus,
@@ -26,7 +28,7 @@ function focusCommittedRequest(
   if (!request) return;
   focus.requested.current = null;
   if (request.state !== state) return;
-  if (!isCurrent() || !ownsFocus(request.source)) return;
+  if (!isCurrent() || !ownsFocus(request)) return;
   focus[request.to].current?.focus();
 }
 function focusReadReview(

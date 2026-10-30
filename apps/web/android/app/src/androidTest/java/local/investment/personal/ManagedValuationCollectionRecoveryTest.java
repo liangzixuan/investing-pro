@@ -60,7 +60,7 @@ public class ManagedValuationCollectionRecoveryTest {
     @Test public void completeCollectionNativeFileFreshSessionRestoreReviewSaveAndLoad() throws Exception {
         openCompanyAndLoad(0,3);click("#fixture-collection-stage");
         await("both complete entries staged with the old catalog in authored order",D+".resource.dirty&&JSON.stringify("+D+".resource.draft)===JSON.stringify("+D+".captured)");
-        rememberIsolation();page.click(Element.css(ROOT+" > summary"));click("#managed-valuation-collection-capture");
+        rememberIsolation();page.click(Element.css(ROOT+" > summary"));nativeCollectionAction("#managed-valuation-collection-capture");
         await("capture requires inspection before choosing any destination",P+".choices===0&&"+P+".writes===0&&document.activeElement?.id==='managed-valuation-collection-review-heading'&&document.querySelector('#managed-valuation-collection-review-heading')?.textContent==='Inspect the captured valuation collection'");
         completeReadout("Captured staged valuation collection",D+".captured");unchanged(1,0,0);
         click("#managed-valuation-collection-save-file");new WatchlistSystemPicker().saveToInventedRoot();
@@ -73,9 +73,9 @@ public class ManagedValuationCollectionRecoveryTest {
         click("#fixture-collection-fresh-session");fresh(1);openCompanyAndLoad(1,7);rememberIsolation();
         await("new online saved base is independently loaded without imported data","JSON.stringify("+D+".resource.draft)===JSON.stringify("+D+".newer)&&!"+D+".resource.dirty&&"+D+".resource.saved.version===7");
         page.click(Element.css(ROOT+" > summary"));select(outputs[0]);review();
-        click("#managed-valuation-collection-cancel");await("cancel retains current complete draft and returns focus to the reset file input","document.querySelector('#managed-valuation-collection-review-heading')===null&&document.activeElement?.id==='managed-valuation-collection-file'&&JSON.stringify("+D+".resource.draft)===JSON.stringify("+D+".newer)");unchanged(2,0,0);
+        nativeCollectionAction("#managed-valuation-collection-cancel");await("cancel retains current complete draft and returns focus to the reset file input","document.querySelector('#managed-valuation-collection-review-heading')===null&&document.activeElement?.id==='managed-valuation-collection-file'&&JSON.stringify("+D+".resource.draft)===JSON.stringify("+D+".newer)");unchanged(2,0,0);
         select(outputs[0]);review();retainReviewFrame();
-        touch.input(new ReportRevisitTouch.ControlledField("#managed-valuation-collection-restore","explicit complete collection restore"));
+        nativeCollectionAction("#managed-valuation-collection-restore");
         await("explicit restore replaces only the whole valuation draft and consumes the file review",D+".resource.dirty&&"+D+".resource.baseVersion===7&&"+D+".resource.saved.version===7&&JSON.stringify("+D+".resource.saved.payload)===JSON.stringify("+D+".newer)&&JSON.stringify("+D+".resource.draft)===JSON.stringify("+D+".captured)&&document.querySelector('#managed-valuation-collection-review-heading')===null&&document.activeElement?.id==='managed-valuation-collection-file'");unchanged(2,0,0);
         page.click(Element.xpath("//summary[normalize-space(.)='Valuation draft entries and catalog review']"));click("#managed-valuation-catalog-review");
         await("catalog review admits both exact listing identities without changing raw maps",D+".counts.review===1&&"+D+".local.catalogReview?.entries.length===2&&"+D+".local.catalogReview.entries.every(row=>row.status==='update')");
@@ -125,7 +125,30 @@ public class ManagedValuationCollectionRecoveryTest {
         finally {prepared.logTrace();}
     }
     private void click(String selector) throws Exception {await("exact action is enabled before activation: "+selector,"document.querySelector("+JSONObject.quote(selector)+")?.disabled===false");page.click(Element.css(selector));}
-    private void await(String description,String condition) throws Exception {page.await(new Check(description,new Script(condition)));}
+    private void nativeCollectionAction(String selector) throws Exception {
+        String label=switch(selector) {
+            case "#managed-valuation-collection-capture" -> "Capture valuation collection";
+            case "#managed-valuation-collection-cancel" -> "Keep current draft / Cancel file operation";
+            case "#managed-valuation-collection-restore" -> "Restore collection to valuation draft";
+            default -> throw new IllegalArgumentException("Unsupported collection focus action");
+        };
+        page.await(new Check("exact collection focus action is enabled before native touch: "+label,new Script("(()=>{const button=document.querySelector("+JSONObject.quote(selector)+");return button instanceof HTMLButtonElement&&!button.disabled&&button.textContent.trim()==="+JSONObject.quote(label)+";})()")).nativeReady());
+        touch.input(new ReportRevisitTouch.ControlledField(selector,label));
+    }
+    private void await(String description,String condition) throws Exception {
+        try {page.await(new Check(description,new Script(condition)));}
+        catch(AssertionError failure) {
+            try {android.util.Log.e("ValuationCollectionObservation",collectionObservation());}
+            catch(Exception | AssertionError observationFailure) {android.util.Log.e("ValuationCollectionObservation","Scoped collection observation unavailable",observationFailure);}
+            throw failure;
+        }
+    }
+    private String collectionObservation() throws Exception {
+        return page.read(new Script("JSON.stringify((()=>{"+
+            "if(location.origin!=='https://localhost'||document.querySelector('meta[name=investment-android-test-scenario]')?.content!=='valuation-collection-recovery')return {scopeAdmitted:false};"+
+            "const capture=document.querySelector('#managed-valuation-collection-capture'),heading=document.querySelector('#managed-valuation-collection-review-heading'),input=document.querySelector('#managed-valuation-collection-file'),cancel=document.querySelector('#managed-valuation-collection-cancel'),restore=document.querySelector('#managed-valuation-collection-restore'),active=document.activeElement;"+
+            "return {scopeAdmitted:true,collectionOpen:document.querySelector('#managed-valuation-collection-files')?.open===true,headingPresent:!!heading,captureHeading:heading?.textContent==='Inspect the captured valuation collection',reviewHeading:heading?.textContent==='Review the complete collection file',active:active===document.body?'body':active===capture?'capture':active===heading?'heading':active===input?'file':active===cancel?'cancel':active===restore?'restore':'other',capturePresent:!!capture,captureConnected:capture?.isConnected===true,captureDisabled:capture?.disabled===true,inputPresent:!!input,inputDisabled:input?.disabled===true,inputValueEmpty:input?.value==='',cancelPresent:!!cancel,restorePresent:!!restore};})())"));
+    }
     private void replace(String selector,String text) throws Exception {
         touch.input(new ReportRevisitTouch.ControlledField(selector,"invented independent note"));page.await(new Check("exact editor focused before complete native replacement",new Script("document.activeElement===document.querySelector("+JSONObject.quote(selector)+")")).nativeReady());
         onView(isAssignableFrom(WebView.class)).perform(pressKey(new EspressoKey.Builder().withKeyCode(KeyEvent.KEYCODE_A).withCtrlPressed(true).build()));await("native selection covers the complete previous note","document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");

@@ -240,14 +240,18 @@ it("does not move focus after an intervening state or a refused restore", () => 
   h.state = review();
   const f = fixture(),
     tree = f.render(),
-    source = { isConnected: false };
-  Reflect.set(document, "activeElement", body);
+    source = { isConnected: true };
+  Reflect.set(document, "activeElement", source);
   click(tree, "managed-valuation-collection-restore", source);
+  source.isConnected = false;
+  Reflect.set(document, "activeElement", body);
   h.state = { ...h.state, message: "intervening" };
   f.render();
   expect(input.focus).not.toHaveBeenCalled();
   h.state = review();
   h.model.restoreDraft.mockReturnValue(false);
+  source.isConnected = true;
+  Reflect.set(document, "activeElement", source);
   click(f.render(), "managed-valuation-collection-restore", source);
   f.render();
   expect(input.focus).not.toHaveBeenCalled();
@@ -257,9 +261,11 @@ it("returns cancellation focus to the still-present initiating capture control",
   const f = fixture();
   click(f.render(), "managed-valuation-collection-capture");
   const tree = f.render(),
-    source = { isConnected: false };
-  Reflect.set(document, "activeElement", body);
+    source = { isConnected: true };
+  Reflect.set(document, "activeElement", source);
   click(tree, "managed-valuation-collection-cancel", source);
+  source.isConnected = false;
+  Reflect.set(document, "activeElement", body);
   f.render();
   expect(capture.focus).toHaveBeenCalledOnce();
   expect(input.focus).not.toHaveBeenCalled();
@@ -300,16 +306,58 @@ it("focuses a completed file review only while the initiating input retains focu
 it("returns imported-review cancellation focus to the input and preserves unrelated focus", () => {
   h.state = review();
   const f = fixture();
-  const source = { isConnected: false };
-  Reflect.set(document, "activeElement", body);
+  const source = { isConnected: true };
+  Reflect.set(document, "activeElement", source);
   click(f.render(), "managed-valuation-collection-cancel", source);
+  source.isConnected = false;
+  Reflect.set(document, "activeElement", body);
   f.render();
   expect(input.focus).toHaveBeenCalledOnce();
   expect(capture.focus).not.toHaveBeenCalled();
   input.focus.mockClear();
   h.state = review();
+  source.isConnected = true;
+  Reflect.set(document, "activeElement", source);
   click(f.render(), "managed-valuation-collection-cancel", source);
+  source.isConnected = false;
   Reflect.set(document, "activeElement", {});
   f.render();
   expect(input.focus).not.toHaveBeenCalled();
+});
+
+it("focuses the capture heading when the owned button is disabled and blurred during capture", () => {
+  const f = fixture();
+  const tree = f.render();
+  const source = { isConnected: true, disabled: false };
+  Reflect.set(document, "activeElement", source);
+  h.model.captureDraft.mockImplementation(() => {
+    h.state = review("capture");
+    source.disabled = true;
+    Reflect.set(document, "activeElement", body);
+    return true;
+  });
+  click(tree, "managed-valuation-collection-capture", source);
+  f.render();
+  expect(heading.focus).toHaveBeenCalledOnce();
+});
+it.each([
+  "unowned-disabled",
+  "unowned-removed",
+  "unrelated",
+  "enabled-body",
+  "intervening-state",
+])("refuses focus after capture for %s", (reason) => {
+  const f = fixture();
+  const tree = f.render();
+  const source = { isConnected: true, disabled: false };
+  const owned = !reason.startsWith("unowned");
+  Reflect.set(document, "activeElement", owned ? source : body);
+  click(tree, "managed-valuation-collection-capture", source);
+  source.disabled = reason !== "enabled-body";
+  source.isConnected = reason !== "unowned-removed";
+  Reflect.set(document, "activeElement", reason === "unrelated" ? {} : body);
+  if (reason === "intervening-state")
+    h.state = { ...h.state!, message: "new state" };
+  f.render();
+  expect(heading.focus).not.toHaveBeenCalled();
 });

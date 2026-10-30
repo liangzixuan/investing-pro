@@ -120,10 +120,13 @@ function captureCollection(
 ) {
   if (!view.state.canExport) return;
   const controller = view.currentController();
-  if (!controller?.captureDraft()) return;
+  if (!controller) return;
+  const ownedBeforeAction = document.activeElement === source;
+  if (!controller.captureDraft()) return;
   focus.requested.current = {
     state: controller.getSnapshot(),
     source,
+    ownedBeforeAction,
     to: "heading",
   };
 }
@@ -145,10 +148,13 @@ function restoreCollection(
   source: HTMLButtonElement,
 ) {
   const controller = view.currentController();
-  if (!controller?.restoreDraft()) return;
+  if (!controller) return;
+  const ownedBeforeAction = document.activeElement === source;
+  if (!controller.restoreDraft()) return;
   focus.requested.current = {
     state: controller.getSnapshot(),
     source,
+    ownedBeforeAction,
     to: "input",
   };
 }
@@ -159,10 +165,12 @@ function cancelCollection(
 ) {
   const controller = view.currentController();
   if (!controller) return;
+  const ownedBeforeAction = document.activeElement === source;
   controller.cancel();
   focus.requested.current = {
     state: controller.getSnapshot(),
     source,
+    ownedBeforeAction,
     to: collectionCaptureVisible(view.state) ? "capture" : "input",
   };
 }
