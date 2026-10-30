@@ -483,6 +483,24 @@ final class WatchlistSystemPicker {
         return match;
     }
 
+    /** Open only the exact freshly written and bounded invented Portfolio HTML file. */
+    void openCapturedInventedPortfolioReportDocument(CapturedReport captured) throws Exception {
+        assertTrue(captured.filename().matches("Investment-portfolio-review-[0-9]{8}T[0-9]{9}Z\\.html"));
+        byte[] bytes=captured.document();
+        assertTrue(bytes.length>0&&bytes.length<=InvestmentPortfolioReviewReportPlugin.MAX_REPORT_BYTES);
+        String text=StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
+        assertArrayEquals(bytes,ChosenDocumentPolicyKt.strictDocumentBytes(text,InvestmentPortfolioReviewReportPlugin.MAX_REPORT_BYTES));
+        assertTrue(PortfolioReviewReportDocumentPolicy.INSTANCE.acceptsText(captured.filename(),text));
+        WatchlistTestDocuments.Output output=capturedReportOutput(captured);
+        assertEquals(SavedWatchlistTestDocumentsProvider.AUTHORITY,output.uri.getAuthority());
+        assertEquals("text/html",captured.context().getContentResolver().getType(output.uri));
+        assertEquals(bytes.length,output.size);
+        try(java.io.InputStream input=captured.context().getContentResolver().openInputStream(output.uri)){
+            assertNotNull(input);assertArrayEquals(bytes,input.readNBytes(InvestmentPortfolioReviewReportPlugin.MAX_REPORT_BYTES+1));
+        }
+        selectInventedDocument(captured.filename());
+    }
+
     private void selectInventedDocument(String displayName) throws Exception {
         AccessibilityNodeInfo navigation = await(node -> isRootsList(node)
             || "Show roots".contentEquals(string(node.getContentDescription())));

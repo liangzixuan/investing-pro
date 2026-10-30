@@ -1,3 +1,4 @@
+import { isPortfolioReportArchive } from "./portfolio-report-archive";
 import { PortfolioCloseComposition } from "./PortfolioCloseComposition";
 import {
   isPreparedPortfolioReviewReport,
@@ -12,10 +13,17 @@ const usd = (value: string | null) =>
 
 export function PortfolioReviewReportSnapshot({
   report,
+  compositionId = "portfolio-report-composition",
 }: {
   readonly report: PreparedPortfolioReviewReport;
+  readonly compositionId?:
+    "portfolio-report-composition" | "portfolio-report-saved-composition";
 }) {
-  if (!isPreparedPortfolioReviewReport(report)) return null;
+  if (
+    !isPreparedPortfolioReviewReport(report) &&
+    !isPortfolioReportArchive(report)
+  )
+    return null;
   const review = report.review;
   return (
     <article aria-label="Captured Portfolio holdings review">
@@ -50,7 +58,7 @@ export function PortfolioReviewReportSnapshot({
         <dd>{usd(review.totalValueUsd)}</dd>
       </dl>
       <PortfolioCloseComposition
-        id="portfolio-report-composition"
+        id={compositionId}
         review={review}
         rows={report.sourceRows}
       />

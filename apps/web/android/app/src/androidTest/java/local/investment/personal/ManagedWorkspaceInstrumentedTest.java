@@ -1214,7 +1214,7 @@ public class ManagedWorkspaceInstrumentedTest {
             PORTFOLIO + ".load === 1 && " + PORTFOLIO_DRAFT + ".baseVersion === 0 && " + PORTFOLIO_DRAFT + ".ledger === null" +
             " && document.querySelector('#managed-portfolio-opening-cash')?.value === '' && document.querySelector('#managed-portfolio-save')?.disabled === true");
         typeIntoInput("managed-portfolio-opening-date", "2026-10-01");
-        typeIntoInput("managed-portfolio-opening-cash", "1000.00");
+        typeIntoInput("managed-portfolio-opening-cash", "1000.00", true);
         click("#managed-portfolio-start");
         awaitPage("Start creates only the authored opening draft",
             PORTFOLIO_DRAFT + ".ledger?.opening?.cashUsd === '1000.00' && " + PORTFOLIO_DRAFT + ".dirty === true && " + PORTFOLIO + ".save === 0");
@@ -6768,8 +6768,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " region.dataset.testLicenseHash = Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');" +
             " }).catch(() => { region.dataset.testLicenseHash = 'failed'; }); })()", null));
         awaitPage("every canonical notice, icon and font license byte is retained",
-            "document.querySelector('#trial-license-text')?.dataset.testLicenseBytes === '2388267'" +
-            " && document.querySelector('#trial-license-text')?.dataset.testLicenseHash === '395a57fe9bcebb08fd09e8bfb75224ba550bf2c5773431c9fdec1bff88e9a04a'");
+            "document.querySelector('#trial-license-text')?.dataset.testLicenseBytes === '2396275'" +
+            " && document.querySelector('#trial-license-text')?.dataset.testLicenseHash === '9154028f6b746fadd238f4ced4a83faaf440064415c3259b4432f735f72e81d9'");
         click(".trial-notices > button");
         awaitPage("Hide software licenses closes the complete local text",
             "document.querySelector('.trial-notices > button')?.getAttribute('aria-expanded') === 'false'" +
@@ -10364,11 +10364,20 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void typeIntoInput(String id, String text) throws Exception {
+        typeIntoInput(id, text, false);
+    }
+
+    private void typeIntoInput(String id, String text, boolean requireCommittedScroll) throws Exception {
         if (id.matches("managed-note-[0-9]+"))
             selectWatchlistNote(Integer.parseInt(id.substring("managed-note-".length())));
-        touchInput(id);
-        awaitPage("input focused: " + id,
-            "document.activeElement === document.getElementById(" + JSONObject.quote(id) + ")");
+        try {
+            touchInput(id, requireCommittedScroll);
+            awaitPage("input focused: " + id,
+                "document.activeElement === document.getElementById(" + JSONObject.quote(id) + ")");
+        } catch (Exception | AssertionError failure) {
+            if (requireCommittedScroll) logCommittedInputFailure(id);
+            throw failure;
+        }
         awaitNativeEditor(id);
         // One native IME edit exercises React's controlled onChange path without
         // routing individual hardware characters through a restarting soft keyboard.
@@ -10398,6 +10407,10 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void touchInput(String id) throws Exception {
+        touchInput(id, false);
+    }
+
+    private void touchInput(String id, boolean requireCommittedScroll) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> observed = new AtomicReference<>();
         // Center both axes before enforcing full visibility at fractional viewport edges.
@@ -10414,7 +10427,59 @@ public class ManagedWorkspaceInstrumentedTest {
             " hit:input.contains(document.elementFromPoint(x,y))};})()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Input geometry was not returned: " + id, returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        if (requireCommittedScroll) {
+            awaitCommittedInputFrame(id);
+            JSONObject geometry = new JSONObject(observed.get());
+            awaitPage("committed scroll retains the exact enabled visible input geometry: " + id,
+                "(() => { const e=document.getElementById(" + JSONObject.quote(id) + "),g=" + geometry + ";" +
+                " if(!e||e.disabled||e.readOnly||!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;" +
+                " const r=e.getBoundingClientRect(),v=visualViewport;" +
+                " return Math.abs(r.left-g.left)<0.01&&Math.abs(r.top-g.top)<0.01&&Math.abs(r.right-g.right)<0.01&&Math.abs(r.bottom-g.bottom)<0.01" +
+                " &&v.width===g.width&&v.height===g.height&&v.offsetLeft===g.offsetLeft&&v.offsetTop===g.offsetTop&&v.scale===g.scale" +
+                " &&e.contains(document.elementFromPoint(g.x,g.y)); })()", true);
+        }
         touchEditorGeometry(id, observed.get());
+    }
+
+    /** One case opts in after a scroll; never dispatch a native tap against an uncommitted frame. */
+    private void awaitCommittedInputFrame(String id) throws Exception {
+        long deadline=SystemClock.uptimeMillis()+PAGE_TIMEOUT_MS;
+        Handler main=new Handler(Looper.getMainLooper());
+        CompletableFuture<Void> committed=new CompletableFuture<>();
+        AtomicReference<ViewTreeObserver> observer=new AtomicReference<>();
+        AtomicReference<Runnable> frameCallback=new AtomicReference<>();
+        try {
+            scenario.onActivity(activity -> {
+                WebView web=activity.getBridge().getWebView();
+                assertTrue("Committed input needs an attached visible hardware WebView",web.isAttachedToWindow()&&web.isShown()&&web.isHardwareAccelerated());
+                web.postVisualStateCallback(0,new WebView.VisualStateCallback(){
+                    @Override public void onComplete(long requestId){
+                        if(committed.isDone()||SystemClock.uptimeMillis()>=deadline)return;
+                        Runnable frame=()->main.post(()->{
+                            if(SystemClock.uptimeMillis()<deadline&&committed.complete(null))Log.i("ManagedInputFrame","id="+id+", visualReady=true, frameCommitted=true");
+                        });
+                        ViewTreeObserver current=web.getViewTreeObserver();observer.set(current);frameCallback.set(frame);
+                        current.registerFrameCommitCallback(frame);web.invalidate();
+                    }
+                });
+            });
+            long remaining=deadline-SystemClock.uptimeMillis();
+            assertTrue("Committed input frame retains its deadline",remaining>0);
+            committed.get(remaining,TimeUnit.MILLISECONDS);
+        } finally {
+            committed.cancel(false);
+            main.post(()->{ViewTreeObserver current=observer.get();Runnable callback=frameCallback.get();if(current!=null&&current.isAlive()&&callback!=null)current.unregisterFrameCommitCallback(callback);});
+        }
+    }
+
+    private void logCommittedInputFailure(String id) {
+        try {
+            Log.e("ManagedInputFailure","id="+id+", observation="+readFixtureString(
+                "JSON.stringify((()=>{const e=document.getElementById("+JSONObject.quote(id)+"),r=e?.getBoundingClientRect(),v=visualViewport,h=r?document.elementFromPoint(r.left+r.width/2,r.top+r.height/2):null;"+
+                "return {active:document.activeElement?.id,exists:!!e,disabled:e?.disabled,readOnly:e?.readOnly,value:e?.value,visible:e?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}),"+
+                "rect:r?{left:r.left,top:r.top,right:r.right,bottom:r.bottom}:null,hit:h?{id:h.id,tag:h.tagName,className:h.className}:null,"+
+                "viewport:{width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale},scrollY};})())"));
+        } catch(Exception|AssertionError diagnostic){Log.e("ManagedInputFailure","Original input assertion retained; diagnostic unavailable",diagnostic);}
     }
 
     private void touchObservedGeometry(String id, String rawGeometry) throws Exception {

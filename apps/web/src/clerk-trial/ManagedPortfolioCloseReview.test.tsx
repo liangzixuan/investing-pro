@@ -29,6 +29,7 @@ vi.mock("./portfolio-close-review-context", () => ({
 vi.mock("react", async (original) => ({
   ...(await original<typeof React>()),
   useMemo: (create: () => unknown) => create(),
+  useCallback: (callback: unknown) => callback,
   useState: (initial: unknown) => {
     const i = hooks.index++;
     if (!(i in hooks.states)) hooks.states[i] = initial;

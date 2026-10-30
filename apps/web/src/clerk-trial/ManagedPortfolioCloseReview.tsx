@@ -1,4 +1,6 @@
+import { capturePortfolioReportReadScope } from "./portfolio-report-revisit-scope";
 import {
+  useCallback,
   useLayoutEffect,
   useMemo,
   useState,
@@ -123,6 +125,10 @@ function Review({ workspace, navigationPending, onResearch, delivery }: Props) {
     workspace,
     navigationPending,
   );
+  const captureReadScope = useCallback(
+    () => capturePortfolioReportReadScope(workspace),
+    [workspace],
+  );
   const ready = current();
   return (
     <>
@@ -138,9 +144,13 @@ function Review({ workspace, navigationPending, onResearch, delivery }: Props) {
         }
       />
       <ManagedPortfolioReviewReport
+        captureReadScope={captureReadScope}
         prices={prices}
         ready={ready}
         delivery={delivery}
+        onResearch={(listingId, opener) =>
+          researchCurrent(workspace, current, listingId, opener, onResearch)
+        }
       />
     </>
   );

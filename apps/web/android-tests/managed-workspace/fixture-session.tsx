@@ -1,3 +1,4 @@
+import { PortfolioReportComparisonFixtureControls } from "./portfolio-report-comparison-fixture-controls";
 import { PortfolioScreenSelectionFixtureControls } from "./portfolio-screen-selection-fixture-controls";
 import { ReportComparisonCheckFixtureControls } from "./report-comparison-check-fixture-controls";
 import { CompanyResearchChecksFixtureControls } from "./company-research-checks-fixture-controls";
@@ -77,7 +78,11 @@ function useFixtureWorkspace(session: TrialSession) {
         ? { financialScreenListingIds: fixture.financialScreen.listingIds }
         : {}),
     });
-    if (scenario === "portfolio-screen-selection") current.setView("portfolio");
+    if (
+      scenario === "portfolio-screen-selection" ||
+      scenario === "portfolio-report-comparison"
+    )
+      current.setView("portfolio");
     setWorkspace(current);
     if (
       scenario !== "holding-followup" &&
@@ -194,9 +199,11 @@ function NativeDeliveryControls({
       {workspace && nativeScreenComparisonReport && (
         <ScreenComparisonReportFixtureControls workspace={workspace} />
       )}
-      {workspace && nativePortfolioReviewReport && (
-        <PortfolioReviewReportFixtureControls workspace={workspace} />
-      )}
+      {workspace &&
+        nativePortfolioReviewReport &&
+        scenario !== "portfolio-report-comparison" && (
+          <PortfolioReviewReportFixtureControls workspace={workspace} />
+        )}
       {workspace && fixture.reviewCompletion && nativeFollowupsReviewReport && (
         <ReviewCompletionFixtureDiagnostics
           workspace={workspace}
@@ -330,6 +337,15 @@ export function FixtureSession({ session, onFreshSession }: Props) {
           fixture={fixture.portfolioScreenSelection}
         />
       )}
+      {workspace &&
+        fixture.portfolioReportComparison &&
+        nativePortfolioReviewReport && (
+          <PortfolioReportComparisonFixtureControls
+            workspace={workspace}
+            fixture={fixture.portfolioReportComparison}
+            delivery={nativePortfolioReviewReport}
+          />
+        )}
       <ResourceControls workspace={workspace} onFreshSession={onFreshSession} />
     </>
   );

@@ -54,6 +54,7 @@ const allowedScenarios = [
   "company-research-checks",
   "report-comparison-check",
   "portfolio-screen-selection",
+  "portfolio-report-comparison",
   "filing-check-assessment",
   "portfolio-ledger",
   "portfolio-close-review",
@@ -118,6 +119,7 @@ export const nativeReport =
     ? createNativeReportFixture()
     : null;
 export const nativePortfolioReviewReport =
+  scenario === "portfolio-report-comparison" ||
   scenario === "portfolio-review-report" ||
   scenario === "portfolio-composition-review"
     ? createNativePortfolioReviewReportFixture()
