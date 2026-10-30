@@ -1,4 +1,8 @@
-import { runInNewContext } from "node:vm";
+import ts from "typescript";
+import {
+  sameJsonValue as same,
+  chosenDraftSetValuesMatch,
+} from "./research-draft-set-native-comparison";
 import { readFileSync } from "node:fs";
 import { beforeAll, expect, it } from "vitest";
 import { createFixture } from "./fixture";
@@ -18,22 +22,134 @@ const helperLiteral =
     source,
   )![1]!;
 const helper = JSON.parse(helperLiteral) as string;
-const same = runInNewContext(helper) as (a: unknown, b: unknown) => boolean;
 const javaExpression =
   /await\("chosen bytes preserve every nested identity\/raw value\/order and independent metadata",(.+?)\);same\("all"/.exec(
     source,
   )![1]!;
-const js = runInNewContext(
-  javaExpression,
-  {
-    D: "diagnostics",
-    P: "protocol",
-    SAME_JSON: helper,
-  },
-  { timeout: 1000 },
-) as string;
-const run = (diagnostics: unknown, protocol: unknown) =>
-  runInNewContext(js, { diagnostics, protocol }, { timeout: 1000 }) as boolean;
+const returnSource = /;return (.*);\}\)\(\)"$/.exec(javaExpression)![1]!;
+const staticSource = ts.createSourceFile(
+  "static.ts",
+  readFileSync(
+    new URL("./research-draft-set-native-comparison.ts", import.meta.url),
+    "utf8",
+  ),
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
+function requireParsed(parsed: ts.SourceFile) {
+  const diagnostics = (
+    parsed as ts.SourceFile & {
+      readonly parseDiagnostics: readonly ts.Diagnostic[];
+    }
+  ).parseDiagnostics;
+  if (!Array.isArray(diagnostics) || diagnostics.length !== 0)
+    throw new Error("Unexpected source parse diagnostics");
+}
+requireParsed(staticSource);
+function declaration(name: string) {
+  const found = staticSource.statements.find(
+    (node): node is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(node) && node.name?.text === name,
+  );
+  if (!found?.body) throw new Error("Missing static predicate declaration");
+  return found;
+}
+function expression(text: string) {
+  const parsed = ts.createSourceFile(
+    "native.js",
+    `const bound = ${text};`,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.JS,
+  );
+  requireParsed(parsed);
+  const statement = parsed.statements[0];
+  if (
+    parsed.statements.length !== 1 ||
+    !statement ||
+    !ts.isVariableStatement(statement) ||
+    statement.declarationList.declarations.length !== 1
+  )
+    throw new Error("Expected one bound expression");
+  const node = statement.declarationList.declarations[0]?.initializer;
+  if (!node) throw new Error("Missing expression");
+  return node;
+}
+function unwrapped(node: ts.Node): ts.Node {
+  return ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isNonNullExpression(node)
+    ? unwrapped(node.expression)
+    : node;
+}
+function normalized(original: ts.Node): unknown {
+  const node = unwrapped(original),
+    children: unknown[] = [];
+  ts.forEachChild(node, (child) => {
+    if (!ts.isTypeNode(child)) children.push(normalized(child));
+  });
+  return [
+    node.kind,
+    ts.isIdentifier(node) ||
+    ts.isStringLiteral(node) ||
+    ts.isNumericLiteral(node)
+      ? node.text
+      : null,
+    ts.isVariableDeclarationList(node)
+      ? node.flags & ts.NodeFlags.BlockScoped
+      : null,
+    children,
+  ];
+}
+function verifyNativeBinding() {
+  expect(() => expression("true; const extra = false")).toThrow(
+    "Expected one bound expression",
+  );
+  expect(() => expression("true, extra = false")).toThrow(
+    "Expected one bound expression",
+  );
+  expect(() => expression("true ???")).toThrow(
+    "Unexpected source parse diagnostics",
+  );
+  expect(javaExpression).toBe(
+    '"(()=>{const f=JSON.parse("+P+".text),e="+D+".data.captured,same="+SAME_JSON+";return ' +
+      returnSource +
+      ';})()"',
+  );
+  const nativeHelper = unwrapped(expression(helper));
+  if (!ts.isFunctionExpression(nativeHelper))
+    throw new Error("Expected native comparator");
+  const staticHelper = declaration("sameJsonValue");
+  expect(nativeHelper.name?.text).toBe(staticHelper.name?.text);
+  expect(nativeHelper.parameters.map((p) => normalized(p))).toEqual(
+    staticHelper.parameters.map((p) => normalized(p)),
+  );
+  expect(normalized(nativeHelper.body)).toEqual(normalized(staticHelper.body!));
+  const predicate = declaration("chosenDraftSetValuesMatch");
+  expect(predicate.parameters.map((p) => p.name.getText(staticSource))).toEqual(
+    ["f", "e"],
+  );
+  expect(predicate.body!.statements).toHaveLength(2);
+  const alias = predicate.body!.statements[0]!;
+  expect(normalized(alias)).toEqual(
+    normalized(
+      ts.createSourceFile(
+        "alias.js",
+        "const same=sameJsonValue;",
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.JS,
+      ).statements[0]!,
+    ),
+  );
+  const result = predicate.body!.statements[1]!;
+  if (!ts.isReturnStatement(result) || !result.expression)
+    throw new Error("Expected static return");
+  expect(normalized(result.expression)).toEqual(
+    normalized(expression(returnSource)),
+  );
+}
 const scope = `sha256:${"c".repeat(64)}`,
   capturedAt = "2026-10-30T00:00:00.000Z";
 let data: NonNullable<
@@ -85,7 +201,10 @@ beforeAll(async () => {
   file = JSON.parse(document!.text) as ManagedResearchDraftSetFileContent;
 });
 function predicate(value: unknown) {
-  return run({ data }, { text: JSON.stringify(value) });
+  return chosenDraftSetValuesMatch(
+    value as ManagedResearchDraftSetFileContent,
+    data.captured,
+  );
 }
 function reorder(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(reorder);
@@ -97,7 +216,8 @@ function reorder(value: unknown): unknown {
     );
   return value;
 }
-it("executes the exact Java payload predicate over codec output despite Watchlist object insertion order", () => {
+it("binds the static tested predicate to exact native expressions despite Watchlist object insertion order", () => {
+  verifyNativeBinding();
   expect(JSON.stringify(file.members.watchlist!.draft)).not.toBe(
     JSON.stringify(data.captured.watchlist),
   );
