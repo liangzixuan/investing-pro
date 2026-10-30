@@ -12,6 +12,7 @@ function clientBoundary(): Plugin {
       const normalized = id.replaceAll("\\", "/");
       if (
         normalized.startsWith("node:") ||
+        normalized.includes("/android-tests/") ||
         normalized.includes("/node_modules/next/") ||
         /\/(?:apps\/api|packages\/(?:db|local-research-vault))\//u.test(
           normalized,

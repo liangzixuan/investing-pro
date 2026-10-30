@@ -1,4 +1,8 @@
 import {
+  createNativeValuationCollectionDraftFileAdapter,
+  type InvestmentValuationCollectionDraftFilePlugin,
+} from "./valuation-collection-draft-file-delivery";
+import {
   createNativeFollowupsReviewReportAdapter,
   type InvestmentFollowupsReviewReportPlugin,
 } from "./followups-review-report-delivery";
@@ -179,6 +183,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const valuationCollectionDraftFileDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeValuationCollectionDraftFileAdapter(
+            registerPlugin<InvestmentValuationCollectionDraftFilePlugin>(
+              "InvestmentValuationCollectionDraftFile",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const valuationDraftFileDelivery = useMemo(
     () =>
       managed
@@ -261,6 +276,9 @@ function NativeSession({
                 : {})}
               {...(followupsDraftFileDelivery
                 ? { followupsDraftFileDelivery }
+                : {})}
+              {...(valuationCollectionDraftFileDelivery
+                ? { valuationCollectionDraftFileDelivery }
                 : {})}
               {...(valuationDraftFileDelivery
                 ? { valuationDraftFileDelivery }

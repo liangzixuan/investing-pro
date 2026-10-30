@@ -1,6 +1,7 @@
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
+import type { ManagedValuationCollectionDraftFileDeliveryAdapter } from "./valuation-collection-draft-file-delivery";
 import type { ManagedValuationDraftFileDeliveryAdapter } from "./valuation-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
@@ -139,6 +140,11 @@ async function mount(
     write: vi.fn(),
     cancel: vi.fn(),
   };
+  const valuationCollectionDraftFilePlugin = {
+    choose: vi.fn(),
+    write: vi.fn(),
+    cancel: vi.fn(),
+  };
   const valuationDraftFilePlugin = {
     choose: vi.fn(),
     write: vi.fn(),
@@ -174,6 +180,10 @@ async function mount(
     ["InvestmentPortfolioReviewReport", portfolioReviewReportPlugin],
     ["InvestmentFollowupsReviewReport", followupsReviewReportPlugin],
     ["InvestmentFollowupsDraftFile", followupsDraftFilePlugin],
+    [
+      "InvestmentValuationCollectionDraftFile",
+      valuationCollectionDraftFilePlugin,
+    ],
     ["InvestmentValuationDraftFile", valuationDraftFilePlugin],
     ["InvestmentFinancialScreenRecipe", financialScreenRecipePlugin],
     ["InvestmentScreenComparisonReport", screenComparisonReportPlugin],
@@ -212,6 +222,7 @@ async function mount(
     portfolioReviewReportPlugin,
     followupsReviewReportPlugin,
     followupsDraftFilePlugin,
+    valuationCollectionDraftFilePlugin,
     valuationDraftFilePlugin,
     financialScreenRecipePlugin,
     screenComparisonReportPlugin,
@@ -231,6 +242,7 @@ function findScreen(node: ReactNode):
       portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
       followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+      valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
       screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
@@ -258,6 +270,7 @@ function findScreen(node: ReactNode):
         portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
         followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
         followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
+        valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
         valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
         financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
         screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
@@ -315,6 +328,7 @@ describe("native shared workspace composition", () => {
         portfolioReviewReportPlugin,
         followupsReviewReportPlugin,
         followupsDraftFilePlugin,
+        valuationCollectionDraftFilePlugin,
         valuationDraftFilePlugin,
         financialScreenRecipePlugin,
         screenComparisonReportPlugin,
@@ -340,6 +354,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentPortfolioReviewReport"],
               ["InvestmentFollowupsReviewReport"],
               ["InvestmentFollowupsDraftFile"],
+              ["InvestmentValuationCollectionDraftFile"],
               ["InvestmentValuationDraftFile"],
               ["InvestmentFinancialScreenRecipe"],
               ["InvestmentScreenComparisonReport"],
@@ -401,6 +416,14 @@ describe("native shared workspace composition", () => {
         screen?.props.followupsDraftFileDelivery,
       );
       for (const method of Object.values(followupsDraftFilePlugin))
+        expect(method).not.toHaveBeenCalled();
+      expect(
+        typeof screen?.props.valuationCollectionDraftFileDelivery?.deliver,
+      ).toBe(config.environment === "production" ? "function" : "undefined");
+      expect(
+        findScreen(frame())?.props.valuationCollectionDraftFileDelivery,
+      ).toBe(screen?.props.valuationCollectionDraftFileDelivery);
+      for (const method of Object.values(valuationCollectionDraftFilePlugin))
         expect(method).not.toHaveBeenCalled();
       expect(typeof screen?.props.valuationDraftFileDelivery?.deliver).toBe(
         config.environment === "production" ? "function" : "undefined",

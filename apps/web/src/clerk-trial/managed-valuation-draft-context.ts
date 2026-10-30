@@ -65,6 +65,7 @@ export function valuationDraftContext(
   const visit = currentResearchVisit(options);
   if (!visit) return null;
   const workspace = options.workspace;
+  if (workspace.valuationAssumptions.hasCollectionFileActivity()) return null;
   const editor = workspace.valuation.getSnapshot();
   if (!editableInputs(editor)) return null;
   const assumptions = workspace.valuationAssumptions.getSnapshot();

@@ -29,12 +29,25 @@ the dated thesis Next-check workflow.
 
 ## Current priority after the October 29 Android delivery
 
-The next M4 outcome adds Complete and Reopen to the current check inside a
+The next recovery outcome adds one private file for the complete staged
+valuation-input collection. Capture all entries, inspect the complete file, then
+restore into a freshly loaded valuation draft through an explicit comparison.
+Keep the current saved base and workbench editor. Catalog identity review and
+normal Save/fresh Load remain separate. This fills the collection recovery gap
+before a later combined draft-set file can compose the existing resource flows.
+The source candidate passes local integration checks; hosted native and source
+acceptance remain pending.
+
+Android 1.59 delivers Complete and Reopen inside a
 [chosen Follow-ups review](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks).
-Research and Back retain the full authored result. Complete uses the displayed
-assessed UTC day, keeps the same position and changes only that entry. Reopen,
-Continue, Finish and Save/fresh Load remain explicit. Implementation and focused
-verification are in progress; source/native acceptance and delivery remain separate.
+Each action retains the current position, order, complete result and captured
+assessed UTC day. Research/Back, Continue, Finish and Save/fresh Load stay explicit.
+Accepted main `0cf07006f957342db24fbc55f37a9c3e0dd94270` passed its original
+required source checks and all 109 synthetic native cases. One guarded build
+with the existing signer, four actual APK checks and exact local delivery passed.
+A narrow package-verifier repair used the same signed APK and preserved the
+original failure and three unchanged passing checks. Installation remains an
+owner action; API, website and prior releases are preserved.
 
 Android 1.58 delivers the [cited filing assessment](MANAGED_FILINGS_REVIEW.md#cite-a-filing-in-an-existing-assessment).
 Open the exact check's Research visit, write an assessment, choose one already

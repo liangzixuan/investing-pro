@@ -1,4 +1,8 @@
 import {
+  createValuationCollectionRecoveryFixture,
+  type ValuationCollectionRecoveryControls,
+} from "./valuation-collection-recovery-fixture";
+import {
   createReviewCompletionNativeFixture,
   type ReviewCompletionMetadata,
 } from "./review-check-completion-fixture";
@@ -2175,6 +2179,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly screenComparisonReport?: ScreenComparisonReportNativeMetadata;
   readonly filingAssessment?: FilingAssessmentNativeMetadata;
   readonly reviewCompletion?: ReviewCompletionMetadata;
+  readonly collectionRecovery?: ValuationCollectionRecoveryControls;
   readonly screenComparisonFollowup?: ScreenComparisonFollowupNativeMetadata;
   readonly savedValuation?: SavedValuationNativeControls;
 };
@@ -2349,6 +2354,11 @@ const nativeFixtureFactories = new Map<
   string,
   () => Promise<ManagedNativeFixture>
 >([
+  [
+    "valuation-collection-recovery",
+    async () =>
+      createValuationCollectionRecoveryFixture(await createSharedFixture()),
+  ],
   [
     "review-check-completion",
     async () =>
@@ -2550,6 +2560,7 @@ export async function createFixture(
     | "screen-comparison"
     | "screen-comparison-report"
     | "review-check-completion"
+    | "valuation-collection-recovery"
     | "filing-check-assessment"
     | "screen-comparison-followup"
     | "financial-screen"
