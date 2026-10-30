@@ -165,7 +165,7 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
         boolean screenComparisonReport = "text/html".equals(mimeType) && displayName != null
             && displayName.matches("Investment-screen-comparison-[0-9]{8}T[0-9]{9}Z\\.html");
         boolean draft = "application/json".equals(mimeType) && displayName != null
-            && displayName.matches("Investment-(?:watchlist|valuation-inputs)-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json");
+            && displayName.matches("Investment-(?:watchlist|valuation-inputs|valuation-collection)-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json");
         boolean recipe = "application/json".equals(mimeType) && displayName != null
             && displayName.matches("Investment-financial-screen-recipe-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json");
         if (!ROOT_ID.equals(parent) || (!watchlist && !report && !htmlReport && !reviewReport && !screenComparisonReport && !draft && !recipe))
