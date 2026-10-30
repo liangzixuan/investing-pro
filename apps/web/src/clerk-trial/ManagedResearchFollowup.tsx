@@ -92,8 +92,9 @@ function renderResearchFollowup(
         <p className="managed-research-followup-help">
           {context.dirty ? "Follow-ups has unsaved changes. " : ""}
           Complete this check and save the full draft in Follow-ups. Source
-          reads and My Watchlist Save stay separate. Write an assessment to
-          preview it in the company note.
+          reads and My Watchlist Save stay separate.
+          {noteContext &&
+            " Write an assessment to preview it in the company note."}
         </p>
         <button
           id="managed-research-followup-review"
