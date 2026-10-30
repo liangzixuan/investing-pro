@@ -264,3 +264,52 @@ it("returns cancellation focus to the still-present initiating capture control",
   expect(capture.focus).toHaveBeenCalledOnce();
   expect(input.focus).not.toHaveBeenCalled();
 });
+
+it.each(["workspace", "accountScope", "delivery"] as const)(
+  "rejects the old committed callback when %s changes before layout commit",
+  (field) => {
+    const f = fixture();
+    const committed = f.render();
+    const next = { ...f.props };
+    if (field === "workspace") next.workspace = {} as ManagedWorkspace;
+    if (field === "accountScope")
+      next.accountScope = Promise.resolve("new scope");
+    if (field === "delivery")
+      next.delivery = { deliver: () => Promise.resolve("written") };
+    h.index = 0;
+    ManagedValuationCollectionDraftFiles(next);
+    // The old DOM still owns the event; new layout effects have not run.
+    click(committed, "managed-valuation-collection-capture");
+    expect(h.model.captureDraft).not.toHaveBeenCalled();
+  },
+);
+it("focuses a completed file review only while the initiating input retains focus", () => {
+  const f = fixture();
+  const tree = f.render();
+  const target = { files: [{} as File], value: "selected", isConnected: true };
+  Reflect.set(document, "activeElement", target);
+  (
+    find(tree, "managed-valuation-collection-file").props.onChange as (
+      event: unknown,
+    ) => void
+  )({ currentTarget: target });
+  h.state = review();
+  f.render();
+  expect(heading.focus).toHaveBeenCalledOnce();
+});
+it("returns imported-review cancellation focus to the input and preserves unrelated focus", () => {
+  h.state = review();
+  const f = fixture();
+  const source = { isConnected: false };
+  Reflect.set(document, "activeElement", body);
+  click(f.render(), "managed-valuation-collection-cancel", source);
+  f.render();
+  expect(input.focus).toHaveBeenCalledOnce();
+  expect(capture.focus).not.toHaveBeenCalled();
+  input.focus.mockClear();
+  h.state = review();
+  click(f.render(), "managed-valuation-collection-cancel", source);
+  Reflect.set(document, "activeElement", {});
+  f.render();
+  expect(input.focus).not.toHaveBeenCalled();
+});

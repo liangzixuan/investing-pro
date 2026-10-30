@@ -226,6 +226,10 @@ describe("Vite public profile composition", () => {
       const plugin = (
         vite.plugins as Array<{
           name: string;
+          moduleParsed?: (
+            this: { error: (message: string) => never },
+            module: { id: string },
+          ) => void;
           transformIndexHtml?: () => Array<{ attrs: { content: string } }>;
         }>
       ).find(({ name }) => name === "isolated-clerk-trial");
@@ -242,6 +246,25 @@ describe("Vite public profile composition", () => {
           "form-action 'self'",
         ].join("; "),
       );
+      const scope = {
+        error(message: string): never {
+          throw new Error(message);
+        },
+      };
+      expect(plugin?.moduleParsed).toBeTypeOf("function");
+      for (const id of [
+        "/project/apps/web/android-tests/managed-workspace/fixture.ts",
+        "C:\\project\\apps\\web\\android-tests\\managed-workspace\\fixture.ts",
+      ]) {
+        expect(() => plugin?.moduleParsed?.call(scope, { id })).toThrow(
+          "A server-only module entered the Clerk trial client.",
+        );
+      }
+      expect(() =>
+        plugin?.moduleParsed?.call(scope, {
+          id: "/project/apps/web/src/clerk-trial/ManagedValuationCollectionDraftFiles.tsx",
+        }),
+      ).not.toThrow();
     },
   );
 
