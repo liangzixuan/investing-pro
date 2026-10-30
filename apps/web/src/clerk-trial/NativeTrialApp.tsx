@@ -1,4 +1,8 @@
 import {
+  createNativeResearchDraftSetFileAdapter,
+  type InvestmentResearchDraftSetFilePlugin,
+} from "./research-draft-set-file-delivery";
+import {
   createNativeValuationCollectionDraftFileAdapter,
   type InvestmentValuationCollectionDraftFilePlugin,
 } from "./valuation-collection-draft-file-delivery";
@@ -183,6 +187,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const researchDraftSetFileDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeResearchDraftSetFileAdapter(
+            registerPlugin<InvestmentResearchDraftSetFilePlugin>(
+              "InvestmentResearchDraftSetFile",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const valuationCollectionDraftFileDelivery = useMemo(
     () =>
       managed
@@ -276,6 +291,9 @@ function NativeSession({
                 : {})}
               {...(followupsDraftFileDelivery
                 ? { followupsDraftFileDelivery }
+                : {})}
+              {...(researchDraftSetFileDelivery
+                ? { researchDraftSetFileDelivery }
                 : {})}
               {...(valuationCollectionDraftFileDelivery
                 ? { valuationCollectionDraftFileDelivery }

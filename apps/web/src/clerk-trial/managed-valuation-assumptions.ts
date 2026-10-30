@@ -211,6 +211,7 @@ export class ManagedValuationAssumptions {
   private observedDraft: Payload | null = null;
   private stagedCapture: ManagedValuationInputCapture | null = null;
   private readonly collectionActivities = new Set<object>();
+  private collectionFileActivityRevision = {};
   private readonly fileContexts =
     new WeakSet<ValuationCollectionDraftContext>();
   private fileRestore: { draft: Payload | null } | null = null;
@@ -395,16 +396,23 @@ export class ManagedValuationAssumptions {
       !this.hasCollectionFileActivity()
     );
   }
+  getCollectionFileActivityRevision() {
+    return this.collectionFileActivityRevision;
+  }
   hasCollectionFileActivity() {
     return this.collectionActivities.size > 0;
   }
   beginCollectionFileActivity(owner: object) {
     if (this.retired || this.collectionActivities.has(owner)) return;
     this.collectionActivities.add(owner);
+    this.collectionFileActivityRevision = {};
     this.update({});
   }
   endCollectionFileActivity(owner: object) {
-    if (this.collectionActivities.delete(owner)) this.update({});
+    if (this.collectionActivities.delete(owner)) {
+      this.collectionFileActivityRevision = {};
+      this.update({});
+    }
   }
   getDraftFileContext(owner?: object): ValuationCollectionDraftContext | null {
     const save = this.coordinator.getSnapshot(),

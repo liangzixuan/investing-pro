@@ -50,6 +50,14 @@ export function captureWatchlistDraftFileContext(
   requireFresh: boolean,
 ): WatchlistDraftFileContext | null {
   if (!watchlistRouteIsIdle(view)) return null;
+  return captureWatchlistResourceDraftContext(state, view, requireFresh);
+}
+
+export function captureWatchlistResourceDraftContext(
+  state: WatchlistSaveState,
+  view: ManagedDiscoveryState,
+  requireFresh: boolean,
+): WatchlistDraftFileContext | null {
   if (!catalogReadIsIdle(view)) return null;
   if (!watchlistRecoveryIsClear(state)) return null;
   const context = savedDraftContext(state);

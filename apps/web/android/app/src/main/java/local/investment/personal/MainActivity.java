@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(InvestmentFollowupsDraftFilePlugin.class);
         registerPlugin(InvestmentValuationDraftFilePlugin.class);
         registerPlugin(InvestmentValuationCollectionDraftFilePlugin.class);
+        registerPlugin(InvestmentResearchDraftSetFilePlugin.class);
         registerPlugin(InvestmentFinancialScreenRecipePlugin.class);
         registerPlugin(InvestmentCompanyReportPlugin.class);
         registerPlugin(InvestmentCompanyReportHtmlPlugin.class);

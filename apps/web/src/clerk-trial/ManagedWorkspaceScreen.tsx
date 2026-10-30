@@ -1,3 +1,5 @@
+import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
+import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { managedResearchDraftProps } from "./managed-research-draft-props";
@@ -96,6 +98,7 @@ import {
 
 import type { ManagedValuationCollectionDraftFileDeliveryAdapter } from "./valuation-collection-draft-file-delivery";
 interface ManagedFileDeliveries {
+  researchDraftSetFileDelivery?: ManagedResearchDraftSetFileDeliveryAdapter;
   valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
   financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
@@ -248,6 +251,7 @@ function SessionWorkspace(props: SessionProps) {
 
 function definedSessionWorkspacePorts(initial: SessionProps) {
   const ports = {
+    researchDraftSetFileDelivery: initial.researchDraftSetFileDelivery,
     financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
     screenComparisonReportDelivery: initial.screenComparisonReportDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
@@ -481,6 +485,7 @@ export function ManagedWorkspaceScreen({
   followupsReviewReportDelivery,
   valuationDraftFileDelivery,
   valuationCollectionDraftFileDelivery,
+  researchDraftSetFileDelivery,
   financialScreenRecipeDelivery,
   screenComparisonReportDelivery,
   reportDelivery,
@@ -999,6 +1004,15 @@ export function ManagedWorkspaceScreen({
         >
           {retired ? null : (
             <>
+              {draftFileScope && (
+                <ManagedResearchDraftSetFiles
+                  workspace={workspace}
+                  accountScope={draftFileScope}
+                  delivery={researchDraftSetFileDelivery}
+                  navigationPending={navigationPending}
+                  routeActive={() => !navigation?.invalid}
+                />
+              )}
               {backReview && (
                 <section aria-label="Leave workspace review">
                   <h2>Review local changes before leaving</h2>

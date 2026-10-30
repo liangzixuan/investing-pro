@@ -1,4 +1,8 @@
 import {
+  createResearchDraftSetFixture,
+  type ResearchDraftSetFixtureControls,
+} from "./research-draft-set-fixture";
+import {
   createValuationCollectionRecoveryFixture,
   type ValuationCollectionRecoveryControls,
 } from "./valuation-collection-recovery-fixture";
@@ -2180,6 +2184,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly filingAssessment?: FilingAssessmentNativeMetadata;
   readonly reviewCompletion?: ReviewCompletionMetadata;
   readonly collectionRecovery?: ValuationCollectionRecoveryControls;
+  readonly researchDraftSet?: ResearchDraftSetFixtureControls;
   readonly screenComparisonFollowup?: ScreenComparisonFollowupNativeMetadata;
   readonly savedValuation?: SavedValuationNativeControls;
 };
@@ -2354,6 +2359,10 @@ const nativeFixtureFactories = new Map<
   string,
   () => Promise<ManagedNativeFixture>
 >([
+  [
+    "research-draft-set",
+    async () => createResearchDraftSetFixture(await createSharedFixture()),
+  ],
   [
     "valuation-collection-recovery",
     async () =>
@@ -2561,6 +2570,7 @@ export async function createFixture(
     | "screen-comparison-report"
     | "review-check-completion"
     | "valuation-collection-recovery"
+    | "research-draft-set"
     | "filing-check-assessment"
     | "screen-comparison-followup"
     | "financial-screen"

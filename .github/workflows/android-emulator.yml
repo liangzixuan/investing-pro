@@ -503,6 +503,24 @@ jobs:
           required.add(valuation_collection_case)
           if len(required) != 114:
               raise SystemExit("The complete valuation collection journey must preserve all 113 prior and policy cases.")
+          required.update({
+              ("local.investment.personal.ResearchDraftSetFilePolicyInstrumentedTest", method)
+              for method in {
+                  "admitsFullAndSelectedInventoryWithFixedMetadata",
+                  "rejectsInvalidMetadataTimeAndEnvelope",
+                  "rejectsNestedScopeShapeAndOmissionContradictions",
+                  "enforcesWholeFileActualUtf8BoundWithoutClipping",
+              }
+          })
+          if len(required) != 118:
+              raise SystemExit("The draft-set policy must preserve all 114 prior native cases.")
+          research_draft_set_case = (
+              "local.investment.personal.ManagedResearchDraftSetRecoveryTest",
+              "chosenDraftSetFreshSessionIndependentPortfolioAndValuationRestoreSaveLoad",
+          )
+          required.add(research_draft_set_case)
+          if len(required) != 119:
+              raise SystemExit("The complete research draft-set journey must preserve all 118 prior and policy cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -543,6 +561,12 @@ jobs:
                       raise SystemExit("The valuation collection shard must retain its scoped comparison frame.")
               elif collection_frames:
                   raise SystemExit("The valuation collection comparison frame belongs only to its executed shard.")
+              draft_set_frames = list(root.rglob("newResearchDraftSetPortfolioComparison.png"))
+              if research_draft_set_case in executed:
+                  if len(draft_set_frames) != 1 or draft_set_frames[0].stat().st_size == 0:
+                      raise SystemExit("The research draft-set shard must retain its scoped Portfolio comparison frame.")
+              elif draft_set_frames:
+                  raise SystemExit("The draft-set Portfolio comparison frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 29, 2026. This document defines the durable product goals and
+Updated October 30, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,16 +27,20 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority after the October 29 Android delivery
+## Current priority after collection recovery source merge
 
-The next recovery outcome adds one private file for the complete staged
-valuation-input collection. Capture all entries, inspect the complete file, then
-restore into a freshly loaded valuation draft through an explicit comparison.
-Keep the current saved base and workbench editor. Catalog identity review and
-normal Save/fresh Load remain separate. This fills the collection recovery gap
-before a later combined draft-set file can compose the existing resource flows.
-The source candidate passes local integration checks; hosted native and source
-acceptance remain pending.
+The next [research draft-set workflow](MANAGED_RESEARCH_DRAFT_SET.md) combines a
+chosen subset of loaded research drafts in one private file. Capture and inspect
+the complete included collections, then restore each chosen resource into a
+freshly loaded draft through an explicit comparison. Keep independent save bases,
+catalog review and online Save/fresh Load. Unloaded and omitted resources remain
+explicit. This reduces the number of separate recovery files without adding a
+combined Save or automatic restore.
+
+Complete staged valuation collection recovery merged in PR 257. Original PR and
+main project checks passed, including the 114-case native gate. Main artifact
+downloads remain incomplete; Android 1.60 delivery awaits their qualification.
+The separate draft-set source increment can proceed while that delivery waits.
 
 Android 1.59 delivers Complete and Reopen inside a
 [chosen Follow-ups review](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks).

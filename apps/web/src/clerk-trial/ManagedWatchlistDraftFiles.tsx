@@ -36,7 +36,7 @@ const empty: WatchlistDraftRecoveryState = Object.freeze({
 const noop = () => () => {};
 const emptySnapshot = () => empty;
 
-function DraftListings({ draft }: { draft: MainWatchlistPayload }) {
+export function DraftListings({ draft }: { draft: MainWatchlistPayload }) {
   if (!draft.memberships.length) return <p>No listings in this draft.</p>;
   return (
     <ol className="managed-draft-file-list">

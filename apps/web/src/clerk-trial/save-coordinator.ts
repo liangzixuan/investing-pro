@@ -104,9 +104,11 @@ export class SaveCoordinator<P> {
   canEdit() {
     return this.available() && !this.pending && !this.state.replayPending;
   }
-  replaceDraft(payload: P) {
-    if (!this.canEdit()) return;
-    this.update({ draft: this.port.copy(payload), dirty: true });
+  replaceDraft(payload: P): P | null {
+    if (!this.canEdit()) return null;
+    const draft = this.port.copy(payload);
+    this.update({ draft, dirty: true });
+    return draft;
   }
   retire(message?: string) {
     this.generation++;

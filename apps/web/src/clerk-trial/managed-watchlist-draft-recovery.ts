@@ -77,6 +77,7 @@ export class ManagedWatchlistDraftRecovery {
   private operation: Operation | null = null;
   private transition = {};
   private disposed = false;
+  private activityTransitionDepth = 0;
 
   constructor(private readonly options: Options) {
     const { workspace } = options;
@@ -111,7 +112,7 @@ export class ManagedWatchlistDraftRecovery {
     );
   }
   private context(requireFresh = true): DraftContext | null {
-    if (!this.live()) return null;
+    if (!this.live() || this.activityTransitionDepth > 0) return null;
     if (!this.options.routeActive()) return null;
     return this.options.workspace.getWatchlistDraftFileContext(requireFresh);
   }
@@ -171,7 +172,14 @@ export class ManagedWatchlistDraftRecovery {
     this.transition = transition;
     const operation = this.operation;
     this.operation = null;
-    operation?.controller.abort();
+    this.activityTransitionDepth++;
+    try {
+      operation?.controller.abort();
+      if (operation)
+        this.options.workspace.endWatchlistDraftFileActivity(operation);
+    } finally {
+      this.activityTransitionDepth--;
+    }
     this.publish({
       phase: retired ? "retired" : "idle",
       preview: null,
@@ -205,7 +213,8 @@ export class ManagedWatchlistDraftRecovery {
       controller: new AbortController(),
     };
     this.operation = operation;
-    return operation;
+    this.options.workspace.beginWatchlistDraftFileActivity(operation);
+    return this.current(operation) ? operation : null;
   }
   private finish(operation: Operation, message: string) {
     if (!this.current(operation)) {
@@ -345,10 +354,13 @@ export class ManagedWatchlistDraftRecovery {
   }
   dispose() {
     this.transition = {};
-    this.operation?.controller.abort();
+    const operation = this.operation;
     this.operation = null;
     this.scope = null;
     this.disposed = true;
+    operation?.controller.abort();
+    if (operation)
+      this.options.workspace.endWatchlistDraftFileActivity(operation);
     for (const unsubscribe of this.unsubscribers) unsubscribe();
     this.listeners.clear();
     this.state = Object.freeze({
