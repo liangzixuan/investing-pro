@@ -4065,13 +4065,27 @@ export class ManagedWorkspace {
   watchlistFileCatalogReviewRequired() {
     return this.fileCatalogReviewRequired;
   }
+  private researchDraftSetRouteReady() {
+    if (this.followupsNavigationDepth > 0) return false;
+    if (!this.navigationBlocked) return true;
+    const visit = this.state.research;
+    const route = this.state.companyRoute;
+    return (
+      visit !== null &&
+      route?.status === "open" &&
+      route.listingId === visit.selection.listing.listingId &&
+      route.section === visit.section &&
+      visit.selection.catalogSnapshotSha256 ===
+        this.state.snapshot?.snapshotSha256
+    );
+  }
   getResearchDraftSetRoute() {
     return {
       navigation: this.navigationRevision,
       view: this.viewRevision,
       research: this.state.research,
       companyRoute: this.state.companyRoute,
-      blocked: this.navigationBlocked,
+      blocked: !this.researchDraftSetRouteReady(),
     };
   }
   hasWatchlistDraftFileActivity(owner?: object) {
@@ -4096,7 +4110,7 @@ export class ManagedWorkspace {
   ): WatchlistDraftFileContext | null {
     if (
       !this.canEdit() ||
-      this.navigationBlocked ||
+      !this.researchDraftSetRouteReady() ||
       this.hasWatchlistDraftFileActivity(owner)
     )
       return null;

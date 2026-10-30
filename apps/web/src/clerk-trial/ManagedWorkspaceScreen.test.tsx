@@ -1,3 +1,4 @@
+import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
 import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { ManagedFinancialDiscovery } from "./ManagedFinancialDiscovery";
 import {
@@ -6748,5 +6749,43 @@ it("keeps the readable Follow-ups report on the root route without source or sav
   expect(api.saveFollowups).not.toHaveBeenCalled();
   expect(before[0]?.draft?.memberships).toEqual(payload.memberships);
   expect(before[1]?.draft?.entries).toEqual([]);
+  mounted.direct = false;
+});
+
+it("fences draft-set callbacks with immediate router pending state before the screen rerenders", async () => {
+  const { workspace } = fixture();
+  await workspace.coordinator.load();
+  await workspace.refreshCatalog();
+  let pending = false;
+  const navigation: ManagedCompanyNavigation = {
+    pending: false,
+    isPending: () => pending,
+    invalid: false,
+    returnFocus: 0,
+    hasCompanyRoute: () => false,
+    open: vi.fn(),
+    section: vi.fn(),
+    view: vi.fn(() => false),
+    back: vi.fn(),
+  };
+  mounted.direct = true;
+  mounted.refIndex = 0;
+  const tree = ManagedWorkspaceScreen({
+    workspace,
+    navigation,
+    draftFileScope: Promise.resolve("sha256:" + "a".repeat(64)),
+  });
+  const files = elements(tree).find(
+    (node) => node.type === ManagedResearchDraftSetFiles,
+  ) as React.ReactElement<
+    React.ComponentProps<typeof ManagedResearchDraftSetFiles>
+  >;
+  expect(files.props.navigationPending).toBe(false);
+  expect(files.props.routeActive()).toBe(true);
+  pending = true;
+  expect(files.props.routeActive()).toBe(false);
+  pending = false;
+  expect(files.props.routeActive()).toBe(true);
+  workspace.sessionOwner.dispose();
   mounted.direct = false;
 });

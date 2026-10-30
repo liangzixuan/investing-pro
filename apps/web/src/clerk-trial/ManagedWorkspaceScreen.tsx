@@ -1010,7 +1010,9 @@ export function ManagedWorkspaceScreen({
                   accountScope={draftFileScope}
                   delivery={researchDraftSetFileDelivery}
                   navigationPending={navigationPending}
-                  routeActive={() => !navigation?.invalid}
+                  routeActive={() =>
+                    !navigation?.invalid && !navigation?.isPending()
+                  }
                 />
               )}
               {backReview && (
