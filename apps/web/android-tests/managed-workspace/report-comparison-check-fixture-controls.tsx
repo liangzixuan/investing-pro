@@ -54,6 +54,9 @@ export function ReportComparisonCheckFixtureControls({
     watchlist.baseVersion === 7 &&
     portfolio.baseVersion === 3 &&
     followups.baseVersion === 1;
+  const companyCheck = view.research
+    ? workspace.getCompanyResearchChecks(view.research.selection)
+    : null;
   return (
     <aside aria-label="Invented report check journey controls">
       <NativeReportRevisitFixture />
@@ -128,10 +131,16 @@ export function ReportComparisonCheckFixtureControls({
           followupsLocal,
           editor,
           annual,
-          attached: view.research
-            ? (workspace.getCompanyResearchChecks(view.research.selection)
-                ?.attachment?.entry.id ?? null)
+          companyCheck: companyCheck
+            ? { canAttach: companyCheck.canAttach, reason: companyCheck.reason }
             : null,
+          sourceRunning: {
+            annual: annual.running,
+            price: workspace.eod.getSnapshot().running,
+            filings: workspace.filings.getSnapshot().running,
+            interim: workspace.interim.getSnapshot().running,
+          },
+          attached: companyCheck?.attachment?.entry.id ?? null,
           canonical: followups.draft
             ? encodeResearchFollowupsPayload(followups.draft)
             : null,
