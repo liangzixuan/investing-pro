@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Portfolio companies in an Annual screen
+
+Keep the Portfolio intake separate from criteria and source Run controls. Show
+every current holding with its full identity, exact authored shares, confirmation
+date and eligibility reason. Require an explicit choice when held share classes
+share an issuer. Preview the full ordered selection and all exclusions before
+Apply. Explain when prior results will clear. Keep Portfolio and criteria intact.
+Use wrapping text, labelled readouts, 44px controls and stacked narrow layouts.
+Move focus only for the current initiating action; retired previews cannot apply.
+
 ## A report comparison in the current check
 
 Keep the two full dated captures in the report revisit disclosure. Place the

@@ -1,0 +1,42 @@
+.managed-portfolio-screen-selection {
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.managed-portfolio-screen-selection summary,
+.managed-portfolio-screen-selection button,
+.managed-portfolio-screen-selection select {
+  min-height: 44px;
+}
+.managed-portfolio-screen-selection summary {
+  padding-block: 0.75rem;
+  cursor: pointer;
+}
+.managed-portfolio-screen-selection label {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+.managed-portfolio-screen-selection select {
+  max-width: 100%;
+  width: 100%;
+}
+.managed-portfolio-screen-rows {
+  padding-inline-start: 1.5rem;
+}
+.managed-portfolio-screen-rows > li {
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--managed-line);
+}
+.managed-portfolio-screen-identity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.5rem 1rem;
+}
+.managed-portfolio-screen-identity dd {
+  margin: 0;
+}
+.managed-portfolio-screen-selection :focus-visible,
+.managed-portfolio-screen-selection [tabindex="-1"]:focus {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}

@@ -1,3 +1,4 @@
+import { ManagedPortfolioScreenSelection } from "./ManagedPortfolioScreenSelection";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
@@ -30,6 +31,10 @@ interface Props {
 export function ManagedFinancialDiscovery(props: Props) {
   return (
     <>
+      <ManagedPortfolioScreenSelection
+        workspace={props.workspace}
+        routeActive={props.recipesRouteActive}
+      />
       <ManagedFinancialScreen
         model={props.workspace.financialScreen}
         onOpenReport={props.onOpenReport}

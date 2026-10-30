@@ -7,6 +7,13 @@ The [source eligibility candidate](MANAGED_RESEARCH_ELIGIBILITY.md) carries a
 result into company research with independent Annual, Filings and Price scope;
 it retains this screen's explicit reads and captured Annual handoff.
 
+## Choose screen companies from Portfolio
+
+The [Portfolio screening increment](MANAGED_PORTFOLIO_SCREEN.md) adds a complete
+holdings selection preview in Discover, explicit share-class choice and atomic
+Apply before the separate Annual Run. Portfolio and criteria remain unchanged.
+Implementation and verification are in progress.
+
 ## Choose companies and criteria
 
 Select **Load screening cohort** to resolve the current catalog identities.
