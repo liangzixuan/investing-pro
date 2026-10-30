@@ -5,14 +5,30 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: assess a report comparison in the current check
+## In development: screen the companies held in Portfolio
 
-The selected [report comparison check workflow](MANAGED_REPORT_COMPARISON_CHECK.md)
-connects a private saved report and a current capture to the exact research
-check owned by this company visit. Preview the full resulting assessment, apply
-once, then Review, Complete, Save and freshly Load through Follow-ups. Original
-source dates and file qualifications remain explicit; each resource saves
-independently. Implementation and its source/native acceptance are in progress.
+The selected [Portfolio screening workflow](MANAGED_PORTFOLIO_SCREEN.md) connects
+current authored holdings to the existing Annual cohort. Inspect every holding,
+choose duplicate share classes explicitly, preview the complete selection and
+apply it atomically. Run, evidence inspection, Research and Back remain explicit.
+Portfolio and criteria stay unchanged. Implementation and acceptance are in progress.
+
+## Accepted and delivered: assess a report comparison in the current check
+
+The [report comparison check workflow](MANAGED_REPORT_COMPARISON_CHECK.md)
+connects a private saved report and a current capture to the exact owned or
+explicitly attached research check. Preview the whole authored assessment and
+both references, apply once, then Review, Complete, Save and freshly Load.
+Original dates, file qualifications and the whole-result text limit remain.
+
+[PR 260](https://github.com/liangzixuan/investing-pro/pull/260) merged at
+`f6a7af1b5a620da1d289ab7b8b68d7b810e71645`. Original PR and main project checks
+and all 121 synthetic native cases passed. Android 1.62.0/code63 is provided
+locally after one guarded existing-signer build and four effective same-APK
+checks. Two qualified checker repairs retained the original failures and reused
+two unchanged passes. Local copy and checksum readback passed. Installation,
+physical-phone and browser acceptance are not claimed. API, website, saved
+drafts and prior releases are preserved.
 
 ## Accepted and delivered: use an existing check during company research
 

@@ -223,8 +223,10 @@ export class ManagedFinancialScreen {
     delete reportInputs.error;
     if (Object.keys(reportInputs).length)
       this.comparisonReportRevision = Symbol();
-    this.state = Object.freeze({ ...this.state, ...next });
+    const installed = Object.freeze({ ...this.state, ...next });
+    this.state = installed;
     for (const listener of this.listeners) listener();
+    return installed;
   }
   private accepts(captured: ManagedFinancialScreenState) {
     return (
@@ -437,6 +439,53 @@ export class ManagedFinancialScreen {
       ),
       selectionRevision: Symbol(),
       comparison: emptyComparison(),
+    });
+  }
+  /** Replace only the exact company selection in one synchronous notification. */
+  applyCompanySelection(
+    captured: ManagedFinancialScreenState,
+    members: readonly ManagedFinancialScreenMember[],
+  ): ManagedFinancialScreenState | null {
+    if (
+      !this.accepts(captured) ||
+      this.operation ||
+      captured.pending ||
+      captured.criteriaStaged ||
+      !captured.catalogSnapshotSha256 ||
+      !Array.isArray(members) ||
+      members.length < 1 ||
+      members.length > 17
+    )
+      return null;
+    const selected: ManagedFinancialScreenMember[] = [];
+    for (const candidate of members) {
+      const owned = captured.memberships.find((member) => member === candidate);
+      if (!owned || !this.hasCoverage(owned)) return null;
+      selected.push(owned);
+    }
+    if (
+      new Set(selected.map((member) => member.listing.listingId)).size !==
+        selected.length ||
+      new Set(selected.map((member) => member.listing.issuerId)).size !==
+        selected.length ||
+      !this.accepts(captured) ||
+      this.operation
+    )
+      return null;
+    if (
+      selected.length === captured.selected.length &&
+      selected.every((member, index) => member === captured.selected[index])
+    )
+      return captured;
+    return this.update({
+      selected: Object.freeze(selected),
+      selectionRevision: Symbol(),
+      run: null,
+      shortlist: Object.freeze([]),
+      comparison: emptyComparison(),
+      message:
+        "Company selection applied. Run the screen explicitly to load reports.",
+      error: false,
     });
   }
   /** Consume one current recipe review as an atomic definition-only change. */

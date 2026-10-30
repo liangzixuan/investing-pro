@@ -1,3 +1,4 @@
+import { PortfolioScreenSelectionFixtureControls } from "./portfolio-screen-selection-fixture-controls";
 import { ReportComparisonCheckFixtureControls } from "./report-comparison-check-fixture-controls";
 import { CompanyResearchChecksFixtureControls } from "./company-research-checks-fixture-controls";
 import { ResearchDraftSetFixtureControls } from "./research-draft-set-fixture-controls";
@@ -76,9 +77,11 @@ function useFixtureWorkspace(session: TrialSession) {
         ? { financialScreenListingIds: fixture.financialScreen.listingIds }
         : {}),
     });
+    if (scenario === "portfolio-screen-selection") current.setView("portfolio");
     setWorkspace(current);
     if (
       scenario !== "holding-followup" &&
+      scenario !== "portfolio-screen-selection" &&
       scenario !== "company-research-checks" &&
       scenario !== "report-comparison-check" &&
       scenario !== "portfolio-composition-review"
@@ -320,6 +323,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       )}
       {workspace && fixture.companyResearchChecks && (
         <CompanyResearchChecksFixtureControls workspace={workspace} />
+      )}
+      {workspace && fixture.portfolioScreenSelection && (
+        <PortfolioScreenSelectionFixtureControls
+          workspace={workspace}
+          fixture={fixture.portfolioScreenSelection}
+        />
       )}
       <ResourceControls workspace={workspace} onFreshSession={onFreshSession} />
     </>

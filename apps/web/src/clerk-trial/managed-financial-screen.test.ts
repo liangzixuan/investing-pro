@@ -933,3 +933,247 @@ describe("atomic screen recipe definition admission", () => {
     expect(f.model.getSnapshot()).toBe(staged);
   });
 });
+
+describe("atomic company-only screen selection", () => {
+  it("installs the complete ordered selection once and retires results without changing criteria or sorting", async () => {
+    const f = fixture();
+    await f.universe();
+    f.model.setCriteria(f.model.getSnapshot(), {
+      clauses: [{ field: "operatingIncome", operator: "gte", value: "-2.50" }],
+      sort: { field: "currentRatio", direction: "desc" },
+    });
+    const running = f.run();
+    await vi.runAllTimersAsync();
+    await running;
+    const run = f.model.getSnapshot().run!;
+    f.model.toggleShortlist(f.model.getSnapshot(), run.rows[0]!);
+    f.model.selectComparison(f.model.getSnapshot(), "left", run.rows[0]!);
+    f.model.selectComparison(f.model.getSnapshot(), "right", run.rows[1]!);
+    const before = f.model.getSnapshot();
+    const snapshots: ReturnType<typeof f.model.getSnapshot>[] = [];
+    f.model.subscribe(() => snapshots.push(f.model.getSnapshot()));
+    const members = [before.memberships[1]!, before.memberships[0]!];
+    const installed = f.model.applyCompanySelection(before, members)!;
+    expect(snapshots).toEqual([installed]);
+    expect(installed).toBe(f.model.getSnapshot());
+    expect(installed.selected).toEqual(members);
+    expect(installed.selected).not.toBe(members);
+    expect(Object.isFrozen(installed.selected)).toBe(true);
+    expect(installed.criteria).toBe(before.criteria);
+    expect(installed.criteriaRevision).toBe(before.criteriaRevision);
+    expect(installed.criteria.sort).toBe(before.criteria.sort);
+    expect(installed.selectionRevision).not.toBe(before.selectionRevision);
+    expect(installed.run).toBeNull();
+    expect(installed.shortlist).toEqual([]);
+    expect(installed.comparison).toEqual({ left: null, right: null });
+    expect(
+      f.model.canAdmitReport({
+        run,
+        row: run.rows[0]!,
+        response: run.rows[0]!.report!.response!,
+      }),
+    ).toBe(false);
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.resolve).toHaveBeenCalledOnce();
+  });
+  it("keeps an identical ordered selection and its complete run as a silent no-op", async () => {
+    const f = await loaded();
+    f.model.toggleShortlist(f.model.getSnapshot(), f.capture.row);
+    f.model.selectComparison(f.model.getSnapshot(), "left", f.capture.row);
+    const before = f.model.getSnapshot();
+    const changed = vi.fn();
+    f.model.subscribe(changed);
+    expect(f.model.applyCompanySelection(before, [...before.selected])).toBe(
+      before,
+    );
+    expect(f.model.getSnapshot()).toBe(before);
+    expect(changed).not.toHaveBeenCalled();
+    expect(f.model.canAdmitReport(f.capture)).toBe(true);
+  });
+  it("refuses empty, foreign, duplicate listing/issuer and oversized selections before any mutation", async () => {
+    const f = fixture([first, alternate, second]);
+    await f.universe();
+    const before = f.model.getSnapshot();
+    const [a, sameIssuer, other] = before.memberships;
+    const changed = vi.fn();
+    f.model.subscribe(changed);
+    for (const members of [
+      [],
+      [{ ...a! }],
+      [a!, a!],
+      [a!, sameIssuer!],
+      [other!, { ...a! }],
+      Array.from({ length: 18 }, () => a!),
+    ]) {
+      expect(f.model.applyCompanySelection(before, members)).toBeNull();
+      expect(f.model.getSnapshot()).toBe(before);
+    }
+    expect(changed).not.toHaveBeenCalled();
+  });
+  it("refuses owned but uncovered companies without changing the current selection", async () => {
+    const f = fixture();
+    const model = new ManagedFinancialScreen(
+      { resolve: f.resolve, annualReport: f.read },
+      f.readError,
+      f.access,
+      {
+        listingIds: [first.listingId, second.listingId],
+        coverage: createManagedResearchCoverageFixture([
+          { listing: first, cik: "0000000001" },
+        ]),
+      },
+    );
+    model.reconcile(digest, true, true);
+    await model.loadUniverse(model.getSnapshot());
+    const before = model.getSnapshot();
+    const changed = vi.fn();
+    model.subscribe(changed);
+    expect(
+      model.applyCompanySelection(before, [before.memberships[1]!]),
+    ).toBeNull();
+    expect(model.getSnapshot()).toBe(before);
+    expect(changed).not.toHaveBeenCalled();
+  });
+  it("refuses staged criteria and a pending Annual read without cancelling either", async () => {
+    const f = fixture();
+    await f.universe();
+    f.model.stageCriteria(f.model.getSnapshot());
+    const staged = f.model.getSnapshot();
+    expect(
+      f.model.applyCompanySelection(staged, [staged.memberships[1]!]),
+    ).toBeNull();
+    expect(f.model.getSnapshot()).toBe(staged);
+    f.model.setCriteria(staged, staged.criteria);
+    const response = deferred<PersonalSecAnnualCanonicalResponseDto>();
+    f.read.mockReturnValue(response.promise);
+    const running = f.run();
+    await vi.advanceTimersByTimeAsync(0);
+    const pending = f.model.getSnapshot();
+    expect(pending.pending).not.toBeNull();
+    const signal = f.read.mock.calls[0]![1];
+    expect(
+      f.model.applyCompanySelection(pending, [pending.memberships[1]!]),
+    ).toBeNull();
+    expect(f.model.getSnapshot()).toBe(pending);
+    expect(signal.aborted).toBe(false);
+    f.model.cancel();
+    await running;
+  });
+  it("permanently rejects old snapshots after selection and access ABA", async () => {
+    const f = fixture();
+    await f.universe();
+    const before = f.model.getSnapshot();
+    f.model.applyCompanySelection(before, [before.memberships[1]!]);
+    f.model.applyCompanySelection(f.model.getSnapshot(), before.selected);
+    const restored = f.model.getSnapshot();
+    expect(
+      f.model.applyCompanySelection(before, [before.memberships[0]!]),
+    ).toBeNull();
+    expect(f.model.getSnapshot()).toBe(restored);
+    f.model.reconcile(digest, false, false);
+    const inactive = f.model.getSnapshot();
+    expect(
+      f.model.applyCompanySelection(inactive, inactive.selected),
+    ).toBeNull();
+    f.model.reconcile(digest, true, true);
+    expect(
+      f.model.applyCompanySelection(restored, restored.selected),
+    ).toBeNull();
+    const current = f.model.getSnapshot();
+    f.model.retire();
+    expect(f.model.applyCompanySelection(current, current.selected)).toBeNull();
+  });
+  it("returns its installed snapshot when a synchronous listener immediately replaces it", async () => {
+    const f = fixture();
+    await f.universe();
+    const before = f.model.getSnapshot();
+    const snapshots: ReturnType<typeof f.model.getSnapshot>[] = [];
+    f.model.subscribe(() => {
+      const current = f.model.getSnapshot();
+      snapshots.push(current);
+      if (snapshots.length === 1) {
+        expect(current.selected).toEqual([
+          before.memberships[1]!,
+          before.memberships[0]!,
+        ]);
+        expect(
+          f.model.applyCompanySelection(before, before.selected),
+        ).toBeNull();
+        f.model.applyCompanySelection(current, [before.memberships[0]!]);
+      }
+    });
+    const installed = f.model.applyCompanySelection(before, [
+      before.memberships[1]!,
+      before.memberships[0]!,
+    ]);
+    expect(installed).toBe(snapshots[0]);
+    expect(f.model.getSnapshot()).toBe(snapshots[1]);
+    expect(installed).not.toBe(f.model.getSnapshot());
+    expect(snapshots.map((state) => state.selected.length)).toEqual([2, 1]);
+  });
+  it("revalidates current state after eligibility checks before installing any selection", async () => {
+    const f = fixture();
+    await f.universe();
+    const before = f.model.getSnapshot();
+    vi.spyOn(f.model, "hasCoverage").mockImplementationOnce(() => {
+      f.model.stageCriteria(before);
+      return true;
+    });
+    expect(
+      f.model.applyCompanySelection(before, [before.memberships[1]!]),
+    ).toBeNull();
+    expect(f.model.getSnapshot().criteriaStaged).toBe(true);
+    expect(f.model.getSnapshot().selected).toBe(before.selected);
+  });
+  it("accepts 17 distinct owned issuers and refuses the complete 18-listing cohort", async () => {
+    const listings = Array.from({ length: 17 }, (_, index) => ({
+      ...first,
+      listingId: `listing-limit-${index}`,
+      issuerId: `issuer-limit-${index}`,
+      securityId: `security-limit-${index}`,
+      shareClassId: `class-limit-${index}`,
+      symbol: `L${index}`,
+    }));
+    const anotherClass = {
+      ...listings[0]!,
+      listingId: "listing-extra-class",
+      securityId: "security-extra-class",
+      shareClassId: "class-extra",
+      symbol: "LEXTRA",
+    };
+    const f = fixture([...listings, anotherClass]);
+    await f.universe();
+    const before = f.model.getSnapshot();
+    expect(before.memberships).toHaveLength(18);
+    expect(before.selected).toHaveLength(17);
+    const installed = f.model.applyCompanySelection(
+      before,
+      [...before.selected].reverse(),
+    )!;
+    expect(installed.selected).toHaveLength(17);
+    expect(
+      f.model.applyCompanySelection(installed, installed.memberships),
+    ).toBeNull();
+    expect(f.model.getSnapshot()).toBe(installed);
+  });
+  it("refuses the resolved cohort until its loading operation has settled", async () => {
+    const f = fixture();
+    let tested = false;
+    f.model.subscribe(() => {
+      const current = f.model.getSnapshot();
+      if (current.pending?.kind === "universe" && current.memberships.length) {
+        tested = true;
+        expect(
+          f.model.applyCompanySelection(current, [current.memberships[1]!]),
+        ).toBeNull();
+        expect(f.model.getSnapshot()).toBe(current);
+      }
+    });
+    await f.universe();
+    expect(tested).toBe(true);
+    const settled = f.model.getSnapshot();
+    expect(
+      f.model.applyCompanySelection(settled, [settled.memberships[1]!]),
+    ).not.toBeNull();
+  });
+});

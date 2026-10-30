@@ -1769,6 +1769,27 @@ export class ManagedWorkspace {
       this.portfolioPriceCoverage,
     );
   }
+  /** Exact Discover visit; same-view and pending-navigation round trips retire it. */
+  capturePortfolioScreenRoute(): (() => boolean) | null {
+    const view = this.state;
+    const navigation = this.navigationRevision;
+    const revision = this.viewRevision;
+    const current = () =>
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.navigationRevision === navigation &&
+      this.viewRevision === revision &&
+      this.state === view &&
+      view.view === "discover" &&
+      !view.research &&
+      !view.companyRoute &&
+      !view.read &&
+      !view.review &&
+      !view.reviewing &&
+      this.canNavigate();
+    return current() ? current : null;
+  }
   /** A root Portfolio visit capability; navigation round trips cannot renew it. */
   capturePortfolioWatchlistRoute(): (() => boolean) | null {
     const view = this.state;

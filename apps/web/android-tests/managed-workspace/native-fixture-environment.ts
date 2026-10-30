@@ -53,6 +53,7 @@ const allowedScenarios = [
   "research-draft-set",
   "company-research-checks",
   "report-comparison-check",
+  "portfolio-screen-selection",
   "filing-check-assessment",
   "portfolio-ledger",
   "portfolio-close-review",

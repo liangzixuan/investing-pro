@@ -27,14 +27,21 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: record a report comparison in the current check
+## Current priority: screen the companies held in Portfolio
 
-The selected [report comparison check workflow](MANAGED_REPORT_COMPARISON_CHECK.md)
-connects existing saved-report comparison to the exact owned Follow-ups result.
-It completes an M2/M4 research loop: inspect complete dated captures, author an
-assessment, preview the whole result, apply, Review, Complete and Save/fresh Load.
-This also advances manual thesis-change tracking in M5. It adds no automated
-verdict, provider, financial formula, storage resource, API route or new fee.
+The selected [Portfolio screening workflow](MANAGED_PORTFOLIO_SCREEN.md)
+connects existing holdings to the Annual screen under M2/M4. Review eligibility
+and share classes, preview the complete selection, apply it atomically, then
+Run and continue through evidence, Research and Back. Current Portfolio and
+criteria stay unchanged. It adds no provider, financial formula, resource,
+API route or fee. Implementation and verification are in progress.
+
+Android 1.62 delivers the [report comparison check workflow](MANAGED_REPORT_COMPARISON_CHECK.md)
+from accepted main `f6a7af1b5a620da1d289ab7b8b68d7b810e71645`. Original source
+checks and all 121 native cases passed. One guarded build with the existing
+signer, four effective same-APK checks and local copy/readback passed. Original
+checker failures remain with qualified repairs and two unchanged passes.
+Installation remains an owner action; API, website and prior releases remain.
 
 Android 1.61 delivers the [company research checks workflow](MANAGED_COMPANY_RESEARCH_CHECKS.md)
 and research draft-set recovery from accepted main

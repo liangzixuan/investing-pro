@@ -8,6 +8,13 @@ assets and the existing production signer. The owner reported that the overall
 device inspection. Authenticated owner Save was not exercised during release. The local encrypted My Portfolio record is a separate
 product profile and is not imported or changed by this workflow.
 
+## Choose screen companies from Portfolio
+
+The [Portfolio screening increment](MANAGED_PORTFOLIO_SCREEN.md) adds a complete
+holdings selection preview in Discover, explicit share-class choice and atomic
+Apply before the separate Annual Run. Portfolio and criteria remain unchanged.
+Implementation and verification are in progress.
+
 ## Record holdings and activity
 
 1. Open **Portfolio** and choose **Load portfolio**. A successful first load can
