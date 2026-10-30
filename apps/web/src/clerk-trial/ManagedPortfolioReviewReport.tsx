@@ -1,3 +1,4 @@
+import { PortfolioReportComparison } from "./PortfolioReportComparison";
 import { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type { ManagedPortfolioCloseReview } from "./managed-portfolio-close-review";
 import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
@@ -9,6 +10,9 @@ import { formatPortfolioReviewReportHtml } from "./portfolio-review-report-html"
 import { PortfolioReviewReportSnapshot } from "./PortfolioReviewReportSnapshot";
 
 interface Props {
+  captureReadScope?: (() => () => boolean) | undefined;
+  onResearch?:
+    ((listingId: string, opener: HTMLButtonElement) => void) | undefined;
   prices: ManagedPortfolioCloseReview | undefined;
   ready: boolean;
   delivery: PortfolioReviewReportDeliveryAdapter | undefined;
@@ -16,7 +20,7 @@ interface Props {
 const empty = emptyPortfolioReviewReport();
 const emptySnapshot = () => empty;
 const noopSubscribe = () => () => {};
-function useReport({ prices, delivery }: Props) {
+function useReport({ prices, delivery, captureReadScope }: Props) {
   const [controller, setController] =
     useState<PortfolioReviewReportController | null>(null);
   useLayoutEffect(() => {
@@ -25,13 +29,14 @@ function useReport({ prices, delivery }: Props) {
       {
         capture: () => prices.captureReport(new Date().toISOString()),
         subscribe: prices.subscribe,
+        ...(captureReadScope ? { captureReadScope } : {}),
       },
       delivery,
       formatPortfolioReviewReportHtml,
     );
     setController(next);
     return () => next.dispose();
-  }, [prices, delivery]);
+  }, [prices, delivery, captureReadScope]);
   const state = useSyncExternalStore(
     controller?.subscribe ?? noopSubscribe,
     controller?.getSnapshot ?? emptySnapshot,
@@ -74,6 +79,7 @@ function CaptureAction({
     <div className="managed-portfolio-actions">
       <button
         type="button"
+        id="portfolio-report-capture"
         disabled={captureDisabled(ready, controller, saving)}
         onClick={capture}
       >
@@ -132,6 +138,7 @@ function CapturedReport({
   if (!state.report) return null;
   return (
     <>
+      <h4 id="portfolio-report-current-heading">Current Portfolio report</h4>
       <PortfolioReviewReportSnapshot report={state.report} />
       <ReportActions
         controller={controller}
@@ -170,6 +177,12 @@ export function ManagedPortfolioReviewReport(props: Props) {
         delivery={props.delivery}
       />
       <ReportStatus message={state.message} />
+      {controller && (
+        <PortfolioReportComparison
+          reports={controller}
+          onResearch={props.onResearch}
+        />
+      )}
     </section>
   );
 }

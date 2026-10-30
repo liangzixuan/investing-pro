@@ -23,6 +23,7 @@ This file tracks direct runtime packages. The lockfile and automated SBOM will r
 | Capacitor App            |   8.1.1 | MIT          | Native application lifecycle       |
 | React Router             |   8.4.0 | MIT          | Bundled client routing             |
 | Appwrite Node SDK        |  29.0.0 | BSD-3-Clause | Managed watchlist storage adapter  |
+| htmlparser2              |   8.0.2 | MIT          | Saved Portfolio HTML parsing       |
 | Undici                   |  6.29.0 | MIT          | Bounded Appwrite HTTP transport    |
 | Clerk React SDK          |  6.17.2 | MIT          | Isolated browser sign-in trial     |
 | Clerk Backend SDK        |  3.20.1 | MIT          | Trial session verification         |

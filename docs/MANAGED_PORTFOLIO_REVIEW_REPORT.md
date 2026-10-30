@@ -48,3 +48,27 @@ version. No report store, new financial feed, coverage expansion, API/site relea
 or automatic file delivery is added. The existing chosen-document writer serves
 a distinct strict Portfolio HTML policy; company-report and draft-file policies
 remain separate.
+
+## Compare a saved report with current holdings
+
+This workflow is in development; its acceptance is recorded in [Current work](CURRENT_WORK.md).
+
+Choose one saved Portfolio HTML report and explicitly read it. Inspect its full
+ledger, holdings, selected close date and original source packets. The reader
+extracts and validates the data appendix locally. It does not open the file as
+a webpage or load its resources. A private copy is unverified evidence, not proof
+of authenticity, source freshness or a saved Portfolio version.
+
+Load and review current holdings independently, choose an observed close date,
+then capture the current report. Inspect both complete records before Compare.
+The comparison keeps every exact listing from either side, with separate share
+classes and explicit identity conflicts. Raw shares, confirmation dates, closes,
+USD values, composition, cash and totals retain their own dates and qualifications.
+An absent holding or unavailable value is never treated as zero. The comparison
+does not calculate returns, choose a later price or alter the current ledger.
+
+Research is available only for an exact current holding. Back preserves authored
+drafts; reopen the review and capture again after navigation or a source change.
+Changing the file or retiring the current capture withdraws the comparison.
+Cancelled and late reads cannot replace the active result. File reading adds no
+online Save, draft import, background request or report store.

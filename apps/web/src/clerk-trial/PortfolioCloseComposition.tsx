@@ -141,7 +141,10 @@ export function PortfolioCloseComposition({
   review,
   rows,
 }: {
-  id: "portfolio-close-composition" | "portfolio-report-composition";
+  id:
+    | "portfolio-close-composition"
+    | "portfolio-report-composition"
+    | "portfolio-report-saved-composition";
   review: AuthoredPortfolioCloseReviewResult;
   rows: readonly PortfolioCloseRow[];
 }) {

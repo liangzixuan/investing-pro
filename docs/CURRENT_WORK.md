@@ -5,13 +5,29 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: screen the companies held in Portfolio
+## In development: compare a saved Portfolio report with current holdings
+
+The [Portfolio report comparison](MANAGED_PORTFOLIO_REVIEW_REPORT.md#compare-a-saved-report-with-current-holdings)
+keeps a chosen private HTML report beside an independently captured current
+review. Inspect both complete records and compare the full listing union, raw
+values, cash, dates and source qualifications. Exact current Research retains
+the authored drafts. Implementation and acceptance are in progress.
+
+## Accepted and delivered: screen the companies held in Portfolio
 
 The selected [Portfolio screening workflow](MANAGED_PORTFOLIO_SCREEN.md) connects
 current authored holdings to the existing Annual cohort. Inspect every holding,
 choose duplicate share classes explicitly, preview the complete selection and
 apply it atomically. Run, evidence inspection, Research and Back remain explicit.
-Portfolio and criteria stay unchanged. Implementation and acceptance are in progress.
+Portfolio and criteria stay unchanged.
+
+[PR 261](https://github.com/liangzixuan/investing-pro/pull/261) merged at
+`bb5832ca494cff363ed22d95406d190cdabb8be3`. Original main project checks and all
+122 synthetic native cases passed. Android 1.63.0/code64 is provided locally
+after one guarded existing-signer build and four same-APK checks. Local copy,
+checksum and readback passed. A qualified pre-build checker correction retained
+its original failure. Installation, physical-phone and browser acceptance remain
+separate; API, website, saved drafts and prior releases are preserved.
 
 ## Accepted and delivered: assess a report comparison in the current check
 

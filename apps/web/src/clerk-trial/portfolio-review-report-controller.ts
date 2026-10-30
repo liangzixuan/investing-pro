@@ -11,6 +11,7 @@ export interface PortfolioReviewReportCapture {
   readonly current: () => boolean;
 }
 export interface PortfolioReviewReportSource {
+  readonly captureReadScope?: () => () => boolean;
   readonly capture: () => PortfolioReviewReportCapture | null;
   readonly subscribe: (listener: () => void) => () => void;
 }
@@ -32,6 +33,7 @@ export class PortfolioReviewReportController {
   private capture: PortfolioReviewReportCapture | null = null;
   private operation: AbortController | null = null;
   private disposed = false;
+  private sourceRevision = 0;
   private readonly listeners = new Set<() => void>();
   private readonly unsubscribe: () => void;
   constructor(
@@ -39,7 +41,11 @@ export class PortfolioReviewReportController {
     private readonly delivery: PortfolioReviewReportDeliveryAdapter | undefined,
     private readonly format: Formatter,
   ) {
-    this.unsubscribe = source.subscribe(() => this.reconcile());
+    this.unsubscribe = source.subscribe(() => {
+      this.sourceRevision += 1;
+      this.reconcile();
+      for (const listener of this.listeners) listener();
+    });
   }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
@@ -57,6 +63,33 @@ export class PortfolioReviewReportController {
       this.capture === capture &&
       capture.current()
     );
+  }
+  captureReadScope() {
+    const revision = this.sourceRevision;
+    const scope = this.source.captureReadScope?.();
+    return () =>
+      !this.disposed && this.sourceRevision === revision && (scope?.() ?? true);
+  }
+  captureCurrent(): PortfolioReviewReportCapture | null {
+    const capture = this.capture;
+    if (this.operation || !capture || !this.current(capture)) return null;
+    const state = this.state;
+    const revision = this.sourceRevision;
+    let retired = false;
+    return Object.freeze({
+      report: capture.report,
+      current: () => {
+        if (
+          this.operation ||
+          !this.current(capture) ||
+          this.capture !== capture ||
+          this.state !== state ||
+          this.sourceRevision !== revision
+        )
+          retired = true;
+        return !retired;
+      },
+    });
   }
   reconcile() {
     if (!this.capture || this.current()) return;

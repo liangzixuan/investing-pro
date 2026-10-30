@@ -542,6 +542,13 @@ jobs:
           required.add(portfolio_screen_case)
           if len(required) != 122:
               raise SystemExit("The Portfolio screen journey must preserve all 121 prior native cases.")
+          portfolio_report_comparison_case = (
+              "local.investment.personal.ManagedPortfolioReportComparisonTest",
+              "savedPortfolioHtmlComparesCompleteIdentityUnionAndReturnsFromCurrentResearch",
+          )
+          required.add(portfolio_report_comparison_case)
+          if len(required) != 123:
+              raise SystemExit("The saved/current Portfolio report journey must preserve all 122 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -606,6 +613,12 @@ jobs:
                       raise SystemExit("The Portfolio screen shard must retain its scoped complete selection preview frame.")
               elif portfolio_screen_frames:
                   raise SystemExit("The Portfolio screen preview frame belongs only to its executed shard.")
+              portfolio_report_frames = list(root.rglob("newPortfolioReportComparisonReview.png"))
+              if portfolio_report_comparison_case in executed:
+                  if len(portfolio_report_frames) != 1 or portfolio_report_frames[0].stat().st_size == 0:
+                      raise SystemExit("The Portfolio report comparison shard must retain its scoped complete review frame.")
+              elif portfolio_report_frames:
+                  raise SystemExit("The Portfolio report comparison frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Saved and current Portfolio reports
+
+Keep file choice and Read separate from the current capture and Compare actions.
+Label both complete records with their original capture times and close dates.
+Show every holding, including saved-only, current-only and conflicting identities.
+Keep missing values explicit, cash and totals visible, and source qualifications
+beside each side. Offer Research only for an exact current holding. Use wrapping
+text, stacked narrow layouts, visible focus and 44px controls. Retired captures
+cannot compare or move focus; current drafts and their Save actions stay separate.
+
 ## Portfolio companies in an Annual screen
 
 Keep the Portfolio intake separate from criteria and source Run controls. Show

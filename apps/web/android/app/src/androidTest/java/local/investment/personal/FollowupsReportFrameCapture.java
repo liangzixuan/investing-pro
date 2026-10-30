@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** One absolute deadline covers visual readiness, a committed frame and PixelCopy ownership. */
 final class FollowupsReportFrameCapture {
-    enum Frame { CAPTURED, MARKETS_CALENDAR_PREVIEW, VALUATION_SCENARIO_PREVIEW, CPI_HEADLINE_PREVIEW, SCREEN_COMPARISON_PREVIEW, SCREEN_COMPARISON_FOLLOWUP_PREVIEW, FILING_ASSESSMENT_PREVIEW, REVIEW_CHECK_COMPLETION_FOCUS, VALUATION_COLLECTION_REVIEW, RESEARCH_DRAFT_SET_PORTFOLIO_COMPARISON, COMPANY_RESEARCH_CHECK_ATTACHED, REPORT_COMPARISON_CHECK_PREVIEW, PORTFOLIO_SCREEN_SELECTION }
+    enum Frame { CAPTURED, MARKETS_CALENDAR_PREVIEW, VALUATION_SCENARIO_PREVIEW, CPI_HEADLINE_PREVIEW, SCREEN_COMPARISON_PREVIEW, SCREEN_COMPARISON_FOLLOWUP_PREVIEW, FILING_ASSESSMENT_PREVIEW, REVIEW_CHECK_COMPLETION_FOCUS, VALUATION_COLLECTION_REVIEW, RESEARCH_DRAFT_SET_PORTFOLIO_COMPARISON, COMPANY_RESEARCH_CHECK_ATTACHED, REPORT_COMPARISON_CHECK_PREVIEW, PORTFOLIO_SCREEN_SELECTION, PORTFOLIO_REPORT_COMPARISON }
     record Request(ActivityScenario<MainActivity> scenario, Frame frame) {}
     private record WindowFrame(WebView webView, Window window) {}
     private record PixelResult(Bitmap bitmap, int result) {}
@@ -67,6 +67,7 @@ final class FollowupsReportFrameCapture {
         case COMPANY_RESEARCH_CHECK_ATTACHED -> "newCompanyResearchCheckAttached";
         case REPORT_COMPARISON_CHECK_PREVIEW -> "newReportComparisonCheckPreview";
         case PORTFOLIO_SCREEN_SELECTION -> "newPortfolioScreenSelectionPreview";
+        case PORTFOLIO_REPORT_COMPARISON -> "newPortfolioReportComparisonReview";
     }; }
 
     private Bitmap capture() throws Exception {
