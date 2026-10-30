@@ -37,7 +37,8 @@ export function managedCompanySourceActionsProps(
   return {
     ...interimResearchProps(workspace, visit),
     filingsFollowupActions: filingQuestionActions(workspace, visit),
-    ...(visit.selection.origin === "followups"
+    ...(visit.selection.origin === "followups" ||
+    workspace.getCompanyResearchChecks(visit.selection)?.attachment?.isCurrent()
       ? {
           filingsAssessmentActions: filingAssessmentActions(
             workspace,

@@ -11,6 +11,20 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## An existing check in company research
+
+Keep personal context in an optional company-page section near identity and source
+tools. Distinguish each loaded draft from unloaded, absent, invalid and stale
+context. Show complete authored note/check text and label holding amounts as
+ledger data. Use an empty choice followed by an explicit action to use the
+matching check. Keep the original company visit, source clocks and Back target.
+
+Reuse the assessment and complete filing-citation preview. Review in Follow-ups,
+completion and each resource Save stay explicit. Use wrapping identities and
+text, labelled regions, 44px controls, visible focus and narrow stacked layouts.
+Focus the attached check heading only after that action commits. Resource loads
+and later renders must not take focus from another control.
+
 ## Selected research draft-set files
 
 Use one workspace disclosure for a chosen set of loaded research drafts. Start

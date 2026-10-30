@@ -51,6 +51,7 @@ const allowedScenarios = [
   "review-check-completion",
   "valuation-collection-recovery",
   "research-draft-set",
+  "company-research-checks",
   "filing-check-assessment",
   "portfolio-ledger",
   "portfolio-close-review",
@@ -101,6 +102,8 @@ export const scenario = admitScenario(
 // Fixed test input before the router mounts; no navigation or account bypass.
 if (scenario === "company-direct-entry")
   history.replaceState(null, "", "/?company=listing-zero&section=annual");
+if (scenario === "company-research-checks")
+  history.replaceState(null, "", "/?company=listing-zero&section=filings");
 export const fixture = await createFixture(scenario ?? "default");
 export const nativeReport =
   scenario === "company-snapshot" ||

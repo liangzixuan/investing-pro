@@ -81,6 +81,7 @@ export function ManagedCompanyResearch({
   onReview,
   thesisFollowup,
   researchFollowup,
+  companyResearchChecks,
   annualNoteActions,
   annualCashNoteActions,
   annualLiquidityNoteActions,
@@ -137,6 +138,7 @@ export function ManagedCompanyResearch({
   onReview: () => void;
   thesisFollowup?: ThesisFollowupContext | undefined;
   researchFollowup?: ReactNode;
+  companyResearchChecks?: ReactNode;
   annualNoteActions: ManagedAnnualNoteActions;
   annualCashNoteActions: ManagedAnnualCashNoteActions;
   annualLiquidityNoteActions: ManagedAnnualLiquidityNoteActions;
@@ -198,6 +200,7 @@ export function ManagedCompanyResearch({
           {listing.exchangeMic}
         </span>
       </p>
+      {companyResearchChecks}
       {researchFollowup}
       <HoldingResearchNextCheck
         selection={research.selection}
