@@ -1,0 +1,53 @@
+.managed-company-research-checks {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--managed-line);
+  border-radius: 0.5rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.managed-company-research-checks summary,
+.managed-company-research-checks button,
+.managed-company-research-checks select {
+  min-height: 44px;
+}
+.managed-company-research-checks summary {
+  cursor: pointer;
+  align-content: center;
+}
+.managed-company-research-checks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.managed-company-research-checks-grid > section {
+  min-width: 0;
+}
+.managed-company-context-raw {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.managed-company-research-checks label {
+  display: block;
+}
+.managed-company-research-checks select {
+  max-width: 100%;
+  margin-block: 0.5rem;
+}
+.managed-company-research-checks dd {
+  margin-inline-start: 0;
+}
+.managed-company-research-checks :focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+@media (max-width: 720px) {
+  .managed-company-research-checks-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .managed-company-research-checks select,
+  .managed-company-research-checks button {
+    width: 100%;
+    white-space: normal;
+  }
+}

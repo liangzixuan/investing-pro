@@ -27,20 +27,32 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority after collection recovery source merge
+## Current priority: connect company research to an existing check
 
-The next [research draft-set workflow](MANAGED_RESEARCH_DRAFT_SET.md) combines a
-chosen subset of loaded research drafts in one private file. Capture and inspect
-the complete included collections, then restore each chosen resource into a
-freshly loaded draft through an explicit comparison. Keep independent save bases,
-catalog review and online Save/fresh Load. Unloaded and omitted resources remain
-explicit. This reduces the number of separate recovery files without adding a
-combined Save or automatic restore.
+The selected [company research checks workflow](MANAGED_COMPANY_RESEARCH_CHECKS.md)
+closes an interruption in the M2/M4 journey. A company opened from discovery or a
+bookmark should retain its loaded source evidence while the owner explicitly
+chooses and assesses a matching existing check. Loaded note and authored holding
+context stay distinct from source facts. Review, completion, independent Save
+and fresh Load use the existing Follow-ups workflow.
 
-Complete staged valuation collection recovery merged in PR 257. Original PR and
-main project checks passed, including the 114-case native gate. Main artifact
-downloads remain incomplete; Android 1.60 delivery awaits their qualification.
-The separate draft-set source increment can proceed while that delivery waits.
+This uses current resources and source models. It adds no background monitoring,
+financial formula, provider coverage, new fee, persistent resource or API route.
+The complete workflow and its session, identity and stale-action boundaries are
+the increment; source and client acceptance remain separate.
+
+The [research draft-set workflow](MANAGED_RESEARCH_DRAFT_SET.md) merged in PR258
+at `e3a2e7e200a22a7fa884c35bb06ff89b87e157cd`. Final PR project checks and all119
+synthetic native cases passed. All six original main project jobs passed. The
+source proof, native artifacts and scoped frame are accepted. Android delivery
+of this change remains pending.
+The CodeScene maintainability finding remains recorded without suppression.
+
+Android 1.60 delivers complete staged valuation collection recovery from accepted
+main `5aa498629f4d012464bc379cdcbc8f5d9e174926`. Original source/native114 evidence,
+one guarded existing-signer build, four signed-APK checks and exact local delivery
+passed. Installation remains an owner action. API, website and prior releases are
+preserved. The later draft-set workflow is not included in Android 1.60.
 
 Android 1.59 delivers Complete and Reopen inside a
 [chosen Follow-ups review](MANAGED_RESEARCH_FOLLOWUPS.md#review-a-chosen-set-of-due-checks).

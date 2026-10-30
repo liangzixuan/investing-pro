@@ -1,3 +1,4 @@
+import { ManagedCompanyResearchChecks } from "./managed-company-research-checks-controller";
 import { captureManagedInterimNote } from "./managed-interim-note-context";
 import { ManagedInterimReport } from "./managed-interim-report";
 import {
@@ -392,6 +393,15 @@ export class ManagedWorkspace {
   readonly blsCalendar: ManagedBlsCalendar;
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
+  private readonly companyResearchChecks = new ManagedCompanyResearchChecks({
+    workspace: this,
+    current: (selection) => this.companyCheckVisitCurrent(selection),
+    ready: (selection) =>
+      this.researchDraftSetRouteReady() &&
+      this.canNavigate() &&
+      this.canUseResearchSource(selection),
+    publish: () => this.update({}),
+  });
   private navigationBlocked = false;
   private readonly watchlistFileActivities = new Set<object>();
   private watchlistFileRevision = {};
@@ -1648,6 +1658,7 @@ export class ManagedWorkspace {
     if (this.clearResearch()) this.update({});
   }
   private clearResearch(operation = Symbol()) {
+    this.companyResearchChecks.clear();
     this.researchOperation = operation;
     const hadResearch =
       this.state.research !== null || this.state.companyRoute !== null;
@@ -2396,9 +2407,95 @@ export class ManagedWorkspace {
       ? switched
       : null;
   }
+  private companyCheckVisitCurrent(selection: ManagedResearchSelection) {
+    const visit = this.state.research;
+    if (!visit || visit.selection !== selection) return null;
+    const operation = this.researchOperation;
+    const view = this.viewRevision;
+    const catalog = this.state.snapshot;
+    return () =>
+      !this.retired &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.researchOperation === operation &&
+      this.viewRevision === view &&
+      this.state.snapshot === catalog &&
+      this.state.research?.selection === selection &&
+      this.canUseResearchSource(selection);
+  }
+  getCompanyResearchChecks(selection: ManagedResearchSelection) {
+    return this.companyResearchChecks.capture(selection);
+  }
+  reviewCompanyResearchCheck(
+    selection: ManagedResearchSelection,
+    navigate: () => boolean,
+  ): FollowupReview | null {
+    const attached = this.companyResearchChecks.reviewEntry(selection);
+    if (!attached || !attached.isCurrent()) return null;
+    const entry = attached.entry;
+    const saved = this.followups.coordinator.getSnapshot();
+    const draft = saved.draft;
+    if (!draft) return null;
+    const activity = this.followups.getDraftFileActivityRevision();
+    const view = this.viewRevision;
+    const navigation = this.navigationRevision;
+    const initialBack = this.state.companyRoute !== null;
+    const currentEntry = () =>
+      !this.retired &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.followups.coordinator.getSnapshot() === saved &&
+      this.followups.getDraftFileActivityRevision() === activity &&
+      this.followups.currentEntry(entry.id) === entry;
+    if (!navigate()) return null;
+    const transitioned = () =>
+      currentEntry() &&
+      this.viewRevision === view + 1 &&
+      this.state.view === "followups" &&
+      !this.state.research &&
+      !this.state.companyRoute;
+    const expectedNavigation = this.navigationRevision;
+    if (!transitioned()) return null;
+    if (initialBack && expectedNavigation !== navigation + 1) return null;
+    if (
+      !initialBack &&
+      expectedNavigation !== navigation &&
+      expectedNavigation !== navigation + 2
+    )
+      return null;
+    this.followups.select(entry.id);
+    if (!transitioned() || this.navigationRevision !== expectedNavigation)
+      return null;
+    this.followups.setFilter(
+      entry.status === "completed" ? "completed" : "open",
+    );
+    const selected = this.followups.getSnapshot();
+    let retired = false;
+    const isCurrent = () => {
+      if (retired) return false;
+      const routeSettled =
+        this.navigationRevision === expectedNavigation ||
+        (initialBack && this.navigationRevision === expectedNavigation + 1);
+      retired =
+        !transitioned() ||
+        !routeSettled ||
+        this.followups.getSnapshot() !== selected ||
+        selected.selectedId !== entry.id;
+      return (
+        !retired &&
+        !this.navigationBlocked &&
+        this.followupsNavigationDepth === 0
+      );
+    };
+    return transitioned() &&
+      selected.selectedId === entry.id &&
+      this.followups.getSnapshot() === selected
+      ? Object.freeze({ entry, draft, isCurrent })
+      : null;
+  }
   researchFollowupContext(
     selection: ManagedResearchSelection,
   ): ManagedResearchFollowupContext | null {
+    if (selection.origin !== "followups")
+      return this.companyResearchChecks.context(selection);
     const visit: FollowupResearchVisit = {
       owner: this.followupResearch,
       operation: this.researchOperation,
@@ -2520,6 +2617,7 @@ export class ManagedWorkspace {
     selection: ManagedResearchSelection,
     routeActive: () => boolean,
   ) {
+    if (selection.origin !== "followups") return null;
     const followup = this.researchFollowupContext(selection);
     if (!followup) return null;
     return captureFollowupReviewNoteContext({

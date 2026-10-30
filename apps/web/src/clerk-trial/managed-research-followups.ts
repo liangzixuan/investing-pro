@@ -298,6 +298,9 @@ export class ManagedResearchFollowups {
   }
 
   getSnapshot = (): Readonly<ManagedResearchFollowupsState> => this.state;
+  getInputRevision() {
+    return this.holdingInputRevision;
+  }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -404,7 +407,7 @@ export class ManagedResearchFollowups {
   private replaceAuthoredDraft(payload: ResearchFollowupsPayload) {
     this.authoredInput = payload;
     try {
-      this.coordinator.replaceDraft(payload);
+      return this.coordinator.replaceDraft(payload);
     } finally {
       this.authoredInput = null;
       this.authoredOutput = null;
@@ -525,8 +528,9 @@ export class ManagedResearchFollowups {
         current === entry ? (next ? [next] : []) : [current],
       ),
     };
-    if (reviewSafe) this.replaceAuthoredDraft(payload);
-    else this.coordinator.replaceDraft(payload);
+    return reviewSafe
+      ? this.replaceAuthoredDraft(payload)
+      : this.coordinator.replaceDraft(payload);
   }
   prepareNextCheck(
     member: WatchlistMembership,
@@ -954,7 +958,11 @@ export class ManagedResearchFollowups {
     raw: string,
   ) {
     if (["check", "result", "dueOn"].includes(field))
-      this.replace(entry, { ...entry, [field]: raw }, field === "result");
+      return this.replace(
+        entry,
+        { ...entry, [field]: raw },
+        field === "result",
+      );
   }
   remove(entry: ResearchFollowup) {
     this.replace(entry, null, true);

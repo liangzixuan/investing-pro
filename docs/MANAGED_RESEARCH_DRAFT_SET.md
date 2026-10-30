@@ -1,7 +1,7 @@
 # Research draft-set files
 
-Status: in development. [Current work](CURRENT_WORK.md) records actual source,
-native and Android delivery acceptance.
+Status: source merged in PR258. [Current work](CURRENT_WORK.md) records original
+main qualification and Android delivery separately.
 
 ## Intended workflow
 

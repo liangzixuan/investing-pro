@@ -5,20 +5,32 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: recover a chosen set of research drafts
+## In development: use an existing check during company research
 
-The next [research draft-set workflow](MANAGED_RESEARCH_DRAFT_SET.md) captures a
-chosen subset of loaded Watchlist, Portfolio, Follow-ups and staged valuation
-drafts in one private file. Inspect every included collection before file Save.
-In a fresh session, compare each selected resource with its current draft and
-restore it explicitly. Keep its loaded save base, unrelated drafts and the
-valuation editor. Catalog review, online Save and fresh Load remain separate.
+The selected [company research checks workflow](MANAGED_COMPANY_RESEARCH_CHECKS.md)
+shows personal context from independently loaded drafts inside a company visit.
+Explicitly choose its matching check, keep the current source evidence and return
+path, write an assessment, then review and save the exact entry in Follow-ups.
+The current one-check-per-listing schema and separate resource saves remain.
+Implementation and its source, native and client acceptance are in progress.
 
-This increment is in development. It adds no saved resource, schema migration,
-API route, provider request, dependency or cost. Source implementation, native
-checks and Android delivery remain separate acceptance events.
+## Merged source: recover a chosen set of research drafts
 
-## Merged source: recover the staged valuation collection from a file
+The [research draft-set workflow](MANAGED_RESEARCH_DRAFT_SET.md) captures a chosen
+subset of loaded Watchlist, Portfolio, Follow-ups and staged valuation drafts in
+one private file. Inspect every included collection before file Save. In a fresh
+session, compare each selected resource with its current draft and restore it
+explicitly. Keep its loaded save base, unrelated drafts and the valuation editor.
+Catalog review, online Save and fresh Load remain separate.
+
+[PR 258](https://github.com/liangzixuan/investing-pro/pull/258) merged at
+`e3a2e7e200a22a7fa884c35bb06ff89b87e157cd`. All seven original project checks
+passed on the final PR revision, including all 119 synthetic native cases. The
+separate CodeScene maintainability failure remains recorded; no threshold or
+protection was changed. All six original main project jobs passed. The source proof, native artifacts
+and scoped frame are accepted. Android delivery of this change remains pending.
+
+## Accepted and delivered: recover the staged valuation collection from a file
 
 The [valuation collection recovery workflow](MANAGED_VALUATION_WORKBENCH.md#staged-collection-file-recovery)
 captures every staged entry in one private file. Explicit capture, complete
@@ -28,11 +40,11 @@ the workbench editor. Catalog review, Save and fresh Load remain explicit.
 
 [PR 257](https://github.com/liangzixuan/investing-pro/pull/257) merged at
 `5aa498629f4d012464bc379cdcbc8f5d9e174926`. Original PR and main project checks
-passed, including the 114-case native gate. PR artifacts and the scoped review
-frame were inspected. Downloads of the original main proof and native archives
-are incomplete because the artifact host resets connections. Main artifact
-qualification and Android 1.60 delivery remain pending. Android 1.59 is the last
-completed local delivery. No installation or phone acceptance is claimed.
+passed, including all 114 synthetic native cases. Original main artifacts and
+the scoped frame were qualified. Android 1.60.0/code61 is provided locally after
+one guarded offline build with the existing production signer and all four
+signed-APK checks. The delivered copy matches the checked APK. Prior releases,
+the API and website are preserved. No installation or phone acceptance is claimed.
 
 ## Accepted and delivered: complete a check within a chosen review
 

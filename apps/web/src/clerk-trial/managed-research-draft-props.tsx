@@ -1,3 +1,4 @@
+import { ManagedCompanyResearchChecks } from "./ManagedCompanyResearchChecks";
 import type { ComponentProps } from "react";
 import type { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import type { ManagedWorkspace } from "./managed-workspace";
@@ -13,7 +14,11 @@ export function managedResearchDraftProps(
   onReviewFollowups: () => void,
 ): Pick<
   ComponentProps<typeof ManagedCompanyResearch>,
-  "watchlist" | "thesisFollowup" | "researchFollowup" | "reportRevisitTarget"
+  | "watchlist"
+  | "thesisFollowup"
+  | "researchFollowup"
+  | "companyResearchChecks"
+  | "reportRevisitTarget"
 > {
   const routeActive = () => !navigation?.invalid && !navigation?.isPending();
   return {
@@ -21,6 +26,15 @@ export function managedResearchDraftProps(
       workspace.captureCompanyReportRevisitTarget(selection, routeActive),
     watchlist: workspace.getResearchWatchlist(selection),
     thesisFollowup: workspace.researchThesisFollowupContext(selection),
+    companyResearchChecks: (
+      <ManagedCompanyResearchChecks
+        key={`${selection.catalogSnapshotSha256}:${selection.listing.listingId}`}
+        workspace={workspace}
+        selection={selection}
+        navigationPending={navigation?.pending ?? false}
+        routeActive={routeActive}
+      />
+    ),
     researchFollowup: (
       <ManagedResearchFollowup
         key={`${selection.catalogSnapshotSha256}:${selection.listing.listingId}`}
@@ -28,7 +42,15 @@ export function managedResearchDraftProps(
         selection={selection}
         navigationPending={navigation?.pending ?? false}
         routeActive={routeActive}
-        onReview={onReviewFollowups}
+        onReview={() => {
+          if (selection.origin === "followups") onReviewFollowups();
+          else
+            workspace.reviewCompanyResearchCheck(selection, () => {
+              if (navigation) return navigation.view("followups");
+              workspace.setView("followups");
+              return workspace.getSnapshot().view === "followups";
+            });
+        }}
       />
     ),
   };
