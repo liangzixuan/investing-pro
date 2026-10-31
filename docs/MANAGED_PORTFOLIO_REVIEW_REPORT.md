@@ -75,8 +75,8 @@ online Save, draft import, background request or report store.
 
 ## Keep a private comparison report
 
-This increment is in development. Source, automated checks and delivery remain
-separate until recorded in [Current work](CURRENT_WORK.md).
+This workflow is accepted in source and provided in Android 1.65. Its evidence
+and delivery limits are recorded in [Current work](CURRENT_WORK.md).
 
 After comparing a saved report with current holdings, choose **Capture comparison
 report**. Inspect the complete saved and current records, every listing in the

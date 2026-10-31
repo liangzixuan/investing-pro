@@ -1,17 +1,34 @@
 # Current work
 
-Updated October 30, 2026. This is the current capability and delivery record.
+Updated October 31, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: save a complete Portfolio comparison report
+## In development: review due checks for current holdings
 
-Capture the current saved/current comparison, inspect both complete Portfolio
-records and the full listing union, then explicitly save a private HTML reading
-copy. Original dates, raw values and file qualifications remain visible. Capture,
-file Save and online Portfolio Save are separate actions. Implementation and
-acceptance are in progress; see the [report guide](MANAGED_PORTFOLIO_REVIEW_REPORT.md#keep-a-private-comparison-report).
+Load Portfolio and Follow-ups explicitly, inspect the checks for each exact held
+listing, then choose up to five due checks in order. Start one review and use the
+existing Research, assessment, completion and separate Save actions. Full holding
+and check details, exclusions and dates remain visible. Implementation and
+acceptance are in progress; see the [workflow guide](MANAGED_PORTFOLIO_FOLLOWUPS_REVIEW.md).
+
+## Accepted and delivered: save a complete Portfolio comparison report
+
+Capture the saved/current comparison, inspect both complete Portfolio records
+and the full listing union, then explicitly save a private HTML reading copy.
+Original dates, raw values and file qualifications remain visible. Capture, file
+Save and online Portfolio Save are separate actions; see the
+[report guide](MANAGED_PORTFOLIO_REVIEW_REPORT.md#keep-a-private-comparison-report).
+
+[PR 263](https://github.com/liangzixuan/investing-pro/pull/263) added the workflow;
+[PR 264](https://github.com/liangzixuan/investing-pro/pull/264) corrected two native
+readiness helpers while preserving all 128 committed test bodies. Accepted main
+`943691899817f5727a09edc1f14bcf277164bc7d` passed its original project checks and
+all 128 native cases. Android 1.65.0/code66 is provided locally after one guarded
+build with the existing signer, four checks on that APK, and copy/checksum
+readback. Qualified checker corrections retain their original evidence. Phone
+installation and browser acceptance are not claimed; prior releases remain.
 
 ## Accepted and delivered: compare a saved Portfolio report with current holdings
 

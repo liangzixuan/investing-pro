@@ -1,3 +1,4 @@
+import { ManagedPortfolioHeldDueChecks } from "./ManagedPortfolioHeldDueChecks";
 import { ManagedFollowupsReviewReport } from "./ManagedFollowupsReviewReport";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
@@ -163,6 +164,11 @@ export function ManagedResearchFollowups({
           {entries.length} / {MANAGED_RESEARCH_FOLLOWUPS_LIMITS.entries} checks
         </p>
       </header>
+      <ManagedPortfolioHeldDueChecks
+        workspace={workspace}
+        active={active && !navigationPending}
+        routeActive={draftFileRouteActive}
+      />
       <ManagedFollowupsReviewSession
         workspace={workspace}
         active={active && !navigationPending}

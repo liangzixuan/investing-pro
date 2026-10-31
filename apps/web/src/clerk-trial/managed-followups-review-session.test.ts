@@ -110,6 +110,288 @@ function unchangedCalls(f: Fixture) {
   expect(f.api.resolve).not.toHaveBeenCalled();
 }
 
+describe("atomic current-holdings review admission", () => {
+  it("installs the complete explicit order in one publication without draft mutation or requests", async () => {
+    const f = await fixture();
+    const captured = f.model.getReviewContext()!;
+    const selected = [current(f, 2), current(f, 0)];
+    const observed: ReturnType<typeof f.review.getSnapshot>[] = [];
+    f.review.subscribe(() => observed.push(f.review.getSnapshot()));
+    const installed = f.review.admitOrdered(captured, selected, () => true);
+    expect(observed).toHaveLength(1);
+    expect(installed).toBe(observed[0]);
+    expect(installed).toBe(f.review.getSnapshot());
+    expect(installed).toMatchObject({
+      phase: "reviewing",
+      position: 0,
+      entered: true,
+      available: true,
+    });
+    expect(installed!.chosen.map((row) => row.entry)).toEqual(selected);
+    expect(installed!.selected?.entry).toBe(selected[0]);
+    expect(f.model.coordinator.getSnapshot().draft).toBe(captured.draft);
+    expect(Object.isFrozen(installed!.chosen)).toBe(true);
+    unchangedCalls(f);
+  });
+  it("refuses zero, six, duplicate, foreign and copied entries without any publication", async () => {
+    const f = await fixture(Array.from({ length: 6 }, (_, i) => entry(i + 1)));
+    const captured = f.model.getReviewContext()!;
+    const before = f.review.getSnapshot();
+    const listener = vi.fn();
+    f.review.subscribe(listener);
+    for (const selected of [
+      [],
+      [...captured.draft.entries],
+      [current(f), current(f)],
+      [entry(1)],
+      [{ ...current(f) }],
+    ]) {
+      expect(f.review.admitOrdered(captured, selected, () => true)).toBeNull();
+      expect(f.review.getSnapshot()).toBe(before);
+      expect(f.model.coordinator.getSnapshot().draft).toBe(captured.draft);
+    }
+    expect(listener).not.toHaveBeenCalled();
+    expect(
+      f.review.admitOrdered(
+        captured,
+        captured.draft.entries.slice(0, 5),
+        () => true,
+      )!.chosen,
+    ).toHaveLength(5);
+    unchangedCalls(f);
+  });
+  it.each(["later", "completed", "invalid"])(
+    "refuses a current but %s check without mutation",
+    async (kind) => {
+      const f = await fixture();
+      if (kind === "completed")
+        f.model.complete(current(f), new Date("2026-10-24T12:00:00Z"));
+      else
+        f.model.edit(
+          current(f),
+          "dueOn",
+          kind === "later" ? "2999-01-01" : "2026-02-30",
+        );
+      const captured = f.model.getReviewContext()!;
+      const before = f.review.getSnapshot();
+      const listener = vi.fn();
+      f.review.subscribe(listener);
+      expect(
+        f.review.admitOrdered(captured, [current(f)], () => true),
+      ).toBeNull();
+      expect(f.review.getSnapshot()).toBe(before);
+      expect(listener).not.toHaveBeenCalled();
+    },
+  );
+  it("checks scope, exact draft, catalog and assessed day rather than accepting reconstructed context", async () => {
+    const f = await fixture();
+    const captured = f.model.getReviewContext()!;
+    const before = f.review.getSnapshot();
+    for (const altered of [
+      { ...captured, scope: {} },
+      { ...captured, draft: { ...captured.draft } },
+      { ...captured, catalogSnapshotSha256: otherDigest },
+      { ...captured, assessedOn: "2026-10-25" },
+    ])
+      expect(
+        f.review.admitOrdered(altered, [current(f)], () => true),
+      ).toBeNull();
+    expect(f.review.getSnapshot()).toBe(before);
+    f.model.edit(
+      current(f),
+      "result",
+      "Owned edit changes draft before admission",
+    );
+    expect(
+      f.review.admitOrdered(captured, [current(f)], () => true),
+    ).toBeNull();
+    const beforeDayChange = f.model.getReviewContext()!;
+    f.model.reassessDueDate(new Date("2026-10-25T00:00:00Z"));
+    f.model.reassessDueDate(new Date("2026-10-24T00:00:00Z"));
+    expect(f.model.getReviewContext()!.draft).toBe(beforeDayChange.draft);
+    expect(f.model.getReviewContext()!.scope).not.toBe(beforeDayChange.scope);
+    expect(
+      f.review.admitOrdered(beforeDayChange, [current(f)], () => true),
+    ).toBeNull();
+    expect(
+      f.review.admitOrdered(captured, [current(f)], () => true),
+    ).toBeNull();
+  });
+  it("requires the Portfolio capability twice before publishing and rejects capability reentry or route ABA", async () => {
+    const f = await fixture();
+    const captured = f.model.getReviewContext()!;
+    const before = f.review.getSnapshot();
+    const listener = vi.fn();
+    f.review.subscribe(listener);
+    expect(
+      f.review.admitOrdered(captured, [current(f)], () => false),
+    ).toBeNull();
+    expect(
+      f.review.admitOrdered(
+        captured,
+        [current(f)],
+        vi.fn().mockReturnValueOnce(true).mockReturnValue(false),
+      ),
+    ).toBeNull();
+    expect(f.review.getSnapshot()).toBe(before);
+    expect(listener).not.toHaveBeenCalled();
+    const nested = vi.fn(() => {
+      expect(
+        f.review.admitOrdered(captured, [current(f)], () => true),
+      ).toBeNull();
+      f.review.setAvailable(false);
+      f.review.setAvailable(true);
+      return true;
+    });
+    expect(f.review.admitOrdered(captured, [current(f)], nested)).toBeNull();
+    expect(f.review.getSnapshot().entered).toBe(false);
+  });
+  it("refuses reentrant source edits in the final precommit capability check", async () => {
+    const f = await fixture();
+    const captured = f.model.getReviewContext()!;
+    let calls = 0;
+    expect(
+      f.review.admitOrdered(captured, [current(f)], () => {
+        if (++calls === 2)
+          f.model.edit(current(f), "result", "Intervening authored result");
+        return true;
+      }),
+    ).toBeNull();
+    expect(f.review.getSnapshot().entered).toBe(false);
+    expect(current(f).result).toBe("Intervening authored result");
+  });
+  it("returns no successful ownership after a reentrant publication retires the review", async () => {
+    const f = await fixture();
+    const captured = f.model.getReviewContext()!;
+    const observed: ReturnType<typeof f.review.getSnapshot>[] = [];
+    f.review.subscribe(() => {
+      const state = f.review.getSnapshot();
+      observed.push(state);
+      if (state.phase === "reviewing") {
+        expect(state.chosen).toHaveLength(2);
+        expect(
+          f.review.admitOrdered(captured, [current(f)], () => true),
+        ).toBeNull();
+        f.review.leave();
+      }
+    });
+    expect(
+      f.review.admitOrdered(captured, [current(f), current(f, 1)], () => true),
+    ).toBeNull();
+    expect(observed.map((state) => state.phase)).toEqual([
+      "reviewing",
+      "choosing",
+    ]);
+    expect(f.review.getSnapshot().entered).toBe(false);
+  });
+  it("returns null if the Portfolio capability is lost after the single installed publication", async () => {
+    const f = await fixture();
+    let currentPortfolio = true;
+    f.review.subscribe(() => {
+      currentPortfolio = false;
+    });
+    expect(
+      f.review.admitOrdered(
+        f.model.getReviewContext()!,
+        [current(f)],
+        () => currentPortfolio,
+      ),
+    ).toBeNull();
+    expect(f.review.getSnapshot()).toMatchObject({
+      entered: false,
+      chosen: [],
+    });
+    expect(f.review.getSnapshot().reason).toBe(
+      "Portfolio changed. Choose a new review.",
+    );
+  });
+  it("does not clear a replacement installed inside the postpublication capability check", async () => {
+    const f = await fixture();
+    let calls = 0;
+    let replacement: ReturnType<typeof f.review.getSnapshot> | null = null;
+    const result = f.review.admitOrdered(
+      f.model.getReviewContext()!,
+      [current(f)],
+      () => {
+        if (++calls === 3) {
+          f.review.leave();
+          f.review.setAvailable(true);
+          f.review.enter();
+          replacement = f.review.getSnapshot();
+          return false;
+        }
+        return true;
+      },
+    );
+    expect(result).toBeNull();
+    expect(f.review.getSnapshot()).toBe(replacement);
+    expect(f.review.getSnapshot()).toMatchObject({
+      entered: true,
+      phase: "choosing",
+    });
+  });
+  it("refuses paused or retired admission even when its capability says current", async () => {
+    const f = await fixture();
+    const captured = f.model.getReviewContext()!;
+    f.review.setAvailable(false);
+    const paused = f.review.getSnapshot();
+    expect(
+      f.review.admitOrdered(captured, [current(f)], () => true),
+    ).toBeNull();
+    expect(f.review.getSnapshot()).toBe(paused);
+    f.review.setAvailable(true);
+    f.review.retire();
+    const retired = f.review.getSnapshot();
+    expect(
+      f.review.admitOrdered(captured, [current(f)], () => true),
+    ).toBeNull();
+    expect(f.review.getSnapshot()).toBe(retired);
+  });
+  it("does not replace an existing choosing/running review, but admits a fresh review after Finish", async () => {
+    const f = await fixture();
+    const captured = f.model.getReviewContext()!;
+    f.review.enter();
+    const choosing = f.review.getSnapshot();
+    expect(
+      f.review.admitOrdered(captured, [current(f)], () => true),
+    ).toBeNull();
+    expect(f.review.getSnapshot()).toBe(choosing);
+    choose(f, 0);
+    f.review.start(f.review.getSnapshot());
+    const running = f.review.getSnapshot();
+    expect(
+      f.review.admitOrdered(captured, [current(f, 1)], () => true),
+    ).toBeNull();
+    expect(f.review.getSnapshot()).toBe(running);
+    f.review.finish(running);
+    expect(
+      f.review.admitOrdered(captured, [current(f, 1)], () => true)?.selected
+        ?.entry,
+    ).toBe(current(f, 1));
+  });
+  it("retains admitted order through owned results/completion and retires on an external draft replacement", async () => {
+    const f = await fixture();
+    const installed = f.review.admitOrdered(
+      f.model.getReviewContext()!,
+      [current(f, 1), current(f)],
+      () => true,
+    )!;
+    const handles = installed.chosen.map((row) => row.handle);
+    f.model.edit(current(f, 1), "result", "  完全な結果 📈\n  ");
+    f.model.complete(current(f, 1), new Date("2026-10-24T12:00:00Z"));
+    const after = f.review.getSnapshot();
+    expect(after.chosen.map((row) => row.handle)).toEqual(handles);
+    expect(after.position).toBe(0);
+    expect(after.selected?.entry.status).toBe("completed");
+    expect(after.selected?.entry.result).toBe("  完全な結果 📈\n  ");
+    f.model.coordinator.replaceDraft({
+      ...f.model.coordinator.getSnapshot().draft!,
+    });
+    expect(f.review.getSnapshot().entered).toBe(false);
+    unchangedCalls(f);
+  });
+});
+
 describe("temporary daily Follow-ups review", () => {
   it("requires explicit entry and choice, preserves chosen order and whole content without calls or draft mutation", async () => {
     const f = await fixture();

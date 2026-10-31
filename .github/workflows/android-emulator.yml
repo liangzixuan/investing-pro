@@ -565,6 +565,15 @@ jobs:
           required.update(portfolio_comparison_report_cases)
           if len(required) != 128:
               raise SystemExit("The Portfolio comparison report must preserve all 123 prior native cases.")
+          portfolio_held_due_checks_case = (
+              "local.investment.personal.ManagedPortfolioHeldDueChecksTest",
+              "currentHeldDueChecksChosenReviewResearchCompleteSaveFreshLoad",
+          )
+          if portfolio_held_due_checks_case in required:
+              raise SystemExit("The held-listing due-check journey must be a distinct native case.")
+          required.add(portfolio_held_due_checks_case)
+          if len(required) != 129:
+              raise SystemExit("The held-listing due-check journey must preserve all 128 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -641,6 +650,12 @@ jobs:
                       raise SystemExit("The Portfolio comparison report shard must retain its scoped complete reading preview frame.")
               elif portfolio_comparison_report_frames:
                   raise SystemExit("The Portfolio comparison report preview frame belongs only to its executed shard.")
+              portfolio_held_due_checks_frames = list(root.rglob("newPortfolioHeldDueChecksReview.png"))
+              if portfolio_held_due_checks_case in executed:
+                  if len(portfolio_held_due_checks_frames) != 1 or portfolio_held_due_checks_frames[0].stat().st_size == 0:
+                      raise SystemExit("The held-listing due-check shard must retain its scoped review frame.")
+              elif portfolio_held_due_checks_frames:
+                  raise SystemExit("The held-listing due-check frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

@@ -61,6 +61,7 @@ export class ManagedFollowupsReviewSession {
   private draft: FollowupsReviewContext["draft"] | null = null;
   private routeAvailable = false;
   private retired = false;
+  private admitting = false;
   private readonly unsubscribe: () => void;
   private state: FollowupsReviewState = Object.freeze({
     entered: false,
@@ -119,6 +120,76 @@ export class ManagedFollowupsReviewSession {
     });
     this.refresh(context);
     return this.state.entered;
+  }
+  /** Admit one complete ordered review without publishing intermediate choices. */
+  admitOrdered(
+    captured: FollowupsReviewContext,
+    entries: readonly ResearchFollowup[],
+    portfolioCurrent: () => boolean,
+  ): FollowupsReviewState | null {
+    if (this.admitting) return null;
+    const before = this.state;
+    const ordered = [...entries];
+    const accepts = () => {
+      if (this.retired || !this.routeAvailable || this.state !== before)
+        return false;
+      if (before.entered && before.phase !== "finished") return false;
+      const context = this.model.getReviewContext();
+      return (
+        context !== null &&
+        context.scope === captured.scope &&
+        context.draft === captured.draft &&
+        context.assessedOn === captured.assessedOn &&
+        context.catalogSnapshotSha256 === captured.catalogSnapshotSha256 &&
+        ordered.length > 0 &&
+        ordered.length <= FOLLOWUPS_REVIEW_LIMIT &&
+        new Set(ordered.map((entry) => entry.id)).size === ordered.length &&
+        new Set(ordered.map((entry) => entry.listing.listingId)).size ===
+          ordered.length &&
+        ordered.every(
+          (entry) =>
+            context.draft.entries.includes(entry) && due(entry, context),
+        )
+      );
+    };
+    this.admitting = true;
+    try {
+      if (!accepts() || !portfolioCurrent() || !accepts()) return null;
+      // A capability can publish synchronously. Recheck both sources before commit.
+      if (!portfolioCurrent() || !accepts()) return null;
+      this.records.clear();
+      this.scope = captured.scope;
+      this.draft = captured.draft;
+      const rows = Object.freeze(
+        captured.draft.entries
+          .filter((entry) => due(entry, captured))
+          .map((entry) => this.row(entry)),
+      );
+      const chosen = Object.freeze(ordered.map((entry) => this.row(entry)));
+      this.chosen = Object.freeze(chosen.map((row) => row.handle));
+      const installed: FollowupsReviewState = Object.freeze({
+        entered: true,
+        phase: "reviewing",
+        assessedOn: captured.assessedOn,
+        available: true,
+        rows,
+        chosen,
+        selected: chosen[0]!,
+        position: 0,
+        reason: null,
+      });
+      this.publish(installed);
+      if (this.state !== installed) return null;
+      const stillOwned = portfolioCurrent();
+      if (this.state !== installed) return null;
+      if (!stillOwned) {
+        this.clear("Portfolio changed. Choose a new review.");
+        return null;
+      }
+      return installed;
+    } finally {
+      this.admitting = false;
+    }
   }
   setAvailable(available: boolean) {
     if (this.retired || available === this.routeAvailable) return;

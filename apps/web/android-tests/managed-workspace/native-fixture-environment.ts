@@ -57,6 +57,7 @@ const allowedScenarios = [
   "portfolio-screen-selection",
   "portfolio-report-comparison",
   "portfolio-comparison-report",
+  "portfolio-held-due-checks",
   "filing-check-assessment",
   "portfolio-ledger",
   "portfolio-close-review",

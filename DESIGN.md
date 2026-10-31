@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Due checks for current holdings
+
+Keep Portfolio and Follow-ups loads explicit. Show full holding identities, raw
+shares and confirmation dates beside complete check questions, results and due
+dates. Make eligibility and exclusions readable before selection. Keep selection
+order visible and start the whole chosen review with one action. Both held share
+classes can have their own checks. Use wrapping text, stacked narrow rows,
+visible focus and 44px controls. Move focus only after the initiating action
+commits. Research and Back, completion and resource Save retain their own actions.
+
 ## Private Portfolio comparison reading report
 
 Keep Capture, full preview and file Save separate. Reuse the complete passive

@@ -1,3 +1,4 @@
+import { PortfolioHeldDueChecksFixtureControls } from "./portfolio-held-due-checks-fixture-controls";
 import { PortfolioComparisonReportFixtureDiagnostics } from "./portfolio-comparison-report-fixture-diagnostics";
 import { PortfolioReportComparisonFixtureControls } from "./portfolio-report-comparison-fixture-controls";
 import { PortfolioScreenSelectionFixtureControls } from "./portfolio-screen-selection-fixture-controls";
@@ -86,8 +87,10 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario === "portfolio-comparison-report"
     )
       current.setView("portfolio");
+    if (scenario === "portfolio-held-due-checks") current.setView("followups");
     setWorkspace(current);
     if (
+      scenario !== "portfolio-held-due-checks" &&
       scenario !== "holding-followup" &&
       scenario !== "portfolio-screen-selection" &&
       scenario !== "company-research-checks" &&
@@ -353,6 +356,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       {nativePortfolioComparisonReport && (
         <PortfolioComparisonReportFixtureDiagnostics
           delivery={nativePortfolioComparisonReport}
+        />
+      )}
+      {workspace && fixture.portfolioHeldDueChecks && (
+        <PortfolioHeldDueChecksFixtureControls
+          workspace={workspace}
+          fixture={fixture.portfolioHeldDueChecks}
         />
       )}
       <ResourceControls workspace={workspace} onFreshSession={onFreshSession} />
