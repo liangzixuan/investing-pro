@@ -27,15 +27,25 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: review due checks for current holdings
+## Current priority: retain filing evidence within a chosen review
 
-Connect M4 Portfolio review to existing authored Follow-ups. Explicitly load both
-resources, inspect eligibility for every exact holding and check, choose one to
-five due checks in order, then start the existing review. Research and Back,
-assessment, completion, Save and fresh Load stay explicit. Preserve separate
-share classes, full raw details and independent drafts. This adds a personal
-review workflow without a provider, fee or saved resource. Implementation and
-acceptance are in progress; see the [workflow guide](MANAGED_PORTFOLIO_FOLLOWUPS_REVIEW.md).
+Connect the chosen held-company review to the existing bounded Filings source.
+Load each current check explicitly, retain its exact packet and original clocks,
+inspect the evidence in its owned company visit, then cite the authored assessment
+and complete the review. Save and fresh Load remain separate. This advances
+M3/M4 evidence continuity without adding coverage, automatic monitoring, fees or
+a persistence resource; see the [review filings guide](MANAGED_REVIEW_FILINGS.md).
+Implementation and acceptance are in progress.
+
+## Delivered: review due checks for current holdings
+
+Android 1.66 connects current Portfolio holdings to authored Follow-ups. Explicit
+loads, complete eligible and excluded readouts, an ordered selection of up to
+five checks, Research/Back and completion retain independent drafts and saves.
+Accepted main `558a08705061f02c0834fb762d1fa5bd4c166cc1` passed its original project
+checks and all 129 native cases. One guarded existing-signer build, four same-APK
+checks and local delivery readback passed. Installation remains an owner action;
+see the [workflow guide](MANAGED_PORTFOLIO_FOLLOWUPS_REVIEW.md).
 
 ## Delivered: keep a complete Portfolio comparison report
 

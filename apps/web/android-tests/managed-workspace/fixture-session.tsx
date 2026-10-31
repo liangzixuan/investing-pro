@@ -1,3 +1,4 @@
+import { ReviewFilingsEvidenceFixtureControls } from "./review-filings-evidence-fixture-controls";
 import { PortfolioHeldDueChecksFixtureControls } from "./portfolio-held-due-checks-fixture-controls";
 import { PortfolioComparisonReportFixtureDiagnostics } from "./portfolio-comparison-report-fixture-diagnostics";
 import { PortfolioReportComparisonFixtureControls } from "./portfolio-report-comparison-fixture-controls";
@@ -87,9 +88,14 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario === "portfolio-comparison-report"
     )
       current.setView("portfolio");
-    if (scenario === "portfolio-held-due-checks") current.setView("followups");
+    if (
+      scenario === "portfolio-held-due-checks" ||
+      scenario === "review-filings-evidence"
+    )
+      current.setView("followups");
     setWorkspace(current);
     if (
+      scenario !== "review-filings-evidence" &&
       scenario !== "portfolio-held-due-checks" &&
       scenario !== "holding-followup" &&
       scenario !== "portfolio-screen-selection" &&
@@ -356,6 +362,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       {nativePortfolioComparisonReport && (
         <PortfolioComparisonReportFixtureDiagnostics
           delivery={nativePortfolioComparisonReport}
+        />
+      )}
+      {workspace && fixture.reviewFilingsEvidence && (
+        <ReviewFilingsEvidenceFixtureControls
+          workspace={workspace}
+          fixture={fixture.reviewFilingsEvidence}
         />
       )}
       {workspace && fixture.portfolioHeldDueChecks && (

@@ -1,3 +1,4 @@
+import type { FollowupsReviewFilingsState } from "./managed-followups-review-filings";
 import { ManagedPortfolioHeldDueChecks } from "./ManagedPortfolioHeldDueChecks";
 import { ManagedFollowupsReviewReport } from "./ManagedFollowupsReviewReport";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
@@ -21,6 +22,9 @@ import { ManagedFollowupsDraftFiles } from "./ManagedFollowupsDraftFiles";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 
 export interface ManagedResearchFollowupsProps {
+  onReviewFilingsResearch?:
+    | ((state: FollowupsReviewFilingsState, opener: HTMLButtonElement) => void)
+    | undefined;
   navigationPending: boolean;
   review?: FollowupReview | null;
   workspace: ManagedWorkspace;
@@ -44,6 +48,7 @@ export function ManagedResearchFollowups({
   review,
   workspace,
   onResearch,
+  onReviewFilingsResearch,
   followupsReviewReportDelivery,
   draftFileScope,
   draftFileDelivery,
@@ -174,6 +179,7 @@ export function ManagedResearchFollowups({
         active={active && !navigationPending}
         routeActive={draftFileRouteActive}
         onResearch={onResearch}
+        onReviewFilingsResearch={onReviewFilingsResearch}
       />
       {draftFileScope && (
         <ManagedFollowupsDraftFiles

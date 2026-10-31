@@ -36,7 +36,7 @@ export interface ManagedCompanyFilingsState {
 
   readonly response: ManagedSecFilingsResponseDto | null;
 
-  readonly responseOrigin: "request" | "watchlist" | null;
+  readonly responseOrigin: "request" | "watchlist" | "followups-review" | null;
 
   readonly refreshComparison: ManagedFilingsRefreshComparison | null;
 
@@ -56,6 +56,76 @@ export interface ManagedCompanyFilingsState {
 export interface ManagedCompanyFilingsSeed {
   readonly response: ManagedSecFilingsResponseDto;
   readonly showingPrevious: boolean;
+}
+
+export interface ManagedFollowupsReviewFilingsSeed extends ManagedCompanyFilingsSeed {
+  readonly origin: "followups-review";
+}
+const reviewSeeds = new WeakMap<
+  ManagedFollowupsReviewFilingsSeed,
+  {
+    readonly selection: ManagedResearchSelection;
+    readonly current: () => boolean;
+  }
+>();
+
+/** Only an owned review capture can transfer a packet to its exact Follow-ups visit. */
+export function captureManagedFollowupsReviewFilingsSeed(
+  selection: ManagedResearchSelection,
+  seed: ManagedCompanyFilingsSeed,
+  current: () => boolean,
+  options: { readonly coverage?: ManagedResearchCoverage } = {},
+): ManagedFollowupsReviewFilingsSeed | null {
+  try {
+    if (
+      selection.origin !== "followups" ||
+      !current() ||
+      typeof seed.showingPrevious !== "boolean"
+    )
+      return null;
+    const response = checkedResponse(
+      selection,
+      seed.response,
+      getManagedResearchCoverageCik(selection, options.coverage),
+    );
+    if (!response || !current()) return null;
+    const captured = Object.freeze({
+      response,
+      showingPrevious: seed.showingPrevious,
+      origin: "followups-review" as const,
+    });
+    reviewSeeds.set(captured, { selection, current });
+    return captured;
+  } catch {
+    return null;
+  }
+}
+
+function admitReviewSeed(
+  selection: ManagedResearchSelection,
+  seed: ManagedFollowupsReviewFilingsSeed,
+  coverage: ManagedResearchCoverage,
+) {
+  const owner = reviewSeeds.get(seed);
+  if (
+    !owner ||
+    !owner.current() ||
+    selection.origin !== "followups" ||
+    selection.catalogSnapshotSha256 !== owner.selection.catalogSnapshotSha256 ||
+    !membershipMatchesResult(
+      { ...owner.selection.listing, note: "" },
+      selection.listing,
+    )
+  )
+    return null;
+  const response = checkedResponse(
+    selection,
+    seed.response,
+    getManagedResearchCoverageCik(selection, coverage),
+  );
+  return response && owner.current()
+    ? { response, showingPrevious: seed.showingPrevious }
+    : null;
 }
 
 function checkedResponse(
@@ -212,6 +282,21 @@ export class ManagedCompanyFilings {
   }
 
   open(selection: ManagedResearchSelection, seed?: ManagedCompanyFilingsSeed) {
+    this.openVisit(selection, seed);
+  }
+
+  openReview(
+    selection: ManagedResearchSelection,
+    seed: ManagedFollowupsReviewFilingsSeed,
+  ) {
+    this.openVisit(selection, seed, seed);
+  }
+
+  private openVisit(
+    selection: ManagedResearchSelection,
+    seed?: ManagedCompanyFilingsSeed,
+    reviewSeed?: ManagedFollowupsReviewFilingsSeed,
+  ) {
     if (this.retired) return;
     const lifetime = this.closeVisit();
     if (this.retired || this.lifetime !== lifetime) return;
@@ -232,15 +317,21 @@ export class ManagedCompanyFilings {
     const admitted =
       seed === undefined
         ? null
-        : captureManagedCompanyFilingsSeed(captured, seed, {
-            coverage: this.coverage,
-          });
+        : reviewSeed
+          ? admitReviewSeed(captured, reviewSeed, this.coverage)
+          : captureManagedCompanyFilingsSeed(captured, seed, {
+              coverage: this.coverage,
+            });
     if (this.retired || this.lifetime !== lifetime) return;
     this.update({
       selection: seed !== undefined && admitted === null ? null : captured,
       supported: supported && (admitted !== null || seed === undefined),
       response: admitted?.response ?? null,
-      responseOrigin: admitted ? "watchlist" : null,
+      responseOrigin: admitted
+        ? reviewSeed
+          ? "followups-review"
+          : "watchlist"
+        : null,
       lastCheck: admitted?.response ?? null,
       showingPrevious: admitted?.showingPrevious ?? false,
       error:
@@ -251,10 +342,14 @@ export class ManagedCompanyFilings {
           ? "The checked filings packet is retained with its original source times. New Filings reads are not available for this listing in this workspace."
           : admitted
             ? admitted.response.issuer.status === "available"
-              ? "The loaded watchlist filings are available in this company visit. Refresh explicitly to check again."
+              ? reviewSeed
+                ? "The chosen review filings are retained with their original source times. Refresh explicitly to check again."
+                : "The loaded watchlist filings are available in this company visit. Refresh explicitly to check again."
               : managedFilingsStatus(admitted.response.issuer.status)
             : seed !== undefined
-              ? "The loaded watchlist filings could not be validated. Return to the watchlist and choose the company again."
+              ? reviewSeed
+                ? "The review filings are no longer owned by this check. Return to Follow-ups and inspect the current packet."
+                : "The loaded watchlist filings could not be validated. Return to the watchlist and choose the company again."
               : "Load SEC filings from the last 90 days when you are ready.",
     });
   }

@@ -1,4 +1,8 @@
 import {
+  createReviewFilingsEvidenceFixture,
+  type ReviewFilingsEvidenceFixture,
+} from "./review-filings-evidence-fixture";
+import {
   createPortfolioHeldDueChecksFixture,
   type PortfolioHeldDueChecksFixture,
 } from "./portfolio-held-due-checks-fixture";
@@ -2186,6 +2190,7 @@ export type NativeFinancialReviewMetadata = {
   readonly generation: SharedNativeFixture["generations"]["initial"];
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
+  readonly reviewFilingsEvidence?: ReviewFilingsEvidenceFixture;
   readonly portfolioHeldDueChecks?: PortfolioHeldDueChecksFixture;
   readonly portfolioReportComparison?: PortfolioReportComparisonFixture;
   readonly portfolioScreenSelection?: PortfolioScreenSelectionFixture;
@@ -2557,6 +2562,10 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "review-filings-evidence",
+    async () => createReviewFilingsEvidenceFixture(await createSharedFixture()),
+  ],
+  [
     "portfolio-held-due-checks",
     async () =>
       createPortfolioHeldDueChecksFixture(await createSharedFixture()),
@@ -2631,6 +2640,7 @@ export async function createFixture(
     | "portfolio-screen-selection"
     | "portfolio-report-comparison"
     | "portfolio-comparison-report"
+    | "review-filings-evidence"
     | "portfolio-held-due-checks"
     | "research-draft-set"
     | "filing-check-assessment"

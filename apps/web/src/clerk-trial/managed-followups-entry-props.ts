@@ -4,7 +4,10 @@ import type { managedResearchOpener } from "./managed-research-company-navigatio
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 type EntryProps = ComponentProps<typeof ManagedFollowupsEntry>;
-type EntryComposition = Omit<EntryProps, "onResearch" | "routeActive"> & {
+type EntryComposition = Omit<
+  EntryProps,
+  "onResearch" | "onReviewFilingsResearch" | "routeActive"
+> & {
   readonly navigation: ManagedCompanyNavigation | undefined;
   readonly routeActive: () => boolean;
   readonly openResearch: ReturnType<typeof managedResearchOpener>;
@@ -23,6 +26,17 @@ export function managedFollowupsEntryProps({
       routeActive() &&
       !navigation?.isPending() &&
       props.workspace.sessionOwner.getSnapshot().phase === "active",
+    onReviewFilingsResearch: (state, opener) => {
+      if (!routeActive() || navigation?.isPending()) return;
+      void props.workspace
+        .prepareReviewFilingsResearch(state)
+        .then((capture) => {
+          if (capture && routeActive() && !navigation?.isPending())
+            openResearch(opener, () =>
+              props.workspace.openFollowupResearch(capture),
+            );
+        });
+    },
     onResearch: (entry, opener) => {
       if (navigation?.isPending()) return;
       void props.workspace.prepareFollowupResearch(entry).then((capture) => {
