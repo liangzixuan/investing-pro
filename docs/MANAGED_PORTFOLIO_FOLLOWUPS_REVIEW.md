@@ -1,9 +1,10 @@
 # Review due checks for current holdings
 
-This increment is in development. [Current work](CURRENT_WORK.md) records source,
-automated checks and client delivery separately.
+Android 1.66 provides this workflow from accepted main
+`558a08705061f02c0834fb762d1fa5bd4c166cc1`. [Current work](CURRENT_WORK.md) records
+source, automated checks, client delivery and their limits separately.
 
-## Intended workflow
+## Review current holdings
 
 In Follow-ups, explicitly load the latest Portfolio and Follow-ups versions.
 Preparing a review uses the current applied drafts. It does not save either

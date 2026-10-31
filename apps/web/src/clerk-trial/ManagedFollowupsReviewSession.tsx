@@ -1,3 +1,5 @@
+import { ManagedFollowupsReviewFilings } from "./ManagedFollowupsReviewFilings";
+import type { FollowupsReviewFilingsState } from "./managed-followups-review-filings";
 import { useSyncExternalStore } from "react";
 import type { ResearchFollowup } from "@research-cockpit/contracts";
 import {
@@ -203,6 +205,9 @@ function reviewContent(
 }
 
 export function ManagedFollowupsReviewSession(props: {
+  onReviewFilingsResearch?:
+    | ((state: FollowupsReviewFilingsState, opener: HTMLButtonElement) => void)
+    | undefined;
   workspace: ManagedWorkspace;
   active: boolean;
   routeActive: () => boolean;
@@ -234,6 +239,14 @@ export function ManagedFollowupsReviewSession(props: {
           Review one company at a time and return here to continue.
         </p>
         {reviewContent(state, saved, controls)}
+        {state.phase === "reviewing" && state.selected && (
+          <ManagedFollowupsReviewFilings
+            workspace={workspace}
+            active={props.active}
+            routeActive={props.routeActive}
+            onInspect={props.onReviewFilingsResearch}
+          />
+        )}
         {state.entered && state.phase === "reviewing" && (
           <button
             id="managed-followups-review-finish"

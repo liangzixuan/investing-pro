@@ -244,7 +244,7 @@ function loadedSource(
     price: ["markets", "watchlist", "company"],
     annual: ["request", "watchlist-comparison", "financial-screen"],
     interim: ["request"],
-    filings: ["request", "watchlist"],
+    filings: ["request", "watchlist", "followups-review"],
   };
   requireArchive(origins[key].includes(fields.responseOrigin as string));
   validateAppendixShape(fields, key);

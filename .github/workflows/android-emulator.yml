@@ -574,6 +574,15 @@ jobs:
           required.add(portfolio_held_due_checks_case)
           if len(required) != 129:
               raise SystemExit("The held-listing due-check journey must preserve all 128 prior native cases.")
+          review_filings_evidence_case = (
+              "local.investment.personal.ManagedReviewFilingsEvidenceTest",
+              "heldChecksRetainExactFilingsThroughAssessmentBackCompletionSaveFreshLoad",
+          )
+          if review_filings_evidence_case in required:
+              raise SystemExit("The chosen-review retained-filings journey must be a distinct native case.")
+          required.add(review_filings_evidence_case)
+          if len(required) != 130:
+              raise SystemExit("The retained-filings journey must preserve all 129 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -656,6 +665,12 @@ jobs:
                       raise SystemExit("The held-listing due-check shard must retain its scoped review frame.")
               elif portfolio_held_due_checks_frames:
                   raise SystemExit("The held-listing due-check frame belongs only to its executed shard.")
+              review_filings_evidence_frames = list(root.rglob("newReviewFilingsEvidence.png"))
+              if review_filings_evidence_case in executed:
+                  if len(review_filings_evidence_frames) != 1 or review_filings_evidence_frames[0].stat().st_size == 0:
+                      raise SystemExit("The retained-filings shard must retain its scoped current-check packet frame.")
+              elif review_filings_evidence_frames:
+                  raise SystemExit("The retained-filings frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

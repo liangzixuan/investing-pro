@@ -89,6 +89,31 @@ beforeAll(async () => {
 });
 
 describe("current company report archive admission", () => {
+  it("retains review filing provenance and the complete original packet when reopening its report", async () => {
+    const original = (await parseCompanyReportArchive(text, signal()))!;
+    const value = document();
+    source(value, "filings").responseOrigin = "followups-review";
+    const archive = (await parse(value))!;
+    expect(archive).not.toBeNull();
+    expect(archive.preparedAt).toBe(original.preparedAt);
+    expect(archive.listing).toEqual(original.listing);
+    expect(archive.sources).toEqual(
+      original.sources.map((row) =>
+        row.source === "filings"
+          ? { ...row, responseOrigin: "followups-review" }
+          : row,
+      ),
+    );
+    expect(archive.note).toBe(original.note);
+  });
+  it.each(["followups", "review", "followups-review ", "arbitrary"])(
+    "refuses an unrecognized filing origin %s",
+    async (origin) => {
+      const value = document();
+      source(value, "filings").responseOrigin = origin;
+      expect(await parse(value)).toBeNull();
+    },
+  );
   it("retains exact identity, raw authored note and original canonical provenance in a distinct immutable archive", async () => {
     const archive = (await parseCompanyReportArchive(text, signal()))!;
     expect(archive).not.toBeNull();

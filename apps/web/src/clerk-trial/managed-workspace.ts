@@ -128,6 +128,7 @@ import {
 import {
   ManagedCompanyFilings,
   type ManagedCompanyFilingsSeed,
+  type ManagedFollowupsReviewFilingsSeed,
 } from "./managed-company-filings";
 import {
   ManagedWatchlistFilings,
@@ -172,6 +173,11 @@ import {
   captureHoldingFollowupContext,
   selectHoldingFollowupForReview,
 } from "./managed-holding-followup-context";
+import {
+  ManagedFollowupsReviewFilings,
+  type FollowupsReviewFilingsState,
+  type FollowupsReviewFilingsCapture,
+} from "./managed-followups-review-filings";
 import {
   ManagedFollowupsReviewSession,
   type FollowupsReviewHandle,
@@ -365,6 +371,7 @@ export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
   readonly followups: ManagedResearchFollowups;
   readonly followupsReview: ManagedFollowupsReviewSession;
+  readonly reviewFilings: ManagedFollowupsReviewFilings;
   readonly portfolioHeldDueChecks: ManagedPortfolioHeldDueChecks;
   readonly portfolio: ManagedPortfolio;
   readonly sessionOwner: ManagedSessionOwner;
@@ -423,6 +430,10 @@ export class ManagedWorkspace {
   private retired = false;
   private followupOpenOperation: AbortController | null = null;
   private preparedFollowup: PreparedFollowupResearch | null = null;
+  private readonly reviewFilingsPreparations = new WeakMap<
+    PreparedFollowupResearch,
+    FollowupsReviewFilingsCapture
+  >();
   private followupResearch: {
     reviewHandle: FollowupsReviewHandle | null;
     id: string;
@@ -760,6 +771,18 @@ export class ManagedWorkspace {
       this.syncFollowupsReview();
     });
     this.portfolioHeldDueChecks = new ManagedPortfolioHeldDueChecks(this);
+    this.reviewFilings = new ManagedFollowupsReviewFilings(
+      this.followupsReview,
+      this.followups,
+      (request, signal) => api.recentFilings(request, signal),
+      (error) => this.coordinator.readError(error),
+      this.secAccess,
+      researchOptions,
+    );
+    this.reviewFilings.subscribe(() => {
+      if (this.reviewFilings.getSnapshot().catalogChanged)
+        this.invalidateCatalog();
+    });
   }
   getSnapshot = (): ManagedDiscoveryState => this.state;
   subscribe = (listener: () => void) => {
@@ -969,6 +992,7 @@ export class ManagedWorkspace {
     this.cancelFollowupOpening();
     this.followupResearch = null;
     this.portfolioHeldDueChecks?.retire();
+    this.reviewFilings?.retire();
     this.followupsReview.retire();
     this.followups.retire();
     this.portfolio.retire();
@@ -1615,6 +1639,7 @@ export class ManagedWorkspace {
       priceSeed?: ManagedEodHistorySeed | undefined;
       annualSeed?: ManagedAnnualReportSeed;
       filingsSeed?: ManagedCompanyFilingsSeed;
+      reviewFilingsSeed?: ManagedFollowupsReviewFilingsSeed;
       admit?: (phase: "before-clear" | "after-clear") => boolean;
     } = {},
   ) {
@@ -1643,8 +1668,11 @@ export class ManagedWorkspace {
     if (section === "annual") this.annual.open(selection, options.annualSeed);
     if (section === "interim") this.interim.open(selection);
     if (!owns()) return;
-    if (section === "filings")
-      this.filings.open(selection, options.filingsSeed);
+    if (section === "filings") {
+      if (options.reviewFilingsSeed)
+        this.filings.openReview(selection, options.reviewFilingsSeed);
+      else this.filings.open(selection, options.filingsSeed);
+    }
     if (!owns()) return;
     if (!admitted()) {
       this.clearResearch(operation);
@@ -2297,15 +2325,36 @@ export class ManagedWorkspace {
       }
     }
   }
+  async prepareReviewFilingsResearch(
+    state: FollowupsReviewFilingsState,
+  ): Promise<PreparedFollowupResearch | null> {
+    const evidence = this.reviewFilings.capture(state);
+    if (!evidence) return null;
+    const prepared = await this.prepareFollowupResearch(evidence.entry);
+    if (
+      !prepared ||
+      !evidence.isCurrent() ||
+      prepared.reviewHandle !== evidence.handle
+    )
+      return null;
+    this.reviewFilingsPreparations.set(prepared, evidence);
+    return prepared;
+  }
   openFollowupResearch(capture: PreparedFollowupResearch) {
-    const current = () => this.preparedFollowupIsCurrent(capture);
+    const evidence = this.reviewFilingsPreparations.get(capture);
+    const current = () =>
+      this.preparedFollowupIsCurrent(capture) &&
+      (evidence?.isCurrent() ?? true);
     if (!current() || this.state.research || this.state.companyRoute) return;
     this.followupResearch = {
       reviewHandle: capture.reviewHandle,
       id: capture.entry.id,
       selection: capture.selection,
     };
-    this.openResearch(capture.selection, "eod", { admit: () => current() });
+    this.openResearch(capture.selection, evidence ? "filings" : "eod", {
+      ...(evidence ? { reviewFilingsSeed: evidence.seed } : {}),
+      admit: () => current(),
+    });
     if (this.preparedFollowup === capture) this.preparedFollowup = null;
   }
   switchToInterim() {

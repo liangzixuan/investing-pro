@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Filing evidence within a chosen review
+
+Keep source Load, Refresh and Cancel beside the current check. Label each exact
+listing and retained packet with its original clocks and source limits. Separate
+unsupported coverage, unloaded evidence, verified empty results and a retained
+previous response. Inspect opens the owned Filings visit without another source
+request. Keep the assessment and citation preview complete, and retain the review
+position through Back and completion. Use wrapping readouts, visible focus and
+44px controls. Source completion must not move focus or start the next request.
+
 ## Due checks for current holdings
 
 Keep Portfolio and Follow-ups loads explicit. Show full holding identities, raw

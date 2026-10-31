@@ -5,13 +5,30 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: review due checks for current holdings
+## In development: retain filing evidence in a chosen review
+
+Load filing metadata explicitly for the current held-company check, keep each
+check's packet and original clocks, then inspect it in the exact owned company
+visit. Cite the authored assessment, return, Complete and Continue. Follow-ups
+Save and fresh Load stay separate. Existing source coverage and request budgets
+remain unchanged; see the [review filings guide](MANAGED_REVIEW_FILINGS.md).
+Implementation and acceptance are in progress.
+
+## Accepted and delivered: review due checks for current holdings
 
 Load Portfolio and Follow-ups explicitly, inspect the checks for each exact held
 listing, then choose up to five due checks in order. Start one review and use the
 existing Research, assessment, completion and separate Save actions. Full holding
-and check details, exclusions and dates remain visible. Implementation and
-acceptance are in progress; see the [workflow guide](MANAGED_PORTFOLIO_FOLLOWUPS_REVIEW.md).
+and check details, exclusions and dates remain visible; see the
+[workflow guide](MANAGED_PORTFOLIO_FOLLOWUPS_REVIEW.md).
+
+[PR 265](https://github.com/liangzixuan/investing-pro/pull/265) merged at
+`558a08705061f02c0834fb762d1fa5bd4c166cc1`. Original main project checks and all
+129 native cases passed. Android 1.66.0/code67 is provided locally after one
+guarded build with the existing signer, four checks on that APK and local
+copy/checksum/readback. Original failures and qualified corrections remain
+recorded. Installation, browser and physical-phone acceptance are not claimed;
+API, website, authored drafts and prior releases remain preserved.
 
 ## Accepted and delivered: save a complete Portfolio comparison report
 
