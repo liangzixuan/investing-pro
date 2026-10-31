@@ -31,6 +31,9 @@ synthetic native acceptance and client delivery remain separate checks.
    Follow-ups draft. **Review follow-up** selects that exact entry in Follow-ups.
    Use its existing company Research and Back actions, then **Save follow-ups**
    separately. A fresh explicit Load can confirm the saved complete entry.
+   The [briefing return](MANAGED_MARKETS_BRIEFING.md) retains the original full
+   reading and selected item through the owned check visit; it makes no new
+   Markets request and grants no new source or Create authority.
 
 The saved check contains the complete authored question, source name, original
 item title, scheduled or publication time (including unknown), and original URL.

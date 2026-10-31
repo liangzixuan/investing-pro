@@ -1,3 +1,4 @@
+import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import { useCpiHeadlinesControls } from "./ManagedCpiHeadlinesControls";
 import { ManagedCpiHeadlineList } from "./ManagedCpiHeadlineList";
 import type { Ref } from "react";
@@ -11,7 +12,11 @@ export interface ManagedCpiHeadlinesProps {
   workspace: ManagedWorkspace;
   isCurrent: () => boolean;
   navigationPending: boolean;
-  onReview: (entry: ResearchFollowup) => void;
+  onReview: (
+    entry: ResearchFollowup,
+    capture: CalendarSourceCapture,
+    selection?: { date?: string; source?: string; title?: string },
+  ) => void;
   onManageWatchlist: () => void;
 }
 export function ManagedCpiHeadlines(props: ManagedCpiHeadlinesProps) {
@@ -88,6 +93,10 @@ export function ManagedCpiHeadlines(props: ManagedCpiHeadlinesProps) {
           key={choice.revision}
           {...props}
           capture={choice.capture}
+          onReview={(entry) => {
+            if (choice.capture)
+              props.onReview(entry, choice.capture, { title: filter });
+          }}
           onClose={close}
         />
       )}

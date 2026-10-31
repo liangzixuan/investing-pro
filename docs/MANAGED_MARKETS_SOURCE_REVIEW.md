@@ -7,11 +7,15 @@ and physical-phone acceptance remain separate. The pass coordinates the
 existing Markets source controls and their request authorities. The next layer
 connects a loaded item to an [authored dated check](MANAGED_CALENDAR_FOLLOWUP.md).
 
+The next source increment adds admitted CPI headline metadata as the seventh
+fixed operation and the [complete briefing return](MANAGED_MARKETS_BRIEFING.md).
+Its source/native/client acceptance is in progress.
+
 ## Review, start and inspect
 
 1. Open **Markets source review** on Markets. Inspect the existing source panels
    and retained packets.
-2. Select the eligible board histories and BLS, BEA and Fed work, then choose
+2. Select the eligible board histories and BLS, BEA, Fed and CPI work, then choose
    **Preview selected source reads**.
    Name each exact board listing and each public source. Show the original
    source and retrieval clocks, retained results and selected Load or Refresh.
@@ -20,7 +24,7 @@ connects a loaded item to an [authored dated check](MANAGED_CALENDAR_FOLLOWUP.md
    An unresolved or unadmitted board identity cannot become a price request.
 4. Choose **Start selected source reads** once. Run selected reads in their declared order
    through the existing models and request admission. The current board has
-   three listings, so the scope is at most three price histories and the three
+   three listings, so the scope is at most three price histories and the four
    existing public-source operations. This is a bound, not a new request budget.
 5. Inspect each result in the existing company board, day view and source
    panels. Distinguish accepted data, checked-empty, retained previous data,
@@ -59,7 +63,7 @@ cooldown expiry never starts another request.
 ## Boundaries
 
 Reuse the current three-listing board, BLS calendar, BEA agenda and Federal
-Reserve announcement operations. Preserve listing/share-class identities,
+Reserve announcement and CPI headline metadata operations. Preserve listing/share-class identities,
 request order, existing quotas, admission, cancellation and source qualifications.
 No new ticker, metric, provider, feed, storage resource, schema, dependency,
 account, fee or API/site deployment is part of this increment. Use invented

@@ -74,6 +74,9 @@ public class MarketsSourceReviewInstrumentedTest {
         page.await(new Check("Markets retains the dirty Watchlist and exposes its initially closed source disclosure", new Script(
             "document.querySelector("+JSONObject.quote(ROOT)+")?.open===false && "+EVIDENCE+".selectedListingId==='listing-alfa' && "+DRAFT+".dirty===true")));
         page.click(Element.css(ROOT+" > summary"));
+        page.click(Element.css("#markets-source-review-choice-cpi"));
+        page.await(new Check("this original six-operation scenario explicitly leaves the visible seventh CPI source unselected", new Script(
+            "document.querySelector('#markets-source-review-choice-cpi')?.checked===false && "+EVIDENCE+".review.rows.length===7 && "+EVIDENCE+".review.rows[6].id==='cpi' && "+EVIDENCE+".review.rows[6].selected===false && "+EVIDENCE+".review.rows[6].outcome==='not_attempted' && "+COUNTS+".order.length===0")));
     }
     private String previewCompletePlan() throws Exception {
         page.click(Element.css("#markets-source-review-preview"));
@@ -89,7 +92,7 @@ public class MarketsSourceReviewInstrumentedTest {
         page.click(Element.css("#markets-source-review-start"));
         page.await(new Check("six actual ordered source reads complete with checked-empty BLS and no selector retarget", new Script(
             COUNTS+".order.join('|')==="+JSONObject.quote(ORDER)+" && "+COUNTS+".prices===3 && "+COUNTS+".bls===1 && "+COUNTS+".bea===1 && "+COUNTS+".fed===1"+
-            " && "+EVIDENCE+".review.phase==='complete' && "+EVIDENCE+".review.rows.map(r=>r.outcome).join('|')==='checked|checked|checked|checked_empty|checked|checked'"+
+            " && "+EVIDENCE+".review.phase==='complete' && "+EVIDENCE+".review.rows.map(r=>r.outcome).join('|')==='checked|checked|checked|checked_empty|checked|checked|not_attempted' && "+EVIDENCE+".review.rows[6].id==='cpi' && "+EVIDENCE+".review.rows[6].selected===false"+
             " && "+EVIDENCE+".selectedListingId==='listing-alfa' && JSON.stringify("+EVIDENCE+".review.plan)==="+JSONObject.quote(plan))));
         page.await(new Check("every original source clock and unavailable publication time remains distinct", new Script(
             EVIDENCE+".markets.every(r=>r.response.requestStartedAt==='2026-09-20T00:00:00.000Z' && r.response.completedAt==='2026-09-20T00:00:01.000Z' && r.response.rows.at(-1).date==='2026-09-19')"+

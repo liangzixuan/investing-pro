@@ -36,6 +36,7 @@ const allowedScenarios = [
   "annual-revenue-model-basis",
   "valuation-scenario-followup",
   "cpi-headline-followup",
+  "markets-briefing",
   "annual-balance-sheet",
   "annual-operating-comparison",
   "company-snapshot",

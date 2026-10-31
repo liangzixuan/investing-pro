@@ -1,4 +1,5 @@
 import { useSyncExternalStore, type Ref } from "react";
+import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { ResearchFollowup } from "@research-cockpit/contracts";
 import type { ManagedWorkspace } from "./managed-workspace";
 import { ManagedMarketsDayView } from "./ManagedMarketsDayView";
@@ -13,7 +14,11 @@ export interface ManagedMarketsCalendarFollowupProps {
   headingRef?: Ref<HTMLHeadingElement>;
   isCurrent: () => boolean;
   navigationPending: boolean;
-  onReview: (entry: ResearchFollowup) => void;
+  onReview: (
+    entry: ResearchFollowup,
+    capture: CalendarSourceCapture,
+    selection?: { date?: string; source?: string; title?: string },
+  ) => void;
   onManageWatchlist: () => void;
 }
 function useCalendarSources(workspace: ManagedWorkspace) {
@@ -84,6 +89,14 @@ export function ManagedMarketsCalendarFollowup(
         key={controls.choice.revision}
         {...props}
         capture={controls.choice.capture}
+        onReview={(entry) => {
+          if (controls.choice.capture)
+            props.onReview(
+              entry,
+              controls.choice.capture,
+              controls.choice.selection,
+            );
+        }}
         onClose={controls.onClose}
       />
     </>

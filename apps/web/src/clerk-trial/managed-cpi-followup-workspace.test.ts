@@ -210,7 +210,7 @@ it("refuses initial load after selection retirement or when an authored Follow-u
   expect(f.api.loadFollowups).toHaveBeenCalledOnce();
 });
 
-it("retires filter and route ownership while leaving the unrelated source pass independent", async () => {
+it("retires filter, route and source-pass ownership permanently", async () => {
   const f = await fixture();
   const beforeFilter = f.prepare();
   f.changeSelection();
@@ -221,7 +221,59 @@ it("retires filter and route ownership while leaving the unrelated source pass i
   expect(beforeRoute.create()).toBeNull();
   const beforePass = f.prepare(f.capture());
   f.workspace.marketsSourceReview.preview();
-  expect(beforePass.create()).not.toBeNull();
+  expect(beforePass.create()).toBeNull();
+  expect(beforePass.isCurrent()).toBe(false);
+});
+
+it("refuses CPI check capture during a pass, including subscriber reentry, and requires a new settled capture", async () => {
+  const f = await fixture();
+  const before = f.prepare();
+  const original = f.workspace.cpiHeadlines.getSnapshot().headlines;
+  const pending = held<typeof f.packet>();
+  vi.mocked(f.api.cpiHeadlines).mockReturnValueOnce(pending.promise);
+  const pass = f.workspace.marketsSourceReview;
+  for (const row of pass.getSnapshot().rows)
+    pass.choose(row.id, row.id === "cpi");
+  pass.preview();
+  const reentrant: unknown[] = [];
+  const stop = pass.subscribe(() => {
+    if (pass.getSnapshot().phase === "running")
+      reentrant.push(
+        f.workspace.captureCpiHeadlineSource(f.packet.items[0]!.url, () => true)
+          .capture,
+      );
+  });
+  const running = pass.start();
+  expect(pass.getSnapshot().phase).toBe("running");
+  expect(reentrant.length).toBeGreaterThan(0);
+  expect(reentrant.every((capture) => capture === null)).toBe(true);
+  expect(
+    f.workspace.captureCpiHeadlineSource(f.packet.items[0]!.url, () => true)
+      .capture,
+  ).toBeNull();
+  expect(before.create()).toBeNull();
+  pass.cancel();
+  stop();
+  pending.resolve({ ...f.packet, fetchedAt: "2026-10-29T19:00:00.000Z" });
+  await running;
+  expect(f.workspace.cpiHeadlines.getSnapshot().headlines).toBe(original);
+  expect(before.isCurrent()).toBe(false);
+  expect(f.source.isCurrent()).toBe(false);
+  expect(f.prepare(f.capture()).isCurrent()).toBe(true);
+  expect(f.api.cpiHeadlines).toHaveBeenCalledTimes(2);
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+});
+
+it("does not revive an old CPI source after the same pass selection is restored", async () => {
+  const f = await fixture();
+  const before = f.prepare();
+  const pass = f.workspace.marketsSourceReview;
+  pass.choose("cpi", true);
+  pass.choose("cpi", false);
+  expect(f.source.isCurrent()).toBe(false);
+  expect(before.create()).toBeNull();
+  expect(f.api.cpiHeadlines).toHaveBeenCalledOnce();
+  expect(f.prepare(f.capture()).isCurrent()).toBe(true);
 });
 
 it("retires a preview after either resource draft changes, including same-text restoration", async () => {

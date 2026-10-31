@@ -560,6 +560,7 @@ it("offers an explicit row action for dated and unknown entries and retires old 
       instant: null,
     }),
     expect.anything(),
+    { date: "", source: "all" },
   );
   const capturedCurrent = onKeepCheck.mock.calls[0]![1] as () => boolean;
   expect(typeof capturedCurrent).toBe("function");
@@ -570,9 +571,16 @@ it("offers an explicit row action for dated and unknown entries and retires old 
   (unknown.props.onClick as () => void)();
   expect(onKeepCheck).toHaveBeenCalledOnce();
   const dated = keepButtons(f.day())[0]!;
+  (dated.props.onClick as () => void)();
+  expect(onKeepCheck).toHaveBeenLastCalledWith(
+    expect.objectContaining({ source: "bea" }),
+    expect.anything(),
+    { date: "", source: "bea" },
+  );
+  expect(typeof onKeepCheck.mock.calls[1]![1]).toBe("function");
   f.workspace.setView("followups");
   (dated.props.onClick as () => void)();
-  expect(onKeepCheck).toHaveBeenCalledOnce();
+  expect(onKeepCheck).toHaveBeenCalledTimes(2);
   expect(f.original.followups!.getSnapshot().load).toBe(0);
 });
 it("keeps the explicit null profile read-only without row actions", async () => {

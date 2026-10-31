@@ -85,6 +85,29 @@ function row(review: ManagedMarketsSourceReview, id: string) {
 }
 
 describe("explicit Markets source review pass", () => {
+  it("admits seven unique sources and refuses an eighth or duplicate identity", () => {
+    const ports = Array.from(
+      { length: 7 },
+      (_, index) => source(`source-${index}`, []).port,
+    );
+    const review = new ManagedMarketsSourceReview(ports, () => true);
+    expect(review.getSnapshot().rows).toHaveLength(7);
+    expect(
+      () =>
+        new ManagedMarketsSourceReview(
+          [...ports, source("eighth", []).port],
+          () => true,
+        ),
+    ).toThrow("unique bounded sources");
+    expect(
+      () =>
+        new ManagedMarketsSourceReview(
+          [...ports.slice(0, 6), ports[0]!],
+          () => true,
+        ),
+    ).toThrow("unique bounded sources");
+    review.retire();
+  });
   it("previews without reads and dispatches only selected eligible sources in declared order", async () => {
     const order: string[] = [];
     const missing = source("price-first", order);

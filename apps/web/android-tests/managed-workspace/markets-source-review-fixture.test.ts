@@ -40,6 +40,8 @@ async function mounted() {
   await workspace.refreshCatalog();
   workspace.setView("markets");
   await settle();
+  // This original scenario explicitly selects six sources; CPI remains visible.
+  workspace.marketsSourceReview.choose("cpi", false);
   return {
     fixture,
     workspace,
@@ -170,7 +172,14 @@ describe("isolated native Markets source-review protocol", () => {
       "checked_empty",
       "checked",
       "checked",
+      "not_attempted",
     ]);
+    expect(f.review.getSnapshot().rows[6]).toMatchObject({
+      id: "cpi",
+      selected: false,
+      outcome: "not_attempted",
+    });
+    expect(f.workspace.cpiHeadlines.getSnapshot().headlines).toBeNull();
     const actual = packets(f);
     expect(actual.markets.map((packet) => packet?.security)).toEqual(
       f.fixture.marketsCohort,
@@ -267,6 +276,9 @@ describe("isolated native Markets source-review protocol", () => {
   it("rejects an out-of-order government request and a wrong exact listing before dispatch", async () => {
     const f = await mounted(),
       signal = new AbortController().signal;
+    expect(() => f.fixture.api.cpiHeadlines(signal)).toThrow(
+      "Unexpected invented source-review action",
+    );
     expect(() => f.fixture.api.blsCalendar(signal)).toThrow(
       "Unexpected invented source-review action",
     );
@@ -315,6 +327,15 @@ describe("isolated native Markets source-review protocol", () => {
     );
     for (const id of ["preview", "start", "cancel"])
       expect(html(`#markets-source-review-${id}`)).toHaveLength(1);
+    expect(html("#markets-source-review-choice-cpi")).toHaveLength(1);
+    expect(
+      html("#markets-source-review-choice-cpi").attr("checked"),
+    ).toBeUndefined();
+    expect(f.review.getSnapshot().rows[6]).toMatchObject({
+      id: "cpi",
+      selected: false,
+      outcome: "not_attempted",
+    });
     expect(f.controls.getSnapshot().order).toEqual([]);
   });
   it("leaves all prior scenarios on their original APIs and has no source-review controls", async () => {

@@ -1,3 +1,4 @@
+import { MarketsBriefingFixtureDiagnostics } from "./markets-briefing-fixture-diagnostics";
 import { CpiHeadlineFollowupFixtureDiagnostics } from "./cpi-headline-followup-fixture-diagnostics";
 import { ValuationScenarioFollowupFixtureDiagnostics } from "./valuation-scenario-followup-fixture-diagnostics";
 import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
@@ -168,6 +169,12 @@ export function FixtureDraftDiagnostics({
       <ValuationEditorDiagnostics valuation={values.valuation} />
       <ExportDocumentDiagnostics draft={values.draft} />
       <WatchlistDraftDiagnostics draft={values.draft} />
+      {scenario === "markets-briefing" && (
+        <MarketsBriefingFixtureDiagnostics
+          workspace={workspace}
+          fixture={fixture}
+        />
+      )}
       {scenario === "cpi-headline-followup" && (
         <CpiHeadlineFollowupFixtureDiagnostics
           workspace={workspace}

@@ -28,6 +28,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         ANNUAL_REVENUE_MODEL_BASIS("annual-revenue-model-basis"),
         VALUATION_SCENARIO_FOLLOWUP("valuation-scenario-followup"),
         CPI_HEADLINE_FOLLOWUP("cpi-headline-followup"),
+        MARKETS_BRIEFING("markets-briefing"),
         SCREEN_COMPARISON_REPORT("screen-comparison-report"),
         SCREEN_COMPARISON_FOLLOWUP("screen-comparison-followup"),
         REVIEW_CHECK_COMPLETION("review-check-completion"),

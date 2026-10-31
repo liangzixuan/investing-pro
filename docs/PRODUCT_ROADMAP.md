@@ -27,15 +27,26 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: retain filing evidence within a chosen review
+## Current priority: a complete Markets daily briefing
 
-Connect the chosen held-company review to the existing bounded Filings source.
-Load each current check explicitly, retain its exact packet and original clocks,
-inspect the evidence in its owned company visit, then cite the authored assessment
-and complete the review. Save and fresh Load remain separate. This advances
-M3/M4 evidence continuity without adding coverage, automatic monitoring, fees or
-a persistence resource; see the [review filings guide](MANAGED_REVIEW_FILINGS.md).
-Implementation and acceptance are in progress.
+Connect the existing selected source pass, complete board/calendar/feed reading,
+and an exact authored dated check under M1/M3. Include admitted CPI metadata in
+the ordered pass. Return from Follow-ups Research to the original briefing and
+item without another Markets read. Keep source clocks, partial outcomes and
+independent saves explicit; see the [briefing guide](MANAGED_MARKETS_BRIEFING.md).
+Implementation and acceptance are in progress. This adds no source coverage,
+provider, fee, automatic narrative or persistence resource.
+
+## Delivered: filing evidence within a chosen review
+
+Android 1.67 connects the held-company review to bounded Filings metadata.
+Explicit per-check Load/Refresh/Cancel, complete retained packets, exact owned
+inspection, whole assessment/citation preview and Back preserve original clocks.
+Completion and Save/fresh Load remain separate. Accepted main
+`ae491d016164f6befa1bb48d289d431a58930d43` passed its original project checks and
+all 130 native cases. One guarded existing-signer build, four same-APK checks
+and local delivery readback passed. Installation remains an owner action;
+see the [review filings guide](MANAGED_REVIEW_FILINGS.md).
 
 ## Delivered: review due checks for current holdings
 

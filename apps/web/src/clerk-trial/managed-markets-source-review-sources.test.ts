@@ -9,6 +9,8 @@ import {
 } from "@research-cockpit/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TrialApiError } from "./api";
+import { cpiHeadlinesFixture } from "./cpi-headlines-fixture";
+import { ManagedCpiHeadlines } from "./managed-cpi-headlines";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
@@ -36,7 +38,7 @@ const cohort = ["ZERO", "ONE", "TWO"].map((symbol, index) => ({
   shareClassName: `Class ${index}`,
   symbol,
 }));
-const allIds = ["price-0", "price-1", "price-2", "bls", "bea", "fed"];
+const allIds = ["price-0", "price-1", "price-2", "bls", "bea", "fed", "cpi"];
 function pricePacket(request: ManagedEodHistoryRequestDto) {
   const packet = parseManagedEodHistoryResponse(
     {
@@ -103,6 +105,11 @@ function governmentModels(order: string[]) {
       order.push("bea");
       return Promise.resolve(beaPacket);
     });
+  const cpiPacket = cpiHeadlinesFixture();
+  const cpiRead = vi.fn<ManagedApi["cpiHeadlines"]>().mockImplementation(() => {
+    order.push("cpi");
+    return Promise.resolve(cpiPacket);
+  });
   const fedRead = vi
     .fn<ManagedApi["monetaryAnnouncements"]>()
     .mockImplementation(() => {
@@ -113,6 +120,9 @@ function governmentModels(order: string[]) {
     bls: new ManagedBlsCalendar(blsRead, vi.fn()),
     bea: new ManagedBeaReleaseAgenda(beaRead, vi.fn()),
     fed: new ManagedFedAnnouncements(fedRead, vi.fn()),
+    cpi: new ManagedCpiHeadlines(cpiRead, vi.fn()),
+    cpiRead,
+    cpiPacket,
     blsRead,
     beaRead,
     fedRead,
@@ -137,6 +147,7 @@ async function fixture() {
     bls: government.bls,
     bea: government.bea,
     fed: government.fed,
+    cpi: government.cpi,
     available: () => available.current,
   });
   return { ...market, ...government, order, available, review };
@@ -202,7 +213,108 @@ async function expectCompletedManualBoard(
 afterEach(() => vi.useRealTimers());
 
 describe("Markets source review through the real source models", () => {
-  it("runs exactly six ordered reads without invalidating sibling price ports or retargeting selection", async () => {
+  it("waits for Fed before CPI and leaves unselected CPI unattempted", async () => {
+    const f = await fixture();
+    for (const id of allIds) f.review.choose(id, id === "fed" || id === "cpi");
+    const pending = deferred<typeof f.fedPacket>();
+    f.fedRead.mockImplementationOnce(() => {
+      f.order.push("fed");
+      return pending.promise;
+    });
+    f.review.preview();
+    expect(f.cpiRead).not.toHaveBeenCalled();
+    const running = f.review.start();
+    await settle();
+    expect(f.order).toEqual(["fed"]);
+    expect(row(f, "cpi").outcome).toBe("not_attempted");
+    pending.resolve(f.fedPacket);
+    await running;
+    expect(f.order).toEqual(["fed", "cpi"]);
+    const packet = f.cpi.getSnapshot().headlines;
+    for (const id of allIds) f.review.choose(id, id === "fed");
+    f.review.preview();
+    await f.review.start();
+    expect(f.cpiRead).toHaveBeenCalledOnce();
+    expect(f.cpi.getSnapshot().headlines).toBe(packet);
+    expect(row(f, "cpi").outcome).toBe("retained");
+  });
+
+  it("keeps checked-empty CPI out of missing-only work and retains its clocks after failed refresh", async () => {
+    const f = await fixture();
+    const empty = { ...f.cpiPacket, items: [], availableItemCount: 0 };
+    f.cpiRead.mockResolvedValueOnce(empty);
+    for (const id of allIds) f.review.choose(id, id === "cpi");
+    f.review.preview();
+    await f.review.start();
+    expect(row(f, "cpi").outcome).toBe("checked_empty");
+    expect(row(f, "cpi").evidence).toContain(
+      "0 displayed CPI headlines of 0 available",
+    );
+    const retained = f.cpi.getSnapshot().headlines;
+    const independent = createManagedMarketsSourceReview({
+      markets: f.markets,
+      bls: f.bls,
+      bea: f.bea,
+      fed: f.fed,
+      cpi: f.cpi,
+      available: () => true,
+    });
+    independent.preview();
+    expect(
+      independent.getSnapshot().plan.some((entry) => entry.id === "cpi"),
+    ).toBe(false);
+    independent.retire();
+    f.cpiRead.mockRejectedValueOnce(new TrialApiError("invalid_response"));
+    f.review.preview();
+    expect(row(f, "cpi").mode).toBe("refresh");
+    await f.review.start();
+    expect(f.review.getSnapshot().phase).toBe("stopped");
+    expect(row(f, "cpi").outcome).toBe("failed");
+    expect(row(f, "cpi").evidence).toContain("Previous packet");
+    expect(f.cpi.getSnapshot().headlines).toBe(retained);
+    expect(row(f, "cpi").evidence).toContain(empty.fetchedAt);
+    expect(row(f, "cpi").evidence).toContain(empty.feedUpdatedAt);
+  });
+
+  it("cancels a pending CPI refresh without accepting late clocks or dispatching twice", async () => {
+    const f = await fixture();
+    await f.cpi.load();
+    const original = f.cpi.getSnapshot().headlines;
+    const pending = deferred<typeof f.cpiPacket>();
+    f.cpiRead.mockReturnValueOnce(pending.promise);
+    for (const id of allIds) f.review.choose(id, id === "cpi");
+    f.review.preview();
+    const running = f.review.start();
+    await f.review.start();
+    expect(f.cpiRead).toHaveBeenCalledTimes(2);
+    const signal = f.cpiRead.mock.calls[1]![0];
+    f.review.cancel();
+    expect(signal?.aborted).toBe(true);
+    pending.resolve({ ...f.cpiPacket, fetchedAt: "2026-10-29T19:00:00.000Z" });
+    await running;
+    expect(f.review.getSnapshot().phase).toBe("cancelled");
+    expect(row(f, "cpi").outcome).toBe("cancelled");
+    expect(f.cpi.getSnapshot().headlines).toBe(original);
+    expect(f.cpi.getSnapshot().showingPrevious).toBe(true);
+    expect(f.read).not.toHaveBeenCalled();
+    expect(f.blsRead).not.toHaveBeenCalled();
+  });
+
+  it("retires a pending board pass when CPI reads independently and leaves later work untouched", async () => {
+    const f = await fixture();
+    const { held, running } = pendingFirstPrice(f);
+    await f.cpi.load();
+    expect(f.review.getSnapshot().phase).toBe("retired");
+    expect(f.read.mock.calls[0]![1].aborted).toBe(true);
+    held.resolve(pricePacket(priceRequest(0)));
+    await running;
+    expect(f.order).toEqual(["price-0", "cpi"]);
+    expect(f.cpi.getSnapshot().headlines?.items).toEqual(f.cpiPacket.items);
+    expect(f.markets.getSnapshot().rows[0]!.response).toBeNull();
+    expect(f.beaRead).not.toHaveBeenCalled();
+    expect(f.fedRead).not.toHaveBeenCalled();
+  });
+  it("runs exactly seven ordered reads without invalidating sibling price ports or retargeting selection", async () => {
     const f = await fixture();
     f.markets.select(cohort[2]!.listingId);
     const { held, running } = pendingFirstPrice(f);
@@ -236,6 +348,10 @@ describe("Markets source review through the real source models", () => {
     expect(row(f, "bls").evidence).toContain(f.blsPacket.fetchedAt);
     expect(row(f, "bea").evidence).toContain(f.beaPacket.fetchedAt);
     expect(row(f, "fed").evidence).toContain(f.fedPacket.fetchedAt);
+    expect(f.cpiRead).toHaveBeenCalledOnce();
+    expect(row(f, "cpi").evidence).toContain(f.cpiPacket.fetchedAt);
+    expect(row(f, "cpi").evidence).toContain(f.cpiPacket.feedUpdatedAt);
+    expect(f.cpi.getSnapshot().headlines?.items).toEqual(f.cpiPacket.items);
     expect(f.fed.getSnapshot().announcements?.items[1]!.publishedAt).toBeNull();
   });
 
@@ -262,7 +378,7 @@ describe("Markets source review through the real source models", () => {
     expect(f.fedRead).not.toHaveBeenCalled();
     bea.resolve(f.beaPacket);
     await running;
-    expect(f.order).toEqual(["bls", "bea", "fed"]);
+    expect(f.order).toEqual(["bls", "bea", "fed", "cpi"]);
     expect(f.review.getSnapshot().phase).toBe("complete");
     expect(f.read).not.toHaveBeenCalled();
   });
@@ -281,9 +397,9 @@ describe("Markets source review through the real source models", () => {
         .getSnapshot()
         .rows.filter((entry) => entry.selected)
         .map((entry) => entry.id),
-    ).toEqual(["price-0", "price-2", "bea", "fed"]);
+    ).toEqual(["price-0", "price-2", "bea", "fed", "cpi"]);
     await f.review.start();
-    expect(f.order).toEqual(["price-0", "price-2", "bea", "fed"]);
+    expect(f.order).toEqual(["price-0", "price-2", "bea", "fed", "cpi"]);
     expect(row(f, "bls").outcome).toBe("retained");
     expect(row(f, "bls").evidence).toContain("0 scheduled releases");
     expect(f.markets.getSnapshot().rows[1]!.response).toBe(previous);
