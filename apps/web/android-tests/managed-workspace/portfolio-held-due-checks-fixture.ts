@@ -155,15 +155,6 @@ export function createPortfolioHeldDueChecksFixture(
           "resolve request",
         );
         const ids = request.listingIds;
-        if (
-          ids.join("|") === base.marketsCohort.map((x) => x.listingId).join("|")
-        ) {
-          admit(
-            base.getSnapshot().marketsResolve < counts.status,
-            "one Markets identity resolution per session",
-          );
-          return base.api.resolve(request, signal);
-        }
         const held = identities
             .filter((x) => x.listingId !== heldDueIds.outside)
             .map((x) => x.listingId),

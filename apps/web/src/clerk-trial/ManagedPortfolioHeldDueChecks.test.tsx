@@ -155,6 +155,7 @@ it("renders complete exact identities, raw questions/results, holdings and exclu
   const f = await fixture(),
     $ = f.html();
   expect($("[data-held-due-listing]")).toHaveLength(3);
+  expect($(".managed-followups-review-choices > li")).toHaveLength(0);
   expect($("[data-held-due-check]")).toHaveLength(3);
   expect($("[data-eligible=false]").text()).toContain("due later");
   for (const e of f.stored().payload.entries) {

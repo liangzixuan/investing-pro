@@ -179,7 +179,7 @@ export function ManagedPortfolioHeldDueChecks({
             : "Current holdings are not available."}
         </p>
       )}
-      <ul className="managed-followups-review-choices">
+      <ul className="managed-portfolio-held-due-choices">
         {state.plan.holdings.map(({ holding, checks }) => (
           <li
             key={holding.identity.listingId}
@@ -206,7 +206,7 @@ export function ManagedPortfolioHeldDueChecks({
             : "Follow-ups have not been loaded."}
         </p>
       )}
-      <ul className="managed-followups-review-choices">
+      <ul className="managed-portfolio-held-due-choices">
         {state.plan.checks.map((row) => {
           const position = state.chosen.indexOf(row.entry);
           return (

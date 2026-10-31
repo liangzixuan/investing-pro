@@ -40,6 +40,7 @@ async function loaded() {
   await f.workspace.portfolio.reviewCatalog();
   f.workspace.portfolio.applyReview();
   f.workspace.setView("followups");
+  expect(f.fixture.getSnapshot().marketsResolve).toBe(0);
   return f;
 }
 it("keeps both personal resources unloaded until independent explicit loads", async () => {
@@ -253,6 +254,7 @@ it("completes the real held-intake ownership journey, strict whole Save and inde
   expect(fresh.portfolio.coordinator.getSnapshot().draft?.ledger).toEqual(
     portfolio.draft!.ledger,
   );
+  expect(f.fixture.getSnapshot().marketsResolve).toBe(0);
   expect(f.meta.getSnapshot()).toMatchObject({
     status: 2,
     portfolioLoad: 2,
@@ -263,5 +265,26 @@ it("completes the real held-intake ownership journey, strict whole Save and inde
     load: 2,
     save: 1,
     commits: 1,
+  });
+});
+
+it("refuses an unrequested Markets resolution while Follow-ups owns the route", async () => {
+  const f = await loaded();
+  expect(f.workspace.getSnapshot().view).toBe("followups");
+  expect(f.fixture.getSnapshot().marketsResolve).toBe(0);
+  await expect(
+    f.fixture.api.resolve(
+      {
+        snapshotSha256: f.fixture.researchCoverage.catalogSnapshotSha256,
+        listingIds: f.fixture.marketsCohort.map((row) => row.listingId),
+      },
+      f.signal,
+    ),
+  ).rejects.toThrow("one exact chosen Research resolution");
+  expect(f.fixture.getSnapshot().marketsResolve).toBe(0);
+  expect(f.meta.getSnapshot()).toMatchObject({ resolve: 1, rejected: 1 });
+  expect(f.fixture.followups!.getSnapshot()).toMatchObject({
+    save: 0,
+    commits: 0,
   });
 });
