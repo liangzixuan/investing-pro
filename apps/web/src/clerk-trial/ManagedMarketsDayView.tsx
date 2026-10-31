@@ -45,7 +45,11 @@ function Entries({
   readonly entries: readonly MarketsDayEntry[];
   readonly current: () => boolean;
   readonly onKeepCheck:
-    | ((entry: MarketsDayEntry, selectionIsCurrent: () => boolean) => void)
+    | ((
+        entry: MarketsDayEntry,
+        selectionIsCurrent: () => boolean,
+        selection?: { date?: string; source?: string },
+      ) => void)
     | null;
 }) {
   return (
@@ -101,7 +105,11 @@ export function ManagedMarketsDayView({
   readonly navigation: ManagedMarketsNavigationProps;
   readonly headingRef?: Ref<HTMLHeadingElement>;
   readonly onKeepCheck:
-    | ((entry: MarketsDayEntry, selectionIsCurrent: () => boolean) => void)
+    | ((
+        entry: MarketsDayEntry,
+        selectionIsCurrent: () => boolean,
+        selection?: { date?: string; source?: string },
+      ) => void)
     | null;
 }) {
   const agenda = useSyncExternalStore(
@@ -398,7 +406,15 @@ export function ManagedMarketsDayView({
               <Entries
                 entries={group.entries}
                 current={current}
-                onKeepCheck={onKeepCheck}
+                onKeepCheck={
+                  onKeepCheck
+                    ? (entry, current) =>
+                        onKeepCheck(entry, current, {
+                          date: selection.date,
+                          source: selection.source,
+                        })
+                    : null
+                }
               />
             </section>
           ))}
@@ -408,7 +424,15 @@ export function ManagedMarketsDayView({
               <Entries
                 entries={view.unknown}
                 current={current}
-                onKeepCheck={onKeepCheck}
+                onKeepCheck={
+                  onKeepCheck
+                    ? (entry, current) =>
+                        onKeepCheck(entry, current, {
+                          date: selection.date,
+                          source: selection.source,
+                        })
+                    : null
+                }
               />
             </section>
           )}

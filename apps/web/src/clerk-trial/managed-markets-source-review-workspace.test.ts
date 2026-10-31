@@ -7,6 +7,7 @@ import {
   type ManagedBlsCalendarDto,
 } from "@research-cockpit/contracts";
 import { createFixture } from "../../android-tests/managed-workspace/fixture";
+import { cpiHeadlinesFixture } from "./cpi-headlines-fixture";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { eodResponse } from "./eod-history-fixture";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
@@ -36,6 +37,7 @@ function governmentPackets() {
     })!,
     bea: parseManagedEconomicCalendar(economicCalendarFixture())!,
     fed: parseManagedMonetaryAnnouncements(fedAnnouncementsFixture())!,
+    cpi: cpiHeadlinesFixture(),
   };
 }
 
@@ -85,6 +87,10 @@ function sourceApi(
     monetaryAnnouncements: vi.fn<ManagedApi["monetaryAnnouncements"]>(() => {
       order.push("fed");
       return Promise.resolve(packets.fed);
+    }),
+    cpiHeadlines: vi.fn<ManagedApi["cpiHeadlines"]>(() => {
+      order.push("cpi");
+      return Promise.resolve(packets.cpi);
     }),
   } satisfies ManagedApi;
 }
@@ -189,9 +195,10 @@ describe("Markets source review workspace ownership", () => {
       "bls",
       "bea",
       "fed",
+      "cpi",
     ]);
     await f.review.start();
-    expect(f.order).toEqual(["bls", "bea", "fed"]);
+    expect(f.order).toEqual(["bls", "bea", "fed", "cpi"]);
     expect(f.review.getSnapshot().phase).toBe("complete");
     expect(f.api.resolve).toHaveBeenCalledTimes(resolves);
     expectNoCompanyReads(f);
@@ -207,7 +214,7 @@ describe("Markets source review workspace ownership", () => {
       f.workspace.markets.getSnapshot().selectedListingId;
     const listing = f.base.marketsCohort[1];
     const calls = f.resourceCalls();
-    for (const id of ["price-0", "price-2", "bls", "bea"])
+    for (const id of ["price-0", "price-2", "bls", "bea", "cpi"])
       f.review.choose(id, false);
     f.review.preview();
     expect(f.review.getSnapshot().plan.map((row) => row.id)).toEqual([
@@ -231,6 +238,7 @@ describe("Markets source review workspace ownership", () => {
       f.workspace.markets.getSnapshot().rows[1]!.response?.security,
     ).toEqual(listing);
     expect(f.api.blsCalendar).not.toHaveBeenCalled();
+    expect(f.api.cpiHeadlines).not.toHaveBeenCalled();
     expect(f.api.economicCalendar).not.toHaveBeenCalled();
     expect(f.api.annualReport).not.toHaveBeenCalled();
     expect(f.api.recentFilings).not.toHaveBeenCalled();
@@ -281,6 +289,7 @@ describe("Markets source review workspace ownership", () => {
     pending.resolve(f.packets.bls);
     await running;
     expect(f.workspace.blsCalendar.getSnapshot().calendar).toBeNull();
+    expect(f.api.cpiHeadlines).not.toHaveBeenCalled();
     expect(f.api.economicCalendar).not.toHaveBeenCalled();
     expect(f.api.monetaryAnnouncements).not.toHaveBeenCalled();
     f.workspace.closeResearch();
@@ -306,7 +315,7 @@ describe("Markets source review workspace ownership", () => {
     f.review.preview();
     expect(f.review.getSnapshot().canStart).toBe(true);
     await f.review.start();
-    expect(f.order).toEqual(["bls", "bea", "fed"]);
+    expect(f.order).toEqual(["bls", "bea", "fed", "cpi"]);
     expect(f.workspace.coordinator.getSnapshot()).toBe(watchlist);
     expect(f.workspace.followups.coordinator.getSnapshot()).toBe(followups);
   });
@@ -381,6 +390,7 @@ describe("Markets source review workspace ownership", () => {
     expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
     expect(f.workspace.followups.coordinator.getSnapshot().draft).toBeNull();
     expect(f.order).toEqual(["bls"]);
+    expect(f.api.cpiHeadlines).not.toHaveBeenCalled();
     expect(f.api.economicCalendar).not.toHaveBeenCalled();
     expect(f.api.monetaryAnnouncements).not.toHaveBeenCalled();
   });

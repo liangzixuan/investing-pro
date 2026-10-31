@@ -5,14 +5,29 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: retain filing evidence in a chosen review
+## In development: a complete Markets daily briefing
+
+Select the existing board, calendar, Fed and CPI reads in one explicit pass.
+Inspect complete results and independent source times. Keep a dated check from
+an exact item, use Follow-ups Research and Back, then return to the original
+briefing and selected item without another Markets request. The retained reading
+has no source-request or Create authority. Save and fresh Load remain separate;
+see the [briefing guide](MANAGED_MARKETS_BRIEFING.md). Implementation and
+acceptance are in progress.
+
+## Accepted and delivered: retain filing evidence in a chosen review
 
 Load filing metadata explicitly for the current held-company check, keep each
 check's packet and original clocks, then inspect it in the exact owned company
 visit. Cite the authored assessment, return, Complete and Continue. Follow-ups
 Save and fresh Load stay separate. Existing source coverage and request budgets
 remain unchanged; see the [review filings guide](MANAGED_REVIEW_FILINGS.md).
-Implementation and acceptance are in progress.
+[PR 266](https://github.com/liangzixuan/investing-pro/pull/266) merged at
+`ae491d016164f6befa1bb48d289d431a58930d43`. Original main project checks and all
+130 native cases passed. Android 1.67.0/code68 is provided locally after one
+guarded build with the existing signer, four same-APK checks and copy/checksum
+readback. Qualified checker repairs preserve original failures and safeguards.
+Installation, browser and physical-phone acceptance are not claimed.
 
 ## Accepted and delivered: review due checks for current holdings
 

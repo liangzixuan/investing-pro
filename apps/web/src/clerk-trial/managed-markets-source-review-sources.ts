@@ -1,6 +1,7 @@
 import type { ManagedBlsCalendar } from "./managed-bls-calendar";
 import type { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import type { ManagedFedAnnouncements } from "./managed-fed-announcements";
+import type { ManagedCpiHeadlines } from "./managed-cpi-headlines";
 import type {
   ManagedMarkets,
   ManagedMarketsRow,
@@ -155,6 +156,7 @@ interface SourceModels {
   bls: ManagedBlsCalendar;
   bea: ManagedBeaReleaseAgenda;
   fed: ManagedFedAnnouncements;
+  cpi: ManagedCpiHeadlines;
   available: () => boolean;
 }
 export function createManagedMarketsSourceReview({
@@ -162,6 +164,7 @@ export function createManagedMarketsSourceReview({
   bls,
   bea,
   fed,
+  cpi,
   available,
 }: SourceModels) {
   const ports: MarketsSourceReviewPort[] = [0, 1, 2].map((index) =>
@@ -215,6 +218,24 @@ export function createManagedMarketsSourceReview({
       count: (p) => p.items.length,
       qualification: (p) =>
         `${p.items.length} displayed announcements of ${p.availableItemCount} available; publication times remain in the source panel.`,
+    }),
+  );
+  ports.push(
+    packetPort({
+      id: "cpi",
+      label: "Published CPI headlines",
+      model: cpi,
+      snapshot: () => {
+        const s = cpi.getSnapshot();
+        return {
+          packet: s.headlines,
+          busy: s.busy,
+          previous: s.showingPrevious,
+        };
+      },
+      count: (p) => p.items.length,
+      qualification: (p) =>
+        `${p.items.length} displayed CPI headlines of ${p.availableItemCount} available. Feed-level updated time ${p.feedUpdatedAt ?? "Unknown"}; each item's published and updated times remain separate in the source panel.`,
     }),
   );
   return new ManagedMarketsSourceReview(ports, available);

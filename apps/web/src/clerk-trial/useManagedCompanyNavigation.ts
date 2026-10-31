@@ -110,8 +110,12 @@ export function useManagedCompanyNavigation(
     workspace.setNavigationBlocked(parsed.kind !== "none");
     void workspace.setCompanyRoute(parsed.kind === "company" ? parsed : null);
     if (prior.company && parsed.kind === "none") {
-      if (action === NavigationType.Pop && prior.origin)
-        workspace.setView(prior.origin.view);
+      if (action === NavigationType.Pop && prior.origin) {
+        const resumed =
+          prior.origin.view === "followups" &&
+          workspace.resumeMarketsBriefingFollowup();
+        if (!resumed) workspace.setView(prior.origin.view);
+      }
       setReturnFocus((value) => value + 1);
     }
   }, [

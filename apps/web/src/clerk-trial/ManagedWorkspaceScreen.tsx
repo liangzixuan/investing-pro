@@ -2,6 +2,7 @@ import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-compa
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
+import { ManagedMarketsBriefing } from "./ManagedMarketsBriefing";
 import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { managedResearchDraftProps } from "./managed-research-draft-props";
 import type { ManagedFinancialScreenRecipeDeliveryAdapter } from "./financial-screen-recipe-delivery";
@@ -1358,130 +1359,147 @@ export function ManagedWorkspaceScreen({
                   openResearch,
                 })}
               />
-              {discovery.view === "markets" && (
-                <div
-                  ref={marketsSectionNavigation.containerRef}
-                  className="managed-markets-content"
-                  hidden={Boolean(
-                    discovery.research ||
-                    discovery.companyRoute ||
-                    navigation?.invalid,
-                  )}
-                >
-                  <ManagedMarketsBoard
-                    workspace={workspace}
-                    isCurrent={isMarketsCurrent}
-                    navigationPending={navigationPending}
-                    navigation={marketsSectionNavigation}
-                    onResearch={(kind, opener) => {
-                      openResearch(opener, () =>
-                        workspace.openMarketResearch(kind),
-                      );
-                    }}
-                    onWatchlist={() => {
-                      if (!setView("watchlist")) return;
-                      watchlistNavigation.current?.focus();
-                    }}
-                  />
-                  <ManagedMarketsDatedChecks
-                    workspace={workspace}
-                    sections={marketsSectionNavigation}
-                    isCurrent={isMarketsCurrent}
-                    navigationPending={navigationPending}
-                    navigation={calendarFollowupNavigation}
-                  />
-                  <ManagedBeaReleaseAgenda
-                    model={workspace.agenda}
-                    headingRef={marketsSectionNavigation.targets.calendar.ref}
-                    noteContext={{
-                      members: saved.draft?.memberships ?? [],
-                      active: isMarketsCurrent(),
-                      editable,
-                      actions: {
-                        getAction: (capture, destination) =>
-                          isMarketsCurrent()
-                            ? workspace.getBeaReleaseNoteAction(
-                                capture,
-                                destination,
-                              )
-                            : {
-                                canAppend: false,
-                                reason:
-                                  "Return to Markets with an editable current watchlist before adding a release.",
-                              },
-                        append: (capture, destination) =>
-                          isMarketsCurrent()
-                            ? workspace.appendBeaReleaseToNote(
-                                capture,
-                                destination,
-                              )
-                            : {
-                                appended: false,
-                                message:
-                                  "Return to Markets with an editable current watchlist before adding a release.",
-                              },
-                      },
-                      onReview: (member) => {
-                        if (
-                          !isMarketsCurrent() ||
-                          !workspace.canEdit() ||
-                          workspace.agenda.getSnapshot().busy
-                        )
-                          return;
-                        reviewWatchlistNote(member);
-                      },
-                    }}
-                  />
-                  <ManagedBlsCalendar
-                    model={workspace.blsCalendar}
-                    headingRef={marketsSectionNavigation.targets.bls.ref}
-                  />
-                  <ManagedFedAnnouncements
-                    model={workspace.announcements}
-                    headingRef={
-                      marketsSectionNavigation.targets.announcements.ref
-                    }
-                    noteContext={{
-                      members: saved.draft?.memberships ?? [],
-                      active: isMarketsCurrent(),
-                      editable,
-                      actions: {
-                        getAction: (capture, destination) =>
-                          isMarketsCurrent()
-                            ? workspace.getFedAnnouncementNoteAction(
-                                capture,
-                                destination,
-                              )
-                            : {
-                                canAppend: false,
-                                reason:
-                                  "Return to Markets with an editable current watchlist before adding an announcement.",
-                              },
-                        append: (capture, destination) =>
-                          isMarketsCurrent()
-                            ? workspace.appendFedAnnouncementToNote(
-                                capture,
-                                destination,
-                              )
-                            : {
-                                appended: false,
-                                message:
-                                  "Return to Markets with an editable current watchlist before adding an announcement.",
-                              },
-                      },
-                      onReview: (member) => {
-                        if (
-                          !isMarketsCurrent() ||
-                          !workspace.canEdit() ||
-                          workspace.announcements.getSnapshot().busy
-                        )
-                          return;
-                        reviewWatchlistNote(member);
-                      },
-                    }}
-                  />
-                </div>
-              )}
+              <ManagedMarketsBriefing
+                workspace={workspace}
+                navigationPending={
+                  navigationPending || Boolean(navigation?.invalid)
+                }
+                navigate={() => setView("markets")}
+              />
+              {discovery.view === "markets" &&
+                !workspace.isMarketsBriefingPassive() && (
+                  <div
+                    ref={marketsSectionNavigation.containerRef}
+                    className="managed-markets-content"
+                    hidden={Boolean(
+                      discovery.research ||
+                      discovery.companyRoute ||
+                      navigation?.invalid,
+                    )}
+                  >
+                    <header className="trial-panel">
+                      <h2>Markets daily briefing</h2>
+                      <p>
+                        Choose source reads, inspect their independent dates and
+                        results, then keep a dated research check. Review
+                        follow-up retains this briefing and the chosen source
+                        item.
+                      </p>
+                    </header>
+                    <ManagedMarketsBoard
+                      workspace={workspace}
+                      isCurrent={isMarketsCurrent}
+                      navigationPending={navigationPending}
+                      navigation={marketsSectionNavigation}
+                      onResearch={(kind, opener) => {
+                        openResearch(opener, () =>
+                          workspace.openMarketResearch(kind),
+                        );
+                      }}
+                      onWatchlist={() => {
+                        if (!setView("watchlist")) return;
+                        watchlistNavigation.current?.focus();
+                      }}
+                    />
+                    <ManagedMarketsDatedChecks
+                      workspace={workspace}
+                      sections={marketsSectionNavigation}
+                      isCurrent={isMarketsCurrent}
+                      navigationPending={navigationPending}
+                      navigation={calendarFollowupNavigation}
+                    />
+                    <ManagedBeaReleaseAgenda
+                      model={workspace.agenda}
+                      headingRef={marketsSectionNavigation.targets.calendar.ref}
+                      noteContext={{
+                        members: saved.draft?.memberships ?? [],
+                        active: isMarketsCurrent(),
+                        editable,
+                        actions: {
+                          getAction: (capture, destination) =>
+                            isMarketsCurrent()
+                              ? workspace.getBeaReleaseNoteAction(
+                                  capture,
+                                  destination,
+                                )
+                              : {
+                                  canAppend: false,
+                                  reason:
+                                    "Return to Markets with an editable current watchlist before adding a release.",
+                                },
+                          append: (capture, destination) =>
+                            isMarketsCurrent()
+                              ? workspace.appendBeaReleaseToNote(
+                                  capture,
+                                  destination,
+                                )
+                              : {
+                                  appended: false,
+                                  message:
+                                    "Return to Markets with an editable current watchlist before adding a release.",
+                                },
+                        },
+                        onReview: (member) => {
+                          if (
+                            !isMarketsCurrent() ||
+                            !workspace.canEdit() ||
+                            workspace.agenda.getSnapshot().busy
+                          )
+                            return;
+                          reviewWatchlistNote(member);
+                        },
+                      }}
+                    />
+                    <ManagedBlsCalendar
+                      model={workspace.blsCalendar}
+                      headingRef={marketsSectionNavigation.targets.bls.ref}
+                    />
+                    <ManagedFedAnnouncements
+                      model={workspace.announcements}
+                      headingRef={
+                        marketsSectionNavigation.targets.announcements.ref
+                      }
+                      noteContext={{
+                        members: saved.draft?.memberships ?? [],
+                        active: isMarketsCurrent(),
+                        editable,
+                        actions: {
+                          getAction: (capture, destination) =>
+                            isMarketsCurrent()
+                              ? workspace.getFedAnnouncementNoteAction(
+                                  capture,
+                                  destination,
+                                )
+                              : {
+                                  canAppend: false,
+                                  reason:
+                                    "Return to Markets with an editable current watchlist before adding an announcement.",
+                                },
+                          append: (capture, destination) =>
+                            isMarketsCurrent()
+                              ? workspace.appendFedAnnouncementToNote(
+                                  capture,
+                                  destination,
+                                )
+                              : {
+                                  appended: false,
+                                  message:
+                                    "Return to Markets with an editable current watchlist before adding an announcement.",
+                                },
+                        },
+                        onReview: (member) => {
+                          if (
+                            !isMarketsCurrent() ||
+                            !workspace.canEdit() ||
+                            workspace.announcements.getSnapshot().busy
+                          )
+                            return;
+                          reviewWatchlistNote(member);
+                        },
+                      }}
+                    />
+                  </div>
+                )}
               <section
                 className="trial-panel"
                 aria-labelledby="managed-discover-heading"

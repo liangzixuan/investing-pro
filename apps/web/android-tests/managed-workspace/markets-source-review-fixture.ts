@@ -243,6 +243,7 @@ export function createMarketsSourceReviewNativeFixture(
       blsCalendar: store.blsCalendar,
       economicCalendar: store.economicCalendar,
       monetaryAnnouncements: store.monetaryAnnouncements,
+      cpiHeadlines: () => refuse(),
     },
     getSnapshot: store.getSnapshot,
     subscribe: store.subscribe,

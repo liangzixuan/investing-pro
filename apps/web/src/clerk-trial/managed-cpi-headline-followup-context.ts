@@ -20,6 +20,9 @@ interface Host {
 interface SourceOwner {
   readonly source: CalendarFollowupSource;
   readonly sources: ReturnType<ManagedCpiHeadlineFollowupContext["sources"]>;
+  readonly pass: ReturnType<
+    ManagedWorkspace["marketsSourceReview"]["getSnapshot"]
+  >;
   readonly revision: ReturnType<Host["revision"]>;
   readonly epoch: object;
   readonly evidence: string;
@@ -62,7 +65,12 @@ export class ManagedCpiHeadlineFollowupContext {
     return this.host.workspace.cpiHeadlines.getSnapshot();
   }
   private available() {
-    return !this.retired && this.host.available() && !this.sources().busy;
+    return (
+      !this.retired &&
+      this.host.available() &&
+      !this.sources().busy &&
+      this.host.workspace.marketsSourceReview.getSnapshot().phase !== "running"
+    );
   }
   private sameRevision(owner: SourceOwner) {
     const revision = this.host.revision();
@@ -73,7 +81,10 @@ export class ManagedCpiHeadlineFollowupContext {
     );
   }
   private sameSources(owner: SourceOwner) {
-    return this.sources() === owner.sources;
+    return (
+      this.sources() === owner.sources &&
+      this.host.workspace.marketsSourceReview.getSnapshot() === owner.pass
+    );
   }
   private sourceCurrent(owner: SourceOwner) {
     return (
@@ -107,6 +118,7 @@ export class ManagedCpiHeadlineFollowupContext {
     const owner: SourceOwner = {
       source,
       sources,
+      pass: this.host.workspace.marketsSourceReview.getSnapshot(),
       revision: this.host.revision(),
       epoch: this.epoch,
       evidence: JSON.stringify(evidence),
