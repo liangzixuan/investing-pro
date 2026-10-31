@@ -1,3 +1,5 @@
+import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
+import { PortfolioComparisonReportControls } from "./PortfolioComparisonReportControls";
 import { portfolioReportFocusLease } from "./portfolio-report-revisit-focus";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PortfolioReviewReportController } from "./portfolio-review-report-controller";
@@ -7,9 +9,11 @@ import { PortfolioReportComparisonRows } from "./PortfolioReportComparisonRows";
 
 export function PortfolioReportComparison({
   reports,
+  comparisonDelivery,
   onResearch,
 }: {
   reports: PortfolioReviewReportController;
+  comparisonDelivery?: PortfolioComparisonReportDeliveryAdapter | undefined;
   onResearch?:
     ((listingId: string, opener: HTMLButtonElement) => void) | undefined;
 }) {
@@ -24,6 +28,7 @@ export function PortfolioReportComparison({
   return controller ? (
     <PortfolioReportComparisonView
       reports={reports}
+      comparisonDelivery={comparisonDelivery}
       controller={controller}
       onResearch={onResearch}
     />
@@ -31,10 +36,12 @@ export function PortfolioReportComparison({
 }
 export function PortfolioReportComparisonView({
   reports,
+  comparisonDelivery,
   controller,
   onResearch,
 }: {
   reports: PortfolioReviewReportController;
+  comparisonDelivery?: PortfolioComparisonReportDeliveryAdapter | undefined;
   controller: PortfolioReportRevisit;
   onResearch?:
     ((listingId: string, opener: HTMLButtonElement) => void) | undefined;
@@ -151,6 +158,7 @@ export function PortfolioReportComparisonView({
             This local copy is unverified. Reading it does not establish an
             online saved version or refresh its sources.
           </p>
+          <p>Saved file: {state.savedFilename}</p>
           <PortfolioReviewReportSnapshot
             report={state.saved}
             compositionId="portfolio-report-saved-composition"
@@ -181,6 +189,10 @@ export function PortfolioReportComparisonView({
             clocks. Changes describe these records; they do not measure
             investment returns.
           </p>
+          <PortfolioComparisonReportControls
+            revisit={controller}
+            delivery={comparisonDelivery}
+          />
           <PortfolioReportComparisonRows
             comparison={state.comparison}
             onResearch={

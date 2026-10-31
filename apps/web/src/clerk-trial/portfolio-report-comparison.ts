@@ -31,6 +31,12 @@ export interface PortfolioReportComparison {
   readonly rows: readonly PortfolioReportComparisonRow[];
   readonly changedFields: readonly string[];
 }
+const owned = new WeakSet<object>();
+export function isPortfolioReportComparison(
+  value: unknown,
+): value is PortfolioReportComparison {
+  return typeof value === "object" && value !== null && owned.has(value);
+}
 function sides(report: PreparedPortfolioReviewReport) {
   return new Map(
     report.sourceRows.map((sourceRow) => {
@@ -152,5 +158,6 @@ export function comparePortfolioReports(
     changedFields: reportDifferences(saved, current),
   };
   freezePortfolioReportData(result);
+  owned.add(result);
   return result;
 }

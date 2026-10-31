@@ -6648,9 +6648,11 @@ it("restores Portfolio research opener focus and retains all three drafts withou
   mounted.direct = true;
   mounted.refIndex = 0;
   const portfolioReviewReportDelivery = { deliver: vi.fn() };
+  const portfolioComparisonReportDelivery = { deliver: vi.fn() };
   const screen = ManagedWorkspaceScreen({
     workspace: f.workspace,
     portfolioReviewReportDelivery,
+    portfolioComparisonReportDelivery,
   });
   const entry = elements(screen).find(
     (node) => node.type === ManagedPortfolioEntry,
@@ -6664,6 +6666,10 @@ it("restores Portfolio research opener focus and retains all three drafts withou
     portfolioReviewReportDelivery,
   );
   expect(portfolioReviewReportDelivery.deliver).not.toHaveBeenCalled();
+  expect(portfolio.props.comparisonReportDelivery).toBe(
+    portfolioComparisonReportDelivery,
+  );
+  expect(portfolioComparisonReportDelivery.deliver).not.toHaveBeenCalled();
   const opener = { isConnected: true, focus: vi.fn() };
   portfolio.props.onResearch(
     draft,

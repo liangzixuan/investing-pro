@@ -78,6 +78,19 @@ it.each([
     );
     reports.prepare();
     const owned = reports.captureCurrent();
+    const revisit = new PortfolioReportRevisit(reports);
+    const bytes = archiveBytes(archiveHtmlFixture(report));
+    revisit.choose({
+      name: "scope-report.html",
+      size: bytes.byteLength,
+      arrayBuffer: () => Promise.resolve(bytes),
+    });
+    expect(await revisit.read()).toBe(true);
+    expect(revisit.compare()).toBe(true);
+    const comparisonReport = revisit.captureComparisonReport(
+      "2026-10-30T12:00:00.000Z",
+    );
+    expect(comparisonReport?.current()).toBe(true);
     const draft = w.portfolio.coordinator.getSnapshot().draft!;
     if (change === "same-view") w.setView("portfolio");
     if (change === "route") {
@@ -111,6 +124,8 @@ it.each([
     if (change === "session") w.sessionOwner.retire("Invented retirement");
     expect(read()).toBe(false);
     expect(owned?.current()).toBe(false);
+    expect(comparisonReport?.current()).toBe(false);
+    revisit.dispose();
     reports.dispose();
   },
 );

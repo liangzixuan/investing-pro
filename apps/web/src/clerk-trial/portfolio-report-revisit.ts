@@ -1,3 +1,5 @@
+import { preparePortfolioComparisonReport } from "./portfolio-comparison-report";
+import type { PortfolioComparisonReportCapture } from "./portfolio-comparison-report-controller";
 import {
   PORTFOLIO_REPORT_ARCHIVE_MAX_BYTES,
   parsePortfolioReportArchive,
@@ -19,6 +21,7 @@ export interface PortfolioReportFile {
 }
 export interface PortfolioReportRevisitState {
   readonly filename: string;
+  readonly savedFilename: string;
   readonly reading: boolean;
   readonly saved: PreparedPortfolioReviewReport | null;
   readonly comparison: PortfolioReportComparison | null;
@@ -27,6 +30,7 @@ export interface PortfolioReportRevisitState {
 const empty = (): PortfolioReportRevisitState =>
   Object.freeze({
     filename: "",
+    savedFilename: "",
     reading: false,
     saved: null,
     comparison: null,
@@ -39,6 +43,10 @@ export class PortfolioReportRevisit {
   private file: PortfolioReportFile | null = null;
   private scope: (() => boolean) | null = null;
   private capture: PortfolioReviewReportCapture | null = null;
+  private archive: Readonly<{
+    saved: PreparedPortfolioReviewReport;
+    filename: string;
+  }> | null = null;
   private operation = 0;
   private disposed = false;
   private readonly listeners = new Set<() => void>();
@@ -81,6 +89,7 @@ export class PortfolioReportRevisit {
   }
   choose(file: PortfolioReportFile) {
     if (this.disposed) return;
+    this.archive = null;
     this.operation += 1;
     this.capture = null;
     this.file = null;
@@ -117,10 +126,13 @@ export class PortfolioReportRevisit {
     const file = this.file;
     if (this.disposed || !file || this.state.reading) return false;
     const operation = ++this.operation;
+    const filename = this.state.filename;
+    this.archive = null;
     this.capture = null;
     this.update({
       ...this.state,
       saved: null,
+      savedFilename: "",
       comparison: null,
       reading: true,
       message: "Reading the chosen Portfolio HTML report…",
@@ -142,9 +154,11 @@ export class PortfolioReportRevisit {
         this.reconcile();
         return false;
       }
+      this.archive = Object.freeze({ saved, filename });
       this.update({
         ...this.state,
         saved,
+        savedFilename: filename,
         reading: false,
         message:
           "Saved report read locally. Its dates and source qualifications remain unchanged.",
@@ -167,6 +181,7 @@ export class PortfolioReportRevisit {
   }
   clear() {
     if (this.disposed) return;
+    this.archive = null;
     this.operation += 1;
     this.file = null;
     this.scope = null;
@@ -205,6 +220,47 @@ export class PortfolioReportRevisit {
       this.capture?.current() === true
     );
   }
+  captureComparisonReport(
+    preparedAt: string,
+  ): PortfolioComparisonReportCapture | null {
+    this.reconcile();
+    const { comparison } = this.state;
+    const capture = this.capture;
+    const archive = this.archive;
+    const operation = this.operation;
+    if (
+      !comparison ||
+      !capture ||
+      !archive ||
+      comparison.saved !== archive.saved
+    )
+      return null;
+    const scope = this.reports.captureReadScope();
+    let retired = false;
+    const owned = () =>
+      !this.disposed &&
+      this.operation === operation &&
+      this.archive === archive &&
+      this.capture === capture &&
+      this.state.comparison === comparison &&
+      this.state.saved === archive.saved &&
+      this.state.savedFilename === archive.filename &&
+      !this.state.reading;
+    const current = () => {
+      if (retired) return false;
+      if (!owned() || !scope() || !capture.current() || !owned())
+        retired = true;
+      return !retired;
+    };
+    if (!current()) return null;
+    const report = preparePortfolioComparisonReport(
+      comparison,
+      archive.filename,
+      preparedAt,
+    );
+    if (!report || !current()) return null;
+    return Object.freeze({ report, current });
+  }
   research(listingId: string, action: () => void) {
     this.reconcile();
     const row = this.state.comparison?.rows.find(
@@ -221,6 +277,7 @@ export class PortfolioReportRevisit {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.archive = null;
     this.operation += 1;
     this.file = null;
     this.scope = null;

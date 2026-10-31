@@ -5,13 +5,29 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: compare a saved Portfolio report with current holdings
+## In development: save a complete Portfolio comparison report
+
+Capture the current saved/current comparison, inspect both complete Portfolio
+records and the full listing union, then explicitly save a private HTML reading
+copy. Original dates, raw values and file qualifications remain visible. Capture,
+file Save and online Portfolio Save are separate actions. Implementation and
+acceptance are in progress; see the [report guide](MANAGED_PORTFOLIO_REVIEW_REPORT.md#keep-a-private-comparison-report).
+
+## Accepted and delivered: compare a saved Portfolio report with current holdings
 
 The [Portfolio report comparison](MANAGED_PORTFOLIO_REVIEW_REPORT.md#compare-a-saved-report-with-current-holdings)
 keeps a chosen private HTML report beside an independently captured current
 review. Inspect both complete records and compare the full listing union, raw
 values, cash, dates and source qualifications. Exact current Research retains
-the authored drafts. Implementation and acceptance are in progress.
+the authored drafts.
+
+[PR 262](https://github.com/liangzixuan/investing-pro/pull/262) merged at
+`1ce343b863913d9f29181e7b6e6d2fc217fe1788`. Original main project checks and all
+123 synthetic native cases passed. Android 1.64.0/code65 is provided locally
+after one guarded build with the existing signer, four same-APK checks and
+local copy/checksum readback. Qualified preparation repairs retain their original
+failures. CodeScene findings remain unsuppressed. Installation, physical-phone
+and browser acceptance are not claimed; API, website and prior releases remain.
 
 ## Accepted and delivered: screen the companies held in Portfolio
 

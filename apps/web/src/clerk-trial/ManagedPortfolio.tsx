@@ -1,3 +1,4 @@
+import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
   ManagedPortfolioPayload,
@@ -181,6 +182,7 @@ export function ManagedPortfolio({
   draftFileScope,
   draftFileDelivery,
   reviewReportDelivery,
+  comparisonReportDelivery,
   draftFileRouteActive = () => true,
 }: {
   workspace: ManagedWorkspace;
@@ -189,6 +191,8 @@ export function ManagedPortfolio({
   draftFileScope?: Promise<string> | undefined;
   draftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter | undefined;
   reviewReportDelivery?: PortfolioReviewReportDeliveryAdapter | undefined;
+  comparisonReportDelivery?:
+    PortfolioComparisonReportDeliveryAdapter | undefined;
   draftFileRouteActive?: () => boolean;
   onResearch: (
     draft: PortfolioDraft,
@@ -639,6 +643,7 @@ export function ManagedPortfolio({
           </section>
           <ManagedPortfolioCloseReview
             delivery={reviewReportDelivery}
+            comparisonDelivery={comparisonReportDelivery}
             workspace={workspace}
             navigationPending={navigationPending}
             onResearch={onResearch}

@@ -1,3 +1,4 @@
+import { createNativePortfolioComparisonReportFixture } from "./native-portfolio-comparison-report-fixture";
 import { createNativeScreenComparisonReportFixture } from "./native-screen-comparison-report-fixture";
 import { createNativeFollowupsReviewReportFixture } from "./native-followups-review-report-fixture";
 import { createNativeValuationCollectionDraftFileFixture } from "./native-valuation-collection-file-fixture";
@@ -55,6 +56,7 @@ const allowedScenarios = [
   "report-comparison-check",
   "portfolio-screen-selection",
   "portfolio-report-comparison",
+  "portfolio-comparison-report",
   "filing-check-assessment",
   "portfolio-ledger",
   "portfolio-close-review",
@@ -120,6 +122,7 @@ export const nativeReport =
     : null;
 export const nativePortfolioReviewReport =
   scenario === "portfolio-report-comparison" ||
+  scenario === "portfolio-comparison-report" ||
   scenario === "portfolio-review-report" ||
   scenario === "portfolio-composition-review"
     ? createNativePortfolioReviewReportFixture()
@@ -156,4 +159,9 @@ export const nativeFollowupsReviewReport =
 export const nativeScreenComparisonReport =
   scenario === "screen-comparison-report"
     ? createNativeScreenComparisonReportFixture()
+    : null;
+
+export const nativePortfolioComparisonReport =
+  scenario === "portfolio-comparison-report"
+    ? createNativePortfolioComparisonReportFixture()
     : null;

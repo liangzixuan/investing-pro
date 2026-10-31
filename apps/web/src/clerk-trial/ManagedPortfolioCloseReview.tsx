@@ -1,3 +1,4 @@
+import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import { capturePortfolioReportReadScope } from "./portfolio-report-revisit-scope";
 import {
   useCallback,
@@ -30,6 +31,7 @@ const emptySnapshot = () => empty;
 const emptySubscribe = () => () => {};
 type Props = {
   delivery?: PortfolioReviewReportDeliveryAdapter | undefined;
+  comparisonDelivery?: PortfolioComparisonReportDeliveryAdapter | undefined;
   workspace: ManagedWorkspace;
   navigationPending: boolean;
   onResearch: (
@@ -120,7 +122,13 @@ function researchCurrent(
   );
   if (draft && exact) onResearch(draft, exact, opener);
 }
-function Review({ workspace, navigationPending, onResearch, delivery }: Props) {
+function Review({
+  workspace,
+  navigationPending,
+  onResearch,
+  delivery,
+  comparisonDelivery,
+}: Props) {
   const { prices, state, current } = useCloseController(
     workspace,
     navigationPending,
@@ -148,6 +156,7 @@ function Review({ workspace, navigationPending, onResearch, delivery }: Props) {
         prices={prices}
         ready={ready}
         delivery={delivery}
+        comparisonDelivery={comparisonDelivery}
         onResearch={(listingId, opener) =>
           researchCurrent(workspace, current, listingId, opener, onResearch)
         }

@@ -1,3 +1,4 @@
+import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
@@ -106,6 +107,7 @@ interface ManagedFileDeliveries {
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
   portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
+  portfolioComparisonReportDelivery?: PortfolioComparisonReportDeliveryAdapter;
   followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
   followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
   valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
@@ -256,6 +258,8 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
     screenComparisonReportDelivery: initial.screenComparisonReportDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     portfolioReviewReportDelivery: initial.portfolioReviewReportDelivery,
+    portfolioComparisonReportDelivery:
+      initial.portfolioComparisonReportDelivery,
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
     followupsReviewReportDelivery: initial.followupsReviewReportDelivery,
     valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
@@ -481,6 +485,7 @@ export function ManagedWorkspaceScreen({
   draftFileDelivery,
   portfolioDraftFileDelivery,
   portfolioReviewReportDelivery,
+  portfolioComparisonReportDelivery,
   followupsDraftFileDelivery,
   followupsReviewReportDelivery,
   valuationDraftFileDelivery,
@@ -1334,6 +1339,7 @@ export function ManagedWorkspaceScreen({
                   draftFileScope,
                   draftFileDelivery: portfolioDraftFileDelivery,
                   reviewReportDelivery: portfolioReviewReportDelivery,
+                  comparisonReportDelivery: portfolioComparisonReportDelivery,
                   navigation: { active: watchlistRouteActive, view: setView },
                   openResearch,
                 })}
