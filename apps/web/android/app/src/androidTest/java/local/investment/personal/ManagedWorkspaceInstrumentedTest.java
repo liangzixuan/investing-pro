@@ -10411,12 +10411,36 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void touchInput(String id, boolean requireCommittedScroll) throws Exception {
+        // Center both axes before enforcing full visibility at fractional viewport edges.
+        String scrolledGeometry = readInputGeometry(id, true);
+        String touchGeometry = scrolledGeometry;
+        if (requireCommittedScroll) {
+            awaitCommittedInputFrame(id);
+            // The committed frame can move the viewport after the synchronous scroll sample.
+            // Observe that frame without issuing another scroll or native input action.
+            touchGeometry = readInputGeometry(id, false);
+            Log.i("ManagedInputFrame", "id=" + id + ", beforeCommit=" + scrolledGeometry
+                + ", afterCommit=" + touchGeometry);
+            JSONObject geometry = new JSONObject(touchGeometry);
+            awaitPage("committed scroll retains the exact enabled visible input geometry: " + id,
+                "(() => { const e=document.getElementById(" + JSONObject.quote(id) + "),g=" + geometry + ";" +
+                " if(!e||e.disabled||e.readOnly||!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;" +
+                " const r=e.getBoundingClientRect(),v=visualViewport;" +
+                " return Math.abs(r.left-g.left)<0.01&&Math.abs(r.top-g.top)<0.01&&Math.abs(r.right-g.right)<0.01&&Math.abs(r.bottom-g.bottom)<0.01" +
+                " &&v.width===g.width&&v.height===g.height&&v.offsetLeft===g.offsetLeft&&v.offsetTop===g.offsetTop&&v.scale===g.scale" +
+                " &&e.contains(document.elementFromPoint(g.x,g.y)); })()", true);
+        }
+        touchEditorGeometry(id, touchGeometry);
+    }
+
+    private String readInputGeometry(String id, boolean scroll) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> observed = new AtomicReference<>();
-        // Center both axes before enforcing full visibility at fractional viewport edges.
+        String scrollToInput = scroll
+            ? " input.scrollIntoView({block:'center',inline:'center',behavior:'instant'});" : "";
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
             "(() => { const input = document.getElementById(" + JSONObject.quote(id) + ");" +
-            " if (!input) return null; input.scrollIntoView({block:'center',inline:'center',behavior:'instant'});" +
+            " if (!input) return null;" + scrollToInput +
             " const r = input.getBoundingClientRect(), v = visualViewport;" +
             " const x = r.left + r.width / 2, y = r.top + r.height / 2;" +
             " return {x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom," +
@@ -10427,18 +10451,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " hit:input.contains(document.elementFromPoint(x,y))};})()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Input geometry was not returned: " + id, returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        if (requireCommittedScroll) {
-            awaitCommittedInputFrame(id);
-            JSONObject geometry = new JSONObject(observed.get());
-            awaitPage("committed scroll retains the exact enabled visible input geometry: " + id,
-                "(() => { const e=document.getElementById(" + JSONObject.quote(id) + "),g=" + geometry + ";" +
-                " if(!e||e.disabled||e.readOnly||!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;" +
-                " const r=e.getBoundingClientRect(),v=visualViewport;" +
-                " return Math.abs(r.left-g.left)<0.01&&Math.abs(r.top-g.top)<0.01&&Math.abs(r.right-g.right)<0.01&&Math.abs(r.bottom-g.bottom)<0.01" +
-                " &&v.width===g.width&&v.height===g.height&&v.offsetLeft===g.offsetLeft&&v.offsetTop===g.offsetTop&&v.scale===g.scale" +
-                " &&e.contains(document.elementFromPoint(g.x,g.y)); })()", true);
-        }
-        touchEditorGeometry(id, observed.get());
+        return observed.get();
     }
 
     /** One case opts in after a scroll; never dispatch a native tap against an uncommitted frame. */

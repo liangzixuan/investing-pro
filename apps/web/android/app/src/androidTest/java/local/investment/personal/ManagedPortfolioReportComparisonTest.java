@@ -6,6 +6,10 @@ import static androidx.test.espresso.matcher.ViewMatchers.*;
 import static org.junit.Assert.*;
 import android.content.Context;
 import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.view.ViewTreeObserver;
 import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.WebSettings;
@@ -19,6 +23,8 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -122,11 +128,57 @@ public class ManagedPortfolioReportComparisonTest {
         PortfolioReportComparisonExpectations.assertWholeJson(new JSONObject(portfolioJson),current.getJSONObject("ledger"));
         click("#portfolio-report-compare");
         await("comparison owns focus and the whole exact identity union", "document.activeElement===document.querySelector('#portfolio-report-comparison-heading')&&[...document.querySelectorAll('[data-portfolio-comparison-row]')].map(e=>e.dataset.portfolioComparisonRow+'|'+e.dataset.comparisonStatus).join(';')==='listing-zero|both;listing-zero-c|both;listing-past|saved-only;listing-new|current-only'");
-        wholeComparison();click("#fixture-portfolio-comparison-observe");
+        wholeComparison();retainDraftObservations();
         page.await(new ReportRevisitPage.Check("narrow comparison wraps identities and retains usable controls",new ReportRevisitPage.Script(
             "(()=>{const h=document.querySelector('#portfolio-report-comparison-heading'),a=h.parentElement,w=document.documentElement.clientWidth;h.scrollIntoView({block:'start',behavior:'instant'});return w===412&&document.documentElement.scrollWidth<=w+1&&a.querySelector('script')===null&&[...a.querySelectorAll('button')].every(b=>b.getBoundingClientRect().height>=44)&&a.textContent.includes('do not measure investment returns');})()")).nativeReady());
         new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario,FollowupsReportFrameCapture.Frame.PORTFOLIO_REPORT_COMPARISON)).retain();boundary(1,2,5);unchangedDrafts();
     }
+
+    private void retainDraftObservations() throws Exception {
+        stage="acknowledged reference observations before Research";
+        String selector="#fixture-portfolio-comparison-observe";
+        page.await(new ReportRevisitPage.Check("exact observation control is enabled before its single native tap",new ReportRevisitPage.Script(
+            "(()=>{const e=document.querySelector("+q(selector)+");if(!e||e.disabled||!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;e.scrollIntoView({block:'center',inline:'center',behavior:'instant'});return "+OBS+".observed===false;})()")).nativeReady());
+        awaitObservationFrame();
+        String geometry=page.raw(new ReportRevisitPage.Script(
+            "(()=>{const e=document.querySelector("+q(selector)+");if(!e||e.disabled||!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return null;const r=e.getBoundingClientRect(),v=visualViewport,x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio,finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio].every(Number.isFinite)&&r.width>0&&r.height>0&&v.width>0&&v.height>0&&v.scale>0&&devicePixelRatio>0,visible:r.left>=v.offsetLeft&&r.top>=v.offsetTop&&r.right<=v.offsetLeft+v.width&&r.bottom<=v.offsetTop+v.height,hit:e.contains(document.elementFromPoint(x,y))};})()"));
+        JSONObject g=new JSONObject(geometry);
+        page.await(new ReportRevisitPage.Check("committed observation control retains its exact enabled self-hit geometry",new ReportRevisitPage.Script(
+            "(()=>{const e=document.querySelector("+q(selector)+"),g="+g+";if(!e||e.disabled||!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;const r=e.getBoundingClientRect(),v=visualViewport;return g.finite&&g.visible&&g.hit&&Math.abs(r.left-g.left)<0.01&&Math.abs(r.top-g.top)<0.01&&Math.abs(r.right-g.right)<0.01&&Math.abs(r.bottom-g.bottom)<0.01&&v.width===g.width&&v.height===g.height&&v.offsetLeft===g.offsetLeft&&v.offsetTop===g.offsetTop&&v.scale===g.scale&&e.contains(document.elementFromPoint(g.x,g.y));})()")).nativeReady());
+        touch.observedGeometry("committed exact fixture reference observation",geometry);
+        page.await(new ReportRevisitPage.Check("reference observations are acknowledged before Research",new ReportRevisitPage.Script(
+            OBS+".observed&&"+OBS+".sameDraft&&"+OBS+".sameSaved&&"+OBS+".sameBase&&"+OBS+".sameWatchlist")).nativeReady());
+    }
+    private void awaitObservationFrame() throws Exception {
+        long deadline=SystemClock.uptimeMillis()+10_000;
+        Handler main=new Handler(Looper.getMainLooper());
+        CompletableFuture<Void> committed=new CompletableFuture<>();
+        AtomicReference<ViewTreeObserver> observer=new AtomicReference<>();
+        AtomicReference<Runnable> frameCallback=new AtomicReference<>();
+        try {
+            scenario.onActivity(activity->{
+                WebView web=activity.getBridge().getWebView();
+                assertTrue("Observation needs an attached visible hardware WebView",web.isAttachedToWindow()&&web.isShown()&&web.isHardwareAccelerated());
+                web.postVisualStateCallback(0,new WebView.VisualStateCallback(){
+                    @Override public void onComplete(long requestId){
+                        if(committed.isDone()||SystemClock.uptimeMillis()>=deadline)return;
+                        Runnable frame=()->main.post(()->{
+                            if(SystemClock.uptimeMillis()<deadline&&committed.complete(null))Log.i("ManagedPortfolioObservation","visualReady=true, frameCommitted=true");
+                        });
+                        ViewTreeObserver current=web.getViewTreeObserver();observer.set(current);frameCallback.set(frame);
+                        current.registerFrameCommitCallback(frame);web.invalidate();
+                    }
+                });
+            });
+            long remaining=deadline-SystemClock.uptimeMillis();
+            assertTrue("Observation frame retains its deadline",remaining>0);
+            committed.get(remaining,TimeUnit.MILLISECONDS);
+        } finally {
+            committed.cancel(false);
+            main.post(()->{ViewTreeObserver current=observer.get();Runnable callback=frameCallback.get();if(current!=null&&current.isAlive()&&callback!=null)current.unregisterFrameCommitCallback(callback);});
+        }
+    }
+
     private void wholeComparison() throws Exception {
         await("full raw amounts, dates, classes, absent sides and missing total remain distinct", "(()=>{const a="+COMPARISON+",rs=[...a.querySelectorAll('[data-portfolio-comparison-row]')];return ['100.00 / 220.50','0.00 / Unavailable','45.35%'].every(t=>a.textContent.includes(t))&&['20.25','25.5','89.25','2026-10-02','2026-10-05'].every(t=>rs[0].textContent.includes(t))&&['Class C','1.25','62.50'].every(t=>rs[1].textContent.includes(t))&&rs[2].textContent.includes('Current holding: absent from this report.')&&rs[3].textContent.includes('Saved holding: absent from this report.')&&rs[3].textContent.includes('Unavailable')&&document.querySelector('#portfolio-report-research-listing-past')===null&&['listing-zero','listing-zero-c','listing-new'].every(id=>document.querySelector('#portfolio-report-research-'+id)?.disabled===false);})()");
         JSONObject saved=new JSONObject(baselineJson),current=new JSONObject(currentJson);
@@ -188,7 +240,7 @@ public class ManagedPortfolioReportComparisonTest {
         await("raw draft and loaded Save base remain separate",OBS+".portfolio.baseVersion===3&&"+OBS+".portfolio.dirty&&"+OBS+".watchlist.dirty&&"+OBS+".file.choices===1&&"+OBS+".file.writes===1");
     }
     private void logFailure(AssertionError failure) {
-        try { Log.e("ManagedPortfolioComparison","stage="+stage+", observation="+page.raw(new ReportRevisitPage.Script("JSON.stringify({url:location.href,active:document.activeElement?.id,back:(()=>{const bs=[...document.querySelectorAll('.managed-company-visit > .trial-toolbar button')],b=bs[0];return {count:bs.length,disabled:b?.disabled,visible:b?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}),label:b?.textContent};})(),research:"+OBS+".research,eodRunning:"+OBS+".eod.running,counts:(()=>{const {requests,...counts}="+OBS+".counts;return counts;})(),view:"+OBS+".view,base:"+OBS+".portfolio.baseVersion,dirty:"+OBS+".portfolio.dirty,rows:document.querySelectorAll('[data-portfolio-comparison-row]').length,closeOpen:document.querySelector('.managed-portfolio-close-review')?.open,readDisabled:document.querySelector('#portfolio-report-read')?.disabled,compareDisabled:document.querySelector('#portfolio-report-compare')?.disabled,sameDraft:"+OBS+".sameDraft,sameSaved:"+OBS+".sameSaved,sameWatchlist:"+OBS+".sameWatchlist})"))); }
+        try { Log.e("ManagedPortfolioComparison","stage="+stage+", observation="+page.raw(new ReportRevisitPage.Script("JSON.stringify({url:location.href,active:document.activeElement?.id,back:(()=>{const bs=[...document.querySelectorAll('.managed-company-visit > .trial-toolbar button')],b=bs[0];return {count:bs.length,disabled:b?.disabled,visible:b?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}),label:b?.textContent};})(),research:"+OBS+".research,eodRunning:"+OBS+".eod.running,counts:(()=>{const {requests,...counts}="+OBS+".counts;return counts;})(),observed:"+OBS+".observed,sameBase:"+OBS+".sameBase,view:"+OBS+".view,base:"+OBS+".portfolio.baseVersion,dirty:"+OBS+".portfolio.dirty,rows:document.querySelectorAll('[data-portfolio-comparison-row]').length,closeOpen:document.querySelector('.managed-portfolio-close-review')?.open,readDisabled:document.querySelector('#portfolio-report-read')?.disabled,compareDisabled:document.querySelector('#portfolio-report-compare')?.disabled,sameDraft:"+OBS+".sameDraft,sameSaved:"+OBS+".sameSaved,sameWatchlist:"+OBS+".sameWatchlist})"))); }
         catch(Exception|AssertionError diagnostic){Log.e("ManagedPortfolioComparison","stage="+stage+", diagnostic unavailable",diagnostic);}
         Log.e("ManagedPortfolioComparison","Original journey assertion",failure);
     }
