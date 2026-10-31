@@ -86,14 +86,14 @@ export function PortfolioComparisonReportView({
     setFocus(null);
   }, [controller, focus, revisit, state]);
   const ready =
-    !!source.filename &&
+    !!source.savedFilename &&
     !!source.comparison &&
     revisit.ownsComparison(source.comparison);
   const owned = () =>
     mounted.current &&
     controller.getSnapshot() === state &&
     revisit.getSnapshot() === source &&
-    !!source.filename &&
+    !!source.savedFilename &&
     !!source.comparison &&
     revisit.ownsComparison(source.comparison);
   const prepare = (button: HTMLButtonElement) => {

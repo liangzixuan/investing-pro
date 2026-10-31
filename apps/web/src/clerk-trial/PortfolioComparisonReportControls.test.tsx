@@ -91,10 +91,14 @@ afterEach(() => {
 async function setup(captured = false) {
   const report = archiveReportFixture();
   const bytes = archiveBytes(archiveHtmlFixture(report));
+  const sourceListeners = new Set<() => void>();
   const reports = new PortfolioReviewReportController(
     {
       capture: () => ({ report, current: () => true }),
-      subscribe: () => () => {},
+      subscribe: (listener) => {
+        sourceListeners.add(listener);
+        return () => sourceListeners.delete(listener);
+      },
     },
     undefined,
     () => null,
@@ -150,6 +154,9 @@ async function setup(captured = false) {
   };
   render();
   return {
+    refreshSource: () => {
+      for (const listener of sourceListeners) listener();
+    },
     report,
     reports,
     revisit,
@@ -165,6 +172,26 @@ async function setup(captured = false) {
 }
 
 describe("private Portfolio comparison report controls", () => {
+  it("enables a fresh capture from admitted provenance after source activity expires the old file selection", async () => {
+    const f = await setup();
+    f.refreshSource();
+    expect(f.revisit.getSnapshot().filename).toBe("");
+    expect(f.revisit.getSnapshot().savedFilename).toBe(f.file.name);
+    f.reports.prepare();
+    expect(f.revisit.compare()).toBe(true);
+    f.render();
+    expect(f.get("portfolio-comparison-report-capture").props.disabled).toBe(
+      false,
+    );
+    f.click("portfolio-comparison-report-capture");
+    f.render();
+    expect(f.controller.getSnapshot().report?.savedFilename).toBe(f.file.name);
+    expect(doc.activeElement).toBe(
+      nodes.get("portfolio-comparison-report-heading"),
+    );
+    expect(f.deliver).not.toHaveBeenCalled();
+  });
+
   it("separates capture, complete passive preview and save, with escaped data and unique IDs", async () => {
     const f = await setup();
     expect(f.get("portfolio-comparison-report-save")).toBeUndefined();

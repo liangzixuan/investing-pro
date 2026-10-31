@@ -158,6 +158,7 @@ export function PortfolioReportComparisonView({
             This local copy is unverified. Reading it does not establish an
             online saved version or refresh its sources.
           </p>
+          <p>Saved file: {state.savedFilename}</p>
           <PortfolioReviewReportSnapshot
             report={state.saved}
             compositionId="portfolio-report-saved-composition"
