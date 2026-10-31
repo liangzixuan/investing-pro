@@ -1,3 +1,4 @@
+import { ManagedPortfolioHeldDueChecks } from "./managed-portfolio-held-due-checks";
 import { ManagedCompanyResearchChecks } from "./managed-company-research-checks-controller";
 import { captureManagedInterimNote } from "./managed-interim-note-context";
 import { ManagedInterimReport } from "./managed-interim-report";
@@ -174,6 +175,7 @@ import {
 import {
   ManagedFollowupsReviewSession,
   type FollowupsReviewHandle,
+  type FollowupsReviewState,
 } from "./managed-followups-review-session";
 import {
   captureResearchFollowupContext,
@@ -363,6 +365,7 @@ export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
   readonly followups: ManagedResearchFollowups;
   readonly followupsReview: ManagedFollowupsReviewSession;
+  readonly portfolioHeldDueChecks: ManagedPortfolioHeldDueChecks;
   readonly portfolio: ManagedPortfolio;
   readonly sessionOwner: ManagedSessionOwner;
   readonly valuation = new ManagedValuationWorkbench();
@@ -756,6 +759,7 @@ export class ManagedWorkspace {
         this.closeResearch();
       this.syncFollowupsReview();
     });
+    this.portfolioHeldDueChecks = new ManagedPortfolioHeldDueChecks(this);
   }
   getSnapshot = (): ManagedDiscoveryState => this.state;
   subscribe = (listener: () => void) => {
@@ -964,6 +968,7 @@ export class ManagedWorkspace {
     this.marketsSourceReview.retire();
     this.cancelFollowupOpening();
     this.followupResearch = null;
+    this.portfolioHeldDueChecks?.retire();
     this.followupsReview.retire();
     this.followups.retire();
     this.portfolio.retire();
@@ -1049,7 +1054,10 @@ export class ManagedWorkspace {
     if (this.state.view === "portfolio" && view !== "portfolio")
       this.portfolio.cancelReview();
     this.closeResearch();
-    if (view === this.state.view) return;
+    if (view === this.state.view) {
+      this.portfolioHeldDueChecks.reconcile();
+      return;
+    }
     if (view === "markets") {
       this.markets.enter(this.state.snapshot?.snapshotSha256 ?? null);
       this.blsCalendar.enter();
@@ -1768,6 +1776,35 @@ export class ManagedWorkspace {
       () => this.invalidateCatalog(),
       this.portfolioPriceCoverage,
     );
+  }
+  /** Retire only the Research authority carried by this exact held review. */
+  retirePortfolioHeldDueReview(captured: FollowupsReviewState) {
+    if (this.followupsReview.getSnapshot() !== captured) return;
+    const handle = captured.selected?.handle;
+    const opening = this.followupOpenOperation;
+    if (handle && this.followupResearch?.reviewHandle === handle)
+      this.followupResearch = null;
+    this.followupsReview.leave();
+    if (opening && this.followupOpenOperation === opening)
+      this.cancelFollowupOpening();
+    this.update({});
+  }
+  /** Exact root Follow-ups visit, including same-view and navigation ABA. */
+  capturePortfolioFollowupsRoute(): (() => boolean) | null {
+    const navigation = this.navigationRevision;
+    const view = this.viewRevision;
+    const current = () =>
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.navigationRevision === navigation &&
+      this.viewRevision === view &&
+      this.state.view === "followups" &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      !this.state.followupOpening &&
+      !this.state.read;
+    return current() ? current : null;
   }
   /** Exact Discover visit; same-view and pending-navigation round trips retire it. */
   capturePortfolioScreenRoute(): (() => boolean) | null {

@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 30, 2026. This document defines the durable product goals and
+Updated October 31, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,20 +27,32 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: keep a complete Portfolio comparison report
+## Current priority: review due checks for current holdings
 
-Extend M4 reproducible exports with an explicit capture, complete passive preview
-and separate private HTML Save for the saved/current Portfolio comparison.
-Retain both full records, the exact listing union, raw evidence and independent
-dates. Reuse the existing chosen-document writer with a distinct report purpose
-and whole-file limit. Implementation and acceptance are in progress; see the
-[report guide](MANAGED_PORTFOLIO_REVIEW_REPORT.md#keep-a-private-comparison-report).
+Connect M4 Portfolio review to existing authored Follow-ups. Explicitly load both
+resources, inspect eligibility for every exact holding and check, choose one to
+five due checks in order, then start the existing review. Research and Back,
+assessment, completion, Save and fresh Load stay explicit. Preserve separate
+share classes, full raw details and independent drafts. This adds a personal
+review workflow without a provider, fee or saved resource. Implementation and
+acceptance are in progress; see the [workflow guide](MANAGED_PORTFOLIO_FOLLOWUPS_REVIEW.md).
+
+## Delivered: keep a complete Portfolio comparison report
+
+Android 1.65 delivers explicit capture, complete preview and separate private
+HTML Save for the saved/current Portfolio comparison. Both full records, the
+exact listing union, raw evidence and independent dates remain in the report.
+Accepted main `943691899817f5727a09edc1f14bcf277164bc7d` passed its original project
+checks and all 128 native cases. One guarded build with the existing signer,
+four checks on that APK, and local copy/readback passed. Original failures and
+qualified corrections remain recorded. Installation remains an owner action;
+see the [report guide](MANAGED_PORTFOLIO_REVIEW_REPORT.md#keep-a-private-comparison-report).
 
 Android 1.64 delivers the saved/current comparison from accepted main
 `1ce343b863913d9f29181e7b6e6d2fc217fe1788`. Original project checks, all 123 native
 cases, one guarded existing-signer build, four same-APK checks and local readback
 passed. Installation remains an owner action. The private comparison report
-above is a new increment and is not included in Android 1.64.
+is available in Android 1.65.
 
 ## Delivered: screen the companies held in Portfolio
 

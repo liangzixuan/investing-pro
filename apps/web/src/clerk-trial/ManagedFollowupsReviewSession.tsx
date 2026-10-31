@@ -1,4 +1,4 @@
-import { useId, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import type { ResearchFollowup } from "@research-cockpit/contracts";
 import {
   FOLLOWUPS_REVIEW_LIMIT,
@@ -221,7 +221,7 @@ export function ManagedFollowupsReviewSession(props: {
     workspace.followups.coordinator.getSnapshot,
   );
   const controls = useManagedFollowupsReviewControls({ ...props, state });
-  const id = useId();
+  const id = "managed-followups-review-heading";
   return (
     <details className="managed-followups-review">
       <summary>Review a few due checks</summary>

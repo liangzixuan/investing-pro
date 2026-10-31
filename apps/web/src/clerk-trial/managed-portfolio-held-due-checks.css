@@ -1,0 +1,39 @@
+.clerk-trial.managed-frame .managed-portfolio-held-due {
+  min-width: 0;
+  margin-block: 20px;
+  padding-block: 16px;
+  border-block: 1px solid var(--managed-line);
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-portfolio-held-due li {
+  min-width: 0;
+  padding-block: 14px;
+  border-bottom: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-portfolio-held-due dd {
+  margin-inline: 0;
+}
+.clerk-trial.managed-frame .managed-portfolio-held-due :is(button, summary) {
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-portfolio-held-due summary {
+  cursor: pointer;
+  align-content: center;
+}
+.clerk-trial.managed-frame .managed-portfolio-held-due :focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame .managed-portfolio-held-due .trial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .clerk-trial.managed-frame .managed-portfolio-held-due .trial-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
