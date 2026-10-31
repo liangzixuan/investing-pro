@@ -1,0 +1,58 @@
+.clerk-trial.managed-frame .managed-markets-briefing-reading {
+  min-width: 0;
+  padding: 16px;
+  margin-block: 16px;
+  color: var(--managed-ink);
+  background: var(--managed-surface);
+  border: 1px solid var(--managed-line);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame
+  .managed-markets-briefing-reading
+  :is(section, details, li) {
+  min-width: 0;
+}
+.clerk-trial.managed-frame
+  .managed-markets-briefing-reading
+  > :is(details, section) {
+  padding-block: 12px;
+  border-block-start: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-markets-briefing-reading summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame .managed-markets-briefing-reading dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.clerk-trial.managed-frame .managed-markets-briefing-reading dd {
+  margin: 0;
+}
+.clerk-trial.managed-frame .managed-markets-briefing-reading p {
+  white-space: pre-wrap;
+}
+.clerk-trial.managed-frame .managed-markets-briefing-reading table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.clerk-trial.managed-frame .managed-markets-briefing-reading :is(th, td) {
+  text-align: left;
+  padding: 8px;
+  border-block-end: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame
+  .managed-markets-briefing-reading
+  :is(summary, a, h2):focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .clerk-trial.managed-frame .managed-markets-briefing-reading dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

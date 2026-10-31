@@ -5,6 +5,8 @@ company question. Source, API and Android 1.55 delivery are accepted from
 `0d72521c5631540c626b8cd63920f478624673de`. The managed website remains at its prior
 release. [Current work](CURRENT_WORK.md) records verification and its limits.
 
+CPI is also part of the seven-operation [Markets source pass](MANAGED_MARKETS_SOURCE_REVIEW.md). The [daily briefing](MANAGED_MARKETS_BRIEFING.md) retains the complete reading and chosen headline through Follow-ups Research and Back. These client changes are in acceptance; the existing source and request limits stay in force.
+
 ## Read and choose
 
 In Markets, open **Published CPI headlines**. Opening the panel, filtering loaded

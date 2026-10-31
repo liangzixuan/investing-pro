@@ -46,6 +46,7 @@ import {
   createScreenComparisonReportNativeFixture,
   type ScreenComparisonReportNativeMetadata,
 } from "./screen-comparison-report-fixture";
+import { createMarketsBriefingNativeFixture } from "./markets-briefing-fixture";
 import { createCpiHeadlineFollowupNativeFixture } from "./cpi-headline-followup-fixture";
 import { createValuationScenarioFollowupNativeFixture } from "./valuation-scenario-followup-fixture";
 import {
@@ -2435,6 +2436,10 @@ const nativeFixtureFactories = new Map<
       createScreenComparisonReportNativeFixture(await createSharedFixture()),
   ],
   [
+    "markets-briefing",
+    async () => createMarketsBriefingNativeFixture(await createSharedFixture()),
+  ],
+  [
     "cpi-headline-followup",
     async () =>
       createCpiHeadlineFollowupNativeFixture(await createSharedFixture()),
@@ -2651,6 +2656,7 @@ export async function createFixture(
     | "annual-revenue-model-basis"
     | "valuation-scenario-followup"
     | "cpi-headline-followup"
+    | "markets-briefing"
     | "portfolio-ledger"
     | "portfolio-close-review"
     | "portfolio-review-report"

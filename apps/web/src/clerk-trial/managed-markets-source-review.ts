@@ -40,7 +40,7 @@ export class ManagedMarketsSourceReview {
     private readonly available: () => boolean,
   ) {
     if (
-      sources.length > 6 ||
+      sources.length > 7 ||
       new Set(sources.map((s) => s.id)).size !== sources.length
     )
       throw new Error("A review requires unique bounded sources.");

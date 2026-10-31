@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Markets daily briefing
+
+Keep selected source work beside the complete Markets reading. Label each
+source's original times, coverage, retained state and pass outcome separately.
+Keep schedules and published headline metadata distinct. After an owned check
+visit, show the complete retained reading and selected item, with an explicit
+return action and a separate action to start another briefing. Retained reading
+must not expose stale request or Create controls. Use wrapping text, full listing
+identities, native detail disclosures, visible focus and 44px controls. Only the
+committed return action may focus the reading heading.
+
 ## Filing evidence within a chosen review
 
 Keep source Load, Refresh and Cancel beside the current check. Label each exact

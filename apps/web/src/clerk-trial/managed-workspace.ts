@@ -15,6 +15,8 @@ import { ManagedCpiHeadlines } from "./managed-cpi-headlines";
 import { ManagedCpiHeadlineFollowupContext } from "./managed-cpi-headline-followup-context";
 import { ManagedScreenComparisonFollowupContext } from "./managed-screen-comparison-followup-context";
 import { ManagedMarketsCalendarFollowupContext } from "./managed-calendar-followup-context";
+import { ManagedMarketsBriefingContext } from "./managed-markets-briefing-context";
+import type { ManagedMarketsBriefingSelection } from "./managed-markets-briefing";
 import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { FilingsFollowupPort } from "./managed-filings-followup";
 import { captureFollowupReviewNoteContext } from "./managed-followup-review-note-context";
@@ -419,6 +421,7 @@ export class ManagedWorkspace {
   private readonly watchlistFileContexts =
     new WeakSet<WatchlistDraftFileContext>();
   private followupsNavigationDepth = 0;
+  private readonly marketsBriefing: ManagedMarketsBriefingContext;
   private viewRevision = 0;
   private navigationRevision = 0;
   private state = emptyDiscovery();
@@ -666,6 +669,7 @@ export class ManagedWorkspace {
       bls: this.blsCalendar,
       bea: this.agenda,
       fed: this.announcements,
+      cpi: this.cpiHeadlines,
       available: () => this.marketsReviewAvailable(),
     });
     this.cpiFollowupContext = new ManagedCpiHeadlineFollowupContext({
@@ -779,6 +783,14 @@ export class ManagedWorkspace {
       this.secAccess,
       researchOptions,
     );
+    this.marketsBriefing = new ManagedMarketsBriefingContext({
+      workspace: this,
+      available: () => this.calendarFollowupRouteReady(),
+      retired: () => this.retired,
+      blocked: () => this.navigationBlocked,
+      researchOwner: () => this.followupResearch,
+      publish: () => this.update({}),
+    });
     this.reviewFilings.subscribe(() => {
       if (this.reviewFilings.getSnapshot().catalogChanged)
         this.invalidateCatalog();
@@ -791,6 +803,7 @@ export class ManagedWorkspace {
   };
   private marketsReviewAvailable() {
     return (
+      !this.marketsBriefing?.returned &&
       !this.retired &&
       !this.navigationBlocked &&
       this.state.view === "markets" &&
@@ -800,6 +813,7 @@ export class ManagedWorkspace {
   }
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
+    this.marketsBriefing?.reconcile();
     this.companySourcePass.reconcile();
     this.valuationRevenueBasis.reconcile();
     this.marketsSourceReview.reconcile();
@@ -815,6 +829,7 @@ export class ManagedWorkspace {
     for (const listener of this.listeners) listener();
   }
   setNavigationBlocked(blocked: boolean) {
+    this.marketsBriefing?.navigation(blocked);
     this.followupsNavigationDepth++;
     try {
       this.followupsReview.setAvailable(false);
@@ -921,6 +936,7 @@ export class ManagedWorkspace {
   }
   private syncAnnouncements() {
     if (
+      this.marketsBriefing?.returned ||
       this.retired ||
       this.navigationBlocked ||
       this.state.view !== "markets" ||
@@ -983,6 +999,7 @@ export class ManagedWorkspace {
     return this.watchlistPrices.load(handle);
   }
   private clear() {
+    this.marketsBriefing?.clear();
     this.retired = true;
     this.screenComparisonFollowup.retire();
     this.cpiFollowupContext.retire();
@@ -1074,15 +1091,18 @@ export class ManagedWorkspace {
   }
   setView(view: ManagedDiscoveryState["view"]) {
     if (!this.canNavigate()) return;
+    const { wasReturned, owned } = this.marketsBriefing.beforeView(view);
     this.viewRevision++;
     if (this.state.view === "portfolio" && view !== "portfolio")
       this.portfolio.cancelReview();
     this.closeResearch();
-    if (view === this.state.view) {
+    if (view === this.state.view && !wasReturned) {
       this.portfolioHeldDueChecks.reconcile();
       return;
     }
-    if (view === "markets") {
+    if (view === "markets" && owned && this.marketsBriefing?.returned) {
+      // The retained reading keeps every live source inactive.
+    } else if (view === "markets") {
       this.markets.enter(this.state.snapshot?.snapshotSha256 ?? null);
       this.blsCalendar.enter();
       this.agenda.enter();
@@ -1094,6 +1114,7 @@ export class ManagedWorkspace {
     this.update({ view });
   }
   private invalidateCatalog() {
+    this.marketsBriefing?.clear();
     this.marketsSourceReview.invalidate();
     if (this.retired || !this.state.snapshot) return;
     this.state = { ...this.state, snapshot: null };
@@ -1115,6 +1136,7 @@ export class ManagedWorkspace {
     });
   }
   async refreshCatalog() {
+    this.marketsBriefing?.clear();
     this.marketsSourceReview.invalidate();
     await this.readCatalog("status");
   }
@@ -1400,6 +1422,7 @@ export class ManagedWorkspace {
   }
   async setCompanyRoute(route: ManagedCompanyRoute | null) {
     if (!this.canNavigate()) return;
+    this.marketsBriefing.companyRoute(route);
     this.cancelFollowupOpening();
     this.watchlistPrices.cancel();
     if (
@@ -1690,6 +1713,7 @@ export class ManagedWorkspace {
     }
   }
   closeResearch() {
+    this.marketsBriefing?.closeResearch();
     this.cancelFollowupOpening();
     this.followupResearch = null;
     if (this.clearResearch()) this.update({});
@@ -2175,6 +2199,31 @@ export class ManagedWorkspace {
       selected.selectedId === entry.id;
     return isCurrent() ? Object.freeze({ entry, draft, isCurrent }) : null;
   }
+  isMarketsBriefingPassive() {
+    return this.marketsBriefing.returned;
+  }
+  getMarketsBriefingReading() {
+    return this.marketsBriefing.getMarketsBriefingReading();
+  }
+  reviewMarketsBriefingFollowup(
+    entry: ResearchFollowup,
+    capture: CalendarSourceCapture,
+    navigate: () => boolean,
+    selection?: ManagedMarketsBriefingSelection,
+  ) {
+    return this.marketsBriefing.reviewMarketsBriefingFollowup(
+      entry,
+      capture,
+      navigate,
+      selection,
+    );
+  }
+  resumeMarketsBriefingFollowup() {
+    return this.marketsBriefing.resumeMarketsBriefingFollowup();
+  }
+  returnToMarketsBriefing(navigate: () => boolean) {
+    return this.marketsBriefing.returnToMarketsBriefing(navigate);
+  }
   private followupRouteIsCurrent() {
     if (this.retired) return false;
     if (this.navigationBlocked) return false;
@@ -2235,6 +2284,7 @@ export class ManagedWorkspace {
   async prepareFollowupResearch(
     entry: ResearchFollowup,
   ): Promise<PreparedFollowupResearch | null> {
+    this.marketsBriefing.prepareResearch(entry);
     const snapshot = this.state.snapshot;
     const draft = this.followups.coordinator.getSnapshot().draft;
     if (!this.followupOpeningRouteReady()) return null;
@@ -2346,6 +2396,7 @@ export class ManagedWorkspace {
       this.preparedFollowupIsCurrent(capture) &&
       (evidence?.isCurrent() ?? true);
     if (!current() || this.state.research || this.state.companyRoute) return;
+    this.marketsBriefing.openResearch(capture);
     this.followupResearch = {
       reviewHandle: capture.reviewHandle,
       id: capture.entry.id,
@@ -3909,7 +3960,9 @@ export class ManagedWorkspace {
     );
   }
   captureCpiHeadlineSource(key: string, selectionIsCurrent: () => boolean) {
-    return this.cpiFollowupContext.capture(key, selectionIsCurrent);
+    const result = this.cpiFollowupContext.capture(key, selectionIsCurrent);
+    if (result.capture) this.marketsBriefing.register(result.capture);
+    return result;
   }
   private datedSourceContext(capture: CalendarSourceCapture) {
     return capture.source.kind === "cpi"
@@ -3917,7 +3970,12 @@ export class ManagedWorkspace {
       : this.calendarFollowupContext;
   }
   captureMarketsCalendarSource(key: string, selectionIsCurrent: () => boolean) {
-    return this.calendarFollowupContext.capture(key, selectionIsCurrent);
+    const result = this.calendarFollowupContext.capture(
+      key,
+      selectionIsCurrent,
+    );
+    if (result.capture) this.marketsBriefing.register(result.capture);
+    return result;
   }
   captureMarketsCalendarFollowup(
     capture: CalendarSourceCapture,

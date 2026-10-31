@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { FollowupReview, ManagedWorkspace } from "./managed-workspace";
 
 interface Host {
@@ -17,6 +18,19 @@ export function marketsFollowupNavigation(host: Host) {
     review: (entry: FollowupReview["entry"]) => {
       const review = host.workspace.reviewFollowup(entry, () =>
         host.setView("followups"),
+      );
+      if (review) host.setReview(review);
+    },
+    reviewBriefing: (
+      entry: FollowupReview["entry"],
+      capture: CalendarSourceCapture,
+      selection?: { date?: string; source?: string; title?: string },
+    ) => {
+      const review = host.workspace.reviewMarketsBriefingFollowup(
+        entry,
+        capture,
+        () => host.setView("followups"),
+        selection,
       );
       if (review) host.setReview(review);
     },

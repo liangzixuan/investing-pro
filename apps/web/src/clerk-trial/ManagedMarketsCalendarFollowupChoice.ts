@@ -6,6 +6,7 @@ interface Choice {
   capture: CalendarSourceCapture | null;
   revision: number;
   reason: string | null;
+  selection?: { date?: string; source?: string; title?: string };
 }
 interface Render {
   props: ManagedMarketsCalendarFollowupProps;
@@ -32,6 +33,7 @@ function keepChoice(
   interaction: Interaction,
   entry: MarketsDayEntry,
   selectionIsCurrent: () => boolean,
+  selection?: { date?: string; source?: string; title?: string },
 ) {
   if (!current(interaction) || !selectionIsCurrent()) return;
   const { props, choice } = interaction.render;
@@ -48,6 +50,7 @@ function keepChoice(
   interaction.focusFrom.current = activeElement();
   interaction.publish({
     capture: result.capture,
+    ...(selection ? { selection } : {}),
     revision: choice.revision + 1,
     reason: null,
   });
@@ -82,8 +85,11 @@ export function useCalendarSourceChoice(
   };
   return {
     choice,
-    onKeepCheck: (entry: MarketsDayEntry, selectionIsCurrent: () => boolean) =>
-      keepChoice(interaction, entry, selectionIsCurrent),
+    onKeepCheck: (
+      entry: MarketsDayEntry,
+      selectionIsCurrent: () => boolean,
+      selection?: { date?: string; source?: string; title?: string },
+    ) => keepChoice(interaction, entry, selectionIsCurrent, selection),
     onClose: () => restoreFocus(interaction),
   };
 }

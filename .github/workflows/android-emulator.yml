@@ -583,6 +583,15 @@ jobs:
           required.add(review_filings_evidence_case)
           if len(required) != 130:
               raise SystemExit("The retained-filings journey must preserve all 129 prior native cases.")
+          markets_briefing_case = (
+              "local.investment.personal.ManagedMarketsBriefingTest",
+              "mixedPassKeepsCompleteEvidenceThroughTwoChecksResearchReturnAndSeparateSave",
+          )
+          if markets_briefing_case in required:
+              raise SystemExit("The Markets briefing journey must be a distinct native case.")
+          required.add(markets_briefing_case)
+          if len(required) != 131:
+              raise SystemExit("The Markets briefing journey must preserve all 130 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -671,6 +680,12 @@ jobs:
                       raise SystemExit("The retained-filings shard must retain its scoped current-check packet frame.")
               elif review_filings_evidence_frames:
                   raise SystemExit("The retained-filings frame belongs only to its executed shard.")
+              markets_briefing_frames = list(root.rglob("newMarketsBriefing.png"))
+              if markets_briefing_case in executed:
+                  if len(markets_briefing_frames) != 1 or markets_briefing_frames[0].stat().st_size == 0:
+                      raise SystemExit("The Markets briefing shard must retain its scoped selected-item reading frame.")
+              elif markets_briefing_frames:
+                  raise SystemExit("The Markets briefing frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

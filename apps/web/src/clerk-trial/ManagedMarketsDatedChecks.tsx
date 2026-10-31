@@ -1,3 +1,4 @@
+import type { CalendarSourceCapture } from "./managed-calendar-followup";
 import type { ResearchFollowup } from "@research-cockpit/contracts";
 import type { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedMarketsNavigationProps } from "./ManagedMarketsNavigation";
@@ -11,6 +12,11 @@ interface Props {
   navigationPending: boolean;
   navigation: {
     review: (entry: ResearchFollowup) => void;
+    reviewBriefing: (
+      entry: ResearchFollowup,
+      capture: CalendarSourceCapture,
+      selection?: { date?: string; source?: string; title?: string },
+    ) => void;
     manageFollowups: () => void;
     manageWatchlist: () => void;
   };
@@ -38,7 +44,7 @@ export function ManagedMarketsDatedChecks({
         workspace={workspace}
         isCurrent={isCurrent}
         navigationPending={navigationPending}
-        onReview={navigation.review}
+        onReview={navigation.reviewBriefing}
         onManageWatchlist={navigation.manageWatchlist}
       />
       <ManagedMarketsCalendarFollowup
@@ -47,7 +53,7 @@ export function ManagedMarketsDatedChecks({
         headingRef={sections.targets.day.ref}
         isCurrent={isCurrent}
         navigationPending={navigationPending}
-        onReview={navigation.review}
+        onReview={navigation.reviewBriefing}
         onManageWatchlist={navigation.manageWatchlist}
       />
     </>
