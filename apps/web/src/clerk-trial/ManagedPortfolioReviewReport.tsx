@@ -1,3 +1,4 @@
+import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import { PortfolioReportComparison } from "./PortfolioReportComparison";
 import { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type { ManagedPortfolioCloseReview } from "./managed-portfolio-close-review";
@@ -16,6 +17,7 @@ interface Props {
   prices: ManagedPortfolioCloseReview | undefined;
   ready: boolean;
   delivery: PortfolioReviewReportDeliveryAdapter | undefined;
+  comparisonDelivery?: PortfolioComparisonReportDeliveryAdapter | undefined;
 }
 const empty = emptyPortfolioReviewReport();
 const emptySnapshot = () => empty;
@@ -180,6 +182,7 @@ export function ManagedPortfolioReviewReport(props: Props) {
       {controller && (
         <PortfolioReportComparison
           reports={controller}
+          comparisonDelivery={props.comparisonDelivery}
           onResearch={props.onResearch}
         />
       )}

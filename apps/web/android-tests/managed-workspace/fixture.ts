@@ -2552,6 +2552,11 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "portfolio-comparison-report",
+    async () =>
+      createPortfolioReportComparisonFixture(await createSharedFixture()),
+  ],
+  [
     "portfolio-report-comparison",
     async () =>
       createPortfolioReportComparisonFixture(await createSharedFixture()),
@@ -2615,6 +2620,7 @@ export async function createFixture(
     | "report-comparison-check"
     | "portfolio-screen-selection"
     | "portfolio-report-comparison"
+    | "portfolio-comparison-report"
     | "research-draft-set"
     | "filing-check-assessment"
     | "screen-comparison-followup"

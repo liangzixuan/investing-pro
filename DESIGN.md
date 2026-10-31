@@ -11,6 +11,15 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Private Portfolio comparison reading report
+
+Keep Capture, full preview and file Save separate. Reuse the complete passive
+view for the preview and file. Label saved/current records, filename and original
+dates; show all union rows, unavailable values and file qualifications. Use the
+existing wrapping readouts, stacked narrow layout, visible focus and 44px actions.
+Only the action that owns the current report may move focus. Close and Cancel
+affect this report; Research/Back and online Portfolio Save remain separate.
+
 ## Saved and current Portfolio reports
 
 Keep file choice and Read separate from the current capture and Compare actions.

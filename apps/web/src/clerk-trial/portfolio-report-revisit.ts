@@ -1,3 +1,5 @@
+import { preparePortfolioComparisonReport } from "./portfolio-comparison-report";
+import type { PortfolioComparisonReportCapture } from "./portfolio-comparison-report-controller";
 import {
   PORTFOLIO_REPORT_ARCHIVE_MAX_BYTES,
   parsePortfolioReportArchive,
@@ -204,6 +206,41 @@ export class PortfolioReportRevisit {
       this.state.comparison === comparison &&
       this.capture?.current() === true
     );
+  }
+  captureComparisonReport(
+    preparedAt: string,
+  ): PortfolioComparisonReportCapture | null {
+    this.reconcile();
+    const { comparison, filename } = this.state;
+    const capture = this.capture;
+    const file = this.file;
+    const scope = this.scope;
+    const operation = this.operation;
+    if (!comparison || !capture || !file || !scope || !filename) return null;
+    let retired = false;
+    const owned = () =>
+      !this.disposed &&
+      this.operation === operation &&
+      this.file === file &&
+      this.scope === scope &&
+      this.capture === capture &&
+      this.state.comparison === comparison &&
+      this.state.filename === filename &&
+      !this.state.reading;
+    const current = () => {
+      if (retired) return false;
+      if (!owned() || !scope() || !capture.current() || !owned())
+        retired = true;
+      return !retired;
+    };
+    if (!current()) return null;
+    const report = preparePortfolioComparisonReport(
+      comparison,
+      filename,
+      preparedAt,
+    );
+    if (!report || !current()) return null;
+    return Object.freeze({ report, current });
   }
   research(listingId: string, action: () => void) {
     this.reconcile();

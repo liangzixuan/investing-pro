@@ -1,3 +1,4 @@
+import { browserPortfolioComparisonReportAdapter } from "./portfolio-comparison-report-delivery";
 import { browserResearchDraftSetFileAdapter } from "./research-draft-set-file-delivery";
 import { browserValuationCollectionDraftFileAdapter } from "./valuation-collection-draft-file-delivery";
 import { browserScreenComparisonReportAdapter } from "./screen-comparison-report-delivery";
@@ -118,6 +119,8 @@ function ClerkSession({
               portfolioDraftFileDelivery: browserPortfolioDraftFileAdapter,
               portfolioReviewReportDelivery:
                 browserPortfolioReviewReportAdapter,
+              portfolioComparisonReportDelivery:
+                browserPortfolioComparisonReportAdapter,
               followupsDraftFileDelivery: browserFollowupsDraftFileAdapter,
               followupsReviewReportDelivery:
                 browserFollowupsReviewReportAdapter,

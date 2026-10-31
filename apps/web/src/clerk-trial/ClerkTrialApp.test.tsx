@@ -17,9 +17,11 @@ import {
   type ManagedPortfolioDraftFileDeliveryAdapter,
 } from "./portfolio-draft-file-delivery";
 import { browserPortfolioReviewReportAdapter } from "./portfolio-review-report-delivery";
+import { browserPortfolioComparisonReportAdapter } from "./portfolio-comparison-report-delivery";
 import { browserFollowupsReviewReportAdapter } from "./followups-review-report-delivery";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
 import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
+import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import { browserCompanyReportAdapter } from "./browser-company-report";
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ReactNode } from "react";
@@ -172,6 +174,7 @@ describe("official Clerk browser adapter", () => {
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
+      portfolioComparisonReportDelivery?: PortfolioComparisonReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
@@ -185,6 +188,7 @@ describe("official Clerk browser adapter", () => {
     expect(props.draftFileDelivery).toBeUndefined();
     expect(props.portfolioDraftFileDelivery).toBeUndefined();
     expect(props.portfolioReviewReportDelivery).toBeUndefined();
+    expect(props.portfolioComparisonReportDelivery).toBeUndefined();
     expect(props.followupsDraftFileDelivery).toBeUndefined();
     expect(props.followupsReviewReportDelivery).toBeUndefined();
     expect(props.valuationDraftFileDelivery).toBeUndefined();
@@ -262,6 +266,7 @@ describe("official Clerk browser adapter", () => {
       draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
       portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
       portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
+      portfolioComparisonReportDelivery?: PortfolioComparisonReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
@@ -277,6 +282,9 @@ describe("official Clerk browser adapter", () => {
     );
     expect(props.portfolioReviewReportDelivery).toBe(
       browserPortfolioReviewReportAdapter,
+    );
+    expect(props.portfolioComparisonReportDelivery).toBe(
+      browserPortfolioComparisonReportAdapter,
     );
     expect(props.followupsDraftFileDelivery).toBe(
       browserFollowupsDraftFileAdapter,

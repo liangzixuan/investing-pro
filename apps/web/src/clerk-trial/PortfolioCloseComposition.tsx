@@ -144,7 +144,9 @@ export function PortfolioCloseComposition({
   id:
     | "portfolio-close-composition"
     | "portfolio-report-composition"
-    | "portfolio-report-saved-composition";
+    | "portfolio-report-saved-composition"
+    | "portfolio-comparison-report-saved-composition"
+    | "portfolio-comparison-report-current-composition";
   review: AuthoredPortfolioCloseReviewResult;
   rows: readonly PortfolioCloseRow[];
 }) {

@@ -51,7 +51,7 @@ remain separate.
 
 ## Compare a saved report with current holdings
 
-This workflow is in development; its acceptance is recorded in [Current work](CURRENT_WORK.md).
+This workflow is accepted in source and provided in Android 1.64. Its evidence and delivery limits are recorded in [Current work](CURRENT_WORK.md).
 
 Choose one saved Portfolio HTML report and explicitly read it. Inspect its full
 ledger, holdings, selected close date and original source packets. The reader
@@ -72,3 +72,28 @@ drafts; reopen the review and capture again after navigation or a source change.
 Changing the file or retiring the current capture withdraws the comparison.
 Cancelled and late reads cannot replace the active result. File reading adds no
 online Save, draft import, background request or report store.
+
+## Keep a private comparison report
+
+This increment is in development. Source, automated checks and delivery remain
+separate until recorded in [Current work](CURRENT_WORK.md).
+
+After comparing a saved report with current holdings, choose **Capture comparison
+report**. Inspect the complete saved and current records, every listing in the
+comparison, raw shares and values, cash, ledger, composition and source packets.
+The saved filename and unverified-file qualification remain visible. Each side
+keeps its own capture time, close date and source dates. Missing values and absent
+holdings remain distinct; the report does not calculate returns.
+
+Choose **Save comparison report (HTML)** separately. Android asks for one chosen
+document. The browser requests a download; that request alone does not prove a
+durable file. The complete UTF-8 document must fit within 8 MiB. Larger reports
+are refused without clipping. The file has a distinct purpose and strict content
+policy, with no scripts or external assets. It cannot serve as a single Portfolio
+report or a recoverable draft.
+
+Changing the chosen file, current capture, source, date, ledger, form, catalog,
+navigation or session retires the report and cancels unfinished delivery.
+Restoring earlier values cannot renew the capture. Close and Cancel affect only
+this report. Current drafts, online Save and Research/Back retain their existing
+ownership. Keep the file private: it contains both full authored records.

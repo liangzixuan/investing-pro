@@ -17,7 +17,10 @@ export function PortfolioReviewReportSnapshot({
 }: {
   readonly report: PreparedPortfolioReviewReport;
   readonly compositionId?:
-    "portfolio-report-composition" | "portfolio-report-saved-composition";
+    | "portfolio-report-composition"
+    | "portfolio-report-saved-composition"
+    | "portfolio-comparison-report-saved-composition"
+    | "portfolio-comparison-report-current-composition";
 }) {
   if (
     !isPreparedPortfolioReviewReport(report) &&

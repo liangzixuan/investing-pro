@@ -1,3 +1,4 @@
+import { PortfolioComparisonReportFixtureDiagnostics } from "./portfolio-comparison-report-fixture-diagnostics";
 import { PortfolioReportComparisonFixtureControls } from "./portfolio-report-comparison-fixture-controls";
 import { PortfolioScreenSelectionFixtureControls } from "./portfolio-screen-selection-fixture-controls";
 import { ReportComparisonCheckFixtureControls } from "./report-comparison-check-fixture-controls";
@@ -36,6 +37,7 @@ import {
   nativeReport,
   nativeExport,
   nativePortfolioReviewReport,
+  nativePortfolioComparisonReport,
   nativeFollowupsReviewReport,
   nativeScreenComparisonReport,
   nativeDraftFile,
@@ -80,7 +82,8 @@ function useFixtureWorkspace(session: TrialSession) {
     });
     if (
       scenario === "portfolio-screen-selection" ||
-      scenario === "portfolio-report-comparison"
+      scenario === "portfolio-report-comparison" ||
+      scenario === "portfolio-comparison-report"
     )
       current.setView("portfolio");
     setWorkspace(current);
@@ -201,7 +204,8 @@ function NativeDeliveryControls({
       )}
       {workspace &&
         nativePortfolioReviewReport &&
-        scenario !== "portfolio-report-comparison" && (
+        scenario !== "portfolio-report-comparison" &&
+        scenario !== "portfolio-comparison-report" && (
           <PortfolioReviewReportFixtureControls workspace={workspace} />
         )}
       {workspace && fixture.reviewCompletion && nativeFollowupsReviewReport && (
@@ -346,6 +350,11 @@ export function FixtureSession({ session, onFreshSession }: Props) {
             delivery={nativePortfolioReviewReport}
           />
         )}
+      {nativePortfolioComparisonReport && (
+        <PortfolioComparisonReportFixtureDiagnostics
+          delivery={nativePortfolioComparisonReport}
+        />
+      )}
       <ResourceControls workspace={workspace} onFreshSession={onFreshSession} />
     </>
   );

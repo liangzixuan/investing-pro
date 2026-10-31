@@ -1,4 +1,8 @@
 import {
+  createNativePortfolioComparisonReportAdapter,
+  type InvestmentPortfolioComparisonReportPlugin,
+} from "./portfolio-comparison-report-delivery";
+import {
   createNativeResearchDraftSetFileAdapter,
   type InvestmentResearchDraftSetFilePlugin,
 } from "./research-draft-set-file-delivery";
@@ -165,6 +169,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const portfolioComparisonReportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativePortfolioComparisonReportAdapter(
+            registerPlugin<InvestmentPortfolioComparisonReportPlugin>(
+              "InvestmentPortfolioComparisonReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const followupsReviewReportDelivery = useMemo(
     () =>
       managed
@@ -285,6 +300,9 @@ function NativeSession({
                 : {})}
               {...(portfolioReviewReportDelivery
                 ? { portfolioReviewReportDelivery }
+                : {})}
+              {...(portfolioComparisonReportDelivery
+                ? { portfolioComparisonReportDelivery }
                 : {})}
               {...(followupsReviewReportDelivery
                 ? { followupsReviewReportDelivery }

@@ -163,7 +163,7 @@ public final class SavedWatchlistTestDocumentsProvider extends DocumentsProvider
         boolean reviewReport = "text/html".equals(mimeType) && displayName != null
             && displayName.matches("Investment-(?:portfolio|followups)-review-[0-9]{8}T[0-9]{9}Z\\.html");
         boolean screenComparisonReport = "text/html".equals(mimeType) && displayName != null
-            && displayName.matches("Investment-screen-comparison-[0-9]{8}T[0-9]{9}Z\\.html");
+            && displayName.matches("Investment-(?:screen|portfolio)-comparison-[0-9]{8}T[0-9]{9}Z\\.html");
         boolean draft = "application/json".equals(mimeType) && displayName != null
             && displayName.matches("Investment-(?:watchlist|valuation-inputs|valuation-collection)-draft-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z\\.json");
         boolean recipe = "application/json".equals(mimeType) && displayName != null

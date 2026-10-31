@@ -27,14 +27,20 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: compare saved and current Portfolio reports
+## Current priority: keep a complete Portfolio comparison report
 
-The [Portfolio report comparison](MANAGED_PORTFOLIO_REVIEW_REPORT.md#compare-a-saved-report-with-current-holdings)
-extends M4 with a full saved/current holdings review. Read one chosen HTML file,
-capture current holdings independently and compare exact identities, dated raw
-values, cash and qualifications. Keep absent and unavailable values distinct,
-then continue to Research for an exact current holding. Implementation and
-verification are in progress. This adds no return model, feed or stored resource.
+Extend M4 reproducible exports with an explicit capture, complete passive preview
+and separate private HTML Save for the saved/current Portfolio comparison.
+Retain both full records, the exact listing union, raw evidence and independent
+dates. Reuse the existing chosen-document writer with a distinct report purpose
+and whole-file limit. Implementation and acceptance are in progress; see the
+[report guide](MANAGED_PORTFOLIO_REVIEW_REPORT.md#keep-a-private-comparison-report).
+
+Android 1.64 delivers the saved/current comparison from accepted main
+`1ce343b863913d9f29181e7b6e6d2fc217fe1788`. Original project checks, all 123 native
+cases, one guarded existing-signer build, four same-APK checks and local readback
+passed. Installation remains an owner action. The private comparison report
+above is a new increment and is not included in Android 1.64.
 
 ## Delivered: screen the companies held in Portfolio
 
