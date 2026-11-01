@@ -149,8 +149,31 @@ export function useManagedFollowupsReviewControls(props: Props) {
     },
     finish: (button: HTMLButtonElement) => {
       if (!current()) return;
-      remember(button, "finished", -1);
-      model.finish(state);
+      const ownsFocus = document.activeElement === button;
+      let publications = 0;
+      const unsubscribe = model.subscribe(() => {
+        publications++;
+      });
+      try {
+        model.finish(state);
+      } finally {
+        unsubscribe();
+      }
+      const next = model.getSnapshot();
+      if (
+        ownsFocus &&
+        publications === 1 &&
+        next.phase === "finished" &&
+        next.chosen === state.chosen &&
+        next.selected === null &&
+        next.position === -1
+      )
+        transition.current = {
+          button,
+          phase: next.phase,
+          position: next.position,
+          state: next,
+        };
     },
     research: (button: HTMLButtonElement) => {
       if (!current()) return;

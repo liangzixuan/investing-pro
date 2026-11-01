@@ -20,6 +20,8 @@ import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
 import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 
+import type { PortfolioDatedReviewNavigation } from "./ManagedPortfolioDatedReviewActions";
+
 const usd = (value: string | null) =>
   value === null ? "Unknown" : `USD ${value}`;
 const reviewLabels = {
@@ -183,9 +185,11 @@ export function ManagedPortfolio({
   draftFileDelivery,
   reviewReportDelivery,
   comparisonReportDelivery,
+  datedReviewNavigation,
   draftFileRouteActive = () => true,
 }: {
   workspace: ManagedWorkspace;
+  datedReviewNavigation: PortfolioDatedReviewNavigation;
   navigationPending: boolean;
   onReviewWatchlist: () => void;
   draftFileScope?: Promise<string> | undefined;
@@ -642,6 +646,7 @@ export function ManagedPortfolio({
             )}
           </section>
           <ManagedPortfolioCloseReview
+            datedReviewNavigation={datedReviewNavigation}
             delivery={reviewReportDelivery}
             comparisonDelivery={comparisonReportDelivery}
             workspace={workspace}

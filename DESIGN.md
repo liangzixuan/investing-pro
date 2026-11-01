@@ -11,6 +11,18 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Dated Portfolio review
+
+Keep the complete dated reading beside the ordered held-check workflow, including
+owned company research. Separate source times, chosen close date and the UTC day
+used for due checks. Use the existing passive report disclosure and full ledger;
+never turn partial price coverage into a complete valuation. Keep explicit load,
+transfer, selection, start, completion and Save actions distinct. Finish shows all
+chosen assessments and statuses, plus other open checks from the original plan.
+Use wrapping raw text, visible focus, native disclosures and 44px controls. Only
+an admitted transfer may focus the reading heading; background updates must not
+move focus. See the [workflow guide](docs/MANAGED_PORTFOLIO_DATED_REVIEW.md).
+
 ## Markets daily briefing
 
 Keep selected source work beside the complete Markets reading. Label each

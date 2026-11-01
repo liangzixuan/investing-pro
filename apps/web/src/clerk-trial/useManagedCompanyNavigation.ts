@@ -113,7 +113,8 @@ export function useManagedCompanyNavigation(
       if (action === NavigationType.Pop && prior.origin) {
         const resumed =
           prior.origin.view === "followups" &&
-          workspace.resumeMarketsBriefingFollowup();
+          (workspace.resumeMarketsBriefingFollowup() ||
+            workspace.portfolioDatedReview.resumeFollowups());
         if (!resumed) workspace.setView(prior.origin.view);
       }
       setReturnFocus((value) => value + 1);

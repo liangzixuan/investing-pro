@@ -319,11 +319,9 @@ export class ManagedFollowupsReviewSession {
   }
   finish(captured: FollowupsReviewState) {
     if (!this.accepts(captured) || captured.phase !== "reviewing") return;
-    this.chosen = [];
     this.publish({
       ...this.state,
       phase: "finished",
-      chosen: Object.freeze([]),
       selected: null,
       position: -1,
     });

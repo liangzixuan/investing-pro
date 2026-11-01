@@ -2,6 +2,10 @@ import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-compa
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
+import {
+  ManagedPortfolioDatedReview,
+  type PortfolioDatedReviewFocus,
+} from "./ManagedPortfolioDatedReview";
 import { ManagedMarketsBriefing } from "./ManagedMarketsBriefing";
 import { ManagedMarketsDatedChecks } from "./ManagedMarketsDatedChecks";
 import { managedResearchDraftProps } from "./managed-research-draft-props";
@@ -505,6 +509,8 @@ export function ManagedWorkspaceScreen({
   const watchlistPanel = useRef<HTMLElement | null>(null);
   const watchlistEditor = useRef<ManagedWatchlistEditorHandle>(null);
   const watchlistHeading = useRef<HTMLHeadingElement | null>(null);
+  const [datedReviewFocus, setDatedReviewFocus] =
+    useState<PortfolioDatedReviewFocus | null>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
   const [backReview, setBackReview] = useState(false);
   const backReviewOpen = useRef(false);
@@ -557,6 +563,7 @@ export function ManagedWorkspaceScreen({
     if (routeBack) routeBack();
     else {
       workspace.closeResearch();
+      workspace.portfolioDatedReview.resumeFollowups();
       setLocalReturnFocus((value) => value + 1);
     }
   }, [routeBack, workspace]);
@@ -1332,6 +1339,13 @@ export function ManagedWorkspaceScreen({
                   )}
                 />
               )}
+              <ManagedPortfolioDatedReview
+                workspace={workspace}
+                navigationPending={
+                  navigationPending || Boolean(navigation?.invalid)
+                }
+                focusRequest={datedReviewFocus}
+              />
               <ManagedPortfolioEntry
                 {...managedPortfolioEntryProps({
                   workspace,
@@ -1341,6 +1355,11 @@ export function ManagedWorkspaceScreen({
                   draftFileDelivery: portfolioDraftFileDelivery,
                   reviewReportDelivery: portfolioReviewReportDelivery,
                   comparisonReportDelivery: portfolioComparisonReportDelivery,
+                  datedReviewNavigation: {
+                    navigate: () => setView("followups"),
+                    transferred: (reading, opener) =>
+                      setDatedReviewFocus({ reading, opener }),
+                  },
                   navigation: { active: watchlistRouteActive, view: setView },
                   openResearch,
                 })}

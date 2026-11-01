@@ -45,9 +45,32 @@ type SavedFollowups = ReturnType<
   ManagedWorkspace["followups"]["coordinator"]["getSnapshot"]
 >;
 
-function finishedReview(saved: SavedFollowups, controls: ReviewControls) {
+function finishedReview(
+  state: FollowupsReviewState,
+  saved: SavedFollowups,
+  controls: ReviewControls,
+) {
+  const completed = state.chosen.filter(
+    (row) => row.entry.status === "completed",
+  ).length;
   return (
     <>
+      <h4>Chosen checks in review order</h4>
+      <p>
+        {completed} completed; {state.chosen.length - completed} still open.
+        Finish does not complete checks or save changes.
+      </p>
+      <ol aria-label="Finished review in chosen order">
+        {state.chosen.map((row) => (
+          <li key={row.entry.id}>
+            <ReviewCheck entry={row.entry} />
+            <p>Your assessment</p>
+            <p className="managed-followups-authored">
+              {row.entry.result || "No authored assessment yet."}
+            </p>
+          </li>
+        ))}
+      </ol>
       <p>
         The session has ended. Review the complete current draft below,
         including checks outside this session. Complete or reopen checks in the
@@ -199,7 +222,7 @@ function reviewContent(
         Choose checks for review
       </button>
     );
-  if (state.phase === "finished") return finishedReview(saved, controls);
+  if (state.phase === "finished") return finishedReview(state, saved, controls);
   if (state.phase === "choosing") return chooseReviewChecks(state, controls);
   return currentReviewCheck(state, controls);
 }

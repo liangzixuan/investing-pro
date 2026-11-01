@@ -20,6 +20,11 @@ import { PortfolioCloseReviewView } from "./PortfolioCloseReviewView";
 import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import { ManagedPortfolioReviewReport } from "./ManagedPortfolioReviewReport";
 
+import {
+  ManagedPortfolioDatedReviewActions,
+  type PortfolioDatedReviewNavigation,
+} from "./ManagedPortfolioDatedReviewActions";
+
 const empty: PortfolioCloseState = Object.freeze({
   rows: [],
   dates: [],
@@ -30,6 +35,7 @@ const empty: PortfolioCloseState = Object.freeze({
 const emptySnapshot = () => empty;
 const emptySubscribe = () => () => {};
 type Props = {
+  datedReviewNavigation: PortfolioDatedReviewNavigation;
   delivery?: PortfolioReviewReportDeliveryAdapter | undefined;
   comparisonDelivery?: PortfolioComparisonReportDeliveryAdapter | undefined;
   workspace: ManagedWorkspace;
@@ -128,6 +134,7 @@ function Review({
   onResearch,
   delivery,
   comparisonDelivery,
+  datedReviewNavigation,
 }: Props) {
   const { prices, state, current } = useCloseController(
     workspace,
@@ -150,6 +157,13 @@ function Review({
         onResearch={(listingId, opener) =>
           researchCurrent(workspace, current, listingId, opener, onResearch)
         }
+      />
+      <ManagedPortfolioDatedReviewActions
+        workspace={workspace}
+        prices={prices}
+        current={current}
+        navigationPending={navigationPending}
+        navigation={datedReviewNavigation}
       />
       <ManagedPortfolioReviewReport
         captureReadScope={captureReadScope}
