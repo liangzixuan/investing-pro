@@ -82,8 +82,16 @@ it("captures the exact confirmed class without effects, retains the partial sour
       result.reading!.revisedCalculation,
     );
     const counts = meta.getSnapshot();
+    expect(w.eod.getSnapshot().response).not.toBeNull();
+    expect(w.annual.getSnapshot().response).toEqual(meta.annual);
     w.returnFromResearch();
+    expect(w.valuationReassessment.getSnapshot().active).toBe(false);
+    expect(w.eod.getSnapshot().response).toBeNull();
+    expect(w.annual.getSnapshot().response).toBeNull();
     w.openWatchlistAnnual(w.coordinator.getSnapshot().draft!.memberships[0]!);
+    expect(w.valuationReassessment.getSnapshot().active).toBe(true);
+    expect(w.eod.getSnapshot().response).toBeNull();
+    expect(w.annual.getSnapshot().response).toBeNull();
     expect(w.valuationReassessment.getSnapshot().reading).toBe(result.reading);
     expect(meta.getSnapshot()).toBe(counts);
     expect(meta.saved().valuations.payload.entries).toEqual(meta.data.entries);
