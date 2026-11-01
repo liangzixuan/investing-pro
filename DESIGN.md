@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Saved valuation reassessment
+
+Keep the confirmed baseline and revised authored inputs in the existing company
+workbench. Show full raw assumptions, identities, versions and action times on
+both sides, with complete numeric tables and independent model refusals. Keep
+capture, source reads, Calculate, note or check creation, Stage and Save distinct.
+The paired reading does not retain source packets. Use existing wrapping text,
+44px controls, narrow-screen stacking and horizontally scrollable numeric tables.
+Only a committed capture or Calculate action may focus its reading heading.
+See the [workflow guide](docs/MANAGED_VALUATION_REASSESSMENT.md).
+
 ## Watchlist daily review
 
 Extend the existing group-review disclosure with an explicit daily mode. Keep

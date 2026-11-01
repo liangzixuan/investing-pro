@@ -5,15 +5,30 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: a Watchlist daily review
+## In integration: reassess saved valuation inputs
+
+Use one confirmed saved entry as a baseline beside revised authored inputs in
+the existing valuation workbench. Calculate both at the same action time and
+show the complete results and raw assumptions for each. Capture, source reads,
+note or check creation, and Save remain separate. Model and UI checks pass;
+workspace and routed Back retention checks pass. Native fixture integration and
+complete source checks are in progress. See the [workflow guide](MANAGED_VALUATION_REASSESSMENT.md).
+Android 1.70.0 remains the last locally delivered release.
+
+## Accepted and delivered: a Watchlist daily review
 
 Choose up to five exact listings, preview Price and Filings work, run missing
 reads explicitly, then retain full evidence through company Research and Back.
 Finish keeps the ordered reading and authored checks; Save and fresh Load remain
 separate. See the [daily review guide](MANAGED_WATCHLIST_DAILY_REVIEW.md).
-Local implementation and synthetic checks pass, including the full web suite,
-web types and dependency boundaries. Native Android acceptance and source
-integration are in progress.
+[PR 269](https://github.com/liangzixuan/investing-pro/pull/269) adds the workflow;
+[PR 270](https://github.com/liangzixuan/investing-pro/pull/270) and
+[PR 271](https://github.com/liangzixuan/investing-pro/pull/271) correct native
+frame readiness. Accepted main `6f6109bd63dd991607f60a058a96412bd337948e`
+passed its original project checks and all 133 native cases. Android 1.70.0 is
+provided locally after the existing-signer build, four checks on that APK and
+copy/checksum readback. Original failures and qualified checker corrections
+remain recorded. Browser, installation and physical-phone acceptance are not claimed.
 
 ## Accepted and delivered: dated Portfolio reading across held-company checks
 

@@ -112,6 +112,37 @@ export function captureValuationCalculationGuard(
     snapshot.calculation === capture;
 }
 
+/** Pure passive evaluation. Only workbench.calculate registers current action authority. */
+export function evaluateValuationInputs(
+  sourceOwner: ManagedResearchSelection,
+  sourceDcfDraft: DcfDraft,
+  sourceExitDraft: ExitDraft,
+): ManagedValuationCalculation {
+  const { owner, dcfDraft, exitDraft } = structuredClone({
+    owner: sourceOwner,
+    dcfDraft: sourceDcfDraft,
+    exitDraft: sourceExitDraft,
+  });
+  const dcfInput = freeze({
+    ...dcfDraft,
+    forecastYears: years(dcfDraft.forecastYears),
+  });
+  const exitInput = freeze({
+    ...exitDraft,
+    horizonYears: years(exitDraft.horizonYears),
+  });
+  return freeze({
+    owner,
+    dcfDraft,
+    exitDraft,
+    dcfInput,
+    exitInput,
+    dcfResult: calculateAuthoredCashFlowDcf(dcfInput),
+    exitResult: calculateAuthoredExitMultiple(exitInput),
+    explanation: AUTHORED_VALUATION_EXPLANATION,
+  });
+}
+
 /** One bounded, transient draft belongs to one full listing and catalog identity. */
 export class ManagedValuationWorkbench {
   private listeners = new Set<() => void>();
@@ -121,6 +152,8 @@ export class ManagedValuationWorkbench {
   private calculation: ManagedValuationCalculation | null = null;
   private readonly rejectedFields = new Set<string>();
   private editorRevision = Symbol();
+  private inputReplacementRevision = {};
+  getInputReplacementRevision = () => this.inputReplacementRevision;
   private baseRevenueRevision = Symbol();
   private previousBaseRevenueRevision: symbol | null = null;
   private lastBaseRevenueEdit: ManagedValuationSnapshot | null = null;
@@ -214,6 +247,7 @@ export class ManagedValuationWorkbench {
     this.calculation = null;
     this.editorRevision = Symbol();
     this.retireBaseRevenueCapture();
+    this.inputReplacementRevision = {};
     this.retainedInputs = false;
     this.savedInputRevision = null;
     this.rejectedFields.clear();
@@ -325,27 +359,13 @@ export class ManagedValuationWorkbench {
     )
       return null;
     const { owner, dcfDraft, exitDraft } = this.snapshot;
-    const dcfInput = freeze({
-      ...dcfDraft,
-      forecastYears: years(dcfDraft.forecastYears),
-    });
-    const exitInput = freeze({
-      ...exitDraft,
-      horizonYears: years(exitDraft.horizonYears),
-    });
-    this.calculation = freeze({
-      owner,
-      dcfDraft,
-      exitDraft,
-      dcfInput,
-      exitInput,
-      dcfResult: calculateAuthoredCashFlowDcf(dcfInput),
-      exitResult: calculateAuthoredExitMultiple(exitInput),
-      explanation: AUTHORED_VALUATION_EXPLANATION,
-    });
+    this.calculation = evaluateValuationInputs(owner, dcfDraft, exitDraft);
     captures.set(this.calculation, this.getSnapshot);
-    this.publish(this.snapshot);
-    return this.calculation;
+    const result = this.calculation;
+    const published = this.publish(this.snapshot);
+    return this.snapshot === published && this.calculation === result
+      ? result
+      : null;
   }
   private retireBaseRevenueCapture() {
     this.lastBaseRevenueEdit = null;
@@ -478,6 +498,7 @@ export class ManagedValuationWorkbench {
     this.calculation = null;
     this.editorRevision = Symbol();
     this.retireBaseRevenueCapture();
+    this.inputReplacementRevision = {};
     this.savedInputRevision = confirmed ? this.editorRevision : null;
     this.retainedInputs = true;
     this.rejectedFields.clear();
@@ -497,6 +518,7 @@ export class ManagedValuationWorkbench {
     this.calculation = null;
     this.editorRevision = Symbol();
     this.retireBaseRevenueCapture();
+    this.inputReplacementRevision = {};
     this.retainedInputs = false;
     this.savedInputRevision = null;
     this.rejectedFields.clear();

@@ -108,6 +108,13 @@ export function useManagedCompanyNavigation(
     appliedKey.current = location.key;
     setNavigationPending(false);
     workspace.setNavigationBlocked(parsed.kind !== "none");
+    if (
+      prior.company &&
+      parsed.kind === "none" &&
+      action === NavigationType.Pop &&
+      prior.origin
+    )
+      workspace.returnFromResearch();
     void workspace.setCompanyRoute(parsed.kind === "company" ? parsed : null);
     if (prior.company && parsed.kind === "none") {
       if (action === NavigationType.Pop && prior.origin) {
@@ -239,7 +246,7 @@ export function useManagedCompanyNavigation(
     if (pendingNavigation.current || !workspace.canNavigate()) return;
     workspace.setNavigationBlocked(true);
     setNavigationPending(true);
-    workspace.closeResearch();
+    workspace.returnFromResearch();
     if (route.kind === "company" && returnLocation(location.state, scope)) {
       void navigate(-1);
     } else {

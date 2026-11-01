@@ -114,16 +114,22 @@ function matchesCurrentCompany(
     context.listing,
   );
 }
+export interface ValuationBaselineActions {
+  readonly canCapture: (entry: ValuationAssumptionEntry) => boolean;
+  readonly capture: (entry: ValuationAssumptionEntry) => void;
+}
 export function ValuationConfirmedEntry({
   entry,
   view,
+  baselineActions,
 }: {
   readonly entry: ValuationAssumptionEntry;
   readonly view: ValuationAssumptionsView;
+  readonly baselineActions?: ValuationBaselineActions;
 }) {
   const matching = matchesCurrentCompany(entry, view);
   return (
-    <section>
+    <section data-valuation-listing-id={entry.listing.listingId}>
       <details>
         <summary>
           Saved {entry.listing.symbol} · {entry.listing.listingId}
@@ -139,6 +145,21 @@ export function ValuationConfirmedEntry({
       >
         Review saved inputs for {entry.listing.symbol}
       </button>
+      {baselineActions && (
+        <button
+          type="button"
+          className="trial-secondary"
+          disabled={
+            !view.editable || !matching || !baselineActions.canCapture(entry)
+          }
+          onClick={() => {
+            if (view.ready() && matching && baselineActions.canCapture(entry))
+              baselineActions.capture(entry);
+          }}
+        >
+          Use as reassessment baseline
+        </button>
+      )}
     </section>
   );
 }

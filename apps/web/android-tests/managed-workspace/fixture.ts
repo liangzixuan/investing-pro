@@ -1,4 +1,8 @@
 import {
+  createSavedValuationReassessmentFixture,
+  type SavedValuationReassessmentFixture,
+} from "./saved-valuation-reassessment-fixture";
+import {
   createWatchlistDailyReviewFixture,
   type WatchlistDailyReviewFixture,
 } from "./watchlist-daily-review-fixture";
@@ -2199,6 +2203,7 @@ export type NativeFinancialReviewMetadata = {
   readonly generation: SharedNativeFixture["generations"]["initial"];
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
+  readonly savedValuationReassessment?: SavedValuationReassessmentFixture;
   readonly watchlistDailyReview?: WatchlistDailyReviewFixture;
   readonly portfolioDatedReview?: PortfolioDatedReviewFixture;
   readonly reviewFilingsEvidence?: ReviewFilingsEvidenceFixture;
@@ -2577,6 +2582,11 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "saved-valuation-reassessment",
+    async () =>
+      createSavedValuationReassessmentFixture(await createSharedFixture()),
+  ],
+  [
     "watchlist-daily-review",
     async () => createWatchlistDailyReviewFixture(await createSharedFixture()),
   ],
@@ -2676,6 +2686,7 @@ export async function createFixture(
     | "cpi-headline-followup"
     | "markets-briefing"
     | "portfolio-ledger"
+    | "saved-valuation-reassessment"
     | "watchlist-daily-review"
     | "portfolio-dated-review"
     | "portfolio-close-review"

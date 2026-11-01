@@ -1,3 +1,4 @@
+import { SavedValuationReassessmentFixtureDiagnostics } from "./saved-valuation-reassessment-fixture-diagnostics";
 import { WatchlistDailyReviewFixtureDiagnostics } from "./watchlist-daily-review-fixture-diagnostics";
 import { PortfolioDatedReviewFixtureDiagnostics } from "./portfolio-dated-review-fixture-diagnostics";
 import { ReviewFilingsEvidenceFixtureControls } from "./review-filings-evidence-fixture-controls";
@@ -96,9 +97,14 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario === "review-filings-evidence"
     )
       current.setView("followups");
-    if (scenario === "watchlist-daily-review") current.setView("watchlist");
+    if (
+      scenario === "watchlist-daily-review" ||
+      scenario === "saved-valuation-reassessment"
+    )
+      current.setView("watchlist");
     setWorkspace(current);
     if (
+      scenario !== "saved-valuation-reassessment" &&
       scenario !== "watchlist-daily-review" &&
       scenario !== "portfolio-dated-review" &&
       scenario !== "review-filings-evidence" &&
@@ -368,6 +374,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       {nativePortfolioComparisonReport && (
         <PortfolioComparisonReportFixtureDiagnostics
           delivery={nativePortfolioComparisonReport}
+        />
+      )}
+      {workspace && fixture.savedValuationReassessment && (
+        <SavedValuationReassessmentFixtureDiagnostics
+          workspace={workspace}
+          fixture={fixture.savedValuationReassessment}
         />
       )}
       {workspace && fixture.watchlistDailyReview && (

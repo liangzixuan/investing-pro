@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import type { ManagedValuationReassessment } from "./managed-valuation-reassessment";
+import { ManagedValuationReassessmentSaved } from "./ManagedValuationReassessmentSaved";
 import {
   CompletePayload,
   ValuationConflictReview,
@@ -11,7 +13,7 @@ import "./managed-valuation-workbench.css";
 
 import {
   useValuationAssumptionsView,
-  type ManagedValuationAssumptionsProps,
+  type ManagedValuationAssumptionsProps as AssumptionsProps,
 } from "./useValuationAssumptionsView";
 import {
   ValuationLoadStageActions,
@@ -19,7 +21,9 @@ import {
   ValuationCancelActions,
   ValuationResourceStatus,
 } from "./ValuationAssumptionsActions";
-export type { ManagedValuationAssumptionsProps } from "./useValuationAssumptionsView";
+export interface ManagedValuationAssumptionsProps extends AssumptionsProps {
+  readonly reassessment?: ManagedValuationReassessment;
+}
 export function ManagedValuationAssumptions(
   props: ManagedValuationAssumptionsProps & { collectionFiles?: ReactNode },
 ) {
@@ -50,7 +54,14 @@ export function ManagedValuationAssumptions(
         />
       )}
       <ValuationDraftEntries view={view} />
-      <ValuationSavedEntries view={view} />
+      {props.reassessment ? (
+        <ManagedValuationReassessmentSaved
+          model={props.reassessment}
+          view={view}
+        />
+      ) : (
+        <ValuationSavedEntries view={view} />
+      )}
     </details>
   );
 }

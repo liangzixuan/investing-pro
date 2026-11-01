@@ -50,6 +50,7 @@ import {
   type PreparedValuationRevenueBasis,
 } from "./managed-valuation-revenue-basis";
 import { ManagedValuationAssumptions } from "./managed-valuation-assumptions";
+import { ManagedValuationReassessment } from "./managed-valuation-reassessment";
 import {
   ManagedFinancialScreen,
   type ManagedFinancialScreenReportCapture,
@@ -388,6 +389,7 @@ export class ManagedWorkspace {
     this.valuation,
   );
   readonly valuationAssumptions: ManagedValuationAssumptions;
+  readonly valuationReassessment: ManagedValuationReassessment;
   readonly annual: ManagedAnnualReport;
   readonly interim: ManagedInterimReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
@@ -534,6 +536,25 @@ export class ManagedWorkspace {
             this.valuationAssumptions.coordinator.getSnapshot().message,
           ),
         ...(newKey ? { newKey } : {}),
+      },
+    );
+    this.valuationReassessment = new ManagedValuationReassessment(
+      this.valuation,
+      this.valuationAssumptions,
+      {
+        now: () => new Date().toISOString(),
+        available: () => {
+          const visit = this.state.research;
+          return (
+            !this.retired &&
+            visit !== null &&
+            companyEvidenceSelectionMatches(
+              visit.selection,
+              this.valuation.getSnapshot().context,
+            ) &&
+            this.researchSourceRouteReady(visit.selection)
+          );
+        },
       },
     );
     this.sessionOwner = new ManagedSessionOwner(
@@ -854,6 +875,7 @@ export class ManagedWorkspace {
     this.syncFollowupsReview();
     this.portfolio.syncCatalog();
     this.valuationAssumptions.syncCatalog();
+    this.valuationReassessment.reconcile();
     this.syncAnnouncements();
     this.syncWatchlistPrices();
     this.syncAnnualComparison();
@@ -873,6 +895,10 @@ export class ManagedWorkspace {
       this.companySnapshotLoad.cancel();
       this.cancelFollowupOpening();
       this.navigationBlocked = blocked;
+      this.valuationReassessment.reconcile();
+      const visit = this.state.research;
+      if (visit && this.valuationReassessment.canResumeOwned(visit.selection))
+        this.valuationReassessment.resumeOwned();
       this.marketsSourceReview.reconcile();
       this.syncAnnouncements();
       this.syncAnnualComparison();
@@ -1048,6 +1074,7 @@ export class ManagedWorkspace {
     this.followupsReview.retire();
     this.followups.retire();
     this.portfolio.retire();
+    this.valuationReassessment.retire();
     this.valuationAssumptions.retire();
     this.valuationRevenueBasis.invalidate();
     this.valuation.retire();
@@ -1745,6 +1772,10 @@ export class ManagedWorkspace {
     const owns = () => this.researchOperation === operation;
     let phase: "before-clear" | "after-clear" = "before-clear";
     const admitted = () => !this.retired && (options.admit?.(phase) ?? true);
+    const resumeReassessment =
+      this.valuationReassessment.canResumeOwned(selection);
+    if (!resumeReassessment) this.valuationReassessment.invalidate();
+    if (!owns() || !admitted()) return;
     this.watchlistPrices.cancel();
     if (!owns() || !admitted()) return;
     this.watchlistFilings.cancel();
@@ -1752,10 +1783,11 @@ export class ManagedWorkspace {
     this.filingsReview.cancel();
     if (!owns() || !admitted()) return;
     phase = "after-clear";
-    this.clearResearch(operation);
+    this.clearResearch(operation, resumeReassessment);
     if (!owns()) return;
     if (!admitted()) {
-      this.update({});
+      this.valuationReassessment.invalidate();
+      if (owns()) this.update({});
       return;
     }
     if (section === "eod" || options.priceSeed)
@@ -1783,23 +1815,42 @@ export class ManagedWorkspace {
       });
       if (owns() && this.state.research?.selection === captured) {
         this.valuation.activate(captured);
+        if (
+          owns() &&
+          this.state.research?.selection === captured &&
+          resumeReassessment
+        )
+          this.valuationReassessment.resumeOwned();
         if (owns() && this.state.research?.selection === captured)
           return this.state.research;
       }
     }
   }
+  returnFromResearch() {
+    const visit = this.state.research;
+    if (!visit || !this.canNavigate()) return;
+    this.valuationReassessment.pauseForOwnedBack();
+    if (this.state.research !== visit || !this.canNavigate()) return;
+    this.closeResearchVisit(true);
+  }
   closeResearch() {
+    this.closeResearchVisit();
+  }
+  private closeResearchVisit(preserveReassessment = false) {
     this.portfolioDatedReview?.closeResearch();
     this.marketsBriefing?.closeResearch();
     this.cancelFollowupOpening();
     this.followupResearch = null;
-    if (this.clearResearch()) this.update({});
+    if (this.clearResearch(Symbol(), preserveReassessment)) this.update({});
   }
-  private clearResearch(operation = Symbol()) {
+  private clearResearch(operation = Symbol(), preserveReassessment = false) {
     this.companyResearchChecks.clear();
     this.researchOperation = operation;
     const hadResearch =
       this.state.research !== null || this.state.companyRoute !== null;
+    if (hadResearch && !preserveReassessment)
+      this.valuationReassessment.invalidate();
+    if (this.researchOperation !== operation) return false;
     this.companyRouteOperation?.abort();
     this.companyRouteOperation = null;
     // Model close notifications must never expose the visit with a cleared section.

@@ -1097,3 +1097,155 @@ it("retires a dated scenario preview when same-value Annual Apply changes its so
   expect(f.api.save).not.toHaveBeenCalled();
   expect(f.api.saveFollowups).not.toHaveBeenCalled();
 });
+
+async function reassessmentFixture() {
+  const f = await fixture();
+  f.fill();
+  let saved: ManagedValuationAssumptionsDto = {
+    version: 0,
+    payload: { schemaVersion: 1, entries: [] },
+  };
+  vi.mocked(f.api.loadValuationAssumptions).mockImplementation(() =>
+    Promise.resolve(structuredClone(saved)),
+  );
+  vi.mocked(f.api.saveValuationAssumptions).mockImplementation((command) => {
+    saved = {
+      version: command.expectedVersion + 1,
+      payload: structuredClone(command.payload),
+    };
+    return Promise.resolve({ ...structuredClone(saved), replayed: false });
+  });
+  vi.mocked(f.api.resolve).mockImplementation((request) =>
+    Promise.resolve({
+      snapshotSha256: request.snapshotSha256,
+      results: request.listingIds.map((listingId) => ({
+        listingId,
+        listing: listingId === member.listingId ? eodSelection.listing : null,
+      })),
+    }),
+  );
+  const assumptions = f.workspace.valuationAssumptions;
+  await assumptions.coordinator.load();
+  await assumptions.prepareStage();
+  expect(assumptions.stageCurrent(assumptions.getSnapshot().stageReview)).toBe(
+    true,
+  );
+  await assumptions.coordinator.save();
+  await assumptions.coordinator.load();
+  const reassessment = f.workspace.valuationReassessment;
+  const entry =
+    assumptions.coordinator.getSnapshot().saved!.payload.entries[0]!;
+  expect(reassessment.capture(entry)).not.toBeNull();
+  f.workspace.valuation.setDcfField("startingUnleveredCashFlowUsd", "110");
+  expect(
+    reassessment.calculate(
+      reassessment.getSnapshot(),
+      f.workspace.valuation.getSnapshot(),
+    ),
+  ).not.toBeNull();
+  return { ...f, reassessment, assumptions, entry };
+}
+
+describe("workspace saved valuation reassessment", () => {
+  it("keeps the passive pair only through explicit owned Back and same-company return without reads or recalculation", async () => {
+    const f = await reassessmentFixture();
+    const before = f.reassessment.getSnapshot();
+    expect(before.reading?.savedCalculation.dcfResult).toMatchObject({
+      status: "available",
+      scenarios: { base: { valuePerShareUsd: "140.00" } },
+    });
+    expect(before.reading?.revisedCalculation.dcfResult).toMatchObject({
+      status: "available",
+      scenarios: { base: { valuePerShareUsd: "155.00" } },
+    });
+    const editor = f.workspace.valuation.getSnapshot();
+    const calculation = vi.spyOn(f.workspace.valuation, "calculate");
+    const callCounts = () => {
+      const methods: unknown[] = Object.values(f.api);
+      return methods.map((method) => {
+        if (!vi.isMockFunction(method))
+          throw new Error("Expected a fixture API mock");
+        return method.mock.calls.length;
+      });
+    };
+    const calls = callCounts();
+    f.workspace.returnFromResearch();
+    expect(f.workspace.getSnapshot().research).toBeNull();
+    expect(f.reassessment.getSnapshot()).toMatchObject({ active: false });
+    expect(f.reassessment.getSnapshot().reading).toBe(before.reading);
+    f.workspace.closeResearch();
+    await f.workspace.setCompanyRoute(null);
+    f.workspace.setView("watchlist");
+    f.open();
+    expect(f.reassessment.getSnapshot().active).toBe(true);
+    expect(f.reassessment.getSnapshot().baseline).toBe(before.baseline);
+    expect(f.reassessment.getSnapshot().reading).toBe(before.reading);
+    expect(f.workspace.valuation.getSnapshot().calculation).toBe(
+      editor.calculation,
+    );
+    expect(f.workspace.valuation.getSnapshot().dcfDraft).toBe(editor.dcfDraft);
+    expect(calculation).not.toHaveBeenCalled();
+    expect(callCounts()).toEqual(calls);
+  });
+
+  it("retires on generic close, a different share class, or session disposal", async () => {
+    const closed = await reassessmentFixture();
+    closed.workspace.closeResearch();
+    closed.open();
+    expect(closed.reassessment.getSnapshot().baseline).toBeNull();
+    const foreign = await reassessmentFixture();
+    foreign.workspace.returnFromResearch();
+    foreign.open(other.listingId);
+    expect(foreign.reassessment.getSnapshot().baseline).toBeNull();
+    const ended = await reassessmentFixture();
+    ended.workspace.returnFromResearch();
+    ended.workspace.sessionOwner.dispose();
+    expect(ended.reassessment.getSnapshot()).toEqual({
+      baseline: null,
+      reading: null,
+      active: false,
+    });
+  });
+
+  it("rejects an old Calculate handler after navigation availability changes and keeps the pair passive", async () => {
+    const f = await reassessmentFixture();
+    const prior = f.reassessment.getSnapshot();
+    const editor = f.workspace.valuation.getSnapshot();
+    f.workspace.setNavigationBlocked(true);
+    expect(f.reassessment.getSnapshot().active).toBe(false);
+    expect(f.reassessment.calculate(prior, editor)).toBeNull();
+    f.workspace.setNavigationBlocked(false);
+    expect(f.reassessment.getSnapshot().active).toBe(true);
+    expect(f.reassessment.getSnapshot().reading).toBe(prior.reading);
+    expect(f.reassessment.calculate(prior, editor)).toBeNull();
+  });
+
+  it("does not close a replacement visit opened by a Back publication listener", async () => {
+    const f = await reassessmentFixture();
+    let replaced = false;
+    const unsubscribe = f.reassessment.subscribe(() => {
+      if (!replaced && !f.reassessment.getSnapshot().active) {
+        replaced = true;
+        f.open(other.listingId);
+      }
+    });
+    f.workspace.returnFromResearch();
+    unsubscribe();
+    expect(replaced).toBe(true);
+    expect(
+      f.workspace.getSnapshot().research?.selection.listing.listingId,
+    ).toBe(other.listingId);
+    expect(f.reassessment.getSnapshot().baseline).toBeNull();
+  });
+
+  it("retires a paused baseline when its confirmed resource is loaded again", async () => {
+    const f = await reassessmentFixture();
+    f.workspace.returnFromResearch();
+    await f.assumptions.coordinator.load();
+    f.open();
+    expect(f.reassessment.getSnapshot().baseline).toBeNull();
+    expect(
+      f.workspace.valuation.getSnapshot().dcfDraft.startingUnleveredCashFlowUsd,
+    ).toBe("110");
+  });
+});
