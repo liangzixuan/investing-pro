@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import {
   FILINGS_REVIEW_LIMIT,
   type ManagedFilingsReview,
@@ -9,7 +10,9 @@ export function ManagedFilingsReviewPicker({
   model,
   state,
   controls,
+  onStartDaily,
 }: {
+  onStartDaily?: (event: MouseEvent<HTMLButtonElement>) => void;
   model: ManagedFilingsReview;
   state: ManagedFilingsReviewState;
   controls: ManagedFilingsReviewControls;
@@ -53,6 +56,16 @@ export function ManagedFilingsReviewPicker({
       >
         Start filing review
       </button>
+      {onStartDaily && (
+        <button
+          id="watchlist-daily-start"
+          type="button"
+          disabled={!controls.enabled || !model.canStartDaily(state)}
+          onClick={onStartDaily}
+        >
+          Start daily review
+        </button>
+      )}
     </>
   );
 }

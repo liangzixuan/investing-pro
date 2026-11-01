@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Watchlist daily review
+
+Extend the existing group-review disclosure with an explicit daily mode. Keep
+ordered company selection, source choices and the complete preview together.
+Separate source outcomes from authored-check status. Show full Price histories,
+Filings metadata and original clocks, including partial and unsupported rows.
+Research and Back retain the selected company. Finish becomes a passive reading;
+new review and resource Save remain explicit. Use wrapping text, 44px controls
+and visible focus. Move focus only after a committed user transition, never on
+background source completion. See the [daily review guide](docs/MANAGED_WATCHLIST_DAILY_REVIEW.md).
+
 ## Dated Portfolio review
 
 Keep the complete dated reading beside the ordered held-check workflow, including

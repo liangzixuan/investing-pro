@@ -60,6 +60,7 @@ const allowedScenarios = [
   "portfolio-comparison-report",
   "portfolio-held-due-checks",
   "review-filings-evidence",
+  "watchlist-daily-review",
   "portfolio-dated-review",
   "filing-check-assessment",
   "portfolio-ledger",

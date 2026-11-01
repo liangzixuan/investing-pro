@@ -1,3 +1,5 @@
+import { ManagedWatchlistDailyContext } from "./managed-watchlist-daily-context";
+import type { ManagedWatchlistDailyReviewCapture } from "./managed-watchlist-daily-review";
 import { ManagedPortfolioDatedReviewContext } from "./managed-portfolio-dated-review-context";
 import { ManagedPortfolioHeldDueChecks } from "./managed-portfolio-held-due-checks";
 import { ManagedCompanyResearchChecks } from "./managed-company-research-checks-controller";
@@ -393,6 +395,7 @@ export class ManagedWorkspace {
   readonly filings: ManagedCompanyFilings;
   readonly watchlistFilings: ManagedWatchlistFilings;
   readonly filingsReview: ManagedFilingsReview;
+  private readonly watchlistDailyContext: ManagedWatchlistDailyContext;
   private readonly secAccess = new ManagedSecAccess();
   private readonly eodAccess: ManagedEodAccess;
   private readonly portfolioPriceCoverage:
@@ -608,11 +611,34 @@ export class ManagedWorkspace {
       if (this.watchlistFilings.getSnapshot().catalogChanged)
         this.invalidateCatalog();
     });
+    const eodAccess = (this.eodAccess = new ManagedEodAccess(
+      (request, signal) => api.eodHistory(request, signal),
+    ));
     this.filingsReview = new ManagedFilingsReview(
       (request, signal) => api.recentFilings(request, signal),
       (error) => this.coordinator.readError(error),
       this.secAccess,
-      researchOptions,
+      {
+        ...researchOptions,
+        daily: {
+          readPrice: (request, signal) => api.eodHistory(request, signal),
+          priceAccess: eodAccess,
+          ...(options.priceCoverage
+            ? { priceCoverage: options.priceCoverage }
+            : {}),
+          priceSeed: (selection) => {
+            const row = this.watchlistPrices
+              .getSnapshot()
+              .rows.find((entry) =>
+                membershipMatchesResult(
+                  { ...selection.listing, note: "" },
+                  entry.listing,
+                ),
+              );
+            return row ? this.watchlistPrices.seed(row.handle) : null;
+          },
+        },
+      },
     );
     this.filingsReview.subscribe(() => {
       if (this.filingsReview.getSnapshot().catalogChanged)
@@ -639,9 +665,6 @@ export class ManagedWorkspace {
       Object.freeze(
         options.priceCoverage.map((entry) => Object.freeze({ ...entry })),
       );
-    const eodAccess = (this.eodAccess = new ManagedEodAccess(
-      (request, signal) => api.eodHistory(request, signal),
-    ));
     this.eod = new ManagedEodHistory(
       (request, signal) => api.eodHistory(request, signal),
       (error) => this.coordinator.readError(error),
@@ -803,6 +826,7 @@ export class ManagedWorkspace {
       if (this.reviewFilings.getSnapshot().catalogChanged)
         this.invalidateCatalog();
     });
+    this.watchlistDailyContext = new ManagedWatchlistDailyContext(this);
   }
   getSnapshot = (): ManagedDiscoveryState => this.state;
   subscribe = (listener: () => void) => {
@@ -821,6 +845,7 @@ export class ManagedWorkspace {
   }
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
+    this.watchlistDailyContext?.reconcile();
     this.marketsBriefing?.reconcile();
     this.companySourcePass.reconcile();
     this.valuationRevenueBasis.reconcile();
@@ -1367,6 +1392,37 @@ export class ManagedWorkspace {
       admit: () => this.canOpenFilingsReview(capture),
     });
   }
+  canOpenWatchlistDailyReview(capture: ManagedWatchlistDailyReviewCapture) {
+    return (
+      this.watchlistResearchVisitActive() &&
+      this.currentWatchlistContains(capture.member.listing) &&
+      this.filingsReview.canAdmitDaily(capture)
+    );
+  }
+  openWatchlistDailyReview(capture: ManagedWatchlistDailyReviewCapture) {
+    if (!this.canOpenWatchlistDailyReview(capture)) return;
+    const handoff = this.filingsReview.admitDaily(capture);
+    if (!handoff || !this.canOpenWatchlistDailyReview(capture)) return;
+    const opening = this.watchlistDailyContext.beginVisit(handoff.selection);
+    if (!opening) return;
+    let visit: ManagedResearchVisit | undefined;
+    try {
+      visit = this.openResearch(
+        handoff.selection,
+        handoff.filingsSeed ? "filings" : "eod",
+        {
+          ...(handoff.priceSeed ? { priceSeed: handoff.priceSeed } : {}),
+          ...(handoff.filingsSeed ? { filingsSeed: handoff.filingsSeed } : {}),
+          admit: () => this.canOpenWatchlistDailyReview(capture),
+        },
+      );
+    } finally {
+      this.watchlistDailyContext.finishVisit(opening, visit);
+    }
+  }
+  getWatchlistDailyChecks() {
+    return this.watchlistDailyContext.captureChecks();
+  }
   openDiscoveryEod(result: PersonalSecurityMasterSearchResultDto) {
     const snapshot = this.state.snapshot;
     if (this.retired || !snapshot || !this.state.results.includes(result))
@@ -1725,8 +1781,11 @@ export class ManagedWorkspace {
         research: Object.freeze({ selection: captured, section }),
         companyRoute: options.companyRoute ?? null,
       });
-      if (owns() && this.state.research?.selection === captured)
+      if (owns() && this.state.research?.selection === captured) {
         this.valuation.activate(captured);
+        if (owns() && this.state.research?.selection === captured)
+          return this.state.research;
+      }
     }
   }
   closeResearch() {
@@ -2582,6 +2641,7 @@ export class ManagedWorkspace {
     )
       return null;
     const switched = Object.freeze({ ...research, section });
+    this.watchlistDailyContext.switchVisit(research, switched);
     this.update({ research: switched });
     return this.state.research === switched &&
       this[section].getSnapshot().selection === targetSelection
