@@ -51,6 +51,7 @@ import {
 import type { ManagedValuationRevenueBasisActions } from "./use-valuation-revenue-basis-review";
 import type { ManagedValuationWorkbench as ValuationModel } from "./managed-valuation-workbench";
 import type { ManagedValuationAssumptions as AssumptionsModel } from "./managed-valuation-assumptions";
+import type { ManagedValuationReassessment } from "./managed-valuation-reassessment";
 import { ManagedValuationAssumptions } from "./ManagedValuationAssumptions";
 
 export function ManagedCompanyResearch({
@@ -92,6 +93,7 @@ export function ManagedCompanyResearch({
   annualStatementsActions,
   valuation,
   valuationAssumptions,
+  valuationReassessment,
   valuationNoteActions,
   valuationRevenueBasisActions,
   valuationDraftFiles,
@@ -150,6 +152,7 @@ export function ManagedCompanyResearch({
   annualStatementsActions?: ManagedAnnualStatementsReviewActions;
   valuation?: ValuationModel;
   valuationAssumptions: AssumptionsModel;
+  valuationReassessment?: ManagedValuationReassessment;
   valuationNoteActions?: ManagedValuationNoteActions;
   valuationRevenueBasisActions?: ManagedValuationRevenueBasisActions;
   valuationDraftFiles?: ReactNode;
@@ -273,6 +276,9 @@ export function ManagedCompanyResearch({
         <>
           <ManagedValuationWorkbench
             model={valuation}
+            {...(valuationReassessment
+              ? { reassessment: valuationReassessment }
+              : {})}
             selection={research.selection}
             navigationPending={navigationPending}
             noteActions={valuationNoteActions}
@@ -289,6 +295,9 @@ export function ManagedCompanyResearch({
           <ManagedValuationAssumptions
             collectionFiles={valuationCollectionFiles}
             model={valuationAssumptions}
+            {...(valuationReassessment
+              ? { reassessment: valuationReassessment }
+              : {})}
             workbench={valuation}
             navigationPending={navigationPending}
           />

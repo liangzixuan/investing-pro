@@ -135,6 +135,39 @@ final class ReportRevisitKeyboard {
             }
         });
     }
+    String awaitVisibleEditor(String selector) {
+        java.util.concurrent.atomic.AtomicReference<String> observed = new java.util.concurrent.atomic.AtomicReference<>();
+        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
+            @Override public Matcher<View> getConstraints() { return isDisplayed(); }
+            @Override public String getDescription() { return "wait for visible settled native editor: " + selector; }
+            @Override public void perform(UiController uiController, View view) {
+                assertSame("IME observer belongs to this Activity window", observedImeDecor, view.getRootView());
+                long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
+                String diagnostic;
+                do {
+                    WindowInsets insets = view.getRootWindowInsets();
+                    boolean visible = insets != null && insets.isVisible(WindowInsets.Type.ime());
+                    boolean focused = view.hasFocus() && view.hasWindowFocus();
+                    boolean resumed = observedImeLifecycle.getCurrentState() == Lifecycle.State.RESUMED;
+                    diagnostic = "selector=" + selector + ", visible=" + visible + ", animations=" + imeAnimations.size() +
+                        ", focus=" + view.hasFocus() + ", windowFocus=" + view.hasWindowFocus() +
+                        ", resumed=" + resumed;
+                    if (SystemClock.uptimeMillis() < deadline && visible && imeAnimations.isEmpty() && focused && resumed) {
+                        observed.set(diagnostic);
+                        Log.i("ManagedInput", diagnostic);
+                        return;
+                    }
+                    long remaining = deadline - SystemClock.uptimeMillis();
+                    if (remaining <= 0) break;
+                    uiController.loopMainThreadForAtLeast(Math.min(50, remaining));
+                } while (SystemClock.uptimeMillis() < deadline);
+                throw new PerformException.Builder().withActionDescription(getDescription())
+                    .withViewDescription("Managed fixture editor: " + diagnostic)
+                    .withCause(new IllegalStateException("Visible native editor did not settle")).build();
+            }
+        });
+        return observed.get();
+    }
     private void awaitNativeEditor() {
         onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
             @Override public Matcher<View> getConstraints() { return isDisplayed(); }

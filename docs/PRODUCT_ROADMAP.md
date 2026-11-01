@@ -27,13 +27,23 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: a Watchlist daily review
+## Current priority: saved valuation reassessment
 
-Connect the selected Watchlist group to an explicit Price/Filings missing-read
-pass, retained company Research and authored-check context under M1/M3/M4.
-Keep complete source outcomes and clocks through Back and Finish, with independent
-resource saves. Extend the existing group owner and bounded sources; see the
-[daily review guide](MANAGED_WATCHLIST_DAILY_REVIEW.md). Acceptance is in progress.
+Connect confirmed saved assumptions to revised authored inputs in the existing
+valuation workbench. Keep exact listing identity, complete raw assumptions and
+both full calculation results visible. Evaluate the saved inputs at the current
+action time; do not present them as a historical calculation. Keep source reads,
+note or check creation and resource Save explicit. Source implementation is in integration; see the [workflow guide](MANAGED_VALUATION_REASSESSMENT.md). Native acceptance and client delivery remain separate.
+
+## Delivered: a Watchlist daily review
+
+Android 1.70 connects the selected Watchlist group to an explicit Price/Filings
+missing-read pass, retained company Research and authored-check context under
+M1/M3/M4. Complete source outcomes and clocks survive Back and Finish; resource
+saves remain independent. Accepted main
+`6f6109bd63dd991607f60a058a96412bd337948e` passed original project checks and
+133 native cases. The existing-signer build, four APK checks and local delivery
+passed. See the [daily review guide](MANAGED_WATCHLIST_DAILY_REVIEW.md).
 
 ## Delivered: dated Portfolio review across held-company checks
 

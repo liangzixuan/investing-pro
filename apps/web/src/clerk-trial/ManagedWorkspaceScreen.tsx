@@ -562,7 +562,7 @@ export function ManagedWorkspaceScreen({
   const backToWorkspace = useCallback(() => {
     if (routeBack) routeBack();
     else {
-      workspace.closeResearch();
+      workspace.returnFromResearch();
       workspace.portfolioDatedReview.resumeFollowups();
       setLocalReturnFocus((value) => value + 1);
     }

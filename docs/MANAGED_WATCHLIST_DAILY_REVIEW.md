@@ -1,8 +1,12 @@
 # Watchlist daily review
 
-Implementation and acceptance are in progress. This workflow extends the
-existing group review under **My Watchlist**. Manual filing review remains
-available in the same entry.
+Android 1.70.0 provides this workflow from accepted main
+`6f6109bd63dd991607f60a058a96412bd337948e`. Original project checks, all 133
+native cases, the existing-signer build and four APK checks passed. Local delivery
+and checksum readback are complete; installation remains an owner action.
+
+This workflow extends the existing group review under **My Watchlist**. Manual
+filing review remains available in the same entry.
 
 ## Choose and read
 

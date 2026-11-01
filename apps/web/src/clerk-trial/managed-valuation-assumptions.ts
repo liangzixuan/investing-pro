@@ -30,6 +30,20 @@ import type { TrialSession } from "./session";
 type Entry = ValuationAssumptionEntry;
 type Payload = ValuationAssumptionsPayload;
 type Listing = Entry["listing"];
+function immutableConfirmedData<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.values(value).forEach(immutableConfirmedData);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+export interface ManagedConfirmedValuationCapture {
+  readonly entry: Entry;
+  readonly saved: VersionedPayload<Payload>;
+  readonly catalog: ManagedCatalogSnapshotDto;
+}
+
 export interface ValuationCollectionDraftContext {
   readonly saved: VersionedPayload<Payload>;
   readonly draft: Payload;
@@ -210,6 +224,18 @@ export class ManagedValuationAssumptions {
   private transition = {};
   private observedDraft: Payload | null = null;
   private stagedCapture: ManagedValuationInputCapture | null = null;
+  private confirmedRevision = {};
+  private readonly confirmedCaptures = new WeakMap<
+    ManagedConfirmedValuationCapture,
+    {
+      entry: Entry;
+      saved: VersionedPayload<Payload>;
+      catalog: ManagedCatalogSnapshotDto;
+      revision: object;
+      editorFile: object;
+      collectionFile: object;
+    }
+  >();
   private readonly collectionActivities = new Set<object>();
   private collectionFileActivityRevision = {};
   private readonly fileContexts =
@@ -334,6 +360,8 @@ export class ManagedValuationAssumptions {
   private resourceChanged(): void {
     if (this.retired) return;
     const state = this.coordinator.getSnapshot();
+    if (state.phase !== "idle" || state.saved !== this.resourceState.saved)
+      this.confirmedRevision = {};
     if (this.fileRestore && this.fileRestore.draft === null)
       this.fileRestore.draft = state.draft;
     if (state.draft !== this.observedDraft || state.phase !== "idle")
@@ -377,6 +405,7 @@ export class ManagedValuationAssumptions {
     if (this.retired) return;
     const digest = this.options.getCatalogSnapshot()?.snapshotSha256 ?? null;
     if (digest === this.state.catalogSnapshotSha256) return;
+    this.confirmedRevision = {};
     this.clearReview();
     this.approvals.clear();
     this.update({ catalogSnapshotSha256: digest, message: "" });
@@ -661,6 +690,74 @@ export class ManagedValuationAssumptions {
     if (entry.catalogSnapshotSha256 !== catalog.snapshotSha256) return null;
     if (!matchesContext(entry, current)) return null;
     return Object.freeze({ entry, current, saved, catalog });
+  }
+  canCaptureConfirmedEntry(
+    entry: Entry,
+    expected = this.coordinator.getSnapshot(),
+  ): boolean {
+    if (expected !== this.coordinator.getSnapshot() || !this.canEdit())
+      return false;
+    if (
+      expected.phase !== "idle" ||
+      !expected.latestLoaded ||
+      !expected.saved ||
+      expected.baseVersion !== expected.saved.version ||
+      this.state.reviewing ||
+      this.workbench.hasDraftFileActivity()
+    )
+      return false;
+    const current = this.workbench.getSnapshot();
+    return (
+      current.editable &&
+      entry.cik === current.owner?.cik &&
+      entry.cik === current.context?.cik &&
+      this.savedReview(entry) !== null
+    );
+  }
+  captureConfirmedEntry(
+    entry: Entry,
+    expected = this.coordinator.getSnapshot(),
+  ): ManagedConfirmedValuationCapture | null {
+    if (!this.canCaptureConfirmedEntry(entry, expected)) return null;
+    const saved = expected.saved!,
+      catalog = this.options.getCatalogSnapshot()!;
+    const capture = Object.freeze({
+      entry: immutableConfirmedData(structuredClone(entry)),
+      saved: immutableConfirmedData(structuredClone(saved)),
+      catalog: immutableConfirmedData(structuredClone(catalog)),
+    });
+    this.confirmedCaptures.set(capture, {
+      entry,
+      saved,
+      catalog,
+      revision: this.confirmedRevision,
+      editorFile: this.workbench.getDraftFileActivityRevision(),
+      collectionFile: this.collectionFileActivityRevision,
+    });
+    return this.isConfirmedEntryCaptureCurrent(capture) ? capture : null;
+  }
+  isConfirmedEntryCaptureCurrent(
+    capture: ManagedConfirmedValuationCapture,
+  ): boolean {
+    const owned = this.confirmedCaptures.get(capture),
+      state = this.coordinator.getSnapshot();
+    if (!owned) return false;
+    const current =
+      !this.retired &&
+      this.resourceEditable() &&
+      state.phase === "idle" &&
+      state.latestLoaded &&
+      state.saved === owned.saved &&
+      state.baseVersion === owned.saved.version &&
+      owned.saved.payload.entries.includes(owned.entry) &&
+      this.options.getCatalogSnapshot() === owned.catalog &&
+      owned.revision === this.confirmedRevision &&
+      owned.editorFile === this.workbench.getDraftFileActivityRevision() &&
+      owned.collectionFile === this.collectionFileActivityRevision &&
+      !this.workbench.hasDraftFileActivity() &&
+      !this.hasCollectionFileActivity();
+    if (!current) this.confirmedCaptures.delete(capture);
+    return current;
   }
   reviewSavedInputs(entry: Entry): ValuationRestoreReview | null {
     if (!this.canEdit()) return null;

@@ -1231,3 +1231,57 @@ it("keeps the exact Follow-ups check through committed Price to Filings navigati
   expect(f.api.saveFollowups).not.toHaveBeenCalled();
   expect(f.api.save).not.toHaveBeenCalled();
 });
+
+it.each(["button", "history"] as const)(
+  "retains saved reassessment through owned %s Back and a routed return",
+  async (kind) => {
+    const f = fixture();
+    await f.ready();
+    f.workspace.setView("watchlist");
+    let nav = f.render();
+    const member = f.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const open = () => f.workspace.openWatchlistAnnual(member);
+    nav.open(open);
+    f.render();
+    await settle();
+    nav = f.render();
+    f.workspace.valuation.setDcfField("startingUnleveredCashFlowUsd", "100");
+    const entry = f.workspace.valuation.captureInputs()!.entry;
+    f.api.loadValuationAssumptions = vi.fn().mockResolvedValue({
+      version: 3,
+      payload: { schemaVersion: 1, entries: [entry] },
+    });
+    await f.workspace.valuationAssumptions.coordinator.load();
+    const model = f.workspace.valuationReassessment;
+    const saved =
+      f.workspace.valuationAssumptions.coordinator.getSnapshot().saved!.payload
+        .entries[0]!;
+    expect(model.capture(saved)).not.toBeNull();
+    expect(
+      model.calculate(model.getSnapshot(), f.workspace.valuation.getSnapshot()),
+    ).not.toBeNull();
+    const paired = model.getSnapshot();
+    const calculate = vi.spyOn(f.workspace.valuation, "calculate");
+    if (kind === "button") nav.back();
+    else mount.navigate(-1);
+    f.render();
+    await settle();
+    nav = f.render();
+    expect(f.workspace.getSnapshot().research).toBeNull();
+    expect(model.getSnapshot().reading).toBe(paired.reading);
+    expect(model.getSnapshot().active).toBe(false);
+    nav.open(open);
+    f.render();
+    await settle();
+    f.render();
+    expect(model.getSnapshot().active).toBe(true);
+    expect(model.getSnapshot().baseline).toBe(paired.baseline);
+    expect(model.getSnapshot().reading).toBe(paired.reading);
+    expect(calculate).not.toHaveBeenCalled();
+    expect(f.api.loadValuationAssumptions).toHaveBeenCalledOnce();
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+    expect(f.api.recentFilings).not.toHaveBeenCalled();
+    f.workspace.sessionOwner.dispose();
+  },
+);

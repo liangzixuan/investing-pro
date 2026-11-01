@@ -44,6 +44,12 @@ final class ReportRevisitTouch {
     ReportRevisitTouch(ReportRevisitPage page) { this.page = page; }
     void fileChooser() throws Exception {
         String root = ".managed-report-revisit", labelText = "Select a company report file";
+        page.await(new ReportRevisitPage.Check("report file chooser is enabled and visible after disclosure", new ReportRevisitPage.Script(
+            "(() => { const input=document.querySelector(" + JSONObject.quote(root + " input[type=file]") + "),label=input?.closest('label');" +
+            " if(!input || input.disabled || !label || label.control!==input)return false;" +
+            " if(input.closest('[hidden],[inert]') || !input.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;" +
+            " for(let p=input.parentElement;p;p=p.parentElement)if(p.tagName==='DETAILS'&&!p.open)return false;" +
+            " return [...label.childNodes].some(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim()===" + JSONObject.quote(labelText) + "); })()")).nativeReady());
         Geometry geometry = new Geometry(page.raw(new ReportRevisitPage.Script(
             "(() => { const input=document.querySelector(" + JSONObject.quote(root + " input[type=file]") + "),label=input?.closest('label');" +
             " if(!input || input.disabled || !label)return null;" +

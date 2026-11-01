@@ -13,6 +13,7 @@ type ValuationResearchProps = Pick<
   ComponentProps<typeof ManagedCompanyResearch>,
   | "valuation"
   | "valuationAssumptions"
+  | "valuationReassessment"
   | "valuationNoteActions"
   | "valuationRevenueBasisActions"
   | "valuationDraftFiles"
@@ -66,6 +67,7 @@ export function managedValuationResearchProps(
       : null,
     valuation: workspace.valuation,
     valuationAssumptions: workspace.valuationAssumptions,
+    valuationReassessment: workspace.valuationReassessment,
     valuationRevenueBasisActions: {
       prepare: (concept) =>
         workspace.prepareAnnualRevenueBasis(selection, concept),

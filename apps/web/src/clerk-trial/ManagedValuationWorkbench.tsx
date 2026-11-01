@@ -1,3 +1,9 @@
+import type { ManagedValuationReassessment } from "./managed-valuation-reassessment";
+import { ManagedValuationReassessmentReading } from "./ManagedValuationReassessmentReading";
+import {
+  useValuationReassessmentView,
+  valuationFocusOrigin,
+} from "./useValuationReassessmentView";
 import { ManagedValuationRevenueBasisPanel } from "./ManagedValuationRevenueBasisPanel";
 import type { ManagedValuationRevenueBasisActions } from "./use-valuation-revenue-basis-review";
 import type { ManagedAnnualReport } from "./managed-annual-report";
@@ -51,6 +57,7 @@ export interface ManagedValuationNoteActions {
 }
 export interface ManagedValuationWorkbenchProps {
   readonly model: WorkbenchModel;
+  readonly reassessment?: ManagedValuationReassessment;
   readonly selection: ManagedResearchSelection;
   readonly navigationPending: boolean;
   readonly noteActions: ManagedValuationNoteActions;
@@ -254,6 +261,7 @@ function sameOwner(
 }
 export function ManagedValuationWorkbench({
   model,
+  reassessment,
   selection,
   navigationPending,
   noteActions,
@@ -265,6 +273,11 @@ export function ManagedValuationWorkbench({
   followup,
 }: ManagedValuationWorkbenchProps) {
   const id = useId();
+  const comparison = useValuationReassessmentView(
+    reassessment,
+    navigationPending,
+  );
+  const reassessmentState = comparison.state;
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -297,10 +310,20 @@ export function ManagedValuationWorkbench({
     !owned ||
     !sameOwner(state.context, selection);
   const revision = choiceRevision.current;
+  const render = {};
+  const committed = useRef<object | null>(null);
+  useLayoutEffect(() => {
+    committed.current = render;
+    return () => {
+      if (committed.current === render) committed.current = null;
+    };
+  });
   const canAct = () =>
+    committed.current === render &&
     live.current &&
     !disabled &&
     model.getSnapshot() === state &&
+    (reassessment?.getSnapshot() ?? null) === reassessmentState &&
     choiceRevision.current === revision;
   const noteBlock =
     !watchlist.canEdit || !watchlist.member
@@ -370,6 +393,7 @@ export function ManagedValuationWorkbench({
                 disabled={navigationPending}
                 onClick={() => {
                   if (
+                    committed.current !== render ||
                     !live.current ||
                     navigationPending ||
                     model.getSnapshot() !== state
@@ -408,14 +432,37 @@ export function ManagedValuationWorkbench({
           <button
             type="button"
             className="trial-secondary"
-            disabled={disabled || Boolean(state.inputIssue)}
+            disabled={
+              disabled ||
+              Boolean(state.inputIssue) ||
+              Boolean(
+                reassessmentState?.baseline &&
+                !reassessment?.canCalculate(reassessmentState, state),
+              )
+            }
             onClick={() => {
-              if (!canAct()) return;
-              resetPreview();
-              model.calculate();
+              if (!canAct() || state.inputIssue) return;
+              if (reassessmentState?.baseline) {
+                if (
+                  !comparison.ready() ||
+                  !reassessment?.canCalculate(reassessmentState, state)
+                )
+                  return;
+                const origin = valuationFocusOrigin();
+                resetPreview();
+                comparison.requestFocus(
+                  reassessment.calculate(reassessmentState, state),
+                  origin,
+                );
+              } else {
+                resetPreview();
+                model.calculate();
+              }
             }}
           >
-            Calculate authored scenarios
+            {reassessmentState?.baseline
+              ? "Calculate saved and revised scenarios"
+              : "Calculate authored scenarios"}
           </button>
           {state.inputIssue && <p role="status">{state.inputIssue}</p>}
           {owned && (state.dirty || state.calculation) && (
@@ -437,9 +484,15 @@ export function ManagedValuationWorkbench({
             plain decimals without commas, currency symbols or scientific
             notation; rates have at most four decimal places.
           </p>
-          {state.calculation && (
+          {reassessmentState?.baseline && reassessmentState.reading ? (
+            <ManagedValuationReassessmentReading
+              baseline={reassessmentState.baseline}
+              reading={reassessmentState.reading}
+              headingRef={comparison.headingRef}
+            />
+          ) : state.calculation ? (
             <ManagedValuationResults calculation={state.calculation} />
-          )}
+          ) : null}
           {followup}
           <ManagedValuationPriceContext context={priceContext} />
           {onOpenPrice && (
@@ -449,6 +502,7 @@ export function ManagedValuationWorkbench({
               disabled={navigationPending}
               onClick={() => {
                 if (
+                  committed.current !== render ||
                   !live.current ||
                   navigationPending ||
                   model.getSnapshot() !== state ||

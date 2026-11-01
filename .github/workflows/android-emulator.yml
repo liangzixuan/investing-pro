@@ -610,6 +610,15 @@ jobs:
           required.add(watchlist_daily_review_case)
           if len(required) != 133:
               raise SystemExit("The Watchlist daily review must preserve all 132 prior native cases.")
+          saved_valuation_reassessment_case = (
+              "local.investment.personal.ManagedSavedValuationReassessmentTest",
+              "confirmedSavedBaselineKeepsRevisedEvidenceThroughBackAndSeparateSaves",
+          )
+          if saved_valuation_reassessment_case in required:
+              raise SystemExit("Saved valuation reassessment must be a distinct native case.")
+          required.add(saved_valuation_reassessment_case)
+          if len(required) != 134:
+              raise SystemExit("Saved valuation reassessment must preserve all 133 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -718,6 +727,13 @@ jobs:
                           raise SystemExit("The Watchlist daily review shard must retain each scoped journey frame.")
                   elif daily_frames:
                       raise SystemExit("Watchlist daily review frames belong only to the executed shard.")
+              for frame_name in ("newSavedValuationReassessmentBaseline.png", "newSavedValuationReassessmentResults.png", "newSavedValuationReassessmentSaved.png"):
+                  reassessment_frames = list(root.rglob(frame_name))
+                  if saved_valuation_reassessment_case in executed:
+                      if len(reassessment_frames) != 1 or reassessment_frames[0].stat().st_size == 0:
+                          raise SystemExit("The saved valuation reassessment shard must retain each scoped journey frame.")
+                  elif reassessment_frames:
+                      raise SystemExit("Saved valuation reassessment frames belong only to the executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

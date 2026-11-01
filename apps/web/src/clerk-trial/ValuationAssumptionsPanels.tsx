@@ -9,6 +9,7 @@ import {
   ValuationDraftEntry,
   ValuationCatalogIdentityRow,
   ValuationConfirmedEntry,
+  type ValuationBaselineActions,
 } from "./ValuationAssumptionsEntries";
 export function CompletePayload({
   payload,
@@ -228,8 +229,10 @@ export function ValuationDraftEntries({
 }
 export function ValuationSavedEntries({
   view,
+  baselineActions,
 }: {
   readonly view: ValuationAssumptionsView;
+  readonly baselineActions?: ValuationBaselineActions;
 }) {
   const { saved } = view;
   return (
@@ -250,6 +253,7 @@ export function ValuationSavedEntries({
               key={entry.listing.listingId}
               entry={entry}
               view={view}
+              {...(baselineActions ? { baselineActions } : {})}
             />
           ))}
         </section>
