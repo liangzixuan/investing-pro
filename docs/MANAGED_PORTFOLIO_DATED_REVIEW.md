@@ -1,7 +1,10 @@
 # Dated Portfolio review
 
-Implementation and acceptance are in progress. This workflow joins the existing
-dated Portfolio reading to an ordered review of checks for current holdings.
+Android 1.69 provides this workflow from accepted main
+`610542770dadf0b14021e0f70f3ad81ad1b14d60`. It joins the existing dated Portfolio
+reading to an ordered review of checks for current holdings. Original main
+checks, 132 native cases and four same-APK checks passed before local delivery.
+Installation and physical-phone acceptance remain separate.
 
 ## Prepare the reading
 

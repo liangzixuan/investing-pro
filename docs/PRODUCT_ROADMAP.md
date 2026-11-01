@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 31, 2026. This document defines the durable product goals and
+Updated November 1, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,14 +27,22 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: a dated Portfolio review across held-company checks
+## Current priority: a Watchlist daily review
 
-Connect the complete dated Portfolio reading to the existing ordered held-check
-review under M3/M4. Keep original evidence visible through Filings, Research,
-Back, authored assessments and completion. Retain all chosen outcomes and other
-open checks at Finish, with Save and fresh Load separate. See the
-[dated review guide](MANAGED_PORTFOLIO_DATED_REVIEW.md). Implementation and
-acceptance are in progress; existing calculations and source coverage stay fixed.
+Connect the selected Watchlist group to an explicit Price/Filings missing-read
+pass, retained company Research and authored-check context under M1/M3/M4.
+Keep complete source outcomes and clocks through Back and Finish, with independent
+resource saves. Extend the existing group owner and bounded sources; see the
+[daily review guide](MANAGED_WATCHLIST_DAILY_REVIEW.md). Acceptance is in progress.
+
+## Delivered: dated Portfolio review across held-company checks
+
+Android 1.69 keeps the original dated Portfolio report through ordered checks,
+Filings, Research, Back and authored assessments. Finish retains chosen outcomes
+and other open checks; Save and fresh Load are separate. Accepted main
+`610542770dadf0b14021e0f70f3ad81ad1b14d60` passed original project checks and
+132 native cases. The existing-signer build, four APK checks and local delivery
+passed. See the [dated review guide](MANAGED_PORTFOLIO_DATED_REVIEW.md).
 
 ## Delivered: a complete Markets daily briefing
 

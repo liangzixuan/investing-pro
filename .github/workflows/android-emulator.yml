@@ -601,6 +601,15 @@ jobs:
           required.add(portfolio_dated_review_case)
           if len(required) != 132:
               raise SystemExit("The dated Portfolio review must preserve all 131 prior native cases.")
+          watchlist_daily_review_case = (
+              "local.investment.personal.ManagedWatchlistDailyReviewTest",
+              "orderedWatchlistReviewKeepsPartialSourcesThroughResearchBackFinishAndSeparateSave",
+          )
+          if watchlist_daily_review_case in required:
+              raise SystemExit("The Watchlist daily review must be a distinct native case.")
+          required.add(watchlist_daily_review_case)
+          if len(required) != 133:
+              raise SystemExit("The Watchlist daily review must preserve all 132 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -702,6 +711,13 @@ jobs:
                           raise SystemExit("The dated Portfolio review shard must retain each scoped journey frame.")
                   elif dated_frames:
                       raise SystemExit("Dated Portfolio review frames belong only to the executed shard.")
+              for frame_name in ("newWatchlistDailyReviewPlan.png", "newWatchlistDailyReviewResearch.png", "newWatchlistDailyReviewFinish.png"):
+                  daily_frames = list(root.rglob(frame_name))
+                  if watchlist_daily_review_case in executed:
+                      if len(daily_frames) != 1 or daily_frames[0].stat().st_size == 0:
+                          raise SystemExit("The Watchlist daily review shard must retain each scoped journey frame.")
+                  elif daily_frames:
+                      raise SystemExit("Watchlist daily review frames belong only to the executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

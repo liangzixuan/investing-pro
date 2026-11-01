@@ -1,18 +1,31 @@
 # Current work
 
-Updated October 31, 2026. This is the current capability and delivery record.
+Updated November 1, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: carry a dated Portfolio reading through held-company checks
+## In development: a Watchlist daily review
 
-Capture the complete dated Portfolio report, then explicitly prepare and choose
-held-company checks. Keep the original reading through Filings, Research, Back,
-assessment and completion. Finish retains ordered results and other open checks;
-Save and fresh Load remain separate. See the
-[dated review guide](MANAGED_PORTFOLIO_DATED_REVIEW.md). Source and native
-acceptance are in progress.
+Choose up to five exact listings, preview Price and Filings work, run missing
+reads explicitly, then retain full evidence through company Research and Back.
+Finish keeps the ordered reading and authored checks; Save and fresh Load remain
+separate. See the [daily review guide](MANAGED_WATCHLIST_DAILY_REVIEW.md).
+Local implementation and synthetic checks pass, including the full web suite,
+web types and dependency boundaries. Native Android acceptance and source
+integration are in progress.
+
+## Accepted and delivered: dated Portfolio reading across held-company checks
+
+Keep the complete original Portfolio reading through ordered held-check review,
+Filings, Research, Back, authored assessments and completion. Finish retains all
+chosen outcomes and other open checks. Save and fresh Load remain separate; see
+the [dated review guide](MANAGED_PORTFOLIO_DATED_REVIEW.md).
+[PR 268](https://github.com/liangzixuan/investing-pro/pull/268) merged at
+`610542770dadf0b14021e0f70f3ad81ad1b14d60`. Original main project checks and all
+132 native cases passed. Android 1.69.0 is provided locally after the guarded
+existing-signer build, four same-APK checks and copy/checksum readback. Browser,
+installation and physical-phone acceptance are not claimed.
 
 ## Accepted and delivered: a complete Markets daily briefing
 
