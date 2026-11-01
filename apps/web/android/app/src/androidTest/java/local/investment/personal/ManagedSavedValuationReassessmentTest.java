@@ -3,7 +3,6 @@ package local.investment.personal;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
-import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static org.junit.Assert.*;
 import android.os.Handler;
 import android.os.Looper;
@@ -11,19 +10,14 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputConnection;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import androidx.test.core.app.ActivityScenario;
-import androidx.test.espresso.UiController;
-import androidx.test.espresso.ViewAction;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import org.hamcrest.Matcher;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -185,18 +179,9 @@ public class ManagedSavedValuationReassessmentTest {
         long deadline=SystemClock.uptimeMillis()+10000;CompletableFuture<Void> committed=new CompletableFuture<>();Handler main=new Handler(Looper.getMainLooper());AtomicReference<ViewTreeObserver> observer=new AtomicReference<>();AtomicReference<Runnable> callback=new AtomicReference<>();
         try{scenario.onActivity(a->{WebView web=a.getBridge().getWebView();assertTrue(web.isAttachedToWindow()&&web.isShown()&&web.isHardwareAccelerated());web.postVisualStateCallback(0,new WebView.VisualStateCallback(){@Override public void onComplete(long id){if(committed.isDone()||SystemClock.uptimeMillis()>=deadline)return;Runnable frame=()->main.post(()->{if(SystemClock.uptimeMillis()<deadline)committed.complete(null);});ViewTreeObserver current=web.getViewTreeObserver();observer.set(current);callback.set(frame);current.registerFrameCommitCallback(frame);web.invalidate();}});});long remaining=deadline-SystemClock.uptimeMillis();assertTrue(remaining>0);committed.get(remaining,TimeUnit.MILLISECONDS);}finally{committed.cancel(false);main.post(()->{ViewTreeObserver current=observer.get();Runnable frame=callback.get();if(current!=null&&current.isAlive()&&frame!=null)current.unregisterFrameCommitCallback(frame);});}
     }
-    private void selectAllNative() {
-        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
-            public Matcher<View> getConstraints() { return isDisplayed(); }
-            public String getDescription() { return "select the complete focused input through its native editor connection"; }
-            public void perform(UiController ui, View view) {
-                assertTrue("The native editor must own focus", view.hasFocus() && view.hasWindowFocus());
-                InputConnection input = view.onCreateInputConnection(new EditorInfo());
-                assertNotNull("The focused WebView must supply its native editor", input);
-                assertTrue("Native Select all must dispatch", input.performContextMenuAction(android.R.id.selectAll));
-                ui.loopMainThreadUntilIdle();
-            }
-        });
+    private ReassessmentNativeEditor.Dom readEditingDom(String selector) throws Exception {
+        JSONObject value=new JSONObject(page.raw(new Script("(()=>{const e=document.querySelector("+q(selector)+");return {value:e?.value??'',start:e?.selectionStart??-1,end:e?.selectionEnd??-1,current:!!e&&document.activeElement===e&&!e.disabled&&!e.readOnly};})()")));
+        return new ReassessmentNativeEditor.Dom(value.getString("value"),value.getInt("start"),value.getInt("end"),value.getBoolean("current"));
     }
     private void diagnoseEditing(String phase) throws Exception {
         if (editingSelector == null) return;
@@ -217,12 +202,14 @@ public class ManagedSavedValuationReassessmentTest {
         page.await(new Check("exact assessment and original value own native focus before IME",new Script(focused)).nativeReady());
         nativeEditingState=keyboard.awaitVisibleEditor(selector);
         page.await(new Check("settled IME retains exact focused field and original value",new Script(focused)).nativeReady());
-        diagnoseEditing("before-select-all");
-        selectAllNative();
-        await("native selection covers the whole original assessment",focused+"&&document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");
-        diagnoseEditing("after-select-all");
-        onView(isAssignableFrom(WebView.class)).perform(new ViewAction(){public Matcher<View> getConstraints(){return isDisplayed();}public String getDescription(){return "replace exact invented reassessment input through native IME";}public void perform(UiController ui,View view){InputConnection input=view.onCreateInputConnection(new EditorInfo());assertNotNull(input);assertTrue(input.commitText(value,1));ui.loopMainThreadUntilIdle();}});
-        await("full Unicode assessment reaches the real controlled input","document.querySelector("+q(selector)+").value==="+q(value));
+        try (ReassessmentNativeEditor editor=ReassessmentNativeEditor.bind(scenario,()->readEditingDom(selector),original)) {
+            diagnoseEditing("before-select-all");
+            editor.selectAll();
+            await("native selection covers the whole original assessment",focused+"&&document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");
+            diagnoseEditing("after-select-all");
+            editor.commit(value);
+            await("full Unicode assessment reaches the real controlled input","document.querySelector("+q(selector)+").value==="+q(value));
+        }
         keyboard.closeSoftKeyboard();
     }
 }
