@@ -228,6 +228,7 @@ function fixture(initial: ManagedPortfolioPayload | null = null) {
       navigationPending,
       onResearch: research,
       onReviewWatchlist: () => workspace.setView("watchlist"),
+      datedReviewNavigation: { navigate: () => false, transferred: vi.fn() },
       ...draftFiles,
     });
     hooks.direct = false;

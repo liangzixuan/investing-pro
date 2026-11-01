@@ -1,3 +1,4 @@
+import { PortfolioDatedReviewFixtureDiagnostics } from "./portfolio-dated-review-fixture-diagnostics";
 import { ReviewFilingsEvidenceFixtureControls } from "./review-filings-evidence-fixture-controls";
 import { PortfolioHeldDueChecksFixtureControls } from "./portfolio-held-due-checks-fixture-controls";
 import { PortfolioComparisonReportFixtureDiagnostics } from "./portfolio-comparison-report-fixture-diagnostics";
@@ -83,6 +84,7 @@ function useFixtureWorkspace(session: TrialSession) {
         : {}),
     });
     if (
+      scenario === "portfolio-dated-review" ||
       scenario === "portfolio-screen-selection" ||
       scenario === "portfolio-report-comparison" ||
       scenario === "portfolio-comparison-report"
@@ -95,6 +97,7 @@ function useFixtureWorkspace(session: TrialSession) {
       current.setView("followups");
     setWorkspace(current);
     if (
+      scenario !== "portfolio-dated-review" &&
       scenario !== "review-filings-evidence" &&
       scenario !== "portfolio-held-due-checks" &&
       scenario !== "holding-followup" &&
@@ -362,6 +365,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       {nativePortfolioComparisonReport && (
         <PortfolioComparisonReportFixtureDiagnostics
           delivery={nativePortfolioComparisonReport}
+        />
+      )}
+      {workspace && fixture.portfolioDatedReview && (
+        <PortfolioDatedReviewFixtureDiagnostics
+          workspace={workspace}
+          fixture={fixture.portfolioDatedReview}
         />
       )}
       {workspace && fixture.reviewFilingsEvidence && (

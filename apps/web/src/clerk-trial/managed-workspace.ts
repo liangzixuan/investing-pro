@@ -1,3 +1,4 @@
+import { ManagedPortfolioDatedReviewContext } from "./managed-portfolio-dated-review-context";
 import { ManagedPortfolioHeldDueChecks } from "./managed-portfolio-held-due-checks";
 import { ManagedCompanyResearchChecks } from "./managed-company-research-checks-controller";
 import { captureManagedInterimNote } from "./managed-interim-note-context";
@@ -375,6 +376,9 @@ export class ManagedWorkspace {
   readonly followupsReview: ManagedFollowupsReviewSession;
   readonly reviewFilings: ManagedFollowupsReviewFilings;
   readonly portfolioHeldDueChecks: ManagedPortfolioHeldDueChecks;
+  readonly portfolioDatedReview: ManagedPortfolioDatedReviewContext;
+  private readonly portfolioCloseModels =
+    new WeakSet<ManagedPortfolioCloseReview>();
   readonly portfolio: ManagedPortfolio;
   readonly sessionOwner: ManagedSessionOwner;
   readonly valuation = new ManagedValuationWorkbench();
@@ -791,6 +795,10 @@ export class ManagedWorkspace {
       researchOwner: () => this.followupResearch,
       publish: () => this.update({}),
     });
+    this.portfolioDatedReview = new ManagedPortfolioDatedReviewContext(
+      this,
+      (prices) => this.portfolioCloseModels.has(prices),
+    );
     this.reviewFilings.subscribe(() => {
       if (this.reviewFilings.getSnapshot().catalogChanged)
         this.invalidateCatalog();
@@ -830,6 +838,7 @@ export class ManagedWorkspace {
   }
   setNavigationBlocked(blocked: boolean) {
     this.marketsBriefing?.navigation(blocked);
+    this.portfolioDatedReview?.navigation(blocked);
     this.followupsNavigationDepth++;
     try {
       this.followupsReview.setAvailable(false);
@@ -1008,6 +1017,7 @@ export class ManagedWorkspace {
     this.marketsSourceReview.retire();
     this.cancelFollowupOpening();
     this.followupResearch = null;
+    this.portfolioDatedReview?.retire();
     this.portfolioHeldDueChecks?.retire();
     this.reviewFilings?.retire();
     this.followupsReview.retire();
@@ -1091,27 +1101,33 @@ export class ManagedWorkspace {
   }
   setView(view: ManagedDiscoveryState["view"]) {
     if (!this.canNavigate()) return;
-    const { wasReturned, owned } = this.marketsBriefing.beforeView(view);
-    this.viewRevision++;
-    if (this.state.view === "portfolio" && view !== "portfolio")
-      this.portfolio.cancelReview();
-    this.closeResearch();
-    if (view === this.state.view && !wasReturned) {
-      this.portfolioHeldDueChecks.reconcile();
-      return;
-    }
-    if (view === "markets" && owned && this.marketsBriefing?.returned) {
-      // The retained reading keeps every live source inactive.
-    } else if (view === "markets") {
-      this.markets.enter(this.state.snapshot?.snapshotSha256 ?? null);
-      this.blsCalendar.enter();
-      this.agenda.enter();
-    } else {
-      this.markets.leave();
-      this.blsCalendar.leave();
-      this.agenda.leave();
-    }
-    this.update({ view });
+    this.portfolioDatedReview.changeView(view, (datedTransfer) => {
+      const { wasReturned, owned } = this.marketsBriefing.beforeView(view);
+      this.viewRevision++;
+      if (
+        this.state.view === "portfolio" &&
+        view !== "portfolio" &&
+        !datedTransfer
+      )
+        this.portfolio.cancelReview();
+      this.closeResearch();
+      if (view === this.state.view && !wasReturned) {
+        this.portfolioHeldDueChecks.reconcile();
+        return;
+      }
+      if (view === "markets" && owned && this.marketsBriefing?.returned) {
+        // The retained reading keeps every live source inactive.
+      } else if (view === "markets") {
+        this.markets.enter(this.state.snapshot?.snapshotSha256 ?? null);
+        this.blsCalendar.enter();
+        this.agenda.enter();
+      } else {
+        this.markets.leave();
+        this.blsCalendar.leave();
+        this.agenda.leave();
+      }
+      this.update({ view });
+    });
   }
   private invalidateCatalog() {
     this.marketsBriefing?.clear();
@@ -1422,6 +1438,7 @@ export class ManagedWorkspace {
   }
   async setCompanyRoute(route: ManagedCompanyRoute | null) {
     if (!this.canNavigate()) return;
+    this.portfolioDatedReview.companyRoute(route);
     this.marketsBriefing.companyRoute(route);
     this.cancelFollowupOpening();
     this.watchlistPrices.cancel();
@@ -1713,6 +1730,7 @@ export class ManagedWorkspace {
     }
   }
   closeResearch() {
+    this.portfolioDatedReview?.closeResearch();
     this.marketsBriefing?.closeResearch();
     this.cancelFollowupOpening();
     this.followupResearch = null;
@@ -1822,12 +1840,14 @@ export class ManagedWorkspace {
     );
   }
   createPortfolioCloseReview() {
-    return new ManagedPortfolioCloseReview(
+    const prices = new ManagedPortfolioCloseReview(
       this.eodAccess,
       (error) => this.coordinator.readError(error),
       () => this.invalidateCatalog(),
       this.portfolioPriceCoverage,
     );
+    this.portfolioCloseModels.add(prices);
+    return prices;
   }
   /** Retire only the Research authority carried by this exact held review. */
   retirePortfolioHeldDueReview(captured: FollowupsReviewState) {
@@ -2284,6 +2304,7 @@ export class ManagedWorkspace {
   async prepareFollowupResearch(
     entry: ResearchFollowup,
   ): Promise<PreparedFollowupResearch | null> {
+    this.portfolioDatedReview.prepareResearch(entry);
     this.marketsBriefing.prepareResearch(entry);
     const snapshot = this.state.snapshot;
     const draft = this.followups.coordinator.getSnapshot().draft;
@@ -2396,6 +2417,7 @@ export class ManagedWorkspace {
       this.preparedFollowupIsCurrent(capture) &&
       (evidence?.isCurrent() ?? true);
     if (!current() || this.state.research || this.state.companyRoute) return;
+    this.portfolioDatedReview.openResearch(capture);
     this.marketsBriefing.openResearch(capture);
     this.followupResearch = {
       reviewHandle: capture.reviewHandle,

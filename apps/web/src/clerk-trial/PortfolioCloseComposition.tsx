@@ -143,6 +143,7 @@ export function PortfolioCloseComposition({
 }: {
   id:
     | "portfolio-close-composition"
+    | "portfolio-dated-review-composition"
     | "portfolio-report-composition"
     | "portfolio-report-saved-composition"
     | "portfolio-comparison-report-saved-composition"

@@ -60,6 +60,7 @@ export class ManagedPortfolioHeldDueChecks {
     const review = w.followupsReview.getSnapshot();
     const plan =
       this.preview?.plan ??
+      w.portfolioDatedReview?.intakePlan() ??
       prepareManagedPortfolioFollowupsPlan({
         projection: w.portfolio.getProjection(),
         context: w.followups.getReviewContext(),
@@ -179,17 +180,22 @@ export class ManagedPortfolioHeldDueChecks {
       !preview.currentIntake()
     )
       return null;
+    const datedCurrent = this.workspace.portfolioDatedReview.beginReview(
+      preview.plan,
+      captured.chosen,
+    );
     this.starting = true;
     let installed: FollowupsReviewState | null;
     try {
       installed = this.workspace.followupsReview.admitOrdered(
         preview.context,
         captured.chosen,
-        preview.currentIntake,
+        () => preview.currentIntake() && datedCurrent(),
       );
     } finally {
       this.starting = false;
     }
+    this.workspace.portfolioDatedReview.endReview(installed);
     this.preview = null;
     if (
       !installed ||

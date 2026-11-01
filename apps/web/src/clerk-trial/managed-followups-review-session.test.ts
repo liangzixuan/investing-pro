@@ -496,8 +496,9 @@ describe("temporary daily Follow-ups review", () => {
     f.review.finish(f.review.getSnapshot());
     expect(f.review.getSnapshot()).toMatchObject({
       phase: "finished",
-      chosen: [],
+      chosen: [{ entry: current(f) }, { entry: current(f, 1) }],
       selected: null,
+      position: -1,
     });
     unchangedCalls(f);
     expect(f.context.draft).toBe(watchlist);
@@ -713,7 +714,7 @@ describe("temporary daily Follow-ups review", () => {
     );
     unchangedCalls(f);
   });
-  it("Finish clears only temporary choices, stays finished until explicit enter and cannot auto-complete or Save", async () => {
+  it("Finish retains ordered readings until explicit enter and cannot auto-complete or Save", async () => {
     const f = await fixture();
     const state = start(f);
     const draft = f.model.coordinator.getSnapshot().draft;
@@ -774,4 +775,132 @@ describe("temporary daily Follow-ups review", () => {
     });
     fresh.retire();
   });
+});
+
+describe("finished chosen review reading", () => {
+  it("retains original handles and full current results/statuses without a current check or new requests", async () => {
+    const f = await fixture();
+    const started = start(f, [2, 0]);
+    const handles = started.chosen.map((row) => row.handle);
+    const raw = "  東京 📈 <script>literal</script>\ncomplete result  ";
+    f.model.edit(current(f, 2), "result", raw);
+    f.model.complete(current(f, 2), new Date("2026-10-24T12:00:00Z"));
+    const before = f.review.getSnapshot();
+    const draft = f.model.coordinator.getSnapshot().draft;
+    f.review.finish(before);
+    const finished = f.review.getSnapshot();
+    expect(finished).toMatchObject({
+      entered: true,
+      phase: "finished",
+      selected: null,
+      position: -1,
+    });
+    expect(finished.chosen).toBe(before.chosen);
+    expect(finished.chosen.map((row) => row.handle)).toEqual(handles);
+    expect(finished.chosen.map((row) => row.entry)).toEqual([
+      current(f, 2),
+      current(f),
+    ]);
+    expect(finished.chosen[0]!.entry.result).toBe(raw);
+    expect(f.model.coordinator.getSnapshot().draft).toBe(draft);
+    expect(f.review.captureCurrent(finished)).toBeNull();
+    expect(f.review.canContinue(finished)).toBe(false);
+    expect(f.review.canStart(finished)).toBe(false);
+    f.review.continue(before);
+    f.review.finish(before);
+    f.review.start(finished);
+    expect(f.review.getSnapshot()).toBe(finished);
+    f.model.reopen(current(f, 2));
+    f.model.edit(current(f), "result", "  Later complete text 😀  ");
+    f.model.complete(current(f), new Date("2026-10-24T12:00:00Z"));
+    const refreshed = f.review.getSnapshot();
+    expect(refreshed).toMatchObject({
+      phase: "finished",
+      selected: null,
+      position: -1,
+    });
+    expect(refreshed.chosen.map((row) => row.handle)).toEqual(handles);
+    expect(
+      refreshed.chosen.map((row) => [row.entry.status, row.entry.result]),
+    ).toEqual([
+      ["open", raw],
+      ["completed", "  Later complete text 😀  "],
+    ]);
+    expect(Object.isFrozen(refreshed.chosen)).toBe(true);
+    expect(f.review.captureCurrent(refreshed)).toBeNull();
+    unchangedCalls(f);
+  });
+
+  it.each([
+    "question",
+    "date",
+    "remove",
+    "draft",
+    "catalog",
+    "day",
+    "save",
+    "load",
+    "retire",
+  ] as const)(
+    "retires finished records after %s and never revives old actions",
+    async (boundary) => {
+      const f = await fixture();
+      start(f, [1, 0]);
+      f.model.edit(current(f), "result", "Unsaved authored result");
+      f.review.finish(f.review.getSnapshot());
+      const finished = f.review.getSnapshot();
+      const draft = f.model.coordinator.getSnapshot().draft!;
+      if (boundary === "question")
+        f.model.edit(current(f), "check", "Changed question");
+      if (boundary === "date") f.model.edit(current(f), "dueOn", "2026-10-25");
+      if (boundary === "remove") f.model.remove(current(f));
+      if (boundary === "draft")
+        f.model.coordinator.replaceDraft(structuredClone(draft));
+      if (boundary === "catalog") f.model.syncCatalog(otherDigest);
+      if (boundary === "day")
+        f.model.reassessDueDate(new Date("2026-10-25T00:00:00Z"));
+      if (boundary === "save") await f.model.coordinator.save();
+      if (boundary === "load") await f.model.coordinator.load();
+      if (boundary === "retire") f.model.retire();
+      expect(f.review.getSnapshot()).toMatchObject({
+        entered: false,
+        chosen: [],
+        selected: null,
+        position: -1,
+      });
+      if (boundary !== "retire") f.model.coordinator.replaceDraft(draft);
+      const cleared = f.review.getSnapshot();
+      f.review.finish(finished);
+      f.review.start(finished);
+      f.review.continue(finished);
+      f.review.choose(finished, finished.chosen[0]!.handle);
+      expect(f.review.getSnapshot()).toBe(cleared);
+      expect(f.review.captureCurrent(finished)).toBeNull();
+    },
+  );
+
+  it.each(["enter", "leave"] as const)(
+    "%s clears terminal records and does not reuse their handles",
+    async (action) => {
+      const f = await fixture();
+      const original = start(f, [1, 0]);
+      f.review.finish(original);
+      if (action === "leave") {
+        f.review.leave();
+        expect(f.review.getSnapshot().chosen).toEqual([]);
+        f.review.setAvailable(true);
+      }
+      expect(f.review.enter()).toBe(true);
+      const choosing = f.review.getSnapshot();
+      expect(choosing.chosen).toEqual([]);
+      expect(
+        choosing.rows.every(
+          (row) => !original.chosen.some((old) => old.handle === row.handle),
+        ),
+      ).toBe(true);
+      f.review.choose(choosing, original.chosen[0]!.handle);
+      expect(f.review.getSnapshot()).toBe(choosing);
+      unchangedCalls(f);
+    },
+  );
 });

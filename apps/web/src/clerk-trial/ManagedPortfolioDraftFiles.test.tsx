@@ -188,6 +188,7 @@ it("keeps the Portfolio entry hidden on invalid roots and passes the same live r
     navigationPending: false,
     onResearch: vi.fn(),
     navigation: { active: routeActive, view: vi.fn(() => true) },
+    datedReviewNavigation: { navigate: () => false, transferred: vi.fn() },
   };
   type EntryElement = React.ReactElement<{
     hidden: boolean;

@@ -134,6 +134,7 @@ it("authors the exact FIFO ledger, preserves both other drafts, returns from res
   const markup = renderToStaticMarkup(
     <ManagedPortfolio
       workspace={f.workspace}
+      datedReviewNavigation={{ navigate: () => false, transferred: () => {} }}
       navigationPending={false}
       onReviewWatchlist={() => f.workspace.setView("watchlist")}
       onResearch={() => {
@@ -317,6 +318,7 @@ function assertHoldingTransferMarkup(
   const markup = renderToStaticMarkup(
     <ManagedPortfolio
       workspace={f.workspace}
+      datedReviewNavigation={{ navigate: () => false, transferred: () => {} }}
       navigationPending={false}
       onReviewWatchlist={() => f.workspace.setView("watchlist")}
       onResearch={() => {

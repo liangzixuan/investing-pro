@@ -592,6 +592,15 @@ jobs:
           required.add(markets_briefing_case)
           if len(required) != 131:
               raise SystemExit("The Markets briefing journey must preserve all 130 prior native cases.")
+          portfolio_dated_review_case = (
+              "local.investment.personal.ManagedPortfolioDatedReviewTest",
+              "datedReadingKeepsTwoHeldChecksThroughFilingsResearchBackFinishAndSeparateSave",
+          )
+          if portfolio_dated_review_case in required:
+              raise SystemExit("The dated Portfolio review must be a distinct native case.")
+          required.add(portfolio_dated_review_case)
+          if len(required) != 132:
+              raise SystemExit("The dated Portfolio review must preserve all 131 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -686,6 +695,13 @@ jobs:
                       raise SystemExit("The Markets briefing shard must retain its scoped selected-item reading frame.")
               elif markets_briefing_frames:
                   raise SystemExit("The Markets briefing frame belongs only to its executed shard.")
+              for frame_name in ("newPortfolioDatedReviewEntry.png", "newPortfolioDatedReviewResearch.png", "newPortfolioDatedReviewFinish.png"):
+                  dated_frames = list(root.rglob(frame_name))
+                  if portfolio_dated_review_case in executed:
+                      if len(dated_frames) != 1 or dated_frames[0].stat().st_size == 0:
+                          raise SystemExit("The dated Portfolio review shard must retain each scoped journey frame.")
+                  elif dated_frames:
+                      raise SystemExit("Dated Portfolio review frames belong only to the executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

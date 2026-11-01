@@ -27,15 +27,27 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: a complete Markets daily briefing
+## Current priority: a dated Portfolio review across held-company checks
+
+Connect the complete dated Portfolio reading to the existing ordered held-check
+review under M3/M4. Keep original evidence visible through Filings, Research,
+Back, authored assessments and completion. Retain all chosen outcomes and other
+open checks at Finish, with Save and fresh Load separate. See the
+[dated review guide](MANAGED_PORTFOLIO_DATED_REVIEW.md). Implementation and
+acceptance are in progress; existing calculations and source coverage stay fixed.
+
+## Delivered: a complete Markets daily briefing
 
 Connect the existing selected source pass, complete board/calendar/feed reading,
 and an exact authored dated check under M1/M3. Include admitted CPI metadata in
 the ordered pass. Return from Follow-ups Research to the original briefing and
 item without another Markets read. Keep source clocks, partial outcomes and
 independent saves explicit; see the [briefing guide](MANAGED_MARKETS_BRIEFING.md).
-Implementation and acceptance are in progress. This adds no source coverage,
-provider, fee, automatic narrative or persistence resource.
+Android 1.68 provides this workflow from accepted main
+`0808322764a4a338172b4b5d9694aa0e8e5894f0`, with original main project checks,
+131 native cases and local existing-signer APK verification and delivery passed.
+This adds no source coverage, provider, fee, automatic narrative or persistence
+resource. Installation remains an owner action.
 
 ## Delivered: filing evidence within a chosen review
 

@@ -1,0 +1,24 @@
+.managed-portfolio-dated-review {
+  min-width: 0;
+}
+.managed-portfolio-dated-review :is(p, dd, td, th, summary) {
+  overflow-wrap: anywhere;
+}
+.managed-portfolio-dated-review pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
+}
+.managed-portfolio-dated-review .portfolio-dated-raw {
+  white-space: pre-wrap;
+}
+.managed-portfolio-dated-review summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.managed-portfolio-dated-review :is(summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}

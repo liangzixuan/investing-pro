@@ -1,3 +1,4 @@
+import { load } from "cheerio";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -638,5 +639,147 @@ it.each(["complete", "reopen"] as const)(
     expect(f.model.getSnapshot().selected!.entry.status).toBe(
       action === "complete" ? "completed" : "open",
     );
+  },
+);
+
+it("shows the full finished chosen order with current assessments and statuses, separately from unchosen draft text", async () => {
+  const f = await fixture();
+  f.start([1, 0]);
+  const raw = "  東京 <script>literal</script> 📈  ";
+  f.workspace.followups.edit(
+    f.model.getSnapshot().selected!.entry,
+    "result",
+    raw,
+  );
+  let page = f.render();
+  f.commit();
+  f.click(page.button("complete"));
+  page = f.render();
+  f.commit();
+  const handles = f.model.getSnapshot().chosen.map((row) => row.handle);
+  f.click(page.button("finish"));
+  page = f.render();
+  f.commit();
+  const ordered = page.html.match(
+    /<ol aria-label="Finished review in chosen order">([\s\S]*?)<\/ol>/,
+  )![1]!;
+  expect(ordered.indexOf(f.entries[1]!.check)).toBeLessThan(
+    ordered.indexOf(f.entries[0]!.check),
+  );
+  expect(ordered).toContain("  東京 &lt;script&gt;literal&lt;/script&gt; 📈  ");
+  expect(ordered).toContain("Completed 2026-10-24 UTC.");
+  expect(ordered).toContain("Open.");
+  expect(ordered).not.toContain(f.entries[2]!.check);
+  expect(page.html).toContain(f.entries[2]!.check);
+  expect(page.html).toContain("1 completed; 1 still open.");
+  const $ = load(page.html);
+  const panel = $("details.managed-followups-review > section");
+  const outcomes = panel.children(
+    'section[aria-label="Chosen review outcomes"]',
+  );
+  expect(
+    outcomes.find('ol[aria-label="Finished review in chosen order"] > li'),
+  ).toHaveLength(2);
+  const fullDraft = panel.children("ol").children("li");
+  const entries =
+    f.workspace.followups.coordinator.getSnapshot().draft!.entries;
+  expect(fullDraft).toHaveLength(entries.length);
+  entries.forEach((entry, index) => {
+    const row = fullDraft.eq(index);
+    expect(row.text()).toContain(entry.check);
+    expect(row.text()).toContain(entry.result);
+    expect(
+      row
+        .find("dd")
+        .map((_at, node) => $(node).text())
+        .get(),
+    ).toEqual(Object.values(entry.listing));
+  });
+  for (const control of ["research", "complete", "reopen", "next", "finish"])
+    expect(page.has(control)).toBe(false);
+  const first = f.model.getSnapshot().chosen[0]!.entry;
+  f.workspace.followups.reopen(first);
+  f.workspace.followups.edit(
+    f.model.getSnapshot().chosen[1]!.entry,
+    "result",
+    "New full terminal assessment",
+  );
+  page = f.render();
+  f.commit();
+  expect(page.html).toContain("0 completed; 2 still open.");
+  expect(page.html).toContain("New full terminal assessment");
+  expect(f.model.getSnapshot().chosen.map((row) => row.handle)).toEqual(
+    handles,
+  );
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  for (const source of [
+    f.api.eodHistory,
+    f.api.annualReport,
+    f.api.recentFilings,
+    f.api.resolve,
+  ])
+    expect(source).not.toHaveBeenCalled();
+});
+
+it.each(["uncommitted", "inactive", "route", "state", "unmounted"] as const)(
+  "keeps a stale Finish callback inert after %s",
+  async (boundary) => {
+    const f = await fixture();
+    const page = f.start();
+    let button = page.button("finish");
+    if (boundary === "uncommitted") button = f.render().button("finish");
+    if (boundary === "inactive") {
+      f.render(false);
+      f.commit();
+    }
+    if (boundary === "route") f.routeActive.mockReturnValue(false);
+    if (boundary === "state") f.model.continue(f.model.getSnapshot());
+    if (boundary === "unmounted")
+      hooks.cleanups.forEach((cleanup) => cleanup());
+    const before = f.model.getSnapshot();
+    const draft = f.workspace.followups.coordinator.getSnapshot().draft;
+    f.click(button);
+    f.render();
+    f.commit();
+    expect(f.model.getSnapshot()).toBe(before);
+    expect(f.workspace.followups.coordinator.getSnapshot().draft).toBe(draft);
+    expect(f.focus).not.toHaveBeenCalled();
+  },
+);
+
+it.each(["later-edit", "reentrant", "reentrant-aba"] as const)(
+  "does not focus a different terminal publication after %s during Finish",
+  async (boundary) => {
+    const f = await fixture();
+    const page = f.start();
+    const control = {} as HTMLButtonElement;
+    f.documentMock.activeElement = control;
+    let reentered = false;
+    const edit = () => {
+      const entry = f.model.getSnapshot().chosen[0]!.entry;
+      f.workspace.followups.edit(entry, "result", "Updated before commit");
+      if (boundary === "reentrant-aba")
+        f.workspace.followups.edit(
+          f.model.getSnapshot().chosen[0]!.entry,
+          "result",
+          entry.result,
+        );
+    };
+    const unsubscribe = f.model.subscribe(() => {
+      if (boundary === "later-edit" || reentered) return;
+      reentered = true;
+      edit();
+    });
+    f.click(page.button("finish"), control);
+    unsubscribe();
+    if (boundary === "later-edit") edit();
+    f.render();
+    f.commit();
+    expect(f.focus).not.toHaveBeenCalled();
+    expect(f.model.getSnapshot()).toMatchObject({
+      phase: "finished",
+      selected: null,
+      position: -1,
+    });
   },
 );

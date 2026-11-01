@@ -20,6 +20,9 @@ const hooks = vi.hoisted(() => ({
   slots: [] as (Effect & { cleanup: (() => void) | void })[],
   states: [] as unknown[],
 }));
+vi.mock("./ManagedPortfolioDatedReviewActions", () => ({
+  ManagedPortfolioDatedReviewActions: () => null,
+}));
 const capture = vi.hoisted(() => ({
   current: null as PortfolioCloseContext | null,
 }));
@@ -186,7 +189,12 @@ function fixture(cashUsd: string | null = "10.00") {
     },
   } as unknown as ManagedWorkspace;
   const onResearch = vi.fn(),
-    props = { workspace, navigationPending: false, onResearch };
+    props = {
+      workspace,
+      navigationPending: false,
+      onResearch,
+      datedReviewNavigation: { navigate: () => false, transferred: vi.fn() },
+    };
   // Open the actual outer disclosure; only then invoke its mounted inner element.
   const outer = ManagedPortfolioCloseReview(props) as Element;
   expect(nodes(outer).some((node) => typeof node.type === "function")).toBe(
@@ -265,6 +273,7 @@ describe("Dated holdings review committed UI", () => {
     const onResearch = vi.fn();
     const props = {
       workspace: {} as ManagedWorkspace,
+      datedReviewNavigation: { navigate: () => false, transferred: vi.fn() },
       navigationPending: false,
       onResearch,
     };
