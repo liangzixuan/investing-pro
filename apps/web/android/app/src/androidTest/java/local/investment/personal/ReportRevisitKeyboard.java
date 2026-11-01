@@ -149,11 +149,10 @@ final class ReportRevisitKeyboard {
                     boolean visible = insets != null && insets.isVisible(WindowInsets.Type.ime());
                     boolean focused = view.hasFocus() && view.hasWindowFocus();
                     boolean resumed = observedImeLifecycle.getCurrentState() == Lifecycle.State.RESUMED;
-                    boolean inputConnection = supportsInputMethods().matches(view);
                     diagnostic = "selector=" + selector + ", visible=" + visible + ", animations=" + imeAnimations.size() +
                         ", focus=" + view.hasFocus() + ", windowFocus=" + view.hasWindowFocus() +
-                        ", resumed=" + resumed + ", inputConnection=" + inputConnection;
-                    if (SystemClock.uptimeMillis() < deadline && visible && imeAnimations.isEmpty() && focused && resumed && inputConnection) {
+                        ", resumed=" + resumed;
+                    if (SystemClock.uptimeMillis() < deadline && visible && imeAnimations.isEmpty() && focused && resumed) {
                         observed.set(diagnostic);
                         Log.i("ManagedInput", diagnostic);
                         return;

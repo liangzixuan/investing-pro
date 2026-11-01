@@ -88,17 +88,20 @@ final class ReassessmentNativeEditor implements AutoCloseable {
     private void awaitCorrespondence() throws Exception {
         long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
         String last="no native editor observed";
+        currentDom();
+        Connection candidate=acquire();
+        assertNotNull("Settled native caret supplies one editable connection",candidate);
         do {
-            Dom before=currentDom();Connection candidate=acquire();
-            if(candidate!=null) {
-                NativeText nativeText=invoke(candidate.handler,deadline,()->extract(candidate));
-                Dom after=currentDom();
-                last="class="+candidate.input.getClass().getName()+",inputType="+candidate.inputType+
-                    ",callbackMain="+(candidate.handler.getLooper()==Looper.getMainLooper())+","+nativeText.describe(after);
-                Log.i("SavedValuationNativeEditor",last);
-                if(before.equals(after)&&nativeText.matches(after)&&SystemClock.uptimeMillis()<deadline) {
-                    bound=candidate;return;
-                }
+            Dom before=currentDom();
+            requireView(candidate);
+            NativeText nativeText=invoke(candidate.handler,deadline,()->extract(candidate));
+            Dom after=currentDom();
+            requireView(candidate);
+            last="class="+candidate.input.getClass().getName()+",inputType="+candidate.inputType+
+                ",callbackMain="+(candidate.handler.getLooper()==Looper.getMainLooper())+","+nativeText.describe(after);
+            Log.i("SavedValuationNativeEditor",last);
+            if(before.equals(after)&&nativeText.matches(after)&&SystemClock.uptimeMillis()<deadline) {
+                bound=candidate;return;
             }
             awaitFrame(deadline);
         } while(SystemClock.uptimeMillis()<deadline);
@@ -132,16 +135,16 @@ final class ReassessmentNativeEditor implements AutoCloseable {
         assertTrue("Native observation completed within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
         return value;
     }
-    private void requireBoundView() {
-        assertNotNull("Native editor correspondence was admitted",bound);
+    private void requireView(Connection connection) {
+        assertNotNull("Native editor connection exists",connection);
         scenario.onActivity(activity->{
-            assertSame("Exact native WebView still owns this edit",bound.view,activity.getBridge().getWebView());
-            assertTrue("Exact native editor remains resumed and focused",isDisplayed().matches(bound.view)&&bound.view.hasFocus()&&bound.view.hasWindowFocus()&&
+            assertSame("Exact native WebView still owns this edit",connection.view,activity.getBridge().getWebView());
+            assertTrue("Exact native editor remains resumed and focused",isDisplayed().matches(connection.view)&&connection.view.hasFocus()&&connection.view.hasWindowFocus()&&
                 activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
         });
     }
     void selectAll() throws Exception {
-        requireBoundView();Dom dom=currentDom();long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
+        requireView(bound);Dom dom=currentDom();long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
         invoke(bound.handler,deadline,()->{
             NativeText text=extract(bound);assertTrue("Bound native original and selection remain exact before Select all",text.matches(dom));
             assertTrue("No late or repeated Select all",active.get()&&SystemClock.uptimeMillis()<deadline&&selected.compareAndSet(false,true));
@@ -149,7 +152,7 @@ final class ReassessmentNativeEditor implements AutoCloseable {
         });
     }
     void commit(String value) throws Exception {
-        requireBoundView();Dom dom=currentDom();assertTrue("Complete original DOM selection remains before native replacement",dom.start==0&&dom.end==original.length());
+        requireView(bound);Dom dom=currentDom();assertTrue("Complete original DOM selection remains before native replacement",dom.start==0&&dom.end==original.length());
         long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
         invoke(bound.handler,deadline,()->{
             NativeText text=extract(bound);assertTrue("Bound native full selection remains exact before commit",text.matches(dom));
