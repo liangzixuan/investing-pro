@@ -9236,11 +9236,15 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void retainAnnualNoteFrame(String name, String scrollSelector, String selectors, int count) throws Exception {
+        // Settle the edited layout before placing the declared frame targets.
+        awaitCommittedInputFrame(name);
         CountDownLatch scrolled = new CountDownLatch(1);
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
             "document.querySelector(" + JSONObject.quote(scrollSelector) + ").scrollIntoView({block:'start',behavior:'instant'})",
             ignored -> scrolled.countDown()));
         assertTrue("Annual note frame did not scroll", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        // Validate the rendered placement after the scroll has reached a frame.
+        awaitCommittedInputFrame(name);
         String visible = "(() => { const targets = Array.from(document.querySelectorAll(" + JSONObject.quote(selectors) + "));" +
             " const v = visualViewport; return v && targets.length === " + count + " && targets.every(e => {" +
             " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
