@@ -101,7 +101,7 @@ public class ManagedWatchlistDailyReviewTest {
         tap("#watchlist-daily-inspect");
         String url="https://localhost/?company=invented-review-filings-"+symbol.toLowerCase()+"&section=filings";
         page.await(new Check("owned route admits both complete packets without reads",new Script("location.href==="+q(url)+"&&document.querySelector('#managed-company-heading')?.textContent==="+q("Company research · "+symbol)+"&&JSON.stringify("+D+".price.response)==="+q(price)+"&&JSON.stringify("+D+".filings.response)==="+q(packet)+"&&!document.querySelector('.managed-company-visit > .trial-toolbar button').disabled")).nativeReady());boundary(1,1,index==0?0:1,0);
-        tap(".managed-company-sections button:nth-child(1)");await("explicit Price section preserves checked seeds", "location.search.endsWith('section=eod')&&"+D+".view.research.section==='eod'&&JSON.stringify("+D+".price.response)==="+q(price));
+        tap(".managed-company-sections button:nth-child(1)");await("explicit Price section preserves checked seeds", "location.search.endsWith('section=price')&&"+D+".view.research.section==='eod'&&JSON.stringify("+D+".price.response)==="+q(price));
         tap(".managed-company-sections button:nth-child(4)");page.await(new Check("return to Filings retains original clocks",new Script("location.href==="+q(url)+"&&JSON.stringify("+D+".filings.response)==="+q(packet)+"&&!document.querySelector('.managed-company-visit > .trial-toolbar button').disabled")).nativeReady());
         if(index==0)authorAssessment();else createDatedQuestion();
         boundary(1,1,1,0);
