@@ -105,3 +105,21 @@ export function dailyReviewOutcomes(
     ),
   );
 }
+
+/** Classify the settled source without discarding retained response evidence. */
+export function watchlistDailyReviewResult(
+  source: WatchlistDailyReviewSource,
+  price: ManagedEodHistoryState,
+  filings: ManagedCompanyFilingsState,
+  cooldown: boolean,
+): WatchlistDailyReviewOutcomeStatus {
+  if (cooldown) return "cooldown";
+  if (source === "price") {
+    if (!price.response || price.error) return "failed";
+    return price.response.rows.length ? "loaded" : "verified-empty";
+  }
+  if (filings.response?.issuer.status === "available")
+    return filings.response.issuer.filings.length ? "loaded" : "verified-empty";
+  if (filings.lastCheck?.issuer.status === "rate_limited") return "cooldown";
+  return filings.response ? "unavailable" : "failed";
+}

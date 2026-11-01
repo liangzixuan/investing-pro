@@ -29,10 +29,12 @@ import {
 } from "./managed-eod-history";
 import {
   dailyReviewOutcomes,
+  watchlistDailyReviewResult,
   watchlistDailyReviewPlan,
   type ManagedWatchlistDailyReviewCapture,
   type ManagedWatchlistDailyReviewHandoff,
   type WatchlistDailyReviewPlan,
+  type WatchlistDailyReviewPlanRow,
   type WatchlistDailyReviewState,
   type WatchlistDailyReviewSource,
   type WatchlistDailyReviewOutcomeStatus,
@@ -67,6 +69,12 @@ interface Entry {
   unsubscribe: () => void;
 }
 
+interface DailyReviewOperation {
+  readonly plan: WatchlistDailyReviewPlan;
+  readonly lifetime: object;
+  index: number;
+}
+
 /** A bounded review visit. Only the current company's explicit Load can read. */
 export class ManagedFilingsReview {
   private readonly listeners = new Set<() => void>();
@@ -81,10 +89,7 @@ export class ManagedFilingsReview {
   private retired = false;
   private daily: WatchlistDailyReviewState | null = null;
   private preparedDaily: WatchlistDailyReviewPlan | null = null;
-  private dailyRun: {
-    readonly plan: WatchlistDailyReviewPlan;
-    index: number;
-  } | null = null;
+  private dailyRun: DailyReviewOperation | null = null;
   private lifetime: object = {};
   private dailyCaptureOwner: object = {};
   private readonly dailyCaptures = new WeakMap<
@@ -572,13 +577,18 @@ export class ManagedFilingsReview {
     });
     this.publish();
   }
-  async runDaily(
-    captured: ManagedFilingsReviewState,
-    plan: WatchlistDailyReviewPlan,
-  ) {
-    if (!this.canRunDaily(captured, plan)) return;
-    const operation = { plan, index: -1 };
-    const lifetime = this.lifetime;
+  private ownsDailyRun(operation: DailyReviewOperation) {
+    return (
+      this.dailyRun === operation &&
+      this.lifetime === operation.lifetime &&
+      !this.retired &&
+      this.active &&
+      this.canRead &&
+      !this.catalogChanged
+    );
+  }
+  private beginDailyRun(plan: WatchlistDailyReviewPlan): DailyReviewOperation {
+    const operation = { plan, lifetime: this.lifetime, index: -1 };
     this.preparedDaily = null;
     this.dailyRun = operation;
     this.dailyCaptureOwner = {};
@@ -587,74 +597,73 @@ export class ManagedFilingsReview {
       plan,
       outcomes: dailyReviewOutcomes(plan),
     });
-    const current = () =>
-      this.dailyRun === operation &&
-      this.lifetime === lifetime &&
-      !this.retired &&
-      this.active &&
-      this.canRead &&
-      !this.catalogChanged;
     this.publish();
+    return operation;
+  }
+  private async readDailyRow(
+    operation: DailyReviewOperation,
+    row: WatchlistDailyReviewPlanRow,
+    index: number,
+  ) {
+    const entry = this.entries.find((item) => item.member === row.member)!;
+    operation.index = index;
+    this.selected = row.member;
+    this.dailyOutcome(index, "running");
+    if (!this.ownsDailyRun(operation) || !this.current(entry)) return false;
+    const model = row.source === "price" ? entry.price! : entry.model;
+    await model.load();
+    if (!this.ownsDailyRun(operation) || !this.current(entry)) return false;
+    const price = entry.price!.getSnapshot();
+    const filings = entry.model.getSnapshot();
+    const cooldown =
+      row.source === "price"
+        ? this.options.daily!.priceAccess.getNextAllowedAt()
+        : this.access.getNextAllowedAt();
+    const status = watchlistDailyReviewResult(
+      row.source,
+      price,
+      filings,
+      Boolean(cooldown),
+    );
+    this.dailyOutcome(index, status);
+    operation.index = -1;
+    return status === "loaded" || status === "verified-empty";
+  }
+  private settleDailyRun(operation: DailyReviewOperation) {
+    if (this.dailyRun !== operation) return;
+    this.mutationDepth += 1;
     try {
-      for (let i = 0; i < plan.rows.length; i += 1) {
-        if (!current()) return;
-        const row = plan.rows[i]!;
+      this.dailyRun = null;
+      if (
+        operation.index >= 0 &&
+        this.daily?.outcomes[operation.index]?.status === "running"
+      )
+        this.dailyOutcome(
+          operation.index,
+          this.catalogChanged ? "failed" : "cancelled",
+        );
+      if (this.daily)
+        this.daily = Object.freeze({ ...this.daily, phase: "settled" });
+    } finally {
+      this.mutationDepth -= 1;
+      this.publish();
+    }
+  }
+  async runDaily(
+    captured: ManagedFilingsReviewState,
+    plan: WatchlistDailyReviewPlan,
+  ) {
+    if (!this.canRunDaily(captured, plan)) return;
+    const operation = this.beginDailyRun(plan);
+    try {
+      for (let index = 0; index < plan.rows.length; index += 1) {
+        if (!this.ownsDailyRun(operation)) return;
+        const row = plan.rows[index]!;
         if (row.disposition !== "missing") continue;
-        const entry = this.entries.find((item) => item.member === row.member)!;
-        operation.index = i;
-        this.selected = row.member;
-        this.dailyOutcome(i, "running");
-        if (!current() || !this.current(entry)) return;
-        const model = row.source === "price" ? entry.price! : entry.model;
-        await model.load();
-        if (!current() || !this.current(entry)) return;
-        const price = entry.price!.getSnapshot();
-        const filings = entry.model.getSnapshot();
-        const cooldown =
-          row.source === "price"
-            ? this.options.daily!.priceAccess.getNextAllowedAt()
-            : this.access.getNextAllowedAt();
-        const status: WatchlistDailyReviewOutcomeStatus = cooldown
-          ? "cooldown"
-          : row.source === "price"
-            ? price.response && !price.error
-              ? price.response.rows.length
-                ? "loaded"
-                : "verified-empty"
-              : "failed"
-            : filings.response?.issuer.status === "available"
-              ? filings.response.issuer.filings.length
-                ? "loaded"
-                : "verified-empty"
-              : filings.lastCheck?.issuer.status === "rate_limited"
-                ? "cooldown"
-                : filings.response
-                  ? "unavailable"
-                  : "failed";
-        this.dailyOutcome(i, status);
-        operation.index = -1;
-        if (status !== "loaded" && status !== "verified-empty") break;
+        if (!(await this.readDailyRow(operation, row, index))) break;
       }
     } finally {
-      if (this.dailyRun === operation) {
-        this.mutationDepth += 1;
-        try {
-          this.dailyRun = null;
-          if (
-            operation.index >= 0 &&
-            this.daily?.outcomes[operation.index]?.status === "running"
-          )
-            this.dailyOutcome(
-              operation.index,
-              this.catalogChanged ? "failed" : "cancelled",
-            );
-          if (this.daily)
-            this.daily = Object.freeze({ ...this.daily, phase: "settled" });
-        } finally {
-          this.mutationDepth -= 1;
-          this.publish();
-        }
-      }
+      this.settleDailyRun(operation);
     }
   }
   cancelDaily() {

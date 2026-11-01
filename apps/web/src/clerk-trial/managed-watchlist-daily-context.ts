@@ -1,6 +1,7 @@
 import type {
   ManagedWorkspace,
   ManagedResearchVisit,
+  ManagedDiscoveryState,
 } from "./managed-workspace";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import type { ManagedFilingsReviewState } from "./managed-filings-review";
@@ -24,6 +25,41 @@ interface Owner {
   opening: { readonly selection: ManagedResearchSelection } | null;
 }
 
+function resolvedResource(state: WatchlistSaved | FollowupsSaved) {
+  return !state.conflict && !state.uncertain && !state.replayPending;
+}
+function followupsBelongToOwner(owner: Owner, checks: FollowupsSaved) {
+  const initialLoad =
+    checks.phase === "loading" && owner.followupsSaved === null;
+  if (checks.phase !== "idle" && !initialLoad) return false;
+  if (!resolvedResource(checks)) return false;
+  return owner.followupsSaved === null || checks.saved === owner.followupsSaved;
+}
+function ownedNavigation(owner: Owner, route: ManagedDiscoveryState) {
+  const company = route.companyRoute;
+  if (company) {
+    if (!owner.visit || route.research !== owner.visit) return false;
+    if (company.status !== "open") return false;
+    if (company.listingId !== owner.visit.selection.listing.listingId)
+      return false;
+  }
+  if (!route.research) return true;
+  if (!owner.opening) return route.research === owner.visit;
+  return companyEvidenceSelectionMatches(
+    owner.opening.selection,
+    route.research.selection,
+  );
+}
+function canLoadInitialChecks(saved: FollowupsSaved) {
+  return (
+    saved.phase === "idle" &&
+    saved.saved === null &&
+    saved.draft === null &&
+    !saved.dirty &&
+    resolvedResource(saved)
+  );
+}
+
 /** Resource and navigation lifetime for the existing group's daily mode. */
 export class ManagedWatchlistDailyContext {
   private owner: Owner | null = null;
@@ -42,9 +78,7 @@ export class ManagedWatchlistDailyContext {
       saved.latestLoaded &&
       saved.draft !== null &&
       saved.phase === "idle" &&
-      !saved.conflict &&
-      !saved.uncertain &&
-      !saved.replayPending &&
+      resolvedResource(saved) &&
       !w.hasWatchlistDraftFileActivity() &&
       !w.followups.hasDraftFileActivity()
     );
@@ -84,33 +118,9 @@ export class ManagedWatchlistDailyContext {
       };
     }
     const owner = this.owner;
-    const followupsIdle =
-      checks.phase === "idle" ||
-      (checks.phase === "loading" && owner.followupsSaved === null);
     if (
-      saved.saved !== owner.saved ||
-      saved.baseVersion !== owner.baseVersion ||
-      w.getWatchlistDraftFileActivityRevision() !== owner.watchlistActivity ||
-      w.followups.getDraftFileActivityRevision() !== owner.followupsActivity ||
-      !followupsIdle ||
-      checks.conflict ||
-      checks.uncertain ||
-      checks.replayPending ||
-      (owner.followupsSaved !== null &&
-        checks.saved !== owner.followupsSaved) ||
-      (route.companyRoute &&
-        (!owner.visit ||
-          route.research !== owner.visit ||
-          route.companyRoute.status !== "open" ||
-          route.companyRoute.listingId !==
-            owner.visit.selection.listing.listingId)) ||
-      (route.research &&
-        (owner.opening
-          ? !companyEvidenceSelectionMatches(
-              owner.opening.selection,
-              route.research.selection,
-            )
-          : route.research !== owner.visit))
+      !this.resourcesBelongToOwner(owner, saved, checks) ||
+      !ownedNavigation(owner, route)
     ) {
       this.discard();
       return;
@@ -122,6 +132,20 @@ export class ManagedWatchlistDailyContext {
     )
       owner.followupsSaved = checks.saved;
     if (!route.research && !owner.opening) owner.visit = null;
+  }
+  private resourcesBelongToOwner(
+    owner: Owner,
+    saved: WatchlistSaved,
+    checks: FollowupsSaved,
+  ) {
+    const w = this.workspace;
+    return (
+      saved.saved === owner.saved &&
+      saved.baseVersion === owner.baseVersion &&
+      w.getWatchlistDraftFileActivityRevision() === owner.watchlistActivity &&
+      w.followups.getDraftFileActivityRevision() === owner.followupsActivity &&
+      followupsBelongToOwner(owner, checks)
+    );
   }
   switchVisit(previous: ManagedResearchVisit, next: ManagedResearchVisit) {
     const owner = this.owner;
@@ -165,13 +189,7 @@ export class ManagedWatchlistDailyContext {
     const canLoad =
       current() &&
       group.daily.phase !== "finished" &&
-      saved.phase === "idle" &&
-      saved.saved === null &&
-      saved.draft === null &&
-      !saved.dirty &&
-      !saved.conflict &&
-      !saved.uncertain &&
-      !saved.replayPending;
+      canLoadInitialChecks(saved);
     let consumed = false;
     return {
       rows: group.rows.map((row) => ({

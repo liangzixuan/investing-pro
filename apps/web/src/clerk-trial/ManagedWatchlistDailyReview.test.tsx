@@ -10,6 +10,10 @@ import { filingsResponse } from "./sec-filings-fixture";
 import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import {
   ManagedWatchlistDailyReview as Daily,
+  DailySourceControls,
+  DailyPlanOutcomes,
+  DailyFinishedReading,
+  DailyCompanyEvidence,
   type ManagedWatchlistDailyReviewProps,
 } from "./ManagedWatchlistDailyReview";
 
@@ -77,6 +81,34 @@ function elements(
   node: React.ReactNode,
   kind: string,
 ): React.ReactElement<Props>[] {
+  if (
+    React.isValidElement<React.ComponentProps<typeof DailySourceControls>>(
+      node,
+    ) &&
+    node.type === DailySourceControls
+  )
+    return elements(DailySourceControls(node.props), kind);
+  if (
+    React.isValidElement<React.ComponentProps<typeof DailyPlanOutcomes>>(
+      node,
+    ) &&
+    node.type === DailyPlanOutcomes
+  )
+    return elements(DailyPlanOutcomes(node.props), kind);
+  if (
+    React.isValidElement<React.ComponentProps<typeof DailyFinishedReading>>(
+      node,
+    ) &&
+    node.type === DailyFinishedReading
+  )
+    return elements(DailyFinishedReading(node.props), kind);
+  if (
+    React.isValidElement<React.ComponentProps<typeof DailyCompanyEvidence>>(
+      node,
+    ) &&
+    node.type === DailyCompanyEvidence
+  )
+    return elements(DailyCompanyEvidence(node.props), kind);
   if (!React.isValidElement<Props>(node)) return [];
   return [
     ...(node.type === kind ? [node] : []),
@@ -84,6 +116,20 @@ function elements(
       elements(child, kind),
     ),
   ];
+}
+function commitEffects() {
+  for (const cleanup of hooks.cleanups) cleanup();
+  hooks.cleanups = [];
+  for (const effect of hooks.effects) {
+    const cleanup = effect();
+    if (cleanup) hooks.cleanups.push(cleanup);
+  }
+}
+function mountHeadingRefs(node: React.ReactNode, target: unknown) {
+  for (const heading of elements(node, "h4")) {
+    const ref = heading.props.ref;
+    if (ref) ref.current = target;
+  }
 }
 function fixture() {
   const members = [
@@ -148,16 +194,8 @@ function fixture() {
       dailyChecks: <p>Authored checks remain exact</p>,
     });
     hooks.direct = false;
-    for (const heading of elements(node, "h4"))
-      if (heading.props.ref) heading.props.ref.current = target;
-    if (commit) {
-      for (const cleanup of hooks.cleanups) cleanup();
-      hooks.cleanups = [];
-      for (const effect of hooks.effects) {
-        const cleanup = effect();
-        if (cleanup) hooks.cleanups.push(cleanup);
-      }
-    }
+    mountHeadingRefs(node, target);
+    if (commit) commitEffects();
     return {
       node,
       button: (name: string) =>
