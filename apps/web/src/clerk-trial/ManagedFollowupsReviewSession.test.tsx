@@ -1,3 +1,4 @@
+import { load } from "cheerio";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -671,6 +672,29 @@ it("shows the full finished chosen order with current assessments and statuses, 
   expect(ordered).not.toContain(f.entries[2]!.check);
   expect(page.html).toContain(f.entries[2]!.check);
   expect(page.html).toContain("1 completed; 1 still open.");
+  const $ = load(page.html);
+  const panel = $("details.managed-followups-review > section");
+  const outcomes = panel.children(
+    'section[aria-label="Chosen review outcomes"]',
+  );
+  expect(
+    outcomes.find('ol[aria-label="Finished review in chosen order"] > li'),
+  ).toHaveLength(2);
+  const fullDraft = panel.children("ol").children("li");
+  const entries =
+    f.workspace.followups.coordinator.getSnapshot().draft!.entries;
+  expect(fullDraft).toHaveLength(entries.length);
+  entries.forEach((entry, index) => {
+    const row = fullDraft.eq(index);
+    expect(row.text()).toContain(entry.check);
+    expect(row.text()).toContain(entry.result);
+    expect(
+      row
+        .find("dd")
+        .map((_at, node) => $(node).text())
+        .get(),
+    ).toEqual(Object.values(entry.listing));
+  });
   for (const control of ["research", "complete", "reopen", "next", "finish"])
     expect(page.has(control)).toBe(false);
   const first = f.model.getSnapshot().chosen[0]!.entry;

@@ -55,22 +55,24 @@ function finishedReview(
   ).length;
   return (
     <>
-      <h4>Chosen checks in review order</h4>
-      <p>
-        {completed} completed; {state.chosen.length - completed} still open.
-        Finish does not complete checks or save changes.
-      </p>
-      <ol aria-label="Finished review in chosen order">
-        {state.chosen.map((row) => (
-          <li key={row.entry.id}>
-            <ReviewCheck entry={row.entry} />
-            <p>Your assessment</p>
-            <p className="managed-followups-authored">
-              {row.entry.result || "No authored assessment yet."}
-            </p>
-          </li>
-        ))}
-      </ol>
+      <section aria-label="Chosen review outcomes">
+        <h4>Chosen checks in review order</h4>
+        <p>
+          {completed} completed; {state.chosen.length - completed} still open.
+          Finish does not complete checks or save changes.
+        </p>
+        <ol aria-label="Finished review in chosen order">
+          {state.chosen.map((row) => (
+            <li key={row.entry.id}>
+              <ReviewCheck entry={row.entry} />
+              <p>Your assessment</p>
+              <p className="managed-followups-authored">
+                {row.entry.result || "No authored assessment yet."}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
       <p>
         The session has ended. Review the complete current draft below,
         including checks outside this session. Complete or reopen checks in the
