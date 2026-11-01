@@ -48,6 +48,7 @@ public class ManagedSavedValuationReassessmentTest {
     private ReportRevisitTouch touch;
     private ReportRevisitKeyboard keyboard;
     private String sha,origin,stage="startup",paired,price,annual;
+    private String editingSelector,nativeEditingState;
     @Before public void launchInventedReassessment()throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
         sha=InstrumentationRegistry.getArguments().getString("expectedSourceSha");assertNotNull(sha);assertTrue(sha.matches("[a-f0-9]{40}"));
@@ -120,6 +121,7 @@ public class ManagedSavedValuationReassessmentTest {
         await("preview uses revised20.00, never passive saved15.00","document.querySelector('#valuation-followup-check').value==="+D+".expectedCheck&&"+D+".followups.draft.entries.length===1");
         tap("#valuation-followup-create");await("one complete open Class A check remains unsaved",D+".followupsCanonical==="+D+".expectedFollowupsCanonical&&"+D+".followups.draft.entries.length===2&&"+D+".followups.draft.entries[1].status==='open'");
         replace("#managed-research-note",read(".reason"));counters(1,0,0,1,0);
+        await("full authored reason belongs to the exact Class A Watchlist member",D+".watchlist.draft.memberships[0].listingId==="+D+".data.identities[0].listingId&&"+D+".watchlist.draft.memberships[0].note==="+D+".reason");
     }
     private void ownedBackAndSave()throws Exception {
         stage="owned Back and same-company return without refetch or recalculation";
@@ -165,7 +167,7 @@ public class ManagedSavedValuationReassessmentTest {
     private void await(String why,String expression)throws Exception {page.await(new Check(why,new Script(expression)));}
     private String read(String suffix)throws Exception{return page.read(new Script(D+suffix));}
     private static String q(String value){return JSONObject.quote(value);}
-    private void diagnose(){try{Log.e("SavedValuationReassessment","stage="+stage+", "+page.raw(new Script("(()=>{const d="+D+";return JSON.stringify({url:location.href,active:document.activeElement?.id,counts:d.counts,view:d.view.view,visit:d.view.research?.selection.listing.listingId,editorOwner:d.workbench.owner?.listing.listingId,editorContext:d.workbench.context?.listing.listingId,baseline:!!d.reassessment.baseline,reading:!!d.reassessment.reading,reassessmentActive:d.reassessment.active,exactPair:JSON.stringify(d.reassessment)==="+q(paired==null?"":paired)+",pricePresent:!!d.price.response,annualPresent:!!d.annual.response,calculations:d.calculationPublications,valuationVersion:d.valuations.baseVersion,watchlistVersion:d.watchlist.baseVersion,followupsVersion:d.followups.baseVersion,followups:"+F+"});})()")));}catch(Exception|AssertionError failure){Log.e("SavedValuationReassessment","Diagnostic unavailable",failure);}}
+    private void diagnose(){try{diagnoseEditing("failure");Log.e("SavedValuationReassessment","stage="+stage+", "+page.raw(new Script("(()=>{const d="+D+";return JSON.stringify({url:location.href,active:document.activeElement?.id,counts:d.counts,view:d.view.view,visit:d.view.research?.selection.listing.listingId,editorOwner:d.workbench.owner?.listing.listingId,editorContext:d.workbench.context?.listing.listingId,baseline:!!d.reassessment.baseline,reading:!!d.reassessment.reading,reassessmentActive:d.reassessment.active,exactPair:JSON.stringify(d.reassessment)==="+q(paired==null?"":paired)+",pricePresent:!!d.price.response,annualPresent:!!d.annual.response,calculations:d.calculationPublications,valuationVersion:d.valuations.baseVersion,watchlistVersion:d.watchlist.baseVersion,followupsVersion:d.followups.baseVersion,followups:"+F+"});})()")));}catch(Exception|AssertionError failure){Log.e("SavedValuationReassessment","Diagnostic unavailable",failure);}}
     @After public void closeInventedReassessment()throws Exception {try{if(scenario!=null)scenario.close();}finally{if(assets!=null)assets.close();}}
     private void choose(String selector,String label,String value)throws Exception {tap(selector);AtomicReference<View> dialog=new AtomicReference<>();onView(androidx.test.espresso.matcher.ViewMatchers.withText(label)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).check((view,missing)->{if(missing!=null)throw missing;dialog.set(view.getRootView());}).perform(androidx.test.espresso.action.ViewActions.click());assertNotNull(dialog.get());page.await(new Check("native option chooses exact value",new Script("document.querySelector("+q(selector)+").value==="+q(value)),ReportRevisitPage.Readiness.NATIVE,dialog.get()));keyboard.closeSoftKeyboard();}
     private void frame(FollowupsReportFrameCapture.Frame name,String heading,String scope)throws Exception{
@@ -196,5 +198,31 @@ public class ManagedSavedValuationReassessmentTest {
             }
         });
     }
-    private void replace(String selector,String value)throws Exception {tap(selector);page.await(new Check("exact assessment owns native focus before IME",new Script("document.activeElement===document.querySelector("+q(selector)+")")).nativeReady());selectAllNative();await("native selection covers the whole original assessment","document.activeElement===document.querySelector("+q(selector)+")&&document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");onView(isAssignableFrom(WebView.class)).perform(new ViewAction(){public Matcher<View> getConstraints(){return isDisplayed();}public String getDescription(){return "replace exact invented reassessment input through native IME";}public void perform(UiController ui,View view){InputConnection input=view.onCreateInputConnection(new EditorInfo());assertNotNull(input);assertTrue(input.commitText(value,1));ui.loopMainThreadUntilIdle();}});await("full Unicode assessment reaches the real controlled input","document.querySelector("+q(selector)+").value==="+q(value));keyboard.closeSoftKeyboard();}
+    private void diagnoseEditing(String phase) throws Exception {
+        if (editingSelector == null) return;
+        String observed = page.read(new Script("JSON.stringify((()=>{const e=document.querySelector("+q(editingSelector)+");return {selector:"+q(editingSelector)+",present:!!e,tag:e?.tagName??null,focused:!!e&&document.activeElement===e,disabled:e?.disabled??null,readOnly:e?.readOnly??null,valueLength:e?.value?.length??null,selectionStart:e?.selectionStart??null,selectionEnd:e?.selectionEnd??null};})())"));
+        AtomicReference<String> nativeNow=new AtomicReference<>();
+        scenario.onActivity(activity->{
+            WebView web=activity.getBridge().getWebView();android.view.WindowInsets insets=web.getRootWindowInsets();
+            nativeNow.set("imeVisible="+(insets!=null&&insets.isVisible(android.view.WindowInsets.Type.ime()))+
+                ",focus="+web.hasFocus()+",windowFocus="+web.hasWindowFocus()+",resumed="+(activity.getLifecycle().getCurrentState()==androidx.lifecycle.Lifecycle.State.RESUMED));
+        });
+        Log.i("SavedValuationEditing", "phase="+phase+", "+observed+", nativeBeforeSelection="+nativeEditingState+", nativeNow="+nativeNow.get());
+    }
+    private void replace(String selector,String value)throws Exception {
+        editingSelector=selector;nativeEditingState="not yet observed";
+        String original=page.read(new Script("document.querySelector("+q(selector)+").value"));
+        tap(selector);
+        String focused="(()=>{const e=document.querySelector("+q(selector)+");return !!e&&document.activeElement===e&&!e.disabled&&!e.readOnly&&e.value==="+q(original)+";})()";
+        page.await(new Check("exact assessment and original value own native focus before IME",new Script(focused)).nativeReady());
+        nativeEditingState=keyboard.awaitVisibleEditor(selector);
+        page.await(new Check("settled IME retains exact focused field and original value",new Script(focused)).nativeReady());
+        diagnoseEditing("before-select-all");
+        selectAllNative();
+        await("native selection covers the whole original assessment",focused+"&&document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");
+        diagnoseEditing("after-select-all");
+        onView(isAssignableFrom(WebView.class)).perform(new ViewAction(){public Matcher<View> getConstraints(){return isDisplayed();}public String getDescription(){return "replace exact invented reassessment input through native IME";}public void perform(UiController ui,View view){InputConnection input=view.onCreateInputConnection(new EditorInfo());assertNotNull(input);assertTrue(input.commitText(value,1));ui.loopMainThreadUntilIdle();}});
+        await("full Unicode assessment reaches the real controlled input","document.querySelector("+q(selector)+").value==="+q(value));
+        keyboard.closeSoftKeyboard();
+    }
 }
