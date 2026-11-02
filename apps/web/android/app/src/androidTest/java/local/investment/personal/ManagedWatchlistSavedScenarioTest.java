@@ -1,11 +1,13 @@
 package local.investment.personal;
 
 import static androidx.test.espresso.Espresso.pressBack;
+import static androidx.test.espresso.Espresso.onView;
 import static org.junit.Assert.*;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.View;
 import android.view.ViewTreeObserver;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -99,6 +101,8 @@ public class ManagedWatchlistSavedScenarioTest {
         click("//button[normalize-space(.)='Calculate authored scenarios']");
         await("only current revised calculation receives action authority",D+".calculations===1&&"+D+".workbench.calculation.dcfResult.scenarios.base.valuePerShareUsd==='155.00'&&JSON.stringify("+D+".review.reading)==="+q(paired));
         open(".managed-valuation-followup");tap("#valuation-followup-load");
+        choose("#valuation-followup-model","Cash flow DCF","dcf");
+        choose("#valuation-followup-scenario","Base","base");
         replace("#valuation-followup-question","Review the saved Class A assumptions after the dated close.");replace("#valuation-followup-due","2026-12-31");
         tap("#valuation-followup-preview");tap("#valuation-followup-create");
         replace("#managed-research-note","Revised Class A saved assumptions. Café 東京 📈");
@@ -130,6 +134,7 @@ public class ManagedWatchlistSavedScenarioTest {
     }
     private void boundary()throws Exception {await("isolated source and independent persistence counters","location.origin==='https://localhost'&&window.Capacitor?.getPlatform()==='android'&&document.querySelector('meta[name=investment-build-sha]').content==="+q(sha)+"&&document.querySelector('meta[name=investment-android-test-scenario]').content==='watchlist-saved-scenario'&&document.querySelector('meta[http-equiv=Content-Security-Policy]').content==="+q(CSP)+"&&"+D+".counts.eod===2&&"+D+".counts.unexpected===0");}
     private void open(String selector)throws Exception {if(!"true".equals(page.read(new Script("String(document.querySelector("+q(selector)+")?.open===true)"))))tap(selector+" > summary");}
+    private void choose(String selector,String label,String value)throws Exception {tap(selector);AtomicReference<View> dialog=new AtomicReference<>();onView(androidx.test.espresso.matcher.ViewMatchers.withText(label)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).check((view,missing)->{if(missing!=null)throw missing;dialog.set(view.getRootView());}).perform(androidx.test.espresso.action.ViewActions.click());assertNotNull(dialog.get());page.await(new Check("native option chooses exact value",new Script("document.querySelector("+q(selector)+").value==="+q(value)),ReportRevisitPage.Readiness.NATIVE,dialog.get()));keyboard.closeSoftKeyboard();}
     private void click(String xpath)throws Exception {page.click(Element.xpath(xpath));}
     private void navigate(String name)throws Exception {click("//nav[@aria-label='Workspace']/button[normalize-space(.)="+q(name)+"]");await("requested route settled",D+".view.view==="+q(name.equals("Follow-ups")?"followups":"watchlist"));}
     private void await(String why,String expression)throws Exception {page.await(new Check(why,new Script(expression)));}
