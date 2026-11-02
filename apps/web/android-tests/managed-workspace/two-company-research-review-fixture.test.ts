@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { sameJsonValue } from "./research-draft-set-native-comparison";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
@@ -15,6 +17,26 @@ import {
   decisionExpectedFollowups,
 } from "./two-company-research-review-fixture-data";
 afterEach(() => vi.useRealTimers());
+it("binds the native captured-value comparison to the tested complete JSON comparator", () => {
+  const helper = (name: string) => {
+    const source = readFileSync(
+      new URL(
+        `../../android/app/src/androidTest/java/local/investment/personal/${name}.java`,
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    const literal =
+      /private static final String SAME_JSON = ("(?:\\.|[^"\\])*");/.exec(
+        source,
+      )?.[1];
+    expect(literal).toBeDefined();
+    return JSON.parse(literal!) as string;
+  };
+  expect(helper("ManagedTwoCompanyResearchReviewTest")).toBe(
+    helper("ManagedResearchDraftSetRecoveryTest"),
+  );
+});
 it("screens two periods, retains both complete calculations, saves independently and fresh-loads exact payloads", async () => {
   const f = await createFixture("two-company-research-review"),
     meta = f.twoCompanyResearchReview!;
@@ -114,6 +136,30 @@ it("screens two periods, retains both complete calculations, saves independently
       expect(capture.valuationPrice?.rows).toHaveLength(6);
       expect(capture.valuationPrice?.selection).toEqual(capture.selection);
       expect(capture.valuationPrice?.calculation).toEqual(capture.valuation);
+      const capturedPrice = capture.valuationPrice!;
+      expect(sameJsonValue(capturedPrice.selection, capture.selection)).toBe(
+        true,
+      );
+      expect(sameJsonValue(capturedPrice.calculation, capture.valuation)).toBe(
+        true,
+      );
+      const changedIdentity = structuredClone(capture.selection);
+      Object.assign(changedIdentity.listing, { listingId: "another-listing" });
+      expect(sameJsonValue(capturedPrice.selection, changedIdentity)).toBe(
+        false,
+      );
+      const changedRaw = structuredClone(capture.valuation!);
+      Object.assign(changedRaw.exitDraft, { baseRevenue: "999.0" });
+      expect(sameJsonValue(capturedPrice.calculation, changedRaw)).toBe(false);
+      const reordered = structuredClone(capture.valuation!);
+      if (reordered.dcfResult.status !== "available")
+        throw new Error("Expected the complete fixture DCF calculation");
+      Object.assign(reordered.dcfResult.scenarios.base, {
+        projection: [
+          ...reordered.dcfResult.scenarios.base.projection,
+        ].reverse(),
+      });
+      expect(sameJsonValue(capturedPrice.calculation, reordered)).toBe(false);
       expect(
         capture.valuationPrice!.rows.map(
           (row) => `${row.model}|${row.scenario}`,
@@ -222,6 +268,12 @@ it("screens two periods, retains both complete calculations, saves independently
     expect(
       fresh.valuationAssumptions.coordinator.getSnapshot().draft!.entries,
     ).toEqual(decisionExpectedValuations(meta.data, 2));
+    expect(
+      JSON.stringify(
+        fresh.valuationAssumptions.coordinator.getSnapshot().saved!.payload
+          .entries,
+      ),
+    ).toBe(JSON.stringify(decisionExpectedValuations(meta.data, 2)));
     expect(fresh.followups.coordinator.getSnapshot().draft).toEqual(
       decisionExpectedFollowups(meta.data, created.id),
     );
