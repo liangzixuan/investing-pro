@@ -1,3 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
+import { ManagedScreenResearchReading } from "../../src/clerk-trial/ManagedScreenResearchReading";
 import { afterEach, expect, it, vi } from "vitest";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { createFixture } from "./fixture";
@@ -84,6 +88,73 @@ it("screens two periods, retains both complete calculations, saves independently
       expect(capture.valuation).toEqual(result);
       expect(capture.valuation).not.toBe(result);
       expect(capture.evidence.annual!.response).toEqual(meta.packets[i]);
+      const $ = load(
+        renderToStaticMarkup(
+          createElement(ManagedScreenResearchReading, { capture }),
+        ),
+      );
+      const valuationSection = $('[aria-label="Captured valuation"]');
+      const models = valuationSection.find(
+        '[aria-label="Authored valuation results"]',
+      );
+      expect(valuationSection.find("table")).toHaveLength(8);
+      expect(models.find("table")).toHaveLength(7);
+      expect(
+        models
+          .find("table")
+          .map((_index, table) => $(table).find("tbody tr").length)
+          .get(),
+      ).toEqual([3, 5, 5, 5, 25, 3, 25]);
+      const price = valuationSection.find(
+        '[aria-label="Dated valuation price comparison"]',
+      );
+      expect(price.find("table")).toHaveLength(1);
+      expect(capture.valuationPrice?.reference).toBeNull();
+      expect(capture.valuationPrice?.reason).toBe("price_not_loaded");
+      expect(capture.valuationPrice?.rows).toHaveLength(6);
+      expect(capture.valuationPrice?.selection).toEqual(capture.selection);
+      expect(capture.valuationPrice?.calculation).toEqual(capture.valuation);
+      expect(
+        capture.valuationPrice!.rows.map(
+          (row) => `${row.model}|${row.scenario}`,
+        ),
+      ).toEqual([
+        "dcf|conservative",
+        "dcf|base",
+        "dcf|expansion",
+        "exit|conservative",
+        "exit|base",
+        "exit|expansion",
+      ]);
+      const labels = {
+        conservative: "Conservative",
+        base: "Base",
+        expansion: "Expansion",
+      };
+      const priceRows = price
+        .find("tbody tr")
+        .toArray()
+        .map((row) =>
+          $(row)
+            .children()
+            .map((_index, cell) => $(cell).text())
+            .get(),
+        );
+      expect(priceRows).toEqual(
+        capture.valuationPrice!.rows.map((row) => [
+          row.model === "dcf" ? "Cash flow DCF" : "Exit multiple",
+          labels[row.scenario],
+          row.modelValuePerShareUsd,
+          "Unavailable. Load raw closing prices explicitly in the Price section to compare this scenario.",
+        ]),
+      );
+      expect(
+        capture.valuationPrice!.rows.every(
+          (row) =>
+            row.result.status === "unavailable" &&
+            row.result.reason === "price_not_loaded",
+        ),
+      ).toBe(true);
       expect(capture.evidence.price?.response ?? null).toBeNull();
       expect(JSON.parse(capture.document.text)).toHaveProperty(
         "sources.annual.response",
