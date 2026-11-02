@@ -94,6 +94,7 @@ public class ManagedWatchlistSavedScenarioTest {
         await("current Research has exact group Price evidence",D+".view.research.selection.listing.symbol==='GOOGL'&&"+D+".counts.eod===2");
         open(".managed-valuation-assumptions");
         click("//section[@data-valuation-listing-id='invented-review-filings-googl']/button[normalize-space(.)='Review saved inputs for GOOGL']");tap("#managed-valuation-use-inputs");
+        open(".managed-valuation-workbench:not(.managed-valuation-assumptions)");
         replace("input[id$='-dcf-startingUnleveredCashFlowUsd']","110.00");
         click("//button[normalize-space(.)='Calculate authored scenarios']");
         await("only current revised calculation receives action authority",D+".calculations===1&&"+D+".workbench.calculation.dcfResult.scenarios.base.valuePerShareUsd==='155.00'&&JSON.stringify("+D+".review.reading)==="+q(paired));
