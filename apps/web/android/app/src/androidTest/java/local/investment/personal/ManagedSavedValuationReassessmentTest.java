@@ -202,8 +202,8 @@ public class ManagedSavedValuationReassessmentTest {
         page.await(new Check("exact assessment and original value own native focus before IME",new Script(focused)).nativeReady());
         nativeEditingState=keyboard.awaitVisibleEditor(selector);
         page.await(new Check("settled IME retains exact focused field and original value",new Script(focused)).nativeReady());
-        // Place the caret after the IME resize using fresh native hit geometry.
-        tap(selector);
+        // Bind the settled native selection directly. A second coordinate tap can hit
+        // Android's text-selection actions even when the DOM still reports this field.
         page.await(new Check("settled native caret retains exact field and original value",new Script(focused)).nativeReady());
         try (ReassessmentNativeEditor editor=ReassessmentNativeEditor.bind(scenario,()->readEditingDom(selector),original)) {
             diagnoseEditing("before-select-all");

@@ -15,6 +15,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -56,7 +57,7 @@ public class ManagedWatchlistSavedScenarioTest {
         stage="explicit group, partial Price and confirmed collection";
         click("//button[normalize-space(.)='Load saved watchlist']");
         open("details.managed-filings-review");
-        for(String symbol:new String[]{"GOOGL","GOOG","NVDA"})click("//fieldset[legend[normalize-space(.)='Companies for this review']]/label[starts-with(normalize-space(.),"+q(symbol+" ·")+")]/input");
+        chooseFixtureMembers();
         tap("#watchlist-daily-start");
         click("//fieldset[legend[normalize-space(.)='Sources for this daily review']]/label[starts-with(normalize-space(.),'Price')]/input");
         tap("#watchlist-daily-preview");tap("#watchlist-daily-run");
@@ -72,6 +73,20 @@ public class ManagedWatchlistSavedScenarioTest {
         await("full captured Price state and all original clocks are accessible","JSON.stringify(JSON.parse([...document.querySelectorAll('li[data-saved-scenario-listing=\"invented-review-filings-googl\"] details')].find(e=>e.querySelector('summary')?.textContent==='Complete retained Price state and response').querySelector('pre').textContent))==="+q(price));
         frame(FollowupsReportFrameCapture.Frame.WATCHLIST_SAVED_SCENARIO_RESULTS,"#watchlist-saved-scenario-heading","Saved scenarios heading after evaluation; complete six-row results and full raw Price state asserted separately.");
         boundary();
+    }
+    private void chooseFixtureMembers()throws Exception {
+        String original=D+".original.watchlist.payload.memberships";
+        JSONArray members=new JSONArray(page.read(new Script("JSON.stringify("+original+")")));
+        assertEquals("Three exact fixture listings",3,members.length());
+        assertEquals("GOOGL",members.getJSONObject(0).getString("symbol"));
+        assertEquals("GOOG",members.getJSONObject(1).getString("symbol"));
+        for(int index=0;index<members.length();index++){
+            JSONObject member=members.getJSONObject(index);
+            String label=member.getString("symbol")+" · "+member.getString("issuerName")+" · "+member.getString("shareClassName")+" · "+member.getString("exchangeMic");
+            click("//fieldset[legend[normalize-space(.)='Companies for this review']]/label[normalize-space(.)="+q(label)+"]/input");
+        }
+        String identity="m=>[m.listingId,m.symbol,m.issuerName,m.shareClassName,m.exchangeMic]";
+        await("exact original fixture identities are chosen once and in order","new Set("+original+".map(m=>m.listingId)).size===3&&JSON.stringify("+D+".group.chosen.map(m=>m.listing).map("+identity+"))===JSON.stringify("+original+".map("+identity+"))");
     }
     private void investigateAndReturn()throws Exception {
         stage="owned Research, current revised authority and Back";
@@ -158,8 +173,8 @@ public class ManagedWatchlistSavedScenarioTest {
         page.await(new Check("exact assessment and original value own native focus before IME",new Script(focused)).nativeReady());
         nativeEditingState=keyboard.awaitVisibleEditor(selector);
         page.await(new Check("settled IME retains exact focused field and original value",new Script(focused)).nativeReady());
-        // Place the caret after the IME resize using fresh native hit geometry.
-        tap(selector);
+        // Bind the settled native selection directly. A second coordinate tap can hit
+        // Android's text-selection actions even when the DOM still reports this field.
         page.await(new Check("settled native caret retains exact field and original value",new Script(focused)).nativeReady());
         try (ReassessmentNativeEditor editor=ReassessmentNativeEditor.bind(scenario,()->readEditingDom(selector),original)) {
             diagnoseEditing("before-select-all");
