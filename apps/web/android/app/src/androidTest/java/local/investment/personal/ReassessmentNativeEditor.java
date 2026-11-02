@@ -78,6 +78,11 @@ final class ReassessmentNativeEditor implements AutoCloseable {
             assertTrue("Native editor belongs to the resumed focused view",isDisplayed().matches(view)&&view.hasFocus()&&view.hasWindowFocus()&&
                 view.isAttachedToWindow()&&activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
             EditorInfo info=new EditorInfo();InputConnection input=view.onCreateInputConnection(info);
+            Log.i("SavedValuationNativeEditor","phase=existing-acquire,uptime="+SystemClock.uptimeMillis()+
+                ",viewIdentity="+System.identityHashCode(view)+",connectionIdentity="+(input==null?0:System.identityHashCode(input))+
+                ",connectionClass="+(input==null?"null":input.getClass().getName())+",inputType="+info.inputType+
+                ",imeOptions="+info.imeOptions+",initialSelection="+info.initialSelStart+":"+info.initialSelEnd+
+                ",fieldId="+info.fieldId+",fieldName="+info.fieldName+",package="+info.packageName);
             if(input==null||(info.inputType&InputType.TYPE_MASK_CLASS)==InputType.TYPE_NULL) {
                 Log.i("SavedValuationNativeEditor","connection="+(input!=null)+",inputType="+info.inputType);return;
             }
@@ -98,6 +103,9 @@ final class ReassessmentNativeEditor implements AutoCloseable {
         long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
         String last="no native editor observed";
         Dom initial=currentDom();
+        Log.i("SavedValuationNativeEditor","phase=before-caret-key,uptime="+SystemClock.uptimeMillis()+
+            ",remainingMs="+(deadline-SystemClock.uptimeMillis())+",length="+initial.text.length()+
+            ",selection="+initial.start+":"+initial.end+",current="+initial.current);
         // Move the caret through the native key path without changing the original text.
         // Creating a connection is a lifecycle operation; do it once after this transition.
         AtomicReference<MainActivity> owner=new AtomicReference<>();
@@ -115,8 +123,15 @@ final class ReassessmentNativeEditor implements AutoCloseable {
             }
         });
         Dom caret;
+        boolean firstCaretObservation=true;
         do {
             caret=currentDom();
+            if(firstCaretObservation) {
+                firstCaretObservation=false;
+                Log.i("SavedValuationNativeEditor","phase=after-caret-key,uptime="+SystemClock.uptimeMillis()+
+                    ",remainingMs="+(deadline-SystemClock.uptimeMillis())+",length="+caret.text.length()+
+                    ",selection="+caret.start+":"+caret.end+",current="+caret.current);
+            }
             if(caret.start==original.length()&&caret.end==original.length())break;
             awaitFrame(deadline);
         } while(SystemClock.uptimeMillis()<deadline);
