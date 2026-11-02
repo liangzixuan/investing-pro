@@ -62,6 +62,7 @@ inputs, paired results, Back, separate saves and a fresh session. The case and
 three scoped frames extend the previous 133-case roster. Native execution and
 release acceptance are recorded only after their actual checks complete.
 
-This source increment is in integration. Android 1.70.0 remains the last locally
-delivered release. Browser QA remains stopped. No new installation or physical
-phone acceptance is claimed.
+Accepted main `6b96c12a16d66b401df9fb1300bd2c15efceab10` passed the original
+source checks and all 134 native cases. Android 1.71.0 is provided locally after
+the existing-signer build, four same-APK checks and copy/checksum readback.
+Browser QA remains stopped. No installation or physical-phone acceptance is claimed.

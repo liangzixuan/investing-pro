@@ -1,4 +1,7 @@
-import { prepareScreenComparisonReport } from "./screen-comparison-report";
+import {
+  prepareScreenComparisonReport,
+  type PreparedScreenComparisonReport,
+} from "./screen-comparison-report";
 import type { ScreenComparisonReportCapture } from "./screen-comparison-report-controller";
 import {
   parseManagedCatalogResolveResponse,
@@ -58,6 +61,19 @@ export interface ManagedFinancialScreenReportCapture {
   readonly run: ManagedFinancialScreenRun;
   readonly row: ManagedFinancialScreenResultRow;
   readonly response: PersonalSecAnnualCanonicalResponseDto;
+}
+/** Opaque pair ownership; it supplies passive data, never a source action. */
+export interface ScreenResearchPairLease {
+  readonly kind: "screen_research_pair";
+  readonly comparison: PreparedScreenComparisonReport;
+}
+interface ResearchPairOwner {
+  readonly revision: symbol;
+  readonly activeRevision: symbol;
+  readonly run: ManagedFinancialScreenRun;
+  readonly left: ManagedFinancialScreenResultRow;
+  readonly right: ManagedFinancialScreenResultRow;
+  visiting: boolean;
 }
 export interface ManagedFinancialScreenReportHandoff {
   readonly selection: ManagedResearchSelection;
@@ -169,6 +185,11 @@ function validListingIds(value: unknown) {
 export class ManagedFinancialScreen {
   private state = empty();
   private comparisonReportRevision = Symbol();
+  private researchPairRevision = Symbol();
+  private readonly researchPairs = new WeakMap<
+    ScreenResearchPairLease,
+    ResearchPairOwner
+  >();
   private readonly listeners = new Set<() => void>();
   private operation: Operation | null = null;
   private reader: ManagedAnnualReport | null = null;
@@ -223,6 +244,16 @@ export class ManagedFinancialScreen {
     delete reportInputs.error;
     if (Object.keys(reportInputs).length)
       this.comparisonReportRevision = Symbol();
+    const pairInputs = { ...reportInputs };
+    delete pairInputs.active;
+    delete pairInputs.canRead;
+    if (
+      Object.keys(pairInputs).some((key) => {
+        const field = key as keyof ManagedFinancialScreenState;
+        return pairInputs[field] !== this.state[field];
+      })
+    )
+      this.researchPairRevision = Symbol();
     const installed = Object.freeze({ ...this.state, ...next });
     this.state = installed;
     for (const listener of this.listeners) listener();
@@ -622,6 +653,7 @@ export class ManagedFinancialScreen {
         "Screening cancelled. Captured results and staged choices are retained.",
     });
     this.comparisonReportRevision = Symbol();
+    this.researchPairRevision = Symbol();
     this.state = cancelled;
     operation.controller.abort();
     reader?.cancel();
@@ -883,6 +915,82 @@ export class ManagedFinancialScreen {
       this.comparisonReportRow(pair.run, pair.right)
     );
   }
+  captureResearchPair(
+    state: ManagedFinancialScreenState,
+    preparedAt: string,
+  ): ScreenResearchPairLease | null {
+    if (!this.accepts(state) || state.pending || state.criteriaStaged)
+      return null;
+    const pair = this.comparisonReportPair(state);
+    if (!pair) return null;
+    const revision = this.researchPairRevision;
+    const comparison = prepareScreenComparisonReport({
+      preparedAt,
+      catalogSnapshotSha256: state.catalogSnapshotSha256!,
+      ...pair,
+    });
+    if (
+      !comparison ||
+      this.state !== state ||
+      revision !== this.researchPairRevision
+    )
+      return null;
+    const lease = Object.freeze({
+      kind: "screen_research_pair" as const,
+      comparison,
+    });
+    this.researchPairs.set(lease, {
+      ...pair,
+      revision,
+      activeRevision: this.comparisonReportRevision,
+      visiting: false,
+    });
+    return lease;
+  }
+  isResearchPairCurrent(lease: ScreenResearchPairLease) {
+    const owner = this.researchPairs.get(lease);
+    return (
+      !!owner &&
+      !this.retired &&
+      owner.revision === this.researchPairRevision &&
+      (owner.visiting ||
+        owner.activeRevision === this.comparisonReportRevision) &&
+      !this.state.catalogChanged &&
+      !this.state.pending &&
+      !this.state.criteriaStaged &&
+      (this.state.active ? this.state.canRead : owner.visiting) &&
+      this.state.run === owner.run &&
+      this.state.comparison.left === owner.left &&
+      this.state.comparison.right === owner.right &&
+      owner.run.criteriaRevision === this.state.criteriaRevision &&
+      owner.run.selectionRevision === this.state.selectionRevision
+    );
+  }
+  prepareResearchPairVisit(
+    lease: ScreenResearchPairLease,
+    capture: ManagedFinancialScreenReportCapture,
+  ): "left" | "right" | null {
+    const owner = this.researchPairs.get(lease);
+    if (
+      !owner ||
+      !this.isResearchPairCurrent(lease) ||
+      !this.canAdmitReport(capture) ||
+      capture.run !== owner.run
+    )
+      return null;
+    const side =
+      capture.row === owner.left
+        ? "left"
+        : capture.row === owner.right
+          ? "right"
+          : null;
+    if (side) owner.visiting = true;
+    return side;
+  }
+  releaseResearchPair(lease: ScreenResearchPairLease) {
+    this.researchPairs.delete(lease);
+  }
+
   captureComparisonReport(
     preparedAt: string,
   ): ScreenComparisonReportCapture | null {

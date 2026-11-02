@@ -53,7 +53,7 @@ type Props = {
   view: PersonalSecAnnualCanonicalView | null;
 };
 type ViewProps = { view: PersonalSecAnnualCanonicalView };
-function AnnualSnapshot({ response, view }: Props) {
+export function AnnualSnapshot({ response, view }: Props) {
   return (
     <>
       <AnnualSnapshotHeader response={response} view={view} />

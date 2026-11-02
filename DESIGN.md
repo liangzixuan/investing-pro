@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Two-company research decision review
+
+Keep explicit capture beside the current company Research. Discover shows the
+original screen comparison and two complete passive readings with each company's
+own reporting periods, source clocks, raw assumptions and calculation time.
+Use the existing source tables and report document, with unique control IDs for
+each side. Opening current Research, authoring a thesis/check and saving resources
+remain separate. Use wrapping text, 44px controls and narrow-screen stacking.
+Move focus only after a committed capture, never on background source completion.
+See the [workflow guide](docs/MANAGED_SCREEN_RESEARCH_REVIEW.md).
+
 ## Saved valuation reassessment
 
 Keep the confirmed baseline and revised authored inputs in the existing company

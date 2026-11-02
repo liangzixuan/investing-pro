@@ -150,6 +150,10 @@ export class ManagedValuationWorkbench {
   private draftFileActivityRevision = {};
   private readonly draftFileListeners = new Set<() => void>();
   private calculation: ManagedValuationCalculation | null = null;
+  private readonly calculationMetadata = new WeakMap<
+    ManagedValuationCalculation,
+    Readonly<{ evaluatedAt: string }>
+  >();
   private readonly rejectedFields = new Set<string>();
   private editorRevision = Symbol();
   private inputReplacementRevision = {};
@@ -360,12 +364,25 @@ export class ManagedValuationWorkbench {
       return null;
     const { owner, dcfDraft, exitDraft } = this.snapshot;
     this.calculation = evaluateValuationInputs(owner, dcfDraft, exitDraft);
+    this.calculationMetadata.set(
+      this.calculation,
+      Object.freeze({ evaluatedAt: new Date().toISOString() }),
+    );
     captures.set(this.calculation, this.getSnapshot);
     const result = this.calculation;
     const published = this.publish(this.snapshot);
     return this.snapshot === published && this.calculation === result
       ? result
       : null;
+  }
+  captureCalculationMetadata(calculation: ManagedValuationCalculation) {
+    if (
+      !this.snapshot.editable ||
+      this.snapshot.retired ||
+      this.snapshot.calculation !== calculation
+    )
+      return null;
+    return this.calculationMetadata.get(calculation) ?? null;
   }
   private retireBaseRevenueCapture() {
     this.lastBaseRevenueEdit = null;
@@ -719,6 +736,7 @@ function copySelection(raw: unknown): ManagedResearchSelection | null {
         "route",
         "followups",
         "portfolio",
+        "screening",
       ].includes(raw.origin as string) ||
       !(
         raw.cik === null ||

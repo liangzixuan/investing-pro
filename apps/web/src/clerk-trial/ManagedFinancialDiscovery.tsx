@@ -1,3 +1,7 @@
+import {
+  ManagedScreenResearchReview,
+  type ScreenResearchOpenProps,
+} from "./ManagedScreenResearchReview";
 import { ManagedPortfolioScreenSelection } from "./ManagedPortfolioScreenSelection";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
@@ -10,7 +14,7 @@ import { ManagedScreenShortlistWatchlist } from "./ManagedScreenShortlistWatchli
 import type { ManagedFinancialScreenReportCapture } from "./managed-financial-screen";
 import type { ManagedWorkspace } from "./managed-workspace";
 
-interface Props {
+interface Props extends ScreenResearchOpenProps {
   readonly workspace: ManagedWorkspace;
   readonly recipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   readonly comparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
@@ -45,6 +49,11 @@ export function ManagedFinancialDiscovery(props: Props) {
         {...(props.recipeDelivery
           ? { recipeDelivery: props.recipeDelivery }
           : {})}
+      />
+      <ManagedScreenResearchReview
+        workspace={props.workspace}
+        navigationPending={props.navigationPending}
+        onOpenSide={props.onOpenSide}
       />
       <ManagedScreenComparisonFollowup
         workspace={props.workspace}
@@ -94,6 +103,8 @@ export function useManagedFinancialDiscovery({
     recipesRouteActive,
     onReviewWatchlist,
     onReviewFollowup,
+    onOpenSide: (state, side, opener) =>
+      openResearch(opener, () => workspace.openScreenResearchSide(state, side)),
     onOpenReport: (capture, opener) =>
       openResearch(opener, () => workspace.openFinancialScreenReport(capture)),
   };

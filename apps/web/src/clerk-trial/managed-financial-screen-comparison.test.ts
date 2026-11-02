@@ -321,3 +321,60 @@ describe("screen-owned Annual comparison choices", () => {
     expect(f.read).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("screen pair leases for explicitly owned Research", () => {
+  it("keeps only a prepared visit lease across activity loss while export captures expire", async () => {
+    const f = await loaded();
+    const state = f.model.getSnapshot();
+    const lease = f.model.captureResearchPair(state, new Date().toISOString())!;
+    const unowned = f.model.captureResearchPair(
+      state,
+      new Date().toISOString(),
+    )!;
+    const exported = f.model.captureComparisonReport(new Date().toISOString())!;
+    const row = state.comparison.left!;
+    expect(
+      f.model.prepareResearchPairVisit(lease, {
+        run: state.run!,
+        row,
+        response: row.report!.response!,
+      }),
+    ).toBe("left");
+    f.model.reconcile(digest, false, false);
+    expect(f.model.isResearchPairCurrent(lease)).toBe(true);
+    expect(f.model.isResearchPairCurrent(unowned)).toBe(false);
+    expect(exported.current()).toBe(false);
+    f.model.reconcile(digest, true, true);
+    expect(f.model.isResearchPairCurrent(lease)).toBe(true);
+    expect(f.model.isResearchPairCurrent(unowned)).toBe(false);
+    expect(exported.current()).toBe(false);
+    expect(f.read).toHaveBeenCalledTimes(2);
+  });
+  it("rejects forged leases and permanently retires pair ABA and access-loss leases", async () => {
+    const f = await loaded();
+    const state = f.model.getSnapshot();
+    const lease = f.model.captureResearchPair(state, new Date().toISOString())!;
+    expect(f.model.isResearchPairCurrent({ ...lease })).toBe(false);
+    f.choose("left", null);
+    f.choose("left", f.rows[0]!);
+    expect(f.model.isResearchPairCurrent(lease)).toBe(false);
+    const next = f.model.captureResearchPair(
+      f.model.getSnapshot(),
+      new Date().toISOString(),
+    )!;
+    f.model.reconcile(digest, true, false);
+    f.model.reconcile(digest, true, true);
+    expect(f.model.isResearchPairCurrent(next)).toBe(false);
+  });
+  it("retains pair ownership through shortlist-only changes and retires it on criteria edits", async () => {
+    const f = await loaded();
+    const lease = f.model.captureResearchPair(
+      f.model.getSnapshot(),
+      new Date().toISOString(),
+    )!;
+    f.model.toggleShortlist(f.model.getSnapshot(), f.rows[0]!);
+    expect(f.model.isResearchPairCurrent(lease)).toBe(true);
+    f.model.stageCriteria(f.model.getSnapshot());
+    expect(f.model.isResearchPairCurrent(lease)).toBe(false);
+  });
+});

@@ -27,13 +27,21 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: saved valuation reassessment
+## Current priority: two-company research decision review
 
-Connect confirmed saved assumptions to revised authored inputs in the existing
-valuation workbench. Keep exact listing identity, complete raw assumptions and
-both full calculation results visible. Evaluate the saved inputs at the current
-action time; do not present them as a historical calculation. Keep source reads,
-note or check creation and resource Save explicit. Source implementation is in integration; see the [workflow guide](MANAGED_VALUATION_REASSESSMENT.md). Native acceptance and client delivery remain separate.
+Connect screening to complete retained company research under M1/M3/M4. Research
+and value both finalists with the existing editor, retain both readings, then
+author the chosen company's thesis and dated check. Each resource keeps separate
+Save and fresh Load. This adds no provider, ranking or saved schema. Source work
+is in development; see the [workflow guide](MANAGED_SCREEN_RESEARCH_REVIEW.md).
+
+## Delivered: saved valuation reassessment
+
+Android 1.71 compares confirmed saved inputs with revised authored inputs at one
+current evaluation time. Full raw assumptions and both results survive owned
+Back. Accepted main `6b96c12a16d66b401df9fb1300bd2c15efceab10` passed its source
+checks and 134 native cases. The existing-signer build, four APK checks and local
+delivery passed. See the [reassessment guide](MANAGED_VALUATION_REASSESSMENT.md).
 
 ## Delivered: a Watchlist daily review
 

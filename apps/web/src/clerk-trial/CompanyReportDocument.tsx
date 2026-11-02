@@ -25,8 +25,12 @@ export function CompanyReportDocument({
 
 export function CompanyReportDocumentView({
   document,
+  id = "managed-report-document",
 }: {
-  document: ReturnType<typeof formatCompanyReportDocument>;
+  document:
+    | ReturnType<typeof formatCompanyReportDocument>
+    | Readonly<{ text: string; byteLength: number }>;
+  id?: string;
 }) {
   if (!document)
     return (
@@ -38,19 +42,19 @@ export function CompanyReportDocumentView({
     );
   return (
     <>
-      <p id="managed-report-document-scope">
+      <p id={`${id}-scope`}>
         Exact authored draft and full admitted source packets, including
         original financial inputs, filing references and source dates. Missing
         sources stay missing. This inspection makes no request or saved change
         and does not download a file. JSON escapes preserve the note when
         decoded.
       </p>
-      <label htmlFor="managed-report-document">
+      <label htmlFor={id}>
         Report document · {document.byteLength} UTF-8 bytes
       </label>
       <textarea
-        id="managed-report-document"
-        aria-describedby="managed-report-document-scope"
+        id={id}
+        aria-describedby={`${id}-scope`}
         readOnly
         spellCheck={false}
         rows={12}

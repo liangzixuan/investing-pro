@@ -1,3 +1,7 @@
+import {
+  ManagedScreenResearchReview,
+  type ManagedScreenResearchReviewState,
+} from "./managed-screen-research-review";
 import { ManagedWatchlistDailyContext } from "./managed-watchlist-daily-context";
 import type { ManagedWatchlistDailyReviewCapture } from "./managed-watchlist-daily-review";
 import { ManagedPortfolioDatedReviewContext } from "./managed-portfolio-dated-review-context";
@@ -62,7 +66,10 @@ import {
   type PreparedValuationNote,
 } from "./valuation-note";
 import type { AuthoredValuationScenario } from "@research-cockpit/personal-market-analytics";
-import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
+import {
+  companyEvidenceSelectionMatches,
+  companySnapshotEvidence,
+} from "./managed-company-snapshot";
 import { ManagedCompanySnapshotLoad } from "./managed-company-snapshot-load";
 import {
   ManagedCompanySourcePass,
@@ -394,6 +401,9 @@ export class ManagedWorkspace {
   readonly interim: ManagedInterimReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
   readonly financialScreen: ManagedFinancialScreen;
+  readonly screenResearchReview: ManagedScreenResearchReview;
+  private screenResearchFiles: readonly object[] = [];
+  private screenResearchCatalog: ManagedCatalogSnapshotDto | null = null;
   readonly filings: ManagedCompanyFilings;
   readonly watchlistFilings: ManagedWatchlistFilings;
   readonly filingsReview: ManagedFilingsReview;
@@ -848,6 +858,110 @@ export class ManagedWorkspace {
         this.invalidateCatalog();
     });
     this.watchlistDailyContext = new ManagedWatchlistDailyContext(this);
+    this.screenResearchReview = new ManagedScreenResearchReview(
+      this.financialScreen,
+      {
+        readVisit: () => this.state.research,
+        readEvidence: (selection) =>
+          companySnapshotEvidence(
+            selection,
+            this.eod.getSnapshot(),
+            this.annual.getSnapshot(),
+            this.filings.getSnapshot(),
+            this.interim.getSnapshot(),
+          ),
+        readWatchlist: (selection) => this.getResearchWatchlist(selection),
+        valuation: this.valuation,
+        available: () => this.screenResearchCaptureAvailable(),
+      },
+    );
+    for (const source of [
+      this.eod,
+      this.annual,
+      this.interim,
+      this.filings,
+      this.valuation,
+      this.coordinator,
+      this.followups.coordinator,
+      this.valuationAssumptions.coordinator,
+      this.portfolio.coordinator,
+      this.followups,
+    ])
+      source.subscribe(() => this.syncScreenResearchReview());
+    this.valuation.subscribeDraftFileActivity(() =>
+      this.syncScreenResearchReview(),
+    );
+    this.syncScreenResearchReview();
+  }
+  private screenResearchCaptureAvailable() {
+    if (
+      this.retired ||
+      !this.canNavigate() ||
+      !this.researchDraftSetRouteReady() ||
+      this.sessionOwner.getSnapshot().phase !== "active" ||
+      this.hasWatchlistDraftFileActivity() ||
+      this.followups.hasDraftFileActivity() ||
+      this.valuation.hasDraftFileActivity() ||
+      this.fileCatalogReviewRequired
+    )
+      return false;
+    return [
+      this.coordinator.getSnapshot(),
+      this.followups.coordinator.getSnapshot(),
+      this.valuationAssumptions.coordinator.getSnapshot(),
+      this.portfolio.coordinator.getSnapshot(),
+    ].every(
+      (saved) =>
+        saved.phase === "idle" &&
+        !saved.uncertain &&
+        !saved.conflict &&
+        !saved.replayPending,
+    );
+  }
+  private syncScreenResearchReview() {
+    if (!this.screenResearchReview) return;
+    const files = [
+      this.watchlistFileRevision,
+      this.followups.getDraftFileActivityRevision(),
+      this.valuation.getDraftFileActivityRevision(),
+    ];
+    const catalogReplaced = this.screenResearchCatalog !== this.state.snapshot;
+    this.screenResearchCatalog = this.state.snapshot;
+    const replaced =
+      this.screenResearchFiles.length > 0 &&
+      files.some((value, index) => value !== this.screenResearchFiles[index]);
+    this.screenResearchFiles = files;
+    const resources = [
+      this.coordinator.getSnapshot(),
+      this.followups.coordinator.getSnapshot(),
+      this.valuationAssumptions.coordinator.getSnapshot(),
+      this.portfolio.coordinator.getSnapshot(),
+    ];
+    if (
+      catalogReplaced ||
+      replaced ||
+      resources.some(
+        (saved) =>
+          saved.phase === "loading" ||
+          saved.phase === "reconciling" ||
+          saved.uncertain ||
+          saved.conflict ||
+          saved.replayPending,
+      )
+    )
+      this.screenResearchReview.invalidate();
+    else this.screenResearchReview.reconcile();
+  }
+  captureScreenResearchReading(expected: ManagedScreenResearchReviewState) {
+    const visit = this.state.research;
+    return visit ? this.screenResearchReview.capture(expected, visit) : null;
+  }
+  openScreenResearchSide(
+    expected: ManagedScreenResearchReviewState,
+    side: "left" | "right",
+  ) {
+    const capture = this.screenResearchReview.prepareSide(expected, side);
+    if (capture) this.openFinancialScreenReport(capture);
   }
   getSnapshot = (): ManagedDiscoveryState => this.state;
   subscribe = (listener: () => void) => {
@@ -881,6 +995,7 @@ export class ManagedWorkspace {
     this.syncAnnualComparison();
     this.syncFinancialScreen();
     this.syncWatchlistFilings();
+    this.syncScreenResearchReview();
     for (const listener of this.listeners) listener();
   }
   setNavigationBlocked(blocked: boolean) {
@@ -904,9 +1019,11 @@ export class ManagedWorkspace {
       this.syncAnnualComparison();
       this.syncFinancialScreen();
       this.syncWatchlistFilings();
+      this.syncScreenResearchReview();
     } finally {
       this.followupsNavigationDepth--;
       this.syncFollowupsReview();
+      this.syncScreenResearchReview();
     }
   }
   private ownsFollowupsReview(handle: FollowupsReviewHandle | null) {
@@ -1061,6 +1178,7 @@ export class ManagedWorkspace {
   private clear() {
     this.marketsBriefing?.clear();
     this.retired = true;
+    this.screenResearchReview?.retire();
     this.screenComparisonFollowup.retire();
     this.cpiFollowupContext.retire();
     this.cpiHeadlines.retire();
@@ -1153,6 +1271,7 @@ export class ManagedWorkspace {
   }
   setView(view: ManagedDiscoveryState["view"]) {
     if (!this.canNavigate()) return;
+    if (view !== "discover") this.screenResearchReview.invalidate();
     this.portfolioDatedReview.changeView(view, (datedTransfer) => {
       const { wasReturned, owned } = this.marketsBriefing.beforeView(view);
       this.viewRevision++;
@@ -1182,6 +1301,7 @@ export class ManagedWorkspace {
     });
   }
   private invalidateCatalog() {
+    this.screenResearchReview?.invalidate();
     this.marketsBriefing?.clear();
     this.marketsSourceReview.invalidate();
     if (this.retired || !this.state.snapshot) return;
@@ -1362,10 +1482,17 @@ export class ManagedWorkspace {
     if (!this.canOpenFinancialScreenReport(capture)) return;
     const handoff = this.financialScreen.admitReport(capture);
     if (!handoff || !this.canOpenFinancialScreenReport(capture)) return;
-    this.openResearch(handoff.selection, "annual", {
-      annualSeed: handoff.seed,
-      admit: () => this.canOpenFinancialScreenReport(capture),
-    });
+    const opening = this.screenResearchReview.prepareOpen(capture);
+    let visit: ManagedResearchVisit | undefined;
+    try {
+      visit = this.openResearch(handoff.selection, "annual", {
+        annualSeed: handoff.seed,
+        screenResearchReview: opening !== null,
+        admit: () => this.canOpenFinancialScreenReport(capture),
+      });
+    } finally {
+      if (opening) this.screenResearchReview.commitOpen(opening, visit);
+    }
   }
   private canOpenWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
     return (
@@ -1550,6 +1677,7 @@ export class ManagedWorkspace {
         });
       return;
     }
+    this.screenResearchReview.invalidate();
     const pending = this.state.companyRoute;
     if (pending?.listingId === route.listingId && pending.status !== "open") {
       this.update({ companyRoute: { ...pending, section: route.section } });
@@ -1763,6 +1891,7 @@ export class ManagedWorkspace {
       annualSeed?: ManagedAnnualReportSeed;
       filingsSeed?: ManagedCompanyFilingsSeed;
       reviewFilingsSeed?: ManagedFollowupsReviewFilingsSeed;
+      screenResearchReview?: boolean;
       admit?: (phase: "before-clear" | "after-clear") => boolean;
     } = {},
   ) {
@@ -1772,6 +1901,7 @@ export class ManagedWorkspace {
     const owns = () => this.researchOperation === operation;
     let phase: "before-clear" | "after-clear" = "before-clear";
     const admitted = () => !this.retired && (options.admit?.(phase) ?? true);
+    if (!options.screenResearchReview) this.screenResearchReview.invalidate();
     const resumeReassessment =
       this.valuationReassessment.canResumeOwned(selection);
     if (!resumeReassessment) this.valuationReassessment.invalidate();
@@ -1783,7 +1913,11 @@ export class ManagedWorkspace {
     this.filingsReview.cancel();
     if (!owns() || !admitted()) return;
     phase = "after-clear";
-    this.clearResearch(operation, resumeReassessment);
+    this.clearResearch(
+      operation,
+      resumeReassessment,
+      options.screenResearchReview === true,
+    );
     if (!owns()) return;
     if (!admitted()) {
       this.valuationReassessment.invalidate();
@@ -1831,23 +1965,37 @@ export class ManagedWorkspace {
     if (!visit || !this.canNavigate()) return;
     this.valuationReassessment.pauseForOwnedBack();
     if (this.state.research !== visit || !this.canNavigate()) return;
-    this.closeResearchVisit(true);
+    const preserveScreenReview = this.screenResearchReview.ownedBack(visit);
+    if (this.state.research !== visit || !this.canNavigate()) return;
+    this.closeResearchVisit(true, preserveScreenReview);
   }
   closeResearch() {
     this.closeResearchVisit();
   }
-  private closeResearchVisit(preserveReassessment = false) {
+  private closeResearchVisit(
+    preserveReassessment = false,
+    preserveScreenReview = false,
+  ) {
     this.portfolioDatedReview?.closeResearch();
     this.marketsBriefing?.closeResearch();
     this.cancelFollowupOpening();
     this.followupResearch = null;
-    if (this.clearResearch(Symbol(), preserveReassessment)) this.update({});
+    if (
+      this.clearResearch(Symbol(), preserveReassessment, preserveScreenReview)
+    )
+      this.update({});
   }
-  private clearResearch(operation = Symbol(), preserveReassessment = false) {
+  private clearResearch(
+    operation = Symbol(),
+    preserveReassessment = false,
+    preserveScreenReview = false,
+  ) {
     this.companyResearchChecks.clear();
     this.researchOperation = operation;
     const hadResearch =
       this.state.research !== null || this.state.companyRoute !== null;
+    if (hadResearch && !preserveScreenReview)
+      this.screenResearchReview?.foreignClose();
     if (hadResearch && !preserveReassessment)
       this.valuationReassessment.invalidate();
     if (this.researchOperation !== operation) return false;
