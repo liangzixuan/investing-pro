@@ -97,9 +97,10 @@ public class ScreenResearchReportHtmlPolicyInstrumentedTest {
         assertNull(ScreenResearchReportHtmlDocumentPolicy.INSTANCE.filename(metadata().put("purpose", "investment.company-research")));
         for (String name : new String[] {
             FILENAME.replace(".html", ".json"), "../" + FILENAME, "content://invented/" + FILENAME,
-            FILENAME.replace("Investment", "investment"), FILENAME + ".html", FILENAME.replace("comparison", "<comparison>"),
+            FILENAME.replace("Investment", "investment"), FILENAME + ".html", FILENAME.replace("paired-research", "<paired-research>"),
             FILENAME.replace("T000000000Z", "T00000000Z"), "unrelated.html"
         }) {
+            assertNotEquals("Unsafe filename mutation must change the valid filename", FILENAME, name);
             assertNull(ScreenResearchReportHtmlDocumentPolicy.INSTANCE.filename(metadata().put("filename", name)));
             assertFalse(ScreenResearchReportHtmlDocumentPolicy.INSTANCE.acceptsText(name, document()));
         }
