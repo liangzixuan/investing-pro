@@ -212,9 +212,9 @@ export async function createTwoCompanyResearchReviewFixture(
       return response;
     },
     annualReport: async (input, signal) => {
+      const now = performance.now();
       await Promise.resolve();
-      const packet = packets[counts.annual],
-        now = performance.now();
+      const packet = packets[counts.annual];
       admit(
         !signal.aborted &&
           packet &&

@@ -193,3 +193,41 @@ it("refuses a passive-price request and a nonmatching save before changing any r
   expect(meta.saved()).toEqual(before);
   expect(meta.getSnapshot().rejected).toBe(2);
 });
+
+it("measures the full pacing interval at dispatch despite delayed promise work", async () => {
+  const fixture = await createFixture("two-company-research-review");
+  const meta = fixture.twoCompanyResearchReview!;
+  const signal = new AbortController().signal;
+  await fixture.api.load(signal);
+  let now = 100;
+  const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+  const request = (index: number) => {
+    const packet = meta.packets[index]!;
+    return {
+      schemaVersion: "6.0.0" as const,
+      catalogSnapshotSha256: packet.catalogSnapshotSha256,
+      listingId: packet.security.listingId,
+      symbol: packet.security.symbol,
+    };
+  };
+  try {
+    const first = fixture.api.annualReport(request(0), signal);
+    now = 175;
+    await first;
+    now = 20_099;
+    const early = fixture.api.annualReport(request(1), signal);
+    now = 20_100;
+    await expect(early).rejects.toThrow("exact paced Annual read");
+    expect(meta.getSnapshot().annual).toBe(1);
+    const second = fixture.api.annualReport(request(1), signal);
+    now = 20_101;
+    await expect(second).resolves.toEqual(meta.packets[1]);
+    expect(meta.getSnapshot()).toMatchObject({
+      annual: 2,
+      rejected: 1,
+      requests: ["listing-zero", "listing-one"],
+    });
+  } finally {
+    clock.mockRestore();
+  }
+});
