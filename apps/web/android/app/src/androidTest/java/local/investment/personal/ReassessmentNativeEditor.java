@@ -89,10 +89,12 @@ final class ReassessmentNativeEditor implements AutoCloseable {
         long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
         String last="no native editor observed";
         currentDom();
-        Connection candidate=acquire();
-        assertNotNull("Settled native caret supplies one editable connection",candidate);
         do {
             Dom before=currentDom();
+            // Focus can advance while a previous field's connection is still settling.
+            // Acquire again after each frame; bind only complete exact correspondence.
+            Connection candidate=acquire();
+            assertNotNull("Settled native caret supplies one editable connection",candidate);
             requireView(candidate);
             NativeText nativeText=invoke(candidate.handler,deadline,()->extract(candidate));
             Dom after=currentDom();
