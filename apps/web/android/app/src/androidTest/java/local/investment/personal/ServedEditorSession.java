@@ -13,6 +13,8 @@ import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -246,7 +248,9 @@ final class ServedEditorSession implements AutoCloseable {
         data.put("previousDefault", previousDefault); data.put("previousEnabled", nullable(previousEnabled));
         data.put("previousSubtype", nullable(previousSubtype)); data.put("initiallyEnabled", initiallyEnabled); data.put("phase", phase);
         File pending = new File(recovery.getParentFile(), recovery.getName() + ".pending");
-        Files.writeString(pending.toPath(), data.toString(), StandardCharsets.UTF_8);
+        ByteBuffer encoded = StandardCharsets.UTF_8.newEncoder().encode(CharBuffer.wrap(data.toString()));
+        byte[] bytes = new byte[encoded.remaining()]; encoded.get(bytes);
+        Files.write(pending.toPath(), bytes);
         Files.move(pending.toPath(), recovery.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
     }
     private int user() throws Exception { return lease.getInt("user"); }
@@ -271,7 +275,7 @@ final class ServedEditorSession implements AutoCloseable {
     }
     private static JSONObject readJson(File file) throws Exception {
         if (!file.isFile() || file.length() > 16_384) throw new SecurityException("Missing or oversized host fixture receipt");
-        return new JSONObject(Files.readString(file.toPath(), StandardCharsets.UTF_8));
+        return new JSONObject(StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(Files.readAllBytes(file.toPath()))).toString());
     }
     private static void exactKeys(JSONObject data, Set<String> expected) {
         Set<String> actual = new HashSet<>(); data.keys().forEachRemaining(actual::add);
