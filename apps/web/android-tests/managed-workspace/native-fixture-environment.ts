@@ -60,6 +60,7 @@ const allowedScenarios = [
   "portfolio-comparison-report",
   "portfolio-held-due-checks",
   "review-filings-evidence",
+  "two-company-research-review",
   "saved-valuation-reassessment",
   "watchlist-daily-review",
   "portfolio-dated-review",

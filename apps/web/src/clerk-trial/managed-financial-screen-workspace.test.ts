@@ -1014,3 +1014,290 @@ const shortlistChanges = {
     f.workspace.followups.edit(entry, "check", "Changed independent follow-up");
   },
 } satisfies Record<string, (f: ShortlistFixture) => void | Promise<void>>;
+
+async function screenResearchPair() {
+  const f = await fixture(true);
+  const screen = f.workspace.financialScreen;
+  await screen.loadUniverse(screen.getSnapshot());
+  vi.useFakeTimers({
+    toFake: ["Date", "performance", "setTimeout", "clearTimeout"],
+  });
+  try {
+    const running = screen.run(screen.getSnapshot());
+    await vi.advanceTimersByTimeAsync(20_000);
+    await running;
+  } finally {
+    vi.useRealTimers();
+  }
+  const run = screen.getSnapshot().run!;
+  const [left, right] = run.rows;
+  screen.selectComparison(screen.getSnapshot(), "left", left!);
+  screen.selectComparison(screen.getSnapshot(), "right", right!);
+  const open = async (row = left!) => {
+    f.workspace.openFinancialScreenReport({
+      run,
+      row,
+      response: row.report!.response!,
+    });
+    await vi.waitFor(() =>
+      expect(f.workspace.annual.getSnapshot().checkingSeed).toBe(false),
+    );
+  };
+  return { ...f, screen, run, left: left!, right: right!, open };
+}
+
+describe("two-company retained research decision review", () => {
+  it("retains both complete readings through valuation, owned Back, authored decision and separate Save/fresh Load", async () => {
+    const f = await screenResearchPair();
+    const w = f.workspace;
+    let valuations: Awaited<
+      ReturnType<ManagedApi["loadValuationAssumptions"]>
+    > = {
+      version: 0,
+      payload: { schemaVersion: 1, entries: [] },
+    };
+    let checks = structuredClone(
+      await f.api.loadFollowups(new AbortController().signal),
+    );
+    f.api.loadValuationAssumptions = vi.fn<
+      ManagedApi["loadValuationAssumptions"]
+    >(() => Promise.resolve(structuredClone(valuations)));
+    f.api.saveValuationAssumptions = vi.fn<
+      ManagedApi["saveValuationAssumptions"]
+    >((command) => {
+      valuations = {
+        version: command.expectedVersion + 1,
+        payload: structuredClone(command.payload),
+      };
+      return Promise.resolve({
+        ...structuredClone(valuations),
+        replayed: false,
+      });
+    });
+    f.api.loadFollowups = vi.fn<ManagedApi["loadFollowups"]>(() =>
+      Promise.resolve(structuredClone(checks)),
+    );
+    f.api.saveFollowups = vi.fn<ManagedApi["saveFollowups"]>((command) => {
+      checks = {
+        version: command.expectedVersion + 1,
+        payload: structuredClone(command.payload),
+      };
+      return Promise.resolve({ ...structuredClone(checks), replayed: false });
+    });
+    await w.valuationAssumptions.coordinator.load();
+    const untouchedPortfolio = w.portfolio.coordinator.getSnapshot().draft;
+    const originalCheck = structuredClone(
+      w.followups.coordinator.getSnapshot().draft!.entries[0]!,
+    );
+    const calculate = vi.spyOn(w.valuation, "calculate");
+    const captured = [];
+    for (const [index, row] of [f.left, f.right].entries()) {
+      await f.open(row);
+      const v = w.valuation;
+      if (index) {
+        expect(v.getSnapshot().editable).toBe(false);
+        expect(valuations.payload.entries).toHaveLength(1);
+        v.discardAndUse(w.getSnapshot().research!.selection);
+      }
+      expect(v.getSnapshot().editable).toBe(true);
+      v.setDcfField(
+        "startingUnleveredCashFlowUsd",
+        index ? "200.125" : "100.050",
+      );
+      v.setDcfField("enterpriseToEquityBridgeUsd", "100");
+      v.setDcfField("dilutedShares", "10");
+      v.setDcfField("waccPercent", "10");
+      v.setDcfField("terminalGrowthPercent", "0");
+      v.setExitField("baseRevenue", index ? "2000.000" : "1000.125");
+      v.setExitField("cash", "100");
+      v.setExitField("debt", "200");
+      v.setExitField("dilutedShares", "100");
+      v.setExitField("discountRatePercent", "10");
+      for (const [scenario, growth] of [
+        ["conservative", "0"],
+        ["base", "10"],
+        ["expansion", "20"],
+      ] as const) {
+        v.setDcfScenario(scenario, growth);
+        v.setExitScenario(scenario, "annualRevenueGrowthPercent", growth);
+        v.setExitScenario(scenario, "targetEbitdaMarginPercent", "20");
+        v.setExitScenario(scenario, "exitMultiple", "10");
+      }
+      const calculation = v.calculate()!;
+      expect(calculation).not.toBeNull();
+      const before = w.screenResearchReview.getSnapshot();
+      expect(before.activeSide).toBe(index ? "right" : "left");
+      const installed = w.captureScreenResearchReading(before);
+      expect(installed).not.toBeNull();
+      const reading = installed!.reading![index ? "right" : "left"]!;
+      expect(reading.selection).toEqual(w.getSnapshot().research!.selection);
+      expect(reading.evidence.annual!.response).toEqual(row.report!.response);
+      expect(reading.valuation).toEqual(calculation);
+      expect(reading.valuation).not.toBe(calculation);
+      expect(reading.evaluatedAt).toMatch(/^\d{4}-\d\d-\d\dT/u);
+      expect(reading.evidence.price?.response ?? null).toBeNull();
+      expect(reading.document.byteLength).toBe(
+        new TextEncoder().encode(reading.document.text).byteLength,
+      );
+      expect(JSON.parse(reading.document.text)).toHaveProperty(
+        "sources.annual.response",
+        row.report!.response,
+      );
+      captured.push(reading);
+      expect(w.captureScreenResearchReading(before)).toBeNull();
+      await w.valuationAssumptions.prepareStage();
+      expect(w.valuationAssumptions.stageCurrent()).toBe(true);
+      await w.valuationAssumptions.coordinator.save();
+      expect(
+        w.screenResearchReview.getSnapshot().reading![index ? "right" : "left"],
+      ).toBe(reading);
+      w.returnFromResearch();
+      w.closeResearch(); // Router cleanup after the exact owned Back is inert.
+      w.setView("discover");
+      expect(w.screenResearchReview.getSnapshot().activeSide).toBeNull();
+      expect(
+        w.screenResearchReview.getSnapshot().reading![index ? "right" : "left"],
+      ).toBe(reading);
+      expect(calculate).toHaveBeenCalledTimes(index + 1);
+      expect(f.api.annualReport).toHaveBeenCalledTimes(2);
+    }
+    const pair = w.screenResearchReview.getSnapshot().reading!;
+    expect([pair.left, pair.right]).toEqual(captured);
+    expect(pair.left!.evidence.annual!.response!.evidence.target).toMatchObject(
+      { reportDate: "2025-12-31" },
+    );
+    expect(
+      pair.right!.evidence.annual!.response!.evidence.target,
+    ).toMatchObject({ reportDate: "2025-06-30" });
+    w.openScreenResearchSide(w.screenResearchReview.getSnapshot(), "right");
+    await vi.waitFor(() =>
+      expect(w.annual.getSnapshot().checkingSeed).toBe(false),
+    );
+    const selection = w.getSnapshot().research!.selection;
+    w.addResearchToWatchlist(selection);
+    const thesis =
+      "Prefer ONE for the authored scenario; compare cash generation after its next filing. ZERO remains an alternative. Different fiscal periods limit the comparison.";
+    w.noteResearch(selection, thesis);
+    const host = w.researchThesisFollowupContext(selection)!;
+    const question =
+      "Does ONE retain cash generation after its next filing? Compare with the retained ZERO reading.";
+    const prepared = w.followups.prepareNextCheck(
+      host.member,
+      question,
+      "2026-12-01",
+    );
+    expect(prepared.capture).not.toBeNull();
+    const created = w.followups.createNextCheck(
+      prepared.capture!,
+      host.isCurrent,
+    );
+    expect(created?.check).toBe(question);
+    expect(w.screenResearchReview.getSnapshot().reading).toBe(pair);
+    await w.coordinator.save();
+    await w.followups.coordinator.save();
+    expect(w.portfolio.coordinator.getSnapshot().draft).toBe(
+      untouchedPortfolio,
+    );
+    expect(checks.payload.entries[0]).toEqual(originalCheck);
+    expect(valuations.payload.entries).toHaveLength(2);
+    expect(calculate).toHaveBeenCalledTimes(2);
+    expect(f.api.annualReport).toHaveBeenCalledTimes(2);
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+    expect(f.api.recentFilings).not.toHaveBeenCalled();
+    expect(f.api.savePortfolio).not.toHaveBeenCalled();
+    const fresh = new ManagedWorkspace(
+      f.api,
+      { ...f.session, sessionId: "invented-pair-fresh" },
+      undefined,
+      f.options,
+    );
+    owners.push(fresh);
+    await fresh.coordinator.load();
+    await fresh.followups.coordinator.load();
+    await fresh.valuationAssumptions.coordinator.load();
+    expect(fresh.coordinator.getSnapshot().draft).toEqual(f.stored().payload);
+    expect(fresh.coordinator.getSnapshot().draft!.memberships).toEqual([
+      { ...f.listing, note: "Unsaved café 東京 research" },
+      { ...f.right.member.listing, note: thesis },
+    ]);
+    expect(fresh.followups.coordinator.getSnapshot().draft).toEqual(
+      checks.payload,
+    );
+    expect(fresh.valuationAssumptions.coordinator.getSnapshot().draft).toEqual(
+      valuations.payload,
+    );
+    expect(fresh.screenResearchReview.getSnapshot().reading).toBeNull();
+  });
+
+  it("keeps a captured calculation across a dirty second-company refusal and retires pair handles on foreign closure", async () => {
+    const f = await screenResearchPair();
+    const w = f.workspace;
+    await f.open();
+    w.valuation.setDcfField("waccPercent", "invalid raw assumption");
+    const calculation = w.valuation.calculate();
+    const captured = w.captureScreenResearchReading(
+      w.screenResearchReview.getSnapshot(),
+    )!;
+    expect(captured.reading!.left!.valuation).toEqual(calculation);
+    w.returnFromResearch();
+    const left = w.screenResearchReview.getSnapshot().reading!.left;
+    await f.open(f.right);
+    expect(w.valuation.getSnapshot().editable).toBe(false);
+    expect(w.valuation.getSnapshot().owner!.listing).toEqual(
+      f.left.member.listing,
+    );
+    expect(w.screenResearchReview.getSnapshot().reading!.left).toBe(left);
+    w.valuation.discardAndUse(w.getSnapshot().research!.selection);
+    expect(w.valuation.getSnapshot().editable).toBe(true);
+    const state = w.screenResearchReview.getSnapshot();
+    w.closeResearch();
+    expect(w.screenResearchReview.getSnapshot().reading).toBeNull();
+    expect(w.captureScreenResearchReading(state)).toBeNull();
+    await f.open();
+    expect(w.screenResearchReview.getSnapshot().reading!.left).toBeNull();
+  });
+});
+
+describe("research pair workspace lifetime boundaries", () => {
+  it.each([
+    "watchlist-file",
+    "valuation-file",
+    "followups-file",
+    "resource-load",
+    "catalog-replacement",
+    "session",
+  ] as const)(
+    "retires old reading handles on %s even when content returns unchanged",
+    async (boundary) => {
+      const f = await screenResearchPair();
+      const w = f.workspace;
+      await f.open();
+      const captured = w.captureScreenResearchReading(
+        w.screenResearchReview.getSnapshot(),
+      )!;
+      expect(captured.reading!.left).not.toBeNull();
+      const file = {};
+      if (boundary === "watchlist-file") {
+        w.beginWatchlistDraftFileActivity(file);
+        w.endWatchlistDraftFileActivity(file);
+      } else if (boundary === "valuation-file") {
+        w.valuation.beginDraftFileActivity(file);
+        w.valuation.endDraftFileActivity(file);
+      } else if (boundary === "followups-file") {
+        w.followups.beginDraftFileActivity(file);
+        w.followups.endDraftFileActivity(file);
+      } else if (boundary === "resource-load") {
+        await w.coordinator.load();
+      } else if (boundary === "catalog-replacement") {
+        vi.mocked(f.api.status).mockResolvedValueOnce({
+          snapshot: structuredClone(w.getSnapshot().snapshot!),
+        });
+        await w.refreshCatalog();
+      } else w.sessionOwner.dispose();
+      expect(w.screenResearchReview.getSnapshot().reading).toBeNull();
+      expect(w.captureScreenResearchReading(captured)).toBeNull();
+      expect(f.api.annualReport).toHaveBeenCalledTimes(2);
+      expect(f.api.save).not.toHaveBeenCalled();
+    },
+  );
+});

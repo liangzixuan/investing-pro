@@ -5,15 +5,27 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In integration: reassess saved valuation inputs
+## In development: two-company research decision review
 
-Use one confirmed saved entry as a baseline beside revised authored inputs in
-the existing valuation workbench. Calculate both at the same action time and
-show the complete results and raw assumptions for each. Capture, source reads,
-note or check creation, and Save remain separate. Model and UI checks pass;
-workspace and routed Back retention checks pass. Native fixture integration and
-complete source checks are in progress. See the [workflow guide](MANAGED_VALUATION_REASSESSMENT.md).
-Android 1.70.0 remains the last locally delivered release.
+Keep complete readings for both screened finalists after using the existing
+Research and valuation workbench. Return to the pair, reopen the chosen company,
+author its thesis and next check, then save each resource separately. The local
+model, rendered reading and workspace journey checks pass; native integration
+and complete source acceptance remain in progress. See the
+[workflow guide](MANAGED_SCREEN_RESEARCH_REVIEW.md).
+
+## Accepted and delivered: reassess saved valuation inputs
+
+Compare a confirmed saved entry with revised authored inputs at the same action
+time. Both full results and raw assumptions remain visible through owned Back;
+source reads, note/check creation and resource Save stay separate. See the
+[reassessment guide](MANAGED_VALUATION_REASSESSMENT.md).
+[PR 272](https://github.com/liangzixuan/investing-pro/pull/272) merged at
+`6b96c12a16d66b401df9fb1300bd2c15efceab10`. The six original source jobs and all
+134 native cases passed. Android 1.71.0 is provided locally after the existing-
+signer build, four checks on that APK and copy/checksum readback. Original
+failures and qualified repairs remain recorded. Browser, installation and
+physical-phone acceptance are not claimed.
 
 ## Accepted and delivered: a Watchlist daily review
 

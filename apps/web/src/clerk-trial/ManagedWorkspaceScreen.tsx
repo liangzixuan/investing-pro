@@ -1,3 +1,4 @@
+import { ManagedScreenResearchCapture } from "./ManagedScreenResearchReview";
 import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
@@ -1145,6 +1146,12 @@ export function ManagedWorkspaceScreen({
                     </button>
                   </section>
                 )}
+              {discovery.research && (
+                <ManagedScreenResearchCapture
+                  workspace={workspace}
+                  navigationPending={navigationPending}
+                />
+              )}
               {discovery.research && (
                 <ManagedCompanyResearch
                   navigationPending={navigationPending}

@@ -619,6 +619,15 @@ jobs:
           required.add(saved_valuation_reassessment_case)
           if len(required) != 134:
               raise SystemExit("Saved valuation reassessment must preserve all 133 prior native cases.")
+          two_company_research_case = (
+              "local.investment.personal.ManagedTwoCompanyResearchReviewTest",
+              "pairedResearchKeepsBothCalculationsThroughOwnedBackAndIndependentFreshLoads",
+          )
+          if two_company_research_case in required:
+              raise SystemExit("Two-company research must be a distinct native case.")
+          required.add(two_company_research_case)
+          if len(required) != 135:
+              raise SystemExit("Two-company research must preserve all 134 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -734,6 +743,13 @@ jobs:
                           raise SystemExit("The saved valuation reassessment shard must retain each scoped journey frame.")
                   elif reassessment_frames:
                       raise SystemExit("Saved valuation reassessment frames belong only to the executed shard.")
+              for frame_name in ("newTwoCompanyResearchCapture.png", "newTwoCompanyResearchPair.png", "newTwoCompanyResearchSaved.png"):
+                  decision_frames = list(root.rglob(frame_name))
+                  if two_company_research_case in executed:
+                      if len(decision_frames) != 1 or decision_frames[0].stat().st_size == 0:
+                          raise SystemExit("The two-company research shard must retain each scoped journey frame.")
+                  elif decision_frames:
+                      raise SystemExit("Two-company research frames belong only to the executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],
