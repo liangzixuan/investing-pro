@@ -2,18 +2,27 @@ package local.investment.personal;
 
 import static org.junit.Assert.*;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.action.ViewActions.pressKey;
 
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.text.InputType;
 import android.util.Log;
+import android.view.KeyEvent;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
 import android.webkit.WebView;
 import androidx.lifecycle.Lifecycle;
+import androidx.test.espresso.action.EspressoKey;
+import androidx.test.espresso.UiController;
+import androidx.test.espresso.ViewAction;
+import org.hamcrest.Matcher;
 import androidx.test.core.app.ActivityScenario;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -88,13 +97,38 @@ final class ReassessmentNativeEditor implements AutoCloseable {
     private void awaitCorrespondence() throws Exception {
         long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
         String last="no native editor observed";
-        currentDom();
+        Dom initial=currentDom();
+        // Move the caret through the native key path without changing the original text.
+        // Creating a connection is a lifecycle operation; do it once after this transition.
+        AtomicReference<MainActivity> owner=new AtomicReference<>();
+        scenario.onActivity(owner::set);
+        ViewAction key=pressKey(new EspressoKey.Builder().withKeyCode(KeyEvent.KEYCODE_MOVE_END).withCtrlPressed(true).build());
+        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
+            public Matcher<View> getConstraints(){return key.getConstraints();}
+            public String getDescription(){return "move the exact editor caret to the end once";}
+            public void perform(UiController ui,View view){
+                assertTrue("Native caret dispatch remains active and within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
+                assertSame("Native caret belongs to the exact WebView",owner.get().getBridge().getWebView(),view);
+                assertTrue("Native caret owner remains displayed, focused and resumed",isDisplayed().matches(view)&&view.hasFocus()&&view.hasWindowFocus()&&
+                    view.isAttachedToWindow()&&owner.get().getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
+                key.perform(ui,view);
+            }
+        });
+        Dom caret;
+        do {
+            caret=currentDom();
+            if(caret.start==original.length()&&caret.end==original.length())break;
+            awaitFrame(deadline);
+        } while(SystemClock.uptimeMillis()<deadline);
+        assertTrue("Native Ctrl+End reaches the complete original value's end",
+            caret.start==original.length()&&caret.end==original.length());
+        assertTrue("Native caret transition stays within the original deadline",SystemClock.uptimeMillis()<deadline);
+        Log.i("SavedValuationNativeEditor","nativeCaretBefore="+initial.start+":"+initial.end+
+            ",nativeCaretAfter="+caret.start+":"+caret.end+",originalLength="+original.length());
+        Connection candidate=acquire();
+        assertNotNull("Settled native caret supplies one editable connection",candidate);
         do {
             Dom before=currentDom();
-            // Focus can advance while a previous field's connection is still settling.
-            // Acquire again after each frame; bind only complete exact correspondence.
-            Connection candidate=acquire();
-            assertNotNull("Settled native caret supplies one editable connection",candidate);
             requireView(candidate);
             NativeText nativeText=invoke(candidate.handler,deadline,()->extract(candidate));
             Dom after=currentDom();
