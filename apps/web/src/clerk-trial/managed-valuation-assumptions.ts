@@ -38,6 +38,11 @@ function immutableConfirmedData<T>(value: T): T {
   return value;
 }
 
+export interface ManagedConfirmedValuationCollection {
+  readonly saved: VersionedPayload<Payload>;
+  readonly catalog: ManagedCatalogSnapshotDto;
+}
+
 export interface ManagedConfirmedValuationCapture {
   readonly entry: Entry;
   readonly saved: VersionedPayload<Payload>;
@@ -225,6 +230,10 @@ export class ManagedValuationAssumptions {
   private observedDraft: Payload | null = null;
   private stagedCapture: ManagedValuationInputCapture | null = null;
   private confirmedRevision = {};
+  private readonly collectionCaptures = new WeakMap<
+    ManagedConfirmedValuationCollection,
+    () => boolean
+  >();
   private readonly confirmedCaptures = new WeakMap<
     ManagedConfirmedValuationCapture,
     {
@@ -690,6 +699,50 @@ export class ManagedValuationAssumptions {
     if (entry.catalogSnapshotSha256 !== catalog.snapshotSha256) return null;
     if (!matchesContext(entry, current)) return null;
     return Object.freeze({ entry, current, saved, catalog });
+  }
+  canCaptureConfirmedCollection(
+    expected = this.coordinator.getSnapshot(),
+  ): boolean {
+    return (
+      expected === this.coordinator.getSnapshot() &&
+      this.canEdit() &&
+      expected.phase === "idle" &&
+      expected.latestLoaded &&
+      !!expected.saved &&
+      expected.baseVersion === expected.saved.version &&
+      !this.state.reviewing &&
+      !this.workbench.hasDraftFileActivity() &&
+      !!this.options.getCatalogSnapshot()
+    );
+  }
+  captureConfirmedCollection(
+    expected = this.coordinator.getSnapshot(),
+  ): ManagedConfirmedValuationCollection | null {
+    if (!this.canCaptureConfirmedCollection(expected)) return null;
+    const saved = expected.saved!,
+      catalog = this.options.getCatalogSnapshot()!;
+    const revision = this.confirmedRevision,
+      editorFile = this.workbench.getDraftFileActivityRevision(),
+      collectionFile = this.collectionFileActivityRevision;
+    const capture = immutableConfirmedData(structuredClone({ saved, catalog }));
+    this.collectionCaptures.set(
+      capture,
+      () =>
+        this.canCaptureConfirmedCollection() &&
+        this.coordinator.getSnapshot().saved === saved &&
+        this.options.getCatalogSnapshot() === catalog &&
+        this.confirmedRevision === revision &&
+        this.workbench.getDraftFileActivityRevision() === editorFile &&
+        this.collectionFileActivityRevision === collectionFile,
+    );
+    return capture;
+  }
+  isConfirmedCollectionCurrent(
+    capture: ManagedConfirmedValuationCollection,
+  ): boolean {
+    const current = this.collectionCaptures.get(capture)?.() ?? false;
+    if (!current) this.collectionCaptures.delete(capture);
+    return current;
   }
   canCaptureConfirmedEntry(
     entry: Entry,

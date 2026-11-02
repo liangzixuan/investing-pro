@@ -645,6 +645,12 @@ jobs:
           required.update(paired_research_policy_cases)
           if len(required) != 141:
               raise SystemExit("Paired research export must preserve all 135 prior cases.")
+          saved_scenario_case = ("local.investment.personal.ManagedWatchlistSavedScenarioTest", "savedScenariosKeepFullPartialEvidenceThroughResearchBackFinishAndSeparateSaves")
+          if saved_scenario_case in required:
+              raise SystemExit("Saved scenario case must be distinct.")
+          required.add(saved_scenario_case)
+          if len(required) != 142:
+              raise SystemExit("Saved scenario review must preserve all 141 prior cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -746,6 +752,13 @@ jobs:
                           raise SystemExit("The dated Portfolio review shard must retain each scoped journey frame.")
                   elif dated_frames:
                       raise SystemExit("Dated Portfolio review frames belong only to the executed shard.")
+              for frame_name in ("newWatchlistSavedScenarioPlan.png", "newWatchlistSavedScenarioResults.png", "newWatchlistSavedScenarioFinish.png"):
+                  scenario_frames = list(root.rglob(frame_name))
+                  if saved_scenario_case in executed:
+                      if len(scenario_frames) != 1 or scenario_frames[0].stat().st_size == 0:
+                          raise SystemExit("Saved-scenario review requires its three scoped frames.")
+                  elif scenario_frames:
+                      raise SystemExit("Saved-scenario frames belong only to the executed shard.")
               for frame_name in ("newWatchlistDailyReviewPlan.png", "newWatchlistDailyReviewResearch.png", "newWatchlistDailyReviewFinish.png"):
                   daily_frames = list(root.rglob(frame_name))
                   if watchlist_daily_review_case in executed:

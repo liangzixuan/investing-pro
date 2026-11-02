@@ -59,3 +59,10 @@ resource, background retry or automatic research verdict. Price and Filings
 eligibility remain independent. Financial data remains partial where unsupported
 or unavailable. Source acceptance, Android delivery and physical-phone acceptance
 are separate; see [Current work](CURRENT_WORK.md).
+
+## Saved-scenario source increment
+
+The new [saved-scenario workflow](MANAGED_WATCHLIST_SAVED_SCENARIOS.md) adds an
+explicit confirmed-collection preview and passive evaluation to this same group.
+It reuses the existing calculators and resource saves. Its source checks are
+separate from the accepted Android 1.70 baseline above; no new delivery is claimed.

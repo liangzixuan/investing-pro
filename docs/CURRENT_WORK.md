@@ -1,16 +1,28 @@
 # Current work
 
-Updated November 1, 2026. This is the current capability and delivery record.
+Updated November 2, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: keep a complete paired research report
+## In development: saved scenarios in the Watchlist daily review
+
+Preview the confirmed saved valuation collection for the chosen daily group,
+then explicitly evaluate full scenarios against retained Price evidence. Owned
+Research and Back retain the reading; Finish is passive and each resource saves
+separately. See the [saved-scenario guide](MANAGED_WATCHLIST_SAVED_SCENARIOS.md).
+This isolated source increment has no hosted native or release acceptance.
+
+## Merged source: keep a complete paired research report
 
 Prepare, preview and save both retained company readings as one private HTML
 report. Complete captured source states, raw valuations and original clocks stay
 readable offline. See the [report guide](MANAGED_PAIRED_RESEARCH_REPORT.md).
-This new source increment has not passed hosted native or release acceptance.
+[PR 274](https://github.com/liangzixuan/investing-pro/pull/274) merged at
+`723786008f12537b9df9ecdce77409fa3b954478`. Its source checks and all 141 native
+cases passed after two test-fixture corrections. CodeScene retained five reviewed
+complexity/style findings. Main-branch acceptance and Android delivery remain
+pending; browser and physical-phone acceptance are not claimed.
 
 ## Accepted and delivered: two-company research decision review
 

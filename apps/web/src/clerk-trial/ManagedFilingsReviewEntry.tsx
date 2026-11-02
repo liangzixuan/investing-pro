@@ -1,3 +1,4 @@
+import { ManagedWatchlistValuationReview } from "./ManagedWatchlistValuationReview";
 import { ManagedWatchlistDailyChecks } from "./ManagedWatchlistDailyChecks";
 import type { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
@@ -45,10 +46,16 @@ export function ManagedFilingsReviewEntry({
     <ManagedFilingsReview
       model={workspace.filingsReview}
       dailyChecks={
-        <ManagedWatchlistDailyChecks
-          workspace={workspace}
-          active={navigationAllowsReview(navigation)}
-        />
+        <>
+          <ManagedWatchlistValuationReview
+            workspace={workspace}
+            active={navigationAllowsReview(navigation)}
+          />
+          <ManagedWatchlistDailyChecks
+            workspace={workspace}
+            active={navigationAllowsReview(navigation)}
+          />
+        </>
       }
       onViewDaily={(capture, opener) => {
         if (!navigationAllowsReview(navigation)) return;

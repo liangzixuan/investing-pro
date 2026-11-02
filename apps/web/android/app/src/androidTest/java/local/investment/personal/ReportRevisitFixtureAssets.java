@@ -44,6 +44,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         TWO_COMPANY_RESEARCH_REVIEW("two-company-research-review"),
         SAVED_VALUATION_REASSESSMENT("saved-valuation-reassessment"),
         WATCHLIST_DAILY_REVIEW("watchlist-daily-review"),
+        WATCHLIST_SAVED_SCENARIO("watchlist-saved-scenario"),
         PORTFOLIO_DATED_REVIEW("portfolio-dated-review"),
         FILING_CHECK_ASSESSMENT("filing-check-assessment"),
         INTERIM_STATEMENTS("interim-statements");

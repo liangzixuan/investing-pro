@@ -60,6 +60,48 @@ interface Capture {
 const cache = new WeakMap<ManagedValuationCalculation, Capture>();
 const captures = new WeakMap<ManagedValuationPriceContext, Capture>();
 
+export function inspectPassiveValuationPrice(
+  selection: ManagedResearchSelection,
+  price: ManagedEodHistoryState | null,
+) {
+  const { reference, reason } = captureSource(selection, price);
+  return Object.freeze({ reference, reason });
+}
+
+/** Passive calculation and source projection. This never registers action authority. */
+export function evaluatePassiveValuationPrice(
+  selection: ManagedResearchSelection,
+  calculation: ManagedValuationCalculation,
+  price: ManagedEodHistoryState | null,
+): ManagedValuationPriceContext {
+  const sameListing =
+    selection.catalogSnapshotSha256 ===
+      calculation.owner.catalogSnapshotSha256 &&
+    membershipMatchesResult(
+      { ...selection.listing, note: "" },
+      calculation.owner.listing,
+    ) &&
+    (selection.cik === null || selection.cik === calculation.owner.cik);
+  const source = sameListing
+    ? captureSource(selection, price)
+    : {
+        reference: null,
+        reason: "price_identity_mismatch" as const,
+        response: null,
+        fingerprint: "foreign",
+      };
+  return Object.freeze({
+    selection: copySelection(selection),
+    calculation,
+    reference: source.reference,
+    reason: source.reason,
+    rows: Object.freeze([
+      ...modelRows("dcf", calculation, source),
+      ...modelRows("exit", calculation, source),
+    ]),
+  });
+}
+
 /** No source reads. Admit a live workbench capture and an explicitly loaded Price state. */
 export function resolveManagedValuationPrice(
   selection: ManagedResearchSelection,
