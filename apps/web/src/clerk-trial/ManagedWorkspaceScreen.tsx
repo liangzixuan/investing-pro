@@ -2,6 +2,7 @@ import { ManagedScreenResearchCapture } from "./ManagedScreenResearchReview";
 import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
+import type { ScreenResearchReportDeliveryAdapter } from "./screen-research-report-ports";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import {
   ManagedPortfolioDatedReview,
@@ -109,6 +110,7 @@ interface ManagedFileDeliveries {
   valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
   financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
+  screenResearchReportDelivery?: ScreenResearchReportDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
@@ -262,6 +264,7 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
     researchDraftSetFileDelivery: initial.researchDraftSetFileDelivery,
     financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
     screenComparisonReportDelivery: initial.screenComparisonReportDelivery,
+    screenResearchReportDelivery: initial.screenResearchReportDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     portfolioReviewReportDelivery: initial.portfolioReviewReportDelivery,
     portfolioComparisonReportDelivery:
@@ -499,6 +502,7 @@ export function ManagedWorkspaceScreen({
   researchDraftSetFileDelivery,
   financialScreenRecipeDelivery,
   screenComparisonReportDelivery,
+  screenResearchReportDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -856,6 +860,7 @@ export function ManagedWorkspaceScreen({
     onReviewFollowup: calendarFollowupNavigation.review,
     recipeDelivery: financialScreenRecipeDelivery,
     comparisonReportDelivery: screenComparisonReportDelivery,
+    researchReportDelivery: screenResearchReportDelivery,
   });
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();

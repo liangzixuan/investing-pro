@@ -628,6 +628,23 @@ jobs:
           required.add(two_company_research_case)
           if len(required) != 135:
               raise SystemExit("Two-company research must preserve all 134 prior native cases.")
+          paired_research_report_case = (
+              "local.investment.personal.ManagedPairedResearchReportTest",
+              "pairedReportPreservesWholeReadingsThroughChosenDocumentAndIndependentSaves",
+          )
+          paired_research_policy_cases = {("local.investment.personal.ScreenResearchReportHtmlPolicyInstrumentedTest", method) for method in {
+              "admitsTheFixedHtmlMetadataAndCompleteEnvelope",
+              "refusesUnknownOptionsCrossFormatPurposeAndUnsafeFilename",
+              "reusesTheCompleteUtcCalendarAndExactChosenFilename",
+              "refusesChangedHeadCspStyleIdentityOrIncompleteEnvelope",
+              "inheritsTheEightMibStrictUtf8WriterBoundary",
+          }}
+          if paired_research_report_case in required or required.intersection(paired_research_policy_cases):
+              raise SystemExit("Paired research report cases must be distinct.")
+          required.add(paired_research_report_case)
+          required.update(paired_research_policy_cases)
+          if len(required) != 141:
+              raise SystemExit("Paired research export must preserve all 135 prior cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -750,6 +767,12 @@ jobs:
                           raise SystemExit("The two-company research shard must retain each scoped journey frame.")
                   elif decision_frames:
                       raise SystemExit("Two-company research frames belong only to the executed shard.")
+              paired_report_frames = list(root.rglob("newPairedResearchReport.png"))
+              if paired_research_report_case in executed:
+                  if len(paired_report_frames) != 1 or paired_report_frames[0].stat().st_size == 0:
+                      raise SystemExit("Paired research report must retain its scoped frame.")
+              elif paired_report_frames:
+                  raise SystemExit("Paired report frame belongs only to its executed shard.")
               expected_receipt = {
                   "sourceSha": os.environ["GITHUB_SHA"],
                   "runId": os.environ["GITHUB_RUN_ID"],

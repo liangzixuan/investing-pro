@@ -5,13 +5,25 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: two-company research decision review
+## In development: keep a complete paired research report
+
+Prepare, preview and save both retained company readings as one private HTML
+report. Complete captured source states, raw valuations and original clocks stay
+readable offline. See the [report guide](MANAGED_PAIRED_RESEARCH_REPORT.md).
+This new source increment has not passed hosted native or release acceptance.
+
+## Accepted and delivered: two-company research decision review
 
 Keep complete readings for both screened finalists after using the existing
 Research and valuation workbench. Return to the pair, reopen the chosen company,
 author its thesis and next check, then save each resource separately. The local
-model, rendered reading and workspace journey checks pass; native integration
-and complete source acceptance remain in progress. See the
+model, rendered reading and workspace journey checks pass. Accepted main
+`8fb5ae87d519c7b1c1bde121899496cc49d7d3ea` passed source CI, parser checks and all
+135 native cases; three original main scoped frames were inspected. The
+CodeScene complexity/size check failed and was reviewed without a functional
+defect finding. Android 1.72.0 is provided locally after the existing-signer
+build, four checks on the same APK and copy/checksum readback. Browser,
+installation and physical-phone acceptance are not claimed. See the
 [workflow guide](MANAGED_SCREEN_RESEARCH_REVIEW.md).
 
 ## Accepted and delivered: reassess saved valuation inputs

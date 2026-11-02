@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Paired company research report
+
+Place explicit report preparation beside the retained pair. Require both company
+captures, keep the full preview in a disclosure, and separate Prepare from
+Download/Save and Cancel. Use the existing Precision Desk controls and visible
+status messages. The private HTML uses the established print-friendly reading
+style, complete pre-rendered disclosures and raw-data appendix; it needs no script
+or external asset. Preserve independent source and calculation clocks and label
+captured notes as authored text. See the [report guide](docs/MANAGED_PAIRED_RESEARCH_REPORT.md).
+
 ## Two-company research decision review
 
 Keep explicit capture beside the current company Research. Discover shows the

@@ -27,13 +27,27 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: two-company research decision review
+## Current priority: keep a complete paired research report
+
+Complete the retained two-company workflow with an explicit private HTML export
+under M4. Preserve both complete research and valuation readings, with original
+periods and clocks, through Prepare, preview and chosen document delivery. Reuse
+existing source evidence and document writers; see the
+[report guide](MANAGED_PAIRED_RESEARCH_REPORT.md). This source candidate has
+separate pending native and release acceptance.
+
+## Delivered: two-company research decision review
 
 Connect screening to complete retained company research under M1/M3/M4. Research
 and value both finalists with the existing editor, retain both readings, then
 author the chosen company's thesis and dated check. Each resource keeps separate
-Save and fresh Load. This adds no provider, ranking or saved schema. Source work
-is in development; see the [workflow guide](MANAGED_SCREEN_RESEARCH_REVIEW.md).
+Save and fresh Load. This adds no provider, ranking or saved schema. Accepted
+main `8fb5ae87d519c7b1c1bde121899496cc49d7d3ea` passed source CI, parser checks
+and 135 native cases, with three original main scoped frames inspected. The
+CodeScene complexity/size check failed and was reviewed without a functional
+defect finding. Android 1.72.0 is provided locally after the existing-signer build,
+four checks on the same APK and copy/checksum readback; see the
+[workflow guide](MANAGED_SCREEN_RESEARCH_REVIEW.md).
 
 ## Delivered: saved valuation reassessment
 
