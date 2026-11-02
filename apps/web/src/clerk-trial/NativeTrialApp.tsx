@@ -15,6 +15,10 @@ import {
   type InvestmentFollowupsReviewReportPlugin,
 } from "./followups-review-report-delivery";
 import {
+  createNativeScreenResearchReportAdapter,
+  type InvestmentScreenResearchReportPlugin,
+} from "./screen-research-report-delivery";
+import {
   createNativeScreenComparisonReportAdapter,
   type InvestmentScreenComparisonReportPlugin,
 } from "./screen-comparison-report-delivery";
@@ -246,6 +250,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const screenResearchReportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeScreenResearchReportAdapter(
+            registerPlugin<InvestmentScreenResearchReportPlugin>(
+              "InvestmentScreenResearchReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const screenComparisonReportDelivery = useMemo(
     () =>
       managed
@@ -321,6 +336,9 @@ function NativeSession({
                 : {})}
               {...(financialScreenRecipeDelivery
                 ? { financialScreenRecipeDelivery }
+                : {})}
+              {...(screenResearchReportDelivery
+                ? { screenResearchReportDelivery }
                 : {})}
               {...(screenComparisonReportDelivery
                 ? { screenComparisonReportDelivery }

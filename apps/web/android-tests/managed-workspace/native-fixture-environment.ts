@@ -1,4 +1,5 @@
 import { createNativePortfolioComparisonReportFixture } from "./native-portfolio-comparison-report-fixture";
+import { createNativeScreenResearchReportFixture } from "./native-screen-research-report-fixture";
 import { createNativeScreenComparisonReportFixture } from "./native-screen-comparison-report-fixture";
 import { createNativeFollowupsReviewReportFixture } from "./native-followups-review-report-fixture";
 import { createNativeValuationCollectionDraftFileFixture } from "./native-valuation-collection-file-fixture";
@@ -171,4 +172,9 @@ export const nativeScreenComparisonReport =
 export const nativePortfolioComparisonReport =
   scenario === "portfolio-comparison-report"
     ? createNativePortfolioComparisonReportFixture()
+    : null;
+
+export const nativeScreenResearchReport =
+  scenario === "two-company-research-review"
+    ? createNativeScreenResearchReportFixture()
     : null;

@@ -5,9 +5,13 @@ import {
   nativePortfolioComparisonReport,
   nativeFollowupsReviewReport,
   nativeScreenComparisonReport,
+  nativeScreenResearchReport,
 } from "./native-fixture-environment";
 export function nativeFixtureRouterPorts() {
   return {
+    ...(nativeScreenResearchReport
+      ? { screenResearchReportDelivery: nativeScreenResearchReport.delivery }
+      : {}),
     ...(nativePortfolioComparisonReport
       ? {
           portfolioComparisonReportDelivery:

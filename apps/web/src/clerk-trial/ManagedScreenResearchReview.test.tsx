@@ -27,6 +27,8 @@ vi.mock("react", async (original) => {
   const direct = createValuationDraftTestHooks(hooks);
   return {
     ...actual,
+    useContext: (context: React.Context<boolean>) =>
+      hooks.direct ? false : actual.useContext(context),
     useMemo: (factory: () => unknown, deps: React.DependencyList) =>
       hooks.direct ? factory() : actual.useMemo(factory, deps),
     useRef: (value: unknown) =>

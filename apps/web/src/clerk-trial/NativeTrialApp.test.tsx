@@ -201,6 +201,7 @@ async function mount(
     ["InvestmentValuationDraftFile", valuationDraftFilePlugin],
     ["InvestmentFinancialScreenRecipe", financialScreenRecipePlugin],
     ["InvestmentScreenComparisonReport", screenComparisonReportPlugin],
+    ["InvestmentScreenResearchReport", screenComparisonReportPlugin],
   ]);
   hooks.register.mockImplementation((name: string) => plugins.get(name));
   const loading = NativeTrialApp({ config });
@@ -381,6 +382,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentValuationCollectionDraftFile"],
               ["InvestmentValuationDraftFile"],
               ["InvestmentFinancialScreenRecipe"],
+              ["InvestmentScreenResearchReport"],
               ["InvestmentScreenComparisonReport"],
             ]
           : [["InvestmentAuth"]],

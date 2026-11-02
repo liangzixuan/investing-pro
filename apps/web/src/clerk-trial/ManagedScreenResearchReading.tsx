@@ -1,4 +1,10 @@
-import { useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { PassiveCompanyResearchCapture } from "./managed-screen-research-review";
 import { identityLabels } from "./ManagedListingIdentity";
 import { CompanyReportDocumentView } from "./CompanyReportDocument";
@@ -17,6 +23,8 @@ import { CloseHistoryChart } from "../features/research/CloseHistoryChart";
 
 type Evidence = PassiveCompanyResearchCapture["evidence"];
 type SourceState = NonNullable<Evidence[keyof Evidence]>;
+/** Offline reports serialize disclosure contents and use the complete raw table. */
+export const OfflineResearchReading = createContext(false);
 
 /** Serialize the complete retained value only while its disclosure is open. */
 export function CapturedSourcePacket({
@@ -29,15 +37,16 @@ export function CapturedSourcePacket({
   readonly children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const offline = useContext(OfflineResearchReading);
   const text = useMemo(
-    () => (open ? JSON.stringify(value, null, 2) : null),
-    [open, value],
+    () => (open || offline ? JSON.stringify(value, null, 2) : null),
+    [open, offline, value],
   );
   return (
     <details onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary>{label}</summary>
       {children}
-      {open && <pre>{text}</pre>}
+      {(open || offline) && <pre>{text}</pre>}
     </details>
   );
 }
@@ -86,6 +95,7 @@ function SourceReading({
 }
 
 function PriceReading({ state }: { state: Evidence["price"] }) {
+  const offline = useContext(OfflineResearchReading);
   const response = state?.response;
   return (
     <SourceReading name="Price" state={state}>
@@ -101,10 +111,12 @@ function PriceReading({ state }: { state: Evidence["price"] }) {
             live quote.
           </p>
           <ObservedRawCloseRange response={response} />
-          <CloseHistoryChart
-            rows={response.rows}
-            symbol={response.security.symbol}
-          />
+          {!offline && (
+            <CloseHistoryChart
+              rows={response.rows}
+              symbol={response.security.symbol}
+            />
+          )}
           <details>
             <summary>All captured raw closes</summary>
             <table>
@@ -203,6 +215,7 @@ export function ManagedScreenResearchReading({
   capture: PassiveCompanyResearchCapture;
 }) {
   const { selection, evidence } = capture;
+  const offline = useContext(OfflineResearchReading);
   return (
     <article
       aria-label={`${capture.side} retained company research`}
@@ -233,7 +246,7 @@ export function ManagedScreenResearchReading({
       </dl>
       <section aria-label="Captured thesis">
         <h4>Authored thesis at capture</h4>
-        <p className="managed-screen-research-raw">
+        <p className="note managed-screen-research-raw">
           {capture.note === null
             ? "No watchlist thesis was available at capture."
             : capture.note === ""
@@ -271,7 +284,7 @@ export function ManagedScreenResearchReading({
         <summary>Complete retained report document (JSON)</summary>
         <CompanyReportDocumentView
           document={capture.document}
-          id={`managed-screen-research-document-${capture.side}`}
+          id={`${offline ? "paired-report" : "managed-screen-research"}-document-${capture.side}`}
         />
       </details>
     </article>

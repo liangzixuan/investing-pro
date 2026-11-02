@@ -53,11 +53,23 @@ recovery, file activity and session retirement also retire it. Restoring equal
 values does not revive a retired action. Reentrant replacement cannot capture
 another company's evidence or move focus using an older action.
 
+## Keep the paired reading
+
+The [paired research report candidate](MANAGED_PAIRED_RESEARCH_REPORT.md) adds
+explicit Prepare, complete preview and private HTML delivery of both retained
+readings. This is separate from resource Save and does not refresh the captures.
+
 ## Verification status
 
 Local model, rendered reading and workspace journey checks cover complete paired
 payloads, separate saves and fresh loads, dirty editor protection and lifetime
 boundaries. Repository types, lint and formatting pass. The new synthetic
 Android journey compiles and retains all prior native cases. Hosted source
-checks and actual native execution remain pending. Android 1.71 is the last locally delivered release and does not include
-this new workflow. Browser QA remains stopped; no phone acceptance is claimed.
+checks passed for accepted main `8fb5ae87d519c7b1c1bde121899496cc49d7d3ea`, including
+the source CI and parser jobs and all 135 native cases. Three original main
+scoped frames were inspected. The CodeScene complexity/size check failed and
+was reviewed without a functional defect finding. Android 1.72.0 is provided
+locally after the existing-signer build, four checks on the same APK and
+copy/checksum readback. The later paired report export has separate pending
+acceptance. Browser QA remains stopped; installation and physical-phone
+acceptance are not claimed.

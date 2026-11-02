@@ -51,6 +51,20 @@ export interface ManagedScreenResearchReviewState {
   readonly canCapture: boolean;
   readonly reason: string | null;
 }
+export interface PreparedScreenResearchReport {
+  readonly kind: "paired_company_research";
+  readonly preparedAt: string;
+  readonly reading: ScreenResearchReading & {
+    readonly left: PassiveCompanyResearchCapture;
+    readonly right: PassiveCompanyResearchCapture;
+  };
+}
+const reports = new WeakSet<object>();
+export function isPreparedScreenResearchReport(
+  value: unknown,
+): value is PreparedScreenResearchReport {
+  return typeof value === "object" && value !== null && reports.has(value);
+}
 export interface PendingScreenResearchVisit {
   readonly kind: "screen_research_visit";
 }
@@ -464,6 +478,42 @@ export class ManagedScreenResearchReview {
       reason: null,
     });
     return installed !== null && this.pairCurrent();
+  }
+  /** A passive report owns this exact complete pair, never live editor authority. */
+  captureReport(expected: ManagedScreenResearchReviewState) {
+    this.reconcile();
+    if (expected !== this.state) return null;
+    const reading = expected.reading;
+    const lease = this.lease;
+    const generation = this.generation;
+    if (!reading?.left || !reading.right || !lease) return null;
+    let valid = true;
+    const current = () => {
+      if (!valid) return false;
+      const available = this.options.available();
+      const visit = this.options.readVisit();
+      valid =
+        available &&
+        !visit &&
+        !this.retired &&
+        !this.pending &&
+        !this.owner &&
+        this.generation === generation &&
+        this.lease === lease &&
+        this.state.reading === reading &&
+        this.pairCurrent();
+      return valid;
+    };
+    if (!current()) return null;
+    const preparedAt = (this.options.now?.() ?? new Date()).toISOString();
+    if (!current()) return null;
+    const report: PreparedScreenResearchReport = Object.freeze({
+      kind: "paired_company_research",
+      preparedAt,
+      reading: reading as PreparedScreenResearchReport["reading"],
+    });
+    reports.add(report);
+    return Object.freeze({ report, current });
   }
   clearSide(
     expected: ManagedScreenResearchReviewState,
