@@ -260,7 +260,7 @@ public class ManagedSavedValuationReassessmentTest {
             // Bind the settled native selection directly. A second coordinate tap can hit
             // Android's text-selection actions even when the DOM still reports this field.
             page.await(new Check("settled native caret retains exact field and original value",new Script(focused)).nativeReady());
-            observeEditing("before-key");
+            observeEditing("before-native-binding");
             try (ReassessmentNativeEditor editor=ReassessmentNativeEditor.bind(scenario,()->readEditingDom(selector),original)) {
                 diagnoseEditing("before-select-all");
                 editor.selectAll();

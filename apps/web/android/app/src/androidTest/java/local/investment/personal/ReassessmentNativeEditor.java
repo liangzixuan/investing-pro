@@ -2,27 +2,19 @@ package local.investment.personal;
 
 import static org.junit.Assert.*;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
-import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
-import static androidx.test.espresso.Espresso.onView;
-import static androidx.test.espresso.action.ViewActions.pressKey;
 
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.text.InputType;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebView;
 import androidx.lifecycle.Lifecycle;
-import androidx.test.espresso.action.EspressoKey;
-import androidx.test.espresso.UiController;
-import androidx.test.espresso.ViewAction;
-import org.hamcrest.Matcher;
 import androidx.test.core.app.ActivityScenario;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -103,45 +95,34 @@ final class ReassessmentNativeEditor implements AutoCloseable {
         long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
         String last="no native editor observed";
         Dom initial=currentDom();
-        Log.i("SavedValuationNativeEditor","phase=before-caret-key,uptime="+SystemClock.uptimeMillis()+
-            ",remainingMs="+(deadline-SystemClock.uptimeMillis())+",length="+initial.text.length()+
-            ",selection="+initial.start+":"+initial.end+",current="+initial.current);
-        // Move the caret through the native key path without changing the original text.
-        // Creating a connection is a lifecycle operation; do it once after this transition.
-        AtomicReference<MainActivity> owner=new AtomicReference<>();
-        scenario.onActivity(owner::set);
-        ViewAction key=pressKey(new EspressoKey.Builder().withKeyCode(KeyEvent.KEYCODE_MOVE_END).withCtrlPressed(true).build());
-        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
-            public Matcher<View> getConstraints(){return key.getConstraints();}
-            public String getDescription(){return "move the exact editor caret to the end once";}
-            public void perform(UiController ui,View view){
-                assertTrue("Native caret dispatch remains active and within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
-                assertSame("Native caret belongs to the exact WebView",owner.get().getBridge().getWebView(),view);
-                assertTrue("Native caret owner remains displayed, focused and resumed",isDisplayed().matches(view)&&view.hasFocus()&&view.hasWindowFocus()&&
-                    view.isAttachedToWindow()&&owner.get().getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
-                key.perform(ui,view);
-            }
+        AtomicReference<WebView> owner=new AtomicReference<>();
+        scenario.onActivity(activity->owner.set(activity.getBridge().getWebView()));
+        // Request one framework reinitialization, then prove complete native/DOM correspondence.
+        // restartInput does not itself establish which DOM editor owns the connection.
+        scenario.onActivity(activity->{
+            assertSame("Framework input restart runs on the UI thread",Looper.getMainLooper(),Looper.myLooper());
+            WebView view=activity.getBridge().getWebView();
+            assertSame("Framework input restart belongs to the exact WebView",owner.get(),view);
+            assertTrue("Framework input owner remains displayed, focused and resumed",isDisplayed().matches(view)&&view.hasFocus()&&view.hasWindowFocus()&&
+                view.isAttachedToWindow()&&activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
+            InputMethodManager manager=activity.getSystemService(InputMethodManager.class);
+            assertNotNull("Framework input manager is available",manager);
+            Log.i("SavedValuationNativeEditor","phase=before-framework-restart,uptime="+SystemClock.uptimeMillis()+
+                ",remainingMs="+(deadline-SystemClock.uptimeMillis())+",viewIdentity="+System.identityHashCode(view)+
+                ",isActive="+manager.isActive(view)+",isAcceptingText="+manager.isAcceptingText()+
+                ",originalLength="+initial.text.length()+",originalSelection="+initial.start+":"+initial.end);
+            assertTrue("One framework input restart remains active and within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
+            manager.restartInput(view);
+            Log.i("SavedValuationNativeEditor","phase=after-framework-restart,uptime="+SystemClock.uptimeMillis()+
+                ",remainingMs="+(deadline-SystemClock.uptimeMillis())+",viewIdentity="+System.identityHashCode(view)+
+                ",isActive="+manager.isActive(view)+",isAcceptingText="+manager.isAcceptingText());
+            assertTrue("Framework input restart stays within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
         });
-        Dom caret;
-        boolean firstCaretObservation=true;
-        do {
-            caret=currentDom();
-            if(firstCaretObservation) {
-                firstCaretObservation=false;
-                Log.i("SavedValuationNativeEditor","phase=after-caret-key,uptime="+SystemClock.uptimeMillis()+
-                    ",remainingMs="+(deadline-SystemClock.uptimeMillis())+",length="+caret.text.length()+
-                    ",selection="+caret.start+":"+caret.end+",current="+caret.current);
-            }
-            if(caret.start==original.length()&&caret.end==original.length())break;
-            awaitFrame(deadline);
-        } while(SystemClock.uptimeMillis()<deadline);
-        assertTrue("Native Ctrl+End reaches the complete original value's end",
-            caret.start==original.length()&&caret.end==original.length());
-        assertTrue("Native caret transition stays within the original deadline",SystemClock.uptimeMillis()<deadline);
-        Log.i("SavedValuationNativeEditor","nativeCaretBefore="+initial.start+":"+initial.end+
-            ",nativeCaretAfter="+caret.start+":"+caret.end+",originalLength="+original.length());
+        awaitFrame(deadline);
+        currentDom();
+        assertTrue("Native acquisition follows the framework frame within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
         Connection candidate=acquire();
-        assertNotNull("Settled native caret supplies one editable connection",candidate);
+        assertNotNull("Framework input restart supplies one editable connection",candidate);
         do {
             Dom before=currentDom();
             requireView(candidate);
