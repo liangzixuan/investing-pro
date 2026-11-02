@@ -38,6 +38,7 @@ public class ManagedSavedValuationReassessmentTest {
     private static final String CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
     private ActivityScenario<MainActivity> scenario;
     private ReportRevisitFixtureAssets assets;
+    private ServedEditorSession imeSession;
     private ReportRevisitPage page;
     private ReportRevisitTouch touch;
     private ReportRevisitKeyboard keyboard;
@@ -48,6 +49,7 @@ public class ManagedSavedValuationReassessmentTest {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
         sha=InstrumentationRegistry.getArguments().getString("expectedSourceSha");assertNotNull(sha);assertTrue(sha.matches("[a-f0-9]{40}"));
         assets=new ReportRevisitFixtureAssets(ReportRevisitFixtureAssets.Scenario.SAVED_VALUATION_REASSESSMENT);assets.prepare();
+        imeSession=ServedEditorSession.open();
         scenario=ActivityScenario.launch(MainActivity.class);page=new ReportRevisitPage(scenario);touch=new ReportRevisitTouch(page);keyboard=new ReportRevisitKeyboard(page,touch);
         scenario.onActivity(a->{assertEquals("local.investment.personal",a.getPackageName());assertNotNull(a.getBridge().getPlugin("App"));assertNull(a.getBridge().getPlugin("InvestmentAuth"));assertFalse(a.getBridge().getConfig().isWebContentsDebuggingEnabled());assertFalse(a.getBridge().getConfig().isMixedContentAllowed());assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW,a.getBridge().getWebView().getSettings().getMixedContentMode());keyboard.observe(a);a.getBridge().setServerBasePath(assets.directory().getAbsolutePath());});
         page.awaitStartup(new Check("independently unloaded invented resources",new Script("location.href==='https://localhost/'&&"+D+".counts.status===1&&"+D+".watchlist.draft===null&&"+D+".valuations.draft===null&&"+D+".followups.draft===null&&"+D+".view.view==='watchlist'")).nativeReady());
@@ -163,7 +165,15 @@ public class ManagedSavedValuationReassessmentTest {
     private String read(String suffix)throws Exception{return page.read(new Script(D+suffix));}
     private static String q(String value){return JSONObject.quote(value);}
     private void diagnose(){try{diagnoseEditing("failure");Log.e("SavedValuationReassessment","stage="+stage+", "+page.raw(new Script("(()=>{const d="+D+";return JSON.stringify({url:location.href,active:document.activeElement?.id,counts:d.counts,view:d.view.view,visit:d.view.research?.selection.listing.listingId,editorOwner:d.workbench.owner?.listing.listingId,editorContext:d.workbench.context?.listing.listingId,baseline:!!d.reassessment.baseline,reading:!!d.reassessment.reading,reassessmentActive:d.reassessment.active,exactPair:JSON.stringify(d.reassessment)==="+q(paired==null?"":paired)+",pricePresent:!!d.price.response,annualPresent:!!d.annual.response,calculations:d.calculationPublications,valuationVersion:d.valuations.baseVersion,watchlistVersion:d.watchlist.baseVersion,followupsVersion:d.followups.baseVersion,followups:"+F+"});})()")));}catch(Exception|AssertionError failure){Log.e("SavedValuationReassessment","Diagnostic unavailable",failure);}}
-    @After public void closeInventedReassessment()throws Exception {try{if(scenario!=null)scenario.close();}finally{if(assets!=null)assets.close();}}
+    @After public void closeInventedReassessment()throws Exception {
+        Throwable failure=null;
+        try{if(imeSession!=null)imeSession.close();}catch(Throwable cleanup){failure=cleanup;}
+        try{if(scenario!=null)scenario.close();}catch(Throwable cleanup){if(failure==null)failure=cleanup;else failure.addSuppressed(cleanup);}
+        try{if(assets!=null)assets.close();}catch(Throwable cleanup){if(failure==null)failure=cleanup;else failure.addSuppressed(cleanup);}
+        if(failure instanceof Error error)throw error;
+        if(failure instanceof Exception exception)throw exception;
+        if(failure!=null)throw new IllegalStateException("Fixture cleanup failed",failure);
+    }
     private void choose(String selector,String label,String value)throws Exception {tap(selector);AtomicReference<View> dialog=new AtomicReference<>();onView(androidx.test.espresso.matcher.ViewMatchers.withText(label)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).check((view,missing)->{if(missing!=null)throw missing;dialog.set(view.getRootView());}).perform(androidx.test.espresso.action.ViewActions.click());assertNotNull(dialog.get());page.await(new Check("native option chooses exact value",new Script("document.querySelector("+q(selector)+").value==="+q(value)),ReportRevisitPage.Readiness.NATIVE,dialog.get()));keyboard.closeSoftKeyboard();}
     private void frame(FollowupsReportFrameCapture.Frame name,String heading,String scope)throws Exception{
         committedFrame();

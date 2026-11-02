@@ -37,6 +37,7 @@ public class ManagedWatchlistSavedScenarioTest {
     private static final String CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
     private ActivityScenario<MainActivity> scenario;
     private ReportRevisitFixtureAssets assets;
+    private ServedEditorSession imeSession;
     private ReportRevisitPage page;
     private ReportRevisitTouch touch;
     private ReportRevisitKeyboard keyboard;
@@ -46,6 +47,7 @@ public class ManagedWatchlistSavedScenarioTest {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
         sha=InstrumentationRegistry.getArguments().getString("expectedSourceSha");assertNotNull(sha);assertTrue(sha.matches("[a-f0-9]{40}"));
         assets=new ReportRevisitFixtureAssets(ReportRevisitFixtureAssets.Scenario.WATCHLIST_SAVED_SCENARIO);assets.prepare();
+        imeSession=ServedEditorSession.open();
         scenario=ActivityScenario.launch(MainActivity.class);page=new ReportRevisitPage(scenario);touch=new ReportRevisitTouch(page);keyboard=new ReportRevisitKeyboard(page,touch);
         scenario.onActivity(a->{assertEquals("local.investment.personal",a.getPackageName());assertNotNull(a.getBridge().getPlugin("App"));assertNull(a.getBridge().getPlugin("InvestmentAuth"));assertFalse(a.getBridge().getConfig().isWebContentsDebuggingEnabled());assertFalse(a.getBridge().getConfig().isMixedContentAllowed());assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW,a.getBridge().getWebView().getSettings().getMixedContentMode());keyboard.observe(a);a.getBridge().setServerBasePath(assets.directory().getAbsolutePath());});
         page.awaitStartup(new Check("saved scenario fixture starts independently unloaded",new Script(D+".counts.status===1&&"+D+".watchlist.draft===null&&"+D+".valuations.draft===null&&"+D+".view.view==='watchlist'")).nativeReady());
@@ -140,7 +142,15 @@ public class ManagedWatchlistSavedScenarioTest {
     private void await(String why,String expression)throws Exception {page.await(new Check(why,new Script(expression)));}
     private static String q(String value){return JSONObject.quote(value);}
     private void diagnose(){try{diagnoseEditing("failure");Log.e("WatchlistSavedScenario","stage="+stage+", "+page.raw(new Script("JSON.stringify({url:location.href,active:document.activeElement?.id,data:"+D+"})")));}catch(Exception|AssertionError failure){Log.e("WatchlistSavedScenario","Diagnostic unavailable",failure);}}
-    @After public void closeInventedSavedScenario()throws Exception {try{if(scenario!=null)scenario.close();}finally{if(assets!=null)assets.close();}}
+    @After public void closeInventedSavedScenario()throws Exception {
+        Throwable failure=null;
+        try{if(imeSession!=null)imeSession.close();}catch(Throwable cleanup){failure=cleanup;}
+        try{if(scenario!=null)scenario.close();}catch(Throwable cleanup){if(failure==null)failure=cleanup;else failure.addSuppressed(cleanup);}
+        try{if(assets!=null)assets.close();}catch(Throwable cleanup){if(failure==null)failure=cleanup;else failure.addSuppressed(cleanup);}
+        if(failure instanceof Error error)throw error;
+        if(failure instanceof Exception exception)throw exception;
+        if(failure!=null)throw new IllegalStateException("Fixture cleanup failed",failure);
+    }
     private void frame(FollowupsReportFrameCapture.Frame name,String heading,String scope)throws Exception{
         committedFrame();
         page.read(new Script("(()=>{document.querySelector("+q(heading)+").scrollIntoView({block:'start',behavior:'instant'});return 'scrolled';})()"));committedFrame();page.await(new Check("scoped committed heading visible without horizontal overflow",new Script("(()=>{const e=document.querySelector("+q(heading)+"),r=e.getBoundingClientRect();return e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&r.top>=0&&r.bottom<=innerHeight&&document.documentElement.scrollWidth<=document.documentElement.clientWidth;})()")).nativeReady());Log.i("WatchlistSavedScenarioFrameScope",scope);new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario,name)).retain();

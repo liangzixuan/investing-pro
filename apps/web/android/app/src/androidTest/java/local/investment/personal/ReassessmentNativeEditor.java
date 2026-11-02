@@ -3,16 +3,10 @@ package local.investment.personal;
 import static org.junit.Assert.*;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 
-import android.os.Handler;
+import android.os.Bundle;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.text.InputType;
 import android.util.Log;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.ExtractedText;
-import android.view.inputmethod.ExtractedTextRequest;
-import android.view.inputmethod.InputConnection;
-import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebView;
 import androidx.lifecycle.Lifecycle;
 import androidx.test.core.app.ActivityScenario;
@@ -26,7 +20,6 @@ final class ReassessmentNativeEditor implements AutoCloseable {
     private static final long TIMEOUT_MS = 10_000;
     record Dom(String text, int start, int end, boolean current) {}
     interface ReadDom { Dom read() throws Exception; }
-    private record Connection(WebView view, InputConnection input, Handler handler, int inputType) {}
     private record NativeText(String text, int offset, int partialStart, int start, int end) {
         boolean matches(Dom dom) {
             return text != null && offset == 0 && partialStart == -1 && text.equals(dom.text)
@@ -39,14 +32,15 @@ final class ReassessmentNativeEditor implements AutoCloseable {
                 ",textEqualsDom="+(text!=null&&text.equals(dom.text));
         }
     }
-    private interface Operation<T> { T run() throws Exception; }
     private final ActivityScenario<MainActivity> scenario;
     private final ReadDom readDom;
     private final String original;
     private final AtomicBoolean active = new AtomicBoolean(true);
     private final AtomicBoolean selected = new AtomicBoolean();
     private final AtomicBoolean committed = new AtomicBoolean();
-    private Connection bound;
+    private final ServedEditorSession session = ServedEditorSession.current();
+    private WebView bound;
+    private long generation, edit;
 
     private ReassessmentNativeEditor(ActivityScenario<MainActivity> scenario, ReadDom readDom, String original) {
         this.scenario=scenario;this.readDom=readDom;this.original=original;
@@ -55,7 +49,7 @@ final class ReassessmentNativeEditor implements AutoCloseable {
         assertNotSame("Native correspondence waits must not block the UI thread", Looper.getMainLooper(), Looper.myLooper());
         ReassessmentNativeEditor editor=new ReassessmentNativeEditor(scenario,readDom,original);
         try { editor.awaitCorrespondence(); return editor; }
-        catch(Exception|AssertionError failure) { editor.close(); throw failure; }
+        catch(Exception|AssertionError failure) { try{editor.close();}catch(Exception cleanup){failure.addSuppressed(cleanup);} throw failure; }
     }
     private Dom currentDom() throws Exception {
         Dom dom=readDom.read();
@@ -63,81 +57,33 @@ final class ReassessmentNativeEditor implements AutoCloseable {
         assertTrue("Observed DOM selection is in the complete original value",dom.start>=0&&dom.end>=dom.start&&dom.end<=original.length());
         return dom;
     }
-    private Connection acquire() {
-        AtomicReference<Connection> result=new AtomicReference<>();
-        scenario.onActivity(activity->{
-            WebView view=activity.getBridge().getWebView();
-            assertTrue("Native editor belongs to the resumed focused view",isDisplayed().matches(view)&&view.hasFocus()&&view.hasWindowFocus()&&
-                view.isAttachedToWindow()&&activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
-            EditorInfo info=new EditorInfo();InputConnection input=view.onCreateInputConnection(info);
-            Log.i("SavedValuationNativeEditor","phase=existing-acquire,uptime="+SystemClock.uptimeMillis()+
-                ",viewIdentity="+System.identityHashCode(view)+",connectionIdentity="+(input==null?0:System.identityHashCode(input))+
-                ",connectionClass="+(input==null?"null":input.getClass().getName())+",inputType="+info.inputType+
-                ",imeOptions="+info.imeOptions+",initialSelection="+info.initialSelStart+":"+info.initialSelEnd+
-                ",fieldId="+info.fieldId+",fieldName="+info.fieldName+",package="+info.packageName);
-            if(input==null||(info.inputType&InputType.TYPE_MASK_CLASS)==InputType.TYPE_NULL) {
-                Log.i("SavedValuationNativeEditor","connection="+(input!=null)+",inputType="+info.inputType);return;
-            }
-            Handler selected=input.getHandler();
-            Handler handler=new Handler(selected==null?Looper.getMainLooper():selected.getLooper());
-            result.set(new Connection(view,input,handler,info.inputType));
-        });
-        return result.get();
-    }
-    private NativeText extract(Connection connection) {
-        assertSame("Native getter runs on its connection callback looper",connection.handler.getLooper(),Looper.myLooper());
-        ExtractedTextRequest request=new ExtractedTextRequest();request.hintMaxChars=original.length();
-        ExtractedText text=connection.input.getExtractedText(request,0);
-        return text==null?new NativeText(null,-1,-1,-1,-1):
-            new NativeText(text.text==null?null:text.text.toString(),text.startOffset,text.partialStartOffset,text.selectionStart,text.selectionEnd);
-    }
     private void awaitCorrespondence() throws Exception {
         long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
-        String last="no native editor observed";
-        Dom initial=currentDom();
-        AtomicReference<WebView> owner=new AtomicReference<>();
-        scenario.onActivity(activity->owner.set(activity.getBridge().getWebView()));
-        // Request one framework reinitialization, then prove complete native/DOM correspondence.
-        // restartInput does not itself establish which DOM editor owns the connection.
-        scenario.onActivity(activity->{
-            assertSame("Framework input restart runs on the UI thread",Looper.getMainLooper(),Looper.myLooper());
-            WebView view=activity.getBridge().getWebView();
-            assertSame("Framework input restart belongs to the exact WebView",owner.get(),view);
-            assertTrue("Framework input owner remains displayed, focused and resumed",isDisplayed().matches(view)&&view.hasFocus()&&view.hasWindowFocus()&&
-                view.isAttachedToWindow()&&activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
-            InputMethodManager manager=activity.getSystemService(InputMethodManager.class);
-            assertNotNull("Framework input manager is available",manager);
-            Log.i("SavedValuationNativeEditor","phase=before-framework-restart,uptime="+SystemClock.uptimeMillis()+
-                ",remainingMs="+(deadline-SystemClock.uptimeMillis())+",viewIdentity="+System.identityHashCode(view)+
-                ",isActive="+manager.isActive(view)+",isAcceptingText="+manager.isAcceptingText()+
-                ",originalLength="+initial.text.length()+",originalSelection="+initial.start+":"+initial.end);
-            assertTrue("One framework input restart remains active and within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
-            manager.restartInput(view);
-            Log.i("SavedValuationNativeEditor","phase=after-framework-restart,uptime="+SystemClock.uptimeMillis()+
-                ",remainingMs="+(deadline-SystemClock.uptimeMillis())+",viewIdentity="+System.identityHashCode(view)+
-                ",isActive="+manager.isActive(view)+",isAcceptingText="+manager.isAcceptingText());
-            assertTrue("Framework input restart stays within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
-        });
-        awaitFrame(deadline);
-        currentDom();
-        assertTrue("Native acquisition follows the framework frame within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
-        Connection candidate=acquire();
-        assertNotNull("Framework input restart supplies one editable connection",candidate);
+        String last="no framework-served editor observed";
+        scenario.onActivity(activity->bound=activity.getBridge().getWebView());
         do {
-            Dom before=currentDom();
-            requireView(candidate);
-            NativeText nativeText=invoke(candidate.handler,deadline,()->extract(candidate));
-            Dom after=currentDom();
-            requireView(candidate);
-            last="class="+candidate.input.getClass().getName()+",inputType="+candidate.inputType+
-                ",callbackMain="+(candidate.handler.getLooper()==Looper.getMainLooper())+","+nativeText.describe(after);
+            Dom before=currentDom();requireView();
+            Bundle observed=session.command("observe",new Bundle(),deadline);
+            Dom after=currentDom();requireView();
+            NativeText nativeText=new NativeText(observed.getString("text"),observed.getInt("offset",-1),
+                observed.getInt("partialStart",-1),observed.getInt("start",-1),observed.getInt("end",-1));
+            last="servedGeneration="+observed.getLong("generation")+","+nativeText.describe(after);
             Log.i("SavedValuationNativeEditor",last);
-            if(before.equals(after)&&nativeText.matches(after)&&SystemClock.uptimeMillis()<deadline) {
-                bound=candidate;return;
+            if(observed.getBoolean("ready")&&before.equals(after)&&nativeText.matches(after)&&SystemClock.uptimeMillis()<deadline) {
+                generation=observed.getLong("generation");
+                Bundle receipt=session.command("bind",fields(after),deadline);
+                edit=receipt.getLong("edit");
+                requireView();assertEquals("Exact DOM text and selection remain stable through served binding",after,currentDom());
+                assertTrue("One framework-served binding remains within the original deadline",edit>0&&active.get()&&SystemClock.uptimeMillis()<deadline);
+                return;
             }
             awaitFrame(deadline);
         } while(SystemClock.uptimeMillis()<deadline);
         fail("Native editor does not correspond to the exact DOM field: "+last);
+    }
+    private Bundle fields(Dom dom) {
+        Bundle data=new Bundle();data.putLong("generation",generation);data.putString("original",original);
+        data.putInt("start",dom.start);data.putInt("end",dom.end);return data;
     }
     private void awaitFrame(long deadline) throws Exception {
         CompletableFuture<Void> future=new CompletableFuture<>();AtomicReference<WebView> view=new AtomicReference<>();
@@ -150,16 +96,6 @@ final class ReassessmentNativeEditor implements AutoCloseable {
             scenario.onActivity(activity->{if(view.get()!=null)view.get().removeCallbacks(frame);});
         }
     }
-    private <T> T invoke(Handler handler,long deadline,Operation<T> operation) throws Exception {
-        CompletableFuture<T> future=new CompletableFuture<>();AtomicBoolean pending=new AtomicBoolean(true);
-        Runnable task=()->{
-            if(!pending.get()||!active.get()||SystemClock.uptimeMillis()>=deadline)return;
-            try { T value=operation.run();if(pending.get())future.complete(value); }
-            catch(Exception|AssertionError failure) {future.completeExceptionally(failure);}
-        };
-        try {assertTrue("Native callback handler accepts the bounded operation",handler.post(task));return await(future,deadline);}
-        finally {pending.set(false);handler.removeCallbacks(task);future.cancel(false);}
-    }
     private <T> T await(CompletableFuture<T> future,long deadline) throws Exception {
         assertNotSame("Only instrumentation may await native callbacks",Looper.getMainLooper(),Looper.myLooper());
         long remaining=deadline-SystemClock.uptimeMillis();assertTrue("Original native editor deadline remains",remaining>0);
@@ -167,30 +103,31 @@ final class ReassessmentNativeEditor implements AutoCloseable {
         assertTrue("Native observation completed within the original deadline",active.get()&&SystemClock.uptimeMillis()<deadline);
         return value;
     }
-    private void requireView(Connection connection) {
-        assertNotNull("Native editor connection exists",connection);
+    private void requireView() {
+        assertNotNull("Native editor WebView exists",bound);
         scenario.onActivity(activity->{
-            assertSame("Exact native WebView still owns this edit",connection.view,activity.getBridge().getWebView());
-            assertTrue("Exact native editor remains resumed and focused",isDisplayed().matches(connection.view)&&connection.view.hasFocus()&&connection.view.hasWindowFocus()&&
-                activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
+            assertSame("Exact native WebView still owns this edit",bound,activity.getBridge().getWebView());
+            assertTrue("Exact native editor remains resumed and focused",isDisplayed().matches(bound)&&bound.hasFocus()&&bound.hasWindowFocus()&&
+                bound.isAttachedToWindow()&&activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED);
         });
     }
     void selectAll() throws Exception {
-        requireView(bound);Dom dom=currentDom();long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
-        invoke(bound.handler,deadline,()->{
-            NativeText text=extract(bound);assertTrue("Bound native original and selection remain exact before Select all",text.matches(dom));
-            assertTrue("No late or repeated Select all",active.get()&&SystemClock.uptimeMillis()<deadline&&selected.compareAndSet(false,true));
-            assertTrue("One native Select all dispatch",bound.input.performContextMenuAction(android.R.id.selectAll));return true;
-        });
+        requireView();Dom dom=currentDom();long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
+        assertTrue("No late or repeated Select all",active.get()&&SystemClock.uptimeMillis()<deadline&&selected.compareAndSet(false,true));
+        Bundle data=fields(dom);data.putLong("edit",edit);
+        // Provider rechecks the complete native original/selection before the one native dispatch.
+        session.command("select",data,deadline);
     }
     void commit(String value) throws Exception {
-        requireView(bound);Dom dom=currentDom();assertTrue("Complete original DOM selection remains before native replacement",dom.start==0&&dom.end==original.length());
+        requireView();Dom dom=currentDom();assertTrue("Complete original DOM selection remains before native replacement",dom.start==0&&dom.end==original.length());
         long deadline=SystemClock.uptimeMillis()+TIMEOUT_MS;
-        invoke(bound.handler,deadline,()->{
-            NativeText text=extract(bound);assertTrue("Bound native full selection remains exact before commit",text.matches(dom));
-            assertTrue("No late or repeated native replacement",active.get()&&SystemClock.uptimeMillis()<deadline&&selected.get()&&committed.compareAndSet(false,true));
-            assertTrue("One native replacement dispatch",bound.input.commitText(value,1));return true;
-        });
+        assertTrue("No late or repeated native replacement",active.get()&&SystemClock.uptimeMillis()<deadline&&selected.get()&&committed.compareAndSet(false,true));
+        Bundle data=fields(dom);data.putLong("edit",edit);data.putString("value",value);
+        // Provider rechecks the complete native selection before the one native commit.
+        session.command("commit",data,deadline);
     }
-    @Override public void close() {active.set(false);}
+    @Override public void close() throws Exception {
+        if(!active.getAndSet(false))return;
+        if(edit>0){Bundle data=new Bundle();data.putLong("edit",edit);session.command("release",data,SystemClock.uptimeMillis()+TIMEOUT_MS);}
+    }
 }
