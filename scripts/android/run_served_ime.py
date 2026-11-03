@@ -94,16 +94,68 @@ def process_alive(process):
     return fields[19] == process["startTicks"]
 
 
+def discovery_read(args):
+    """Only these public, read-only probes may wait for pre-lease readiness."""
+    if args == ["devices"]:
+        return True
+    if len(args) < 4 or args[0] != "-s" or not re.fullmatch(r"emulator-[0-9]+", args[1]):
+        return False
+    if args[2:] == ["emu", "avd", "name"]:
+        return True
+    if len(args) != 5 or args[2:4] != ["shell", "-T"]:
+        return False
+    command = shlex.split(args[4])
+    if command in (["getprop", "sys.boot_completed"], ["getprop", "ro.kernel.qemu"],
+                   ["getprop", "ro.build.version.sdk"], ["am", "get-current-user"],
+                   ["cat", "/proc/sys/kernel/random/boot_id"]):
+        return True
+    if len(command) == 6 and command[:1] == ["run-as"]:
+        return command[1] in (TARGET, TEST_PACKAGE) and command[2] == "--user" \
+            and command[3].isdigit() and command[4:] == ["id", "-u"]
+    if len(command) == 5 and command[:3] == ["pm", "path", "--user"]:
+        return command[3].isdigit() and command[4] in (TARGET, TEST_PACKAGE)
+    if len(command) == 6 and command[:5] == ["ime", "list", "-a", "-s", "--user"]:
+        return command[5].isdigit()
+    return len(command) == 6 and command[:2] == ["settings", "--user"] \
+        and command[2].isdigit() and command[3:5] == ["get", "secure"] and command[5] in SETTING_KEYS
+
+
+class AdbFailure(RuntimeError):
+    def __init__(self, args, code, stdout=b"", stderr=b"", timed_out=False, has_input=False, executable=None):
+        self.args_vector = list(args)
+        self.empty_response = not stdout.strip() and not stderr.strip()
+        self.read_probe = not has_input and discovery_read(self.args_vector)
+        message = stderr.decode(errors="replace").strip()
+        transport = re.fullmatch(
+            r"(?:adb: )?(?:error: )?(?:closed|device offline|no devices/emulators found|"
+            r"device '(emulator-[0-9]+)' not found|connection reset by peer)", message)
+        self.transport_pending = self.read_probe and ((timed_out and self.empty_response)
+                                                      or (not stdout.strip() and transport is not None))
+        self.diagnostic = {"argv": ([str(executable)] if executable is not None else []) + self.args_vector,
+                           "exitCode": code, "timedOut": timed_out,
+                           "stdoutBytes": len(stdout), "stderrBytes": len(stderr),
+                           "stdout": stdout.decode(errors="replace")[:1000],
+                           "stderr": stderr.decode(errors="replace")[:1000]}
+        super().__init__("adb command failed: " + json.dumps(self.diagnostic))
+
+
 class Adb:
     def __init__(self, sdk):
         self.executable = sdk / "platform-tools/adb"
 
     def call(self, args, data=None, check=True):
-        result = subprocess.run([str(self.executable), *args], input=data, capture_output=True,
-                                timeout=8)
+        try:
+            result = subprocess.run([str(self.executable), *args], input=data, capture_output=True,
+                                    timeout=8)
+        except subprocess.TimeoutExpired as failure:
+            require(len(failure.stdout or b"") <= 65536 and len(failure.stderr or b"") <= 65536,
+                    "Unexpected adb output size")
+            raise AdbFailure(args, None, failure.stdout or b"", failure.stderr or b"",
+                             timed_out=True, has_input=data is not None, executable=self.executable) from failure
         require(len(result.stdout) <= 65536 and len(result.stderr) <= 65536, "Unexpected adb output size")
         if check and result.returncode:
-            raise RuntimeError("adb failed: " + result.stderr.decode(errors="replace")[:1000])
+            raise AdbFailure(args, result.returncode, result.stdout, result.stderr,
+                             has_input=data is not None, executable=self.executable)
         return result
 
     def devices(self):
@@ -134,14 +186,23 @@ class Adb:
         packages = {}
         for package in (TARGET, TEST_PACKAGE):
             # run-as authenticates that this exact installed package is debuggable.
-            uid = self.shell(serial, ["run-as", package, "--user", user, "id", "-u"], check=False)
-            if not uid.isdigit() or int(uid) // 100000 != identity["user"] or int(uid) % 100000 < 10000:
+            args = ["-s", serial, "shell", "-T", shlex.join(["run-as", package, "--user", user, "id", "-u"])]
+            result = self.call(args, check=False)
+            if result.returncode and not result.stdout.strip() \
+                    and result.stderr.decode().strip() == "run-as: unknown package: " + package:
                 return None
+            if result.returncode:
+                raise AdbFailure(args, result.returncode, result.stdout, result.stderr, executable=self.executable)
+            uid = result.stdout.decode().strip()
+            require(uid.isdigit() and int(uid) // 100000 == identity["user"] and int(uid) % 100000 >= 10000,
+                    "Invalid installed debug package UID")
             paths = self.shell(serial, ["pm", "path", "--user", user, package]).splitlines()
-            if not paths or not all(p.startswith("package:/data/app/") for p in paths):
+            if not paths:
                 return None
+            require(all(p.startswith("package:/data/app/") for p in paths), "Invalid installed package path")
             packages[package] = {"uid": int(uid), "paths": paths}
         components = self.shell(serial, ["ime", "list", "-a", "-s", "--user", user]).splitlines()
+        require(all(re.fullmatch(r"[\w.]+/[\w.$]+", value) for value in components), "Invalid installed IME list")
         return packages if COMPONENT in components else None
 
     def settings(self, lease):
@@ -178,6 +239,22 @@ class Supervisor:
         self.state["events"].append({"event": kind, "time": time.time(), **fields})
         atomic_json(self.path, self.state)
 
+    def pending(self, reason, serial=None, failure=None):
+        # Retain first/last observations and a count, not an unbounded polling log.
+        observation = {"reason": reason, "serial": serial, "time": time.time()}
+        if failure is not None:
+            observation["command"] = failure.diagnostic
+        previous = self.state.get("discoveryPending")
+        pending = {"count": 1 if previous is None else previous["count"] + 1,
+                   "first": observation if previous is None else previous["first"], "last": observation}
+        if previous is not None and "firstFailure" in previous:
+            pending.update(firstFailure=previous["firstFailure"], lastFailure=previous["lastFailure"])
+        if failure is not None:
+            pending.setdefault("firstFailure", observation)
+            pending["lastFailure"] = observation
+        self.state["discoveryPending"] = pending
+        atomic_json(self.path, self.state)
+
     def discover(self):
         if self.state.get("lease"):
             self.observe()
@@ -185,18 +262,52 @@ class Supervisor:
         owned = self.processes()
         if not owned:
             return
-        devices = self.adb.devices()
+        try:
+            devices = self.adb.devices()
+        except AdbFailure as failure:
+            if not failure.transport_pending:
+                raise
+            self.pending("transport-not-ready", failure=failure)
+            return
         for serial, status in devices.items():
             if serial in self.state["initialDevices"] or status != "device" or not re.fullmatch(r"emulator-[0-9]+", serial):
                 continue
-            if self.adb.shell(serial, ["getprop", "sys.boot_completed"], check=False) != "1":
+            console = serial.removeprefix("emulator-")
+            candidates = [p for p in owned if p["port"] == console
+                          or (p["port"] is None and console in p.get("listeningPorts", []))]
+            if not candidates:
                 continue
-            identity = self.adb.identity(serial)
-            process = match_process(serial, identity["avd"], owned)
-            packages = self.adb.package_identities(identity)
-            if packages is None:
-                continue
-            lease = lease_for(identity, self.state["nonce"], self.state["sourceSha"], self.adb.settings(identity))
+            require(len(candidates) == 1, "Ambiguous owned emulator port")
+            try:
+                boot = self.adb.shell(serial, ["getprop", "sys.boot_completed"])
+                require(boot in ("", "0", "1"), "Invalid boot-completed response")
+                if boot != "1":
+                    self.pending("boot-not-complete", serial)
+                    continue
+                identity = self.adb.identity(serial)
+                process = match_process(serial, identity["avd"], owned)
+                if not self.alive(process):
+                    self.pending("candidate-process-exited", serial)
+                    continue
+                packages = self.adb.package_identities(identity)
+                if packages is None:
+                    self.pending("fixture-not-installed", serial)
+                    continue
+                lease = lease_for(identity, self.state["nonce"], self.state["sourceSha"], self.adb.settings(identity))
+                if not self.alive(process) or self.adb.devices().get(serial) != "device":
+                    self.pending("candidate-disappeared-before-lease", serial)
+                    continue
+            except AdbFailure as failure:
+                if failure.transport_pending:
+                    self.pending("transport-not-ready", serial, failure)
+                    continue
+                # An empty failure alone has no diagnosis. A separate disappearance
+                # observation can establish that this candidate is no longer ready.
+                if failure.read_probe and failure.empty_response and (
+                        not self.alive(candidates[0]) or self.adb.devices().get(serial) != "device"):
+                    self.pending("unidentified-read-failure-candidate-disappeared", serial, failure)
+                    continue
+                raise
             # Persist recovery authority before any device write. Do not replace it after a reboot.
             self.state.update(lease=lease, emulator=process.copy(), packages=packages)
             self.event("lease-prepared", identity=identity)

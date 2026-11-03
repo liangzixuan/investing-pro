@@ -3,6 +3,7 @@
 import copy
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -10,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from served_ime_contract import (COMPONENT, PREVIOUS_KEYS, PROCESS_HEADER, SETTING_KEYS, gradle_command,
                                  lease_for, recovery_commands, require_instrumentation_closed, validate_recovery)
-from run_served_ime import Supervisor, emulator_processes, listening_ports, match_process, process_alive, runtime
+from run_served_ime import Adb, AdbFailure, Supervisor, discovery_read, emulator_processes, listening_ports, match_process, process_alive, runtime
 
 NONCE = "a" * 64
 SOURCE = "b" * 40
@@ -20,6 +21,7 @@ IDENTITY = {"serial": "emulator-5562", "qemu": "1", "api": "36", "user": 10,
             "bootId": "11111111-2222-3333-4444-555555555555", "avd": "observed-gmd-name"}
 PROCESS = {"pid": 1234, "startTicks": "789", "exe": "/installed/sdk/emulator/qemu/linux-x86_64/qemu-system-x86_64",
            "avd": IDENTITY["avd"], "port": "5562"}
+PROBE = ["-s", IDENTITY["serial"], "shell", "-T", "getprop ro.kernel.qemu"]
 
 
 def recovery(lease, phase="active"):
@@ -294,6 +296,151 @@ class SupervisorTests(unittest.TestCase):
             self.host.cleanup()
         self.assertEqual(self.adb.commands, [["am", "force-stop", "--user", "10", "local.investment.personal"]])
 
+    def test_closed_transport_waits_then_leases_without_early_mutation(self):
+        with patch.object(self.adb, "identity", side_effect=AdbFailure(PROBE, 1, stderr=b"error: closed\n")):
+            self.host.discover()
+        self.assertNotIn("lease", self.state)
+        self.assertIsNone(self.adb.lease)
+        self.assertEqual(self.adb.commands, [])
+        self.assertEqual(self.state["discoveryPending"]["last"]["command"]["argv"], PROBE)
+        self.host.discover()
+        self.assertEqual(self.adb.lease, self.state["lease"])
+
+    def test_transport_pending_record_is_bounded_and_preserves_first_last(self):
+        with patch.object(self.adb, "devices", side_effect=AdbFailure(["devices"], None, timed_out=True)):
+            for _ in range(100):
+                self.host.discover()
+        pending = self.state["discoveryPending"]
+        self.assertEqual(set(pending), {"count", "first", "last", "firstFailure", "lastFailure"})
+        self.assertEqual(pending["count"], 100)
+        self.assertEqual(self.state["events"], [])
+        self.assertLess(len(json.dumps(self.state)), 2000)
+        self.assertNotIn("lease", self.state)
+
+    def test_middle_transport_failures_survive_later_nonerror_readiness_observations(self):
+        self.adb.booted = False
+        self.host.discover()
+        self.adb.booted = True
+        for text in (b"error: closed", b"error: device offline"):
+            with patch.object(self.adb, "identity", side_effect=AdbFailure(PROBE, 1, stderr=text)):
+                self.host.discover()
+        self.adb.ready = False
+        self.host.discover()
+        pending = self.state["discoveryPending"]
+        self.assertEqual(pending["first"]["reason"], "boot-not-complete")
+        self.assertEqual(pending["last"]["reason"], "fixture-not-installed")
+        self.assertEqual(pending["firstFailure"]["command"]["stderr"], "error: closed")
+        self.assertEqual(pending["lastFailure"]["command"]["stderr"], "error: device offline")
+        self.assertEqual(pending["count"], 4)
+        self.assertNotIn("lease", self.state)
+
+    def test_disappearing_setup_emulator_waits_for_an_observed_new_process(self):
+        self.host.alive = lambda _process: False
+        self.host.discover()
+        self.assertEqual(self.state["discoveryPending"]["last"]["reason"], "candidate-process-exited")
+        self.assertNotIn("lease", self.state)
+        self.processes[0] = PROCESS | {"pid": 2345, "startTicks": "900"}
+        self.host.alive = lambda process: process["pid"] == 2345
+        self.host.discover()
+        self.assertEqual(self.state["emulator"]["pid"], 2345)
+
+    def test_empty_unknown_read_failure_is_strict_until_disappearance_is_observed(self):
+        failure = AdbFailure(PROBE, 1)
+        with patch.object(self.adb, "identity", side_effect=failure):
+            with self.assertRaises(AdbFailure):
+                self.host.discover()
+        self.assertNotIn("discoveryPending", self.state)
+        with patch.object(self.adb, "identity", side_effect=failure), \
+             patch.object(self.adb, "devices", side_effect=[{IDENTITY["serial"]: "device"}, {}]):
+            self.host.discover()
+        self.assertEqual(self.state["discoveryPending"]["last"]["reason"],
+                         "unidentified-read-failure-candidate-disappeared")
+        self.assertNotIn("lease", self.state)
+
+    def test_permission_invalid_identity_ambiguity_and_nonprobe_failures_remain_strict(self):
+        for failure in (AdbFailure(PROBE, 1, stderr=b"Permission denied"),
+                        AdbFailure(PROBE, 1, stderr=b"error: closed\nPermission denied"),
+                        AdbFailure(["-s", IDENTITY["serial"], "shell", "-T", "ime enable foreign/.Ime"],
+                                   1, stderr=b"error: closed"), ValueError("Invalid current user")):
+            with patch.object(self.adb, "identity", side_effect=failure), self.assertRaises(type(failure)):
+                self.host.discover()
+        self.adb.identity_value["qemu"] = "0"
+        with self.assertRaises(ValueError):
+            self.host.discover()
+        self.adb.identity_value = IDENTITY.copy()
+        self.processes.append(PROCESS.copy())
+        with self.assertRaises(ValueError):
+            self.host.discover()
+        self.assertNotIn("lease", self.state)
+        self.assertNotIn("discoveryPending", self.state)
+        self.assertEqual(self.adb.commands, [])
+
+    def test_postlease_transport_and_uncertain_lease_write_are_not_retried(self):
+        failure = AdbFailure(PROBE, 1, stderr=b"error: closed")
+        with patch.object(self.adb, "write_lease", side_effect=failure) as write:
+            with self.assertRaises(AdbFailure):
+                self.host.discover()
+            self.assertEqual(write.call_count, 1)
+        self.assertIn("lease", self.state)
+        with patch.object(self.adb, "identity", side_effect=failure), \
+             patch.object(self.adb, "write_lease") as write:
+            with self.assertRaises(AdbFailure):
+                self.host.discover()
+            with self.assertRaises(AdbFailure):
+                self.host.cleanup()
+            write.assert_not_called()
+        self.assertNotIn("discoveryPending", self.state)
+
+
+class AdbTests(unittest.TestCase):
+    def test_failed_command_diagnostics_include_exact_args_exit_and_bounded_outputs(self):
+        adb = Adb(Path("/installed/sdk"))
+        result = subprocess.CompletedProcess(PROBE, 17, b"o" * 2000, b"e" * 2000)
+        with patch("run_served_ime.subprocess.run", return_value=result), self.assertRaises(AdbFailure) as caught:
+            adb.call(PROBE, data=b"input-must-not-be-logged")
+        diagnostic = caught.exception.diagnostic
+        self.assertEqual(diagnostic["argv"], [str(adb.executable), *PROBE])
+        self.assertEqual(diagnostic["exitCode"], 17)
+        self.assertEqual(len(diagnostic["stdout"]), 1000)
+        self.assertEqual(len(diagnostic["stderr"]), 1000)
+        self.assertNotIn("input-must-not-be-logged", str(caught.exception))
+        self.assertFalse(caught.exception.transport_pending)
+
+    def test_timeout_is_typed_but_only_discovery_read_probes_can_wait(self):
+        adb = Adb(Path("/installed/sdk"))
+        with patch("run_served_ime.subprocess.run", side_effect=subprocess.TimeoutExpired(PROBE, 8)), \
+             self.assertRaises(AdbFailure) as caught:
+            adb.call(PROBE)
+        self.assertTrue(caught.exception.transport_pending)
+        self.assertTrue(caught.exception.diagnostic["timedOut"])
+        self.assertFalse(AdbFailure(["-s", IDENTITY["serial"], "shell", "-T", "ime reset"],
+                                    None, timed_out=True).transport_pending)
+        self.assertFalse(AdbFailure(PROBE, None, timed_out=True, has_input=True).transport_pending)
+        self.assertFalse(AdbFailure(PROBE, None, stderr=b"Permission denied", timed_out=True).transport_pending)
+        with patch("run_served_ime.subprocess.run", side_effect=subprocess.TimeoutExpired(PROBE, 8, output=b"x" * 65537)), \
+             self.assertRaisesRegex(ValueError, "output size"):
+            adb.call(PROBE)
+
+    def test_only_explicit_missing_package_is_readiness_not_permission_or_malformed_uid(self):
+        adb = Adb(Path("/installed/sdk"))
+        missing = subprocess.CompletedProcess([], 1, b"", b"run-as: unknown package: local.investment.personal\n")
+        with patch.object(adb, "call", return_value=missing):
+            self.assertIsNone(adb.package_identities(IDENTITY))
+        for result, expected in ((subprocess.CompletedProcess([], 1, b"", b"run-as: package not debuggable"), AdbFailure),
+                                 (subprocess.CompletedProcess([], 1, b"", b"permission denied"), AdbFailure),
+                                 (subprocess.CompletedProcess([], 1, b"", b""), AdbFailure),
+                                 (subprocess.CompletedProcess([], 0, b"0", b""), ValueError)):
+            with patch.object(adb, "call", return_value=result), self.assertRaises(expected):
+                adb.package_identities(IDENTITY)
+
+    def test_discovery_read_allowlist_excludes_private_data_and_all_mutations(self):
+        for command in ("run-as local.investment.personal --user 10 id -u", "pm path --user 10 local.investment.personal.test",
+                        "ime list -a -s --user 10", "settings --user 10 get secure default_input_method"):
+            self.assertTrue(discovery_read(["-s", IDENTITY["serial"], "shell", "-T", command]))
+        for command in ("run-as local.investment.personal --user 10 cat cache/private.json", "ime enable foreign/.Ime",
+                        "settings --user 10 put secure default_input_method foreign/.Ime", "am force-stop foreign"):
+            self.assertFalse(discovery_read(["-s", IDENTITY["serial"], "shell", "-T", command]))
+
 
 class ProcessTests(unittest.TestCase):
     def test_actual_socket_inode_joins_only_listeners_owned_by_this_pid(self):
@@ -345,7 +492,7 @@ class ProcessTests(unittest.TestCase):
                 fields["exe"].resolve.return_value = sdk / "foreign/qemu-system-x86_64"
                 self.assertEqual(emulator_processes(sdk, NONCE, proc), [])
 
-    def run_simulated(self, exit_code, foreign_cleanup=False):
+    def run_simulated(self, exit_code, foreign_cleanup=False, discovery_failure=None):
         with tempfile.TemporaryDirectory() as directory:
             sdk = Path(directory) / "sdk"
             (sdk / "platform-tools").mkdir(parents=True)
@@ -366,8 +513,9 @@ class ProcessTests(unittest.TestCase):
                 if polls == 1:
                     adb.devices_value = {IDENTITY["serial"]: "device"}
                     return None
-                adb.recovery = recovery(adb.lease, "restored" if exit_code == 0 else "active")
-                if exit_code:
+                if adb.lease is not None:
+                    adb.recovery = recovery(adb.lease, "restored" if exit_code == 0 else "active")
+                if exit_code and adb.lease is not None:
                     adb.settings_value.update({SETTING_KEYS[0]: COMPONENT,
                                                SETTING_KEYS[1]: SETTINGS[SETTING_KEYS[1]] + ":" + COMPONENT,
                                                SETTING_KEYS[2]: "-1"})
@@ -381,12 +529,17 @@ class ProcessTests(unittest.TestCase):
             environment = {"GITHUB_ACTIONS": "true", "GITHUB_RUN_ID": "100", "GITHUB_RUN_ATTEMPT": "2"}
             with patch("run_served_ime.sys.platform", "linux"), patch.dict("os.environ", environment), \
                  patch("run_served_ime.Adb", return_value=adb), \
+                 patch.object(adb, "identity", side_effect=discovery_failure, wraps=adb.identity), \
+                 patch("run_served_ime.Supervisor", side_effect=lambda a, s, p, processes:
+                       Supervisor(a, s, p, processes, alive=lambda _process: True)), \
                  patch("run_served_ime.emulator_processes", return_value=[PROCESS.copy()]), \
                  patch("run_served_ime.subprocess.Popen", return_value=child) as popen, \
+                 patch("run_served_ime.os.killpg", create=True) as kill, \
                  patch("run_served_ime.signal.signal"), patch("run_served_ime.time.sleep"):
                 result = runtime(args)
                 state = json.loads(Path(args.state).read_text())
                 self.assertEqual(popen.call_count, 1)
+                kill.assert_not_called()
                 self.assertEqual(popen.call_args.kwargs["env"]["INVESTMENT_SERVED_IME_HOST_NONCE"], state["nonce"])
                 return result, state, adb.commands
 
@@ -408,6 +561,16 @@ class ProcessTests(unittest.TestCase):
         result, state, commands = self.run_simulated(7, foreign_cleanup=True)
         self.assertEqual(result, 7)
         self.assertIn("foreign IME", state["cleanupError"])
+        self.assertEqual(commands, [])
+
+    def test_prelease_transport_never_terminates_gradle_and_keeps_natural_failure(self):
+        result, state, commands = self.run_simulated(7, discovery_failure=AdbFailure(PROBE, 1, stderr=b"error: closed\n"))
+        self.assertEqual(result, 7)
+        self.assertEqual(state["gradleExitCode"], 7)
+        self.assertIsNone(state["hostError"])
+        self.assertEqual(state["receivedSignals"], [])
+        self.assertEqual(state["cleanup"], "not-leased")
+        self.assertNotIn("lease", state)
         self.assertEqual(commands, [])
 
 

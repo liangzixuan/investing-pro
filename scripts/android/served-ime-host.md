@@ -10,8 +10,26 @@ devices or a physical device. A new emulator must match a current-user SDK emula
 process which inherited the random host nonce, its observed AVD and console port.
 The port must match an explicit process argument or a listening socket owned by
 that PID. The host also verifies API 36, qemu, current user and boot ID. It
-never assumes a serial or AVD name. A missing or ambiguous process proof refuses
-the run; it does not fall back to a device-name guess.
+never assumes a serial or AVD name. It waits for a matching process and refuses
+ambiguous ownership. A device name alone never permits a lease.
+
+Before a lease, explicit transport closure, offline/not-found responses and the
+existing eight-second read timeout can remain pending while the original Gradle
+process runs. This applies only to the listed public read probes. Boot, package
+installation and a disappearing setup emulator also leave discovery pending.
+An empty nonzero response has no assumed cause: it remains a failure unless a
+separate observation proves that the candidate process or device disappeared.
+Permission failures, malformed identity and ownership conflicts still stop the
+host. Nothing is written to a device until the complete lease proof succeeds.
+
+Failed ADB commands record their arguments, exit code or timeout and at most
+1,000 characters from each output stream. They do not record environment variables
+or command input bodies. Pending discovery retains a count, the first and last
+observations, and the first and last failed-command diagnostics. Later readiness
+observations cannot erase those failures or grow the evidence without limit. It adds no retry
+deadline or Gradle invocation. Once the lease is prepared, transport, write,
+readback and cleanup failures remain strict; an uncertain lease write is never
+retried as discovery.
 
 After both exact packages support `run-as` and the test IME is installed, the host
 captures the original IME settings and atomically writes this target-private file:
