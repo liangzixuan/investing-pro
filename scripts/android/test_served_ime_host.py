@@ -586,7 +586,8 @@ class Clock:
 
 def simulated_finalization(module=runner, *, failure_kind="closed", entry_exit=0, process_alive_at_entry=False,
                            terminal=0, statuses=("offline", None), phase="restored", written=True,
-                           wait_seconds=0, wait_timeout=False, external_signal=False, mutate=None):
+                           wait_seconds=0, wait_timeout=False, external_signal=False, mutate=None,
+                           process_alive_after_wait=None):
     """Run the real supervisor/runtime against invented processes, never adb/Gradle."""
     with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
         sdk = Path(directory) / "sdk"
@@ -672,7 +673,8 @@ def simulated_finalization(module=runner, *, failure_kind="closed", entry_exit=0
             nonlocal state
             state = s
             return original_supervisor(a, s, p, processes,
-                                       alive=lambda _p: process_alive_at_entry if closing else True)
+                                       alive=lambda _p: (process_alive_after_wait if waits and process_alive_after_wait is not None
+                                                         else process_alive_at_entry) if closing else True)
 
         child.poll.side_effect, child.wait.side_effect = poll, wait
         adb.devices, adb.read_recovery = devices, read_recovery
@@ -739,9 +741,11 @@ class FinalizationTests(unittest.TestCase):
     def test_active_child_and_live_emulator_cannot_borrow_earlier_restoration(self):
         result = simulated_finalization(entry_exit=None, process_alive_at_entry=True)
         self.assertEqual(result["result"], 1)
-        self.assertEqual(result["kills"], [runner.signal.SIGTERM])
+        # Entry is provisional. Natural child closure cannot hide a still-live device.
+        self.assertEqual(result["kills"], [])
         self.assertIn("hostError", result["state"])
-        self.assertNotIn("finalizationReadFailure", result["state"])
+        self.assertIn("finalizationReadFailure", result["state"])
+        self.assertIn("deadline", result["state"]["finalizationError"])
 
     def test_nonzero_external_signal_and_forced_termination_remain_failures(self):
         for options in ({"entry_exit": 7, "terminal": 7}, {"terminal": 7},
@@ -846,6 +850,43 @@ class FinalizationTests(unittest.TestCase):
             self.assertEqual(result["result"], 1)
             self.assertNotIn("finalizationReadFailure", result["state"])
             self.assertNotEqual(result["state"].get("cleanup"), "disposed")
+
+    def test_pending_live_entry_can_close_naturally_and_prove_disposal(self):
+        for kind in ("closed", "empty"):
+            with self.subTest(kind=kind):
+                result = simulated_finalization(failure_kind=kind, entry_exit=None,
+                                                process_alive_at_entry=True, process_alive_after_wait=False)
+                self.assertEqual(result["result"], 0)
+                self.assertEqual(result["kills"], [])
+                self.assertEqual(result["commands"], [])
+                self.assertEqual(result["gradleStarts"], 1)
+                state = result["state"]
+                self.assertIsNone(state["finalizationStartObservation"]["gradleExitCode"])
+                self.assertTrue(state["finalizationStartObservation"]["ownedProcessAlive"])
+                self.assertEqual(state["gradleExitCode"], 0)
+                self.assertEqual(state["receivedSignals"], [])
+                self.assertEqual(state["cleanup"], "disposed")
+                self.assertIn("finalizationReadFailure", state)
+                self.assertIsNone(state["hostError"])
+
+    def test_pending_live_native_failure_preserves_natural_exit_without_sigterm(self):
+        result = simulated_finalization(failure_kind="empty", entry_exit=None, terminal=7,
+                                        process_alive_at_entry=True, process_alive_after_wait=False)
+        self.assertEqual(result["result"], 7)
+        self.assertEqual(result["state"]["gradleExitCode"], 7)
+        self.assertEqual(result["state"]["receivedSignals"], [])
+        self.assertEqual(result["kills"], [])
+        self.assertEqual(result["commands"], [])
+        self.assertIsNotNone(result["state"]["hostError"])
+        self.assertNotEqual(result["state"].get("cleanup"), "disposed")
+
+    def test_pending_active_child_never_finishes_is_bounded_failure(self):
+        result = simulated_finalization(entry_exit=None, process_alive_at_entry=True, wait_timeout=True)
+        self.assertEqual(result["result"], 1)
+        self.assertEqual(result["kills"], [9])
+        self.assertTrue(result["state"]["forcedTermination"])
+        self.assertLessEqual(result["elapsed"], 31)
+        self.assertNotEqual(result["state"].get("cleanup"), "disposed")
 
 
 if __name__ == "__main__":

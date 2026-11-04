@@ -29,7 +29,7 @@ observations, and the first and last failed-command diagnostics. Later readiness
 observations cannot erase those failures or grow the evidence without limit. It adds no retry
 deadline or Gradle invocation. Once the lease is prepared, active-session transport,
 write, readback and cleanup failures remain strict. The bounded managed-device
-shutdown reconciliation below applies only after teardown has been observed.
+shutdown reconciliation below permits only provisional waiting until final proof.
 An uncertain lease write is never retried as discovery.
 
 After both exact packages support `run-as` and the test IME is installed, the host
@@ -82,9 +82,12 @@ both device and process, the record says `disposed`, not `native restored`.
 GMD can close its emulator transport while the successful Gradle task finishes.
 For an exact read-only transport failure, or an empty exit 255 from the exact
 recovery-file read, the host first requires a completed lease write and the latest
-authenticated recovery phase `restored`. It must also observe Gradle already
-closed with exit 0, or the exact leased process gone. A still-running Gradle and
-live emulator remain an active-session failure, even after an earlier restoration.
+authenticated recovery phase `restored`. Entry observations of Gradle and the
+leased process are diagnostic: GMD can close its transport before either process
+exits. The read failure remains unresolved during provisional waiting. The host
+does not send SIGTERM for this eligible failure; it retains the child's natural
+exit code. A still-live emulator or child that does not close within the bound
+cannot pass, even after an earlier restoration.
 Malformed records, permission errors, unknown commands and uncertain writes do
 not enter shutdown reconciliation.
 
@@ -101,6 +104,8 @@ The record retains the failed command, prior restoration and current disposal
 proof separately. It does not claim a fresh settings readback from a removed
 device. A later observed `prepared`, `active` or `restoring` record supersedes an
 earlier `restored` record. Original failed workflows remain failed evidence.
+Final proof resolves the observation failure; it does not prove its cause at
+entry or replace the separate native test and UTP result checks.
 
 The workflow has an `always()` cleanup step for wrapper termination. It requires
 the same source, run, attempt and shard and refuses while the Gradle PID remains

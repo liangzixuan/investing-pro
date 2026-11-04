@@ -43,6 +43,7 @@ public class ManagedWatchlistSavedScenarioTest {
     private ReportRevisitKeyboard keyboard;
     private String sha,origin,stage="startup",paired,price;
     private String editingSelector,nativeEditingState;
+    private String noteObservationOwner;
     @Before public void launchSavedScenarios()throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
         sha=InstrumentationRegistry.getArguments().getString("expectedSourceSha");assertNotNull(sha);assertTrue(sha.matches("[a-f0-9]{40}"));
@@ -181,25 +182,46 @@ public class ManagedWatchlistSavedScenarioTest {
         });
         Log.i("WatchlistSavedScenarioEditing", "phase="+phase+", "+observed+", nativeBeforeSelection="+nativeEditingState+", nativeNow="+nativeNow.get());
     }
+    private void startNoteObservation() {
+        if(!"#managed-research-note".equals(editingSelector))return;
+        noteObservationOwner=SystemClock.uptimeMillis()+":"+editingSelector;
+        try {
+            page.read(new Script("(()=>{\nif(!document.querySelector('#fixture-watchlist-saved-scenario')||window.__watchlistScenarioNoteEvents)throw new Error('Fixture event observer unavailable');\nconst state={owner:"+q(noteObservationOwner)+",events:[],dropped:0,errors:0,active:true,types:['keydown','keyup','pointerdown','pointerup','pointercancel','touchstart','touchend','touchcancel','focus','blur','focusin','focusout','beforeinput','input','selectionchange','click','dblclick']};\nconst finite=v=>typeof v==='number'&&Number.isFinite(v)?v:null;\nconst label=v=>typeof v==='string'?v.slice(0,128):null;\nconst field=e=>({id:label(e?.id),tag:label(e?.tagName),valueLength:typeof e?.value==='string'?e.value.length:null,selectionStart:finite(e?.selectionStart),selectionEnd:finite(e?.selectionEnd)});\nstate.listener=e=>{\nif(!state.active||!e.isTrusted)return;if(state.events.length>=64){state.dropped++;return;}\ntry{const t=e.target,n=document.querySelector('#managed-research-note'),c=e.changedTouches?.[0],point=c??e,row={type:e.type,isTrusted:e.isTrusted,detail:finite(e.detail),targetIsNote:t===n,activeIsNote:document.activeElement===n,note:field(n),key:typeof e.key==='string'&&e.key.length===1?'[character]':label(e.key),code:label(e.code),ctrl:e.ctrlKey??null,defaultPrevented:e.defaultPrevented,target:field(t),active:field(document.activeElement),related:field(e.relatedTarget),time:finite(e.timeStamp),observedAt:performance.now(),inputType:label(e.inputType),dataLength:typeof e.data==='string'?e.data.length:null,isComposing:e.isComposing??null,pointerType:label(e.pointerType),pointerId:finite(e.pointerId),button:finite(e.button),buttons:finite(e.buttons),touchCount:finite(e.touches?.length),changedTouchCount:finite(e.changedTouches?.length),clientX:finite(point.clientX),clientY:finite(point.clientY),pageX:finite(point.pageX),pageY:finite(point.pageY),screenX:finite(point.screenX),screenY:finite(point.screenY)};\nstate.events.push(row);queueMicrotask(()=>{if(!state.active)return;try{row.defaultPreventedAtMicrotask=e.defaultPrevented;row.targetAtMicrotask=field(t);row.activeAtMicrotask=field(document.activeElement);row.noteAtMicrotask=field(n);row.activeIsNoteAtMicrotask=document.activeElement===n;}catch{state.errors++;}});\n}catch{state.errors++;}};\nstate.cleanup=()=>{state.active=false;for(const type of state.types)document.removeEventListener(type,state.listener,true);if(window.__watchlistScenarioNoteEvents===state)delete window.__watchlistScenarioNoteEvents;};\ntry{window.__watchlistScenarioNoteEvents=state;for(const type of state.types)document.addEventListener(type,state.listener,{capture:true,passive:true});return 'observing';}catch(error){state.cleanup();throw error;}\n})()"));
+        }catch(Exception|AssertionError unavailable){Log.i("WatchlistSavedScenarioEditing","noteObserverUnavailable="+unavailable.getClass().getName());}
+    }
+    private void stopNoteObservation() {
+        if(!"#managed-research-note".equals(editingSelector))return;
+        try {
+            String observed=page.read(new Script("JSON.stringify((()=>{const s=window.__watchlistScenarioNoteEvents;if(!s||s.owner!=="+q(noteObservationOwner)+")return null;try{return {events:s.events,dropped:s.dropped,errors:s.errors};}finally{s.cleanup();}})())"));
+            if(observed!=null&&!observed.equals("null")) {
+                JSONObject result=new JSONObject(observed);org.json.JSONArray events=result.getJSONArray("events");
+                Log.i("WatchlistSavedScenarioEditing","phase=input-observer-final,selector="+editingSelector+",count="+events.length()+",dropped="+result.getInt("dropped")+",errors="+result.getInt("errors"));
+                for(int index=0;index<events.length();index++)Log.i("WatchlistScenarioNoteEvent","selector="+editingSelector+",index="+index+",event="+events.getJSONObject(index));
+            }
+        }catch(Exception|AssertionError unavailable){Log.i("WatchlistSavedScenarioEditing","noteObserverCleanupUnavailable="+unavailable.getClass().getName());}
+    }
     private void replace(String selector,String value)throws Exception {
         editingSelector=selector;nativeEditingState="not yet observed";
         String original=page.read(new Script("document.querySelector("+q(selector)+").value"));
-        tap(selector);
-        String focused="(()=>{const e=document.querySelector("+q(selector)+");return !!e&&document.activeElement===e&&!e.disabled&&!e.readOnly&&e.value==="+q(original)+";})()";
-        page.await(new Check("exact assessment and original value own native focus before IME",new Script(focused)).nativeReady());
-        nativeEditingState=keyboard.awaitVisibleEditor(selector);
-        page.await(new Check("settled IME retains exact focused field and original value",new Script(focused)).nativeReady());
-        // Bind the settled native selection directly. A second coordinate tap can hit
-        // Android's text-selection actions even when the DOM still reports this field.
-        page.await(new Check("settled native caret retains exact field and original value",new Script(focused)).nativeReady());
-        try (ReassessmentNativeEditor editor=ReassessmentNativeEditor.bind(scenario,()->readEditingDom(selector),original)) {
-            diagnoseEditing("before-select-all");
-            editor.selectAll();
-            await("native selection covers the whole original assessment",focused+"&&document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");
-            diagnoseEditing("after-select-all");
-            editor.commit(value);
-            await("full Unicode assessment reaches the real controlled input","document.querySelector("+q(selector)+").value==="+q(value));
-        }
-        keyboard.closeSoftKeyboard();
+        startNoteObservation();
+        try {
+            tap(selector);
+            String focused="(()=>{const e=document.querySelector("+q(selector)+");return !!e&&document.activeElement===e&&!e.disabled&&!e.readOnly&&e.value==="+q(original)+";})()";
+            page.await(new Check("exact assessment and original value own native focus before IME",new Script(focused)).nativeReady());
+            nativeEditingState=keyboard.awaitVisibleEditor(selector);
+            page.await(new Check("settled IME retains exact focused field and original value",new Script(focused)).nativeReady());
+            // Bind the settled native selection directly. A second coordinate tap can hit
+            // Android's text-selection actions even when the DOM still reports this field.
+            page.await(new Check("settled native caret retains exact field and original value",new Script(focused)).nativeReady());
+            try (ReassessmentNativeEditor editor=ReassessmentNativeEditor.bind(scenario,()->readEditingDom(selector),original)) {
+                diagnoseEditing("before-select-all");
+                editor.selectAll();
+                await("native selection covers the whole original assessment",focused+"&&document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");
+                diagnoseEditing("after-select-all");
+                editor.commit(value);
+                await("full Unicode assessment reaches the real controlled input","document.querySelector("+q(selector)+").value==="+q(value));
+            }
+            keyboard.closeSoftKeyboard();
+        } finally {stopNoteObservation();}
     }
 }

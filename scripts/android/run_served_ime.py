@@ -532,11 +532,14 @@ def runtime(args):
                 observed_alive = supervisor.alive(state["emulator"])
                 state["finalizationStartObservation"] = {"gradleExitCode": observed_exit,
                                                           "ownedProcessAlive": observed_alive, "at": time.time()}
-                eligible = observed_exit == 0 or (observed_exit is None and not observed_alive)
+                # These observations describe entry, not proof of final disposal.
+                # GMD can close its transport before either process has exited.
+                eligible = True
             except Exception as observation_failure:
                 state["finalizationObservationError"] = str(observation_failure)
         if eligible:
             pending_finalization = failure
+            error = str(failure)
             state["finalizationReadFailure"] = failure.diagnostic
             supervisor.event("finalization-read-failed")
         else:
@@ -555,6 +558,7 @@ def runtime(args):
         if pending_finalization is not None:
             try:
                 supervisor.reconcile_disposal(finalization_deadline)
+                error = None  # Only complete final proof resolves the retained read failure.
             except Exception as failure:
                 error = str(pending_finalization)
                 state["finalizationError"] = str(failure)
