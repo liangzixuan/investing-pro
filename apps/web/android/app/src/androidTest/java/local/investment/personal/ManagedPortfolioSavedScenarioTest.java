@@ -33,6 +33,7 @@ import local.investment.personal.ReportRevisitPage.Script;
 public class ManagedPortfolioSavedScenarioTest {
     private static final String D="JSON.parse(document.querySelector('#fixture-portfolio-saved-scenario').textContent)";
     private static final String F="JSON.parse(document.querySelector('#fixture-followups-diagnostics').textContent)";
+    private static final String SAME_JSON = "(function sameJsonValue(a,b){if(Object.is(a,b))return true;if(a===null||b===null||typeof a!==\"object\"||typeof b!==\"object\")return false;if(Array.isArray(a)||Array.isArray(b))return Array.isArray(a)&&Array.isArray(b)&&a.length===b.length&&a.every((v,i)=>sameJsonValue(v,b[i]));const keys=Object.keys(a);return keys.length===Object.keys(b).length&&keys.every(k=>Object.hasOwn(b,k)&&sameJsonValue(a[k],b[k]));})";
     private static final String CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
     private ActivityScenario<MainActivity> scenario;
     private ReportRevisitFixtureAssets assets;
@@ -113,7 +114,7 @@ public class ManagedPortfolioSavedScenarioTest {
         await("confirmed collection Save retires passive baseline but preserves complete current raw drafts",D+".review.reading===null&&JSON.stringify(["+D+".workbench.dcfDraft,"+D+".workbench.exitDraft])==="+q(editedInputs));
         expectedValuations=page.read(new Script("JSON.stringify("+D+".saved.valuations.payload)"));pressBack();
         click("//summary[normalize-space(.)='Edit opening balances']");replace("input[aria-label='Ledger opening cash']","25.00");click("//button[normalize-space(.)='Apply opening changes']");tap("#managed-portfolio-review");tap("#managed-portfolio-save");
-        await("Portfolio Save alone changes only authored cash",D+".counts.portfolioSave===1&&"+F+".save===0&&"+D+".saved.portfolio.payload.opening.cashUsd==='25.00'&&JSON.stringify("+D+".saved.portfolio.payload.identities)===JSON.stringify("+D+".original.portfolio.payload.identities)&&JSON.stringify("+D+".saved.portfolio.payload.opening.holdings)===JSON.stringify("+D+".original.portfolio.payload.opening.holdings)");
+        await("Portfolio Save alone changes only authored cash",D+".counts.portfolioSave===1&&"+F+".save===0&&"+D+".saved.portfolio.payload.opening.cashUsd==='25.00'&&"+SAME_JSON+"("+D+".saved.portfolio.payload.identities,"+D+".original.portfolio.payload.identities)&&JSON.stringify("+D+".saved.portfolio.payload.opening.holdings)===JSON.stringify("+D+".original.portfolio.payload.opening.holdings)");
         expectedPortfolio=page.read(new Script("JSON.stringify("+D+".saved.portfolio.payload)"));navigate("Follow-ups");tap("#managed-followups-save");
         await("third resource Save retains original check and does not save Watchlist",F+".commits===1&&"+D+".saved.followups.payload.entries.length===2&&JSON.stringify("+D+".saved.followups.payload.entries[0])===JSON.stringify("+D+".original.followups.payload.entries[0])&&"+D+".counts.save===0");
         expectedFollowups=page.read(new Script("JSON.stringify("+D+".saved.followups.payload)"));boundary();

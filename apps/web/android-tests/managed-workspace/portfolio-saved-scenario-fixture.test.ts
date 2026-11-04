@@ -10,6 +10,73 @@ import {
 } from "../../src/clerk-trial/test-portfolio-valuation-fixture";
 import { createFixture } from "./fixture";
 import { ManagedHoldingFollowup } from "../../src/clerk-trial/ManagedHoldingFollowup";
+import { sameJsonValue } from "./research-draft-set-native-comparison";
+
+it("preserves complete ordered Portfolio values through the real Save parser despite object key ordering", async () => {
+  const f = await createFixture("portfolio-saved-scenario");
+  const store = f.portfolioSavedScenario!;
+  const original = store.saved().portfolio;
+  const payload = structuredClone(original.payload!);
+  const edited = {
+    ...payload,
+    opening: { ...payload.opening, cashUsd: "25.00" },
+  };
+  await f.api.savePortfolio(
+    {
+      expectedVersion: original.version,
+      idempotencyKey: "portfolio-cash-comparison",
+      payload: edited,
+    },
+    new AbortController().signal,
+  );
+  const saved = store.saved().portfolio.payload!;
+  expect(store.getSnapshot().portfolioSave).toBe(1);
+  expect(store.getSnapshot().valuationSave).toBe(0);
+  expect(f.followups!.getSnapshot().save).toBe(0);
+  expect(saved.opening.cashUsd).toBe("25.00");
+  expect(JSON.stringify(saved.identities)).not.toBe(
+    JSON.stringify(original.payload!.identities),
+  );
+  expect(sameJsonValue(saved, edited)).toBe(true);
+  expect(sameJsonValue(saved.identities, original.payload!.identities)).toBe(
+    true,
+  );
+  expect(JSON.stringify(saved.opening.holdings)).toBe(
+    JSON.stringify(original.payload!.opening.holdings),
+  );
+  const missing = saved.identities.map((identity) =>
+    Object.fromEntries(
+      Object.entries(identity).filter(([key]) => key !== "country"),
+    ),
+  );
+  expect(sameJsonValue(missing, original.payload!.identities)).toBe(false);
+  const extra = saved.identities.map((identity) => ({
+    ...identity,
+    extra: "unadmitted",
+  }));
+  expect(sameJsonValue(extra, original.payload!.identities)).toBe(false);
+  expect(
+    sameJsonValue(saved.opening.holdings, original.payload!.opening.holdings),
+  ).toBe(true);
+  const changed = [...structuredClone(saved.identities)];
+  changed[0] = {
+    ...changed[0]!,
+    shareClassId: changed[0]!.shareClassId + "-changed",
+  };
+  expect(sameJsonValue(changed, original.payload!.identities)).toBe(false);
+  expect(
+    sameJsonValue(
+      [...saved.identities].reverse(),
+      original.payload!.identities,
+    ),
+  ).toBe(false);
+  expect(
+    sameJsonValue(saved.identities.slice(1), original.payload!.identities),
+  ).toBe(false);
+  const raw = [...structuredClone(saved.opening.holdings)];
+  raw[0] = { ...raw[0]!, shares: raw[0]!.shares + ".0" };
+  expect(sameJsonValue(raw, original.payload!.opening.holdings)).toBe(false);
+});
 
 function renderedRows($: CheerioAPI, index: number) {
   const e = $("[data-portfolio-scenario-listing]").eq(index);
@@ -311,4 +378,27 @@ it("opens the holding question form rather than the nested identity disclosure",
   } finally {
     f.dispose();
   }
+});
+
+it("binds native Portfolio identity preservation to the existing complete JSON comparator", () => {
+  const source = (name: string) =>
+    readFileSync(
+      new URL(
+        `../../android/app/src/androidTest/java/local/investment/personal/${name}.java`,
+        import.meta.url,
+      ),
+      "utf8",
+    );
+  const literal = (text: string) =>
+    /private static final String SAME_JSON = ("(?:\\.|[^"\\])*");/.exec(
+      text,
+    )?.[1];
+  const native = source("ManagedPortfolioSavedScenarioTest");
+  expect(literal(native)).toBeDefined();
+  expect(literal(native)).toBe(
+    literal(source("ManagedResearchDraftSetRecoveryTest")),
+  );
+  expect(native).toContain(
+    '"+SAME_JSON+"("+D+".saved.portfolio.payload.identities,"+D+".original.portfolio.payload.identities)',
+  );
 });
