@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Authenticated test-process IPC. No production component or general command endpoint. */
 public final class ServedEditorControlProvider extends ContentProvider {
@@ -37,6 +38,9 @@ public final class ServedEditorControlProvider extends ContentProvider {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private String previousDefault, previousEnabled, previousSubtype;
     private InputMethodSubtype previousSubtypeObject;
+    private ServedEditorIme editService;
+    private InputConnection editConnection;
+    private long editIdentity;
 
     @Override public boolean onCreate() { return true; }
 
@@ -65,7 +69,7 @@ public final class ServedEditorControlProvider extends ContentProvider {
             case "arm" -> keys.addAll(Set.of("previousDefault", "previousEnabled", "previousSubtype"));
             case "observe", "close" -> {}
             case "bind" -> keys.addAll(Set.of("generation", "original", "start", "end"));
-            case "select", "commit" -> {
+            case "select", "commit", "observe-edit" -> {
                 keys.addAll(Set.of("generation", "edit", "original", "start", "end"));
                 if (method.equals("commit")) keys.add("value");
             }
@@ -79,6 +83,7 @@ public final class ServedEditorControlProvider extends ContentProvider {
         ServedEditorGuard.Ticket ticket = arm ? null : GUARD.admit(caller, nonce, sequence, deadline, SystemClock.uptimeMillis());
         CompletableFuture<Bundle> result = new CompletableFuture<>(); AtomicBoolean pending = new AtomicBoolean(true);
         AtomicReference<Runnable> barrier = new AtomicReference<>();
+        AtomicLong requestEdit = new AtomicLong(Set.of("select","commit","observe-edit").contains(method)?number(data,"edit"):0); boolean responseAccepted=false;
         Runnable work = () -> {
             try {
                 requirePending(pending, deadline);
@@ -102,6 +107,7 @@ public final class ServedEditorControlProvider extends ContentProvider {
                 if (method.equals("close")) {
                     String selected = selectedIme();
                     GUARD.close(ticket, SystemClock.uptimeMillis()); // Retire editing authority before restoring the keyboard.
+                    clearPreparedConnection();
                     if (!COMPONENT.equals(selected) && !previousDefault.equals(selected))
                         throw new SecurityException("Another IME was selected during the fixture session");
                     ServedEditorIme service = ServedEditorIme.current;
@@ -112,7 +118,8 @@ public final class ServedEditorControlProvider extends ContentProvider {
                     result.complete(baseline()); return;
                 }
                 if (method.equals("release")) {
-                    GUARD.release(ticket, number(data, "edit"), SystemClock.uptimeMillis()); result.complete(new Bundle()); return;
+                    long released=number(data,"edit");GUARD.release(ticket,released,SystemClock.uptimeMillis());
+                    if(released==editIdentity)clearPreparedConnection();result.complete(new Bundle());return;
                 }
                 long generation = method.equals("observe") ? GUARD.generation() : number(data, "generation");
                 ServedEditorIme service = ServedEditorIme.current;
@@ -128,27 +135,8 @@ public final class ServedEditorControlProvider extends ContentProvider {
                 if (ServedEditorIme.current != service || service.servedConnection() != connection)
                     throw new IllegalStateException("Framework replaced the served connection");
                 if (!method.equals("observe")) {
-                    String original = string(data, "original"); int start = integer(data, "start"), end = integer(data, "end");
-                    requireCompleteOriginal(snapshot, original, start, end);
-                    if (method.equals("bind")) snapshot.putLong("edit", GUARD.bind(ticket, generation, original, SystemClock.uptimeMillis()));
-                    else {
-                        long edit = number(data, "edit");
-                        if (!original.equals(GUARD.requireEdit(ticket, generation, edit, SystemClock.uptimeMillis())))
-                            throw new IllegalStateException("Original text changed since binding");
-                        boolean dispatched;
-                        if (method.equals("select")) {
-                            requirePending(pending, deadline); GUARD.claimSelect(ticket, generation, edit, SystemClock.uptimeMillis());
-                            dispatched = connection.performContextMenuAction(android.R.id.selectAll);
-                        } else {
-                            if (start != 0 || end != original.length()) throw new IllegalStateException("Full native and DOM selection required");
-                            String value = string(data, "value");
-                            if (value.length() > 16_384) throw new IllegalStateException("Fixture replacement exceeds the bounded input");
-                            requirePending(pending, deadline); GUARD.claimCommit(ticket, generation, edit, SystemClock.uptimeMillis());
-                            dispatched = connection.commitText(value, 1);
-                        }
-                        Log.i("ServedEditorIme", "command=" + method + ",generation=" + generation + ",edit=" + edit + ",dispatched=" + dispatched);
-                        if (!dispatched) throw new IllegalStateException("Framework refused the one native dispatch; do not retry");
-                    }
+                    applyEditCommand(method,data,ticket,generation,service,connection,snapshot,pending,deadline);
+                    if(method.equals("bind"))requestEdit.set(snapshot.getLong("edit"));
                 }
                 // Let already queued lifecycle callbacks run before accepting this observation/result.
                 Runnable accept = () -> {
@@ -157,16 +145,17 @@ public final class ServedEditorControlProvider extends ContentProvider {
                         if (ServedEditorIme.current != service || service.servedConnection() != connection)
                             throw new IllegalStateException("Served generation changed before result acceptance");
                         result.complete(snapshot);
-                    } catch (RuntimeException failure) { result.completeExceptionally(failure); }
+                    } catch (RuntimeException failure) { retirePreparedConnection(requestEdit.get());result.completeExceptionally(failure); }
                 };
                 barrier.set(accept);
                 if (!MAIN.post(accept)) throw new IllegalStateException("IME main handler refused the lifecycle barrier");
-            } catch (RuntimeException failure) { result.completeExceptionally(failure); }
+            } catch (RuntimeException failure) { retirePreparedConnection(requestEdit.get());result.completeExceptionally(failure); }
         };
         try {
             requirePending(pending, deadline);
             if (!MAIN.post(work)) throw new IllegalStateException("IME main handler refused the bounded command");
-            return result.get(Math.max(1, deadline - SystemClock.uptimeMillis()), TimeUnit.MILLISECONDS);
+            Bundle response=result.get(Math.max(1,deadline-SystemClock.uptimeMillis()),TimeUnit.MILLISECONDS);
+            requirePending(pending,deadline);responseAccepted=true;return response;
         } catch (ExecutionException failure) {
             if (failure.getCause() instanceof RuntimeException runtime) throw runtime;
             throw new IllegalStateException("Fixture IME command failed", failure);
@@ -175,8 +164,48 @@ public final class ServedEditorControlProvider extends ContentProvider {
         } finally {
             pending.set(false); if (ticket != null) ticket.cancel(); MAIN.removeCallbacks(work); result.cancel(false);
             if (barrier.get() != null) MAIN.removeCallbacks(barrier.get());
+            long failedEdit=requestEdit.get();
+            if(!responseAccepted&&failedEdit>0)MAIN.post(()->retirePreparedConnection(failedEdit));
         }
     }
+    private void applyEditCommand(String method,Bundle data,ServedEditorGuard.Ticket ticket,long generation,
+        ServedEditorIme service,InputConnection connection,Bundle snapshot,AtomicBoolean pending,long deadline) {
+        long owned=method.equals("bind")?0:number(data,"edit");
+        try{applyPreparedEditCommand(method,data,ticket,generation,service,connection,snapshot,pending,deadline);}
+        catch(RuntimeException|Error failure){retirePreparedConnection(owned);throw failure;}
+    }
+    private void applyPreparedEditCommand(String method,Bundle data,ServedEditorGuard.Ticket ticket,long generation,
+        ServedEditorIme service,InputConnection connection,Bundle snapshot,AtomicBoolean pending,long deadline) {
+        String original=string(data,"original");int start=integer(data,"start"),end=integer(data,"end");
+        if(original.length()>16_384||start<0||end<start||end>original.length())
+            throw new IllegalStateException("Invalid complete original DOM range");
+        if(method.equals("bind")) {
+            long edit=GUARD.bind(ticket,generation,original,SystemClock.uptimeMillis());
+            editService=service;editConnection=connection;editIdentity=edit;snapshot.putLong("edit",edit);return;
+        }
+        long edit=number(data,"edit");
+        if(!original.equals(GUARD.requireEdit(ticket,generation,edit,SystemClock.uptimeMillis())))
+            throw new IllegalStateException("Original DOM text changed since ownership preparation");
+        if(edit!=editIdentity||service!=editService||connection!=editConnection)
+            throw new IllegalStateException("Prepared framework service or connection changed");
+        if(method.equals("observe-edit"))return;
+        boolean dispatched;
+        if(method.equals("select")) {
+            requirePending(pending,deadline);GUARD.claimSelect(ticket,generation,edit,SystemClock.uptimeMillis());
+            dispatched=connection.performContextMenuAction(android.R.id.selectAll);
+        }else if(method.equals("commit")) {
+            requireCompleteOriginal(snapshot,original,start,end);
+            if(start!=0||end!=original.length())throw new IllegalStateException("Full native and DOM selection required");
+            String value=string(data,"value");
+            if(value.length()>16_384)throw new IllegalStateException("Fixture replacement exceeds the bounded input");
+            requirePending(pending,deadline);GUARD.claimCommit(ticket,generation,edit,SystemClock.uptimeMillis());
+            dispatched=connection.commitText(value,1);
+        }else throw new SecurityException("Unknown prepared edit command");
+        Log.i("ServedEditorIme","command="+method+",generation="+generation+",edit="+edit+",dispatched="+dispatched);
+        if(!dispatched)throw new IllegalStateException("Framework refused the one native dispatch; do not retry");
+    }
+    private void retirePreparedConnection(long edit) {if(edit>0&&edit==editIdentity)clearPreparedConnection();}
+    private void clearPreparedConnection() {editService=null;editConnection=null;editIdentity=0;}
     private Bundle snapshot(InputConnection connection, long generation) {
         ExtractedTextRequest request = new ExtractedTextRequest(); request.hintMaxChars = 16_384;
         ExtractedText text = connection.getExtractedText(request, 0); Bundle result = new Bundle();

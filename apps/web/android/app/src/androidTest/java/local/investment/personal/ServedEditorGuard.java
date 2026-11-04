@@ -17,7 +17,7 @@ final class ServedEditorGuard {
         }
         void cancel() { pending.set(false); }
     }
-    private enum Stage { BOUND, SELECTED, COMMITTED }
+    private enum Stage { PREPARED, SELECTED, COMMITTED }
     private final Set<String> usedNonces = new HashSet<>();
     private String nonce, original;
     private int ownerUid;
@@ -74,7 +74,7 @@ final class ServedEditorGuard {
         checkInput(ticket, expectedGeneration, now);
         if (stage != null || value == null || value.length() > 16_384)
             throw new IllegalStateException("An edit is already bound or its original is invalid");
-        edit = ++editCounter; original = value; stage = Stage.BOUND; return edit;
+        edit = ++editCounter; original = value; stage = Stage.PREPARED; return edit;
     }
     synchronized String requireEdit(Ticket ticket, long expectedGeneration, long expectedEdit, long now) {
         checkInput(ticket, expectedGeneration, now);
@@ -83,7 +83,7 @@ final class ServedEditorGuard {
     }
     synchronized void claimSelect(Ticket ticket, long expectedGeneration, long expectedEdit, long now) {
         requireEdit(ticket, expectedGeneration, expectedEdit, now);
-        if (stage != Stage.BOUND) throw new IllegalStateException("Select all was already dispatched");
+        if (stage != Stage.PREPARED) throw new IllegalStateException("Select all was already dispatched");
         stage = Stage.SELECTED;
     }
     synchronized void claimCommit(Ticket ticket, long expectedGeneration, long expectedEdit, long now) {
