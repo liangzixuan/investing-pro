@@ -35,6 +35,7 @@ public class ManagedTwoCompanyResearchReviewTest {
     private static final String CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
     private ActivityScenario<MainActivity> scenario;
     private ReportRevisitFixtureAssets assets;
+    private ServedEditorSession imeSession;
     private ReportRevisitPage page;
     private ReportRevisitTouch touch;
     private ReportRevisitKeyboard keyboard;
@@ -43,6 +44,7 @@ public class ManagedTwoCompanyResearchReviewTest {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
         sha=InstrumentationRegistry.getArguments().getString("expectedSourceSha");assertNotNull(sha);assertTrue(sha.matches("[a-f0-9]{40}"));
         assets=new ReportRevisitFixtureAssets(ReportRevisitFixtureAssets.Scenario.TWO_COMPANY_RESEARCH_REVIEW);assets.prepare();
+        imeSession=ServedEditorSession.open();
         scenario=ActivityScenario.launch(MainActivity.class);page=new ReportRevisitPage(scenario);touch=new ReportRevisitTouch(page);keyboard=new ReportRevisitKeyboard(page,touch);
         scenario.onActivity(a->{assertEquals("local.investment.personal",a.getPackageName());assertNotNull(a.getBridge().getPlugin("App"));assertNull(a.getBridge().getPlugin("InvestmentAuth"));assertFalse(a.getBridge().getConfig().isWebContentsDebuggingEnabled());assertFalse(a.getBridge().getConfig().isMixedContentAllowed());assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW,a.getBridge().getWebView().getSettings().getMixedContentMode());keyboard.observe(a);a.getBridge().setServerBasePath(assets.directory().getAbsolutePath());});
         page.awaitStartup(new Check("three independently unloaded resources",new Script("location.href==='https://localhost/'&&"+D+".counts.status===1&&"+D+".watchlist.draft===null&&"+D+".valuations.draft===null&&"+D+".followups.draft===null&&"+D+".view.view==='watchlist'")).nativeReady());
@@ -136,7 +138,15 @@ public class ManagedTwoCompanyResearchReviewTest {
     private String read(String suffix)throws Exception{return page.read(new Script(D+suffix));}
     private static String q(String value){return JSONObject.quote(value);}
     private void diagnose(){try{Log.e("TwoCompanyResearchReview","stage="+stage+", "+page.read(new Script("JSON.stringify({counts:"+D+".counts,view:"+D+".view.view,side:"+D+".review.activeSide,calculations:"+D+".calculationPublications,active:document.activeElement?.id})")));}catch(Exception|AssertionError failure){Log.e("TwoCompanyResearchReview","Diagnostic unavailable",failure);}}
-    @After public void closeInventedDecision()throws Exception {try{if(scenario!=null)scenario.close();}finally{if(assets!=null)assets.close();}}
+    @After public void closeInventedDecision()throws Exception {
+        Throwable failure=null;
+        try{if(imeSession!=null)imeSession.close();}catch(Throwable cleanup){failure=cleanup;}
+        try{if(scenario!=null)scenario.close();}catch(Throwable cleanup){if(failure==null)failure=cleanup;else failure.addSuppressed(cleanup);}
+        try{if(assets!=null)assets.close();}catch(Throwable cleanup){if(failure==null)failure=cleanup;else failure.addSuppressed(cleanup);}
+        if(failure instanceof Error error)throw error;
+        if(failure instanceof Exception exception)throw exception;
+        if(failure!=null)throw new IllegalStateException("Fixture cleanup failed",failure);
+    }
     private void fullResults(String side)throws Exception {
         String root="document.querySelector("+q("[data-research-reading-side='"+side+"'] [aria-label='Captured valuation'] [aria-label='Authored valuation results']")+")";
         await("every scenario, projection, sensitivity and formula value is rendered in order", "(()=>{const e="+root+",c="+D+".review.reading["+q(side)+"].valuation,keys=['conservative','base','expansion'],labels=['Conservative','Base','Expansion'];const rows=label=>[...e.querySelectorAll('table')].find(t=>t.caption.textContent===label);const cells=label=>[...rows(label).tBodies[0].rows].map(r=>[...r.cells].map(x=>x.textContent));const exact=(label,value)=>JSON.stringify(cells(label))===JSON.stringify(value);return exact('Cash flow DCF scenarios',keys.map((n,i)=>{const v=c.dcfResult.scenarios[n];return [labels[i],v.annualCashFlowGrowthPercent,v.enterpriseValueUsd,v.equityValueUsd,v.valuePerShareUsd,v.terminalValuePercentOfEnterpriseValue]}))&&exact('Exit multiple scenarios',keys.map((n,i)=>{const v=c.exitResult.scenarios[n];return [labels[i],v.yearNRevenue,v.yearNEbitda,v.presentEnterpriseValue,v.equityValue,v.valuePerShare]}))&&keys.every((n,i)=>exact(labels[i]+' cash flow projection',c.dcfResult.scenarios[n].projection.map(v=>[String(v.year),v.cashFlowUsd,v.presentValueUsd])))&&exact('DCF sensitivity — value per share in USD/share',c.dcfResult.sensitivity.cells.map(v=>[v.waccPercent,v.terminalGrowthPercent,v.enterpriseValueUsd,v.equityValueUsd,v.valuePerShareUsd]))&&exact('Exit multiple sensitivity — value per share in USD/share',c.exitResult.sensitivity.cells.map(v=>[v.discountRatePercent,v.exitMultiple,v.result.presentEnterpriseValue,v.result.equityValue,v.result.valuePerShare]))&&keys.every(n=>c.exitResult.scenarios[n].formulaTrace.every(v=>e.textContent.includes(v)));})()");
