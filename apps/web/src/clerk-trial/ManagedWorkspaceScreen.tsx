@@ -2,6 +2,7 @@ import { ManagedScreenResearchCapture } from "./ManagedScreenResearchReview";
 import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
+import type { WatchlistDailyReportDeliveryAdapter } from "./watchlist-daily-report-ports";
 import type { ScreenResearchReportDeliveryAdapter } from "./screen-research-report-ports";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import {
@@ -111,6 +112,7 @@ interface ManagedFileDeliveries {
   financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   screenResearchReportDelivery?: ScreenResearchReportDeliveryAdapter;
+  watchlistDailyReportDelivery?: WatchlistDailyReportDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
   portfolioDraftFileDelivery?: ManagedPortfolioDraftFileDeliveryAdapter;
@@ -265,6 +267,7 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
     financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
     screenComparisonReportDelivery: initial.screenComparisonReportDelivery,
     screenResearchReportDelivery: initial.screenResearchReportDelivery,
+    watchlistDailyReportDelivery: initial.watchlistDailyReportDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     portfolioReviewReportDelivery: initial.portfolioReviewReportDelivery,
     portfolioComparisonReportDelivery:
@@ -503,6 +506,7 @@ export function ManagedWorkspaceScreen({
   financialScreenRecipeDelivery,
   screenComparisonReportDelivery,
   screenResearchReportDelivery,
+  watchlistDailyReportDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
@@ -1738,6 +1742,9 @@ export function ManagedWorkspaceScreen({
                 {saved.draft && (
                   <>
                     <ManagedFilingsReviewEntry
+                      {...(watchlistDailyReportDelivery
+                        ? { reportDelivery: watchlistDailyReportDelivery }
+                        : {})}
                       workspace={workspace}
                       navigation={navigation}
                       openResearch={openResearch}

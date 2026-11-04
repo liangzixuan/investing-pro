@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated November 1, 2026. This document defines the durable product goals and
+Updated November 4, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,14 +27,24 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: keep a complete paired research report
+## Current priority: keep a complete Watchlist daily review report
 
-Complete the retained two-company workflow with an explicit private HTML export
-under M4. Preserve both complete research and valuation readings, with original
-periods and clocks, through Prepare, preview and chosen document delivery. Reuse
-existing source evidence and document writers; see the
-[report guide](MANAGED_PAIRED_RESEARCH_REPORT.md). This source candidate has
-separate pending native and release acceptance.
+Complete the retained daily workflow with a private HTML report under M4.
+Prepare it explicitly after Finish, preview the full ordered evidence and saved
+scenarios, then choose document delivery. Keep original clocks and complete
+refusals; preparation must not load sources, calculate or save resources.
+The local implementation reuses existing document writers. Source and native
+acceptance and client delivery remain pending; see the [daily report guide](MANAGED_WATCHLIST_DAILY_REPORT.md).
+
+## Delivered: paired reports and Watchlist saved scenarios
+
+Android 1.73 provides the [paired research report](MANAGED_PAIRED_RESEARCH_REPORT.md)
+and [Watchlist saved-scenario reading](MANAGED_WATCHLIST_SAVED_SCENARIOS.md).
+Accepted main `f1cff98614e1c51221094f90bf5e57e0ed086d60` passed original source
+and parser checks and all 142 native cases. The existing-signer build, four checks
+on the same APK and local copy/checksum readback passed. Browser, installation
+and physical-phone acceptance remain separate. No API or website deployment
+was performed.
 
 ## Delivered: two-company research decision review
 

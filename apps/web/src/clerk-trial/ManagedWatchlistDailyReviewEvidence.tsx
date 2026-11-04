@@ -9,7 +9,13 @@ import {
 import { ManagedFilingsRefreshComparisonDetails } from "./ManagedFilingsRefreshComparisonDetails";
 import { ListingIdentity } from "./ManagedListingIdentity";
 
-function PriceEvidence({ price }: { price: ManagedEodHistoryState | null }) {
+function PriceEvidence({
+  price,
+  offline,
+}: {
+  price: ManagedEodHistoryState | null;
+  offline: boolean;
+}) {
   const response = price?.response;
   return (
     <section aria-label="Retained daily Price evidence">
@@ -43,11 +49,30 @@ function PriceEvidence({ price }: { price: ManagedEodHistoryState | null }) {
             <dd>{response.completedAt}</dd>
           </dl>
           {response.rows.length ? (
-            <CloseHistoryChart
-              appearance="precision-desk"
-              rows={response.rows}
-              symbol={response.security.symbol}
-            />
+            offline ? (
+              <table aria-label="All retained raw USD closes">
+                <thead>
+                  <tr>
+                    <th scope="col">Trading date</th>
+                    <th scope="col">Raw close (USD)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {response.rows.map((row) => (
+                    <tr key={row.date}>
+                      <th scope="row">{row.date}</th>
+                      <td>{row.close}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <CloseHistoryChart
+                appearance="precision-desk"
+                rows={response.rows}
+                symbol={response.security.symbol}
+              />
+            )
           ) : (
             <p>The verified response contains no closing prices.</p>
           )}
@@ -125,15 +150,19 @@ function FilingsEvidence({ filings }: { filings: ManagedCompanyFilingsState }) {
 
 export function ManagedWatchlistDailyReviewEvidence({
   row,
+  offline = false,
 }: {
-  row: ManagedFilingsReviewRow;
+  offline?: boolean;
+  row: Omit<ManagedFilingsReviewRow, "member"> & {
+    readonly member: Pick<ManagedFilingsReviewRow["member"], "listing">;
+  };
 }) {
   return (
     <div className="managed-watchlist-daily-evidence">
       <p>
         <ListingIdentity member={row.member.listing} />
       </p>
-      <PriceEvidence price={row.price} />
+      <PriceEvidence price={row.price} offline={offline} />
       <FilingsEvidence filings={row.filings} />
     </div>
   );

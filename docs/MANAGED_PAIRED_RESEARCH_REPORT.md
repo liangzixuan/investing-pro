@@ -1,9 +1,10 @@
 # Keep a paired company research report
 
 After researching both finalists in the two-company review, prepare one private
-HTML report from their retained readings. This source candidate extends the
-[two-company workflow](MANAGED_SCREEN_RESEARCH_REVIEW.md); it is not yet a
-delivered Android feature.
+HTML report from their retained readings. Android 1.73 provides this extension
+to the [two-company workflow](MANAGED_SCREEN_RESEARCH_REVIEW.md). Main source
+and native checks, the existing-signer build, four APK checks and local delivery
+passed. Browser and physical-phone acceptance are not claimed.
 
 ## Prepare and save
 

@@ -1,3 +1,4 @@
+import type { WatchlistDailyReportDeliveryAdapter } from "./watchlist-daily-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
@@ -129,6 +130,11 @@ async function mount(
       .mockRejectedValue(new Error("synthetic unavailable")),
     ...overrides,
   };
+  const watchlistDailyReportPlugin = {
+    choose: vi.fn(),
+    write: vi.fn(),
+    cancel: vi.fn(),
+  };
   const exportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   const reportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
   const draftFilePlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
@@ -202,6 +208,7 @@ async function mount(
     ["InvestmentFinancialScreenRecipe", financialScreenRecipePlugin],
     ["InvestmentScreenComparisonReport", screenComparisonReportPlugin],
     ["InvestmentScreenResearchReport", screenComparisonReportPlugin],
+    ["InvestmentWatchlistDailyReport", watchlistDailyReportPlugin],
   ]);
   hooks.register.mockImplementation((name: string) => plugins.get(name));
   const loading = NativeTrialApp({ config });
@@ -243,6 +250,7 @@ async function mount(
     valuationDraftFilePlugin,
     financialScreenRecipePlugin,
     screenComparisonReportPlugin,
+    watchlistDailyReportPlugin,
     emit: (value: NativeAuthState) => emit(value),
   };
 }
@@ -265,6 +273,7 @@ function findScreen(node: ReactNode):
       valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
       financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
       screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
+      watchlistDailyReportDelivery?: WatchlistDailyReportDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     }>
   | undefined {
@@ -295,6 +304,7 @@ function findScreen(node: ReactNode):
         valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
         financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
         screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
+        watchlistDailyReportDelivery?: WatchlistDailyReportDeliveryAdapter;
         reportDelivery?: CompanyReportDeliveryAdapter;
       }>;
     }
@@ -355,6 +365,7 @@ describe("native shared workspace composition", () => {
         valuationDraftFilePlugin,
         financialScreenRecipePlugin,
         screenComparisonReportPlugin,
+        watchlistDailyReportPlugin,
       } = await mount(config);
       const screen = findScreen(frame());
       expect(screen?.type).toBe(screenType);
@@ -382,6 +393,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentValuationCollectionDraftFile"],
               ["InvestmentValuationDraftFile"],
               ["InvestmentFinancialScreenRecipe"],
+              ["InvestmentWatchlistDailyReport"],
               ["InvestmentScreenResearchReport"],
               ["InvestmentScreenComparisonReport"],
             ]
@@ -491,6 +503,14 @@ describe("native shared workspace composition", () => {
       );
       for (const method of Object.values(screenComparisonReportPlugin))
         expect(method).not.toHaveBeenCalled();
+      expect(typeof screen?.props.watchlistDailyReportDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.watchlistDailyReportDelivery).toBe(
+        screen?.props.watchlistDailyReportDelivery,
+      );
+      for (const method of Object.values(watchlistDailyReportPlugin))
+        expect(method).not.toHaveBeenCalled();
       expect(plugin.addListener).toHaveBeenCalledTimes(1);
       expect(plugin.getState).toHaveBeenCalledTimes(1);
       const html = renderToStaticMarkup(frame());
@@ -520,6 +540,9 @@ describe("native shared workspace composition", () => {
     emit({ ...signedIn, generation: 2 });
     const current = findScreen(frame())!;
     expect(current.key).toBe("2");
+    expect(current.props.watchlistDailyReportDelivery).toBe(
+      previous.props.watchlistDailyReportDelivery,
+    );
     expect(current.props.screenComparisonReportDelivery).toBe(
       previous.props.screenComparisonReportDelivery,
     );

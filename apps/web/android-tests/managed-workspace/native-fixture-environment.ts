@@ -1,3 +1,4 @@
+import { createNativeWatchlistDailyReportFixture } from "./native-watchlist-daily-report-fixture";
 import { createNativePortfolioComparisonReportFixture } from "./native-portfolio-comparison-report-fixture";
 import { createNativeScreenResearchReportFixture } from "./native-screen-research-report-fixture";
 import { createNativeScreenComparisonReportFixture } from "./native-screen-comparison-report-fixture";
@@ -65,6 +66,7 @@ const allowedScenarios = [
   "saved-valuation-reassessment",
   "watchlist-daily-review",
   "watchlist-saved-scenario",
+  "watchlist-daily-report",
   "portfolio-dated-review",
   "filing-check-assessment",
   "portfolio-ledger",
@@ -178,4 +180,9 @@ export const nativePortfolioComparisonReport =
 export const nativeScreenResearchReport =
   scenario === "two-company-research-review"
     ? createNativeScreenResearchReportFixture()
+    : null;
+
+export const nativeWatchlistDailyReport =
+  scenario === "watchlist-daily-report"
+    ? createNativeWatchlistDailyReportFixture()
     : null;

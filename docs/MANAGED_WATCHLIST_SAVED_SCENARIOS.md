@@ -1,7 +1,9 @@
 # Saved scenarios in a Watchlist daily review
 
-This source increment extends the existing daily review. It has not passed hosted
-native or release acceptance. No new provider, formula or saved resource is added.
+Android 1.73 provides this extension to the existing daily review. Accepted main
+source and native checks, the existing-signer build, all four APK checks and local
+delivery passed. Browser and physical-phone acceptance are not claimed. No new
+provider, formula or saved resource is added.
 
 ## Read and evaluate
 
