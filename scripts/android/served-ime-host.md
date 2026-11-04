@@ -27,9 +27,10 @@ Failed ADB commands record their arguments, exit code or timeout and at most
 or command input bodies. Pending discovery retains a count, the first and last
 observations, and the first and last failed-command diagnostics. Later readiness
 observations cannot erase those failures or grow the evidence without limit. It adds no retry
-deadline or Gradle invocation. Once the lease is prepared, transport, write,
-readback and cleanup failures remain strict; an uncertain lease write is never
-retried as discovery.
+deadline or Gradle invocation. Once the lease is prepared, active-session transport,
+write, readback and cleanup failures remain strict. The bounded managed-device
+shutdown reconciliation below applies only after teardown has been observed.
+An uncertain lease write is never retried as discovery.
 
 After both exact packages support `run-as` and the test IME is installed, the host
 captures the original IME settings and atomically writes this target-private file:
@@ -77,6 +78,29 @@ the exact prior IME/subtype and disables only the fixture. Every mutation rechec
 ownership; final settings must equal the original snapshot. Cleanup never uses
 `ime reset`, edits unrelated settings or stops an emulator. If GMD already removed
 both device and process, the record says `disposed`, not `native restored`.
+
+GMD can close its emulator transport while the successful Gradle task finishes.
+For an exact read-only transport failure, or an empty exit 255 from the exact
+recovery-file read, the host first requires a completed lease write and the latest
+authenticated recovery phase `restored`. It must also observe Gradle already
+closed with exit 0, or the exact leased process gone. A still-running Gradle and
+live emulator remain an active-session failure, even after an earlier restoration.
+Malformed records, permission errors, unknown commands and uncertain writes do
+not enter shutdown reconciliation.
+
+Reconciliation shares the existing 30-second Gradle closure budget. Each inventory
+probe uses at most the remaining time and the existing eight-second probe limit.
+The same bound covers normal exit 0 followed by a transient offline inventory.
+Success requires natural Gradle exit 0, no received signal, the exact leased
+PID/start identity gone, and a fresh valid ADB inventory with the serial absent.
+An offline entry alone, a live process or a present/reused serial is insufficient.
+Empty or malformed inventory output is not proof of absence. No mutation runs
+during reconciliation, and failure does not start another probe window.
+
+The record retains the failed command, prior restoration and current disposal
+proof separately. It does not claim a fresh settings readback from a removed
+device. A later observed `prepared`, `active` or `restoring` record supersedes an
+earlier `restored` record. Original failed workflows remain failed evidence.
 
 The workflow has an `always()` cleanup step for wrapper termination. It requires
 the same source, run, attempt and shard and refuses while the Gradle PID remains

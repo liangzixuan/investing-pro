@@ -123,14 +123,15 @@ def discovery_read(args):
 class AdbFailure(RuntimeError):
     def __init__(self, args, code, stdout=b"", stderr=b"", timed_out=False, has_input=False, executable=None):
         self.args_vector = list(args)
+        self.has_input = has_input
         self.empty_response = not stdout.strip() and not stderr.strip()
         self.read_probe = not has_input and discovery_read(self.args_vector)
         message = stderr.decode(errors="replace").strip()
         transport = re.fullmatch(
             r"(?:adb: )?(?:error: )?(?:closed|device offline|no devices/emulators found|"
             r"device '(emulator-[0-9]+)' not found|connection reset by peer)", message)
-        self.transport_pending = self.read_probe and ((timed_out and self.empty_response)
-                                                      or (not stdout.strip() and transport is not None))
+        self.transport_response = (timed_out and self.empty_response) or (not stdout.strip() and transport is not None)
+        self.transport_pending = self.read_probe and self.transport_response
         self.diagnostic = {"argv": ([str(executable)] if executable is not None else []) + self.args_vector,
                            "exitCode": code, "timedOut": timed_out,
                            "stdoutBytes": len(stdout), "stderrBytes": len(stderr),
@@ -143,10 +144,11 @@ class Adb:
     def __init__(self, sdk):
         self.executable = sdk / "platform-tools/adb"
 
-    def call(self, args, data=None, check=True):
+    def call(self, args, data=None, check=True, timeout=8):
+        require(0 < timeout <= 8, "Invalid bounded adb timeout")
         try:
             result = subprocess.run([str(self.executable), *args], input=data, capture_output=True,
-                                    timeout=8)
+                                    timeout=timeout)
         except subprocess.TimeoutExpired as failure:
             require(len(failure.stdout or b"") <= 65536 and len(failure.stderr or b"") <= 65536,
                     "Unexpected adb output size")
@@ -158,9 +160,20 @@ class Adb:
                              has_input=data is not None, executable=self.executable)
         return result
 
-    def devices(self):
-        output = self.call(["devices"]).stdout.decode()
-        return {row.split()[0]: row.split()[1] for row in output.splitlines()[1:] if len(row.split()) >= 2}
+    def devices(self, timeout=8):
+        output = self.call(["devices"], timeout=timeout).stdout.decode()
+        lines = output.splitlines()
+        require(lines and lines[0].strip() == "List of devices attached", "Invalid adb inventory header")
+        devices = {}
+        for row in lines[1:]:
+            if not row.strip():
+                continue
+            fields = row.split()
+            require(len(fields) == 2 and fields[0] not in devices, "Invalid or duplicate adb inventory row")
+            require(fields[1] in ("device", "offline", "unauthorized", "bootloader", "recovery", "sideload", "rescue"),
+                    "Unsupported adb inventory state")
+            devices[fields[0]] = fields[1]
+        return devices
 
     def shell(self, serial, args, data=None, check=True):
         # adb itself joins remote arguments. Quote each token for the Android shell.
@@ -336,7 +349,69 @@ class Supervisor:
                 self.state["lastRecovery"] = record
                 self.event("native-recovery", record=record)
 
-    def cleanup(self):
+    def restored_lease(self):
+        lease, record = self.state.get("lease"), self.state.get("lastRecovery")
+        if lease is None or record is None or not any(e["event"] == "lease-written" for e in self.state["events"]):
+            return False
+        require(lease["nonce"] == self.state["nonce"] and lease["sourceSha"] == self.state["sourceSha"],
+                "Finalization lease owner differs")
+        validate_recovery(record, lease)
+        return record["phase"] == "restored"
+
+    def teardown_read(self, failure):
+        if not isinstance(failure, AdbFailure) or failure.has_input:
+            return False
+        try:
+            if not self.restored_lease():
+                return False
+        except (ValueError, KeyError, TypeError):
+            return False  # The original error remains fatal; invalid evidence grants no wait.
+        lease = self.state["lease"]
+        args = failure.args_vector
+        # Global devices or this exact leased serial only; never accept another target.
+        if args != ["devices"] and args[:2] != ["-s", lease["serial"]]:
+            return False
+        recovery_read = ["-s", lease["serial"], "shell", "-T", shlex.join([
+            "run-as", TARGET, "--user", str(lease["user"]), "sh", "-c",
+            "if [ -f " + RECOVERY_PATH + " ]; then cat " + RECOVERY_PATH + "; fi"])]
+        return failure.transport_pending or (args == recovery_read and (
+            failure.transport_response or (failure.empty_response and failure.diagnostic["exitCode"] == 255)))
+
+    def reconcile_disposal(self, deadline):
+        require(self.state.get("gradleExitCode") == 0 and not self.state.get("receivedSignals")
+                and not self.state.get("forcedTermination"),
+                "Disposal requires natural successful Gradle closure")
+        require(self.restored_lease(), "Disposal requires latest authenticated restoration")
+        lease = self.state["lease"]
+        while True:
+            remaining = deadline - time.monotonic()
+            require(remaining > 0, "Managed-device finalization deadline expired")
+            try:
+                devices = self.adb.devices(timeout=min(8, remaining))
+            except AdbFailure as failure:
+                if not failure.transport_pending or failure.args_vector != ["devices"]:
+                    raise
+                self.state["finalizationLastReadFailure"] = failure.diagnostic
+                atomic_json(self.path, self.state)
+            else:
+                alive = self.alive(self.state["emulator"])
+                require(time.monotonic() < deadline, "Managed-device finalization deadline expired")
+                self.state["finalizationObservation"] = {"devices": devices, "ownedProcessAlive": alive,
+                                                         "process": self.state["emulator"], "at": time.time()}
+                atomic_json(self.path, self.state)
+                require(devices.get(lease["serial"]) in (None, "offline"),
+                        "Present or unauthorized serial cannot establish disposal")
+                if lease["serial"] not in devices and not alive:
+                    self.state["cleanup"] = "disposed"
+                    self.event("cleanup-disposed", nativeRestorationVerified=False,
+                               priorNativeRestorationObserved=True, priorRecovery=self.state["lastRecovery"],
+                               freshSettingsReadback=False, disposal=self.state["finalizationObservation"])
+                    return
+            remaining = deadline - time.monotonic()
+            require(remaining > 0, "Managed-device finalization deadline expired")
+            time.sleep(min(0.5, remaining))
+
+    def cleanup(self, finalization_deadline=None):
         if self.state.get("cleanup") in ("restored", "unchanged", "disposed", "not-leased"):
             return
         lease = self.state.get("lease")
@@ -344,7 +419,23 @@ class Supervisor:
             self.state["cleanup"] = "not-leased"
             self.event("cleanup-not-leased")
             return
-        devices = self.adb.devices()
+        timeout = 8 if finalization_deadline is None else min(8, finalization_deadline - time.monotonic())
+        require(timeout > 0, "Managed-device finalization deadline expired")
+        try:
+            devices = self.adb.devices(timeout=timeout)
+        except AdbFailure as failure:
+            if finalization_deadline is None or not self.teardown_read(failure):
+                raise
+            self.state["finalizationReadFailure"] = failure.diagnostic
+            self.event("finalization-read-failed")
+            self.reconcile_disposal(finalization_deadline)
+            return
+        if finalization_deadline is not None:
+            require(time.monotonic() < finalization_deadline, "Managed-device finalization deadline expired")
+        if finalization_deadline is not None and self.restored_lease() \
+                and devices.get(lease["serial"]) in (None, "offline"):
+            self.reconcile_disposal(finalization_deadline)
+            return
         if lease["serial"] not in devices:
             require(not self.alive(self.state["emulator"]),
                     "Leased emulator still exists but adb is unavailable")
@@ -428,31 +519,61 @@ def runtime(args):
     for number in (signal.SIGTERM, signal.SIGINT):
         signal.signal(number, on_signal)
     error = None
+    pending_finalization = None
     try:
         while child.poll() is None and not stopped:
             supervisor.discover()
             time.sleep(0.5)
     except Exception as failure:
-        error = str(failure)
-        on_signal(signal.SIGTERM, None)
+        eligible = False
+        if not stopped and supervisor.teardown_read(failure):
+            try:
+                observed_exit = child.poll()
+                observed_alive = supervisor.alive(state["emulator"])
+                state["finalizationStartObservation"] = {"gradleExitCode": observed_exit,
+                                                          "ownedProcessAlive": observed_alive, "at": time.time()}
+                eligible = observed_exit == 0 or (observed_exit is None and not observed_alive)
+            except Exception as observation_failure:
+                state["finalizationObservationError"] = str(observation_failure)
+        if eligible:
+            pending_finalization = failure
+            state["finalizationReadFailure"] = failure.diagnostic
+            supervisor.event("finalization-read-failed")
+        else:
+            error = str(failure)
+            on_signal(signal.SIGTERM, None)
     finally:
+        finalization_deadline = time.monotonic() + 30
         try:
-            child.wait(timeout=30)
+            child.wait(timeout=max(0, finalization_deadline - time.monotonic()))
         except subprocess.TimeoutExpired:
+            state["forcedTermination"] = True
             os.killpg(child.pid, signal.SIGKILL)
             child.wait(timeout=10)
         state["gradleExitCode"] = child.returncode
-        state["hostError"] = error
         state["receivedSignals"] = stopped
+        if pending_finalization is not None:
+            try:
+                supervisor.reconcile_disposal(finalization_deadline)
+            except Exception as failure:
+                error = str(pending_finalization)
+                state["finalizationError"] = str(failure)
+        state["hostError"] = error
         supervisor.event("gradle-closed")
         try:
-            supervisor.cleanup()
+            if pending_finalization is not None and error is not None:
+                # Reconciliation already spent its single budget. Do not start a
+                # second probe window or mutate a device whose disposal is uncertain.
+                raise ValueError(state["finalizationError"])
+            supervisor.cleanup(finalization_deadline if child.returncode == 0 and not stopped
+                               and not state.get("forcedTermination") and error is None else None)
         except Exception as failure:
             state["cleanupError"] = str(failure)
             supervisor.event("cleanup-refused")
             error = error or str(failure)
     # Preserve Gradle's original failure; successful Gradle cannot hide host failure.
-    return child.returncode if child.returncode and child.returncode > 0 else (1 if error or stopped or child.returncode else 0)
+    return child.returncode if child.returncode and child.returncode > 0 else (
+        1 if error or stopped or child.returncode or state.get("forcedTermination") else 0)
 
 
 def main():

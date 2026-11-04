@@ -2,12 +2,14 @@
 
 import copy
 import json
+from contextlib import ExitStack
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+import run_served_ime as runner
 
 from served_ime_contract import (COMPONENT, PREVIOUS_KEYS, PROCESS_HEADER, SETTING_KEYS, gradle_command,
                                  lease_for, recovery_commands, require_instrumentation_closed, validate_recovery)
@@ -45,7 +47,7 @@ class FakeAdb:
         self.instrumentation_active = False
         self.processes_absent = True
 
-    def devices(self):
+    def devices(self, timeout=8):
         return self.devices_value.copy()
 
     def identity(self, serial):
@@ -572,6 +574,278 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(state["cleanup"], "not-leased")
         self.assertNotIn("lease", state)
         self.assertEqual(commands, [])
+
+
+class Clock:
+    def __init__(self):
+        self.now = 0
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
+def simulated_finalization(module=runner, *, failure_kind="closed", entry_exit=0, process_alive_at_entry=False,
+                           terminal=0, statuses=("offline", None), phase="restored", written=True,
+                           wait_seconds=0, wait_timeout=False, external_signal=False, mutate=None):
+    """Run the real supervisor/runtime against invented processes, never adb/Gradle."""
+    with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+        sdk = Path(directory) / "sdk"
+        (sdk / "platform-tools").mkdir(parents=True)
+        (sdk / "platform-tools/adb").touch()
+        args = SimpleNamespace(sdk=str(sdk), source=SOURCE, shard="0", cleanup=False,
+                               state=str(Path(directory) / "state.json"))
+        clock, adb, child = Clock(), FakeAdb(), MagicMock()
+        child.pid, child.returncode = 456, None
+        state = {}
+        polls, closing, failed, waits = 0, False, False, 0
+        probes, kills, handlers = [], [], {}
+        statuses = list(statuses)
+        original_supervisor = module.Supervisor
+        original_recovery = adb.read_recovery
+
+        def devices(timeout=8):
+            probes.append({"at": clock.now, "timeout": timeout, "closing": closing})
+            if polls == 0:
+                return {}
+            if not closing:
+                return {IDENTITY["serial"]: "device"}
+            value = statuses.pop(0) if len(statuses) > 1 else statuses[0]
+            if isinstance(value, Exception):
+                raise value
+            return {} if value is None else {IDENTITY["serial"]: value}
+
+        def read_recovery(lease):
+            nonlocal closing, failed
+            if polls >= 3 and failure_kind is not None:
+                closing, failed = True, True
+                if failure_kind == "json":
+                    raise ValueError("Malformed recovery JSON")
+                if failure_kind == "empty":
+                    command = module.shlex.join(["run-as", "local.investment.personal", "--user", "10", "sh", "-c",
+                                                 "if [ -f " + module.RECOVERY_PATH + " ]; then cat "
+                                                 + module.RECOVERY_PATH + "; fi"])
+                    raise module.AdbFailure(["-s", IDENTITY["serial"], "shell", "-T", command], 255)
+                raise module.AdbFailure(PROBE, 1, stderr=b"Permission denied" if failure_kind == "permission" else b"error: closed")
+            return original_recovery(lease)
+
+        def poll():
+            nonlocal polls, closing
+            if failed:
+                child.returncode = entry_exit
+                return entry_exit
+            polls += 1
+            if polls == 2:
+                adb.recovery = recovery(adb.lease, "restored")
+            if polls == 3:
+                if phase != "restored":
+                    state["lastRecovery"] = recovery(adb.lease, phase)
+                if not written:
+                    state["events"] = [e for e in state["events"] if e["event"] != "lease-written"]
+                if mutate:
+                    mutate(state)
+                if external_signal:
+                    child.returncode = terminal
+                    handlers[module.signal.SIGTERM](module.signal.SIGTERM, None)
+                    closing = True
+                    return terminal
+                if failure_kind is None:
+                    closing, child.returncode = True, terminal
+                    return terminal
+            return None
+
+        def wait(timeout):
+            nonlocal waits
+            waits += 1
+            if wait_timeout and waits == 1:
+                clock.sleep(timeout)
+                raise subprocess.TimeoutExpired("invented Gradle", timeout)
+            clock.sleep(wait_seconds if waits == 1 else 0)
+            if not kills:
+                child.returncode = terminal
+            return child.returncode
+
+        def kill(_pid, number):
+            kills.append(number)
+            child.returncode = -number
+
+        def supervisor(a, s, p, processes):
+            nonlocal state
+            state = s
+            return original_supervisor(a, s, p, processes,
+                                       alive=lambda _p: process_alive_at_entry if closing else True)
+
+        child.poll.side_effect, child.wait.side_effect = poll, wait
+        adb.devices, adb.read_recovery = devices, read_recovery
+        stack.enter_context(patch.object(module.sys, "platform", "linux"))
+        stack.enter_context(patch.dict("os.environ", {"GITHUB_ACTIONS": "true", "GITHUB_RUN_ID": "100", "GITHUB_RUN_ATTEMPT": "1"}))
+        stack.enter_context(patch.object(module, "Adb", return_value=adb))
+        stack.enter_context(patch.object(module, "Supervisor", side_effect=supervisor))
+        stack.enter_context(patch.object(module, "emulator_processes", return_value=[PROCESS.copy()]))
+        popen = stack.enter_context(patch.object(module.subprocess, "Popen", return_value=child))
+        stack.enter_context(patch.object(module.os, "killpg", side_effect=kill, create=True))
+        stack.enter_context(patch.object(module.signal, "SIGKILL", 9, create=True))
+        stack.enter_context(patch.object(module.signal, "signal", side_effect=lambda n, f: handlers.update({n: f})))
+        stack.enter_context(patch.object(module.time, "monotonic", side_effect=lambda: clock.now))
+        stack.enter_context(patch.object(module.time, "sleep", side_effect=clock.sleep))
+        result = module.runtime(args)
+        return {"result": result, "state": json.loads(Path(args.state).read_text()), "commands": adb.commands,
+                "probes": probes, "kills": kills, "elapsed": clock.now, "gradleStarts": popen.call_count}
+
+
+class FinalizationTests(unittest.TestCase):
+    def test_both_observed_read_failures_require_natural_zero_and_fresh_disposal(self):
+        for kind in ("closed", "empty"):
+            with self.subTest(kind=kind):
+                result = simulated_finalization(failure_kind=kind)
+                self.assertEqual(result["result"], 0)
+                self.assertEqual(result["gradleStarts"], 1)
+                self.assertEqual(result["kills"], [])
+                self.assertEqual(result["commands"], [])
+                state = result["state"]
+                self.assertEqual(state["cleanup"], "disposed")
+                self.assertEqual(state["receivedSignals"], [])
+                self.assertIsNone(state["hostError"])
+                self.assertIn("finalizationReadFailure", state)
+                event = next(e for e in state["events"] if e["event"] == "cleanup-disposed")
+                self.assertFalse(event["nativeRestorationVerified"])
+                self.assertFalse(event["freshSettingsReadback"])
+                self.assertTrue(event["priorNativeRestorationObserved"])
+                self.assertEqual(event["disposal"]["devices"], {})
+                self.assertFalse(event["disposal"]["ownedProcessAlive"])
+
+    def test_process_gone_can_establish_teardown_entry_before_natural_child_zero(self):
+        result = simulated_finalization(entry_exit=None)
+        self.assertEqual(result["result"], 0)
+        self.assertEqual(result["kills"], [])
+        self.assertIsNone(result["state"]["finalizationStartObservation"]["gradleExitCode"])
+
+    def test_no_observe_failure_normal_zero_still_reconciles_offline_to_absent(self):
+        result = simulated_finalization(failure_kind=None)
+        self.assertEqual(result["result"], 0)
+        self.assertEqual(result["state"]["cleanup"], "disposed")
+        self.assertNotIn("finalizationReadFailure", result["state"])
+        self.assertEqual(result["commands"], [])
+
+    def test_initial_cleanup_transport_uses_same_remaining_budget(self):
+        failure = AdbFailure(["devices"], 1, stderr=b"error: closed")
+        result = simulated_finalization(failure_kind=None, wait_seconds=29, statuses=(failure, "offline", None))
+        self.assertEqual(result["result"], 0)
+        for probe in result["probes"]:
+            if probe["closing"]:
+                self.assertGreater(probe["timeout"], 0)
+                self.assertLessEqual(probe["timeout"], 31 - probe["at"])
+        self.assertLess(result["elapsed"], 31)
+
+    def test_active_child_and_live_emulator_cannot_borrow_earlier_restoration(self):
+        result = simulated_finalization(entry_exit=None, process_alive_at_entry=True)
+        self.assertEqual(result["result"], 1)
+        self.assertEqual(result["kills"], [runner.signal.SIGTERM])
+        self.assertIn("hostError", result["state"])
+        self.assertNotIn("finalizationReadFailure", result["state"])
+
+    def test_nonzero_external_signal_and_forced_termination_remain_failures(self):
+        for options in ({"entry_exit": 7, "terminal": 7}, {"terminal": 7},
+                        {"failure_kind": None, "external_signal": True},
+                        {"entry_exit": None, "wait_timeout": True}):
+            with self.subTest(options=options):
+                result = simulated_finalization(**options)
+                self.assertNotEqual(result["result"], 0)
+                self.assertNotEqual(result["state"].get("cleanup"), "disposed")
+                self.assertEqual(result["commands"], [])
+                if options.get("wait_timeout"):
+                    self.assertTrue(result["state"]["forcedTermination"])
+
+    def test_disposal_never_accepts_live_process_or_present_serial(self):
+        for options in ({"statuses": (None,), "process_alive_at_entry": True},
+                        {"statuses": ("offline",)}, {"statuses": ("device",)},
+                        {"statuses": ("unauthorized",)}):
+            with self.subTest(options=options):
+                result = simulated_finalization(**options)
+                self.assertNotEqual(result["result"], 0)
+                self.assertNotEqual(result["state"].get("cleanup"), "disposed")
+                self.assertLessEqual(result["elapsed"], 31)
+                self.assertEqual(result["commands"], [])
+
+    def test_unfinished_or_tampered_latest_evidence_never_grants_finalization(self):
+        for options in ({"phase": "prepared"}, {"phase": "active"}, {"phase": "restoring"},
+                        {"written": False},
+                        {"mutate": lambda s: s["lastRecovery"].update(nonce="c" * 64)},
+                        {"mutate": lambda s: s["lastRecovery"].update(previousSubtype="77")}):
+            with self.subTest(options=options):
+                result = simulated_finalization(**options)
+                self.assertNotEqual(result["result"], 0)
+                self.assertNotIn("finalizationReadFailure", result["state"])
+
+    def test_permission_and_invalid_record_errors_are_not_teardown(self):
+        for kind in ("permission", "json"):
+            result = simulated_finalization(failure_kind=kind)
+            self.assertNotEqual(result["result"], 0)
+            self.assertNotIn("finalizationReadFailure", result["state"])
+            self.assertEqual(result["commands"], [])
+
+    def test_expired_shared_budget_has_no_second_cleanup_probe_window(self):
+        result = simulated_finalization(wait_seconds=29, statuses=("offline",))
+        self.assertEqual(result["result"], 1)
+        self.assertEqual(result["elapsed"], 31)
+        self.assertTrue(all(p["at"] < 31 for p in result["probes"]))
+        self.assertIn("deadline", result["state"]["cleanupError"])
+
+    def test_inventory_requires_real_header_and_unique_complete_rows(self):
+        adb = Adb(Path("/installed/sdk"))
+        for text, expected in (("List of devices attached\n\n", {}),
+                               ("List of devices attached\nemulator-5562\toffline\n", {"emulator-5562": "offline"})):
+            with patch.object(adb, "call", return_value=subprocess.CompletedProcess([], 0, text.encode(), b"")):
+                self.assertEqual(adb.devices(), expected)
+        for text in ("", "Permission denied\n", "List of devices attached\nemulator-5562\n",
+                     "List of devices attached\nemulator-5562 device\nemulator-5562 offline\n",
+                     "List of devices attached\nerror: closed\n",
+                     "List of devices attached\nemulator-5562 invented\n",
+                     "List of devices attached\nemulator-5562 device unexpected\n"):
+            with patch.object(adb, "call", return_value=subprocess.CompletedProcess([], 0, text.encode(), b"")), \
+                 self.assertRaises(ValueError):
+                adb.devices()
+
+    def test_private_read_and_write_scope_cannot_be_spoofed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lease = lease_for(IDENTITY, NONCE, SOURCE, SETTINGS)
+            state = {"nonce": NONCE, "sourceSha": SOURCE, "lease": lease,
+                     "lastRecovery": recovery(lease, "restored"), "events": [{"event": "lease-written"}]}
+            host = Supervisor(FakeAdb(), state, Path(directory) / "state.json", lambda: [])
+            for failure in (AdbFailure(PROBE, 255),
+                            AdbFailure(PROBE, 1, stderr=b"error: closed", has_input=True),
+                            AdbFailure(["-s", "emulator-9999", *PROBE[2:]], 1, stderr=b"error: closed"),
+                            AdbFailure(["-s", IDENTITY["serial"], "shell", "-T", "ime reset"], 255),
+                            AdbFailure(["-s", IDENTITY["serial"], "shell", "-T", "run-as foreign cat private"], 255)):
+                self.assertFalse(host.teardown_read(failure))
+
+    def test_inventory_probe_cannot_finish_after_deadline_and_claim_absence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lease = lease_for(IDENTITY, NONCE, SOURCE, SETTINGS)
+            state = {"nonce": NONCE, "sourceSha": SOURCE, "lease": lease, "emulator": PROCESS,
+                     "lastRecovery": recovery(lease, "restored"), "events": [{"event": "lease-written"}],
+                     "gradleExitCode": 0, "receivedSignals": []}
+            clock, adb = Clock(), FakeAdb()
+            host = Supervisor(adb, state, Path(directory) / "state.json", lambda: [], alive=lambda _p: False)
+
+            def late_inventory(timeout=8):
+                self.assertEqual(timeout, 0.25)
+                clock.sleep(timeout)
+                return {}
+
+            with patch.object(adb, "devices", side_effect=late_inventory) as probe, \
+                 patch.object(runner.time, "monotonic", side_effect=lambda: clock.now), \
+                 self.assertRaisesRegex(ValueError, "deadline"):
+                host.cleanup(0.25)
+            self.assertEqual(probe.call_count, 1)
+            self.assertNotIn("cleanup", state)
+
+    def test_normal_cleanup_inventory_permission_or_unknown_failure_stays_strict(self):
+        for failure in (AdbFailure(["devices"], 1, stderr=b"Permission denied"),
+                        AdbFailure(["devices"], 255), ValueError("Malformed adb inventory")):
+            result = simulated_finalization(failure_kind=None, statuses=(failure, None))
+            self.assertEqual(result["result"], 1)
+            self.assertNotIn("finalizationReadFailure", result["state"])
+            self.assertNotEqual(result["state"].get("cleanup"), "disposed")
 
 
 if __name__ == "__main__":
