@@ -1,0 +1,20 @@
+.managed-portfolio-valuation-review {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.managed-portfolio-valuation-review button {
+  min-height: 44px;
+  white-space: normal;
+}
+.managed-portfolio-valuation-review > ol > li {
+  margin-block: 1.5rem;
+}
+.managed-portfolio-valuation-review .trial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.managed-portfolio-valuation-review pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

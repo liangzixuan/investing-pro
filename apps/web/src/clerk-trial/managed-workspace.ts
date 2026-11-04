@@ -7,6 +7,7 @@ import {
 import { ManagedWatchlistDailyContext } from "./managed-watchlist-daily-context";
 import type { ManagedWatchlistDailyReviewCapture } from "./managed-watchlist-daily-review";
 import { ManagedPortfolioDatedReviewContext } from "./managed-portfolio-dated-review-context";
+import { ManagedPortfolioValuationContext } from "./managed-portfolio-valuation-context";
 import { ManagedPortfolioHeldDueChecks } from "./managed-portfolio-held-due-checks";
 import { ManagedCompanyResearchChecks } from "./managed-company-research-checks-controller";
 import { captureManagedInterimNote } from "./managed-interim-note-context";
@@ -34,6 +35,7 @@ import { captureCompanyReportRevisitTargetContext } from "./company-report-revis
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
   MANAGED_RESEARCH_COVERAGE,
+  getManagedResearchCoverageCik,
   type ManagedResearchCoverage,
 } from "./managed-research-eligibility";
 import {
@@ -389,6 +391,8 @@ export class ManagedWorkspace {
   readonly reviewFilings: ManagedFollowupsReviewFilings;
   readonly portfolioHeldDueChecks: ManagedPortfolioHeldDueChecks;
   readonly portfolioDatedReview: ManagedPortfolioDatedReviewContext;
+  readonly portfolioValuationReview: ManagedPortfolioValuationContext;
+  private readonly portfolioResearchCoverage: ManagedResearchCoverage;
   private readonly portfolioCloseModels =
     new WeakSet<ManagedPortfolioCloseReview>();
   readonly portfolio: ManagedPortfolio;
@@ -496,6 +500,7 @@ export class ManagedWorkspace {
     const researchOptions = {
       coverage: options.researchCoverage ?? MANAGED_RESEARCH_COVERAGE,
     };
+    this.portfolioResearchCoverage = researchOptions.coverage;
     const resourceSession: TrialSession = {
       ...session,
       signOut: () => this.sessionOwner.signOut(),
@@ -857,6 +862,11 @@ export class ManagedWorkspace {
       this,
       (prices) => this.portfolioCloseModels.has(prices),
     );
+    this.portfolioValuationReview = new ManagedPortfolioValuationContext(
+      this,
+      (prices) => this.portfolioCloseModels.has(prices),
+      researchOptions.coverage,
+    );
     this.reviewFilings.subscribe(() => {
       if (this.reviewFilings.getSnapshot().catalogChanged)
         this.invalidateCatalog();
@@ -1037,6 +1047,7 @@ export class ManagedWorkspace {
     for (const listener of this.listeners) listener();
   }
   setNavigationBlocked(blocked: boolean) {
+    this.portfolioValuationReview?.navigation(blocked);
     this.marketsBriefing?.navigation(blocked);
     this.portfolioDatedReview?.navigation(blocked);
     this.followupsNavigationDepth++;
@@ -1225,6 +1236,7 @@ export class ManagedWorkspace {
     this.cancelFollowupOpening();
     this.followupResearch = null;
     this.portfolioDatedReview?.retire();
+    this.portfolioValuationReview?.retire();
     this.portfolioHeldDueChecks?.retire();
     this.reviewFilings?.retire();
     this.followupsReview.retire();
@@ -1311,6 +1323,7 @@ export class ManagedWorkspace {
   }
   setView(view: ManagedDiscoveryState["view"]) {
     if (!this.canNavigate()) return;
+    this.portfolioValuationReview.invalidate();
     if (view !== "discover") this.screenResearchReview.invalidate();
     this.portfolioDatedReview.changeView(view, (datedTransfer) => {
       const { wasReturned, owned } = this.marketsBriefing.beforeView(view);
@@ -1688,6 +1701,7 @@ export class ManagedWorkspace {
   }
   async setCompanyRoute(route: ManagedCompanyRoute | null) {
     if (!this.canNavigate()) return;
+    this.portfolioValuationReview.companyRoute(route);
     this.portfolioDatedReview.companyRoute(route);
     this.marketsBriefing.companyRoute(route);
     this.cancelFollowupOpening();
@@ -1936,6 +1950,7 @@ export class ManagedWorkspace {
     } = {},
   ) {
     if (!this.canNavigate()) return;
+    this.portfolioValuationReview?.beforeResearch();
     const operation = Symbol();
     this.researchOperation = operation;
     const owns = () => this.researchOperation === operation;
@@ -2003,6 +2018,7 @@ export class ManagedWorkspace {
   returnFromResearch() {
     const visit = this.state.research;
     if (!visit || !this.canNavigate()) return;
+    this.portfolioValuationReview?.ownedBack();
     this.valuationReassessment.pauseForOwnedBack();
     if (this.state.research !== visit || !this.canNavigate()) return;
     const preserveScreenReview = this.screenResearchReview.ownedBack(visit);
@@ -2016,6 +2032,7 @@ export class ManagedWorkspace {
     preserveReassessment = false,
     preserveScreenReview = false,
   ) {
+    this.portfolioValuationReview?.closeResearch();
     this.portfolioDatedReview?.closeResearch();
     this.marketsBriefing?.closeResearch();
     this.cancelFollowupOpening();
@@ -2120,7 +2137,7 @@ export class ManagedWorkspace {
     if (selection.origin === "portfolio") {
       const draft = this.portfolio.coordinator.getSnapshot().draft;
       return (
-        selection.cik === null &&
+        this.portfolioResearchIssuerMatches(selection) &&
         draft?.ledger?.snapshotSha256 === selection.catalogSnapshotSha256 &&
         draft.ledger.identities.some((identity) =>
           membershipMatchesResult({ ...identity, note: "" }, selection.listing),
@@ -2146,6 +2163,17 @@ export class ManagedWorkspace {
     );
     this.portfolioCloseModels.add(prices);
     return prices;
+  }
+  portfolioResearchIssuerMatches(selection: ManagedResearchSelection) {
+    return (
+      selection.origin === "portfolio" &&
+      (selection.cik === null ||
+        selection.cik ===
+          getManagedResearchCoverageCik(
+            selection,
+            this.portfolioResearchCoverage,
+          ))
+    );
   }
   /** Retire only the Research authority carried by this exact held review. */
   retirePortfolioHeldDueReview(captured: FollowupsReviewState) {
@@ -2241,7 +2269,9 @@ export class ManagedWorkspace {
       cik: null,
       origin: "portfolio",
     };
-    this.openResearch(selection, "eod", {
+    const ownedSelection =
+      this.portfolioValuationReview.openingSelection(selection);
+    this.openResearch(ownedSelection ?? selection, "eod", {
       admit: () =>
         this.portfolio.coordinator.getSnapshot().draft === capturedDraft &&
         this.canSwitchResearch(selection),

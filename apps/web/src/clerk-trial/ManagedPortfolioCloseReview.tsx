@@ -19,6 +19,7 @@ import { capturePortfolioCloseContext } from "./portfolio-close-review-context";
 import { PortfolioCloseReviewView } from "./PortfolioCloseReviewView";
 import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import { ManagedPortfolioReviewReport } from "./ManagedPortfolioReviewReport";
+import { ManagedPortfolioScenarioEntry } from "./ManagedPortfolioScenarioEntry";
 
 import {
   ManagedPortfolioDatedReviewActions,
@@ -151,9 +152,17 @@ function Review({
         ready={ready}
         state={ready ? state : empty}
         review={ready ? prices?.review() : null}
-        onLoad={() => loadCurrent(prices, current)}
+        onLoad={() => {
+          if (!current()) return;
+          workspace.portfolioValuationReview.invalidate();
+          loadCurrent(prices, current);
+        }}
         onCancel={() => prices?.cancel()}
-        onDate={(date) => selectCurrent(prices, current, date)}
+        onDate={(date) => {
+          if (!current()) return;
+          workspace.portfolioValuationReview.invalidate();
+          selectCurrent(prices, current, date);
+        }}
         onResearch={(listingId, opener) =>
           researchCurrent(workspace, current, listingId, opener, onResearch)
         }
@@ -175,6 +184,13 @@ function Review({
           researchCurrent(workspace, current, listingId, opener, onResearch)
         }
       />
+      <ManagedPortfolioScenarioEntry
+        workspace={workspace}
+        prices={prices}
+        canPreview={ready}
+        navigationPending={navigationPending}
+        onResearch={onResearch}
+      />
     </>
   );
 }
@@ -186,13 +202,23 @@ export function ManagedPortfolioCloseReview(props: Props) {
     props.onResearch(...args);
   };
   return (
-    <details
-      className="managed-portfolio-close-review"
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary>Dated holdings review</summary>
-      {open && <Review {...props} onResearch={research} />}
-    </details>
+    <>
+      <details
+        className="managed-portfolio-close-review"
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+      >
+        <summary>Dated holdings review</summary>
+        {open && <Review {...props} onResearch={research} />}
+      </details>
+      {!open && (
+        <ManagedPortfolioScenarioEntry
+          workspace={props.workspace}
+          canPreview={false}
+          navigationPending={props.navigationPending}
+          onResearch={research}
+        />
+      )}
+    </>
   );
 }

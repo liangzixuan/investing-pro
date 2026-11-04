@@ -21,7 +21,8 @@ export function PortfolioReviewReportSnapshot({
     | "portfolio-report-composition"
     | "portfolio-report-saved-composition"
     | "portfolio-comparison-report-saved-composition"
-    | "portfolio-comparison-report-current-composition";
+    | "portfolio-comparison-report-current-composition"
+    | "portfolio-saved-scenario-composition";
 }) {
   if (
     !isPreparedPortfolioReviewReport(report) &&

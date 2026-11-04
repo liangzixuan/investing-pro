@@ -1,3 +1,4 @@
+import { PortfolioSavedScenarioDiagnostics } from "./portfolio-saved-scenario-fixture-diagnostics";
 import { WatchlistDailyReportFixtureControls } from "./watchlist-daily-report-fixture-controls";
 import { WatchlistSavedScenarioDiagnostics } from "./watchlist-saved-scenario-fixture-diagnostics";
 import { TwoCompanyResearchReviewFixtureDiagnostics } from "./two-company-research-review-fixture-diagnostics";
@@ -96,6 +97,7 @@ function useFixtureWorkspace(session: TrialSession) {
         : {}),
     });
     if (
+      scenario === "portfolio-saved-scenario" ||
       scenario === "portfolio-dated-review" ||
       scenario === "portfolio-screen-selection" ||
       scenario === "portfolio-report-comparison" ||
@@ -122,6 +124,7 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario !== "watchlist-daily-review" &&
       scenario !== "watchlist-saved-scenario" &&
       scenario !== "watchlist-daily-report" &&
+      scenario !== "portfolio-saved-scenario" &&
       scenario !== "portfolio-dated-review" &&
       scenario !== "review-filings-evidence" &&
       scenario !== "portfolio-held-due-checks" &&
@@ -425,6 +428,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       )}
       {workspace && nativeWatchlistDailyReport && (
         <WatchlistDailyReportFixtureControls />
+      )}
+      {workspace && fixture.portfolioSavedScenario && (
+        <PortfolioSavedScenarioDiagnostics
+          workspace={workspace}
+          fixture={fixture.portfolioSavedScenario}
+        />
       )}
       {workspace && fixture.watchlistSavedScenario && (
         <WatchlistSavedScenarioDiagnostics

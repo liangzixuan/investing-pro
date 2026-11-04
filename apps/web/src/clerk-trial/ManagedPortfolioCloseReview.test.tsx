@@ -23,6 +23,9 @@ const hooks = vi.hoisted(() => ({
 vi.mock("./ManagedPortfolioDatedReviewActions", () => ({
   ManagedPortfolioDatedReviewActions: () => null,
 }));
+vi.mock("./ManagedPortfolioScenarioEntry", () => ({
+  ManagedPortfolioScenarioEntry: () => null,
+}));
 const capture = vi.hoisted(() => ({
   current: null as PortfolioCloseContext | null,
 }));
@@ -92,6 +95,9 @@ function text(node: React.ReactNode): string {
   return typeof node === "string" || typeof node === "number"
     ? String(node)
     : "";
+}
+function disclosure(node: React.ReactNode) {
+  return nodes(node).find((item) => item.type === "details")!;
 }
 function button(node: React.ReactNode, label: string) {
   const result = nodes(node, true).find(
@@ -169,6 +175,7 @@ function fixture(cashUsd: string | null = "10.00") {
     session = { phase: "active" },
     view = {};
   const workspace = {
+    portfolioValuationReview: { invalidate: vi.fn() },
     subscribe: () => () => {},
     getSnapshot: () => view,
     sessionOwner: { subscribe: () => () => {}, getSnapshot: () => session },
@@ -196,7 +203,7 @@ function fixture(cashUsd: string | null = "10.00") {
       datedReviewNavigation: { navigate: () => false, transferred: vi.fn() },
     };
   // Open the actual outer disclosure; only then invoke its mounted inner element.
-  const outer = ManagedPortfolioCloseReview(props) as Element;
+  const outer = disclosure(ManagedPortfolioCloseReview(props));
   expect(nodes(outer).some((node) => typeof node.type === "function")).toBe(
     false,
   );
@@ -279,7 +286,7 @@ describe("Dated holdings review committed UI", () => {
     };
     const render = () => {
       hooks.index = 0;
-      return ManagedPortfolioCloseReview(props) as Element;
+      return disclosure(ManagedPortfolioCloseReview(props));
     };
     const closed = render();
     expect(closed.props.open).toBe(false);

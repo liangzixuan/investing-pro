@@ -64,6 +64,16 @@ background source completion. See the [daily review guide](docs/MANAGED_WATCHLIS
 
 ## Dated Portfolio review
 
+Saved scenarios use the chosen close date from the dated Portfolio reading.
+Keep Load saved inputs, Preview, Evaluate and current Research separate. Show
+every holding, exact share class, full authored inputs, all model outcomes and
+each unavailable comparison. Keep source, capture and evaluation clocks distinct.
+The original reading remains visible after owned Research and Back, even when
+the close-loading disclosure is closed. Reuse wrapping text, native disclosures,
+44px controls and scrollable numeric tables. Focus the heading only after a
+committed Preview or Evaluate action. See the
+[saved-scenario guide](docs/MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
+
 Keep the complete dated reading beside the ordered held-check workflow, including
 owned company research. Separate source times, chosen close date and the UTC day
 used for due checks. Use the existing passive report disclosure and full ledger;

@@ -119,9 +119,11 @@ export function useManagedCompanyNavigation(
     if (prior.company && parsed.kind === "none") {
       if (action === NavigationType.Pop && prior.origin) {
         const resumed =
-          prior.origin.view === "followups" &&
-          (workspace.resumeMarketsBriefingFollowup() ||
-            workspace.portfolioDatedReview.resumeFollowups());
+          (prior.origin.view === "portfolio" &&
+            workspace.portfolioValuationReview.resumePortfolio()) ||
+          (prior.origin.view === "followups" &&
+            (workspace.resumeMarketsBriefingFollowup() ||
+              workspace.portfolioDatedReview.resumeFollowups()));
         if (!resumed) workspace.setView(prior.origin.view);
       }
       setReturnFocus((value) => value + 1);
