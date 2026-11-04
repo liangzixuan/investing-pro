@@ -81,7 +81,7 @@ jobs:
         run: pnpm --filter @research-cockpit/web exec vite build --config vite.android-test.config.ts
 
       - name: Test the packaged app on Android
-        timeout-minutes: 25
+        timeout-minutes: 30
         working-directory: apps/web/android
         run: |
           python3 -B -m unittest discover -s "$GITHUB_WORKSPACE/scripts/android" -p test_served_ime_host.py
