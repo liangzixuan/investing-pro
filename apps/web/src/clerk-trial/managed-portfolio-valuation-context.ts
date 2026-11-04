@@ -207,7 +207,7 @@ export class ManagedPortfolioValuationContext {
     try {
       open();
     } catch {
-      this.invalidate();
+      if (this.owner === owner) this.invalidate();
       return false;
     } finally {
       owner.opening = false;
@@ -218,7 +218,7 @@ export class ManagedPortfolioValuationContext {
       !this.current(owner) ||
       !this.matches(row.selection, selection)
     ) {
-      this.invalidate();
+      if (this.owner === owner) this.invalidate();
       return false;
     }
     this.changed();

@@ -207,3 +207,26 @@ it("admits only the configured issuer for an owned Portfolio selection and clear
   ).toBe(false);
   expect(f.model.getSnapshot().plan).toBeNull();
 });
+
+it.each([false, true])(
+  "preserves a newer preview when an older Research opener returns or throws (%s)",
+  async (throws) => {
+    const f = await setup(),
+      previous = preview(f),
+      row = previous.plan!.rows[0]!;
+    let replacement: ReturnType<typeof preview> | null = null;
+    expect(
+      f.context.research(row, () => {
+        replacement = preview(f);
+        if (throws) throw new Error("Cancelled older opener");
+      }),
+    ).toBe(false);
+    expect(replacement).not.toBeNull();
+    expect(f.model.getSnapshot()).toBe(replacement);
+    expect(f.model.getSnapshot().plan).not.toBe(previous.plan);
+    expect(f.context.canResearch(f.model.getSnapshot().plan!.rows[0]!)).toBe(
+      true,
+    );
+    expect(f.context.canResearch(row)).toBe(false);
+  },
+);
