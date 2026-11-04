@@ -402,3 +402,76 @@ it("binds native Portfolio identity preservation to the existing complete JSON c
     '"+SAME_JSON+"("+D+".saved.portfolio.payload.identities,"+D+".original.portfolio.payload.identities)',
   );
 });
+
+it("preserves the complete original Follow-up through Save despite fixed parser field order", async () => {
+  const f = await createFixture("portfolio-saved-scenario");
+  const store = f.portfolioSavedScenario!;
+  const original = store.saved();
+  const first = original.followups.payload.entries[0]!;
+  const authored = {
+    ...first,
+    id: "71000000-0000-4000-8000-000000000002",
+    listing: original.portfolio.payload!.identities[0]!,
+    check: "Authored Class A check. Café 東京 📈",
+    result: "",
+  };
+  const payload = { ...original.followups.payload, entries: [first, authored] };
+  await f.api.saveFollowups(
+    {
+      expectedVersion: original.followups.version,
+      idempotencyKey: "followup-preservation-comparison",
+      payload,
+    },
+    new AbortController().signal,
+  );
+  const saved = store.saved().followups.payload;
+  const actual = saved.entries[0]!;
+  expect(JSON.stringify(actual)).not.toBe(JSON.stringify(first));
+  expect(sameJsonValue(actual, first)).toBe(true);
+  expect(sameJsonValue(saved, payload)).toBe(true);
+  expect(f.followups!.getSnapshot().commits).toBe(1);
+  expect(store.getSnapshot().portfolioSave).toBe(0);
+  expect(store.getSnapshot().valuationSave).toBe(0);
+  for (const key of Object.keys(first)) {
+    const missing = Object.fromEntries(
+      Object.entries(actual).filter(([name]) => name !== key),
+    );
+    expect(sameJsonValue(missing, first), `missing complete field ${key}`).toBe(
+      false,
+    );
+    expect(
+      sameJsonValue({ ...actual, [key]: "changed raw value" }, first),
+      `changed complete field ${key}`,
+    ).toBe(false);
+  }
+  expect(sameJsonValue({ ...actual, extra: "unexpected" }, first)).toBe(false);
+  expect(sameJsonValue({ ...actual, check: actual.check + " " }, first)).toBe(
+    false,
+  );
+  expect(sameJsonValue({ ...actual, result: actual.result + " " }, first)).toBe(
+    false,
+  );
+  expect(
+    sameJsonValue(
+      {
+        ...actual,
+        listing: { ...actual.listing, shareClassId: "different-class" },
+      },
+      first,
+    ),
+  ).toBe(false);
+  expect(sameJsonValue([...saved.entries].reverse(), payload.entries)).toBe(
+    false,
+  );
+  expect(sameJsonValue(saved.entries.slice(1), payload.entries)).toBe(false);
+  const native = readFileSync(
+    new URL(
+      "../../android/app/src/androidTest/java/local/investment/personal/ManagedPortfolioSavedScenarioTest.java",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  expect(native).toContain(
+    '"+SAME_JSON+"("+D+".saved.followups.payload.entries[0],"+D+".original.followups.payload.entries[0])',
+  );
+});

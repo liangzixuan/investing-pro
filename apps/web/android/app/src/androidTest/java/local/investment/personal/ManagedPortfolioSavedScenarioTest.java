@@ -116,7 +116,7 @@ public class ManagedPortfolioSavedScenarioTest {
         click("//summary[normalize-space(.)='Edit opening balances']");replace("input[aria-label='Ledger opening cash']","25.00");click("//button[normalize-space(.)='Apply opening changes']");tap("#managed-portfolio-review");tap("#managed-portfolio-save");
         await("Portfolio Save alone changes only authored cash",D+".counts.portfolioSave===1&&"+F+".save===0&&"+D+".saved.portfolio.payload.opening.cashUsd==='25.00'&&"+SAME_JSON+"("+D+".saved.portfolio.payload.identities,"+D+".original.portfolio.payload.identities)&&JSON.stringify("+D+".saved.portfolio.payload.opening.holdings)===JSON.stringify("+D+".original.portfolio.payload.opening.holdings)");
         expectedPortfolio=page.read(new Script("JSON.stringify("+D+".saved.portfolio.payload)"));navigate("Follow-ups");tap("#managed-followups-save");
-        await("third resource Save retains original check and does not save Watchlist",F+".commits===1&&"+D+".saved.followups.payload.entries.length===2&&JSON.stringify("+D+".saved.followups.payload.entries[0])===JSON.stringify("+D+".original.followups.payload.entries[0])&&"+D+".counts.save===0");
+        await("third resource Save retains original check and does not save Watchlist",F+".commits===1&&"+D+".saved.followups.payload.entries.length===2&&"+SAME_JSON+"("+D+".saved.followups.payload.entries[0],"+D+".original.followups.payload.entries[0])&&"+D+".counts.save===0");
         expectedFollowups=page.read(new Script("JSON.stringify("+D+".saved.followups.payload)"));boundary();
     }
     private void freshLoad()throws Exception {
