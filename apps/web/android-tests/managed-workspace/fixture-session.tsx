@@ -31,7 +31,11 @@ import { MarketsSourceReviewFixtureControls } from "./markets-source-review-fixt
 import { HoldingFollowupFixtureControls } from "./holding-followup-fixture-controls";
 import { App } from "@capacitor/app";
 import { CompanySnapshotLoadingFixtureControls } from "./company-snapshot-loading-fixture-controls";
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
+import {
+  observePortfolioDatedBack,
+  type PortfolioDatedBackWindow,
+} from "./portfolio-dated-back-observation";
 import { ManagedWorkspaceRouter } from "../../src/clerk-trial/ManagedWorkspaceScreen";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { TrialFrame } from "../../src/clerk-trial/TrialFrame";
@@ -297,6 +301,22 @@ function ResourceControls({ workspace, onFreshSession }: MountedProps) {
 }
 export function FixtureSession({ session, onFreshSession }: Props) {
   const workspace = useFixtureWorkspace(session);
+  const datedBack = useMemo(
+    () =>
+      scenario === "portfolio-dated-review" && workspace
+        ? observePortfolioDatedBack(App, workspace)
+        : null,
+    [workspace],
+  );
+  useLayoutEffect(() => {
+    if (!datedBack) return;
+    const target = window as PortfolioDatedBackWindow;
+    target.__portfolioDatedBackObservation = datedBack;
+    return () => {
+      if (target.__portfolioDatedBackObservation === datedBack)
+        delete target.__portfolioDatedBackObservation;
+    };
+  }, [datedBack]);
   const [researchDraftSetFileSession] = useState(() =>
     createNativeResearchDraftSetFileSession(
       nativeResearchDraftSetFile,
@@ -322,7 +342,7 @@ export function FixtureSession({ session, onFreshSession }: Props) {
         {workspace ? (
           <ManagedWorkspaceRouter
             workspace={workspace}
-            androidBack={App}
+            androidBack={datedBack?.adapter ?? App}
             {...nativeFixtureRouterPorts()}
             {...draftFileSession.routerProps}
             {...valuationDraftFileSession.routerProps}
