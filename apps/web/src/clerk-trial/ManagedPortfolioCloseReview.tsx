@@ -84,7 +84,7 @@ function useCloseController(
   );
   const context = useMemo(
     () => (navigationPending ? null : capturePortfolioCloseContext(workspace)),
-    [workspace, view, saved, portfolio, session, navigationPending],
+    [workspace, view, saved, portfolio, session.phase, navigationPending],
   );
   const [controller, setController] = useState<Controller | null>(null);
   useLayoutEffect(() => {

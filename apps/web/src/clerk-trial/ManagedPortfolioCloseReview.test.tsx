@@ -16,6 +16,9 @@ import { eodResponse, eodSelection } from "./eod-history-fixture";
 type Effect = { run: () => (() => void) | void; deps: readonly unknown[] };
 const hooks = vi.hoisted(() => ({
   index: 0,
+  memoIndex: 0,
+  cacheMemo: false,
+  memos: [] as { value: unknown; deps: readonly unknown[] }[],
   effects: [] as Effect[],
   slots: [] as (Effect & { cleanup: (() => void) | void })[],
   states: [] as unknown[],
@@ -28,13 +31,22 @@ vi.mock("./ManagedPortfolioScenarioEntry", () => ({
 }));
 const capture = vi.hoisted(() => ({
   current: null as PortfolioCloseContext | null,
+  fresh: false,
 }));
 vi.mock("./portfolio-close-review-context", () => ({
-  capturePortfolioCloseContext: () => capture.current,
+  capturePortfolioCloseContext: () =>
+    capture.fresh && capture.current ? { ...capture.current } : capture.current,
 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof React>()),
-  useMemo: (create: () => unknown) => create(),
+  useMemo: (create: () => unknown, deps: readonly unknown[]) => {
+    if (!hooks.cacheMemo) return create();
+    const index = hooks.memoIndex++,
+      prior = hooks.memos[index];
+    if (!prior || deps.some((value, i) => !Object.is(value, prior.deps[i])))
+      hooks.memos[index] = { value: create(), deps };
+    return hooks.memos[index]!.value;
+  },
   useCallback: (callback: unknown) => callback,
   useState: (initial: unknown) => {
     const i = hooks.index++;
@@ -66,10 +78,14 @@ function cleanup() {
 }
 beforeEach(() => {
   hooks.index = 0;
+  hooks.memoIndex = 0;
+  hooks.cacheMemo = false;
+  hooks.memos = [];
   hooks.states = [];
   hooks.effects = [];
   hooks.slots = [];
   capture.current = null;
+  capture.fresh = false;
 });
 afterEach(cleanup);
 type Element = React.ReactElement<Record<string, unknown>>;
@@ -172,8 +188,8 @@ function fixture(cashUsd: string | null = "10.00") {
   const models: ReviewModel[] = [];
   const saved = { draft: { ledger: context.ledger } },
     state = {},
-    session = { phase: "active" },
     view = {};
+  let session = { phase: "active" };
   const workspace = {
     portfolioValuationReview: { invalidate: vi.fn() },
     subscribe: () => () => {},
@@ -217,6 +233,7 @@ function fixture(cashUsd: string | null = "10.00") {
   hooks.states = [];
   const render = (pending = false, apply = true) => {
     hooks.index = 0;
+    hooks.memoIndex = 0;
     hooks.effects = [];
     const node = Component({ ...inner.props, navigationPending: pending });
     if (apply) commit();
@@ -230,12 +247,29 @@ function fixture(cashUsd: string | null = "10.00") {
     onResearch,
     context,
     saved,
+    republishSession: () => {
+      session = { ...session };
+    },
     invalidate: () => {
       active = false;
     },
   };
 }
 describe("Dated holdings review committed UI", () => {
+  it("keeps loaded closes when an active session republishes a resource summary", async () => {
+    hooks.cacheMemo = true;
+    capture.fresh = true;
+    const f = fixture();
+    await f.models[0]!.load();
+    const rows = f.models[0]!.getSnapshot().rows;
+    expect(rows.length).toBeGreaterThan(0);
+    f.render();
+    f.republishSession();
+    f.render();
+    expect(f.models).toHaveLength(1);
+    expect(f.models[0]!.getSnapshot().rows).toBe(rows);
+    expect(f.read).toHaveBeenCalledTimes(1);
+  });
   it("scopes original provenance to its named table when composition adds an earlier table", async () => {
     const f = fixture();
     await f.models[0]!.load();
