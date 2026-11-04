@@ -394,6 +394,83 @@ class SupervisorTests(unittest.TestCase):
         self.assertNotIn("discoveryPending", self.state)
 
 
+    def test_unconfirmed_shell_completion_discards_partial_identity_then_reprobes(self):
+        probe = ["-s", IDENTITY["serial"], "shell", "-T", "getprop ro.build.version.sdk"]
+        failure = AdbFailure(probe, 255, stdout=b"36\n")
+        with patch.object(self.adb, "identity", side_effect=failure), \
+             patch.object(self.adb, "write_lease") as write:
+            self.host.discover()
+            write.assert_not_called()
+        self.assertNotIn("lease", self.state)
+        self.assertIsNone(self.adb.lease)
+        self.assertEqual(self.adb.commands, [])
+        pending = self.state["discoveryPending"]["last"]
+        self.assertEqual(pending["reason"], "prelease-read-completion-unconfirmed")
+        self.assertEqual(pending["command"]["exitCode"], 255)
+        self.assertEqual(pending["command"]["stdout"], "36\n")
+        with patch.object(self.adb, "identity", wraps=self.adb.identity) as identity, \
+             patch.object(self.adb, "package_identities", wraps=self.adb.package_identities) as packages, \
+             patch.object(self.adb, "settings", wraps=self.adb.settings) as settings, \
+             patch.object(self.adb, "devices", wraps=self.adb.devices) as devices:
+            self.host.discover()
+            identity.assert_called_once_with(IDENTITY["serial"])
+            packages.assert_called_once_with(IDENTITY)
+            settings.assert_called_once_with(IDENTITY)
+            self.assertEqual(devices.call_count, 2)
+        self.assertEqual(self.state["lease"], self.adb.lease)
+        self.assertEqual(self.adb.commands, [])
+
+    def test_unconfirmed_shell_read_diagnostics_remain_bounded(self):
+        with patch.object(self.adb, "identity", side_effect=AdbFailure(PROBE, 255, stdout=b"partial")):
+            for _ in range(100):
+                self.host.discover()
+        pending = self.state["discoveryPending"]
+        self.assertEqual(pending["count"], 100)
+        self.assertEqual(set(pending), {"count", "first", "last", "firstFailure", "lastFailure"})
+        self.assertLess(len(json.dumps(self.state)), 2400)
+        self.assertNotIn("lease", self.state)
+        self.assertEqual(self.adb.commands, [])
+
+    def test_successful_wrong_identity_after_unconfirmed_read_still_refuses(self):
+        with patch.object(self.adb, "identity", side_effect=AdbFailure(PROBE, 255, stdout=b"1")):
+            self.host.discover()
+        self.adb.identity_value["api"] = "35"
+        with self.assertRaises(ValueError):
+            self.host.discover()
+        self.assertNotIn("lease", self.state)
+        self.assertIsNone(self.adb.lease)
+
+    def test_unconfirmed_read_never_defers_uncertain_lease_write(self):
+        failure = AdbFailure(PROBE, 255, stdout=b"1\n")
+        with patch.object(self.adb, "write_lease", side_effect=failure) as write:
+            with self.assertRaises(AdbFailure):
+                self.host.discover()
+            write.assert_called_once()
+        self.assertIn("lease", self.state)
+        self.assertNotIn("discoveryPending", self.state)
+        self.assertFalse(self.host.restored_lease())
+        self.assertFalse(self.host.teardown_read(failure))
+        self.assertEqual(self.adb.commands, [])
+
+    def test_unconfirmed_read_stays_strict_after_authenticated_active_and_restored_recovery(self):
+        self.host.discover()
+        self.assertTrue(any(e["event"] == "lease-written" for e in self.state["events"]))
+        failure = AdbFailure(PROBE, 255, stdout=b"1\n")
+        for phase in ("active", "restored"):
+            self.adb.recovery = recovery(self.state["lease"], phase)
+            self.host.observe()
+            self.assertEqual(self.state["lastRecovery"], self.adb.recovery)
+            self.assertEqual(self.state["events"][-1]["event"], "native-recovery")
+            self.assertEqual(self.host.restored_lease(), phase == "restored")
+            with self.subTest(phase=phase), patch.object(self.adb, "identity", side_effect=failure):
+                with self.assertRaises(AdbFailure):
+                    self.host.discover()
+                with self.assertRaises(AdbFailure):
+                    self.host.cleanup()
+                self.assertFalse(self.host.teardown_read(failure))
+        self.assertEqual(self.adb.commands, [])
+
+
 class AdbTests(unittest.TestCase):
     def test_failed_command_diagnostics_include_exact_args_exit_and_bounded_outputs(self):
         adb = Adb(Path("/installed/sdk"))
@@ -442,6 +519,37 @@ class AdbTests(unittest.TestCase):
         for command in ("run-as local.investment.personal --user 10 cat cache/private.json", "ime enable foreign/.Ime",
                         "settings --user 10 put secure default_input_method foreign/.Ime", "am force-stop foreign"):
             self.assertFalse(discovery_read(["-s", IDENTITY["serial"], "shell", "-T", command]))
+
+
+    def test_failed_shell_stdout_is_not_successful_identity(self):
+        probe = ["-s", IDENTITY["serial"], "shell", "-T", "getprop ro.build.version.sdk"]
+        adb = Adb(Path("/installed/sdk"))
+        result = subprocess.CompletedProcess(probe, 255, b"36\n", b"")
+        with patch("run_served_ime.subprocess.run", return_value=result), self.assertRaises(AdbFailure) as caught:
+            adb.shell(IDENTITY["serial"], ["getprop", "ro.build.version.sdk"])
+        self.assertTrue(caught.exception.prelease_completion_unconfirmed)
+        self.assertFalse(caught.exception.transport_pending)
+        self.assertFalse(caught.exception.transport_response)
+        self.assertEqual(caught.exception.diagnostic["stdout"], "36\n")
+
+    def test_unconfirmed_completion_is_only_allowlisted_empty_stderr_shell_reads(self):
+        for stdout in (b"", b"36\n", b"partial-public-read"):
+            self.assertTrue(AdbFailure(PROBE, 255, stdout=stdout).prelease_completion_unconfirmed)
+        exclusions = [
+            AdbFailure(PROBE, 1, stdout=b"1"),
+            AdbFailure(PROBE, 255, stdout=b"1", stderr=b"Permission denied"),
+            AdbFailure(PROBE, 255, stdout=b"1", stderr=b" "),
+            AdbFailure(PROBE, 255, stdout=b"1", timed_out=True),
+            AdbFailure(PROBE, 255, stdout=b"1", has_input=True),
+            AdbFailure(["devices"], 255),
+            AdbFailure(["-s", IDENTITY["serial"], "emu", "avd", "name"], 255),
+            AdbFailure(["-s", IDENTITY["serial"], "shell", "-T", "ime reset"], 255),
+            AdbFailure(["-s", IDENTITY["serial"], "shell", "-T", "run-as local.investment.personal --user 10 cat files/served-editor-ime-recovery.json"], 255),
+            AdbFailure(["-s", "physical123", "shell", "-T", "getprop ro.build.version.sdk"], 255),
+        ]
+        for failure in exclusions:
+            with self.subTest(command=failure.diagnostic):
+                self.assertFalse(failure.prelease_completion_unconfirmed)
 
 
 class ProcessTests(unittest.TestCase):
@@ -574,6 +682,18 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(state["cleanup"], "not-leased")
         self.assertNotIn("lease", state)
         self.assertEqual(commands, [])
+
+
+    def test_prelease_unconfirmed_completion_keeps_natural_gradle_failure(self):
+        result, state, commands = self.run_simulated(7, discovery_failure=AdbFailure(PROBE, 255, stdout=b"1\n"))
+        self.assertEqual(result, 7)
+        self.assertEqual(state["gradleExitCode"], 7)
+        self.assertIsNone(state["hostError"])
+        self.assertEqual(state["receivedSignals"], [])
+        self.assertEqual(state["cleanup"], "not-leased")
+        self.assertNotIn("lease", state)
+        self.assertEqual(commands, [])
+        self.assertEqual(state["discoveryPending"]["last"]["reason"], "prelease-read-completion-unconfirmed")
 
 
 class Clock:

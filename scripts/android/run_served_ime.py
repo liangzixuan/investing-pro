@@ -132,6 +132,11 @@ class AdbFailure(RuntimeError):
             r"device '(emulator-[0-9]+)' not found|connection reset by peer)", message)
         self.transport_response = (timed_out and self.empty_response) or (not stdout.strip() and transport is not None)
         self.transport_pending = self.read_probe and self.transport_response
+        # Streamed output does not establish that a shell exit packet completed.
+        # Only pre-lease discovery may defer this; never broaden teardown transport.
+        self.prelease_completion_unconfirmed = (
+            self.read_probe and len(self.args_vector) == 5 and self.args_vector[2:4] == ["shell", "-T"]
+            and code == 255 and not timed_out and stderr == b"")
         self.diagnostic = {"argv": ([str(executable)] if executable is not None else []) + self.args_vector,
                            "exitCode": code, "timedOut": timed_out,
                            "stdoutBytes": len(stdout), "stderrBytes": len(stderr),
@@ -313,6 +318,9 @@ class Supervisor:
             except AdbFailure as failure:
                 if failure.transport_pending:
                     self.pending("transport-not-ready", serial, failure)
+                    continue
+                if failure.prelease_completion_unconfirmed:
+                    self.pending("prelease-read-completion-unconfirmed", serial, failure)
                     continue
                 # An empty failure alone has no diagnosis. A separate disappearance
                 # observation can establish that this candidate is no longer ready.
