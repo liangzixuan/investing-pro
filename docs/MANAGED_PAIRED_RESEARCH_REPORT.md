@@ -56,5 +56,8 @@ and Java sources compiled against cached dependencies; this did not execute inst
 new native journey covers picker cancellation, full HTML readback and independent
 resource saves. Five native policy cases cover the closed document contract.
 
-Actual hosted native execution, signed delivery and physical-device acceptance of
-this new export remain pending. Browser QA remains stopped.
+PR 274 source checks and all 141 native cases passed after correcting two test
+fixtures. The complete native journey passed picker cancellation, chosen-document
+readback and independent saves. Source merged at
+`723786008f12537b9df9ecdce77409fa3b954478`; original main checks and signed delivery
+remain pending. Physical-device acceptance is not claimed. Browser QA remains stopped.

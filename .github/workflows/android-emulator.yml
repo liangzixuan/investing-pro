@@ -81,16 +81,22 @@ jobs:
         run: pnpm --filter @research-cockpit/web exec vite build --config vite.android-test.config.ts
 
       - name: Test the packaged app on Android
-        timeout-minutes: 25
+        timeout-minutes: 30
         working-directory: apps/web/android
         run: |
-          bash ./gradlew --no-daemon --console=plain \
-            -PinvestmentClientProfile=disconnected \
-            -Pandroid.testInstrumentationRunnerArguments.numShards=2 \
-            -Pandroid.testInstrumentationRunnerArguments.shardIndex="$ANDROID_TEST_SHARD" \
-            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
-            -Pandroid.testInstrumentationRunnerArguments.expectedSourceSha="$GITHUB_SHA" \
-            :app:pixel2Api36DebugAndroidTest
+          python3 -B -m unittest discover -s "$GITHUB_WORKSPACE/scripts/android" -p test_served_ime_host.py
+          python3 -B "$GITHUB_WORKSPACE/scripts/android/run_served_ime.py" \
+            --sdk "$ANDROID_HOME" --source "$GITHUB_SHA" --shard "$ANDROID_TEST_SHARD" \
+            --state app/build/outputs/androidTest-results/served-ime-host/state.json
+
+      - name: Reconcile the owned test IME after native process failure
+        if: always()
+        timeout-minutes: 2
+        working-directory: apps/web/android
+        run: |
+          python3 -B "$GITHUB_WORKSPACE/scripts/android/run_served_ime.py" --cleanup \
+            --sdk "$ANDROID_HOME" --source "$GITHUB_SHA" --shard "$ANDROID_TEST_SHARD" \
+            --state app/build/outputs/androidTest-results/served-ime-host/state.json
 
       - name: Verify native tests actually ran
         run: |
@@ -124,12 +130,19 @@ jobs:
           test_providers = (
               "local.investment.personal.SavedWatchlistTestDocumentsProvider",
               "local.investment.personal.SavedWatchlistTestObservationProvider",
+              "local.investment.personal.ServedEditorControlProvider",
+              "local.investment.personal.ServedEditorIme",
           )
           test_authorities = (
               "local.investment.personal.test.watchlist-export",
               "local.investment.personal.test.watchlist-export-observer",
+              "local.investment.personal.test.served-editor-control",
           )
-          provider_descriptors = [("L" + provider.replace(".", "/") + ";").encode("utf-8") for provider in test_providers]
+          test_ime_helpers = (
+              "local.investment.personal.ServedEditorGuard",
+              "local.investment.personal.ServedEditorSession",
+          )
+          provider_descriptors = [("L" + provider.replace(".", "/") + ";").encode("utf-8") for provider in test_providers + test_ime_helpers]
           def manifest_contains(contents, marker):
               return any((marker + "\0").encode(encoding) in contents for encoding in ("utf-8", "utf-16le"))
           def dex_files(archive):
@@ -138,12 +151,12 @@ jobs:
               if any(name.startswith(fixture_prefix) for name in app.namelist()):
                   raise SystemExit("Synthetic managed fixture entered the app APK.")
               if any(manifest_contains(app.read("AndroidManifest.xml"), marker) for marker in test_providers + test_authorities) or any(descriptor in contents for descriptor in provider_descriptors for contents in dex_files(app)):
-                  raise SystemExit("Synthetic export provider entered the app APK.")
+                  raise SystemExit("Synthetic test component entered the app APK.")
           with ZipFile(apk_root / "androidTest/debug/app-debug-androidTest.apk") as tests:
               if fixture_prefix + "index.html" not in tests.namelist():
                   raise SystemExit("Synthetic managed fixture is missing from the test APK.")
               if not all(manifest_contains(tests.read("AndroidManifest.xml"), marker) for marker in test_providers + test_authorities) or not all(any(descriptor in contents for contents in dex_files(tests)) for descriptor in provider_descriptors):
-                  raise SystemExit("Synthetic export provider is missing from the test APK.")
+                  raise SystemExit("Synthetic test component is missing from the test APK.")
           receipt = {
               "sourceSha": os.environ["GITHUB_SHA"],
               "runId": os.environ["GITHUB_RUN_ID"],
@@ -645,6 +658,12 @@ jobs:
           required.update(paired_research_policy_cases)
           if len(required) != 141:
               raise SystemExit("Paired research export must preserve all 135 prior cases.")
+          saved_scenario_case = ("local.investment.personal.ManagedWatchlistSavedScenarioTest", "savedScenariosKeepFullPartialEvidenceThroughResearchBackFinishAndSeparateSaves")
+          if saved_scenario_case in required:
+              raise SystemExit("Saved scenario case must be distinct.")
+          required.add(saved_scenario_case)
+          if len(required) != 142:
+              raise SystemExit("Saved scenario review must preserve all 141 prior cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -746,6 +765,13 @@ jobs:
                           raise SystemExit("The dated Portfolio review shard must retain each scoped journey frame.")
                   elif dated_frames:
                       raise SystemExit("Dated Portfolio review frames belong only to the executed shard.")
+              for frame_name in ("newWatchlistSavedScenarioPlan.png", "newWatchlistSavedScenarioResults.png", "newWatchlistSavedScenarioFinish.png"):
+                  scenario_frames = list(root.rglob(frame_name))
+                  if saved_scenario_case in executed:
+                      if len(scenario_frames) != 1 or scenario_frames[0].stat().st_size == 0:
+                          raise SystemExit("Saved-scenario review requires its three scoped frames.")
+                  elif scenario_frames:
+                      raise SystemExit("Saved-scenario frames belong only to the executed shard.")
               for frame_name in ("newWatchlistDailyReviewPlan.png", "newWatchlistDailyReviewResearch.png", "newWatchlistDailyReviewFinish.png"):
                   daily_frames = list(root.rglob(frame_name))
                   if watchlist_daily_review_case in executed:

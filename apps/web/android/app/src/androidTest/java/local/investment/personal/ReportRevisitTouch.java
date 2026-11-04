@@ -6,10 +6,12 @@ import static org.junit.Assert.*;
 
 import android.graphics.Rect;
 import android.os.SystemClock;
+import android.os.Looper;
 import android.util.Log;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.webkit.WebView;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.util.concurrent.atomic.AtomicReference;
@@ -135,7 +137,23 @@ final class ReportRevisitTouch {
         Gesture gesture = new Gesture(point.get());
         send(new TouchEvent(gesture, Phase.DOWN));
         send(new TouchEvent(gesture, Phase.UP));
+        awaitIndependentGestureBoundary(SystemClock.uptimeMillis(), gesture.deadline);
         assertTrue("Single editor touch finishes within the page deadline", SystemClock.uptimeMillis() < gesture.deadline);
+    }
+    // Return only after this completed UP cannot combine with the next helper gesture.
+    private static void awaitIndependentGestureBoundary(long completedUp, long deadline) throws InterruptedException {
+        assertNotSame("Gesture boundary must not block the UI thread", Looper.getMainLooper(), Looper.myLooper());
+        int timeout = ViewConfiguration.getDoubleTapTimeout();
+        assertTrue("Platform double-tap timeout is positive", timeout > 0);
+        long boundary = completedUp + timeout;
+        while (true) {
+            long now = SystemClock.uptimeMillis();
+            assertTrue("Independent gesture retains the original deadline", now < deadline);
+            if (now > boundary) return;
+            long remaining = boundary - now + 1;
+            assertTrue("Platform gesture boundary fits the original deadline", remaining < deadline - now);
+            Thread.sleep(remaining);
+        }
     }
     private enum Phase { DOWN, UP }
     private static final class Gesture {

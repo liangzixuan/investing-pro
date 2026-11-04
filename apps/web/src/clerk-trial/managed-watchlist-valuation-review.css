@@ -1,0 +1,21 @@
+.managed-watchlist-valuation-review {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.managed-watchlist-valuation-review button {
+  min-height: 44px;
+  white-space: normal;
+}
+.managed-watchlist-valuation-review pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.managed-watchlist-valuation-review li {
+  min-width: 0;
+  margin-block: 1rem;
+}
+.managed-watchlist-valuation-review .trial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

@@ -38,15 +38,18 @@ public class ManagedSavedValuationReassessmentTest {
     private static final String CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
     private ActivityScenario<MainActivity> scenario;
     private ReportRevisitFixtureAssets assets;
+    private ServedEditorSession imeSession;
     private ReportRevisitPage page;
     private ReportRevisitTouch touch;
     private ReportRevisitKeyboard keyboard;
     private String sha,origin,stage="startup",paired,price,annual;
     private String editingSelector,nativeEditingState;
+    private String keyObservationOwner;
     @Before public void launchInventedReassessment()throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
         sha=InstrumentationRegistry.getArguments().getString("expectedSourceSha");assertNotNull(sha);assertTrue(sha.matches("[a-f0-9]{40}"));
         assets=new ReportRevisitFixtureAssets(ReportRevisitFixtureAssets.Scenario.SAVED_VALUATION_REASSESSMENT);assets.prepare();
+        imeSession=ServedEditorSession.open();
         scenario=ActivityScenario.launch(MainActivity.class);page=new ReportRevisitPage(scenario);touch=new ReportRevisitTouch(page);keyboard=new ReportRevisitKeyboard(page,touch);
         scenario.onActivity(a->{assertEquals("local.investment.personal",a.getPackageName());assertNotNull(a.getBridge().getPlugin("App"));assertNull(a.getBridge().getPlugin("InvestmentAuth"));assertFalse(a.getBridge().getConfig().isWebContentsDebuggingEnabled());assertFalse(a.getBridge().getConfig().isMixedContentAllowed());assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW,a.getBridge().getWebView().getSettings().getMixedContentMode());keyboard.observe(a);a.getBridge().setServerBasePath(assets.directory().getAbsolutePath());});
         page.awaitStartup(new Check("independently unloaded invented resources",new Script("location.href==='https://localhost/'&&"+D+".counts.status===1&&"+D+".watchlist.draft===null&&"+D+".valuations.draft===null&&"+D+".followups.draft===null&&"+D+".view.view==='watchlist'")).nativeReady());
@@ -162,7 +165,15 @@ public class ManagedSavedValuationReassessmentTest {
     private String read(String suffix)throws Exception{return page.read(new Script(D+suffix));}
     private static String q(String value){return JSONObject.quote(value);}
     private void diagnose(){try{diagnoseEditing("failure");Log.e("SavedValuationReassessment","stage="+stage+", "+page.raw(new Script("(()=>{const d="+D+";return JSON.stringify({url:location.href,active:document.activeElement?.id,counts:d.counts,view:d.view.view,visit:d.view.research?.selection.listing.listingId,editorOwner:d.workbench.owner?.listing.listingId,editorContext:d.workbench.context?.listing.listingId,baseline:!!d.reassessment.baseline,reading:!!d.reassessment.reading,reassessmentActive:d.reassessment.active,exactPair:JSON.stringify(d.reassessment)==="+q(paired==null?"":paired)+",pricePresent:!!d.price.response,annualPresent:!!d.annual.response,calculations:d.calculationPublications,valuationVersion:d.valuations.baseVersion,watchlistVersion:d.watchlist.baseVersion,followupsVersion:d.followups.baseVersion,followups:"+F+"});})()")));}catch(Exception|AssertionError failure){Log.e("SavedValuationReassessment","Diagnostic unavailable",failure);}}
-    @After public void closeInventedReassessment()throws Exception {try{if(scenario!=null)scenario.close();}finally{if(assets!=null)assets.close();}}
+    @After public void closeInventedReassessment()throws Exception {
+        Throwable failure=null;
+        try{if(imeSession!=null)imeSession.close();}catch(Throwable cleanup){failure=cleanup;}
+        try{if(scenario!=null)scenario.close();}catch(Throwable cleanup){if(failure==null)failure=cleanup;else failure.addSuppressed(cleanup);}
+        try{if(assets!=null)assets.close();}catch(Throwable cleanup){if(failure==null)failure=cleanup;else failure.addSuppressed(cleanup);}
+        if(failure instanceof Error error)throw error;
+        if(failure instanceof Exception exception)throw exception;
+        if(failure!=null)throw new IllegalStateException("Fixture cleanup failed",failure);
+    }
     private void choose(String selector,String label,String value)throws Exception {tap(selector);AtomicReference<View> dialog=new AtomicReference<>();onView(androidx.test.espresso.matcher.ViewMatchers.withText(label)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).check((view,missing)->{if(missing!=null)throw missing;dialog.set(view.getRootView());}).perform(androidx.test.espresso.action.ViewActions.click());assertNotNull(dialog.get());page.await(new Check("native option chooses exact value",new Script("document.querySelector("+q(selector)+").value==="+q(value)),ReportRevisitPage.Readiness.NATIVE,dialog.get()));keyboard.closeSoftKeyboard();}
     private void frame(FollowupsReportFrameCapture.Frame name,String heading,String scope)throws Exception{
         committedFrame();
@@ -185,34 +196,96 @@ public class ManagedSavedValuationReassessmentTest {
     }
     private void diagnoseEditing(String phase) throws Exception {
         if (editingSelector == null) return;
-        String observed = page.read(new Script("JSON.stringify((()=>{const e=document.querySelector("+q(editingSelector)+");return {selector:"+q(editingSelector)+",present:!!e,tag:e?.tagName??null,focused:!!e&&document.activeElement===e,disabled:e?.disabled??null,readOnly:e?.readOnly??null,valueLength:e?.value?.length??null,selectionStart:e?.selectionStart??null,selectionEnd:e?.selectionEnd??null};})())"));
+        String observed = page.read(new Script("JSON.stringify((()=>{const e=document.querySelector("+q(editingSelector)+"),r=e?.getBoundingClientRect(),v=visualViewport,h=r?document.elementFromPoint(r.left+r.width/2,r.top+r.height/2):null;return {selector:"+q(editingSelector)+",present:!!e,tag:e?.tagName??null,activeId:document.activeElement?.id??null,activeTag:document.activeElement?.tagName??null,focused:!!e&&document.activeElement===e,disabled:e?.disabled??null,readOnly:e?.readOnly??null,valueLength:e?.value?.length??null,selectionStart:e?.selectionStart??null,selectionEnd:e?.selectionEnd??null,rect:r?{left:r.left,top:r.top,right:r.right,bottom:r.bottom}:null,viewport:{width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale},scroll:{x:scrollX,y:scrollY},hitId:h?.id??null,hitTag:h?.tagName??null,selfHit:!!e&&!!h&&e.contains(h),inputEventCount:window.__savedReassessmentNativeKeys?.events.length??null,inputEventDropped:window.__savedReassessmentNativeKeys?.dropped??null};})())"));
         AtomicReference<String> nativeNow=new AtomicReference<>();
         scenario.onActivity(activity->{
             WebView web=activity.getBridge().getWebView();android.view.WindowInsets insets=web.getRootWindowInsets();
             nativeNow.set("imeVisible="+(insets!=null&&insets.isVisible(android.view.WindowInsets.Type.ime()))+
-                ",focus="+web.hasFocus()+",windowFocus="+web.hasWindowFocus()+",resumed="+(activity.getLifecycle().getCurrentState()==androidx.lifecycle.Lifecycle.State.RESUMED));
+                ",focus="+web.hasFocus()+",windowFocus="+web.hasWindowFocus()+",resumed="+(activity.getLifecycle().getCurrentState()==androidx.lifecycle.Lifecycle.State.RESUMED)+
+                ",scroll="+web.getScrollX()+":"+web.getScrollY()+",size="+web.getWidth()+":"+web.getHeight());
         });
-        Log.i("SavedValuationEditing", "phase="+phase+", "+observed+", nativeBeforeSelection="+nativeEditingState+", nativeNow="+nativeNow.get());
+        Log.i("SavedValuationEditing", "phase="+phase+",uptime="+SystemClock.uptimeMillis()+", "+observed+", nativeBeforeSelection="+nativeEditingState+", nativeNow="+nativeNow.get());
+        diagnoseAccessibility(phase);
+    }
+    private void diagnoseAccessibility(String phase) {
+        // Read only the WebView's available provider; do not connect an automation service.
+        scenario.onActivity(activity->{
+            android.view.accessibility.AccessibilityNodeInfo host=null,input=null,accessibility=null;
+            try {
+                WebView web=activity.getBridge().getWebView();
+                android.view.accessibility.AccessibilityNodeProvider provider=web.getAccessibilityNodeProvider();
+                host=web.createAccessibilityNodeInfo();
+                if(provider!=null) {
+                    input=provider.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+                    accessibility=provider.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+                }
+                Log.i("SavedValuationEditing","phase="+phase+",uptime="+SystemClock.uptimeMillis()+
+                    ",providerAvailable="+(provider!=null)+",accessibilityHost="+describeAccessibility(host)+
+                    ",inputFocus="+describeAccessibility(input)+",accessibilityFocus="+describeAccessibility(accessibility));
+            } catch(RuntimeException unavailable) {
+                Log.i("SavedValuationEditing","phase="+phase+",accessibilityUnavailable="+unavailable.getClass().getName());
+            } finally {
+                if(accessibility!=null&&accessibility!=host&&accessibility!=input)accessibility.recycle();
+                if(input!=null&&input!=host)input.recycle();
+                if(host!=null)host.recycle();
+            }
+        });
+    }
+    private String describeAccessibility(android.view.accessibility.AccessibilityNodeInfo node) {
+        if(node==null)return "null";
+        android.graphics.Rect bounds=new android.graphics.Rect();node.getBoundsInScreen(bounds);
+        CharSequence text=node.getText();
+        return "{package="+node.getPackageName()+",class="+node.getClassName()+",id="+node.getViewIdResourceName()+
+            ",bounds="+bounds.toShortString()+",textLength="+(text==null?-1:text.length())+
+            ",selection="+node.getTextSelectionStart()+":"+node.getTextSelectionEnd()+",focused="+node.isFocused()+
+            ",accessibilityFocused="+node.isAccessibilityFocused()+",editable="+node.isEditable()+",visible="+node.isVisibleToUser()+"}";
+    }
+    private void observeEditing(String phase) {
+        try {diagnoseEditing(phase);}catch(Exception|AssertionError unavailable){Log.i("SavedValuationEditing","phase="+phase+",diagnosticsUnavailable="+unavailable.getClass().getName());}
+    }
+    private void startKeyObservation() {
+        keyObservationOwner=SystemClock.uptimeMillis()+":"+editingSelector;
+        try {
+            page.read(new Script("(()=>{\nif(!document.querySelector('#fixture-saved-valuation-reassessment')||window.__savedReassessmentNativeKeys)throw new Error('Fixture event observer unavailable');\nconst state={owner:"+q(keyObservationOwner)+",events:[],dropped:0,errors:0,active:true,types:['keydown','keyup','pointerdown','pointerup','pointercancel','touchstart','touchend','touchcancel','focus','blur','focusin','focusout','beforeinput','input']};\nconst finite=v=>typeof v==='number'&&Number.isFinite(v)?v:null;\nconst label=v=>typeof v==='string'?v.slice(0,128):null;\nconst field=e=>({id:label(e?.id),tag:label(e?.tagName),valueLength:typeof e?.value==='string'?e.value.length:null,selectionStart:finite(e?.selectionStart),selectionEnd:finite(e?.selectionEnd)});\nstate.listener=e=>{\nif(!state.active||!e.isTrusted)return;if(state.events.length>=64){state.dropped++;return;}\ntry{const t=e.target,c=e.changedTouches?.[0],point=c??e,row={type:e.type,isTrusted:e.isTrusted,key:typeof e.key==='string'&&e.key.length===1?'[character]':label(e.key),code:label(e.code),ctrl:e.ctrlKey??null,defaultPrevented:e.defaultPrevented,target:field(t),active:field(document.activeElement),related:field(e.relatedTarget),time:finite(e.timeStamp),observedAt:performance.now(),inputType:label(e.inputType),dataLength:typeof e.data==='string'?e.data.length:null,isComposing:e.isComposing??null,pointerType:label(e.pointerType),pointerId:finite(e.pointerId),button:finite(e.button),buttons:finite(e.buttons),touchCount:finite(e.touches?.length),changedTouchCount:finite(e.changedTouches?.length),clientX:finite(point.clientX),clientY:finite(point.clientY),pageX:finite(point.pageX),pageY:finite(point.pageY),screenX:finite(point.screenX),screenY:finite(point.screenY)};\nstate.events.push(row);queueMicrotask(()=>{if(!state.active)return;try{row.defaultPreventedAtMicrotask=e.defaultPrevented;row.targetAtMicrotask=field(t);row.activeAtMicrotask=field(document.activeElement);}catch{state.errors++;}});\n}catch{state.errors++;}};\nstate.cleanup=()=>{state.active=false;for(const type of state.types)document.removeEventListener(type,state.listener,true);if(window.__savedReassessmentNativeKeys===state)delete window.__savedReassessmentNativeKeys;};\ntry{window.__savedReassessmentNativeKeys=state;for(const type of state.types)document.addEventListener(type,state.listener,{capture:true,passive:true});return 'observing';}catch(error){state.cleanup();throw error;}\n})()"));
+        }catch(Exception|AssertionError unavailable){Log.i("SavedValuationEditing","keyObserverUnavailable="+unavailable.getClass().getName());}
+    }
+    private void stopKeyObservation() {
+        try {
+            String observed=page.read(new Script("JSON.stringify((()=>{const s=window.__savedReassessmentNativeKeys;if(!s||s.owner!=="+q(keyObservationOwner)+")return null;try{return {events:s.events,dropped:s.dropped,errors:s.errors};}finally{s.cleanup();}})())"));
+            if(observed!=null&&!observed.equals("null")) {
+                JSONObject result=new JSONObject(observed);org.json.JSONArray events=result.getJSONArray("events");
+                Log.i("SavedValuationEditing","phase=input-observer-final,selector="+editingSelector+",count="+events.length()+",dropped="+result.getInt("dropped")+",errors="+result.getInt("errors"));
+                for(int index=0;index<events.length();index++)Log.i("SavedValuationInputEvent","selector="+editingSelector+",index="+index+",event="+events.getJSONObject(index));
+            }
+        }catch(Exception|AssertionError unavailable){Log.i("SavedValuationEditing","keyObserverCleanupUnavailable="+unavailable.getClass().getName());}
     }
     private void replace(String selector,String value)throws Exception {
         editingSelector=selector;nativeEditingState="not yet observed";
         String original=page.read(new Script("document.querySelector("+q(selector)+").value"));
-        tap(selector);
-        String focused="(()=>{const e=document.querySelector("+q(selector)+");return !!e&&document.activeElement===e&&!e.disabled&&!e.readOnly&&e.value==="+q(original)+";})()";
-        page.await(new Check("exact assessment and original value own native focus before IME",new Script(focused)).nativeReady());
-        nativeEditingState=keyboard.awaitVisibleEditor(selector);
-        page.await(new Check("settled IME retains exact focused field and original value",new Script(focused)).nativeReady());
-        // Place the caret after the IME resize using fresh native hit geometry.
-        tap(selector);
-        page.await(new Check("settled native caret retains exact field and original value",new Script(focused)).nativeReady());
-        try (ReassessmentNativeEditor editor=ReassessmentNativeEditor.bind(scenario,()->readEditingDom(selector),original)) {
-            diagnoseEditing("before-select-all");
-            editor.selectAll();
-            await("native selection covers the whole original assessment",focused+"&&document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");
-            diagnoseEditing("after-select-all");
-            editor.commit(value);
-            await("full Unicode assessment reaches the real controlled input","document.querySelector("+q(selector)+").value==="+q(value));
-        }
-        keyboard.closeSoftKeyboard();
+        startKeyObservation();
+        try {
+            tap(selector);
+            observeEditing("post-tap");
+            String focused="(()=>{const e=document.querySelector("+q(selector)+");return !!e&&document.activeElement===e&&!e.disabled&&!e.readOnly&&e.value==="+q(original)+";})()";
+            page.await(new Check("exact assessment and original value own native focus before IME",new Script(focused)).nativeReady());
+            nativeEditingState=keyboard.awaitVisibleEditor(selector);
+            page.await(new Check("settled IME retains exact focused field and original value",new Script(focused)).nativeReady());
+            observeEditing("post-ime");
+            // Bind the settled native selection directly. A second coordinate tap can hit
+            // Android's text-selection actions even when the DOM still reports this field.
+            page.await(new Check("settled native caret retains exact field and original value",new Script(focused)).nativeReady());
+            observeEditing("before-native-binding");
+            try (ReassessmentNativeEditor editor=ReassessmentNativeEditor.bind(scenario,()->readEditingDom(selector),original)) {
+                diagnoseEditing("before-select-all");
+                editor.selectAll();
+                await("native selection covers the whole original assessment",focused+"&&document.activeElement.selectionStart===0&&document.activeElement.selectionEnd===document.activeElement.value.length");
+                diagnoseEditing("after-select-all");
+                editor.commit(value);
+                await("full Unicode assessment reaches the real controlled input","document.querySelector("+q(selector)+").value==="+q(value));
+            }
+            keyboard.closeSoftKeyboard();
+        } catch(Exception|AssertionError failure) {
+            observeEditing("replacement-failure");throw failure;
+        } finally {stopKeyObservation();}
     }
 }

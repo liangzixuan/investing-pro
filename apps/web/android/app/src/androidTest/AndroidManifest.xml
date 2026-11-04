@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <package android:name="local.investment.personal" />
+    </queries>
     <application>
+        <service
+            android:name="local.investment.personal.ServedEditorIme"
+            android:exported="true"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:label="Invented research text input">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data android:name="android.view.im" android:resource="@xml/served_editor_ime" />
+        </service>
+        <provider
+            android:name="local.investment.personal.ServedEditorControlProvider"
+            android:authorities="local.investment.personal.test.served-editor-control"
+            android:exported="true"
+            android:grantUriPermissions="false" />
         <provider
             android:name="local.investment.personal.SavedWatchlistTestObservationProvider"
             android:authorities="local.investment.personal.test.watchlist-export-observer"

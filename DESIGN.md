@@ -45,6 +45,14 @@ See the [workflow guide](docs/MANAGED_VALUATION_REASSESSMENT.md).
 
 ## Watchlist daily review
 
+Saved scenarios belong inside the existing daily group. Keep Load, Preview and
+Evaluate explicit, and show each listing's full assumptions, model outcomes,
+Price evidence and refusal reasons in the chosen order. Use the existing result
+tables and lazy raw-data disclosures. Owned Research and Back preserve the
+reading; Finish removes active controls. Explain the existing Saved inputs
+recovery route when needed, then start a new daily review. Resource saves remain
+separate. See the [saved-scenario guide](docs/MANAGED_WATCHLIST_SAVED_SCENARIOS.md).
+
 Extend the existing group-review disclosure with an explicit daily mode. Keep
 ordered company selection, source choices and the complete preview together.
 Separate source outcomes from authored-check status. Show full Price histories,

@@ -1,3 +1,4 @@
+import { ManagedWatchlistValuationReview } from "./managed-watchlist-valuation-review";
 import {
   ManagedScreenResearchReview,
   type ManagedScreenResearchReviewState,
@@ -407,6 +408,7 @@ export class ManagedWorkspace {
   readonly filings: ManagedCompanyFilings;
   readonly watchlistFilings: ManagedWatchlistFilings;
   readonly filingsReview: ManagedFilingsReview;
+  readonly watchlistValuationReview: ManagedWatchlistValuationReview;
   private readonly watchlistDailyContext: ManagedWatchlistDailyContext;
   private readonly secAccess = new ManagedSecAccess();
   private readonly eodAccess: ManagedEodAccess;
@@ -858,6 +860,22 @@ export class ManagedWorkspace {
         this.invalidateCatalog();
     });
     this.watchlistDailyContext = new ManagedWatchlistDailyContext(this);
+    this.watchlistValuationReview = new ManagedWatchlistValuationReview(
+      this.filingsReview,
+      this.valuationAssumptions,
+      this.valuation,
+      {
+        now: () => new Date().toISOString(),
+        coverage: researchOptions.coverage,
+        available: () =>
+          !this.retired &&
+          !this.navigationBlocked &&
+          this.state.view === "watchlist" &&
+          !this.state.research &&
+          !this.state.companyRoute &&
+          !this.getResearchDraftSetRoute().blocked,
+      },
+    );
     this.screenResearchReview = new ManagedScreenResearchReview(
       this.financialScreen,
       {
@@ -990,6 +1008,7 @@ export class ManagedWorkspace {
     this.portfolio.syncCatalog();
     this.valuationAssumptions.syncCatalog();
     this.valuationReassessment.reconcile();
+    this.watchlistValuationReview?.reconcile();
     this.syncAnnouncements();
     this.syncWatchlistPrices();
     this.syncAnnualComparison();
@@ -1193,6 +1212,7 @@ export class ManagedWorkspace {
     this.followups.retire();
     this.portfolio.retire();
     this.valuationReassessment.retire();
+    this.watchlistValuationReview?.retire();
     this.valuationAssumptions.retire();
     this.valuationRevenueBasis.invalidate();
     this.valuation.retire();

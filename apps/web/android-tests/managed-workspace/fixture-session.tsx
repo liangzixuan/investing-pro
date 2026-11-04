@@ -1,3 +1,4 @@
+import { WatchlistSavedScenarioDiagnostics } from "./watchlist-saved-scenario-fixture-diagnostics";
 import { TwoCompanyResearchReviewFixtureDiagnostics } from "./two-company-research-review-fixture-diagnostics";
 import { SavedValuationReassessmentFixtureDiagnostics } from "./saved-valuation-reassessment-fixture-diagnostics";
 import { WatchlistDailyReviewFixtureDiagnostics } from "./watchlist-daily-review-fixture-diagnostics";
@@ -30,7 +31,11 @@ import { MarketsSourceReviewFixtureControls } from "./markets-source-review-fixt
 import { HoldingFollowupFixtureControls } from "./holding-followup-fixture-controls";
 import { App } from "@capacitor/app";
 import { CompanySnapshotLoadingFixtureControls } from "./company-snapshot-loading-fixture-controls";
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
+import {
+  observePortfolioDatedBack,
+  type PortfolioDatedBackWindow,
+} from "./portfolio-dated-back-observation";
 import { ManagedWorkspaceRouter } from "../../src/clerk-trial/ManagedWorkspaceScreen";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { TrialFrame } from "../../src/clerk-trial/TrialFrame";
@@ -103,6 +108,7 @@ function useFixtureWorkspace(session: TrialSession) {
     if (
       scenario === "two-company-research-review" ||
       scenario === "watchlist-daily-review" ||
+      scenario === "watchlist-saved-scenario" ||
       scenario === "saved-valuation-reassessment"
     )
       current.setView("watchlist");
@@ -111,6 +117,7 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario !== "two-company-research-review" &&
       scenario !== "saved-valuation-reassessment" &&
       scenario !== "watchlist-daily-review" &&
+      scenario !== "watchlist-saved-scenario" &&
       scenario !== "portfolio-dated-review" &&
       scenario !== "review-filings-evidence" &&
       scenario !== "portfolio-held-due-checks" &&
@@ -294,6 +301,22 @@ function ResourceControls({ workspace, onFreshSession }: MountedProps) {
 }
 export function FixtureSession({ session, onFreshSession }: Props) {
   const workspace = useFixtureWorkspace(session);
+  const datedBack = useMemo(
+    () =>
+      scenario === "portfolio-dated-review" && workspace
+        ? observePortfolioDatedBack(App, workspace)
+        : null,
+    [workspace],
+  );
+  useLayoutEffect(() => {
+    if (!datedBack) return;
+    const target = window as PortfolioDatedBackWindow;
+    target.__portfolioDatedBackObservation = datedBack;
+    return () => {
+      if (target.__portfolioDatedBackObservation === datedBack)
+        delete target.__portfolioDatedBackObservation;
+    };
+  }, [datedBack]);
   const [researchDraftSetFileSession] = useState(() =>
     createNativeResearchDraftSetFileSession(
       nativeResearchDraftSetFile,
@@ -319,7 +342,7 @@ export function FixtureSession({ session, onFreshSession }: Props) {
         {workspace ? (
           <ManagedWorkspaceRouter
             workspace={workspace}
-            androidBack={App}
+            androidBack={datedBack?.adapter ?? App}
             {...nativeFixtureRouterPorts()}
             {...draftFileSession.routerProps}
             {...valuationDraftFileSession.routerProps}
@@ -394,6 +417,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
         <SavedValuationReassessmentFixtureDiagnostics
           workspace={workspace}
           fixture={fixture.savedValuationReassessment}
+        />
+      )}
+      {workspace && fixture.watchlistSavedScenario && (
+        <WatchlistSavedScenarioDiagnostics
+          workspace={workspace}
+          fixture={fixture.watchlistSavedScenario}
         />
       )}
       {workspace && fixture.watchlistDailyReview && (
