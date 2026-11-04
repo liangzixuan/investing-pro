@@ -1,3 +1,4 @@
+import { ManagedWatchlistDailyReportContext } from "./watchlist-daily-report";
 import { ManagedWatchlistValuationReview } from "./managed-watchlist-valuation-review";
 import {
   ManagedScreenResearchReview,
@@ -410,6 +411,7 @@ export class ManagedWorkspace {
   readonly filingsReview: ManagedFilingsReview;
   readonly watchlistValuationReview: ManagedWatchlistValuationReview;
   private readonly watchlistDailyContext: ManagedWatchlistDailyContext;
+  private readonly watchlistDailyReport: ManagedWatchlistDailyReportContext;
   private readonly secAccess = new ManagedSecAccess();
   private readonly eodAccess: ManagedEodAccess;
   private readonly portfolioPriceCoverage:
@@ -910,6 +912,23 @@ export class ManagedWorkspace {
       this.syncScreenResearchReview(),
     );
     this.syncScreenResearchReview();
+    this.watchlistDailyReport = new ManagedWatchlistDailyReportContext(
+      this,
+      () =>
+        !this.retired &&
+        !this.navigationBlocked &&
+        this.state.view === "watchlist" &&
+        !this.state.research &&
+        !this.state.companyRoute &&
+        !this.getResearchDraftSetRoute().blocked &&
+        !this.hasWatchlistDraftFileActivity() &&
+        !this.followups.hasDraftFileActivity() &&
+        !this.valuation.hasDraftFileActivity() &&
+        !this.fileCatalogReviewRequired,
+    );
+  }
+  getWatchlistDailyReportSource() {
+    return this.watchlistDailyReport;
   }
   private screenResearchCaptureAvailable() {
     if (
@@ -1212,6 +1231,7 @@ export class ManagedWorkspace {
     this.followups.retire();
     this.portfolio.retire();
     this.valuationReassessment.retire();
+    this.watchlistDailyReport?.retire();
     this.watchlistValuationReview?.retire();
     this.valuationAssumptions.retire();
     this.valuationRevenueBasis.invalidate();

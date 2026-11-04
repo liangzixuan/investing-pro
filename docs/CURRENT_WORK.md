@@ -1,28 +1,37 @@
 # Current work
 
-Updated November 2, 2026. This is the current capability and delivery record.
+Updated November 4, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: saved scenarios in the Watchlist daily review
+## In development: keep a complete Watchlist daily review report
 
-Preview the confirmed saved valuation collection for the chosen daily group,
-then explicitly evaluate full scenarios against retained Price evidence. Owned
-Research and Back retain the reading; Finish is passive and each resource saves
-separately. See the [saved-scenario guide](MANAGED_WATCHLIST_SAVED_SCENARIOS.md).
-This isolated source increment has no hosted native or release acceptance.
+Prepare, preview and save a private HTML report from a finished daily review.
+Retain the complete ordered source reading, saved-scenario inputs and results,
+original clocks and exact-listing authored checks. Reuse existing source evidence
+and document writers. Local capture, preview, HTML delivery and native fixture
+implementation are complete. Current local focused checks pass; producing native
+CI and client delivery remain pending. See the
+[daily report guide](MANAGED_WATCHLIST_DAILY_REPORT.md).
 
-## Merged source: keep a complete paired research report
+## Accepted and delivered: paired reports and Watchlist saved scenarios
 
-Prepare, preview and save both retained company readings as one private HTML
-report. Complete captured source states, raw valuations and original clocks stay
-readable offline. See the [report guide](MANAGED_PAIRED_RESEARCH_REPORT.md).
-[PR 274](https://github.com/liangzixuan/investing-pro/pull/274) merged at
-`723786008f12537b9df9ecdce77409fa3b954478`. Its source checks and all 141 native
-cases passed after two test-fixture corrections. CodeScene retained five reviewed
-complexity/style findings. Main-branch acceptance and Android delivery remain
-pending; browser and physical-phone acceptance are not claimed.
+Android 1.73.0 includes the [paired research report](MANAGED_PAIRED_RESEARCH_REPORT.md)
+and [saved scenarios in daily review](MANAGED_WATCHLIST_SAVED_SCENARIOS.md).
+Prepare and save both retained company readings as one private HTML report.
+In Watchlist, preview confirmed saved inputs, explicitly evaluate full scenarios
+against retained Price evidence, and keep the reading through Research, Back and
+Finish. Resource saves remain separate.
+
+[PR 275](https://github.com/liangzixuan/investing-pro/pull/275) merged at
+`f1cff98614e1c51221094f90bf5e57e0ed086d60`, including the paired-report source
+from [PR 274](https://github.com/liangzixuan/investing-pro/pull/274).
+Original main source checks, parser checks and all 142 native cases passed.
+Android 1.73.0 was built with the existing signer and provided locally after all
+four checks on that APK and copy/checksum readback. Original failures and
+qualified checker corrections remain recorded. Browser, installation and
+physical-phone acceptance are not claimed; the API and website were not deployed.
 
 ## Accepted and delivered: two-company research decision review
 

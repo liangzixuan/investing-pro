@@ -664,6 +664,20 @@ jobs:
           required.add(saved_scenario_case)
           if len(required) != 142:
               raise SystemExit("Saved scenario review must preserve all 141 prior cases.")
+          daily_report_case = ("local.investment.personal.ManagedWatchlistDailyReportTest", "finishedDailyReportPreservesCompleteEvidenceThroughPickerCancelChosenHtmlAndSeparateSaves")
+          daily_report_policy_cases = {("local.investment.personal.WatchlistDailyReportHtmlPolicyInstrumentedTest", method) for method in {
+              "admitsTheFixedHtmlMetadataAndCompleteEnvelope",
+              "refusesUnknownOptionsCrossFormatPurposeAndUnsafeFilename",
+              "reusesTheCompleteUtcCalendarAndExactChosenFilename",
+              "refusesChangedHeadCspStyleIdentityOrIncompleteEnvelope",
+              "inheritsTheEightMibStrictUtf8WriterBoundary",
+          }}
+          if daily_report_case in required or required.intersection(daily_report_policy_cases):
+              raise SystemExit("Watchlist daily report cases must be distinct.")
+          required.add(daily_report_case)
+          required.update(daily_report_policy_cases)
+          if len(required) != 148:
+              raise SystemExit("Watchlist daily report must preserve all 142 prior cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -772,6 +786,13 @@ jobs:
                           raise SystemExit("Saved-scenario review requires its three scoped frames.")
                   elif scenario_frames:
                       raise SystemExit("Saved-scenario frames belong only to the executed shard.")
+              for frame_name in ("newWatchlistDailyReportFinished.png", "newWatchlistDailyReportPreview.png", "newWatchlistDailyReportSaved.png"):
+                  daily_report_frames = list(root.rglob(frame_name))
+                  if daily_report_case in executed:
+                      if len(daily_report_frames) != 1 or daily_report_frames[0].stat().st_size == 0:
+                          raise SystemExit("Watchlist daily report requires its three scoped frames.")
+                  elif daily_report_frames:
+                      raise SystemExit("Watchlist daily report frames belong only to the executed shard.")
               for frame_name in ("newWatchlistDailyReviewPlan.png", "newWatchlistDailyReviewResearch.png", "newWatchlistDailyReviewFinish.png"):
                   daily_frames = list(root.rglob(frame_name))
                   if watchlist_daily_review_case in executed:

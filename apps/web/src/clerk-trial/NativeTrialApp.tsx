@@ -1,4 +1,8 @@
 import {
+  createNativeWatchlistDailyReportAdapter,
+  type InvestmentWatchlistDailyReportPlugin,
+} from "./watchlist-daily-report-delivery";
+import {
   createNativePortfolioComparisonReportAdapter,
   type InvestmentPortfolioComparisonReportPlugin,
 } from "./portfolio-comparison-report-delivery";
@@ -250,6 +254,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const watchlistDailyReportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeWatchlistDailyReportAdapter(
+            registerPlugin<InvestmentWatchlistDailyReportPlugin>(
+              "InvestmentWatchlistDailyReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const screenResearchReportDelivery = useMemo(
     () =>
       managed
@@ -336,6 +351,9 @@ function NativeSession({
                 : {})}
               {...(financialScreenRecipeDelivery
                 ? { financialScreenRecipeDelivery }
+                : {})}
+              {...(watchlistDailyReportDelivery
+                ? { watchlistDailyReportDelivery }
                 : {})}
               {...(screenResearchReportDelivery
                 ? { screenResearchReportDelivery }

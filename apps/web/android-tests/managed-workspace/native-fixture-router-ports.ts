@@ -1,5 +1,6 @@
 import {
   nativeReport,
+  nativeWatchlistDailyReport,
   nativeExport,
   nativePortfolioReviewReport,
   nativePortfolioComparisonReport,
@@ -9,6 +10,9 @@ import {
 } from "./native-fixture-environment";
 export function nativeFixtureRouterPorts() {
   return {
+    ...(nativeWatchlistDailyReport
+      ? { watchlistDailyReportDelivery: nativeWatchlistDailyReport.delivery }
+      : {}),
     ...(nativeScreenResearchReport
       ? { screenResearchReportDelivery: nativeScreenResearchReport.delivery }
       : {}),

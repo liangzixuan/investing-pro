@@ -1,3 +1,5 @@
+import { ManagedWatchlistDailyReport } from "./ManagedWatchlistDailyReport";
+import type { WatchlistDailyReportDeliveryAdapter } from "./watchlist-daily-report-ports";
 import { ManagedWatchlistValuationReview } from "./ManagedWatchlistValuationReview";
 import { ManagedWatchlistDailyChecks } from "./ManagedWatchlistDailyChecks";
 import type { ManagedWorkspace } from "./managed-workspace";
@@ -8,6 +10,7 @@ import type { ManagedWatchlistEditor } from "./ManagedWatchlistEditor";
 
 type EntryProps = {
   workspace: ManagedWorkspace;
+  reportDelivery?: WatchlistDailyReportDeliveryAdapter;
   navigation: ManagedCompanyNavigation | null | undefined;
   openResearch: (opener: HTMLButtonElement, action: () => void) => void;
 };
@@ -39,6 +42,7 @@ function navigationAllowsReview(
 }
 export function ManagedFilingsReviewEntry({
   workspace,
+  reportDelivery,
   navigation,
   openResearch,
 }: EntryProps) {
@@ -50,6 +54,11 @@ export function ManagedFilingsReviewEntry({
           <ManagedWatchlistValuationReview
             workspace={workspace}
             active={navigationAllowsReview(navigation)}
+          />
+          <ManagedWatchlistDailyReport
+            workspace={workspace}
+            active={navigationAllowsReview(navigation)}
+            delivery={reportDelivery}
           />
           <ManagedWatchlistDailyChecks
             workspace={workspace}

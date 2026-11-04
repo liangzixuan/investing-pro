@@ -1,3 +1,4 @@
+import { createWatchlistDailyReportFixture } from "./watchlist-daily-report-fixture";
 import {
   createWatchlistSavedScenarioFixture,
   type WatchlistSavedScenarioFixture,
@@ -2602,6 +2603,10 @@ const nativeFixtureFactories = new Map<
       createSavedValuationReassessmentFixture(await createSharedFixture()),
   ],
   [
+    "watchlist-daily-report",
+    async () => createWatchlistDailyReportFixture(await createSharedFixture()),
+  ],
+  [
     "watchlist-saved-scenario",
     async () =>
       createWatchlistSavedScenarioFixture(await createSharedFixture()),
@@ -2710,6 +2715,7 @@ export async function createFixture(
     | "saved-valuation-reassessment"
     | "watchlist-daily-review"
     | "watchlist-saved-scenario"
+    | "watchlist-daily-report"
     | "portfolio-dated-review"
     | "portfolio-close-review"
     | "portfolio-review-report"
