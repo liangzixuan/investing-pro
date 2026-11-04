@@ -1,4 +1,8 @@
 import { ManagedWatchlistDailyReportContext } from "./watchlist-daily-report";
+import {
+  ManagedFollowupsReviewEvidence,
+  type FollowupsReviewEvidenceState,
+} from "./managed-followups-review-evidence";
 import { ManagedWatchlistValuationReview } from "./managed-watchlist-valuation-review";
 import {
   ManagedScreenResearchReview,
@@ -389,6 +393,9 @@ export class ManagedWorkspace {
   readonly followups: ManagedResearchFollowups;
   readonly followupsReview: ManagedFollowupsReviewSession;
   readonly reviewFilings: ManagedFollowupsReviewFilings;
+  readonly reviewEvidence: ManagedFollowupsReviewEvidence;
+  private reviewEvidenceCatalog: ManagedCatalogSnapshotDto | null = null;
+  private reviewEvidenceFiles: readonly object[] = [];
   readonly portfolioHeldDueChecks: ManagedPortfolioHeldDueChecks;
   readonly portfolioDatedReview: ManagedPortfolioDatedReviewContext;
   readonly portfolioValuationReview: ManagedPortfolioValuationContext;
@@ -871,6 +878,37 @@ export class ManagedWorkspace {
       if (this.reviewFilings.getSnapshot().catalogChanged)
         this.invalidateCatalog();
     });
+    this.reviewEvidence = new ManagedFollowupsReviewEvidence(
+      this.followupsReview,
+      this.followups,
+      {
+        readVisit: () => this.state.research,
+        readEvidence: (selection) =>
+          companySnapshotEvidence(
+            selection,
+            this.eod.getSnapshot(),
+            this.annual.getSnapshot(),
+            this.filings.getSnapshot(),
+            this.interim.getSnapshot(),
+          ),
+        readSourcePass: () => this.companySourcePass.getSnapshot(),
+        available: () => this.reviewEvidenceAvailable(),
+      },
+    );
+    for (const source of [
+      this.eod,
+      this.annual,
+      this.interim,
+      this.filings,
+      this.companySourcePass,
+      this.followups,
+      this.coordinator,
+      this.valuationAssumptions.coordinator,
+      this.portfolio.coordinator,
+    ])
+      source.subscribe(() => this.syncReviewEvidence());
+    this.valuation.subscribeDraftFileActivity(() => this.syncReviewEvidence());
+    this.syncReviewEvidence();
     this.watchlistDailyContext = new ManagedWatchlistDailyContext(this);
     this.watchlistValuationReview = new ManagedWatchlistValuationReview(
       this.filingsReview,
@@ -939,6 +977,41 @@ export class ManagedWorkspace {
   }
   getWatchlistDailyReportSource() {
     return this.watchlistDailyReport;
+  }
+  private reviewEvidenceAvailable() {
+    return (
+      !this.retired &&
+      this.state.view === "followups" &&
+      !this.navigationBlocked &&
+      this.followupsNavigationDepth === 0 &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      !this.state.companyRoute &&
+      this.researchDraftSetRouteReady() &&
+      !this.followups.hasDraftFileActivity() &&
+      !this.hasWatchlistDraftFileActivity() &&
+      !this.valuation.hasDraftFileActivity() &&
+      !this.fileCatalogReviewRequired
+    );
+  }
+  private syncReviewEvidence() {
+    if (!this.reviewEvidence) return;
+    const files = [
+      this.watchlistFileRevision,
+      this.followups.getDraftFileActivityRevision(),
+      this.valuation.getDraftFileActivityRevision(),
+    ];
+    const changed =
+      this.reviewEvidenceCatalog !== this.state.snapshot ||
+      (this.reviewEvidenceFiles.length > 0 &&
+        files.some((v, i) => v !== this.reviewEvidenceFiles[i]));
+    this.reviewEvidenceCatalog = this.state.snapshot;
+    this.reviewEvidenceFiles = files;
+    if (changed) this.reviewEvidence.invalidate();
+    else this.reviewEvidence.reconcile();
+  }
+  captureFollowupEvidence(expected: FollowupsReviewEvidenceState) {
+    const visit = this.state.research;
+    return visit ? this.reviewEvidence.capture(expected, visit) : null;
   }
   private screenResearchCaptureAvailable() {
     if (
@@ -1034,6 +1107,7 @@ export class ManagedWorkspace {
     this.marketsSourceReview.reconcile();
     this.followups.syncCatalog(this.state.snapshot?.snapshotSha256 ?? null);
     this.syncFollowupsReview();
+    this.syncReviewEvidence();
     this.portfolio.syncCatalog();
     this.valuationAssumptions.syncCatalog();
     this.valuationReassessment.reconcile();
@@ -1072,6 +1146,7 @@ export class ManagedWorkspace {
     } finally {
       this.followupsNavigationDepth--;
       this.syncFollowupsReview();
+      this.syncReviewEvidence();
       this.syncScreenResearchReview();
     }
   }
@@ -1239,6 +1314,7 @@ export class ManagedWorkspace {
     this.portfolioValuationReview?.retire();
     this.portfolioHeldDueChecks?.retire();
     this.reviewFilings?.retire();
+    this.reviewEvidence?.retire();
     this.followupsReview.retire();
     this.followups.retire();
     this.portfolio.retire();
@@ -1946,6 +2022,7 @@ export class ManagedWorkspace {
       filingsSeed?: ManagedCompanyFilingsSeed;
       reviewFilingsSeed?: ManagedFollowupsReviewFilingsSeed;
       screenResearchReview?: boolean;
+      followupEvidence?: boolean;
       admit?: (phase: "before-clear" | "after-clear") => boolean;
     } = {},
   ) {
@@ -1957,6 +2034,7 @@ export class ManagedWorkspace {
     let phase: "before-clear" | "after-clear" = "before-clear";
     const admitted = () => !this.retired && (options.admit?.(phase) ?? true);
     if (!options.screenResearchReview) this.screenResearchReview.invalidate();
+    if (!options.followupEvidence) this.reviewEvidence.foreignClose();
     const resumeReassessment =
       this.valuationReassessment.canResumeOwned(selection);
     if (!resumeReassessment) this.valuationReassessment.invalidate();
@@ -1972,6 +2050,7 @@ export class ManagedWorkspace {
       operation,
       resumeReassessment,
       options.screenResearchReview === true,
+      options.followupEvidence === true,
     );
     if (!owns()) return;
     if (!admitted()) {
@@ -2023,7 +2102,9 @@ export class ManagedWorkspace {
     if (this.state.research !== visit || !this.canNavigate()) return;
     const preserveScreenReview = this.screenResearchReview.ownedBack(visit);
     if (this.state.research !== visit || !this.canNavigate()) return;
-    this.closeResearchVisit(true, preserveScreenReview);
+    const preserveReviewEvidence = this.reviewEvidence.ownedBack(visit);
+    if (this.state.research !== visit || !this.canNavigate()) return;
+    this.closeResearchVisit(true, preserveScreenReview, preserveReviewEvidence);
   }
   closeResearch() {
     this.closeResearchVisit();
@@ -2031,6 +2112,7 @@ export class ManagedWorkspace {
   private closeResearchVisit(
     preserveReassessment = false,
     preserveScreenReview = false,
+    preserveReviewEvidence = false,
   ) {
     this.portfolioValuationReview?.closeResearch();
     this.portfolioDatedReview?.closeResearch();
@@ -2038,7 +2120,12 @@ export class ManagedWorkspace {
     this.cancelFollowupOpening();
     this.followupResearch = null;
     if (
-      this.clearResearch(Symbol(), preserveReassessment, preserveScreenReview)
+      this.clearResearch(
+        Symbol(),
+        preserveReassessment,
+        preserveScreenReview,
+        preserveReviewEvidence,
+      )
     )
       this.update({});
   }
@@ -2046,6 +2133,7 @@ export class ManagedWorkspace {
     operation = Symbol(),
     preserveReassessment = false,
     preserveScreenReview = false,
+    preserveReviewEvidence = false,
   ) {
     this.companyResearchChecks.clear();
     this.researchOperation = operation;
@@ -2053,6 +2141,8 @@ export class ManagedWorkspace {
       this.state.research !== null || this.state.companyRoute !== null;
     if (hadResearch && !preserveScreenReview)
       this.screenResearchReview?.foreignClose();
+    if (hadResearch && !preserveReviewEvidence)
+      this.reviewEvidence?.foreignClose();
     if (hadResearch && !preserveReassessment)
       this.valuationReassessment.invalidate();
     if (this.researchOperation !== operation) return false;
@@ -2745,6 +2835,17 @@ export class ManagedWorkspace {
       this.preparedFollowupIsCurrent(capture) &&
       (evidence?.isCurrent() ?? true);
     if (!current() || this.state.research || this.state.companyRoute) return;
+    const evidenceVisit = capture.reviewHandle
+      ? this.reviewEvidence.prepareOpen(
+          this.followupsReview.getSnapshot(),
+          capture.selection,
+        )
+      : null;
+    if (!current() || this.state.research || this.state.companyRoute) {
+      if (evidenceVisit)
+        this.reviewEvidence.commitOpen(evidenceVisit, undefined);
+      return;
+    }
     this.portfolioDatedReview.openResearch(capture);
     this.marketsBriefing.openResearch(capture);
     this.followupResearch = {
@@ -2752,10 +2853,16 @@ export class ManagedWorkspace {
       id: capture.entry.id,
       selection: capture.selection,
     };
-    this.openResearch(capture.selection, evidence ? "filings" : "eod", {
-      ...(evidence ? { reviewFilingsSeed: evidence.seed } : {}),
-      admit: () => current(),
-    });
+    const visit = this.openResearch(
+      capture.selection,
+      evidence ? "filings" : "eod",
+      {
+        ...(evidence ? { reviewFilingsSeed: evidence.seed } : {}),
+        followupEvidence: evidenceVisit !== null,
+        admit: () => current(),
+      },
+    );
+    if (evidenceVisit) this.reviewEvidence.commitOpen(evidenceVisit, visit);
     if (this.preparedFollowup === capture) this.preparedFollowup = null;
   }
   switchToInterim() {

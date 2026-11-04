@@ -1,3 +1,4 @@
+import { FollowupsEvidenceDiagnostics } from "./followups-review-evidence-diagnostics";
 import { PortfolioSavedScenarioDiagnostics } from "./portfolio-saved-scenario-fixture-diagnostics";
 import { WatchlistDailyReportFixtureControls } from "./watchlist-daily-report-fixture-controls";
 import { WatchlistSavedScenarioDiagnostics } from "./watchlist-saved-scenario-fixture-diagnostics";
@@ -84,6 +85,7 @@ function useFixtureWorkspace(session: TrialSession) {
   useLayoutEffect(() => {
     const current = new ManagedWorkspace(fixture.api, session, undefined, {
       researchCoverage: fixture.researchCoverage,
+      ...(fixture.followupsEvidence ? { interimIssuers: ["0000000001"] } : {}),
       ...(fixture.interimReview
         ? { interimIssuers: fixture.interimReview.issuers }
         : {}),
@@ -105,6 +107,7 @@ function useFixtureWorkspace(session: TrialSession) {
     )
       current.setView("portfolio");
     if (
+      scenario === "followups-review-evidence" ||
       scenario === "portfolio-held-due-checks" ||
       scenario === "review-filings-evidence"
     )
@@ -119,6 +122,7 @@ function useFixtureWorkspace(session: TrialSession) {
       current.setView("watchlist");
     setWorkspace(current);
     if (
+      scenario !== "followups-review-evidence" &&
       scenario !== "two-company-research-review" &&
       scenario !== "saved-valuation-reassessment" &&
       scenario !== "watchlist-daily-review" &&
@@ -428,6 +432,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       )}
       {workspace && nativeWatchlistDailyReport && (
         <WatchlistDailyReportFixtureControls />
+      )}
+      {workspace && fixture.followupsEvidence && (
+        <FollowupsEvidenceDiagnostics
+          workspace={workspace}
+          fixture={fixture.followupsEvidence}
+        />
       )}
       {workspace && fixture.portfolioSavedScenario && (
         <PortfolioSavedScenarioDiagnostics

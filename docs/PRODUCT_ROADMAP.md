@@ -27,24 +27,36 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: keep a complete Watchlist daily review report
+## Current priority: source evidence beside due checks
 
-Complete the retained daily workflow with a private HTML report under M4.
-Prepare it explicitly after Finish, preview the full ordered evidence and saved
-scenarios, then choose document delivery. Keep original clocks and complete
-refusals; preparation must not load sources, calculate or save resources.
-The local implementation reuses existing document writers. Source and native
-acceptance and client delivery remain pending; see the [daily report guide](MANAGED_WATCHLIST_DAILY_REPORT.md).
+Connect the existing chosen Follow-ups review to each company's complete source
+reading under M2/M3/M4. Retain it explicitly, inspect it beside the authored
+assessment, return through Back and finish with every chosen result. Reuse the
+current source pass and full passive presenters. Keep source clocks, partial
+outcomes and independent resource saves. Local implementation and checks are
+complete, including the full 12,311-test web suite. Original hosted CI and the
+150-case native run remain pending. See the
+[due-check evidence guide](MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
 
-## Next source increment: saved scenarios for dated holdings
+## Source accepted: saved scenarios for dated holdings
 
 Connect Portfolio holdings, confirmed saved assumptions and the current Research
 workbench under M3/M4. Compare all authored scenarios with the exact chosen-date
-raw close, retain the complete reading through Research and Back, then save each
-resource separately. This adds no provider, saved schema, aggregate fair value
-or historical backtest. Local source validation is in progress; producing CI
-and client delivery remain separate. See the
-[Portfolio saved-scenario guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
+raw close, keep the complete reading through Research and Back, then save each
+resource separately. Accepted main `c9b438eca9f1f45c04bf04a2c0aa053b034ea451`
+passed original source/parser checks and all 149 native cases. Android 1.75
+preparation is in progress. This adds no provider, saved schema, aggregate fair
+value or historical backtest. See the [guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
+
+## Delivered: complete Watchlist daily review report
+
+Android 1.74 provides the private HTML report under M4. Prepare it explicitly
+after Finish, preview the full ordered evidence and saved scenarios, then choose
+document delivery. Keep original clocks and complete refusals; preparation does
+not load sources, calculate or save resources. Accepted main
+`cf296fa2dd6ebadeaa660e76d2acf8cfcc8c2018` passed original source/parser checks and
+all 148 native cases. The existing-signer build, four APK checks and local
+copy/checksum readback passed. See the [daily report guide](MANAGED_WATCHLIST_DAILY_REPORT.md).
 
 ## Delivered: paired reports and Watchlist saved scenarios
 

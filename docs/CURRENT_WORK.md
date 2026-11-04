@@ -5,26 +5,41 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## In development: keep a complete Watchlist daily review report
+## Locally complete: source evidence beside due checks
 
-Prepare, preview and save a private HTML report from a finished daily review.
-Retain the complete ordered source reading, saved-scenario inputs and results,
-original clocks and exact-listing authored checks. Reuse existing source evidence
-and document writers. Local capture, preview, HTML delivery and native fixture
-implementation are complete. Current local focused checks pass; producing native
-CI and client delivery remain pending. See the
+Connect each chosen Follow-ups check to a complete retained company source
+reading. Use the existing explicit source pass, keep its original packets and
+clocks through Research and Back, then show every chosen result at Finish.
+Assessments, completion and resource Save remain explicit. The model, interface
+and complete synthetic journey are implemented. The 19 model tests and full web
+suite of 12,311 tests pass. Compilation passes for 90 Android Java sources;
+the required roster preserves all 149 prior cases and adds one complete journey.
+Test assets and the mobile bundle pass local checks. Original hosted source CI
+and native execution remain pending; no client acceptance is claimed. See the
+[workflow guide](MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
+
+## Source accepted: saved scenarios for dated Portfolio holdings
+
+Preview confirmed saved inputs for every holding in a dated Portfolio reading.
+Evaluate all authored scenarios and compare them with the exact chosen-date raw
+close. Keep the complete reading through Research and Back; resource saves remain
+separate. [PR 277](https://github.com/liangzixuan/investing-pro/pull/277) merged at
+`c9b438eca9f1f45c04bf04a2c0aa053b034ea451`. Original main source and parser checks
+and all 149 native cases passed. Two scoped native frames were inspected.
+The CodeScene complexity/size check failed; review found no functional defect.
+Android 1.75 preparation is in progress. Browser, installation and physical-phone
+acceptance are not claimed. See the [guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
+
+## Accepted and delivered: Watchlist daily review report
+
+Android 1.74.0 provides a private HTML report from a finished daily review.
+Retain the full ordered source reading, saved scenarios, original clocks and
+authored checks. Prepare, preview and document delivery are explicit.
+Accepted main `cf296fa2dd6ebadeaa660e76d2acf8cfcc8c2018` passed original source,
+parser and all 148 native cases. The existing-signer build, four checks on the
+same APK and local copy/checksum readback passed. The API and website were not
+deployed; installation and physical-phone acceptance remain separate. See the
 [daily report guide](MANAGED_WATCHLIST_DAILY_REPORT.md).
-
-## Next source increment: saved scenarios for dated Portfolio holdings
-
-Preview confirmed saved inputs for every holding in an admitted dated Portfolio
-reading. Evaluate all authored scenarios at the current action time and compare
-them with the exact selected-date raw close. Retain the full reading through
-current company Research and Back; resource saves remain separate. The model,
-UI and complete workspace journey pass local checks. The Android fixture adds one
-complete journey while preserving all 148 prior cases; producing native execution
-and client delivery remain pending. See the
-[Portfolio saved-scenario guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
 
 ## Accepted and delivered: paired reports and Watchlist saved scenarios
 

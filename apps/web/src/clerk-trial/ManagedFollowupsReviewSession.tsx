@@ -1,4 +1,5 @@
 import { ManagedFollowupsReviewFilings } from "./ManagedFollowupsReviewFilings";
+import { ManagedFollowupsReviewEvidence } from "./ManagedFollowupsReviewEvidence";
 import type { FollowupsReviewFilingsState } from "./managed-followups-review-filings";
 import { useSyncExternalStore } from "react";
 import type { ResearchFollowup } from "@research-cockpit/contracts";
@@ -264,6 +265,7 @@ export function ManagedFollowupsReviewSession(props: {
           Review one company at a time and return here to continue.
         </p>
         {reviewContent(state, saved, controls)}
+        <ManagedFollowupsReviewEvidence workspace={workspace} />
         {state.phase === "reviewing" && state.selected && (
           <ManagedFollowupsReviewFilings
             workspace={workspace}

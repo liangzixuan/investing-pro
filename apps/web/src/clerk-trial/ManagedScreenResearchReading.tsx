@@ -209,6 +209,24 @@ function FilingsReading({ state }: { state: Evidence["filings"] }) {
   );
 }
 
+/** Complete passive source presentation, shared by retained research readings. */
+export function CapturedCompanySources({
+  evidence,
+  priceStudies,
+}: {
+  evidence: Evidence;
+  priceStudies?: ReactNode;
+}) {
+  return (
+    <>
+      <PriceReading state={evidence.price} />
+      {priceStudies}
+      <FinancialSources evidence={evidence} />
+      <FilingsReading state={evidence.filings} />
+    </>
+  );
+}
+
 export function ManagedScreenResearchReading({
   capture,
 }: {
@@ -271,15 +289,17 @@ export function ManagedScreenResearchReading({
           <p>No authored valuation calculation was captured.</p>
         )}
       </section>
-      <PriceReading state={evidence.price} />
-      {capture.priceStudies && (
-        <CapturedPriceStudies
-          studies={capture.priceStudies}
-          showingPrevious={evidence.price?.showingPrevious ?? false}
-        />
-      )}
-      <FinancialSources evidence={evidence} />
-      <FilingsReading state={evidence.filings} />
+      <CapturedCompanySources
+        evidence={evidence}
+        priceStudies={
+          capture.priceStudies && (
+            <CapturedPriceStudies
+              studies={capture.priceStudies}
+              showingPrevious={evidence.price?.showingPrevious ?? false}
+            />
+          )
+        }
+      />
       <details>
         <summary>Complete retained report document (JSON)</summary>
         <CompanyReportDocumentView

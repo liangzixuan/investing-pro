@@ -1,0 +1,23 @@
+.managed-followups-evidence {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--trial-border, #c8d2df);
+  border-radius: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.managed-followups-evidence button,
+.managed-followups-evidence summary {
+  min-height: 44px;
+}
+.managed-followups-evidence-reading details {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.managed-followups-evidence-reading pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.managed-followups-evidence-reading td,
+.managed-followups-evidence-reading th {
+  font-variant-numeric: tabular-nums;
+}

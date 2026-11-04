@@ -46,6 +46,7 @@ const allowedScenarios = [
   "reviewed-company-source-pass",
   "report-revisit",
   "research-followups",
+  "followups-review-evidence",
   "followups-review-session",
   "holding-followup",
   "markets-source-review",

@@ -1,4 +1,8 @@
 import {
+  createFollowupsEvidenceNativeFixture,
+  type FollowupsEvidenceControls,
+} from "./followups-review-evidence-fixture";
+import {
   createPortfolioSavedScenarioFixture,
   type PortfolioSavedScenarioFixture,
 } from "./portfolio-saved-scenario-fixture";
@@ -2216,6 +2220,7 @@ export type NativeFinancialReviewMetadata = {
   readonly generation: SharedNativeFixture["generations"]["initial"];
 };
 export type ManagedNativeFixture = SharedNativeFixture & {
+  readonly followupsEvidence?: FollowupsEvidenceControls;
   readonly twoCompanyResearchReview?: TwoCompanyResearchReviewFixture;
   readonly savedValuationReassessment?: SavedValuationReassessmentFixture;
   readonly watchlistDailyReview?: WatchlistDailyReviewFixture;
@@ -2529,6 +2534,11 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "followups-review-evidence",
+    async () =>
+      createFollowupsEvidenceNativeFixture(await createSharedFixture()),
+  ],
+  [
     "followups-review-session",
     async () =>
       createFollowupsReviewSessionNativeFixture(
@@ -2734,6 +2744,7 @@ export async function createFixture(
     | "followups-review-report"
     | "company-snapshot-loading"
     | "reviewed-company-source-pass"
+    | "followups-review-evidence"
     | "followups-review-session"
     | "markets-source-review"
     | "markets-calendar-followup"
