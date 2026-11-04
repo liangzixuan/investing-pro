@@ -824,7 +824,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void replaceValuationFileOperand(String suffix, String before, String after) throws Exception {
         String id = readFixtureString("document.querySelector(" + JSONObject.quote(".managed-valuation-workbench:not(.managed-valuation-assumptions) input[id$='-" + suffix + "']") + ").id");
-        touchInput(id);
+        touchInput(id, true);
         replaceFocusedInput(id, before, after);
         String exactEditor = "(() => { const input=document.getElementById(" + JSONObject.quote(id) + ");" +
             "return input instanceof HTMLInputElement && input.type==='text' && !input.disabled" +
