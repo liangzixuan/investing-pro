@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load, type CheerioAPI } from "cheerio";
@@ -8,6 +9,7 @@ import {
   portfolioScenarioTime,
 } from "../../src/clerk-trial/test-portfolio-valuation-fixture";
 import { createFixture } from "./fixture";
+import { ManagedHoldingFollowup } from "../../src/clerk-trial/ManagedHoldingFollowup";
 
 function renderedRows($: CheerioAPI, index: number) {
   const e = $("[data-portfolio-scenario-listing]").eq(index);
@@ -246,4 +248,67 @@ it("admits the exact startup cohort once and refuses mixed, foreign and cancelle
   expect(() => f.api.loadPortfolio(aborted.signal)).toThrow("portfolio load");
   expect(f.portfolioSavedScenario!.getSnapshot().unexpected).toBe(3);
   expect(f.portfolioSavedScenario!.getSnapshot().eod).toBe(0);
+});
+
+it("opens the holding question form rather than the nested identity disclosure", async () => {
+  const f = await createPortfolioValuationFixture();
+  try {
+    const plan = f.model.preview(f.model.getSnapshot())!.plan!;
+    const holding = plan.rows[0]!.source.holding;
+    const $ = load(
+      renderToStaticMarkup(
+        createElement(ManagedHoldingFollowup, {
+          owner: holding,
+          position: {
+            listing: holding.identity,
+            shares: holding.shares,
+            totalCostBasisUsd: holding.totalCostBasisUsd,
+            confirmedOn: holding.confirmedOn,
+          },
+          actions: {
+            model: f.workspace.followups,
+            getContext: () => ({ port: null, reason: null }),
+            canLoad: () => true,
+            load: async () => {},
+            reviewExisting: () => {},
+          },
+        }),
+      ),
+    );
+    const native = readFileSync(
+      new URL(
+        "../../android/app/src/androidTest/java/local/investment/personal/ManagedPortfolioSavedScenarioTest.java",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    expect(native).toContain('open("#managed-holding-followup > details")');
+    expect(native).not.toContain('open("#managed-holding-followup details")');
+    expect(
+      $("#managed-holding-followup details").first().children("summary").text(),
+    ).toBe("Complete holding identity");
+    const form = $("#managed-holding-followup > details");
+    expect(form).toHaveLength(1);
+    expect(form.children("summary").text()).toBe(
+      "Review holding and keep a next check",
+    );
+    expect(form.attr("open")).toBeUndefined();
+    for (const id of [
+      "holding-followup-load",
+      "holding-followup-question",
+      "holding-followup-due",
+      "holding-followup-preview",
+    ])
+      expect(form.find(`#${id}`)).toHaveLength(1);
+    expect(
+      form.find("#holding-followup-load").attr("disabled"),
+    ).toBeUndefined();
+    expect(
+      $("#managed-holding-followup details")
+        .first()
+        .find("#holding-followup-load"),
+    ).toHaveLength(0);
+  } finally {
+    f.dispose();
+  }
 });
