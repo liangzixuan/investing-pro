@@ -678,6 +678,12 @@ jobs:
           required.update(daily_report_policy_cases)
           if len(required) != 148:
               raise SystemExit("Watchlist daily report must preserve all 142 prior cases.")
+          portfolio_scenario_case = ("local.investment.personal.ManagedPortfolioSavedScenarioTest", "holdingsSavedScenariosKeepChosenClosesThroughResearchBackAndSeparateResourceSaves")
+          if portfolio_scenario_case in required:
+              raise SystemExit("Portfolio saved-scenario case must be distinct.")
+          required.add(portfolio_scenario_case)
+          if len(required) != 149:
+              raise SystemExit("Portfolio saved scenarios must preserve all 148 prior cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -779,6 +785,13 @@ jobs:
                           raise SystemExit("The dated Portfolio review shard must retain each scoped journey frame.")
                   elif dated_frames:
                       raise SystemExit("Dated Portfolio review frames belong only to the executed shard.")
+              for frame_name in ("newPortfolioSavedScenarioResults.png", "newPortfolioSavedScenarioReturn.png"):
+                  portfolio_scenario_frames = list(root.rglob(frame_name))
+                  if portfolio_scenario_case in executed:
+                      if len(portfolio_scenario_frames) != 1 or portfolio_scenario_frames[0].stat().st_size == 0:
+                          raise SystemExit("Portfolio saved scenarios require both scoped frames.")
+                  elif portfolio_scenario_frames:
+                      raise SystemExit("Portfolio scenario frames belong only to the executed shard.")
               for frame_name in ("newWatchlistSavedScenarioPlan.png", "newWatchlistSavedScenarioResults.png", "newWatchlistSavedScenarioFinish.png"):
                   scenario_frames = list(root.rglob(frame_name))
                   if saved_scenario_case in executed:

@@ -36,6 +36,16 @@ refusals; preparation must not load sources, calculate or save resources.
 The local implementation reuses existing document writers. Source and native
 acceptance and client delivery remain pending; see the [daily report guide](MANAGED_WATCHLIST_DAILY_REPORT.md).
 
+## Next source increment: saved scenarios for dated holdings
+
+Connect Portfolio holdings, confirmed saved assumptions and the current Research
+workbench under M3/M4. Compare all authored scenarios with the exact chosen-date
+raw close, retain the complete reading through Research and Back, then save each
+resource separately. This adds no provider, saved schema, aggregate fair value
+or historical backtest. Local source validation is in progress; producing CI
+and client delivery remain separate. See the
+[Portfolio saved-scenario guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
+
 ## Delivered: paired reports and Watchlist saved scenarios
 
 Android 1.73 provides the [paired research report](MANAGED_PAIRED_RESEARCH_REPORT.md)

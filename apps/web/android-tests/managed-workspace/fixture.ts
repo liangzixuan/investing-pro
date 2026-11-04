@@ -1,3 +1,7 @@
+import {
+  createPortfolioSavedScenarioFixture,
+  type PortfolioSavedScenarioFixture,
+} from "./portfolio-saved-scenario-fixture";
 import { createWatchlistDailyReportFixture } from "./watchlist-daily-report-fixture";
 import {
   createWatchlistSavedScenarioFixture,
@@ -2215,6 +2219,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly twoCompanyResearchReview?: TwoCompanyResearchReviewFixture;
   readonly savedValuationReassessment?: SavedValuationReassessmentFixture;
   readonly watchlistDailyReview?: WatchlistDailyReviewFixture;
+  readonly portfolioSavedScenario?: PortfolioSavedScenarioFixture;
   readonly watchlistSavedScenario?: WatchlistSavedScenarioFixture;
   readonly portfolioDatedReview?: PortfolioDatedReviewFixture;
   readonly reviewFilingsEvidence?: ReviewFilingsEvidenceFixture;
@@ -2607,6 +2612,11 @@ const nativeFixtureFactories = new Map<
     async () => createWatchlistDailyReportFixture(await createSharedFixture()),
   ],
   [
+    "portfolio-saved-scenario",
+    async () =>
+      createPortfolioSavedScenarioFixture(await createSharedFixture()),
+  ],
+  [
     "watchlist-saved-scenario",
     async () =>
       createWatchlistSavedScenarioFixture(await createSharedFixture()),
@@ -2714,6 +2724,7 @@ export async function createFixture(
     | "two-company-research-review"
     | "saved-valuation-reassessment"
     | "watchlist-daily-review"
+    | "portfolio-saved-scenario"
     | "watchlist-saved-scenario"
     | "watchlist-daily-report"
     | "portfolio-dated-review"

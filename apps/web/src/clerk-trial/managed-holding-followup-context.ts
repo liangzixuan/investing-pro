@@ -82,7 +82,7 @@ function holdingRouteActive(c: HoldingContext) {
 function holdingSelectionCurrent(c: HoldingContext) {
   if (c.view.research?.selection !== c.selection) return false;
   if (c.selection.origin !== "portfolio") return false;
-  return c.selection.cik === null;
+  return c.workspace.portfolioResearchIssuerMatches(c.selection);
 }
 function catalogActionPending(c: HoldingContext) {
   return Boolean(c.view.read || c.view.review || c.view.reviewing);

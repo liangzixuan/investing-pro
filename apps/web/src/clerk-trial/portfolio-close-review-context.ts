@@ -15,7 +15,7 @@ function sameFrame(
 ) {
   return (
     workspace.getSnapshot() === frame.view &&
-    workspace.sessionOwner.getSnapshot() === frame.session &&
+    workspace.sessionOwner.getSnapshot().phase === "active" &&
     workspace.portfolio.getSnapshot() === frame.portfolio &&
     workspace.portfolio.coordinator.getSnapshot() === frame.saved
   );

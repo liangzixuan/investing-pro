@@ -65,6 +65,7 @@ const allowedScenarios = [
   "two-company-research-review",
   "saved-valuation-reassessment",
   "watchlist-daily-review",
+  "portfolio-saved-scenario",
   "watchlist-saved-scenario",
   "watchlist-daily-report",
   "portfolio-dated-review",

@@ -15,6 +15,17 @@ implementation are complete. Current local focused checks pass; producing native
 CI and client delivery remain pending. See the
 [daily report guide](MANAGED_WATCHLIST_DAILY_REPORT.md).
 
+## Next source increment: saved scenarios for dated Portfolio holdings
+
+Preview confirmed saved inputs for every holding in an admitted dated Portfolio
+reading. Evaluate all authored scenarios at the current action time and compare
+them with the exact selected-date raw close. Retain the full reading through
+current company Research and Back; resource saves remain separate. The model,
+UI and complete workspace journey pass local checks. The Android fixture adds one
+complete journey while preserving all 148 prior cases; producing native execution
+and client delivery remain pending. See the
+[Portfolio saved-scenario guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
+
 ## Accepted and delivered: paired reports and Watchlist saved scenarios
 
 Android 1.73.0 includes the [paired research report](MANAGED_PAIRED_RESEARCH_REPORT.md)

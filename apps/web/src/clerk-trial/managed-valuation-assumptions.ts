@@ -706,11 +706,20 @@ export class ManagedValuationAssumptions {
     return (
       expected === this.coordinator.getSnapshot() &&
       this.canEdit() &&
+      !this.state.reviewing &&
+      this.confirmedCollectionAvailable()
+    );
+  }
+  /** A local draft review does not replace the confirmed collection. */
+  private confirmedCollectionAvailable(): boolean {
+    const expected = this.coordinator.getSnapshot();
+    return (
+      this.resourceEditable() &&
       expected.phase === "idle" &&
       expected.latestLoaded &&
       !!expected.saved &&
       expected.baseVersion === expected.saved.version &&
-      !this.state.reviewing &&
+      !this.hasCollectionFileActivity() &&
       !this.workbench.hasDraftFileActivity() &&
       !!this.options.getCatalogSnapshot()
     );
@@ -728,7 +737,7 @@ export class ManagedValuationAssumptions {
     this.collectionCaptures.set(
       capture,
       () =>
-        this.canCaptureConfirmedCollection() &&
+        this.confirmedCollectionAvailable() &&
         this.coordinator.getSnapshot().saved === saved &&
         this.options.getCatalogSnapshot() === catalog &&
         this.confirmedRevision === revision &&
