@@ -44,7 +44,7 @@ Research, shortlist handoff and personal Save remain separate. See the
 [refinement guide](MANAGED_FINANCIAL_SCREEN_REFINEMENT.md). Hosted execution and
 release acceptance remain pending for this new increment.
 
-## Published source: screen the companies already on the Watchlist
+## Source merged: screen the companies already on the Watchlist
 
 Connect the current Watchlist to the existing Annual screen under M2/M4. Inspect
 all eligibility outcomes, explicitly choose watched share classes and preview
@@ -52,10 +52,15 @@ the whole ordered company selection before applying it. Preserve Watchlist notes
 and order, criteria, sorting and independent source clocks. Run and Save stay
 separate. The list remains fully reachable at the 10,000-entry limit through
 bounded pages. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
-Local affected checks, types, lint, boundaries and source compilation pass. The
-earlier native run failed at a frame-helper check. Corrected source passes Ubuntu,
-Windows and parser checks; its new native journey stopped before a second
-selection preview after Research/Back. Native acceptance remains pending.
+Local affected checks, types, lint, boundaries and source compilation pass.
+PR 280 head `7a9be968359b4911132cfe81e8293c6f9874389e` passed all 157 original
+native cases, including independent Save and fresh Load. Both scoped frames
+match the previously inspected Preview and Return frames. Original Ubuntu,
+Windows and parser checks pass. [PR 280](https://github.com/liangzixuan/investing-pro/pull/280)
+merged at `519fec426c368bff700b0db57a45eafa73c15e43`. Original main checks remain
+pending, and this selection workflow has no Android delivery. Earlier original
+failures remain recorded. CodeScene findings stay unsuppressed; no new functional
+finding was identified.
 
 The finished due-check report beneath this increment is accepted at main
 `57cc61c083fe8b1f2557b975667695125722c6ea` after original source/parser checks and
@@ -63,7 +68,11 @@ The finished due-check report beneath this increment is accepted at main
 separate resource persistence are asserted in the native journey. This also
 executes the earlier source-connected review whose own main run had a pre-test
 emulator setup failure. CodeScene structural findings stay unsuppressed. Android
-1.76 delivery remains pending. See the [report guide](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
+1.76.0, code 77, is verified and delivered locally with the existing signer;
+delivery is closed. The four checks on the same APK and copy/checksum readback
+passed, retaining the original package-check failure and its qualified
+correction. No browser, installation or physical phone acceptance is claimed.
+See the [report guide](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
 
 ## Source accepted: saved scenarios for dated holdings
 
