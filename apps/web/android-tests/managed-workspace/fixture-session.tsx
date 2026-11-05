@@ -1,3 +1,4 @@
+import { DueCheckEvidenceReportFixtureControls } from "./due-check-evidence-report-fixture-controls";
 import { FollowupsEvidenceDiagnostics } from "./followups-review-evidence-diagnostics";
 import { PortfolioSavedScenarioDiagnostics } from "./portfolio-saved-scenario-fixture-diagnostics";
 import { WatchlistDailyReportFixtureControls } from "./watchlist-daily-report-fixture-controls";
@@ -50,6 +51,7 @@ import {
   scenario,
   nativeReport,
   nativeWatchlistDailyReport,
+  nativeDueCheckEvidenceReport,
   nativeExport,
   nativePortfolioReviewReport,
   nativePortfolioComparisonReport,
@@ -108,6 +110,7 @@ function useFixtureWorkspace(session: TrialSession) {
       current.setView("portfolio");
     if (
       scenario === "followups-review-evidence" ||
+      scenario === "due-check-evidence-report" ||
       scenario === "portfolio-held-due-checks" ||
       scenario === "review-filings-evidence"
     )
@@ -123,6 +126,7 @@ function useFixtureWorkspace(session: TrialSession) {
     setWorkspace(current);
     if (
       scenario !== "followups-review-evidence" &&
+      scenario !== "due-check-evidence-report" &&
       scenario !== "two-company-research-review" &&
       scenario !== "saved-valuation-reassessment" &&
       scenario !== "watchlist-daily-review" &&
@@ -429,6 +433,9 @@ export function FixtureSession({ session, onFreshSession }: Props) {
           workspace={workspace}
           fixture={fixture.savedValuationReassessment}
         />
+      )}
+      {workspace && nativeDueCheckEvidenceReport && (
+        <DueCheckEvidenceReportFixtureControls />
       )}
       {workspace && nativeWatchlistDailyReport && (
         <WatchlistDailyReportFixtureControls />

@@ -22,6 +22,7 @@ import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-re
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 import type { ManagedFollowupsDraftFileDeliveryAdapter } from "./followups-draft-file-delivery";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
+import type { DueCheckEvidenceReportDeliveryAdapter } from "./due-check-evidence-report-ports";
 import {
   useCallback,
   useEffect,
@@ -121,6 +122,7 @@ interface ManagedFileDeliveries {
   portfolioComparisonReportDelivery?: PortfolioComparisonReportDeliveryAdapter;
   followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
   followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
+  dueCheckEvidenceReportDelivery?: DueCheckEvidenceReportDeliveryAdapter;
   valuationDraftFileDelivery?: ManagedValuationDraftFileDeliveryAdapter;
   reportDelivery?: CompanyReportDeliveryAdapter;
 }
@@ -275,6 +277,7 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
       initial.portfolioComparisonReportDelivery,
     followupsDraftFileDelivery: initial.followupsDraftFileDelivery,
     followupsReviewReportDelivery: initial.followupsReviewReportDelivery,
+    dueCheckEvidenceReportDelivery: initial.dueCheckEvidenceReportDelivery,
     valuationDraftFileDelivery: initial.valuationDraftFileDelivery,
     valuationCollectionDraftFileDelivery:
       initial.valuationCollectionDraftFileDelivery,
@@ -501,6 +504,7 @@ export function ManagedWorkspaceScreen({
   portfolioComparisonReportDelivery,
   followupsDraftFileDelivery,
   followupsReviewReportDelivery,
+  dueCheckEvidenceReportDelivery,
   valuationDraftFileDelivery,
   valuationCollectionDraftFileDelivery,
   researchDraftSetFileDelivery,
@@ -1394,6 +1398,7 @@ export function ManagedWorkspaceScreen({
                   draftFileScope,
                   draftFileDelivery: followupsDraftFileDelivery,
                   followupsReviewReportDelivery,
+                  dueCheckEvidenceReportDelivery,
                   review: followupReview,
                   navigationPending,
                   workspace,

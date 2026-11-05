@@ -1,0 +1,115 @@
+import { OfflineResearchReading } from "./ManagedScreenResearchReading";
+import type { DueCheckEvidenceReportHtmlDocument } from "./due-check-evidence-report-ports";
+import { createRoot, type Root } from "react-dom/client";
+import { flushSync } from "react-dom";
+import {
+  isPreparedDueCheckEvidenceReport,
+  type PreparedDueCheckEvidenceReport,
+} from "./due-check-evidence-report";
+import { DueCheckEvidenceReportSnapshot } from "./DueCheckEvidenceReportSnapshot";
+import {
+  COMPANY_REPORT_HTML_CSP,
+  COMPANY_REPORT_HTML_STYLE,
+} from "./company-report-html-style";
+export const DUE_CHECK_EVIDENCE_REPORT_HTML_MAX_BYTES = 8 * 1024 * 1024;
+const owned = new WeakSet<object>();
+export function isDueCheckEvidenceReportHtmlDocument(
+  value: unknown,
+): value is DueCheckEvidenceReportHtmlDocument {
+  return typeof value === "object" && value !== null && owned.has(value);
+}
+export function dueCheckEvidenceReportHtmlByteLength(
+  text: string,
+): number | null {
+  if (!text.length) return null;
+  if (text.length > DUE_CHECK_EVIDENCE_REPORT_HTML_MAX_BYTES) return null;
+  if (/\p{Cs}/u.test(text)) return null;
+  const bytes = new TextEncoder().encode(text).byteLength;
+  return bytes > DUE_CHECK_EVIDENCE_REPORT_HTML_MAX_BYTES ? null : bytes;
+}
+/** Formats an owned capture in a detached document without application effects. */
+export function formatDueCheckEvidenceReportHtml(
+  report: PreparedDueCheckEvidenceReport,
+): DueCheckEvidenceReportHtmlDocument | null {
+  if (
+    !isPreparedDueCheckEvidenceReport(report) ||
+    typeof document === "undefined"
+  )
+    return null;
+  const filename = `Investment-due-check-evidence-${report.preparedAt.replace(/[-:.]/gu, "")}.html`;
+  let root: Root | null = null;
+  let text: string | null = null;
+  let failed = false;
+  try {
+    const page = document.implementation.createHTMLDocument();
+    page.documentElement.lang = "en";
+    const charset = page.createElement("meta");
+    charset.setAttribute("charset", "utf-8");
+    const policy = page.createElement("meta");
+    policy.httpEquiv = "Content-Security-Policy";
+    policy.content = COMPANY_REPORT_HTML_CSP;
+    const viewport = page.createElement("meta");
+    viewport.name = "viewport";
+    viewport.content = "width=device-width, initial-scale=1";
+    const format = page.createElement("meta");
+    format.name = "investment-report-format";
+    format.content = "1";
+    const purpose = page.createElement("meta");
+    purpose.name = "investment-report-purpose";
+    purpose.content = "investment.due-check-evidence-html";
+    const identity = page.createElement("meta");
+    identity.name = "investment-report-filename";
+    identity.content = filename;
+    const title = page.createElement("title");
+    title.textContent = "Finished due-check evidence review";
+    const style = page.createElement("style");
+    style.textContent = COMPANY_REPORT_HTML_STYLE;
+    page.head.replaceChildren(
+      charset,
+      policy,
+      viewport,
+      format,
+      purpose,
+      identity,
+      title,
+      style,
+    );
+    root = createRoot(page.body, {
+      onUncaughtError: () => {
+        failed = true;
+      },
+      onRecoverableError: () => {
+        failed = true;
+      },
+    });
+    flushSync(() => {
+      root!.render(
+        <main>
+          <OfflineResearchReading value={true}>
+            <DueCheckEvidenceReportSnapshot report={report} />
+          </OfflineResearchReading>
+        </main>,
+      );
+    });
+    if (!failed) text = `<!doctype html>\n${page.documentElement.outerHTML}\n`;
+  } catch {
+    failed = true;
+  } finally {
+    try {
+      root?.unmount();
+    } catch {
+      failed = true;
+    }
+  }
+  if (failed || !text) return null;
+  const byteLength = dueCheckEvidenceReportHtmlByteLength(text);
+  if (byteLength === null) return null;
+  const result: DueCheckEvidenceReportHtmlDocument = Object.freeze({
+    purpose: "investment.due-check-evidence-html",
+    filename,
+    text,
+    byteLength,
+  });
+  owned.add(result);
+  return result;
+}

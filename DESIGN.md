@@ -11,6 +11,15 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Finished due-check evidence report
+
+Put explicit report preparation beside the finished chosen review. Keep its full
+preview in a disclosure, with separate Save, Cancel and Clear controls. Show the
+current authored check separately from the earlier check captured with evidence.
+Retain full source tables and lazy raw disclosures; offline HTML includes every
+packet without active controls. Use existing wrapping text, 44px actions and
+visible committed-action focus. See the [report guide](docs/MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
+
 ## Source evidence in due-check review
 
 Keep explicit source capture beside the current check's company assessment.

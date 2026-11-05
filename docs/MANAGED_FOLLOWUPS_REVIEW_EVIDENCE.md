@@ -1,7 +1,10 @@
 # Keep source evidence beside each due check
 
-Local implementation and checks are complete. Original hosted source CI, native
-execution and client acceptance remain pending. The workflow extends the existing
+PR 278 merged at `b2764c614dfa5cff87d9aa8a171f9014c536f14e`. Original PR source and
+parser checks and all 150 native cases passed, with two scoped frames inspected.
+One original main native shard stopped during emulator setup before tests; main
+native execution is not accepted. Other original checks and client delivery remain
+separate. The workflow extends the existing
 chosen Follow-ups review without adding a saved resource or changing provider
 coverage.
 
@@ -63,3 +66,8 @@ test assets and the mobile bundle pass. All 90 Android Java sources compile;
 the required roster preserves the 149 existing cases and adds one complete
 journey. Compilation and fixture checks do not establish native execution or
 frame acceptance.
+
+A [finished-review report](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md) is locally
+implemented to keep the chosen evidence in a private HTML file. Its hosted native
+execution and delivery remain pending. It does not change Follow-ups
+Save or add an evidence-history import.

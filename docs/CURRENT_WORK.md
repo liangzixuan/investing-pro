@@ -1,22 +1,31 @@
 # Current work
 
-Updated November 4, 2026. This is the current capability and delivery record.
+Updated November 5, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Locally complete: source evidence beside due checks
+## Locally implemented: a finished due-check evidence report
 
-Connect each chosen Follow-ups check to a complete retained company source
-reading. Use the existing explicit source pass, keep its original packets and
-clocks through Research and Back, then show every chosen result at Finish.
-Assessments, completion and resource Save remain explicit. The model, interface
-and complete synthetic journey are implemented. The 19 model tests and full web
-suite of 12,311 tests pass. Compilation passes for 90 Android Java sources;
-the required roster preserves all 149 prior cases and adds one complete journey.
-Test assets and the mobile bundle pass local checks. Original hosted source CI
-and native execution remain pending; no client acceptance is claimed. See the
-[workflow guide](MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
+Prepare a private HTML record from the finished chosen Follow-ups review.
+Keep every current authored check, complete retained source reading and explicit
+uncaptured row in the chosen order. Preview and document delivery remain separate
+from online Save. Focused local checks, types, lint, test assets and the mobile
+bundle pass. The native source roster contains 156 cases; original hosted native
+execution and client delivery remain pending. See the
+[report guide](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
+
+## Source merged: source evidence beside due checks
+
+Retain complete company source readings beside chosen Follow-ups checks through
+Research, Back, Continue and Finish. Assessments, completion and resource Save
+remain explicit. [PR 278](https://github.com/liangzixuan/investing-pro/pull/278)
+merged at `b2764c614dfa5cff87d9aa8a171f9014c536f14e`. Its original PR source/parser
+checks and all 150 native cases passed; two scoped frames were inspected.
+CodeScene structural findings remain recorded and unsuppressed; the scoped review
+found no functional defect. One original main native shard stopped during emulator
+setup before tests; main native execution is not accepted. Other original checks
+and client delivery remain separate. See the [workflow guide](MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
 
 ## Source accepted: saved scenarios for dated Portfolio holdings
 
@@ -27,8 +36,9 @@ separate. [PR 277](https://github.com/liangzixuan/investing-pro/pull/277) merged
 `c9b438eca9f1f45c04bf04a2c0aa053b034ea451`. Original main source and parser checks
 and all 149 native cases passed. Two scoped native frames were inspected.
 The CodeScene complexity/size check failed; review found no functional defect.
-Android 1.75 preparation is in progress. Browser, installation and physical-phone
-acceptance are not claimed. See the [guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
+Android 1.75.0 was built with the existing signer and delivered locally after
+all four checks on the same APK and copy/checksum readback. Browser, installation
+and physical-phone acceptance are not claimed. See the [guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
 
 ## Accepted and delivered: Watchlist daily review report
 

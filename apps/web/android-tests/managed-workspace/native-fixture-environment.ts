@@ -1,3 +1,4 @@
+import { createNativeDueCheckEvidenceReportFixture } from "./native-due-check-evidence-report-fixture";
 import { createNativeWatchlistDailyReportFixture } from "./native-watchlist-daily-report-fixture";
 import { createNativePortfolioComparisonReportFixture } from "./native-portfolio-comparison-report-fixture";
 import { createNativeScreenResearchReportFixture } from "./native-screen-research-report-fixture";
@@ -47,6 +48,7 @@ const allowedScenarios = [
   "report-revisit",
   "research-followups",
   "followups-review-evidence",
+  "due-check-evidence-report",
   "followups-review-session",
   "holding-followup",
   "markets-source-review",
@@ -187,4 +189,9 @@ export const nativeScreenResearchReport =
 export const nativeWatchlistDailyReport =
   scenario === "watchlist-daily-report"
     ? createNativeWatchlistDailyReportFixture()
+    : null;
+
+export const nativeDueCheckEvidenceReport =
+  scenario === "due-check-evidence-report"
+    ? createNativeDueCheckEvidenceReportFixture()
     : null;

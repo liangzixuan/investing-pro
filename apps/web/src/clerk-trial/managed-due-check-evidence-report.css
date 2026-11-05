@@ -1,0 +1,26 @@
+.managed-due-check-report {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.managed-due-check-report
+  :is(article, section, details, div, ol, li, dl, dd, pre) {
+  min-width: 0;
+  max-width: 100%;
+}
+.managed-due-check-report :is(p, dd, pre) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.managed-due-check-report dd {
+  margin-inline-start: 0;
+}
+.managed-due-check-report :is(button, summary) {
+  min-height: 44px;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.managed-due-check-report details {
+  overflow-x: auto;
+}

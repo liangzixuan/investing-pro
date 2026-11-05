@@ -2,7 +2,8 @@
 
 Accepted main `c9b438eca9f1f45c04bf04a2c0aa053b034ea451` passed original source
 and parser checks and all 149 native cases. Two scoped native frames were
-inspected. Android 1.75 preparation is in progress; browser, installation and
+inspected. Android 1.75.0 passed existing-signer build, four APK checks and local delivery.
+Browser, installation and
 physical-phone acceptance are not claimed. The Watchlist daily-report workflow
 is available in Android 1.74.
 

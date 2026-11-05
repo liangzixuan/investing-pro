@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated November 4, 2026. This document defines the durable product goals and
+Updated November 5, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -9,7 +9,7 @@ Android client. Older sprint plans preserve their original scope and evidence.
 The owner also requested adopting useful ideas from easy-stock while retaining
 the full InvestingPro feature goal. The [source review and adoption order](EASY_STOCK_REVIEW.md)
 add thesis reviews, evidence-linked reports, research purpose, resume/freshness,
-portfolio inspection and daily follow-up to M2–M5. The first candidate lets the
+portfolio inspection and daily follow-up to M2â€“M5. The first candidate lets the
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
@@ -27,15 +27,23 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: source evidence beside due checks
+## Current priority: keep the evidence behind a finished due-check review
 
-Connect the existing chosen Follow-ups review to each company's complete source
-reading under M2/M3/M4. Retain it explicitly, inspect it beside the authored
-assessment, return through Back and finish with every chosen result. Reuse the
-current source pass and full passive presenters. Keep source clocks, partial
-outcomes and independent resource saves. Local implementation and checks are
-complete, including the full 12,311-test web suite. Original hosted CI and the
-150-case native run remain pending. See the
+Close the M4 report gap with an explicit private HTML copy of the chosen review.
+Keep every authored check and its complete retained evidence, original dates,
+partial outcomes and uncaptured rows. Preparation, full preview and document
+Save use current report boundaries; Follow-ups Save remains independent.
+This adds no background monitoring, imported evidence history or source coverage.
+Local implementation and focused checks pass; the new native journey and policy
+cases still require hosted execution. See the
+[report guide](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
+
+The source-connected review beneath it merged in PR 278 at
+`b2764c614dfa5cff87d9aa8a171f9014c536f14e`. Original PR source/parser checks and
+150 native cases passed. One original main native shard stopped during emulator
+setup before tests, so main native execution is not accepted. Other original
+checks and client delivery remain separate.
+CodeScene structural findings remain unsuppressed. See the
 [due-check evidence guide](MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
 
 ## Source accepted: saved scenarios for dated holdings
@@ -44,8 +52,8 @@ Connect Portfolio holdings, confirmed saved assumptions and the current Research
 workbench under M3/M4. Compare all authored scenarios with the exact chosen-date
 raw close, keep the complete reading through Research and Back, then save each
 resource separately. Accepted main `c9b438eca9f1f45c04bf04a2c0aa053b034ea451`
-passed original source/parser checks and all 149 native cases. Android 1.75
-preparation is in progress. This adds no provider, saved schema, aggregate fair
+passed original source/parser checks and all 149 native cases. Android 1.75.0
+was verified with the existing signer and delivered locally. This adds no provider, saved schema, aggregate fair
 value or historical backtest. See the [guide](MANAGED_PORTFOLIO_SAVED_SCENARIOS.md).
 
 ## Delivered: complete Watchlist daily review report
