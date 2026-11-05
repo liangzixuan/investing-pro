@@ -29,6 +29,103 @@ function reads(f: Awaited<ReturnType<typeof setup>>) {
   ].map((fn) => vi.mocked(fn).mock.calls.length);
 }
 
+it("admits only the settled exact company route and rejects stale capture across section publication", async () => {
+  const f = await setup(),
+    w = f.workspace;
+  f.start();
+  const opened = await f.open();
+  const beforeRoute = w.reviewEvidence.getSnapshot();
+  w.setNavigationBlocked(true);
+  expect(w.captureFollowupEvidence(beforeRoute)).toBeNull();
+  expect(w.reviewEvidence.getSnapshot().canCapture).toBe(false);
+  await w.setCompanyRoute({
+    kind: "company",
+    listingId: opened.selection.listing.listingId,
+    section: opened.section,
+  });
+  await f.run();
+  const reading = f.capture();
+  const beforeSection = w.reviewEvidence.getSnapshot();
+  w.switchToAnnual();
+  expect(w.getSnapshot().companyRoute!.section).not.toBe(
+    w.getSnapshot().research!.section,
+  );
+  expect(w.reviewEvidence.getSnapshot().canCapture).toBe(false);
+  expect(w.captureFollowupEvidence(beforeSection)).toBeNull();
+  const duringSection = w.reviewEvidence.getSnapshot();
+  await w.setCompanyRoute({
+    kind: "company",
+    listingId: opened.selection.listing.listingId,
+    section: "annual",
+  });
+  expect(w.reviewEvidence.getSnapshot().canCapture).toBe(true);
+  expect(w.captureFollowupEvidence(duringSection)).toBeNull();
+  expect(w.reviewEvidence.getSnapshot().selected!.reading).toBe(reading);
+  expect(f.capture().evidence).toEqual(reading.evidence);
+  expect(reads(f)).toEqual([1, 1, 1, 1]);
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+});
+
+it.each(["foreign loading", "closed", "catalog"] as const)(
+  "refuses routed capture after %s and cannot revive the old handler",
+  async (boundary) => {
+    const f = await setup(),
+      w = f.workspace;
+    f.start();
+    const opened = await f.open();
+    w.setNavigationBlocked(true);
+    await w.setCompanyRoute({
+      kind: "company",
+      listingId: opened.selection.listing.listingId,
+      section: opened.section,
+    });
+    await f.run();
+    f.capture();
+    const captured = w.reviewEvidence.getSnapshot();
+    if (boundary === "foreign loading") {
+      const originalResolve = f.api.resolve;
+      let finish!: () => void;
+      f.api.resolve = vi.fn<typeof originalResolve>(
+        (request, signal) =>
+          new Promise<Awaited<ReturnType<typeof originalResolve>>>(
+            (resolve, reject) => {
+              finish = () => {
+                void originalResolve(request, signal).then(resolve, reject);
+              };
+            },
+          ),
+      );
+      const pending = w.setCompanyRoute({
+        kind: "company",
+        listingId: f.listings[0]!.listingId,
+        section: "eod",
+      });
+      expect(w.getSnapshot().companyRoute!.status).toBe("resolving");
+      expect(w.reviewEvidence.getSnapshot().canCapture).toBe(false);
+      expect(w.captureFollowupEvidence(captured)).toBeNull();
+      finish();
+      await pending;
+      expect(w.getSnapshot().research!.selection.listing.listingId).not.toBe(
+        opened.selection.listing.listingId,
+      );
+    } else if (boundary === "closed") {
+      await w.setCompanyRoute(null);
+    } else {
+      vi.mocked(f.api.status).mockResolvedValueOnce({
+        snapshot: structuredClone(w.getSnapshot().snapshot!),
+      });
+      await w.refreshCatalog();
+    }
+    expect(w.captureFollowupEvidence(captured)).toBeNull();
+    expect(w.reviewEvidence.getSnapshot().canCapture).toBe(false);
+    expect(
+      w.reviewEvidence.getSnapshot().rows.every((row) => row.reading === null),
+    ).toBe(true);
+    expect(reads(f)).toEqual([1, 1, 1, 1]);
+    expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  },
+);
+
 it("retains all four full sources for exact share classes through owned Back, Continue and Finish, then separately saves and freshly loads authored checks", async () => {
   const f = await setup();
   const w = f.workspace;

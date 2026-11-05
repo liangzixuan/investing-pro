@@ -982,10 +982,8 @@ export class ManagedWorkspace {
     return (
       !this.retired &&
       this.state.view === "followups" &&
-      !this.navigationBlocked &&
       this.followupsNavigationDepth === 0 &&
       this.sessionOwner.getSnapshot().phase === "active" &&
-      !this.state.companyRoute &&
       this.researchDraftSetRouteReady() &&
       !this.followups.hasDraftFileActivity() &&
       !this.hasWatchlistDraftFileActivity() &&
