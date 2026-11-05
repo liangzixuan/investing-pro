@@ -56,7 +56,9 @@ At PR 281 head `6243e8cb1732ca870b9b2375e74c604688442f90`, original Ubuntu,
 Windows and parser checks passed, along with all 158 native cases. The prior 157
 cases remain unchanged. The two current scoped Preview and Return frames were
 inspected. [PR 281](https://github.com/liangzixuan/investing-pro/pull/281) merged
-at `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. Original checks for that main
-revision remain pending. CodeScene structural findings remain unsuppressed;
-scoped source review found no functional defect. This increment has no Android
-delivery, browser inspection or phone acceptance.
+at `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
+after its original source/parser checks and all 158 native cases passed. Its
+current scoped Preview frame was inspected; the Return frame exactly matches
+the previously inspected frame. CodeScene structural findings remain
+unsuppressed; scoped source review found no functional defect. This increment
+has no Android delivery, browser inspection or phone acceptance.

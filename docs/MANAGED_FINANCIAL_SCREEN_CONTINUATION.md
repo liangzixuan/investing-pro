@@ -52,7 +52,18 @@ when no Annual responses are missing; use the separate full Run for a refresh.
 The local increment includes model/controller, mounted UI and complete workspace
 regressions. The UI checks cover full identities and source clocks, explicit
 requests, cancellation, stale callbacks, route/file/session retirement and passive
-Research/Back. A new native journey extends the source roster to 159 cases; local
-compilation is not hosted execution or release acceptance. Browser and physical
-phone inspection are not claimed. See [current work](CURRENT_WORK.md) for the
-accepted baseline and the current source verification limits.
+Research/Back. The native journey extends the source roster to 159 cases.
+
+The original [PR 282](https://github.com/liangzixuan/investing-pro/pull/282)
+native run at `9e07524f7b07e2c7bb9ad72a577e6a56f622d9ff` failed the new
+continuation case: its missing-packet assertion expected `null`, while the fixture
+omitted the serialized property. The fixture correction
+and focused regression pass locally. Corrected hosted 159-case execution and
+release acceptance remain pending; the original failure is preserved.
+
+Main `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1` is the accepted source baseline
+after original source/parser checks and all 158 native cases passed. Its current
+scoped Preview frame was inspected; Return exactly matches the previously
+inspected frame. Android 1.76 remains the last delivered version and does not
+include this continuation. Browser and physical phone inspection are not claimed.
+See [current work](CURRENT_WORK.md) for the current verification limits.

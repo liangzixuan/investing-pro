@@ -11,10 +11,15 @@ Review all retained and missing rows, then explicitly run the finite missing-onl
 request list. Preserve admitted packets, applied filters, source clocks and
 partial or historical outcomes. Cancel keeps completed work; Research/Back and
 personal Save remain separate. See the [workflow guide](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md).
-Local UI, model and full-workspace checks cover the new flow. The 159-case native
-source roster has not run on hosted Android. No release acceptance is claimed.
+Local UI, model and full-workspace checks cover the new flow.
+The original [PR 282](https://github.com/liangzixuan/investing-pro/pull/282)
+native run at `9e07524f7b07e2c7bb9ad72a577e6a56f622d9ff` failed the new
+continuation case: its missing-packet assertion expected `null`, while the fixture
+omitted the serialized property. The fixture correction
+and focused regression pass locally. Corrected hosted 159-case execution and
+release acceptance remain pending; the original failure is preserved.
 
-## Source merged: refine a loaded Annual screen
+## Source accepted: refine a loaded Annual screen
 
 Preview independent filter edits against retained Annual packets, inspect complete
 original and revised results, then apply them atomically. Preserve source clocks,
@@ -25,12 +30,14 @@ At PR 281 head `6243e8cb1732ca870b9b2375e74c604688442f90`, original Ubuntu,
 Windows and parser checks passed, along with all 158 native cases. The prior 157
 cases remain unchanged. The two current scoped Preview and Return frames were
 inspected. [PR 281](https://github.com/liangzixuan/investing-pro/pull/281) merged
-at `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. Original checks for that main
-revision remain pending. CodeScene structural findings remain unsuppressed;
-scoped source review found no functional defect. This increment has no Android
-delivery, browser inspection or phone acceptance.
+at `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
+after its original source/parser checks and all 158 native cases passed. Its
+current scoped Preview frame was inspected; the Return frame exactly matches
+the previously inspected frame. CodeScene structural findings remain
+unsuppressed; scoped source review found no functional defect. This increment
+has no Android delivery, browser inspection or phone acceptance.
 
-## Source merged: Watchlist companies in the Annual screen
+## Source accepted: Watchlist companies in the Annual screen
 
 Choose exact watched listings from the current supported cohort, inspect every
 eligibility outcome, then apply the complete ordered selection. Run, Research/Back
@@ -47,8 +54,10 @@ Ubuntu, parser and all 157 native cases, but its original Windows check timed ou
 in the synthetic runtime prerequisite before the release gate. It was not
 accepted as main; the failure remains recorded. PR 281 subsequently passed its
 own original Windows check and all 158 native cases, then merged at
-`91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`, whose original main checks remain
-pending. This selection workflow has no Android delivery. Earlier original
+`91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
+after its own original source/parser checks and all 158 native cases passed.
+The current scoped Preview frame was inspected; Return exactly matches the
+previously inspected frame. This selection workflow has no Android delivery. Earlier original
 failures remain recorded. CodeScene findings remain unsuppressed; no new
 functional finding was identified. See the
 [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
