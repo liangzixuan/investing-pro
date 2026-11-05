@@ -49,7 +49,24 @@ projection, eligibility rules and decimal comparisons are unchanged.
 ## Verification status
 
 The local source increment includes model/controller, mounted-control and complete
-workspace regressions. A new native journey covers preview, Cancel, Apply,
-Research/Back and independent Watchlist Save/fresh Load. The 158-case roster
-preserves the prior 157 cases. Local source checks and compilation do not establish
-hosted native execution, browser inspection, release or phone acceptance.
+workspace regressions. The native journey covers preview, Cancel, Apply,
+Research/Back and independent Watchlist Save/fresh Load.
+
+At PR 281 head `6243e8cb1732ca870b9b2375e74c604688442f90`, original Ubuntu,
+Windows and parser checks passed, along with all 158 native cases. The prior 157
+cases remain unchanged. The two current scoped Preview and Return frames were
+inspected. [PR 281](https://github.com/liangzixuan/investing-pro/pull/281) merged
+at `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
+after its original source/parser checks and all 158 native cases passed. Its
+current scoped Preview frame was inspected; the Return frame exactly matches
+the previously inspected frame. CodeScene structural findings remain
+unsuppressed; scoped source review found no functional defect. This increment
+has no Android delivery, browser inspection or phone acceptance.
+
+The subsequent [missing-read continuation](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md)
+remains unaccepted. PR 282 head `e6ed7a4` passed original source, parser and
+dependency checks, but its new native case failed a Research fixture comparison
+after the earlier missing-packet correction. Both failures remain recorded.
+The explicit post-continuation capture correction passes local checks; hosted
+acceptance for the next exact revision is pending. The accepted source baseline
+remains `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`.

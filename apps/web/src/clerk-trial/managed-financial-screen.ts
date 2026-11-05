@@ -1,3 +1,7 @@
+import {
+  prepareFinancialScreenContinuation,
+  type FinancialScreenContinuationPass,
+} from "./managed-financial-screen-continuation";
 import { prepareFinancialScreenRefinement } from "./managed-financial-screen-refinement";
 import {
   prepareScreenComparisonReport,
@@ -55,6 +59,7 @@ export interface ManagedFinancialScreenRun {
   readonly selectionRevision: symbol;
   /** Most recent explicit local evaluation; never a new source retrieval time. */
   readonly refinedAt?: string;
+  readonly continuations?: readonly FinancialScreenContinuationPass[];
   readonly startedAt: string;
   readonly completedAt: string | null;
   readonly status: "running" | "completed" | "cancelled" | "stopped";
@@ -113,6 +118,12 @@ export interface ManagedFinancialScreenState {
 }
 interface Operation {
   readonly controller: AbortController;
+  readonly available?: () => boolean;
+  readonly continuation?: symbol;
+  attempt?: {
+    readonly member: ManagedFinancialScreenMember;
+    readonly startedAt: string;
+  };
 }
 const emptyComparison = (): ManagedFinancialScreenComparison =>
   Object.freeze({ left: null, right: null });
@@ -272,13 +283,18 @@ export class ManagedFinancialScreen {
     );
   }
   private current(operation: Operation) {
-    return (
+    const current = () =>
       !this.retired &&
       this.state.active &&
       this.state.canRead &&
       this.operation === operation &&
-      !operation.controller.signal.aborted
-    );
+      !operation.controller.signal.aborted;
+    if (!current()) return false;
+    if (operation.available && !operation.available()) {
+      if (this.operation === operation) this.cancel();
+      return false;
+    }
+    return current();
   }
   private pending(
     operation: Operation,
@@ -704,15 +720,47 @@ export class ManagedFinancialScreen {
         await pause(delay, operation.controller.signal);
     }
   }
-  private finish(status: ManagedFinancialScreenRun["status"]) {
-    if (this.state.run?.status === "running")
-      this.update({
-        run: Object.freeze({
-          ...this.state.run,
-          status,
-          completedAt: new Date().toISOString(),
-        }),
+  private settledRun(
+    run: ManagedFinancialScreenRun | null,
+    status: ManagedFinancialScreenRun["status"],
+    operation: Operation | null,
+  ) {
+    if (!run) return run;
+    const completedAt = new Date().toISOString();
+    if (operation?.continuation)
+      return Object.freeze({
+        ...run,
+        continuations: Object.freeze(
+          run.continuations!.map((pass) =>
+            pass.handle !== operation.continuation || pass.status !== "running"
+              ? pass
+              : Object.freeze({
+                  ...pass,
+                  status,
+                  completedAt,
+                  attempts: operation.attempt
+                    ? Object.freeze([
+                        ...pass.attempts,
+                        Object.freeze({
+                          ...operation.attempt,
+                          completedAt,
+                          evaluatedAt: null,
+                          result: null,
+                          status: "cancelled" as const,
+                        }),
+                      ])
+                    : pass.attempts,
+                }),
+          ),
+        ),
       });
+    return run.status === "running"
+      ? Object.freeze({ ...run, status, completedAt })
+      : run;
+  }
+  private finish(status: ManagedFinancialScreenRun["status"]) {
+    const run = this.settledRun(this.state.run, status, this.operation);
+    if (run !== this.state.run) this.update({ run });
   }
   cancel() {
     const operation = this.operation;
@@ -720,14 +768,7 @@ export class ManagedFinancialScreen {
     this.operation = null;
     const reader = this.reader;
     this.reader = null;
-    const run =
-      this.state.run?.status === "running"
-        ? Object.freeze({
-            ...this.state.run,
-            status: "cancelled" as const,
-            completedAt: new Date().toISOString(),
-          })
-        : this.state.run;
+    const run = this.settledRun(this.state.run, "cancelled", operation);
     const cancelled = Object.freeze({
       ...this.state,
       run,
@@ -742,6 +783,117 @@ export class ManagedFinancialScreen {
     reader?.cancel();
     if (!this.retired && this.state === cancelled)
       for (const listener of this.listeners) listener();
+  }
+  canContinue(captured: ManagedFinancialScreenState) {
+    const run = captured.run;
+    return (
+      this.accepts(captured) &&
+      !this.operation &&
+      !captured.pending &&
+      !captured.criteriaStaged &&
+      !!run &&
+      run.status !== "running" &&
+      !!run.completedAt &&
+      !run.continuations?.some((pass) => pass.status === "running") &&
+      run.criteria === captured.criteria &&
+      run.criteriaRevision === captured.criteriaRevision &&
+      run.selectionRevision === captured.selectionRevision &&
+      run.rows.length === captured.selected.length &&
+      run.rows.every(
+        (row, index) =>
+          row.member === captured.selected[index] &&
+          captured.memberships.includes(row.member),
+      ) &&
+      run.rows.some((row) => !row.report?.response)
+    );
+  }
+  captureContinuation(
+    captured: ManagedFinancialScreenState,
+    preparedAt: string,
+  ) {
+    if (!this.canContinue(captured)) return null;
+    const plan = prepareFinancialScreenContinuation(captured.run!, preparedAt);
+    if (!plan || !this.canContinue(captured)) return null;
+    let available = true;
+    let operation: Operation | null = null;
+    const isCurrent = () => {
+      if (available && !this.canContinue(captured)) available = false;
+      return available;
+    };
+    return Object.freeze({
+      plan,
+      isCurrent,
+      cancel: () => {
+        available = false;
+        if (operation && this.operation === operation) this.cancel();
+      },
+      run: async (
+        ownerCurrent: () => boolean = () => true,
+      ): Promise<ManagedFinancialScreenState | null> => {
+        if (!isCurrent()) return null;
+        available = false;
+        if (
+          !ownerCurrent() ||
+          !this.canContinue(captured) ||
+          captured.selected.some((member) => !this.hasCoverage(member)) ||
+          !this.canContinue(captured)
+        )
+          return null;
+        const pass: FinancialScreenContinuationPass = Object.freeze({
+          handle: Symbol(),
+          preparedAt,
+          startedAt: new Date().toISOString(),
+          completedAt: null,
+          status: "running",
+          requests: plan.requests,
+          attempts: Object.freeze([]),
+        });
+        const run: ManagedFinancialScreenRun = Object.freeze({
+          ...captured.run!,
+          rows: Object.freeze(
+            captured.run!.rows.map((row) =>
+              Object.freeze({ ...row, handle: Symbol() }),
+            ),
+          ),
+          continuations: Object.freeze([
+            ...(captured.run!.continuations ?? []),
+            pass,
+          ]),
+        });
+        const rows = run.rows.filter((row) =>
+          plan.requests.includes(row.member),
+        );
+        operation = {
+          controller: new AbortController(),
+          continuation: pass.handle,
+          available: ownerCurrent,
+        };
+        this.operation = operation;
+        this.update({
+          run,
+          pending: this.pending(operation, "waiting", rows[0]!.member),
+          shortlist: Object.freeze([]),
+          comparison: emptyComparison(),
+          error: false,
+          message:
+            "Reading only the reviewed missing Annual reports. Retained packets keep their original dates.",
+        });
+        await this.execute(captured, operation, run, rows);
+        const current = this.state;
+        return !this.retired &&
+          ownerCurrent() &&
+          this.state === current &&
+          current.active &&
+          current.canRead &&
+          current.criteriaRevision === captured.criteriaRevision &&
+          current.selectionRevision === captured.selectionRevision &&
+          current.run?.continuations?.some(
+            (item) => item.handle === pass.handle,
+          )
+          ? current
+          : null;
+      },
+    });
   }
   async run(captured: ManagedFinancialScreenState) {
     if (
@@ -781,8 +933,16 @@ export class ManagedFinancialScreen {
       error: false,
       message: "Running the selected annual financial screen…",
     });
+    await this.execute(captured, operation, run, run.rows);
+  }
+  private async execute(
+    captured: ManagedFinancialScreenState,
+    operation: Operation,
+    run: ManagedFinancialScreenRun,
+    rows: readonly ManagedFinancialScreenResultRow[],
+  ) {
     try {
-      for (const row of run.rows) {
+      for (const row of rows) {
         await this.waitForDispatch(operation, row.member);
         if (!this.current(operation)) return;
         let failure: unknown = null;
@@ -790,6 +950,11 @@ export class ManagedFinancialScreen {
           async (request, signal) => {
             if (!this.current(operation)) throw new TrialApiError("aborted");
             try {
+              if (operation.continuation)
+                operation.attempt = {
+                  member: row.member,
+                  startedAt: new Date().toISOString(),
+                };
               return await this.dispatchAnnualReport(request, signal);
             } catch (error) {
               failure = error;
@@ -851,6 +1016,9 @@ export class ManagedFinancialScreen {
         });
         this.reader = null;
         reader.retire();
+        const completedAt = new Date().toISOString();
+        const attempts = operation.attempt;
+        delete operation.attempt;
         this.update({
           run: Object.freeze({
             ...this.state.run!,
@@ -859,6 +1027,27 @@ export class ManagedFinancialScreen {
                 item === row ? result : item,
               ),
             ),
+            ...(operation.continuation && {
+              continuations: Object.freeze(
+                this.state.run!.continuations!.map((pass) =>
+                  pass.handle !== operation.continuation || !attempts
+                    ? pass
+                    : Object.freeze({
+                        ...pass,
+                        attempts: Object.freeze([
+                          ...pass.attempts,
+                          Object.freeze({
+                            ...attempts,
+                            completedAt,
+                            evaluatedAt: evaluation ? completedAt : null,
+                            result,
+                            status: "completed" as const,
+                          }),
+                        ]),
+                      }),
+                ),
+              ),
+            }),
           }),
         });
         if (!this.current(operation)) return;
@@ -868,6 +1057,7 @@ export class ManagedFinancialScreen {
           failure.code === "not_configured"
         ) {
           this.finish("stopped");
+          if (!this.current(operation)) return;
           this.blocked = true;
           this.update({ canRead: false, error: true, message: report.message });
           return;
@@ -875,6 +1065,7 @@ export class ManagedFinancialScreen {
       }
       if (this.current(operation)) {
         this.finish("completed");
+        if (!this.current(operation)) return;
         this.update({
           message:
             "Screening complete. Inspect the original dates, values and source context before shortlisting.",

@@ -7,6 +7,14 @@ The [source eligibility candidate](MANAGED_RESEARCH_ELIGIBILITY.md) carries a
 result into company research with independent Annual, Filings and Price scope;
 it retains this screen's explicit reads and captured Annual handoff.
 
+## Complete missing reads
+
+The [continuation workflow](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md) reviews
+all retained packets and the exact finite missing request list before explicit
+Run. It preserves original dates and historical or partial outcomes, with separate
+pass and attempt clocks. Cancel keeps completed evidence; Research/Back and Save
+remain independent. This does not replace the full **Run screen** refresh.
+
 ## Refine a loaded run
 
 The [local refinement workflow](MANAGED_FINANCIAL_SCREEN_REFINEMENT.md) compares

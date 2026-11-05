@@ -1,3 +1,4 @@
+import { ManagedFinancialScreenContinuation } from "./ManagedFinancialScreenContinuation";
 import {
   FinancialScreenCriteriaControls,
   copyFinancialScreenCriteria,
@@ -206,6 +207,12 @@ export function ManagedFinancialScreen({
           }}
         />
       )}
+      {workspace && recipesRouteActive && (
+        <ManagedFinancialScreenContinuation
+          workspace={workspace}
+          routeActive={recipesRouteActive}
+        />
+      )}
       <div className="trial-actions">
         <button
           type="button"
@@ -242,7 +249,8 @@ export function ManagedFinancialScreen({
             </p>
           )}
           <p>
-            Started {run.startedAt}.{" "}
+            {run.continuations?.length ? "Original source run: " : ""}Started{" "}
+            {run.startedAt}.{" "}
             {run.completedAt
               ? `Finished ${run.completedAt}.`
               : "Run in progress."}{" "}
@@ -272,6 +280,14 @@ export function ManagedFinancialScreen({
             }{" "}
             not loaded. {state.shortlist.length} shortlisted.
           </p>
+          {!!run.continuations?.length && (
+            <p>
+              Latest continuation: {run.continuations.at(-1)!.status}; started{" "}
+              {run.continuations.at(-1)!.startedAt}; completed{" "}
+              {run.continuations.at(-1)!.completedAt ?? "Not completed"}. Each
+              packet keeps its own original source dates.
+            </p>
+          )}
           <details>
             <summary>Criteria used for these results</summary>
             <p>

@@ -157,7 +157,7 @@ export function WatchlistScreenSelectionFixtureControls({
               completedAt: screen.run.completedAt,
               rows: screen.run.rows.map((row) => ({
                 listing: row.member.listing,
-                response: row.report?.response,
+                response: row.report?.response ?? null,
                 failure: row.failure,
                 evaluation: row.evaluation,
               })),

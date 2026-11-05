@@ -53,9 +53,20 @@ journey through independent Save and fresh Load. The two current scoped Preview
 and Return frames are byte-identical to the frames already inspected. Original
 Ubuntu, Windows and parser checks pass.
 [PR 280](https://github.com/liangzixuan/investing-pro/pull/280) merged at
-`519fec426c368bff700b0db57a45eafa73c15e43`. Original main checks remain pending;
-this selection workflow has no Android delivery.
-CodeScene findings remain unsuppressed; no new functional finding was identified.
+`519fec426c368bff700b0db57a45eafa73c15e43`. That main revision passed Ubuntu,
+parser and all 157 native cases. Its original Windows check timed out in the
+synthetic runtime prerequisite before the release gate, so main acceptance was
+not established. The failed outcome remains recorded.
+
+PR 281 then passed its own original Ubuntu, Windows and parser checks and all
+158 native cases, preserving the prior 157 cases. The two current refinement
+Preview and Return frames were inspected.
+[PR 281](https://github.com/liangzixuan/investing-pro/pull/281) merged at
+`91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
+after its original source/parser checks and all 158 native cases passed. Its
+current scoped Preview frame was inspected; Return exactly matches the previously
+inspected frame. This selection workflow has no Android delivery. CodeScene
+findings remain unsuppressed; scoped review found no new functional defect.
 No browser or phone acceptance is claimed.
 
 Earlier original failures remain separate: `c908f45e` stopped at the new frame
@@ -63,7 +74,15 @@ helper's return type and had a Windows paging-test timeout; `35891278` stopped a
 post-Back preview readiness; `6f5511ab` passed that step but used the wrong
 Watchlist navigation label. Their failed outcomes have not been reclassified.
 
-The accepted baseline is main `57cc61c083fe8b1f2557b975667695125722c6ea`, which
+The last delivered baseline is main `57cc61c083fe8b1f2557b975667695125722c6ea`, which
 passed original source, parser and all 156 native cases. Android 1.76.0, code 77,
 was verified and delivered locally from that baseline, and delivery is closed.
 It does not include this later Watchlist selection increment.
+
+The subsequent [missing-read continuation](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md)
+remains unaccepted. PR 282 head `e6ed7a4` passed original source, parser and
+dependency checks, but its new native case failed a Research fixture comparison
+after the earlier missing-packet correction. Both failures remain recorded.
+The explicit post-continuation capture correction passes local checks; hosted
+acceptance for the next exact revision is pending. The accepted source baseline
+remains `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`.
