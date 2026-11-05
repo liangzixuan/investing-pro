@@ -4,12 +4,19 @@ import { load } from "cheerio";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ManagedWatchlistScreenSelection } from "./ManagedWatchlistScreenSelection";
 import { watchlistScreenFixture } from "./test-watchlist-screen-selection-fixture";
+import {
+  useManagedCompanyNavigation,
+  type ManagedCompanyNavigation,
+} from "./useManagedCompanyNavigation";
+import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
+import { annualComparisonResponse } from "./test-canonical-annual-comparison-fixture";
 import type { ValuationTestEffectSlot } from "./valuation-draft-files-test-hooks";
 
 const hooks = vi.hoisted(() => ({
   index: 0,
   slots: [] as unknown[],
   effects: [] as (() => void)[],
+  passive: [] as (() => void)[],
   dirty: false,
   subscriptions: new Map<unknown, () => void>(),
 }));
@@ -20,13 +27,36 @@ vi.mock("react", async (original) => {
   return {
     ...(await original<typeof React>()),
     ...mocked,
+    useCallback(callback: unknown, deps: unknown[]) {
+      const index = hooks.index++;
+      const old = hooks.slots[index] as
+        { callback: unknown; deps: unknown[] } | undefined;
+      if (!old || deps.some((value, i) => value !== old.deps[i]))
+        hooks.slots[index] = { callback, deps };
+      return (hooks.slots[index] as { callback: unknown }).callback;
+    },
+    useEffect(effect: () => void, deps?: readonly unknown[]) {
+      const before = hooks.effects.length;
+      mocked.useLayoutEffect(effect, deps);
+      hooks.passive.push(...hooks.effects.splice(before));
+    },
     useState(initial: unknown) {
-      const [value, set] = mocked.useState(initial);
+      const index = hooks.index;
+      const valueToUse =
+        !(index in hooks.slots) && typeof initial === "function"
+          ? (initial as () => unknown)()
+          : initial;
+      const [value, set] = mocked.useState(valueToUse);
       return [
         value,
         (next: unknown) => {
-          (set as (next: unknown) => void)(next);
-          hooks.dirty = true;
+          const previous = hooks.slots[index];
+          const resolved =
+            typeof next === "function"
+              ? (next as (value: unknown) => unknown)(previous)
+              : next;
+          (set as (next: unknown) => void)(resolved);
+          if (!Object.is(previous, resolved)) hooks.dirty = true;
         },
       ];
     },
@@ -49,6 +79,26 @@ vi.mock("react", async (original) => {
     },
   };
 });
+type Entry = { pathname: string; search: string; key: string; state: unknown };
+const router = vi.hoisted(() => ({
+  entries: [{ pathname: "/", search: "", key: "0", state: null }] as Entry[],
+  cursor: 0,
+  sequence: 0,
+  action: "POP",
+  navigate:
+    vi.fn<
+      (
+        to: string | number,
+        options?: { replace?: boolean; state?: unknown },
+      ) => void
+    >(),
+}));
+vi.mock("react-router", () => ({
+  NavigationType: { Pop: "POP" },
+  useLocation: () => router.entries[router.cursor],
+  useNavigate: () => router.navigate,
+  useNavigationType: () => router.action,
+}));
 type Element = React.ReactElement<Record<string, unknown>>;
 type FocusNode = { focus: ReturnType<typeof vi.fn>; isConnected: boolean };
 const nodes = new Map<string, FocusNode>();
@@ -103,6 +153,35 @@ beforeEach(() => {
   hooks.slots = [];
   hooks.effects = [];
   hooks.dirty = false;
+  hooks.passive = [];
+  router.entries = [{ pathname: "/", search: "", key: "0", state: null }];
+  router.cursor = 0;
+  router.sequence = 0;
+  router.action = "POP";
+  router.navigate.mockReset().mockImplementation((to, options) => {
+    if (typeof to === "number") {
+      router.cursor += to;
+      router.action = "POP";
+    } else {
+      const url = new URL(to, "https://invented.invalid");
+      const entry = {
+        pathname: url.pathname,
+        search: url.search,
+        key: String(++router.sequence),
+        state: options?.state ?? null,
+      };
+      if (options?.replace) {
+        router.entries[router.cursor] = entry;
+        router.action = "REPLACE";
+      } else {
+        router.entries.splice(router.cursor + 1);
+        router.entries.push(entry);
+        router.cursor++;
+        router.action = "PUSH";
+      }
+    }
+    hooks.dirty = true;
+  });
   nodes.clear();
   doc.activeElement = doc.body;
   vi.stubGlobal("document", doc);
@@ -119,15 +198,24 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
-async function fixture(loadWatchlist = true, loadCohort = true) {
+async function fixture(
+  loadWatchlist = true,
+  loadCohort = true,
+  routed = false,
+) {
   const f = await watchlistScreenFixture(loadWatchlist, loadCohort);
   fixtures.push(f);
   let tree: ReturnType<typeof ManagedWatchlistScreenSelection> = null;
-  const route = () => true;
+  const staticRoute = () => true;
+  let navigation: ManagedCompanyNavigation | undefined;
   function render(commit = true) {
     hooks.index = 0;
     hooks.effects = [];
     hooks.dirty = false;
+    if (routed) navigation = useManagedCompanyNavigation(f.workspace);
+    const route = routed
+      ? useManagedScreenRecipeRoute(f.workspace, navigation)
+      : staticRoute;
     const next = ManagedWatchlistScreenSelection({
       workspace: f.workspace,
       routeActive: route,
@@ -136,11 +224,16 @@ async function fixture(loadWatchlist = true, loadCohort = true) {
       tree = next;
       attach(next);
       hooks.effects.splice(0).forEach((effect) => effect());
+      hooks.passive.splice(0).forEach((effect) => effect());
     }
     return next;
   }
   function flush() {
-    if (hooks.dirty) render();
+    let iterations = 0;
+    while (hooks.dirty) {
+      if (++iterations > 20) throw new Error("Mounted hook did not settle");
+      render();
+    }
     return tree;
   }
   const choose = (value = f.choice().listing.listingId) => {
@@ -158,6 +251,7 @@ async function fixture(loadWatchlist = true, loadCohort = true) {
     render,
     flush,
     choose,
+    navigation: () => navigation!,
     tree: () => tree,
     html: () => load(renderToStaticMarkup(tree)),
   };
@@ -269,6 +363,109 @@ it("retains the mounted class choice across navigation while retiring the old pr
     f.html()("#managed-watchlist-screen-preview").parent().text(),
   ).toContain("identical ordered selection");
   click(f.tree(), "apply");
+  f.flush();
+  expect(f.workspace.financialScreen.getSnapshot().selected).toBe(selected);
+  expect(f.api.annualReport).not.toHaveBeenCalled();
+  expect(f.api.save).not.toHaveBeenCalled();
+});
+
+it("reenables mounted selection after real routed screening Research and Back without another request", async () => {
+  const f = await fixture(true, true, true);
+  f.flush();
+  const packet = await annualComparisonResponse("left");
+  f.api.annualReport.mockResolvedValue(packet);
+  f.choose(f.choice(false).listing.listingId);
+  click(f.tree(), "prepare");
+  f.flush();
+  click(f.tree(), "apply");
+  f.flush();
+  await f.workspace.financialScreen.run(
+    f.workspace.financialScreen.getSnapshot(),
+  );
+  f.flush();
+  const before = f.workspace.financialScreen.getSnapshot();
+  const saved = f.workspace.coordinator.getSnapshot();
+  const row = before.run!.rows[0]!;
+  expect(row.report!.response).toBe(packet);
+  f.navigation().open(() =>
+    f.workspace.openFinancialScreenReport({
+      run: before.run!,
+      row,
+      response: packet,
+    }),
+  );
+  for (let i = 0; i < 8; i++) {
+    await Promise.resolve();
+    f.flush();
+  }
+  expect(f.workspace.getSnapshot().research?.selection.listing.listingId).toBe(
+    row.member.listing.listingId,
+  );
+  expect(router.entries[router.cursor]!.search).toContain("section=annual");
+  expect(element(f.tree(), "prepare").props.disabled).toBe(true);
+  f.navigation().back();
+  for (let i = 0; i < 8; i++) {
+    await Promise.resolve();
+    f.flush();
+  }
+  expect(router.entries[router.cursor]!.search).toBe("");
+  expect(f.workspace.getSnapshot().research).toBeNull();
+  expect(f.workspace.financialScreen.getSnapshot().run).toBe(before.run);
+  expect(f.workspace.coordinator.getSnapshot()).toBe(saved);
+  expect(
+    element(f.tree(), "prepare").props.disabled,
+    f.html()("#managed-watchlist-screen-readiness").text(),
+  ).toBe(false);
+  click(f.tree(), "prepare");
+  f.flush();
+  click(f.tree(), "apply");
+  f.flush();
+  expect(f.workspace.financialScreen.getSnapshot().run).toBe(before.run);
+  expect(f.api.annualReport).toHaveBeenCalledOnce();
+  expect(f.api.resolve).toHaveBeenCalledTimes(2);
+  expect(f.api.save).not.toHaveBeenCalled();
+});
+
+it("publishes direct navigation readiness without a source mutation and permanently retires the previous preview", async () => {
+  const f = await fixture();
+  f.choose();
+  click(f.tree(), "prepare");
+  f.flush();
+  const oldApply = element(f.tree(), "apply").props.onClick as () => void;
+  const saved = f.workspace.coordinator.getSnapshot();
+  const selected = f.workspace.financialScreen.getSnapshot().selected;
+  f.workspace.setNavigationBlocked(true);
+  f.flush();
+  expect(element(f.tree(), "prepare").props.disabled).toBe(true);
+  f.workspace.setNavigationBlocked(false);
+  f.flush();
+  expect(element(f.tree(), "prepare").props.disabled).toBe(false);
+  expect(element(f.tree(), "apply").props.disabled).toBe(true);
+  oldApply();
+  f.flush();
+  expect(f.workspace.financialScreen.getSnapshot().selected).toBe(selected);
+  expect(f.workspace.coordinator.getSnapshot()).toBe(saved);
+  expect(f.api.annualReport).not.toHaveBeenCalled();
+  expect(f.api.save).not.toHaveBeenCalled();
+});
+
+it("keeps invalid routed navigation unavailable and refuses the old preview after root reentry", async () => {
+  const f = await fixture(true, true, true);
+  f.flush();
+  f.choose();
+  click(f.tree(), "prepare");
+  f.flush();
+  const oldApply = element(f.tree(), "apply").props.onClick as () => void;
+  const selected = f.workspace.financialScreen.getSnapshot().selected;
+  router.navigate("/invalid");
+  f.flush();
+  expect(f.navigation().invalid).toBe(true);
+  expect(element(f.tree(), "prepare").props.disabled).toBe(true);
+  router.navigate("/");
+  f.flush();
+  expect(element(f.tree(), "prepare").props.disabled).toBe(false);
+  expect(element(f.tree(), "apply").props.disabled).toBe(true);
+  oldApply();
   f.flush();
   expect(f.workspace.financialScreen.getSnapshot().selected).toBe(selected);
   expect(f.api.annualReport).not.toHaveBeenCalled();
