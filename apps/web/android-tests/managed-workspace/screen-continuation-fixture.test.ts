@@ -1,7 +1,8 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
+import { ScreenContinuationFixtureControls } from "./screen-continuation-fixture-controls";
 import { WatchlistScreenSelectionFixtureControls } from "./watchlist-screen-selection-fixture-controls";
 import { createFixture } from "./fixture";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
@@ -9,10 +10,87 @@ import { prepareWatchlistScreenSelection } from "../../src/clerk-trial/managed-w
 import { portfolioScreenIds } from "./portfolio-screen-selection-fixture-data";
 import { watchlistScreenAuthoredNote } from "./watchlist-screen-selection-fixture";
 
-vi.mock("react", async (original) => ({
-  ...(await original<typeof React>()),
-  useSyncExternalStore: (_subscribe: unknown, read: () => unknown) => read(),
+const hooks = vi.hoisted(() => ({
+  index: 0,
+  slots: [] as unknown[],
+  effects: [] as (() => void)[],
 }));
+vi.mock("react", async (original) => {
+  const { createValuationDraftTestHooks } =
+    await import("../../src/clerk-trial/valuation-draft-files-test-hooks");
+  return {
+    ...(await original<typeof React>()),
+    ...createValuationDraftTestHooks(hooks),
+  };
+});
+beforeEach(() => {
+  hooks.index = 0;
+  hooks.slots = [];
+  hooks.effects = [];
+});
+function continuedReading(workspace: ManagedWorkspace) {
+  hooks.index = 0;
+  const tree = ScreenContinuationFixtureControls({ workspace });
+  const $ = load(renderToStaticMarkup(tree));
+  return {
+    tree,
+    data: JSON.parse($("#fixture-screen-continuation").text()) as {
+      applied: boolean;
+      after: null | {
+        run: { rows: { listing: { listingId: string }; response: unknown }[] };
+      };
+      sameAppliedRun: boolean;
+      sameSourceHandle: boolean;
+      sameRetainedReports: boolean;
+      sameResource: boolean;
+    },
+  };
+}
+function captureReading(workspace: ManagedWorkspace, id: string) {
+  const { tree } = continuedReading(workspace);
+  const children = (tree as React.ReactElement<{ children?: React.ReactNode }>)
+    .props.children;
+  const button = React.Children.toArray(children).find(
+    (child) =>
+      React.isValidElement<{ id?: string }>(child) && child.props.id === id,
+  ) as React.ReactElement<{ disabled: boolean; onClick: () => void }>;
+  expect(button).toBeDefined();
+  expect(button.props.disabled).toBe(false);
+  button.props.onClick();
+  return continuedReading(workspace).data;
+}
+
+function savedReading(
+  props: Parameters<typeof WatchlistScreenSelectionFixtureControls>[0],
+) {
+  const previous = { index: hooks.index, slots: hooks.slots };
+  hooks.index = 0;
+  hooks.slots = [];
+  try {
+    const $ = load(
+      renderToStaticMarkup(
+        React.createElement(WatchlistScreenSelectionFixtureControls, props),
+      ),
+    );
+    return JSON.parse($("#fixture-watchlist-screen-selection").text()) as {
+      canonical: string;
+      expectedCanonical: string;
+      unrelatedUnloaded: boolean;
+      watchlist: { baseVersion: number; dirty: boolean };
+      counts: {
+        load: number;
+        save: number;
+        resolve: number;
+        annual: number;
+        rejected: number;
+        unexpected: Record<string, number>;
+      };
+    };
+  } finally {
+    hooks.index = previous.index;
+    hooks.slots = previous.slots;
+  }
+}
 
 const owners: ManagedWorkspace[] = [];
 afterEach(() => {
@@ -114,6 +192,7 @@ it("explicitly reads only the missing Annual packet, keeps original evidence thr
   const original = screen.getSnapshot(),
     originalRun = original.run!;
   const retained = originalRun.rows[0]!;
+  captureReading(w, "fixture-continuation-capture-before");
   const counts = f.meta.getSnapshot();
   const preview = screen.captureContinuation(
     original,
@@ -155,6 +234,11 @@ it("explicitly reads only the missing Annual packet, keeps original evidence thr
   ]);
   expect(screen.canContinue(current)).toBe(false);
   expect(w.coordinator.getSnapshot()).toBe(f.resource);
+  const captured = captureReading(w, "fixture-continuation-capture-after");
+  expect(captured.applied).toBe(true);
+  expect(captured.after!.run.rows.map((row) => row.response)).toEqual(
+    f.meta.packets,
+  );
   const row = run.rows[1]!,
     response = row.report!.response!;
   w.openFinancialScreenReport({ run, row, response });
@@ -162,14 +246,83 @@ it("explicitly reads only the missing Annual packet, keeps original evidence thr
     expect(w.annual.getSnapshot().response).toEqual(response),
   );
   expect(w.annual.getSnapshot().responseOrigin).toBe("financial-screen");
+  const inResearch = continuedReading(w).data;
+  expect(inResearch.after).toEqual(captured.after);
+  expect(w.getSnapshot().research?.selection.origin).toBe("screening");
+  expect(w.getSnapshot().research?.selection.listing.listingId).toBe(
+    inResearch.after!.run.rows[1]!.listing.listingId,
+  );
+  const matchesCapturedPacket = (actual: unknown) =>
+    JSON.stringify(actual) ===
+    JSON.stringify(inResearch.after!.run.rows[1]!.response);
+  expect(matchesCapturedPacket(w.annual.getSnapshot().response)).toBe(true);
+  expect(inResearch.after!.run.rows[1]!.response).toEqual(f.meta.packets[1]);
+  expect(
+    matchesCapturedPacket({
+      ...response,
+      security: { ...response.security, symbol: "CHANGED" },
+    }),
+  ).toBe(false);
+  expect(
+    matchesCapturedPacket({
+      ...response,
+      evidence: {
+        ...response.evidence,
+        generation: {
+          ...response.evidence.generation,
+          cutoffAt: "2026-11-06T00:00:00Z",
+        },
+      },
+    }),
+  ).toBe(false);
+  const missing: Record<string, unknown> = { ...response };
+  delete missing.evidence;
+  expect(matchesCapturedPacket(missing)).toBe(false);
+  expect(matchesCapturedPacket({ ...response, extra: true })).toBe(false);
+  expect(f.meta.getSnapshot()).toMatchObject({ annual: 2, resolve: 1 });
   w.closeResearch();
+  expect(continuedReading(w).data).toMatchObject({
+    after: captured.after,
+    sameAppliedRun: true,
+    sameSourceHandle: true,
+    sameRetainedReports: true,
+    sameResource: true,
+  });
   expect(screen.getSnapshot().run).toBe(run);
   expect(f.meta.getSnapshot().annual).toBe(2);
   w.setView("watchlist");
   await w.reviewCatalog();
   w.applyReview();
+  const beforeSave = savedReading({ workspace: w, fixture: f.meta });
+  expect(beforeSave.canonical).toBe(beforeSave.expectedCanonical);
+  expect(beforeSave).toMatchObject({
+    counts: { save: 0, resolve: 2 },
+    watchlist: { dirty: true },
+  });
   await w.coordinator.save();
+  const saved = savedReading({ workspace: w, fixture: f.meta });
+  expect(saved.canonical).toBe(saved.expectedCanonical);
+  expect(saved).toMatchObject({
+    counts: { save: 1 },
+    watchlist: { baseVersion: 4, dirty: false },
+    unrelatedUnloaded: true,
+  });
   await w.coordinator.load();
+  const loaded = savedReading({ workspace: w, fixture: f.meta });
+  expect(loaded.canonical).toBe(loaded.expectedCanonical);
+  expect(loaded).toMatchObject({
+    counts: {
+      load: 2,
+      save: 1,
+      resolve: 2,
+      annual: 2,
+      rejected: 0,
+      unexpected: {},
+    },
+    watchlist: { baseVersion: 4, dirty: false },
+    unrelatedUnloaded: true,
+  });
+  expect(Object.keys(loaded.counts.unexpected)).toEqual([]);
   expect(w.coordinator.getSnapshot()).toMatchObject({
     baseVersion: 4,
     dirty: false,

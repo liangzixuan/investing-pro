@@ -76,6 +76,7 @@ export function ScreenContinuationFixtureControls({
           captured,
           applied,
           original: serialize(before.current),
+          after: serialize(after.current),
           current: serialize(screen),
           sameOriginalRun:
             !!before.current && before.current.run === screen.run,

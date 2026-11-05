@@ -62,3 +62,11 @@ current scoped Preview frame was inspected; the Return frame exactly matches
 the previously inspected frame. CodeScene structural findings remain
 unsuppressed; scoped source review found no functional defect. This increment
 has no Android delivery, browser inspection or phone acceptance.
+
+The subsequent [missing-read continuation](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md)
+remains unaccepted. PR 282 head `e6ed7a4` passed original source, parser and
+dependency checks, but its new native case failed a Research fixture comparison
+after the earlier missing-packet correction. Both failures remain recorded.
+The explicit post-continuation capture correction passes local checks; hosted
+acceptance for the next exact revision is pending. The accepted source baseline
+remains `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`.

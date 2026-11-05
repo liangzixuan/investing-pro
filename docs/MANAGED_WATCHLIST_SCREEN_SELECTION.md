@@ -78,3 +78,11 @@ The last delivered baseline is main `57cc61c083fe8b1f2557b975667695125722c6ea`, 
 passed original source, parser and all 156 native cases. Android 1.76.0, code 77,
 was verified and delivered locally from that baseline, and delivery is closed.
 It does not include this later Watchlist selection increment.
+
+The subsequent [missing-read continuation](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md)
+remains unaccepted. PR 282 head `e6ed7a4` passed original source, parser and
+dependency checks, but its new native case failed a Research fixture comparison
+after the earlier missing-packet correction. Both failures remain recorded.
+The explicit post-continuation capture correction passes local checks; hosted
+acceptance for the next exact revision is pending. The accepted source baseline
+remains `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`.

@@ -34,11 +34,22 @@ continuation. Preserve every admitted packet, partial or historical outcome and
 original source clock. Show new pass and attempt times separately; keep Cancel,
 Research/Back and personal Save explicit. See the [continuation guide](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md).
 The original [PR 282](https://github.com/liangzixuan/investing-pro/pull/282)
-native run at `9e07524f7b07e2c7bb9ad72a577e6a56f622d9ff` failed the new
-continuation case: its missing-packet assertion expected `null`, while the fixture
-omitted the serialized property. The fixture correction
-and focused regression pass locally. Corrected hosted 159-case execution and
-release acceptance remain pending; the original failure is preserved.
+native run at `9e07524f7b07e2c7bb9ad72a577e6a56f622d9ff` failed because the
+fixture omitted a missing packet instead of serializing `null`. At corrected
+head `e6ed7a419d523d26d4cc7d136e40cf4fa5cad2f3`, original Ubuntu, Windows,
+parser and dependency checks passed. The new native case reached Research, then
+failed a packet comparison against a fixture baseline that this journey never
+captured. The original log confirms the correct Annual route and response origin,
+with two Annual reads and no rejected or unexpected requests. Both failed runs
+remain preserved.
+
+The local correction compares the complete Research packet with the explicit
+post-continuation capture and the expected original packet. Fifteen affected
+fixture, workspace and UI tests, web types, lint, formatting and the changed
+Android journey compilation pass. All 158 prior native cases remain unchanged.
+Hosted acceptance for the next exact revision and its full 159-case run is
+pending. CodeScene structural findings remain unsuppressed; this is not release
+or phone acceptance.
 
 ## Source accepted: refine loaded Annual results
 
