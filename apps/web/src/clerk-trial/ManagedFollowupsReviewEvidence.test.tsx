@@ -8,7 +8,11 @@ import {
   ManagedFollowupEvidenceCapture,
   ManagedFollowupsReviewEvidence,
 } from "./ManagedFollowupsReviewEvidence";
-import { OfflineResearchReading } from "./ManagedScreenResearchReading";
+import {
+  CapturedCompanySources,
+  CapturedSourcePacket,
+  OfflineResearchReading,
+} from "./ManagedScreenResearchReading";
 
 const hooks = vi.hoisted(() => ({
   direct: false,
@@ -23,6 +27,10 @@ vi.mock("react", async (original) => {
   const direct = createValuationDraftTestHooks(hooks);
   return {
     ...actual,
+    useContext: (context: React.Context<boolean>) =>
+      hooks.direct ? false : actual.useContext(context),
+    useMemo: (factory: () => unknown, deps: React.DependencyList) =>
+      hooks.direct ? factory() : actual.useMemo(factory, deps),
     useRef: (v: unknown) =>
       hooks.direct ? direct.useRef(v) : actual.useRef(v),
     useState: (v: unknown) =>
@@ -65,6 +73,9 @@ type Props = {
   id?: string;
   disabled?: boolean;
   onClick?: () => void;
+  onToggle?: React.ToggleEventHandler<HTMLDetailsElement>;
+  label?: string;
+  value?: Readonly<object>;
   ref?: React.RefObject<HTMLHeadingElement | null>;
 };
 function nodes(n: React.ReactNode): React.ReactElement<Props>[] {
@@ -99,6 +110,76 @@ function commit(frame: ReturnType<typeof capture>, focus = vi.fn()) {
   hooks.effects.splice(0).forEach((f) => f());
   return focus;
 }
+it("keeps the default-context retained reading passive and its full payload lazy until opened", async () => {
+  const f = await setup(),
+    reading = f.capture();
+  const original = JSON.stringify(reading);
+  const before = [
+    f.api.eodHistory,
+    f.api.annualReport,
+    f.api.recentFilings,
+    f.api.interimReport,
+  ].map((request) => vi.mocked(request).mock.calls.length);
+  const $ = load(
+    renderToStaticMarkup(<FollowupEvidenceReading reading={reading} />),
+  );
+  expect($("button,input,select,textarea")).toHaveLength(0);
+  expect($("pre")).toHaveLength(0);
+  expect($("[aria-label='Captured Price'] tbody tr")).toHaveLength(
+    reading.evidence.price!.response!.rows.length,
+  );
+  for (const row of reading.evidence.price!.response!.rows) {
+    expect($("[aria-label='Captured Price']").text()).toContain(row.date);
+    expect($("[aria-label='Captured Price']").text()).toContain(row.close);
+  }
+  // Existing two-company callers retain their chart and local date comparison.
+  const shared = load(
+    renderToStaticMarkup(
+      <CapturedCompanySources evidence={reading.evidence} />,
+    ),
+  );
+  expect(shared(".managed-raw-close-comparison select")).toHaveLength(2);
+  const packet = nodes(FollowupEvidenceReading({ reading })).find(
+    (node) =>
+      node.type === CapturedSourcePacket &&
+      node.props.label === "Complete retained check reading",
+  )!;
+  expect(packet.props.value).toBe(reading);
+  const renderPacket = () => {
+    hooks.direct = true;
+    hooks.index = 0;
+    const tree = CapturedSourcePacket({
+      label: packet.props.label!,
+      value: packet.props.value!,
+    });
+    hooks.direct = false;
+    return tree;
+  };
+  const closed = renderPacket();
+  expect(nodes(closed).some((node) => node.type === "pre")).toBe(false);
+  nodes(closed)[0]!.props.onToggle?.({
+    currentTarget: { open: true },
+  } as React.ToggleEvent<HTMLDetailsElement>);
+  const opened = renderPacket();
+  const text = nodes(opened).find((node) => node.type === "pre")!.props
+    .children as string;
+  expect(JSON.parse(text)).toEqual(reading);
+  expect(JSON.stringify(JSON.parse(text))).toBe(original);
+  nodes(opened)[0]!.props.onToggle?.({
+    currentTarget: { open: false },
+  } as React.ToggleEvent<HTMLDetailsElement>);
+  expect(nodes(renderPacket()).some((node) => node.type === "pre")).toBe(false);
+  expect(JSON.stringify(reading)).toBe(original);
+  expect(
+    [
+      f.api.eodHistory,
+      f.api.annualReport,
+      f.api.recentFilings,
+      f.api.interimReport,
+    ].map((request) => vi.mocked(request).mock.calls.length),
+  ).toEqual(before);
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+});
 it("presents complete detached source packets, raw closes, statements, pass outcomes and independent clocks without live controls", async () => {
   const f = await setup(),
     reading = f.capture();

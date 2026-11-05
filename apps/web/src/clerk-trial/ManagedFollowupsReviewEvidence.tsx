@@ -78,7 +78,10 @@ export function FollowupEvidenceReading({
           value={reading.sourcePass}
         />
       </section>
-      <CapturedCompanySources evidence={reading.evidence} />
+      <CapturedCompanySources
+        evidence={reading.evidence}
+        pricePresentation="table"
+      />
       <CapturedSourcePacket
         label="Complete retained check reading"
         value={reading}

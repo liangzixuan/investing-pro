@@ -94,7 +94,13 @@ function SourceReading({
   );
 }
 
-function PriceReading({ state }: { state: Evidence["price"] }) {
+function PriceReading({
+  state,
+  presentation,
+}: {
+  state: Evidence["price"];
+  presentation: "chart" | "table";
+}) {
   const offline = useContext(OfflineResearchReading);
   const response = state?.response;
   return (
@@ -111,7 +117,7 @@ function PriceReading({ state }: { state: Evidence["price"] }) {
             live quote.
           </p>
           <ObservedRawCloseRange response={response} />
-          {!offline && (
+          {!offline && presentation === "chart" && (
             <CloseHistoryChart
               rows={response.rows}
               symbol={response.security.symbol}
@@ -213,13 +219,15 @@ function FilingsReading({ state }: { state: Evidence["filings"] }) {
 export function CapturedCompanySources({
   evidence,
   priceStudies,
+  pricePresentation = "chart",
 }: {
   evidence: Evidence;
   priceStudies?: ReactNode;
+  pricePresentation?: "chart" | "table";
 }) {
   return (
     <>
-      <PriceReading state={evidence.price} />
+      <PriceReading state={evidence.price} presentation={pricePresentation} />
       {priceStudies}
       <FinancialSources evidence={evidence} />
       <FilingsReading state={evidence.filings} />
