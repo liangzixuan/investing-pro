@@ -1,0 +1,36 @@
+.managed-screen-refinement,
+.managed-screen-refinement article,
+.managed-screen-refinement details {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.managed-screen-refinement {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--managed-border, #d7dce2);
+  border-radius: 0.75rem;
+}
+.managed-screen-refinement article {
+  margin-block: 1rem;
+  padding-block: 0.5rem;
+  border-top: 1px solid var(--managed-border, #d7dce2);
+}
+.managed-screen-refinement details {
+  overflow-x: auto;
+}
+.managed-screen-refinement dd {
+  margin-inline-start: 0;
+}
+.managed-screen-refinement dl > div {
+  margin-block: 0.5rem;
+}
+.managed-screen-refinement button,
+.managed-screen-refinement input,
+.managed-screen-refinement select {
+  min-height: 44px;
+}
+.managed-screen-refinement pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -5,7 +5,16 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: Watchlist companies in the Annual screen
+## Current increment: refine a loaded Annual screen
+
+Preview independent filter edits against retained Annual packets, inspect complete
+original and revised results, then apply them atomically. Preserve source clocks,
+missing evidence and exact identities; local evaluation has its own time. Cancel
+keeps the original screen. Research/Back and Watchlist Save remain separate. See
+the [workflow guide](MANAGED_FINANCIAL_SCREEN_REFINEMENT.md). Local model, complete workspace and UI checks pass, along with web types and
+scoped lint. The new 158-case native roster has not run on hosted Android.
+
+## Published source: Watchlist companies in the Annual screen
 
 Choose exact watched listings from the current supported cohort, inspect every
 eligibility outcome, then apply the complete ordered selection. Run, Research/Back
@@ -13,7 +22,9 @@ and Watchlist Save remain separate. Unsaved notes, order, criteria and source
 clocks are preserved. The full list supports 10,000 entries with bounded pages.
 The 91 affected local checks, web types, scoped lint and source boundaries pass.
 Android source compilation and fixture/mobile bundles pass; the new 157-case
-native roster still needs original hosted execution. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
+native run passed all 156 prior cases; the new journey stopped at a frame-helper
+return-type check after its selection preview assertions passed. The original
+run is not accepted. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
 
 ## Source accepted: finished due-check evidence report
 

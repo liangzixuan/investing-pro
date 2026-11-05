@@ -1,11 +1,16 @@
+import {
+  FinancialScreenCriteriaControls,
+  copyFinancialScreenCriteria,
+  type FinancialScreenCriteriaDraft,
+} from "./FinancialScreenCriteriaControls";
+import { ManagedFinancialScreenRefinement } from "./ManagedFinancialScreenRefinement";
+import type { ManagedWorkspace } from "./managed-workspace";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
 import { ManagedFinancialScreenComparisonReport } from "./ManagedFinancialScreenComparisonReport";
 import { useId, useState, useSyncExternalStore } from "react";
 import {
   MANAGED_FINANCIAL_SCREEN_FIELDS,
   compareManagedFinancialScreenRows,
-  type ManagedFinancialScreenCriteria,
-  type ManagedFinancialScreenField,
   type ManagedFinancialScreenMetric,
 } from "./managed-financial-screen-results";
 import type {
@@ -22,30 +27,16 @@ import {
   AnnualStatementsContext,
 } from "./ManagedAnnualStatements";
 
-type Draft = {
-  clauses: {
-    field: ManagedFinancialScreenField;
-    operator: "gte" | "lte";
-    value: string;
-  }[];
-  sort: {
-    field: "symbol" | ManagedFinancialScreenField;
-    direction: "asc" | "desc";
-  };
-};
-const copyCriteria = (criteria: ManagedFinancialScreenCriteria): Draft => ({
-  clauses: criteria.clauses.map((clause) => ({ ...clause })),
-  sort: { ...criteria.sort },
-});
-
 export function ManagedFinancialScreen({
   model,
   onOpenReport,
   recipeDelivery,
   comparisonReportDelivery,
   recipesRouteActive,
+  workspace,
 }: {
   model: ScreenModel;
+  workspace?: ManagedWorkspace;
   recipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   comparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   recipesRouteActive?: () => boolean;
@@ -62,16 +53,21 @@ export function ManagedFinancialScreen({
   const id = useId();
   const [form, setForm] = useState({
     owner: model,
-    draft: copyCriteria(state.criteria),
+    draft: copyFinancialScreenCriteria(state.criteria),
   });
   const [notice, setNotice] = useState("");
   if (form.owner !== model) {
-    setForm({ owner: model, draft: copyCriteria(state.criteria) });
+    setForm({
+      owner: model,
+      draft: copyFinancialScreenCriteria(state.criteria),
+    });
     setNotice("");
   }
   const draft =
-    form.owner === model ? form.draft : copyCriteria(state.criteria);
-  const edit = (next: Draft) => {
+    form.owner === model
+      ? form.draft
+      : copyFinancialScreenCriteria(state.criteria);
+  const edit = (next: FinancialScreenCriteriaDraft) => {
     model.stageCriteria(state);
     setForm({ owner: model, draft: next });
     setNotice("");
@@ -169,147 +165,7 @@ export function ManagedFinancialScreen({
             criterion makes a nonmatch. USD amounts are exact reported amounts;
             the current ratio uses the existing rounded result.
           </p>
-          {draft.clauses.map((clause, index) => (
-            <div className="managed-screen-clause" key={index}>
-              <label>
-                Field
-                <select
-                  value={clause.field}
-                  onChange={(event) =>
-                    edit({
-                      ...draft,
-                      clauses: draft.clauses.map((value, at) =>
-                        at === index
-                          ? {
-                              ...value,
-                              field: event.target
-                                .value as ManagedFinancialScreenField,
-                            }
-                          : value,
-                      ),
-                    })
-                  }
-                >
-                  {MANAGED_FINANCIAL_SCREEN_FIELDS.map((field) => (
-                    <option key={field.key} value={field.key}>
-                      {field.label} ({field.unit})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Comparison
-                <select
-                  value={clause.operator}
-                  onChange={(event) =>
-                    edit({
-                      ...draft,
-                      clauses: draft.clauses.map((value, at) =>
-                        at === index
-                          ? {
-                              ...value,
-                              operator: event.target.value as "gte" | "lte",
-                            }
-                          : value,
-                      ),
-                    })
-                  }
-                >
-                  <option value="gte">At least</option>
-                  <option value="lte">At most</option>
-                </select>
-              </label>
-              <label>
-                Threshold
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  maxLength={64}
-                  value={clause.value}
-                  onChange={(event) =>
-                    edit({
-                      ...draft,
-                      clauses: draft.clauses.map((value, at) =>
-                        at === index
-                          ? { ...value, value: event.target.value }
-                          : value,
-                      ),
-                    })
-                  }
-                />
-              </label>
-              <button
-                type="button"
-                className="trial-secondary"
-                onClick={() =>
-                  edit({
-                    ...draft,
-                    clauses: draft.clauses.filter((_, at) => at !== index),
-                  })
-                }
-              >
-                Remove criterion {index + 1}
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="trial-secondary"
-            disabled={draft.clauses.length >= 7}
-            onClick={() =>
-              edit({
-                ...draft,
-                clauses: [
-                  ...draft.clauses,
-                  { field: "operatingCashFlow", operator: "gte", value: "0" },
-                ],
-              })
-            }
-          >
-            Add criterion
-          </button>
-          <div className="managed-screen-sort">
-            <label>
-              Sort by
-              <select
-                value={draft.sort.field}
-                onChange={(event) =>
-                  edit({
-                    ...draft,
-                    sort: {
-                      ...draft.sort,
-                      field: event.target.value as Draft["sort"]["field"],
-                    },
-                  })
-                }
-              >
-                <option value="symbol">Symbol</option>
-                {MANAGED_FINANCIAL_SCREEN_FIELDS.map((field) => (
-                  <option key={field.key} value={field.key}>
-                    {field.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Order
-              <select
-                value={draft.sort.direction}
-                onChange={(event) =>
-                  edit({
-                    ...draft,
-                    sort: {
-                      ...draft.sort,
-                      direction: event.target.value as "asc" | "desc",
-                    },
-                  })
-                }
-              >
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
-            </label>
-          </div>
+          <FinancialScreenCriteriaControls draft={draft} edit={edit} />
           <button type="submit" className="trial-secondary">
             Apply criteria
           </button>
@@ -329,11 +185,27 @@ export function ManagedFinancialScreen({
         onApplied={() => {
           const current = model.getSnapshot();
           if (!current.criteriaStaged) {
-            setForm({ owner: model, draft: copyCriteria(current.criteria) });
+            setForm({
+              owner: model,
+              draft: copyFinancialScreenCriteria(current.criteria),
+            });
             setNotice("");
           }
         }}
       />
+      {workspace && recipesRouteActive && (
+        <ManagedFinancialScreenRefinement
+          workspace={workspace}
+          routeActive={recipesRouteActive}
+          onApplied={(installed) => {
+            setForm({
+              owner: model,
+              draft: copyFinancialScreenCriteria(installed.criteria),
+            });
+            setNotice("");
+          }}
+        />
+      )}
       <div className="trial-actions">
         <button
           type="button"
@@ -363,6 +235,12 @@ export function ManagedFinancialScreen({
       {run && (
         <>
           <h4>Screen results</h4>
+          {run.refinedAt && (
+            <p>
+              Filters evaluated locally {run.refinedAt}. Source times below are
+              unchanged.
+            </p>
+          )}
           <p>
             Started {run.startedAt}.{" "}
             {run.completedAt

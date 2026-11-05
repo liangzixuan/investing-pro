@@ -127,7 +127,7 @@ public class ManagedWatchlistScreenSelectionTest {
         return "(()=>{const root=document.querySelector('#"+id+"')?.parentElement,d="+OBS+",rows=[...(root?.querySelectorAll('.managed-watchlist-screen-rows > li')??[])],members=d.watchlist.draft.memberships;return rows.length===5&&rows.every((row,i)=>{const m=members[i],values=[...row.querySelectorAll('dl dd')].map(e=>e.textContent);return row.dataset.listingId===m.listingId&&Object.entries(m).filter(([k])=>k!=='note').every(([,v])=>values.includes(v))&&row.querySelector('[data-watchlist-outcome]').textContent.length>0;})&&root.textContent.includes('AEM')&&root.textContent.includes('UHAL');})()";
     }
     private void frame(FollowupsReportFrameCapture.Frame frame,String selector)throws Exception{
-        page.read(new Script("document.querySelector("+q(selector)+").scrollIntoView({block:'start',behavior:'instant'});true"));
+        page.read(new Script("document.querySelector("+q(selector)+").scrollIntoView({block:'start',behavior:'instant'});'scrolled'"));
         page.await(new Check("committed current Watchlist panel fits the document",new Script("document.querySelector("+q(selector)+")?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&document.documentElement.scrollWidth<=document.documentElement.clientWidth+1")).nativeReady());
         new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario,frame)).retain();
     }

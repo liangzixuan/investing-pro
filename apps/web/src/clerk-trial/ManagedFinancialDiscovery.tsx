@@ -48,6 +48,7 @@ export function ManagedFinancialDiscovery(props: Props) {
         routeActive={props.recipesRouteActive}
       />
       <ManagedFinancialScreen
+        workspace={props.workspace}
         model={props.workspace.financialScreen}
         onOpenReport={props.onOpenReport}
         recipesRouteActive={props.recipesRouteActive}

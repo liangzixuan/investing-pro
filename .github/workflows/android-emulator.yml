@@ -711,6 +711,13 @@ jobs:
           required.add(watchlist_screen_case)
           if len(required) != 157:
               raise SystemExit("The Watchlist screen journey must preserve all 156 prior native cases.")
+          screen_refinement_case = (
+              "local.investment.personal.ManagedScreenRefinementTest",
+              "revisedFiltersKeepOriginalPacketsAndClocksThroughCancelApplyResearchBackAndSeparateSave",
+          )
+          required.add(screen_refinement_case)
+          if len(required) != 158:
+              raise SystemExit("Screen refinement must preserve all 157 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

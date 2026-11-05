@@ -27,7 +27,16 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: screen the companies already on the Watchlist
+## Current priority: refine loaded Annual results
+
+Extend the M2/M4 screening workflow with independent local filter drafts and a
+complete original/revised preview. Apply reviewed criteria and results together
+without rereading sources, preserving all original evidence clocks and unknowns.
+Research, shortlist handoff and personal Save remain separate. See the
+[refinement guide](MANAGED_FINANCIAL_SCREEN_REFINEMENT.md). Hosted execution and
+release acceptance remain pending for this new increment.
+
+## Published source: screen the companies already on the Watchlist
 
 Connect the current Watchlist to the existing Annual screen under M2/M4. Inspect
 all eligibility outcomes, explicitly choose watched share classes and preview
@@ -36,7 +45,8 @@ and order, criteria, sorting and independent source clocks. Run and Save stay
 separate. The list remains fully reachable at the 10,000-entry limit through
 bounded pages. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
 Local affected checks, types, lint, boundaries and source compilation pass. The
-added native journey still requires original hosted execution.
+original native run failed at a new journey frame-helper return-type check; all
+156 prior cases passed. That run is not accepted.
 
 The finished due-check report beneath this increment is accepted at main
 `57cc61c083fe8b1f2557b975667695125722c6ea` after original source/parser checks and
