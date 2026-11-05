@@ -1,9 +1,18 @@
 import { afterEach, expect, it, vi } from "vitest";
+import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
+import { WatchlistScreenSelectionFixtureControls } from "./watchlist-screen-selection-fixture-controls";
 import { createFixture } from "./fixture";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { prepareWatchlistScreenSelection } from "../../src/clerk-trial/managed-watchlist-screen-selection";
 import { portfolioScreenIds } from "./portfolio-screen-selection-fixture-data";
 import { watchlistScreenAuthoredNote } from "./watchlist-screen-selection-fixture";
+
+vi.mock("react", async (original) => ({
+  ...(await original<typeof React>()),
+  useSyncExternalStore: (_subscribe: unknown, read: () => unknown) => read(),
+}));
 
 const owners: ManagedWorkspace[] = [];
 afterEach(() => {
@@ -64,6 +73,40 @@ async function cancelledRun() {
   expect(f.screen.getSnapshot().run!.status).toBe("cancelled");
   return f;
 }
+
+it("serializes the cancelled run for the exact native missing-packet predicate without losing retained payloads", async () => {
+  const f = await cancelledRun();
+  const before = f.screen.getSnapshot();
+  const counts = f.meta.getSnapshot();
+  const $ = load(
+    renderToStaticMarkup(
+      React.createElement(WatchlistScreenSelectionFixtureControls, {
+        workspace: f.w,
+        fixture: f.meta,
+      }),
+    ),
+  );
+  const d = JSON.parse($("#fixture-watchlist-screen-selection").text()) as {
+    counts: { annual: number };
+    screen: {
+      run: { status: string; rows: { response: unknown }[] };
+    };
+    expectedPackets: unknown[];
+  };
+  const r = d.screen.run;
+  expect(
+    d.counts.annual === 1 &&
+      r.status === "cancelled" &&
+      JSON.stringify(r.rows[0]!.response) ===
+        JSON.stringify(d.expectedPackets[0]) &&
+      r.rows[1]!.response === null,
+  ).toBe(true);
+  expect(r.rows.map((row) => row.response)).toEqual([f.meta.packets[0], null]);
+  expect(d.expectedPackets).toEqual(f.meta.packets);
+  expect(Object.hasOwn(r.rows[1]!, "response")).toBe(true);
+  expect(f.screen.getSnapshot()).toBe(before);
+  expect(f.meta.getSnapshot()).toBe(counts);
+});
 
 it("explicitly reads only the missing Annual packet, keeps original evidence through Research/Back, and separately saves the unchanged Watchlist draft", async () => {
   const f = await cancelledRun(),
