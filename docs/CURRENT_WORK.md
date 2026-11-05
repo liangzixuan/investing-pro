@@ -14,26 +14,36 @@ keeps the original screen. Research/Back and Watchlist Save remain separate. See
 the [workflow guide](MANAGED_FINANCIAL_SCREEN_REFINEMENT.md). Local model, complete workspace and UI checks pass, along with web types and
 scoped lint. The new 158-case native roster has not run on hosted Android.
 
-## Published source: Watchlist companies in the Annual screen
+## Source merged: Watchlist companies in the Annual screen
 
 Choose exact watched listings from the current supported cohort, inspect every
 eligibility outcome, then apply the complete ordered selection. Run, Research/Back
 and Watchlist Save remain separate. Unsaved notes, order, criteria and source
 clocks are preserved. The full list supports 10,000 entries with bounded pages.
 The 91 affected local checks, web types, scoped lint and source boundaries pass.
-Android source compilation and fixture/mobile bundles pass; the new 157-case
-native run passed all 156 prior cases; the new journey stopped at a frame-helper
-return-type check after its selection preview assertions passed. The original
-run is not accepted. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
+Android source compilation and fixture/mobile bundles pass. At PR 280 head
+`7a9be968359b4911132cfe81e8293c6f9874389e`, the original native run passed all
+157 cases, including independent Save and fresh Load. Both scoped frames match
+the previously inspected Preview and Return frames. Original Ubuntu, Windows
+and parser checks pass. [PR 280](https://github.com/liangzixuan/investing-pro/pull/280)
+merged at `519fec426c368bff700b0db57a45eafa73c15e43`. Original main checks remain
+pending; this selection workflow has no Android delivery. Earlier original
+failures remain recorded. CodeScene findings remain unsuppressed; no new
+functional finding was identified. See the
+[workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
 
-## Source accepted: finished due-check evidence report
+## Accepted and delivered: finished due-check evidence report
 
 [PR 279](https://github.com/liangzixuan/investing-pro/pull/279) merged at
 `57cc61c083fe8b1f2557b975667695125722c6ea`. Original main source/parser checks and
 all 156 native cases passed, with two scoped report frames inspected. Complete
 chosen-file bytes and independent Follow-ups Save are covered by the native
 journey. CodeScene structural findings remain recorded and unsuppressed; review
-found no functional defect. Android 1.76 has not been delivered. See the
+found no functional defect. Android 1.76.0, code 77, was built with the existing
+signer, verified with four checks on the same APK, and delivered locally with
+copy/checksum readback. Delivery is closed. The original package-check failure
+and its qualified correction remain recorded. Browser, installation and physical
+phone acceptance are not claimed; the API and website were not deployed. See the
 [report guide](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
 
 ## Source merged: source evidence beside due checks

@@ -47,10 +47,23 @@ Local checks cover full eligibility, exact share-class choices, stale and
 reentrant actions, all 10,000 paged entries, and the complete real-workspace
 workflow. The invented fixture checks full Watchlist values and original Annual
 packets through paced Run, comparison, Research/Back and separate Save/fresh Load.
-A new native journey extends the required roster from 156 to 157; hosted native
-execution and scoped frame inspection remain pending. No browser or phone
-acceptance is claimed.
+At PR 280 head `7a9be968359b4911132cfe81e8293c6f9874389e`, the original native
+run passed all 157 cases, including all 156 prior cases and the complete new
+journey through independent Save and fresh Load. The two current scoped Preview
+and Return frames are byte-identical to the frames already inspected. Original
+Ubuntu, Windows and parser checks pass.
+[PR 280](https://github.com/liangzixuan/investing-pro/pull/280) merged at
+`519fec426c368bff700b0db57a45eafa73c15e43`. Original main checks remain pending;
+this selection workflow has no Android delivery.
+CodeScene findings remain unsuppressed; no new functional finding was identified.
+No browser or phone acceptance is claimed.
+
+Earlier original failures remain separate: `c908f45e` stopped at the new frame
+helper's return type and had a Windows paging-test timeout; `35891278` stopped at
+post-Back preview readiness; `6f5511ab` passed that step but used the wrong
+Watchlist navigation label. Their failed outcomes have not been reclassified.
 
 The accepted baseline is main `57cc61c083fe8b1f2557b975667695125722c6ea`, which
-passed original source, parser and all 156 native cases. Android 1.76 delivery
-remains separate from this source increment.
+passed original source, parser and all 156 native cases. Android 1.76.0, code 77,
+was verified and delivered locally from that baseline, and delivery is closed.
+It does not include this later Watchlist selection increment.
