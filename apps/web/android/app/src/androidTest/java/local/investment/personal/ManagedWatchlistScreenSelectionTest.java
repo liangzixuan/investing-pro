@@ -113,7 +113,7 @@ public class ManagedWatchlistScreenSelectionTest {
         click("#managed-watchlist-screen-prepare");click("#managed-watchlist-screen-apply");
         page.await(new Check("identical order keeps run, original packets, shortlist and both comparison choices",new Script(OBS+".sameRun&&"+OBS+".sameComparison&&"+OBS+".sameShortlist&&"+OBS+".sameResponses&&"+OBS+".screen.shortlist===1&&"+OBS+".screen.comparison.left&&"+OBS+".screen.comparison.right&&"+retained())));
         frame(FollowupsReportFrameCapture.Frame.WATCHLIST_SCREEN_RETURN,"#managed-watchlist-screen-heading");
-        nav("Watchlist");button("Review catalog changes");button("Apply reviewed catalog");
+        nav("My Watchlist");button("Review catalog changes");button("Apply reviewed catalog");
         page.await(new Check("independent explicit review preserves complete raw note and all ordered identities before Save",new Script(OBS+".canonical==="+OBS+".expectedCanonical&&"+OBS+".counts.save===0&&"+OBS+".counts.resolve===2&&"+OBS+".watchlist.dirty")));
         button("Save watchlist");
         page.await(new Check("only the full Watchlist is saved once at version four",new Script(OBS+".counts.save===1&&"+OBS+".watchlist.baseVersion===4&&!"+OBS+".watchlist.dirty&&"+OBS+".canonical==="+OBS+".expectedCanonical&&"+OBS+".unrelatedUnloaded")));
