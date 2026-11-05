@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
@@ -27,8 +27,13 @@ export function useManagedScreenRecipeRoute(
   navigation: ManagedCompanyNavigation | undefined,
 ) {
   const current = useRef(navigation);
+  const [, publishReadiness] = useState(0);
   useLayoutEffect(() => {
+    const changed =
+      navigationAllowsRecipe(current.current) !==
+      navigationAllowsRecipe(navigation);
     current.current = navigation;
+    if (changed) publishReadiness((revision) => revision + 1);
   }, [navigation]);
   const pending = navigation?.pending;
   const invalid = navigation?.invalid;
