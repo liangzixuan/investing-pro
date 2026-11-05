@@ -34,14 +34,28 @@ it("keeps all 10,000 eligibility rows reachable in order while mounting only one
   const visited: string[] = [],
     onPage = vi.fn();
   for (let page = 0; page < rows.length / WATCHLIST_SCREEN_PAGE_SIZE; page++) {
-    const tree = WatchlistScreenSelectionRows({
+    const tree: Element = WatchlistScreenSelectionRows({
       rows,
       id: "review",
       page,
       onPage,
     });
-    const entries = nodes(tree).filter(
-      (n) => typeof n.props["data-listing-id"] === "string",
+    // Inspect the mounted list directly on every page. Descending through all
+    // identity disclosures and page options repeats work unrelated to row reachability.
+    const list = React.Children.toArray(
+      tree.props.children as React.ReactNode,
+    ).find(
+      (child): child is Element =>
+        React.isValidElement<Record<string, unknown>>(child) &&
+        child.type === "ol",
+    );
+    expect(list).toBeDefined();
+    const entries = React.Children.toArray(
+      list!.props.children as React.ReactNode,
+    ).filter(
+      (child): child is Element =>
+        React.isValidElement<Record<string, unknown>>(child) &&
+        typeof child.props["data-listing-id"] === "string",
     );
     expect(entries).toHaveLength(WATCHLIST_SCREEN_PAGE_SIZE);
     visited.push(...entries.map((n) => n.props["data-listing-id"] as string));
