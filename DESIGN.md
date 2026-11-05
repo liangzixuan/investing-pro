@@ -11,6 +11,15 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Watchlist companies in an Annual screen
+
+Place the explicit Watchlist selection beside the existing Portfolio selection
+in Discover. Show complete eligibility before an Apply action, with exact watched
+share-class choices and no default substitution. Paginate at 25 rows while keeping
+complete counts and a direct page control for all 10,000 entries. Keep identities
+wrappable, controls at least 44 pixels high and keyboard focus on the preview or
+return heading. Preview/Apply, Run and personal Save are separate actions.
+
 ## Finished due-check evidence report
 
 Put explicit report preparation beside the finished chosen review. Keep its full

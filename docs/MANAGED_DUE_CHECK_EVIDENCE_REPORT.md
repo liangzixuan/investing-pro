@@ -54,5 +54,8 @@ routed real-workspace journeys. They compare full current/captured entries and
 raw packets, preserve unrelated checks, and verify independent Save/fresh Load.
 A new Android journey exercises picker cancellation and complete chosen-file byte
 readback; five policy cases check the distinct file purpose and envelope. All 150
-prior native cases remain required. Hosted native execution, scoped frames and
-client delivery for this increment remain pending.
+prior native cases remain required. Accepted main
+`57cc61c083fe8b1f2557b975667695125722c6ea` passed original source/parser checks
+and all 156 native cases. Two scoped frames were inspected; complete chosen-file
+bytes are covered by the passing journey. CodeScene structural findings remain
+unsuppressed. Android 1.76 delivery remains pending.

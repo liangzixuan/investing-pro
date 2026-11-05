@@ -36,6 +36,7 @@ final class ReportRevisitFixtureAssets implements AutoCloseable {
         RESEARCH_DRAFT_SET("research-draft-set"),
         COMPANY_RESEARCH_CHECKS("company-research-checks"),
         REPORT_COMPARISON_CHECK("report-comparison-check"),
+        WATCHLIST_SCREEN_SELECTION("watchlist-screen-selection"),
         PORTFOLIO_SCREEN_SELECTION("portfolio-screen-selection"),
         PORTFOLIO_REPORT_COMPARISON("portfolio-report-comparison"),
         PORTFOLIO_COMPARISON_REPORT("portfolio-comparison-report"),

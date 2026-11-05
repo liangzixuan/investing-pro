@@ -5,14 +5,24 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Locally implemented: a finished due-check evidence report
+## Current increment: Watchlist companies in the Annual screen
 
-Prepare a private HTML record from the finished chosen Follow-ups review.
-Keep every current authored check, complete retained source reading and explicit
-uncaptured row in the chosen order. Preview and document delivery remain separate
-from online Save. Focused local checks, types, lint, test assets and the mobile
-bundle pass. The native source roster contains 156 cases; original hosted native
-execution and client delivery remain pending. See the
+Choose exact watched listings from the current supported cohort, inspect every
+eligibility outcome, then apply the complete ordered selection. Run, Research/Back
+and Watchlist Save remain separate. Unsaved notes, order, criteria and source
+clocks are preserved. The full list supports 10,000 entries with bounded pages.
+The 91 affected local checks, web types, scoped lint and source boundaries pass.
+Android source compilation and fixture/mobile bundles pass; the new 157-case
+native roster still needs original hosted execution. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
+
+## Source accepted: finished due-check evidence report
+
+[PR 279](https://github.com/liangzixuan/investing-pro/pull/279) merged at
+`57cc61c083fe8b1f2557b975667695125722c6ea`. Original main source/parser checks and
+all 156 native cases passed, with two scoped report frames inspected. Complete
+chosen-file bytes and independent Follow-ups Save are covered by the native
+journey. CodeScene structural findings remain recorded and unsuppressed; review
+found no functional defect. Android 1.76 has not been delivered. See the
 [report guide](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
 
 ## Source merged: source evidence beside due checks
@@ -24,8 +34,9 @@ merged at `b2764c614dfa5cff87d9aa8a171f9014c536f14e`. Its original PR source/par
 checks and all 150 native cases passed; two scoped frames were inspected.
 CodeScene structural findings remain recorded and unsuppressed; the scoped review
 found no functional defect. One original main native shard stopped during emulator
-setup before tests; main native execution is not accepted. Other original checks
-and client delivery remain separate. See the [workflow guide](MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
+setup before tests; that historical main run was not accepted. The later accepted `57cc61c0`
+main runs the complete 156-case suite, including this workflow. Client delivery
+remains separate. See the [workflow guide](MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
 
 ## Source accepted: saved scenarios for dated Portfolio holdings
 

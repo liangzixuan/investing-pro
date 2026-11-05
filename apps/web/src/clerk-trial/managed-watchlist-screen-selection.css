@@ -1,0 +1,54 @@
+.managed-watchlist-screen-selection {
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.managed-watchlist-screen-selection summary,
+.managed-watchlist-screen-selection button,
+.managed-watchlist-screen-selection select {
+  min-height: 44px;
+}
+.managed-watchlist-screen-selection summary {
+  padding-block: 0.75rem;
+  cursor: pointer;
+}
+.managed-watchlist-screen-selection label {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+.managed-watchlist-screen-selection select {
+  max-width: 100%;
+  width: 100%;
+}
+.managed-watchlist-screen-rows {
+  padding-inline-start: 1.5rem;
+}
+.managed-watchlist-screen-rows > li {
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--managed-line);
+}
+.managed-watchlist-screen-identity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.5rem 1rem;
+}
+.managed-watchlist-screen-identity dd {
+  margin: 0;
+}
+.managed-watchlist-screen-selection :focus-visible,
+.managed-watchlist-screen-selection [tabindex="-1"]:focus {
+  outline: 2px solid var(--managed-action);
+  outline-offset: 3px;
+}
+
+.managed-watchlist-screen-selection,
+.managed-watchlist-screen-selection :is(section, details, ol, li, dl, dd) {
+  min-width: 0;
+  max-width: 100%;
+}
+.managed-watchlist-screen-selection nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}

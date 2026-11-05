@@ -1,4 +1,8 @@
 import {
+  createWatchlistScreenSelectionFixture,
+  type WatchlistScreenSelectionFixture,
+} from "./watchlist-screen-selection-fixture";
+import {
   createFollowupsEvidenceNativeFixture,
   type FollowupsEvidenceControls,
 } from "./followups-review-evidence-fixture";
@@ -2230,6 +2234,7 @@ export type ManagedNativeFixture = SharedNativeFixture & {
   readonly reviewFilingsEvidence?: ReviewFilingsEvidenceFixture;
   readonly portfolioHeldDueChecks?: PortfolioHeldDueChecksFixture;
   readonly portfolioReportComparison?: PortfolioReportComparisonFixture;
+  readonly watchlistScreenSelection?: WatchlistScreenSelectionFixture;
   readonly portfolioScreenSelection?: PortfolioScreenSelectionFixture;
   readonly companyResearchChecks?: CompanyResearchChecksFixture;
   readonly reportComparisonCheck?: ReportComparisonCheckFixture;
@@ -2426,6 +2431,11 @@ const nativeFixtureFactories = new Map<
   string,
   () => Promise<ManagedNativeFixture>
 >([
+  [
+    "watchlist-screen-selection",
+    async () =>
+      createWatchlistScreenSelectionFixture(await createSharedFixture()),
+  ],
   [
     "portfolio-screen-selection",
     async () =>
@@ -2720,6 +2730,7 @@ export async function createFixture(
     | "valuation-collection-recovery"
     | "company-research-checks"
     | "report-comparison-check"
+    | "watchlist-screen-selection"
     | "portfolio-screen-selection"
     | "portfolio-report-comparison"
     | "portfolio-comparison-report"
