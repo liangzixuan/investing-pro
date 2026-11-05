@@ -1,5 +1,7 @@
 import type * as DueHtml from "./due-check-evidence-report-html";
 import * as React from "react";
+import { load } from "cheerio";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ManagedDueCheckEvidenceReport as Panel } from "./ManagedDueCheckEvidenceReport";
@@ -10,6 +12,7 @@ import type { DueCheckEvidenceReportDeliveryAdapter } from "./due-check-evidence
 // This is not mounted-browser layout or physical keyboard acceptance.
 const hooks = vi.hoisted(() => ({
   direct: false,
+  openDisclosures: false,
   index: 0,
   effectIndex: 0,
   slots: [] as unknown[],
@@ -55,7 +58,11 @@ vi.mock("react", async (original) => {
     useRef: (initial: unknown) =>
       hooks.direct ? controlledRef(initial) : actual.useRef(initial),
     useState: (initial: unknown) =>
-      hooks.direct ? controlledState(initial) : actual.useState(initial),
+      hooks.direct
+        ? controlledState(initial)
+        : actual.useState(
+            hooks.openDisclosures && initial === false ? true : initial,
+          ),
     useLayoutEffect: (
       effect: () => void | (() => void),
       dependencies?: React.DependencyList,
@@ -102,6 +109,7 @@ afterEach(() => {
   hooks.dependencies = [];
   hooks.effects = [];
   hooks.direct = false;
+  hooks.openDisclosures = false;
   vi.useRealTimers();
 });
 function deferred<T>() {
@@ -254,4 +262,77 @@ it("route retirement aborts an in-flight save and stale handlers cannot revive i
   f.route(true);
   expect(f.render().has("managed-due-check-report-preview")).toBe(false);
   expect(f.api.saveFollowups).not.toHaveBeenCalled();
+});
+
+it("scopes wrapping and table containment to the actual prepared panel, including its complete outer raw payload", async () => {
+  const f = await fixture();
+  f.click("prepare");
+  const report = f.source.capture()!.report;
+  // Controlled open-disclosure state, with the default live reading context.
+  // CSS selector coverage and complete content are checked; this is not layout execution.
+  hooks.openDisclosures = true;
+  const $ = load(f.render().html);
+  const panel = $(".managed-due-check-report");
+  expect(panel).toHaveLength(1);
+  const raw = panel.find("[data-due-check-report-payload] pre");
+  expect(raw).toHaveLength(1);
+  expect(raw.parents(".managed-followups-evidence-reading")).toHaveLength(0);
+  expect(JSON.parse(raw.text())).toEqual(report);
+  expect(
+    panel.find("article button,article input,article select,article textarea"),
+  ).toHaveLength(0);
+  const styles = readFileSync(
+    new URL("./managed-due-check-evidence-report.css", import.meta.url),
+    "utf8",
+  );
+  const wrapping =
+    styles.match(
+      /\.managed-due-check-report\s+:is\(p,\s*dd,\s*pre\)\s*\{([^}]+)\}/u,
+    )?.[1] ?? "";
+  expect(wrapping).toMatch(/(?:^|;)\s*white-space\s*:\s*pre-wrap\s*(?:;|$)/u);
+  expect(wrapping).toMatch(/(?:^|;)\s*overflow-wrap\s*:\s*anywhere\s*(?:;|$)/u);
+  const contained =
+    styles.match(/\.managed-due-check-report\s+details\s*\{([^}]+)\}/u)?.[1] ??
+    "";
+  expect(contained).toMatch(/(?:^|;)\s*overflow-x\s*:\s*auto\s*(?:;|$)/u);
+  expect(raw.is(".managed-due-check-report :is(p, dd, pre)")).toBe(true);
+  const tables = panel.find("table");
+  expect(tables.length).toBeGreaterThan(0);
+  for (const table of tables.toArray()) {
+    expect(
+      $(table).parents(".managed-due-check-report details").length,
+    ).toBeGreaterThan(0);
+  }
+  expect(panel.find(".managed-followups-authored").length).toBeGreaterThan(0);
+  expect(
+    panel
+      .find("dd")
+      .toArray()
+      .some((e) => $(e).text().length >= 64),
+  ).toBe(true);
+  for (const row of report.rows) {
+    const section = panel.find(
+      `[data-due-check-report-entry="${row.entry.id}"]`,
+    );
+    expect(section.text()).toContain(row.entry.check);
+    expect(section.text()).toContain(row.entry.result);
+    if (row.reading) {
+      const rows = section.find('[aria-label="Captured Price"] table tbody tr');
+      expect(
+        rows.toArray().map((tr) =>
+          $(tr)
+            .children()
+            .toArray()
+            .map((td) => $(td).text()),
+        ),
+      ).toEqual(
+        row.reading.evidence.price!.response!.rows.map((r) => [
+          r.date,
+          r.close,
+        ]),
+      );
+    }
+  }
+  expect(f.api.saveFollowups).not.toHaveBeenCalled();
+  expect(f.deliver).not.toHaveBeenCalled();
 });

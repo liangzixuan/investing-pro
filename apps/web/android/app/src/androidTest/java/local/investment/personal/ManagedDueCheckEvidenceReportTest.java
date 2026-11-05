@@ -44,7 +44,7 @@ public class ManagedDueCheckEvidenceReportTest {
     private ReportRevisitPage page;
     private ReportRevisitTouch touch;
     private ReportRevisitKeyboard keyboard;
-    private String sha,origin,stage="startup",editingSelector,nativeEditingState;
+    private String sha,origin,stage="startup",editingSelector,nativeEditingState,frameHeading;
     private final String[] readings=new String[3];
     @Before public void launchEvidence()throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);sha=InstrumentationRegistry.getArguments().getString("expectedSourceSha");assertNotNull(sha);assertTrue(sha.matches("[a-f0-9]{40}"));
@@ -111,7 +111,12 @@ public class ManagedDueCheckEvidenceReportTest {
     private void click(String xpath)throws Exception {page.click(Element.xpath(xpath));}
     private void await(String why,String expression)throws Exception {page.await(new Check(why,new Script(expression)));}
     private static String q(String value){return JSONObject.quote(value);}
-    private void diagnose(){try{diagnoseEditing("failure");Log.e("FollowupsEvidence","stage="+stage+", "+page.raw(new Script("JSON.stringify({url:location.href,active:document.activeElement?.id,phase:"+D+".evidence.phase,counts:"+D+".counts,pass:"+D+".pass.phase})")));}catch(Exception|AssertionError failure){Log.e("FollowupsEvidence","Diagnostic unavailable",failure);}}
+    private void diagnose(){try{diagnoseFrame();diagnoseEditing("failure");Log.e("FollowupsEvidence","stage="+stage+", "+page.raw(new Script("JSON.stringify({url:location.href,active:document.activeElement?.id,phase:"+D+".evidence.phase,counts:"+D+".counts,pass:"+D+".pass.phase})")));}catch(Exception|AssertionError failure){Log.e("FollowupsEvidence","Diagnostic unavailable",failure);}}
+    // Read-only failure operands; no source text, focus, scrolling or retry.
+    private void diagnoseFrame(){
+        if(frameHeading==null)return;
+        try{Log.e("FollowupsEvidenceFrameGeometry",page.raw(new Script("JSON.stringify((()=>{const selector="+q(frameHeading)+",e=document.querySelector(selector),r=e?.getBoundingClientRect(),d=document.documentElement,v=visualViewport;return {selector,heading:r?{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height}:null,visible:e?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})??false,innerHeight,innerWidth,clientWidth:d.clientWidth,scrollWidth:d.scrollWidth,viewport:v?{width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale}:null,overflow:Array.from(document.querySelectorAll('.managed-due-check-report *')).filter(n=>{const b=n.getBoundingClientRect();return b.width>0&&(b.right>d.clientWidth||b.left<0);}).slice(0,12).map(n=>{const b=n.getBoundingClientRect(),s=getComputedStyle(n);return {tag:n.tagName,id:n.id,left:b.left,right:b.right,width:b.width,clientWidth:n.clientWidth,scrollWidth:n.scrollWidth,whiteSpace:s.whiteSpace,overflowX:s.overflowX,overflowWrap:s.overflowWrap};})};})())")));}catch(Exception|AssertionError failure){Log.e("FollowupsEvidenceFrameGeometry","Geometry unavailable",failure);}
+    }
     @After public void closeInventedEvidence()throws Exception {
         Throwable failure=null;
         try{if(imeSession!=null)imeSession.close();}catch(Throwable cleanup){failure=cleanup;}
@@ -122,6 +127,7 @@ public class ManagedDueCheckEvidenceReportTest {
         if(failure!=null)throw new IllegalStateException("Fixture cleanup failed",failure);
     }
     private void frame(FollowupsReportFrameCapture.Frame name,String heading,String scope)throws Exception{
+        frameHeading=heading;
         committedFrame();
         page.read(new Script("(()=>{document.querySelector("+q(heading)+").scrollIntoView({block:'start',behavior:'instant'});return 'scrolled';})()"));committedFrame();page.await(new Check("scoped committed heading visible without horizontal overflow",new Script("(()=>{const e=document.querySelector("+q(heading)+"),r=e.getBoundingClientRect();return e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&r.top>=0&&r.bottom<=innerHeight&&document.documentElement.scrollWidth<=document.documentElement.clientWidth;})()")).nativeReady());Log.i("FollowupsEvidenceFrameScope",scope);new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario,name)).retain();
     }

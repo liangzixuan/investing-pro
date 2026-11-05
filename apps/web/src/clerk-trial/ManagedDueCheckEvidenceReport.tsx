@@ -6,6 +6,7 @@ import type { DueCheckEvidenceReportDeliveryAdapter } from "./due-check-evidence
 import type { PreparedDueCheckEvidenceReport } from "./due-check-evidence-report";
 import { formatDueCheckEvidenceReportHtml } from "./due-check-evidence-report-html";
 import { DueCheckEvidenceReportSnapshot } from "./DueCheckEvidenceReportSnapshot";
+import "./managed-due-check-evidence-report.css";
 
 const empty = Object.freeze({ report: null, saving: false, message: "" });
 const emptySnapshot = () => empty;
@@ -73,7 +74,10 @@ export function ManagedDueCheckEvidenceReport(props: {
   });
   if (review.phase !== "finished") return null;
   return (
-    <section aria-labelledby="managed-due-check-report-heading">
+    <section
+      className="managed-due-check-report"
+      aria-labelledby="managed-due-check-report-heading"
+    >
       <h4 id="managed-due-check-report-heading" ref={heading} tabIndex={-1}>
         Keep this finished review
       </h4>
