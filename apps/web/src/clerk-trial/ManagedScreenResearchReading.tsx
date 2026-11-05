@@ -94,7 +94,13 @@ function SourceReading({
   );
 }
 
-function PriceReading({ state }: { state: Evidence["price"] }) {
+function PriceReading({
+  state,
+  presentation,
+}: {
+  state: Evidence["price"];
+  presentation: "chart" | "table";
+}) {
   const offline = useContext(OfflineResearchReading);
   const response = state?.response;
   return (
@@ -111,7 +117,7 @@ function PriceReading({ state }: { state: Evidence["price"] }) {
             live quote.
           </p>
           <ObservedRawCloseRange response={response} />
-          {!offline && (
+          {!offline && presentation === "chart" && (
             <CloseHistoryChart
               rows={response.rows}
               symbol={response.security.symbol}
@@ -209,6 +215,26 @@ function FilingsReading({ state }: { state: Evidence["filings"] }) {
   );
 }
 
+/** Complete passive source presentation, shared by retained research readings. */
+export function CapturedCompanySources({
+  evidence,
+  priceStudies,
+  pricePresentation = "chart",
+}: {
+  evidence: Evidence;
+  priceStudies?: ReactNode;
+  pricePresentation?: "chart" | "table";
+}) {
+  return (
+    <>
+      <PriceReading state={evidence.price} presentation={pricePresentation} />
+      {priceStudies}
+      <FinancialSources evidence={evidence} />
+      <FilingsReading state={evidence.filings} />
+    </>
+  );
+}
+
 export function ManagedScreenResearchReading({
   capture,
 }: {
@@ -271,15 +297,17 @@ export function ManagedScreenResearchReading({
           <p>No authored valuation calculation was captured.</p>
         )}
       </section>
-      <PriceReading state={evidence.price} />
-      {capture.priceStudies && (
-        <CapturedPriceStudies
-          studies={capture.priceStudies}
-          showingPrevious={evidence.price?.showingPrevious ?? false}
-        />
-      )}
-      <FinancialSources evidence={evidence} />
-      <FilingsReading state={evidence.filings} />
+      <CapturedCompanySources
+        evidence={evidence}
+        priceStudies={
+          capture.priceStudies && (
+            <CapturedPriceStudies
+              studies={capture.priceStudies}
+              showingPrevious={evidence.price?.showingPrevious ?? false}
+            />
+          )
+        }
+      />
       <details>
         <summary>Complete retained report document (JSON)</summary>
         <CompanyReportDocumentView

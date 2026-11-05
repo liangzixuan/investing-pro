@@ -55,6 +55,7 @@ import {
   type FollowupReview,
 } from "./managed-workspace";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
+import { ManagedFollowupEvidenceCapture } from "./ManagedFollowupsReviewEvidence";
 import { managedCompanySourceActionsProps } from "./managed-company-source-actions-props";
 import { managedValuationResearchProps } from "./managed-valuation-research-props";
 import {
@@ -1157,6 +1158,12 @@ export function ManagedWorkspaceScreen({
                 )}
               {discovery.research && (
                 <ManagedScreenResearchCapture
+                  workspace={workspace}
+                  navigationPending={navigationPending}
+                />
+              )}
+              {discovery.research && (
+                <ManagedFollowupEvidenceCapture
                   workspace={workspace}
                   navigationPending={navigationPending}
                 />

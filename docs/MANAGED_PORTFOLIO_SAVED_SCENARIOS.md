@@ -1,8 +1,10 @@
 # Review holdings with saved valuation assumptions
 
-Local implementation and integrated checks are complete in an isolated source
-branch. Producing CI and client delivery remain pending. The Watchlist daily-report
-workflow has separate acceptance and delivery work.
+Accepted main `c9b438eca9f1f45c04bf04a2c0aa053b034ea451` passed original source
+and parser checks and all 149 native cases. Two scoped native frames were
+inspected. Android 1.75 preparation is in progress; browser, installation and
+physical-phone acceptance are not claimed. The Watchlist daily-report workflow
+is available in Android 1.74.
 
 ## Complete workflow
 
@@ -67,5 +69,7 @@ pass. Android compilation passes for 89 Java sources, reusing unchanged Kotlin
 delivery sources. The native fixture preserves all 148 prior cases and adds one
 complete journey with two scoped frame requirements.
 
-These checks establish only their tested scope. Original producing CI, native
-execution, browser acceptance and physical-device acceptance remain separate.
+The original main run passed all 149 native cases, including the new journey.
+The CodeScene complexity/size check failed; review found no functional defect.
+These checks establish only their tested scope. Client delivery, browser
+acceptance and physical-device acceptance remain separate.

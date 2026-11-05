@@ -684,6 +684,12 @@ jobs:
           required.add(portfolio_scenario_case)
           if len(required) != 149:
               raise SystemExit("Portfolio saved scenarios must preserve all 148 prior cases.")
+          followups_evidence_case = ("local.investment.personal.ManagedFollowupsReviewEvidenceTest", "chosenDueChecksKeepCompleteSourceReadingsThroughOwnedBackFinishAndSeparateSave")
+          if followups_evidence_case in required:
+              raise SystemExit("Follow-ups source reading case must be distinct.")
+          required.add(followups_evidence_case)
+          if len(required) != 150:
+              raise SystemExit("Follow-ups source readings must preserve all 149 prior cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -785,6 +791,13 @@ jobs:
                           raise SystemExit("The dated Portfolio review shard must retain each scoped journey frame.")
                   elif dated_frames:
                       raise SystemExit("Dated Portfolio review frames belong only to the executed shard.")
+              for frame_name in ("newFollowupsEvidenceRetained.png", "newFollowupsEvidenceFinished.png"):
+                  evidence_frames = list(root.rglob(frame_name))
+                  if followups_evidence_case in executed:
+                      if len(evidence_frames) != 1 or evidence_frames[0].stat().st_size == 0:
+                          raise SystemExit("Follow-ups source readings require both scoped frames.")
+                  elif evidence_frames:
+                      raise SystemExit("Follow-ups source frames belong only to the executed shard.")
               for frame_name in ("newPortfolioSavedScenarioResults.png", "newPortfolioSavedScenarioReturn.png"):
                   portfolio_scenario_frames = list(root.rglob(frame_name))
                   if portfolio_scenario_case in executed:

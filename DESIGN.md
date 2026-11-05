@@ -11,6 +11,15 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Source evidence in due-check review
+
+Keep explicit source capture beside the current check's company assessment.
+Show complete passive source readings with each chosen check and in Finish,
+including uncaptured checks and partial source passes. Separate source outcomes,
+authored assessment and completion. Reuse the full source presenters, wrapping
+text, scrollable numeric tables and 44px controls. Focus changes follow committed
+explicit actions only. See the [workflow guide](docs/MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
+
 ## Paired company research report
 
 Place explicit report preparation beside the retained pair. Require both company

@@ -1,7 +1,10 @@
 # Keep a complete Watchlist daily review report
 
-Local implementation is complete. Producing source/native CI and client delivery
-remain pending. Browser and physical-phone acceptance are not claimed.
+Android 1.74.0 provides this workflow from accepted main
+`cf296fa2dd6ebadeaa660e76d2acf8cfcc8c2018`. Original source and parser checks
+and all 148 native cases passed. The existing-signer build, four checks on the
+same APK and local copy/checksum readback passed. Browser, installation and
+physical-phone acceptance are not claimed; the API and website were not deployed.
 
 ## Workflow
 
@@ -56,8 +59,8 @@ these checks do not establish mounted-browser behavior.
 The Android fixture adds one complete journey and five closed-policy cases.
 Its journey checks committed focus, full preview, cancelled picker, chosen-file
 byte readback, independent resource saves and fresh Loads. The required roster
-preserves all 142 earlier cases and adds these six. Native execution remains
-pending until its producing CI result is checked.
+preserves all 142 earlier cases and adds these six. All 148 cases passed in the
+original producing main run.
 
 The full local web run passed 12,209 of 12,210 tests. Its one failure was the
 native composition test's expected plugin list. The list and passive/stable
@@ -65,4 +68,4 @@ delivery assertions now include the new plugin; all 11 tests in that suite pass.
 The unchanged passing cases are reused. Source/dependency boundaries and fixture
 integrity pass. Local native compilation passes for 32 delivery Kotlin sources
 and all 88 Android test Java sources against the Android system image. These are
-compile checks; the 148-case emulator run remains pending.
+compile checks; the separate original main emulator run passed all 148 cases.
