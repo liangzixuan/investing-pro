@@ -1,3 +1,4 @@
+import { FinancialScreenCriteriaControls } from "./FinancialScreenCriteriaControls";
 import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -172,6 +173,14 @@ async function fixture(
 type Element = React.ReactElement<Record<string, unknown>>;
 function elements(node: React.ReactNode): Element[] {
   if (!React.isValidElement<Record<string, unknown>>(node)) return [];
+  if (node.type === FinancialScreenCriteriaControls)
+    return elements(
+      FinancialScreenCriteriaControls(
+        node.props as React.ComponentProps<
+          typeof FinancialScreenCriteriaControls
+        >,
+      ),
+    );
   return [
     node,
     ...React.Children.toArray(node.props.children as React.ReactNode).flatMap(

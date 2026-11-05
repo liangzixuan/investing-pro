@@ -58,4 +58,8 @@ prior native cases remain required. Accepted main
 `57cc61c083fe8b1f2557b975667695125722c6ea` passed original source/parser checks
 and all 156 native cases. Two scoped frames were inspected; complete chosen-file
 bytes are covered by the passing journey. CodeScene structural findings remain
-unsuppressed. Android 1.76 delivery remains pending.
+unsuppressed. Android 1.76.0, code 77, was built with the existing signer,
+verified with four checks on the same APK, and delivered locally after
+copy/checksum readback. Delivery is closed. The original package-check failure
+and its qualified correction remain recorded. No browser, installation or
+physical phone acceptance is claimed; the API and website were not deployed.

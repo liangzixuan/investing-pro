@@ -1,3 +1,4 @@
+import { prepareFinancialScreenRefinement } from "./managed-financial-screen-refinement";
 import {
   prepareScreenComparisonReport,
   type PreparedScreenComparisonReport,
@@ -52,6 +53,8 @@ export interface ManagedFinancialScreenRun {
   readonly criteria: ManagedFinancialScreenCriteria;
   readonly criteriaRevision: symbol;
   readonly selectionRevision: symbol;
+  /** Most recent explicit local evaluation; never a new source retrieval time. */
+  readonly refinedAt?: string;
   readonly startedAt: string;
   readonly completedAt: string | null;
   readonly status: "running" | "completed" | "cancelled" | "stopped";
@@ -517,6 +520,86 @@ export class ManagedFinancialScreen {
       message:
         "Company selection applied. Run the screen explicitly to load reports.",
       error: false,
+    });
+  }
+  canRefine(captured: ManagedFinancialScreenState) {
+    const run = captured.run;
+    return (
+      this.accepts(captured) &&
+      !this.operation &&
+      !captured.pending &&
+      !captured.criteriaStaged &&
+      !!run &&
+      run.status !== "running" &&
+      !!run.completedAt &&
+      run.criteriaRevision === captured.criteriaRevision &&
+      run.criteria === captured.criteria &&
+      run.selectionRevision === captured.selectionRevision &&
+      run.rows.length === captured.selected.length &&
+      run.rows.every(
+        (row, index) =>
+          row.member === captured.selected[index] &&
+          captured.memberships.includes(row.member),
+      ) &&
+      run.rows.some((row) => !!row.report?.response)
+    );
+  }
+  /** One exact state owns the preview; the passive reading alone cannot apply it. */
+  captureRefinement(
+    captured: ManagedFinancialScreenState,
+    criteria: unknown,
+    evaluatedAt: string,
+  ) {
+    if (!this.canRefine(captured)) return null;
+    const reading = prepareFinancialScreenRefinement(
+      captured.run!,
+      criteria,
+      evaluatedAt,
+    );
+    if (!reading || !this.canRefine(captured)) return null;
+    let available = true;
+    const isCurrent = () => {
+      if (available && !this.canRefine(captured)) available = false;
+      return available;
+    };
+    return Object.freeze({
+      reading,
+      isCurrent,
+      cancel: () => {
+        available = false;
+      },
+      apply: () => {
+        if (!isCurrent()) return null;
+        available = false;
+        if (reading.unchanged) return captured;
+        const revision = Symbol();
+        const run = Object.freeze({
+          ...captured.run!,
+          criteria: reading.criteria,
+          criteriaRevision: revision,
+          refinedAt: reading.evaluatedAt,
+          rows: Object.freeze(
+            reading.rows.map((row) =>
+              Object.freeze({
+                ...row.original,
+                handle: Symbol(),
+                evaluation: row.revised,
+              }),
+            ),
+          ),
+        });
+        const installed = this.update({
+          criteria: reading.criteria,
+          criteriaRevision: revision,
+          run,
+          shortlist: Object.freeze([]),
+          comparison: emptyComparison(),
+          error: false,
+          message:
+            "Revised filters applied to the retained reports. Source dates are unchanged.",
+        });
+        return this.state === installed && !this.retired ? installed : null;
+      },
     });
   }
   /** Consume one current recipe review as an atomic definition-only change. */

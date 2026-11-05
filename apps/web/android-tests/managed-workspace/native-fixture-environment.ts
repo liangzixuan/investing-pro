@@ -61,6 +61,7 @@ const allowedScenarios = [
   "company-research-checks",
   "report-comparison-check",
   "watchlist-screen-selection",
+  "screen-refinement",
   "portfolio-screen-selection",
   "portfolio-report-comparison",
   "portfolio-comparison-report",

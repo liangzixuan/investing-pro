@@ -7,6 +7,13 @@ The [source eligibility candidate](MANAGED_RESEARCH_ELIGIBILITY.md) carries a
 result into company research with independent Annual, Filings and Price scope;
 it retains this screen's explicit reads and captured Annual handoff.
 
+## Refine a loaded run
+
+The [local refinement workflow](MANAGED_FINANCIAL_SCREEN_REFINEMENT.md) compares
+independent filter edits with a settled run before atomic Apply. It preserves
+complete reports, unknowns and original dates. A separate local evaluation time
+records the filter change; Run remains explicit for new evidence.
+
 ## Choose screen companies from Portfolio
 
 The [Portfolio screening increment](MANAGED_PORTFOLIO_SCREEN.md) adds a complete

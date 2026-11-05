@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Local Annual filter refinement
+
+Place an explicit local filter editor beside the existing Annual screen. Reuse
+its field controls while keeping the raw drafts independent. Show original and
+revised outcomes together for each exact listing, with all metric refusals and
+source clocks. Focus the committed preview heading after Preview and the editor
+heading after accepted Apply or Cancel. Keep the passive comparison after Apply,
+with an accurately labelled Clear action. Wrap long identities and contain source
+tables inside disclosures. See the [guide](docs/MANAGED_FINANCIAL_SCREEN_REFINEMENT.md).
+
 ## Watchlist companies in an Annual screen
 
 Place the explicit Watchlist selection beside the existing Portfolio selection
