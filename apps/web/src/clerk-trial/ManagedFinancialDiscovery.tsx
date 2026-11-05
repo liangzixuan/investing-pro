@@ -4,6 +4,7 @@ import {
   ManagedScreenResearchReview,
   type ScreenResearchOpenProps,
 } from "./ManagedScreenResearchReview";
+import { ManagedWatchlistScreenSelection } from "./ManagedWatchlistScreenSelection";
 import { ManagedPortfolioScreenSelection } from "./ManagedPortfolioScreenSelection";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 import { useManagedScreenRecipeRoute } from "./useManagedScreenRecipeRoute";
@@ -38,6 +39,10 @@ interface Props extends ScreenResearchOpenProps {
 export function ManagedFinancialDiscovery(props: Props) {
   return (
     <>
+      <ManagedWatchlistScreenSelection
+        workspace={props.workspace}
+        routeActive={props.recipesRouteActive}
+      />
       <ManagedPortfolioScreenSelection
         workspace={props.workspace}
         routeActive={props.recipesRouteActive}

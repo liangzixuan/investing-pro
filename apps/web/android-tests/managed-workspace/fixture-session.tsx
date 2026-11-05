@@ -1,3 +1,4 @@
+import { WatchlistScreenSelectionFixtureControls } from "./watchlist-screen-selection-fixture-controls";
 import { DueCheckEvidenceReportFixtureControls } from "./due-check-evidence-report-fixture-controls";
 import { FollowupsEvidenceDiagnostics } from "./followups-review-evidence-diagnostics";
 import { PortfolioSavedScenarioDiagnostics } from "./portfolio-saved-scenario-fixture-diagnostics";
@@ -120,6 +121,7 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario === "watchlist-daily-review" ||
       scenario === "watchlist-saved-scenario" ||
       scenario === "watchlist-daily-report" ||
+      scenario === "watchlist-screen-selection" ||
       scenario === "saved-valuation-reassessment"
     )
       current.setView("watchlist");
@@ -132,6 +134,7 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario !== "watchlist-daily-review" &&
       scenario !== "watchlist-saved-scenario" &&
       scenario !== "watchlist-daily-report" &&
+      scenario !== "watchlist-screen-selection" &&
       scenario !== "portfolio-saved-scenario" &&
       scenario !== "portfolio-dated-review" &&
       scenario !== "review-filings-evidence" &&
@@ -401,6 +404,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       )}
       {workspace && fixture.companyResearchChecks && (
         <CompanyResearchChecksFixtureControls workspace={workspace} />
+      )}
+      {workspace && fixture.watchlistScreenSelection && (
+        <WatchlistScreenSelectionFixtureControls
+          workspace={workspace}
+          fixture={fixture.watchlistScreenSelection}
+        />
       )}
       {workspace && fixture.portfolioScreenSelection && (
         <PortfolioScreenSelectionFixtureControls

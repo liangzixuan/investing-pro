@@ -2292,8 +2292,14 @@ export class ManagedWorkspace {
       !this.state.read;
     return current() ? current : null;
   }
-  /** Exact Discover visit; same-view and pending-navigation round trips retire it. */
   capturePortfolioScreenRoute(): (() => boolean) | null {
+    return this.captureScreenSelectionRoute();
+  }
+  captureWatchlistScreenRoute(): (() => boolean) | null {
+    return this.captureScreenSelectionRoute();
+  }
+  /** Exact Discover visit; same-view and pending-navigation round trips retire it. */
+  private captureScreenSelectionRoute(): (() => boolean) | null {
     const view = this.state;
     const navigation = this.navigationRevision;
     const revision = this.viewRevision;

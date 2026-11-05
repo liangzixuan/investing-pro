@@ -27,24 +27,24 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: keep the evidence behind a finished due-check review
+## Current priority: screen the companies already on the Watchlist
 
-Close the M4 report gap with an explicit private HTML copy of the chosen review.
-Keep every authored check and its complete retained evidence, original dates,
-partial outcomes and uncaptured rows. Preparation, full preview and document
-Save use current report boundaries; Follow-ups Save remains independent.
-This adds no background monitoring, imported evidence history or source coverage.
-Local implementation and focused checks pass; the new native journey and policy
-cases still require hosted execution. See the
-[report guide](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
+Connect the current Watchlist to the existing Annual screen under M2/M4. Inspect
+all eligibility outcomes, explicitly choose watched share classes and preview
+the whole ordered company selection before applying it. Preserve Watchlist notes
+and order, criteria, sorting and independent source clocks. Run and Save stay
+separate. The list remains fully reachable at the 10,000-entry limit through
+bounded pages. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
+Local affected checks, types, lint, boundaries and source compilation pass. The
+added native journey still requires original hosted execution.
 
-The source-connected review beneath it merged in PR 278 at
-`b2764c614dfa5cff87d9aa8a171f9014c536f14e`. Original PR source/parser checks and
-150 native cases passed. One original main native shard stopped during emulator
-setup before tests, so main native execution is not accepted. Other original
-checks and client delivery remain separate.
-CodeScene structural findings remain unsuppressed. See the
-[due-check evidence guide](MANAGED_FOLLOWUPS_REVIEW_EVIDENCE.md).
+The finished due-check report beneath this increment is accepted at main
+`57cc61c083fe8b1f2557b975667695125722c6ea` after original source/parser checks and
+156 native cases passed. Two scoped frames were inspected; full report bytes and
+separate resource persistence are asserted in the native journey. This also
+executes the earlier source-connected review whose own main run had a pre-test
+emulator setup failure. CodeScene structural findings stay unsuppressed. Android
+1.76 delivery remains pending. See the [report guide](MANAGED_DUE_CHECK_EVIDENCE_REPORT.md).
 
 ## Source accepted: saved scenarios for dated holdings
 
