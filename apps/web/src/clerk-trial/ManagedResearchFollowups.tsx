@@ -2,6 +2,7 @@ import type { FollowupsReviewFilingsState } from "./managed-followups-review-fil
 import { ManagedPortfolioHeldDueChecks } from "./ManagedPortfolioHeldDueChecks";
 import { ManagedFollowupsReviewReport } from "./ManagedFollowupsReviewReport";
 import type { FollowupsReviewReportDeliveryAdapter } from "./followups-review-report-ports";
+import type { DueCheckEvidenceReportDeliveryAdapter } from "./due-check-evidence-report-ports";
 import { ManagedFollowupAssessment } from "./ManagedFollowupAssessment";
 import { ManagedFollowupsReviewSession } from "./ManagedFollowupsReviewSession";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -31,6 +32,8 @@ export interface ManagedResearchFollowupsProps {
   onResearch: (entry: ResearchFollowup, opener: HTMLButtonElement) => void;
   followupsReviewReportDelivery?:
     FollowupsReviewReportDeliveryAdapter | undefined;
+  dueCheckEvidenceReportDelivery?:
+    DueCheckEvidenceReportDeliveryAdapter | undefined;
   draftFileScope?: Promise<string> | undefined;
   draftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter | undefined;
   draftFileRouteActive?: (() => boolean) | undefined;
@@ -50,6 +53,7 @@ export function ManagedResearchFollowups({
   onResearch,
   onReviewFilingsResearch,
   followupsReviewReportDelivery,
+  dueCheckEvidenceReportDelivery,
   draftFileScope,
   draftFileDelivery,
   draftFileRouteActive = () => true,
@@ -175,6 +179,7 @@ export function ManagedResearchFollowups({
         routeActive={draftFileRouteActive}
       />
       <ManagedFollowupsReviewSession
+        dueCheckEvidenceReportDelivery={dueCheckEvidenceReportDelivery}
         workspace={workspace}
         active={active && !navigationPending}
         routeActive={draftFileRouteActive}

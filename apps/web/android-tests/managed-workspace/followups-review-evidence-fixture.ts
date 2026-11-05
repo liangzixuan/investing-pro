@@ -99,6 +99,7 @@ export interface FollowupsEvidenceControls extends FollowupsEvidenceNativeFixtur
 /** Strict invented Follow-ups-only transport. Sources and Save remain explicit. */
 export async function createFollowupsEvidenceNativeFixture(
   base: SharedNativeFixture,
+  expectedResearchVisits: 2 | 3 = 3,
 ): Promise<ManagedNativeFixture> {
   const data = await evidenceData(base),
     followups = createResearchFollowupsFixture({
@@ -259,7 +260,7 @@ export async function createFollowupsEvidenceNativeFixture(
           command.expectedVersion === 7 &&
           followups.getSnapshot().save === 0 &&
           counts.requests.length === sequence.length &&
-          counts.resolve === 3 &&
+          counts.resolve === expectedResearchVisits &&
           counts.rejected === 0,
         "explicit complete Save",
       );

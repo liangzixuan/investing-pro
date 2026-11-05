@@ -690,6 +690,20 @@ jobs:
           required.add(followups_evidence_case)
           if len(required) != 150:
               raise SystemExit("Follow-ups source readings must preserve all 149 prior cases.")
+          due_check_report_case = ("local.investment.personal.ManagedDueCheckEvidenceReportTest", "finishedDueCheckReportKeepsCompleteChosenEvidenceThroughCancelHtmlSaveAndFreshLoad")
+          due_check_report_policy_cases = {("local.investment.personal.DueCheckEvidenceReportHtmlPolicyInstrumentedTest", method) for method in {
+              "admitsTheFixedHtmlMetadataAndCompleteEnvelope",
+              "refusesUnknownOptionsCrossFormatPurposeAndUnsafeFilename",
+              "reusesTheCompleteUtcCalendarAndExactChosenFilename",
+              "refusesChangedHeadCspStyleIdentityOrIncompleteEnvelope",
+              "inheritsTheEightMibStrictUtf8WriterBoundary",
+          }}
+          if due_check_report_case in required or required.intersection(due_check_report_policy_cases):
+              raise SystemExit("Due-check evidence report cases must be distinct.")
+          required.add(due_check_report_case)
+          required.update(due_check_report_policy_cases)
+          if len(required) != 156:
+              raise SystemExit("Due-check evidence reports must preserve all 150 prior cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -791,6 +805,13 @@ jobs:
                           raise SystemExit("The dated Portfolio review shard must retain each scoped journey frame.")
                   elif dated_frames:
                       raise SystemExit("Dated Portfolio review frames belong only to the executed shard.")
+              for frame_name in ("newDueCheckEvidenceReportPreview.png", "newDueCheckEvidenceReportSaved.png"):
+                  report_frames = list(root.rglob(frame_name))
+                  if due_check_report_case in executed:
+                      if len(report_frames) != 1 or report_frames[0].stat().st_size == 0:
+                          raise SystemExit("Due-check report requires its prepared and saved scoped frames.")
+                  elif report_frames:
+                      raise SystemExit("Due-check report frames belong only to the executed shard.")
               for frame_name in ("newFollowupsEvidenceRetained.png", "newFollowupsEvidenceFinished.png"):
                   evidence_frames = list(root.rglob(frame_name))
                   if followups_evidence_case in executed:

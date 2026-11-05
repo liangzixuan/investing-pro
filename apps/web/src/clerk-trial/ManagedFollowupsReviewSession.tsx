@@ -1,5 +1,7 @@
 import { ManagedFollowupsReviewFilings } from "./ManagedFollowupsReviewFilings";
 import { ManagedFollowupsReviewEvidence } from "./ManagedFollowupsReviewEvidence";
+import { ManagedDueCheckEvidenceReport } from "./ManagedDueCheckEvidenceReport";
+import type { DueCheckEvidenceReportDeliveryAdapter } from "./due-check-evidence-report-ports";
 import type { FollowupsReviewFilingsState } from "./managed-followups-review-filings";
 import { useSyncExternalStore } from "react";
 import type { ResearchFollowup } from "@research-cockpit/contracts";
@@ -231,6 +233,8 @@ function reviewContent(
 }
 
 export function ManagedFollowupsReviewSession(props: {
+  dueCheckEvidenceReportDelivery?:
+    DueCheckEvidenceReportDeliveryAdapter | undefined;
   onReviewFilingsResearch?:
     | ((state: FollowupsReviewFilingsState, opener: HTMLButtonElement) => void)
     | undefined;
@@ -266,6 +270,12 @@ export function ManagedFollowupsReviewSession(props: {
         </p>
         {reviewContent(state, saved, controls)}
         <ManagedFollowupsReviewEvidence workspace={workspace} />
+        <ManagedDueCheckEvidenceReport
+          workspace={workspace}
+          active={props.active}
+          routeActive={props.routeActive}
+          delivery={props.dueCheckEvidenceReportDelivery}
+        />
         {state.phase === "reviewing" && state.selected && (
           <ManagedFollowupsReviewFilings
             workspace={workspace}

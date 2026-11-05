@@ -1,3 +1,4 @@
+import type { DueCheckEvidenceReportDeliveryAdapter } from "./due-check-evidence-report-ports";
 import type { WatchlistDailyReportDeliveryAdapter } from "./watchlist-daily-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import type { ScreenComparisonReportDeliveryAdapter } from "./screen-comparison-report-ports";
@@ -188,6 +189,11 @@ async function mount(
     write: vi.fn(),
     cancel: vi.fn(),
   };
+  const dueCheckEvidenceReportPlugin = {
+    choose: vi.fn(),
+    write: vi.fn(),
+    cancel: vi.fn(),
+  };
   const plugins = new Map<string, unknown>([
     ["InvestmentAuth", plugin],
     ["InvestmentWatchlistExport", exportPlugin],
@@ -199,6 +205,7 @@ async function mount(
     ["InvestmentPortfolioComparisonReport", portfolioComparisonReportPlugin],
     ["InvestmentFollowupsReviewReport", followupsReviewReportPlugin],
     ["InvestmentFollowupsDraftFile", followupsDraftFilePlugin],
+    ["InvestmentDueCheckEvidenceReport", dueCheckEvidenceReportPlugin],
     ["InvestmentResearchDraftSetFile", researchDraftSetFilePlugin],
     [
       "InvestmentValuationCollectionDraftFile",
@@ -244,6 +251,7 @@ async function mount(
     portfolioReviewReportPlugin,
     portfolioComparisonReportPlugin,
     followupsReviewReportPlugin,
+    dueCheckEvidenceReportPlugin,
     followupsDraftFilePlugin,
     researchDraftSetFilePlugin,
     valuationCollectionDraftFilePlugin,
@@ -267,6 +275,7 @@ function findScreen(node: ReactNode):
       portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
       portfolioComparisonReportDelivery?: PortfolioComparisonReportDeliveryAdapter;
       followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
+      dueCheckEvidenceReportDelivery?: DueCheckEvidenceReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       researchDraftSetFileDelivery?: ManagedResearchDraftSetFileDeliveryAdapter;
       valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
@@ -298,6 +307,7 @@ function findScreen(node: ReactNode):
         portfolioReviewReportDelivery?: PortfolioReviewReportDeliveryAdapter;
         portfolioComparisonReportDelivery?: PortfolioComparisonReportDeliveryAdapter;
         followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
+        dueCheckEvidenceReportDelivery?: DueCheckEvidenceReportDeliveryAdapter;
         followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
         researchDraftSetFileDelivery?: ManagedResearchDraftSetFileDeliveryAdapter;
         valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
@@ -359,6 +369,7 @@ describe("native shared workspace composition", () => {
         portfolioReviewReportPlugin,
         portfolioComparisonReportPlugin,
         followupsReviewReportPlugin,
+        dueCheckEvidenceReportPlugin,
         followupsDraftFilePlugin,
         researchDraftSetFilePlugin,
         valuationCollectionDraftFilePlugin,
@@ -389,6 +400,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentPortfolioComparisonReport"],
               ["InvestmentFollowupsReviewReport"],
               ["InvestmentFollowupsDraftFile"],
+              ["InvestmentDueCheckEvidenceReport"],
               ["InvestmentResearchDraftSetFile"],
               ["InvestmentValuationCollectionDraftFile"],
               ["InvestmentValuationDraftFile"],
@@ -454,6 +466,14 @@ describe("native shared workspace composition", () => {
         screen?.props.followupsReviewReportDelivery,
       );
       for (const method of Object.values(followupsReviewReportPlugin))
+        expect(method).not.toHaveBeenCalled();
+      expect(typeof screen?.props.dueCheckEvidenceReportDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.dueCheckEvidenceReportDelivery).toBe(
+        screen?.props.dueCheckEvidenceReportDelivery,
+      );
+      for (const method of Object.values(dueCheckEvidenceReportPlugin))
         expect(method).not.toHaveBeenCalled();
       expect(typeof screen?.props.followupsDraftFileDelivery?.deliver).toBe(
         config.environment === "production" ? "function" : "undefined",

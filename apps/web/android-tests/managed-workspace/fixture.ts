@@ -2534,6 +2534,11 @@ const nativeFixtureFactories = new Map<
       ),
   ],
   [
+    "due-check-evidence-report",
+    async () =>
+      createFollowupsEvidenceNativeFixture(await createSharedFixture(), 2),
+  ],
+  [
     "followups-review-evidence",
     async () =>
       createFollowupsEvidenceNativeFixture(await createSharedFixture()),
@@ -2745,6 +2750,7 @@ export async function createFixture(
     | "company-snapshot-loading"
     | "reviewed-company-source-pass"
     | "followups-review-evidence"
+    | "due-check-evidence-report"
     | "followups-review-session"
     | "markets-source-review"
     | "markets-calendar-followup"

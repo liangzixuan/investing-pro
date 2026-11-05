@@ -10,6 +10,7 @@ import { browserPortfolioReviewReportAdapter } from "./portfolio-review-report-d
 import { browserPortfolioDraftFileAdapter } from "./portfolio-draft-file-delivery";
 import { browserFollowupsDraftFileAdapter } from "./followups-draft-file-delivery";
 import { browserFollowupsReviewReportAdapter } from "./followups-review-report-delivery";
+import { browserDueCheckEvidenceReportAdapter } from "./due-check-evidence-report-delivery";
 import { browserCompanyReportAdapter } from "./browser-company-report";
 import { ClerkProvider, SignIn, useAuth, useSession } from "@clerk/react";
 import { useState } from "react";
@@ -126,6 +127,8 @@ function ClerkSession({
               followupsDraftFileDelivery: browserFollowupsDraftFileAdapter,
               followupsReviewReportDelivery:
                 browserFollowupsReviewReportAdapter,
+              dueCheckEvidenceReportDelivery:
+                browserDueCheckEvidenceReportAdapter,
               valuationDraftFileDelivery: browserValuationDraftFileAdapter,
               researchDraftSetFileDelivery: browserResearchDraftSetFileAdapter,
               valuationCollectionDraftFileDelivery:

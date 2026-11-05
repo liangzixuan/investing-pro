@@ -3,6 +3,10 @@ import {
   type InvestmentWatchlistDailyReportPlugin,
 } from "./watchlist-daily-report-delivery";
 import {
+  createNativeDueCheckEvidenceReportAdapter,
+  type InvestmentDueCheckEvidenceReportPlugin,
+} from "./due-check-evidence-report-delivery";
+import {
   createNativePortfolioComparisonReportAdapter,
   type InvestmentPortfolioComparisonReportPlugin,
 } from "./portfolio-comparison-report-delivery";
@@ -210,6 +214,17 @@ function NativeSession({
         : undefined,
     [managed],
   );
+  const dueCheckEvidenceReportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeDueCheckEvidenceReportAdapter(
+            registerPlugin<InvestmentDueCheckEvidenceReportPlugin>(
+              "InvestmentDueCheckEvidenceReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const researchDraftSetFileDelivery = useMemo(
     () =>
       managed
@@ -336,6 +351,9 @@ function NativeSession({
                 : {})}
               {...(followupsReviewReportDelivery
                 ? { followupsReviewReportDelivery }
+                : {})}
+              {...(dueCheckEvidenceReportDelivery
+                ? { dueCheckEvidenceReportDelivery }
                 : {})}
               {...(followupsDraftFileDelivery
                 ? { followupsDraftFileDelivery }
