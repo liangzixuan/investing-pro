@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Missing Annual reads
+
+Place the explicit missing-read plan beside the existing screen controls. Show
+all exact listings, retained evidence and ordered requests before Run. Keep source
+run and packet clocks distinct from continuation and attempt clocks. Display
+unknowns, partial responses and historical exclusions without substituting values.
+Use separate Run, Cancel and Clear labels, 44px controls, wrapping identities and
+contained passive source disclosures. Move focus only for the committed action
+that still owns it; asynchronous completion must not take focus. Retain the
+settled reading through Research/Back. See the [guide](docs/MANAGED_FINANCIAL_SCREEN_CONTINUATION.md).
+
 ## Local Annual filter refinement
 
 Place an explicit local filter editor beside the existing Annual screen. Reuse

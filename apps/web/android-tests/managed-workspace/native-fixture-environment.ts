@@ -62,6 +62,7 @@ const allowedScenarios = [
   "report-comparison-check",
   "watchlist-screen-selection",
   "screen-refinement",
+  "screen-continuation",
   "portfolio-screen-selection",
   "portfolio-report-comparison",
   "portfolio-comparison-report",

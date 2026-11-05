@@ -27,7 +27,15 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: refine loaded Annual results
+## Current priority: complete missing Annual reads
+
+Extend the M2/M4 screening workflow with an explicit missing-read plan and finite
+continuation. Preserve every admitted packet, partial or historical outcome and
+original source clock. Show new pass and attempt times separately; keep Cancel,
+Research/Back and personal Save explicit. See the [continuation guide](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md).
+Hosted execution and release acceptance remain pending for this local increment.
+
+## Locally complete: refine loaded Annual results
 
 Extend the M2/M4 screening workflow with independent local filter drafts and a
 complete original/revised preview. Apply reviewed criteria and results together
@@ -45,8 +53,9 @@ and order, criteria, sorting and independent source clocks. Run and Save stay
 separate. The list remains fully reachable at the 10,000-entry limit through
 bounded pages. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
 Local affected checks, types, lint, boundaries and source compilation pass. The
-original native run failed at a new journey frame-helper return-type check; all
-156 prior cases passed. That run is not accepted.
+earlier native run failed at a frame-helper check. Corrected source passes Ubuntu,
+Windows and parser checks; its new native journey stopped before a second
+selection preview after Research/Back. Native acceptance remains pending.
 
 The finished due-check report beneath this increment is accepted at main
 `57cc61c083fe8b1f2557b975667695125722c6ea` after original source/parser checks and

@@ -718,6 +718,13 @@ jobs:
           required.add(screen_refinement_case)
           if len(required) != 158:
               raise SystemExit("Screen refinement must preserve all 157 prior native cases.")
+          screen_continuation_case = (
+              "local.investment.personal.ManagedScreenContinuationTest",
+              "missingAnnualReadsRetainPacketsAndClocksThroughCancelContinueResearchBackAndSeparateSave",
+          )
+          required.add(screen_continuation_case)
+          if len(required) != 159:
+              raise SystemExit("Screen continuation must preserve all 158 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -783,6 +790,20 @@ jobs:
                           raise SystemExit("The Watchlist screen shard must retain both scoped frames.")
                   elif frames:
                       raise SystemExit("Watchlist screen frames belong only to their executed shard.")
+              for filename in ("newScreenRefinementPreview.png", "newScreenRefinementReturn.png"):
+                  frames = list(root.rglob(filename))
+                  if screen_refinement_case in executed:
+                      if len(frames) != 1 or frames[0].stat().st_size == 0:
+                          raise SystemExit("The screen refinement shard must retain both scoped frames.")
+                  elif frames:
+                      raise SystemExit("Screen refinement frames belong only to their executed shard.")
+              for filename in ("newScreenContinuationPreview.png", "newScreenContinuationReturn.png"):
+                  frames = list(root.rglob(filename))
+                  if screen_continuation_case in executed:
+                      if len(frames) != 1 or frames[0].stat().st_size == 0:
+                          raise SystemExit("The screen continuation shard must retain both scoped frames.")
+                  elif frames:
+                      raise SystemExit("Screen continuation frames belong only to their executed shard.")
               portfolio_screen_frames = list(root.rglob("newPortfolioScreenSelectionPreview.png"))
               if portfolio_screen_case in executed:
                   if len(portfolio_screen_frames) != 1 or portfolio_screen_frames[0].stat().st_size == 0:

@@ -5,7 +5,16 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: refine a loaded Annual screen
+## Current increment: complete missing Annual reads
+
+Review all retained and missing rows, then explicitly run the finite missing-only
+request list. Preserve admitted packets, applied filters, source clocks and
+partial or historical outcomes. Cancel keeps completed work; Research/Back and
+personal Save remain separate. See the [workflow guide](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md).
+Local UI, model and full-workspace checks cover the new flow. The 159-case native
+source roster has not run on hosted Android. No release acceptance is claimed.
+
+## Locally complete: refine a loaded Annual screen
 
 Preview independent filter edits against retained Annual packets, inspect complete
 original and revised results, then apply them atomically. Preserve source clocks,
@@ -21,10 +30,10 @@ eligibility outcome, then apply the complete ordered selection. Run, Research/Ba
 and Watchlist Save remain separate. Unsaved notes, order, criteria and source
 clocks are preserved. The full list supports 10,000 entries with bounded pages.
 The 91 affected local checks, web types, scoped lint and source boundaries pass.
-Android source compilation and fixture/mobile bundles pass; the new 157-case
-native run passed all 156 prior cases; the new journey stopped at a frame-helper
-return-type check after its selection preview assertions passed. The original
-run is not accepted. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
+Android source compilation and fixture/mobile bundles pass. The corrected source
+passes original Ubuntu, Windows and parser checks. Its native journey advanced
+through Research/Back but stopped before a second selection preview; that run is
+not accepted. Earlier frame-helper and test-duration failures remain recorded. See the [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).
 
 ## Source accepted: finished due-check evidence report
 
