@@ -53,10 +53,19 @@ journey through independent Save and fresh Load. The two current scoped Preview
 and Return frames are byte-identical to the frames already inspected. Original
 Ubuntu, Windows and parser checks pass.
 [PR 280](https://github.com/liangzixuan/investing-pro/pull/280) merged at
-`519fec426c368bff700b0db57a45eafa73c15e43`. Original main checks remain pending;
-this selection workflow has no Android delivery.
-CodeScene findings remain unsuppressed; no new functional finding was identified.
-No browser or phone acceptance is claimed.
+`519fec426c368bff700b0db57a45eafa73c15e43`. That main revision passed Ubuntu,
+parser and all 157 native cases. Its original Windows check timed out in the
+synthetic runtime prerequisite before the release gate, so main acceptance was
+not established. The failed outcome remains recorded.
+
+PR 281 then passed its own original Ubuntu, Windows and parser checks and all
+158 native cases, preserving the prior 157 cases. The two current refinement
+Preview and Return frames were inspected.
+[PR 281](https://github.com/liangzixuan/investing-pro/pull/281) merged at
+`91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`; its original main checks remain
+pending. This selection workflow has no Android delivery. CodeScene findings
+remain unsuppressed; scoped review found no new functional defect. No browser
+or phone acceptance is claimed.
 
 Earlier original failures remain separate: `c908f45e` stopped at the new frame
 helper's return type and had a Windows paging-test timeout; `35891278` stopped at

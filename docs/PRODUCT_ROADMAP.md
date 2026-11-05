@@ -35,14 +35,21 @@ original source clock. Show new pass and attempt times separately; keep Cancel,
 Research/Back and personal Save explicit. See the [continuation guide](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md).
 Hosted execution and release acceptance remain pending for this local increment.
 
-## Locally complete: refine loaded Annual results
+## Source merged: refine loaded Annual results
 
 Extend the M2/M4 screening workflow with independent local filter drafts and a
 complete original/revised preview. Apply reviewed criteria and results together
 without rereading sources, preserving all original evidence clocks and unknowns.
 Research, shortlist handoff and personal Save remain separate. See the
-[refinement guide](MANAGED_FINANCIAL_SCREEN_REFINEMENT.md). Hosted execution and
-release acceptance remain pending for this new increment.
+[refinement guide](MANAGED_FINANCIAL_SCREEN_REFINEMENT.md).
+At PR 281 head `6243e8cb1732ca870b9b2375e74c604688442f90`, original Ubuntu,
+Windows and parser checks passed, along with all 158 native cases. The prior 157
+cases remain unchanged. The two current scoped Preview and Return frames were
+inspected. [PR 281](https://github.com/liangzixuan/investing-pro/pull/281) merged
+at `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. Original checks for that main
+revision remain pending. CodeScene structural findings remain unsuppressed;
+scoped source review found no functional defect. This increment has no Android
+delivery, browser inspection or phone acceptance.
 
 ## Source merged: screen the companies already on the Watchlist
 
@@ -57,10 +64,15 @@ PR 280 head `7a9be968359b4911132cfe81e8293c6f9874389e` passed all 157 original
 native cases, including independent Save and fresh Load. Both scoped frames
 match the previously inspected Preview and Return frames. Original Ubuntu,
 Windows and parser checks pass. [PR 280](https://github.com/liangzixuan/investing-pro/pull/280)
-merged at `519fec426c368bff700b0db57a45eafa73c15e43`. Original main checks remain
-pending, and this selection workflow has no Android delivery. Earlier original
-failures remain recorded. CodeScene findings stay unsuppressed; no new functional
-finding was identified.
+merged at `519fec426c368bff700b0db57a45eafa73c15e43`. That main revision passed
+Ubuntu, parser and all 157 native cases, but its original Windows check timed out
+in the synthetic runtime prerequisite before the release gate. It was not
+accepted as main; the failure remains recorded. PR 281 subsequently passed its
+own original Windows check and all 158 native cases, then merged at
+`91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`, whose original main checks remain
+pending. This selection workflow has no Android delivery. Earlier original
+failures remain recorded. CodeScene findings remain unsuppressed; no new
+functional finding was identified.
 
 The finished due-check report beneath this increment is accepted at main
 `57cc61c083fe8b1f2557b975667695125722c6ea` after original source/parser checks and
