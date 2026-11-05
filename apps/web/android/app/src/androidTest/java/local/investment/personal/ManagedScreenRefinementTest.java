@@ -130,7 +130,7 @@ public class ManagedScreenRefinementTest {
         page.await(new Check("native Back restores revised results and the exact source reports without renewing dates",new Script(
             OBS+".research===null&&"+REF+".sameAppliedRun&&"+REF+".sameSourceHandle&&"+REF+".sameOriginalReports&&"+REF+".sameResource&&"+OBS+".counts.annual===2&&"+OBS+".counts.resolve===1")));
         frame(FollowupsReportFrameCapture.Frame.SCREEN_REFINEMENT_RETURN,"#managed-screen-refinement-heading");
-        nav("Watchlist");button("Review catalog changes");button("Apply reviewed catalog");
+        nav("My Watchlist");button("Review catalog changes");button("Apply reviewed catalog");
         page.await(new Check("independent explicit review preserves complete raw note and all ordered identities before Save",new Script(OBS+".canonical==="+OBS+".expectedCanonical&&"+OBS+".counts.save===0&&"+OBS+".counts.resolve===2&&"+OBS+".watchlist.dirty")));
         button("Save watchlist");
         page.await(new Check("only the full Watchlist is saved once at version four",new Script(OBS+".counts.save===1&&"+OBS+".watchlist.baseVersion===4&&!"+OBS+".watchlist.dirty&&"+OBS+".canonical==="+OBS+".expectedCanonical&&"+OBS+".unrelatedUnloaded")));
