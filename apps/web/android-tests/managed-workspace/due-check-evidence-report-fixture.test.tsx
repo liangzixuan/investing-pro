@@ -85,14 +85,20 @@ it.each(["direct", "routed"])(
       if (i === 0) {
         const partial = retain();
         partialReading = partial;
+        // The failed Filings request's final state change retires pass authority.
+        // Capture keeps that exact state; the explicit continuation is separate.
+        expect(partial.sourcePass.phase).toBe("invalidated");
         expect(partial.sourcePass.rows.map((x) => x.disposition)).toEqual([
           "loaded",
           "loaded",
           "failed",
           "not_attempted",
         ]);
+        const capturedPass = structuredClone(partial.sourcePass);
         await run();
         expect(w.reviewEvidence.getSnapshot().selected!.reading).toBe(partial);
+        expect(partial.sourcePass).toEqual(capturedPass);
+        expect(w.companySourcePass.getSnapshot().phase).toBe("finished");
       }
       const reading = partialReading ?? retain();
       captured.push(reading);
@@ -169,6 +175,13 @@ it.each(["direct", "routed"])(
     );
     expect(capture.report.rows[0]!.entry.result).toBe(evidenceAssessments[0]);
     expect(capture.report.rows[0]!.reading!.check.result).toBe("");
+    expect(capture.report.rows[0]!.reading!.sourcePass).toEqual(
+      captured[0]!.sourcePass,
+    );
+    expect(capture.report.rows[0]!.reading!.sourcePass.phase).toBe(
+      "invalidated",
+    );
+    expect(capture.report.rows[1]!.reading!.sourcePass.phase).toBe("finished");
     expect(capture.report.resource).toMatchObject({
       savedVersion: 7,
       baseVersion: 7,
