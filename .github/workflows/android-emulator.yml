@@ -730,6 +730,15 @@ jobs:
           required.add(screen_pass_review_case)
           if len(required) != 160:
               raise SystemExit("Fresh Annual pass review must preserve all 159 prior native cases.")
+          screen_pass_report_case = ("local.investment.personal.ManagedScreenPassReportTest", "annualPassReportKeepsCompleteEvidenceThroughPickerCancelHtmlSaveAndSeparateResourceSave")
+          required.add(screen_pass_report_case)
+          required.add(("local.investment.personal.ScreenPassReviewReportHtmlPolicyInstrumentedTest", "admitsTheFixedHtmlMetadataAndCompleteEnvelope"))
+          required.add(("local.investment.personal.ScreenPassReviewReportHtmlPolicyInstrumentedTest", "refusesUnknownOptionsCrossFormatPurposeAndUnsafeFilename"))
+          required.add(("local.investment.personal.ScreenPassReviewReportHtmlPolicyInstrumentedTest", "reusesTheCompleteUtcCalendarAndExactChosenFilename"))
+          required.add(("local.investment.personal.ScreenPassReviewReportHtmlPolicyInstrumentedTest", "refusesChangedHeadCspStyleIdentityOrIncompleteEnvelope"))
+          required.add(("local.investment.personal.ScreenPassReviewReportHtmlPolicyInstrumentedTest", "inheritsTheEightMibStrictUtf8WriterBoundary"))
+          if len(required) != 166:
+              raise SystemExit("Annual-pass report must preserve all 160 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -809,6 +818,13 @@ jobs:
                           raise SystemExit("The screen continuation shard must retain both scoped frames.")
                   elif frames:
                       raise SystemExit("Screen continuation frames belong only to their executed shard.")
+              for filename in ("newScreenPassReportPreview.png", "newScreenPassReportSaved.png"):
+                  frames = list(root.rglob(filename))
+                  if screen_pass_report_case in executed:
+                      if len(frames) != 1 or frames[0].stat().st_size == 0:
+                          raise SystemExit("Annual-pass report must retain both current scoped frames.")
+                  elif frames:
+                      raise SystemExit("Annual-pass report frames belong only to their executed shard.")
               for filename in ("newScreenPassReviewPreview.png", "newScreenPassReviewReturn.png"):
                   frames = list(root.rglob(filename))
                   if screen_pass_review_case in executed:

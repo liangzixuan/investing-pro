@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated November 5, 2026. This document defines the durable product goals and
+Updated November 6, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,14 +27,19 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: review a fresh Annual pass
+## Current priority: keep the complete Annual-pass comparison
 
-Connect the M2/M4 screening workflow across two explicit source passes. Retain one
-complete previous reading, preview the same ordered companies and applied
-filters, then run a fresh full pass. Show each result, raw packet, refusal and
-source/evaluation time without assuming a newer filing or like-for-like period.
-Use only the current row for Research. Keep shortlist and Watchlist Save separate.
-See the [pass review guide](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md).
+Close the M2/M4 review workflow with an explicit private HTML report. Preserve
+every previous/current result, packet, criterion and attempt clock in a portable
+document. Reuse the accepted fresh-pass owner and existing document chooser;
+keep resource Save separate. No additional coverage, metrics or source requests
+are needed. See the [report guide](MANAGED_ANNUAL_PASS_REPORT.md).
+
+The preceding [fresh-pass review](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md) is
+source accepted at main `3c7ccca0e86eba49b907f268294873de78c9a116`, with original
+source/parser checks and all 160 native cases passing. Its earlier paced-wait
+test failure remains history. The report is locally implemented and verified;
+hosted verification and delivery remain pending.
 
 At PR 282 head `a930e93fe58fd4503e24639f8e355a326c28a401`, original
 source/parser checks and all 159 native cases passed. The prior 158 cases remained

@@ -1,4 +1,8 @@
 import {
+  createNativeScreenPassReviewReportAdapter,
+  type InvestmentScreenPassReviewReportPlugin,
+} from "./screen-pass-review-report-delivery";
+import {
   createNativeWatchlistDailyReportAdapter,
   type InvestmentWatchlistDailyReportPlugin,
 } from "./watchlist-daily-report-delivery";
@@ -225,6 +229,18 @@ function NativeSession({
         : undefined,
     [managed],
   );
+
+  const screenPassReviewReportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeScreenPassReviewReportAdapter(
+            registerPlugin<InvestmentScreenPassReviewReportPlugin>(
+              "InvestmentScreenPassReviewReport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const researchDraftSetFileDelivery = useMemo(
     () =>
       managed
@@ -375,6 +391,9 @@ function NativeSession({
                 : {})}
               {...(screenResearchReportDelivery
                 ? { screenResearchReportDelivery }
+                : {})}
+              {...(screenPassReviewReportDelivery
+                ? { screenPassReviewReportDelivery }
                 : {})}
               {...(screenComparisonReportDelivery
                 ? { screenComparisonReportDelivery }

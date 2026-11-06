@@ -8,23 +8,41 @@ import { evaluateManagedFinancialScreenRow } from "./managed-financial-screen-re
 import { ScreenFilterOutcomes } from "./FinancialScreenRefinementReading";
 import { ListingIdentity, identityLabels } from "./ManagedListingIdentity";
 import { AnnualStatementsContext } from "./ManagedAnnualStatements";
-function RawReading({ value, label }: { value: unknown; label: string }) {
+export function PassRawReading({
+  value,
+  label,
+  eager = false,
+  payload = false,
+}: {
+  value: unknown;
+  label: string;
+  eager?: boolean;
+  payload?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <details onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary>{label}</summary>
-      {open && <pre>{JSON.stringify(value, null, 2)}</pre>}
+      {(open || eager) && (
+        <pre data-screen-pass-report-payload={payload ? "true" : undefined}>
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      )}
     </details>
   );
 }
-function Side({
+export function AnnualPassRowReading({
   row,
   run,
   side,
+  eager = false,
 }: {
-  row: ManagedFinancialScreenResultRow;
-  run: ManagedFinancialScreenRun;
+  row: Omit<ManagedFinancialScreenResultRow, "handle" | "member"> & {
+    readonly member: Pick<ManagedFinancialScreenResultRow["member"], "listing">;
+  };
+  run: Pick<ManagedFinancialScreenRun, "status" | "criteria">;
   side: "previous" | "current";
+  eager?: boolean;
 }) {
   const response = row.report?.response;
   const clauses = run.criteria.clauses.map((clause) =>
@@ -90,9 +108,10 @@ function Side({
           </details>
         </>
       )}
-      <RawReading
+      <PassRawReading
         label={`Complete ${side} ${row.member.listing.symbol} packet and result`}
         value={row}
+        eager={eager}
       />
     </section>
   );
@@ -163,15 +182,23 @@ export function FinancialScreenPassReviewReading({
               </div>
             ))}
           </dl>
-          <Side row={previous} run={plan.sourceRun} side="previous" />
+          <AnnualPassRowReading
+            row={previous}
+            run={plan.sourceRun}
+            side="previous"
+          />
           {current ? (
-            <Side row={current.rows[i]!} run={current} side="current" />
+            <AnnualPassRowReading
+              row={current.rows[i]!}
+              run={current}
+              side="current"
+            />
           ) : (
             <p>Fresh pass not started for this preview.</p>
           )}
         </article>
       ))}
-      <RawReading
+      <PassRawReading
         label="Complete previous pass, filters and continuation history"
         value={plan.sourceRun}
       />

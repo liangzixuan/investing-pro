@@ -11,6 +11,18 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Portable Annual-pass comparison
+
+Place **Prepare Annual-pass report** inside the settled comparison, after the
+source work. Focus its heading only when the initiating control still owns focus
+at commit. Use a closed full-preview disclosure with ordered previous/current
+rows, exact values, distinct clocks and lazy raw disclosures. Keep document Save,
+Cancel and the settled status together; personal-resource Save stays elsewhere.
+Use 44px controls, contained tables and wrapping identities. Offline HTML eagerly
+includes all raw evidence and uses the established passive report style and CSP.
+No chart or source action is added to the report. Long disclosure content must
+not cause horizontal page overflow.
+
 ## Missing Annual reads
 
 Place the explicit missing-read plan beside the existing screen controls. Show

@@ -1,3 +1,4 @@
+import { ScreenPassReviewReportFixtureControls } from "./screen-pass-review-report-fixture-controls";
 import { ScreenPassReviewFixtureControls } from "./screen-pass-review-fixture-controls";
 import { ScreenContinuationFixtureControls } from "./screen-continuation-fixture-controls";
 import { ScreenRefinementFixtureControls } from "./screen-refinement-fixture-controls";
@@ -56,6 +57,7 @@ import {
   nativeReport,
   nativeWatchlistDailyReport,
   nativeDueCheckEvidenceReport,
+  nativeScreenPassReviewReport,
   nativeExport,
   nativePortfolioReviewReport,
   nativePortfolioComparisonReport,
@@ -127,6 +129,7 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario === "watchlist-screen-selection" ||
       scenario === "screen-refinement" ||
       scenario === "screen-continuation" ||
+      scenario === "screen-pass-report" ||
       scenario === "screen-pass-review" ||
       scenario === "saved-valuation-reassessment"
     )
@@ -143,6 +146,7 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario !== "watchlist-screen-selection" &&
       scenario !== "screen-refinement" &&
       scenario !== "screen-continuation" &&
+      scenario !== "screen-pass-report" &&
       scenario !== "screen-pass-review" &&
       scenario !== "portfolio-saved-scenario" &&
       scenario !== "portfolio-dated-review" &&
@@ -414,9 +418,11 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       {workspace && fixture.companyResearchChecks && (
         <CompanyResearchChecksFixtureControls workspace={workspace} />
       )}
-      {workspace && scenario === "screen-pass-review" && (
-        <ScreenPassReviewFixtureControls workspace={workspace} />
-      )}
+      {workspace &&
+        (scenario === "screen-pass-review" ||
+          scenario === "screen-pass-report") && (
+          <ScreenPassReviewFixtureControls workspace={workspace} />
+        )}
       {workspace && scenario === "screen-continuation" && (
         <ScreenContinuationFixtureControls workspace={workspace} />
       )}
@@ -460,6 +466,9 @@ export function FixtureSession({ session, onFreshSession }: Props) {
           workspace={workspace}
           fixture={fixture.savedValuationReassessment}
         />
+      )}
+      {workspace && nativeScreenPassReviewReport && (
+        <ScreenPassReviewReportFixtureControls />
       )}
       {workspace && nativeDueCheckEvidenceReport && (
         <DueCheckEvidenceReportFixtureControls />

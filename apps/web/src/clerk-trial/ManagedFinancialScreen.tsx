@@ -1,3 +1,4 @@
+import type { ScreenPassReviewReportDeliveryAdapter } from "./screen-pass-review-report-ports";
 import { ManagedFinancialScreenPassReview } from "./ManagedFinancialScreenPassReview";
 import { ManagedFinancialScreenContinuation } from "./ManagedFinancialScreenContinuation";
 import {
@@ -34,6 +35,7 @@ export function ManagedFinancialScreen({
   onOpenReport,
   recipeDelivery,
   comparisonReportDelivery,
+  passReportDelivery,
   recipesRouteActive,
   workspace,
 }: {
@@ -41,6 +43,7 @@ export function ManagedFinancialScreen({
   workspace?: ManagedWorkspace;
   recipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   comparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
+  passReportDelivery?: ScreenPassReviewReportDeliveryAdapter;
   recipesRouteActive?: () => boolean;
   onOpenReport: (
     capture: ManagedFinancialScreenReportCapture,
@@ -216,6 +219,7 @@ export function ManagedFinancialScreen({
       )}
       {workspace && recipesRouteActive && (
         <ManagedFinancialScreenPassReview
+          delivery={passReportDelivery}
           workspace={workspace}
           routeActive={recipesRouteActive}
         />
