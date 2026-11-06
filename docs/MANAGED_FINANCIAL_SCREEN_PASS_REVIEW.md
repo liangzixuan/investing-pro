@@ -62,6 +62,12 @@ complete previous/current raw disclosures and a real workspace journey through
 Research/Back and independent Save/fresh Load. The new native journey adds one
 case and two scoped frames; all prior declaring files and 159 case bodies remain
 unchanged. Affected tests, web types, lint, source boundaries, client bundles and
-Android-system Java compilation pass. Hosted execution, browser inspection and
-phone acceptance for this increment are pending. The delivered baseline is Android 1.77.0; see
+Android-system Java compilation pass. The original PR native run passed the prior
+159 cases but timed out in the new case while the correctly paced fourth read
+was still waiting. A real workspace regression confirms that the residual
+cooldown plus the next pacing interval can exceed one 30-second wait. The test
+now checks the exact first fresh result and pending second listing before its
+unchanged full-pass assertion, using the existing bounded waits. Hosted
+verification of that repair is pending; no browser or phone verification is
+claimed. The delivered baseline is Android 1.77.0; see
 [current work](CURRENT_WORK.md).

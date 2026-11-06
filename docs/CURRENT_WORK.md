@@ -14,7 +14,12 @@ Current Research/Back, shortlist and personal Save remain separate. See the
 [workflow guide](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md).
 Local affected tests, web types, lint, formatting, source boundaries, client
 bundles and Android-system Java compilation pass. Its 160-case native roster
-preserves all 159 prior case declarations. Hosted Android execution is pending.
+preserves all 159 prior case declarations. PR 283's original source/parser checks
+passed. Its new native case stopped while the fourth read correctly waited for
+the existing pacing interval; the other 159 cases passed. The test now observes
+the first fresh result before waiting for the complete pass, with both existing
+deadlines and the full final assertion retained. Hosted verification of this
+repair is pending.
 
 ## Delivered: complete missing Annual reads
 

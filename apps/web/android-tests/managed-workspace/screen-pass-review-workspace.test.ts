@@ -7,6 +7,74 @@ afterEach(() => {
   owners.splice(0).forEach((w) => w.sessionOwner.dispose());
   vi.useRealTimers();
 });
+it("keeps both fresh reads paced when the previous pass still owns the first cooldown", async () => {
+  const { meta, w, screen, resource } =
+    await screenPassReviewWorkspaceFixture();
+  owners.push(w);
+  const original = screen.getSnapshot().run!;
+  // Preview work consumes five seconds, leaving two separate pacing intervals.
+  await vi.advanceTimersByTimeAsync(5000);
+  const owner = createWorkspaceScreenPassReview(w, () => true);
+  const preview = owner.controller.preview(owner.controller.getSnapshot())!;
+  const started = performance.now();
+  const pending = owner.controller.run(preview);
+  const firstDelay =
+    20000 - (performance.now() - meta.getSnapshot().annualRequests.at(-1)!.at);
+  expect(firstDelay).toBeGreaterThan(10000);
+  expect(firstDelay).toBeLessThanOrEqual(15000);
+  await vi.advanceTimersByTimeAsync(firstDelay - 1);
+  expect(meta.getSnapshot().annual).toBe(2);
+  await vi.advanceTimersByTimeAsync(1);
+  await vi.waitFor(() =>
+    expect(screen.getSnapshot().run!.rows[0]!.evaluation).not.toBeNull(),
+  );
+  const firstReady = performance.now();
+  expect(firstReady - started).toBeLessThan(30000);
+  expect(meta.getSnapshot().annual).toBe(3);
+  expect(screen.getSnapshot()).toMatchObject({
+    pending: { kind: "waiting", member: original.rows[1]!.member },
+    run: { status: "running" },
+  });
+  expect(screen.getSnapshot().run!.rows[0]!.report!.response).toEqual(
+    meta.packets[0],
+  );
+  expect(screen.getSnapshot().run!.rows[1]!.report).toBeNull();
+  // The former single 30-second wait expires while the correct fourth read waits.
+  await vi.advanceTimersByTimeAsync(30000 - (performance.now() - started));
+  expect(meta.getSnapshot().annual).toBe(3);
+  expect(screen.getSnapshot().pending).toMatchObject({
+    kind: "waiting",
+    member: original.rows[1]!.member,
+  });
+  const secondDelay =
+    20000 - (performance.now() - meta.getSnapshot().annualRequests.at(-1)!.at);
+  expect(secondDelay).toBeGreaterThan(0);
+  await vi.advanceTimersByTimeAsync(secondDelay - 1);
+  expect(meta.getSnapshot().annual).toBe(3);
+  await vi.advanceTimersByTimeAsync(1);
+  const settled = (await pending)!;
+  expect(performance.now() - firstReady).toBeLessThan(30000);
+  expect(settled.result).toBe(screen.getSnapshot().run);
+  expect(settled.result!.rows.map((row) => row.report!.response)).toEqual(
+    meta.packets,
+  );
+  expect(screen.getSnapshot().pending).toBeNull();
+  expect(meta.getSnapshot()).toMatchObject({
+    annual: 4,
+    resolve: 1,
+    save: 0,
+    rejected: 0,
+  });
+  expect(meta.getSnapshot().annualRequests.map((row) => row.symbol)).toEqual([
+    "AAPL",
+    "GOOGL",
+    "AAPL",
+    "GOOGL",
+  ]);
+  expect(w.coordinator.getSnapshot()).toBe(resource);
+  expect(preview.plan!.sourceRun).toBe(original);
+  owner.dispose();
+});
 it("reviews a complete fresh pass, retains source clocks through current Research/Back, and independently saves then reloads every Watchlist field", async () => {
   const { meta, w, screen, resource } =
     await screenPassReviewWorkspaceFixture();
