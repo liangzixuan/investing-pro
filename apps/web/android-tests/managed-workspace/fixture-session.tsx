@@ -1,3 +1,4 @@
+import { ScreenPassReviewFixtureControls } from "./screen-pass-review-fixture-controls";
 import { ScreenContinuationFixtureControls } from "./screen-continuation-fixture-controls";
 import { ScreenRefinementFixtureControls } from "./screen-refinement-fixture-controls";
 import { WatchlistScreenSelectionFixtureControls } from "./watchlist-screen-selection-fixture-controls";
@@ -126,6 +127,7 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario === "watchlist-screen-selection" ||
       scenario === "screen-refinement" ||
       scenario === "screen-continuation" ||
+      scenario === "screen-pass-review" ||
       scenario === "saved-valuation-reassessment"
     )
       current.setView("watchlist");
@@ -141,6 +143,7 @@ function useFixtureWorkspace(session: TrialSession) {
       scenario !== "watchlist-screen-selection" &&
       scenario !== "screen-refinement" &&
       scenario !== "screen-continuation" &&
+      scenario !== "screen-pass-review" &&
       scenario !== "portfolio-saved-scenario" &&
       scenario !== "portfolio-dated-review" &&
       scenario !== "review-filings-evidence" &&
@@ -410,6 +413,9 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       )}
       {workspace && fixture.companyResearchChecks && (
         <CompanyResearchChecksFixtureControls workspace={workspace} />
+      )}
+      {workspace && scenario === "screen-pass-review" && (
+        <ScreenPassReviewFixtureControls workspace={workspace} />
       )}
       {workspace && scenario === "screen-continuation" && (
         <ScreenContinuationFixtureControls workspace={workspace} />

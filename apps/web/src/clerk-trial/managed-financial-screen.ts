@@ -1,3 +1,4 @@
+import { prepareFinancialScreenPassReview } from "./managed-financial-screen-pass-review";
 import {
   prepareFinancialScreenContinuation,
   type FinancialScreenContinuationPass,
@@ -51,6 +52,13 @@ export interface ManagedFinancialScreenResultRow {
   readonly report: ManagedAnnualReportState | null;
   readonly evaluation: ManagedFinancialScreenRow | null;
   readonly failure: string | null;
+  /** Explicit evaluation clock, separate from the source packet dates. */
+  readonly evaluatedAt?: string | null;
+  readonly attempt?: Readonly<{
+    startedAt: string;
+    completedAt: string;
+    status: "completed" | "cancelled";
+  }>;
 }
 export interface ManagedFinancialScreenRun {
   readonly handle: symbol;
@@ -600,6 +608,7 @@ export class ManagedFinancialScreen {
                 ...row.original,
                 handle: Symbol(),
                 evaluation: row.revised,
+                evaluatedAt: row.revised ? reading.evaluatedAt : null,
               }),
             ),
           ),
@@ -727,9 +736,26 @@ export class ManagedFinancialScreen {
   ) {
     if (!run) return run;
     const completedAt = new Date().toISOString();
+    const rows = operation?.attempt
+      ? Object.freeze(
+          run.rows.map((row) =>
+            row.member === operation.attempt!.member
+              ? Object.freeze({
+                  ...row,
+                  attempt: Object.freeze({
+                    startedAt: operation.attempt!.startedAt,
+                    completedAt,
+                    status: "cancelled" as const,
+                  }),
+                })
+              : row,
+          ),
+        )
+      : run.rows;
     if (operation?.continuation)
       return Object.freeze({
         ...run,
+        rows,
         continuations: Object.freeze(
           run.continuations!.map((pass) =>
             pass.handle !== operation.continuation || pass.status !== "running"
@@ -755,7 +781,7 @@ export class ManagedFinancialScreen {
         ),
       });
     return run.status === "running"
-      ? Object.freeze({ ...run, status, completedAt })
+      ? Object.freeze({ ...run, rows, status, completedAt })
       : run;
   }
   private finish(status: ManagedFinancialScreenRun["status"]) {
@@ -895,6 +921,78 @@ export class ManagedFinancialScreen {
       },
     });
   }
+  canReviewPass(captured: ManagedFinancialScreenState) {
+    const run = captured.run;
+    return (
+      this.accepts(captured) &&
+      !this.operation &&
+      !captured.pending &&
+      !captured.criteriaStaged &&
+      !!run &&
+      run.status !== "running" &&
+      !!run.completedAt &&
+      !run.continuations?.some((p) => p.status === "running") &&
+      run.criteria === captured.criteria &&
+      run.criteriaRevision === captured.criteriaRevision &&
+      run.selectionRevision === captured.selectionRevision &&
+      captured.selected.length > 0 &&
+      run.rows.length === captured.selected.length &&
+      run.rows.every(
+        (row, i) =>
+          row.member === captured.selected[i] &&
+          captured.memberships.includes(row.member),
+      )
+    );
+  }
+  capturePassReview(captured: ManagedFinancialScreenState, preparedAt: string) {
+    if (!this.canReviewPass(captured)) return null;
+    const plan = prepareFinancialScreenPassReview(captured.run!, preparedAt);
+    if (!plan || !this.canReviewPass(captured)) return null;
+    const runHandle = Symbol();
+    let available = true;
+    let operation: Operation | null = null;
+    const isCurrent = () => {
+      if (available && !this.canReviewPass(captured)) available = false;
+      return available;
+    };
+    return Object.freeze({
+      plan,
+      runHandle,
+      isCurrent,
+      cancel: () => {
+        available = false;
+        if (operation && this.operation === operation) this.cancel();
+      },
+      run: async (
+        ownerCurrent: () => boolean = () => true,
+      ): Promise<ManagedFinancialScreenState | null> => {
+        if (!isCurrent()) return null;
+        available = false;
+        if (
+          !ownerCurrent() ||
+          !this.canReviewPass(captured) ||
+          captured.selected.some((member) => !this.hasCoverage(member)) ||
+          !this.canReviewPass(captured)
+        )
+          return null;
+        operation = {
+          controller: new AbortController(),
+          available: ownerCurrent,
+        };
+        this.operation = operation;
+        await this.startRun(captured, operation, runHandle);
+        const current = this.state;
+        return !this.retired &&
+          ownerCurrent() &&
+          this.state === current &&
+          current.run?.handle === runHandle &&
+          current.criteriaRevision === captured.criteriaRevision &&
+          current.selectionRevision === captured.selectionRevision
+          ? current
+          : null;
+      },
+    });
+  }
   async run(captured: ManagedFinancialScreenState) {
     if (
       !this.accepts(captured) ||
@@ -906,8 +1004,15 @@ export class ManagedFinancialScreen {
     if (captured.selected.some((member) => !this.hasCoverage(member))) return;
     const operation = { controller: new AbortController() };
     this.operation = operation;
+    await this.startRun(captured, operation, Symbol());
+  }
+  private async startRun(
+    captured: ManagedFinancialScreenState,
+    operation: Operation,
+    handle: symbol,
+  ) {
     const run: ManagedFinancialScreenRun = Object.freeze({
-      handle: Symbol(),
+      handle,
       criteria: captured.criteria,
       criteriaRevision: captured.criteriaRevision,
       selectionRevision: captured.selectionRevision,
@@ -950,11 +1055,10 @@ export class ManagedFinancialScreen {
           async (request, signal) => {
             if (!this.current(operation)) throw new TrialApiError("aborted");
             try {
-              if (operation.continuation)
-                operation.attempt = {
-                  member: row.member,
-                  startedAt: new Date().toISOString(),
-                };
+              operation.attempt = {
+                member: row.member,
+                startedAt: new Date().toISOString(),
+              };
               return await this.dispatchAnnualReport(request, signal);
             } catch (error) {
               failure = error;
@@ -997,8 +1101,17 @@ export class ManagedFinancialScreen {
               .map(([kind, source]) => `${kind}:${source.status}`)
               .join(", ")
           : "";
+        const completedAt = new Date().toISOString();
         const result = Object.freeze({
           ...row,
+          evaluatedAt: evaluation ? completedAt : null,
+          ...(operation.attempt && {
+            attempt: Object.freeze({
+              startedAt: operation.attempt.startedAt,
+              completedAt,
+              status: "completed" as const,
+            }),
+          }),
           report,
           evaluation,
           failure:
@@ -1016,7 +1129,6 @@ export class ManagedFinancialScreen {
         });
         this.reader = null;
         reader.retire();
-        const completedAt = new Date().toISOString();
         const attempts = operation.attempt;
         delete operation.attempt;
         this.update({

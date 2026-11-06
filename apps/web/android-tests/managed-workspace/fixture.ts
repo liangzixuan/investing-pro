@@ -2432,6 +2432,11 @@ const nativeFixtureFactories = new Map<
   () => Promise<ManagedNativeFixture>
 >([
   [
+    "screen-pass-review",
+    async () =>
+      createWatchlistScreenSelectionFixture(await createSharedFixture(), true),
+  ],
+  [
     "screen-continuation",
     async () =>
       createWatchlistScreenSelectionFixture(await createSharedFixture()),
@@ -2743,6 +2748,7 @@ export async function createFixture(
     | "watchlist-screen-selection"
     | "screen-refinement"
     | "screen-continuation"
+    | "screen-pass-review"
     | "portfolio-screen-selection"
     | "portfolio-report-comparison"
     | "portfolio-comparison-report"

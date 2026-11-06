@@ -64,17 +64,17 @@ captured. The original log confirms the correct Annual route and response origin
 with two Annual reads and no rejected or unexpected requests. Both failed runs
 remain preserved.
 
-The local correction compares the complete Research packet with the explicit
-post-continuation capture and the expected original packet. Fifteen affected
-fixture, workspace and UI tests, web types, lint, formatting and the changed
-Android journey compilation pass. All 158 prior native cases remain unchanged.
-Hosted acceptance for the next exact revision and its full 159-case run is
-pending. CodeScene structural findings remain unsuppressed; this is not release
-or phone acceptance.
+At PR 282 head `a930e93fe58fd4503e24639f8e355a326c28a401`, original
+source/parser checks and all 159 native cases passed. The prior 158 cases remained
+unchanged. The merged main revision
+`b6c852a42022edce10de48cd53a05fc4661958ac` passed its own original source/parser
+checks and all 159 native cases. Scoped Preview and Return frames were inspected.
+The earlier fixture serialization and uncaptured-baseline failures remain history.
 
-Main `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1` is the accepted source baseline
-after original source/parser checks and all 158 native cases passed. Its current
-scoped Preview frame was inspected; Return exactly matches the previously
-inspected frame. Android 1.76 remains the last delivered version and does not
-include this continuation. Browser and physical phone inspection are not claimed.
-See [current work](CURRENT_WORK.md) for the current verification limits.
+Android 1.77.0, code 78, was delivered locally on November 5 with the existing
+signer. All four automated checks and the copied APK checksum readback passed.
+This delivery includes Watchlist screen selection, local filter refinement and
+missing Annual reads. Browser and physical phone acceptance are not claimed.
+CodeScene structural findings remain unsuppressed.
+
+See [current work](CURRENT_WORK.md) for the next increment.

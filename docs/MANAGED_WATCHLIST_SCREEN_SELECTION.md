@@ -65,7 +65,7 @@ Preview and Return frames were inspected.
 `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
 after its original source/parser checks and all 158 native cases passed. Its
 current scoped Preview frame was inspected; Return exactly matches the previously
-inspected frame. This selection workflow has no Android delivery. CodeScene
+inspected frame. This selection workflow is included in the delivered Android 1.77. CodeScene
 findings remain unsuppressed; scoped review found no new functional defect.
 No browser or phone acceptance is claimed.
 
@@ -74,15 +74,16 @@ helper's return type and had a Windows paging-test timeout; `35891278` stopped a
 post-Back preview readiness; `6f5511ab` passed that step but used the wrong
 Watchlist navigation label. Their failed outcomes have not been reclassified.
 
-The last delivered baseline is main `57cc61c083fe8b1f2557b975667695125722c6ea`, which
+The earlier Android 1.76 baseline was main `57cc61c083fe8b1f2557b975667695125722c6ea`, which
 passed original source, parser and all 156 native cases. Android 1.76.0, code 77,
 was verified and delivered locally from that baseline, and delivery is closed.
-It does not include this later Watchlist selection increment.
+That earlier package did not include this Watchlist selection increment.
 
 The subsequent [missing-read continuation](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md)
-remains unaccepted. PR 282 head `e6ed7a4` passed original source, parser and
-dependency checks, but its new native case failed a Research fixture comparison
-after the earlier missing-packet correction. Both failures remain recorded.
-The explicit post-continuation capture correction passes local checks; hosted
-acceptance for the next exact revision is pending. The accepted source baseline
-remains `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`.
+is now accepted at main `b6c852a42022edce10de48cd53a05fc4661958ac` after its own
+original source/parser checks and all 159 native cases passed. Android 1.77.0,
+code 78, includes selection, refinement and continuation. It was delivered locally
+on November 5 with the existing signer, four automated checks and copy/checksum
+readback. The earlier failed PR 282 fixture assertions remain recorded as history.
+Browser and physical phone acceptance are not claimed. The next
+[fresh-pass review](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md) is under local development.

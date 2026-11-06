@@ -46,6 +46,7 @@ export const watchlistScreenAuthoredNote =
 /** One RAM Watchlist and two exact canonical packets; unrelated operations refuse. */
 export async function createWatchlistScreenSelectionFixture(
   base: SharedNativeFixture,
+  freshPassReview = false,
 ): Promise<ManagedNativeFixture> {
   const identities = portfolioScreenIdentities();
   const packets = await portfolioScreenPackets(identities);
@@ -191,7 +192,7 @@ export async function createWatchlistScreenSelectionFixture(
           command &&
           counts.load === 1 &&
           counts.save === 0 &&
-          counts.annual === 2 &&
+          counts.annual === (freshPassReview ? 4 : 2) &&
           counts.resolve === 2 &&
           command.expectedVersion === 3 &&
           encodeMainWatchlistPayload(command.payload) ===
@@ -241,7 +242,12 @@ export async function createWatchlistScreenSelectionFixture(
     },
     annualReport: async (input, signal) => {
       const request = parseManagedSecAnnualCanonicalRequest(input),
-        packet = packets[counts.annual],
+        packet =
+          packets[
+            freshPassReview && counts.annual < 4
+              ? counts.annual % 2
+              : counts.annual
+          ],
         at = performance.now();
       admit(
         request &&
