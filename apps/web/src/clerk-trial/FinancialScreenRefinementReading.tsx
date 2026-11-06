@@ -11,13 +11,13 @@ const fieldLabel = (key: ManagedFinancialScreenCriteria["sort"]["field"]) =>
   key === "symbol"
     ? "Symbol"
     : MANAGED_FINANCIAL_SCREEN_FIELDS.find((field) => field.key === key)!.label;
-function Outcomes({
+export function ScreenFilterOutcomes({
   side,
   criteria,
   clauses,
   evaluation,
 }: {
-  side: "original" | "revised";
+  side: "original" | "revised" | "previous" | "current";
   criteria: ManagedFinancialScreenCriteria;
   clauses: Reading["rows"][number]["originalClauses"];
   evaluation: ManagedFinancialScreenRow | null;
@@ -25,7 +25,7 @@ function Outcomes({
   return (
     <section aria-label={`${side} filter outcomes`} data-refinement-side={side}>
       <h5>
-        {side === "original" ? "Original" : "Revised"} result:{" "}
+        {side[0]!.toUpperCase() + side.slice(1)} result:{" "}
         {evaluation?.match ?? "Unavailable"}
       </h5>
       <p>
@@ -143,13 +143,13 @@ export function FinancialScreenRefinementReading({
                 preview.
               </p>
             )}
-            <Outcomes
+            <ScreenFilterOutcomes
               side="original"
               criteria={reading.originalCriteria}
               clauses={row.originalClauses}
               evaluation={row.original.evaluation}
             />
-            <Outcomes
+            <ScreenFilterOutcomes
               side="revised"
               criteria={reading.criteria}
               clauses={row.revisedClauses}

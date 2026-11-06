@@ -1,3 +1,4 @@
+import { ManagedFinancialScreenPassReview } from "./ManagedFinancialScreenPassReview";
 import { ManagedFinancialScreenContinuation } from "./ManagedFinancialScreenContinuation";
 import {
   FinancialScreenCriteriaControls,
@@ -209,6 +210,12 @@ export function ManagedFinancialScreen({
       )}
       {workspace && recipesRouteActive && (
         <ManagedFinancialScreenContinuation
+          workspace={workspace}
+          routeActive={recipesRouteActive}
+        />
+      )}
+      {workspace && recipesRouteActive && (
+        <ManagedFinancialScreenPassReview
           workspace={workspace}
           routeActive={recipesRouteActive}
         />

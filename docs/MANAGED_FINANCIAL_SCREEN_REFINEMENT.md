@@ -60,13 +60,13 @@ at `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
 after its original source/parser checks and all 158 native cases passed. Its
 current scoped Preview frame was inspected; the Return frame exactly matches
 the previously inspected frame. CodeScene structural findings remain
-unsuppressed; scoped source review found no functional defect. This increment
-has no Android delivery, browser inspection or phone acceptance.
+unsuppressed; scoped source review found no functional defect. This increment is included in the delivered Android 1.77. Browser inspection and phone acceptance are not claimed.
 
 The subsequent [missing-read continuation](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md)
-remains unaccepted. PR 282 head `e6ed7a4` passed original source, parser and
-dependency checks, but its new native case failed a Research fixture comparison
-after the earlier missing-packet correction. Both failures remain recorded.
-The explicit post-continuation capture correction passes local checks; hosted
-acceptance for the next exact revision is pending. The accepted source baseline
-remains `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`.
+is now accepted at main `b6c852a42022edce10de48cd53a05fc4661958ac` after its own
+original source/parser checks and all 159 native cases passed. Android 1.77.0,
+code 78, includes selection, refinement and continuation. It was delivered locally
+on November 5 with the existing signer, four automated checks and copy/checksum
+readback. The earlier failed PR 282 fixture assertions remain recorded as history.
+Browser and physical phone acceptance are not claimed. The next
+[fresh-pass review](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md) is under local development.

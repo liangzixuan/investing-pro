@@ -723,8 +723,13 @@ jobs:
               "missingAnnualReadsRetainPacketsAndClocksThroughCancelContinueResearchBackAndSeparateSave",
           )
           required.add(screen_continuation_case)
-          if len(required) != 159:
-              raise SystemExit("Screen continuation must preserve all 158 prior native cases.")
+          screen_pass_review_case = (
+              "local.investment.personal.ManagedScreenPassReviewTest",
+              "freshAnnualPassKeepsPreviousAndCurrentEvidenceThroughResearchBackAndSeparateSave",
+          )
+          required.add(screen_pass_review_case)
+          if len(required) != 160:
+              raise SystemExit("Fresh Annual pass review must preserve all 159 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -804,6 +809,13 @@ jobs:
                           raise SystemExit("The screen continuation shard must retain both scoped frames.")
                   elif frames:
                       raise SystemExit("Screen continuation frames belong only to their executed shard.")
+              for filename in ("newScreenPassReviewPreview.png", "newScreenPassReviewReturn.png"):
+                  frames = list(root.rglob(filename))
+                  if screen_pass_review_case in executed:
+                      if len(frames) != 1 or frames[0].stat().st_size == 0:
+                          raise SystemExit("The fresh Annual pass review shard must retain both scoped frames.")
+                  elif frames:
+                      raise SystemExit("Fresh Annual pass review frames belong only to their executed shard.")
               portfolio_screen_frames = list(root.rglob("newPortfolioScreenSelectionPreview.png"))
               if portfolio_screen_case in executed:
                   if len(portfolio_screen_frames) != 1 or portfolio_screen_frames[0].stat().st_size == 0:

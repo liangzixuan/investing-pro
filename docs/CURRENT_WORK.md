@@ -5,30 +5,36 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: complete missing Annual reads
+## Current increment: review a fresh Annual pass
 
-Review all retained and missing rows, then explicitly run the finite missing-only
-request list. Preserve admitted packets, applied filters, source clocks and
-partial or historical outcomes. Cancel keeps completed work; Research/Back and
-personal Save remain separate. See the [workflow guide](MANAGED_FINANCIAL_SCREEN_CONTINUATION.md).
-Local UI, model and full-workspace checks cover the new flow.
-The original [PR 282](https://github.com/liangzixuan/investing-pro/pull/282)
-native run at `9e07524f7b07e2c7bb9ad72a577e6a56f622d9ff` failed because the
-fixture omitted a missing packet instead of serializing `null`. At corrected
-head `e6ed7a419d523d26d4cc7d136e40cf4fa5cad2f3`, original Ubuntu, Windows,
-parser and dependency checks passed. The new native case reached Research, then
-failed a packet comparison against a fixture baseline that this journey never
-captured. The original log confirms the correct Annual route and response origin,
-with two Annual reads and no rejected or unexpected requests. Both failed runs
-remain preserved.
+Preview one complete previous reading, then explicitly run a fresh full pass for
+the same ordered companies and applied filters. Inspect previous and current
+results, raw source packets, financial periods and separate evaluation clocks.
+Current Research/Back, shortlist and personal Save remain separate. See the
+[workflow guide](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md).
+Local affected tests, web types, lint, formatting, source boundaries, client
+bundles and Android-system Java compilation pass. Its 160-case native roster
+preserves all 159 prior case declarations. PR 283's original source/parser checks
+passed. Its new native case stopped while the fourth read correctly waited for
+the existing pacing interval; the other 159 cases passed. The test now observes
+the first fresh result before waiting for the complete pass, with both existing
+deadlines and the full final assertion retained. Hosted verification of this
+repair is pending.
 
-The local correction compares the complete Research packet with the explicit
-post-continuation capture and the expected original packet. Fifteen affected
-fixture, workspace and UI tests, web types, lint, formatting and the changed
-Android journey compilation pass. All 158 prior native cases remain unchanged.
-Hosted acceptance for the next exact revision and its full 159-case run is
-pending. CodeScene structural findings remain unsuppressed; this is not release
-or phone acceptance.
+## Delivered: complete missing Annual reads
+
+At PR 282 head `a930e93fe58fd4503e24639f8e355a326c28a401`, original
+source/parser checks and all 159 native cases passed. The prior 158 cases remained
+unchanged. The merged main revision
+`b6c852a42022edce10de48cd53a05fc4661958ac` passed its own original source/parser
+checks and all 159 native cases. Scoped Preview and Return frames were inspected.
+The earlier fixture serialization and uncaptured-baseline failures remain history.
+
+Android 1.77.0, code 78, was delivered locally on November 5 with the existing
+signer. All four automated checks and the copied APK checksum readback passed.
+This delivery includes Watchlist screen selection, local filter refinement and
+missing Annual reads. Browser and physical phone acceptance are not claimed.
+CodeScene structural findings remain unsuppressed.
 
 ## Source accepted: refine a loaded Annual screen
 
@@ -45,8 +51,7 @@ at `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
 after its original source/parser checks and all 158 native cases passed. Its
 current scoped Preview frame was inspected; the Return frame exactly matches
 the previously inspected frame. CodeScene structural findings remain
-unsuppressed; scoped source review found no functional defect. This increment
-has no Android delivery, browser inspection or phone acceptance.
+unsuppressed; scoped source review found no functional defect. This increment is included in Android 1.77. Browser inspection and phone acceptance are not claimed.
 
 ## Source accepted: Watchlist companies in the Annual screen
 
@@ -68,7 +73,7 @@ own original Windows check and all 158 native cases, then merged at
 `91f7c61f1576694bccbf1c6edcbb3bfdf4c4a2d1`. That main revision is accepted
 after its own original source/parser checks and all 158 native cases passed.
 The current scoped Preview frame was inspected; Return exactly matches the
-previously inspected frame. This selection workflow has no Android delivery. Earlier original
+previously inspected frame. This selection workflow is included in Android 1.77. Earlier original
 failures remain recorded. CodeScene findings remain unsuppressed; no new
 functional finding was identified. See the
 [workflow guide](MANAGED_WATCHLIST_SCREEN_SELECTION.md).

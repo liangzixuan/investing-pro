@@ -1,0 +1,36 @@
+.managed-screen-pass-review,
+.managed-screen-pass-review article,
+.managed-screen-pass-review details {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.managed-screen-pass-review {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--managed-border, #d7dce2);
+  border-radius: 0.75rem;
+}
+.managed-screen-pass-review article {
+  margin-block: 1rem;
+  padding-block: 0.5rem;
+  border-top: 1px solid var(--managed-border, #d7dce2);
+}
+.managed-screen-pass-review details {
+  overflow-x: auto;
+}
+.managed-screen-pass-review dd {
+  margin-inline-start: 0;
+}
+.managed-screen-pass-review dl > div {
+  margin-block: 0.5rem;
+}
+.managed-screen-pass-review button,
+.managed-screen-pass-review input,
+.managed-screen-pass-review select {
+  min-height: 44px;
+}
+.managed-screen-pass-review pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
