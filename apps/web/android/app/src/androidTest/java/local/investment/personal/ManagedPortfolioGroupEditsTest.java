@@ -95,8 +95,8 @@ public class ManagedPortfolioGroupEditsTest {
 
         stage = "isolated proposal and complete preview";
         proposeAndPreview(original);
-        click("#managed-portfolio-group-heading");
-        new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario, FollowupsReportFrameCapture.Frame.PORTFOLIO_GROUP_EDITS_PREVIEW)).retain();
+        frame(FollowupsReportFrameCapture.Frame.PORTFOLIO_GROUP_EDITS_PREVIEW,
+            GROUP + " .portfolio-group-comparison > .portfolio-group-pair");
 
         stage = "cancel leaves original unchanged";
         click("#managed-portfolio-group-cancel");
@@ -124,16 +124,16 @@ public class ManagedPortfolioGroupEditsTest {
 
         stage = "retire session and explicitly load saved ledger";
         click("#managed-signout-open");
-        click("#managed-signout-confirm");
-        await("sign-out retires the local draft", DRAFT + ".owner==='retired'&&" + DRAFT + ".ledger===null&&" + COUNTS + ".signOut===1");
+        // The acknowledged Save leaves no unconfirmed changes, so sign-out is direct.
+        await("clean sign-out retires the local draft without a confirmation", DRAFT + ".owner==='retired'&&" + DRAFT + ".ledger===null&&" + COUNTS + ".signOut===1&&document.querySelector('#managed-signout-confirm')===null");
         click("#fixture-portfolio-fresh-session");
         await("fresh session has not loaded Portfolio", COUNTS + ".session===2&&" + COUNTS + ".load===1&&" + DRAFT + ".ledger===null&&" + DRAFT + ".owner==='active'");
         button(".managed-navigation", "Portfolio");
         click("#managed-portfolio-load");
         await("fresh explicit Load restores exact ledger once", COUNTS + ".load===2&&" + COUNTS + ".save===1&&" + COUNTS + ".commits===1&&" + COUNTS + ".replays===0&&" + COUNTS + ".token===0&&" + DRAFT + ".baseVersion===1&&!" + DRAFT + ".dirty&&JSON.stringify(" + DRAFT + ".ledger)===" + q(applied) + "&&" + projection("1122.00", 0, "97.00"));
         await("all financial sources and other personal saves remain untouched", SHARED + ".save===0&&" + SHARED + ".eod===0&&" + SHARED + ".annual===0&&" + SHARED + ".filings===0&&" + SHARED + ".marketsEod===0&&" + SHARED + ".calendar===0&&" + SHARED + ".fed===0&&JSON.parse(document.querySelector('#fixture-followups-diagnostics').textContent).save===0");
-        click(".managed-portfolio [aria-label='Current authored holdings'] > h3");
-        new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario, FollowupsReportFrameCapture.Frame.PORTFOLIO_GROUP_EDITS_RETURN)).retain();
+        frame(FollowupsReportFrameCapture.Frame.PORTFOLIO_GROUP_EDITS_RETURN,
+            ".managed-portfolio [aria-label='Current authored holdings']");
     }
 
     private void proposeAndPreview(String original) throws Exception {
@@ -206,6 +206,11 @@ public class ManagedPortfolioGroupEditsTest {
     private void click(String selector) throws Exception {
         await("enabled target for native touch", "(()=>{const e=document.querySelector(" + q(selector) + ");return !!e&&!e.disabled&&!e.closest('[hidden],[inert]');})()");
         touch.input(new ReportRevisitTouch.ControlledField(selector, "grouped Portfolio action"));
+    }
+    private void frame(FollowupsReportFrameCapture.Frame frame, String selector) throws Exception {
+        page.read(new Script("document.querySelector(" + q(selector) + ").scrollIntoView({block:'start',behavior:'instant'});'scrolled'"));
+        page.await(new Check("committed Portfolio amounts fit the document", new Script("document.querySelector(" + q(selector) + ")?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&document.documentElement.scrollWidth<=document.documentElement.clientWidth+1")).nativeReady());
+        new FollowupsReportFrameCapture(new FollowupsReportFrameCapture.Request(scenario, frame)).retain();
     }
     private void await(String description, String expression) throws Exception { page.await(new Check(description, new Script(expression))); }
     private static String q(String value) { return JSONObject.quote(value); }

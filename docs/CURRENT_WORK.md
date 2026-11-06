@@ -18,7 +18,11 @@ assets exceeded the existing 4 MiB copy limit. A shared ECharts entry now includ
 the chart types, components and renderers used by the product. It reduces the
 fixture by about 522 kB while preserving chart options and legal notices. A build
 check rejects oversized fixtures before emulator startup. Native size, file and
-depth limits remain unchanged; the repaired native journey still needs to pass.
+depth limits remain unchanged. With that repair, all 166 prior native cases
+passed. The new journey reached its separate Save, then incorrectly waited for
+a sign-out confirmation after all changes were saved. The test now follows the
+existing direct clean sign-out and still requires fresh-session Load. Its final
+native acceptance remains pending.
 
 ## Delivered: complete Annual-pass comparison
 
