@@ -34,7 +34,7 @@ vi.mock("react", async (importOriginal) => ({
   useEffect: (next: () => (() => void) | void) => hooks.useEffect(next),
   useRef: hooks.useRef,
 }));
-vi.mock("echarts", () => ({ init: chart.init }));
+vi.mock("../../lib/echarts", () => ({ init: chart.init }));
 
 import {
   summarizeValuationHistory,

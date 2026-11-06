@@ -1,7 +1,7 @@
 "use client";
 
 import type { PersonalPricePerformanceComparisonAvailableResult } from "@research-cockpit/personal-market-analytics";
-import * as echarts from "echarts";
+import * as echarts from "../../lib/echarts";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 const PAGE_SIZE = 25;

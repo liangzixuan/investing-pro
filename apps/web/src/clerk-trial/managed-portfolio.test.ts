@@ -665,6 +665,7 @@ describe("managed portfolio model", () => {
       expect(f.model.coordinator.getSnapshot().draft).toBeNull();
       expect(f.model.getSnapshot()).toEqual({
         catalogSnapshotSha256: null,
+        groupedEditing: false,
         pendingEditor: false,
         reviewing: false,
         review: null,

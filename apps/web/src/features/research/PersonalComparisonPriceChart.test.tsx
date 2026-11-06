@@ -107,7 +107,7 @@ vi.mock("react", async (original) => ({
   useEffect: (run: () => (() => void) | void, deps: readonly unknown[]) =>
     hooks.useEffect(run, deps),
 }));
-vi.mock("echarts", () => ({ init: chart.init }));
+vi.mock("../../lib/echarts", () => ({ init: chart.init }));
 
 import { PersonalComparisonPerformance } from "./PersonalComparisonPerformance";
 import {

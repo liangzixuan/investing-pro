@@ -5,7 +5,34 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: retain failed emulator identity evidence
+## Current increment: review a group of Portfolio edits
+
+The [grouped-edit candidate](MANAGED_PORTFOLIO_GROUP_EDITS.md) keeps several
+authored ledger changes in a separate working copy. It adds complete before and
+after review, one explicit Apply, and Cancel with the original draft unchanged.
+Existing Portfolio Review, Save and fresh Load remain separate. Source validation
+is in progress; no new native or release acceptance is claimed.
+
+The first native run compiled but stopped during fixture setup: the bundled
+assets exceeded the existing 4 MiB copy limit. A shared ECharts entry now includes
+the chart types, components and renderers used by the product. It reduces the
+fixture by about 522 kB while preserving chart options and legal notices. A build
+check rejects oversized fixtures before emulator startup. Native size, file and
+depth limits remain unchanged. With that repair, all 166 prior native cases
+passed. The new journey reached its separate Save, then incorrectly waited for
+a sign-out confirmation after all changes were saved. The test now follows the
+existing direct clean sign-out and still requires fresh-session Load. Its final
+native acceptance remains pending.
+
+## Delivered: complete Annual-pass comparison
+
+Main `bc7c37f058b2ea04b2123e06a280c0751cfe34e1` passed its original source,
+parser and 166-case native checks. Android 1.78.0, code 79, was built once with
+the existing signer and delivered locally on November 6. All four automated APK
+checks and local copy/checksum readback passed. Browser and physical-phone
+acceptance are not claimed. No API or website deployment was performed.
+
+## Historical emulator identity failure
 
 The portable Annual-pass report passed the original PR source/parser checks and
 all 166 native cases. [PR 284](https://github.com/liangzixuan/investing-pro/pull/284)
@@ -20,7 +47,8 @@ The report provides complete previous/current Annual-pass evidence through
 explicit preparation, preview and private HTML Save/Cancel. Watchlist Save remains
 separate. Local checks and the original PR native workflow passed; both scoped
 report frames were inspected. CodeScene structural findings remain unsuppressed.
-Android delivery and physical-phone acceptance remain pending. See the
+The completed source and Android delivery above supersede this earlier pending
+state; physical-phone acceptance remains separate. See the
 [report guide](MANAGED_ANNUAL_PASS_REPORT.md).
 
 ## Source accepted: review a fresh Annual pass

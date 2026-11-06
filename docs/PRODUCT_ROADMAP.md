@@ -27,7 +27,16 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: keep the complete Annual-pass comparison
+## Current priority: review a group of Portfolio edits
+
+Extend the M4 Portfolio workflow with a separate working copy for several ledger
+changes, complete before/after review, and explicit atomic Apply or Cancel.
+Preserve the original draft until Apply, then continue through existing Review,
+Save and fresh Load. Reuse registered identities, exact arithmetic and current
+validation; add no market-data coverage or API deployment. See the
+[grouped-edit guide](MANAGED_PORTFOLIO_GROUP_EDITS.md).
+
+## Delivered: keep the complete Annual-pass comparison
 
 Close the M2/M4 review workflow with an explicit private HTML report. Preserve
 every previous/current result, packet, criterion and attempt clock in a portable
@@ -39,9 +48,11 @@ The preceding [fresh-pass review](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md) is
 source accepted at main `3c7ccca0e86eba49b907f268294873de78c9a116`, with original
 source/parser checks and all 160 native cases passing. Its earlier paced-wait
 test failure remains history. The report passed its original PR source/parser checks and all 166 native cases.
-Merged-main native acceptance remains open after one shard stopped before testing
-on an invalid emulator identity response. Retain that response diagnostically
-without weakening identity checks, then complete verified Android delivery.
+After the earlier invalid emulator identity response, the diagnostics repair
+preserved strict identity checks. Main `bc7c37f058b2ea04b2123e06a280c0751cfe34e1`
+passed its original source/parser checks and all 166 native cases. Android 1.78
+was delivered locally on November 6 with all four automated APK checks passing.
+Physical phone acceptance remains separate.
 
 At PR 282 head `a930e93fe58fd4503e24639f8e355a326c28a401`, original
 source/parser checks and all 159 native cases passed. The prior 158 cases remained

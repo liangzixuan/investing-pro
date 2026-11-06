@@ -11,6 +11,17 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Grouped Portfolio edits
+
+Place **Start group of edits** beside the existing ledger editor. During a group,
+show one editor for its working copy and keep the original draft locked. Keep
+**Review all changes**, **Apply all changes**, **Continue editing group** and
+**Cancel group** explicit. Show before and after cash and all registered holdings
+with complete identities, known or unknown basis and authored order. Use wrapping
+columns, existing 44px controls and passive full-ledger disclosures. Move focus
+only after an explicit committed action that still owns focus. Portfolio Save
+remains separate. See the [guide](docs/MANAGED_PORTFOLIO_GROUP_EDITS.md).
+
 ## Portable Annual-pass comparison
 
 Place **Prepare Annual-pass report** inside the settled comparison, after the

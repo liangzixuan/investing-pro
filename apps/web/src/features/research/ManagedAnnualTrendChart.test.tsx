@@ -64,7 +64,7 @@ vi.mock("react", async (original) => ({
     };
   },
 }));
-vi.mock("echarts", () => ({ init: chart.init }));
+vi.mock("../../lib/echarts", () => ({ init: chart.init }));
 import { ManagedAnnualTrendChart } from "./ManagedAnnualTrendChart";
 
 let projection: ReadyAnnualTrend;
