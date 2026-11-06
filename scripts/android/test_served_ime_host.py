@@ -552,6 +552,101 @@ class AdbTests(unittest.TestCase):
                 self.assertFalse(failure.prelease_completion_unconfirmed)
 
 
+class AvdResponseTests(unittest.TestCase):
+    def identity_response(self, stdout, stderr=b""):
+        adb = Adb(Path("/installed/sdk"))
+        argv = [str(adb.executable), "-s", IDENTITY["serial"], "emu", "avd", "name"]
+        result = subprocess.CompletedProcess(argv, 0, stdout, stderr)
+        with patch.object(adb, "shell", side_effect=["1", "36", "10", IDENTITY["bootId"]]), \
+             patch("run_served_ime.subprocess.run", return_value=result) as run:
+            try:
+                return adb.identity(IDENTITY["serial"])
+            finally:
+                run.assert_called_once_with(argv, input=None, capture_output=True, timeout=8)
+
+    def failure(self, stdout, stderr=b""):
+        with self.assertRaises(Exception) as caught:
+            self.identity_response(stdout, stderr)
+        failure = caught.exception
+        self.assertIsInstance(failure, ValueError)
+        self.assertNotIsInstance(failure, AdbFailure)
+        self.assertTrue(str(failure).startswith("Invalid emulator AVD response: "))
+        return failure, json.loads(str(failure).split(": ", 1)[1])
+
+    def test_valid_avd_response_preserves_exact_identity_and_command(self):
+        for ending in (b"\n", b"\r\n"):
+            with self.subTest(ending=ending):
+                self.assertEqual(self.identity_response(b"observed-gmd-name" + ending + b"OK" + ending), IDENTITY)
+
+    def test_malformed_successful_responses_keep_exact_public_diagnostics(self):
+        for stdout in (b"", b"observed-gmd-name\n", b"observed-gmd-name\nKO\n",
+                       b"observed-gmd-name\nOK\nextra\n", b"observed-gmd-name\n OK\n"):
+            with self.subTest(stdout=stdout):
+                _, diagnostic = self.failure(stdout, b"console detail\n")
+                self.assertEqual(diagnostic, {
+                    "argv": [str(Path("/installed/sdk/platform-tools/adb")), "-s", IDENTITY["serial"], "emu", "avd", "name"],
+                    "exitCode": 0, "stdoutBytes": len(stdout), "stderrBytes": 15,
+                    "stdout": stdout.decode(), "stderr": "console detail\n"})
+
+    def test_non_utf8_response_is_a_hard_failure_with_safe_diagnostics(self):
+        _, diagnostic = self.failure(b"bad\xff\nOK\n", b"\xfe")
+        self.assertEqual(diagnostic["stdout"], "bad\ufffd\nOK\n")
+        self.assertEqual(diagnostic["stderr"], "\ufffd")
+        self.assertEqual((diagnostic["stdoutBytes"], diagnostic["stderrBytes"]), (8, 1))
+
+    def test_diagnostics_bound_characters_but_keep_original_byte_lengths(self):
+        stdout, stderr = ("界" * 1200).encode(), ("é" * 1100).encode()
+        _, diagnostic = self.failure(stdout, stderr)
+        self.assertEqual(diagnostic["stdout"], "界" * 1000)
+        self.assertEqual(diagnostic["stderr"], "é" * 1000)
+        self.assertEqual((diagnostic["stdoutBytes"], diagnostic["stderrBytes"]), (3600, 2200))
+
+    def test_prelease_runtime_retains_diagnostic_and_never_writes_lease(self):
+        failure, diagnostic = self.failure(b"unexpected console output")
+        with tempfile.TemporaryDirectory() as directory:
+            sdk = Path(directory) / "sdk"
+            (sdk / "platform-tools").mkdir(parents=True)
+            (sdk / "platform-tools/adb").touch()
+            args = SimpleNamespace(sdk=str(sdk), source=SOURCE, shard="0", cleanup=False,
+                                   state=str(Path(directory) / "state.json"))
+            adb, child = FakeAdb(), MagicMock()
+            adb.devices_value = {}
+            child.pid, child.returncode = 123, None
+            def poll():
+                adb.devices_value = {IDENTITY["serial"]: "device"}
+                return None
+            child.poll.side_effect = poll
+            child.wait.side_effect = lambda **_kwargs: setattr(child, "returncode", 143)
+            environment = {"GITHUB_ACTIONS": "true", "GITHUB_RUN_ID": "100", "GITHUB_RUN_ATTEMPT": "2"}
+            with patch("run_served_ime.sys.platform", "linux"), patch.dict("os.environ", environment), \
+                 patch("run_served_ime.Adb", return_value=adb), \
+                 patch.object(adb, "identity", side_effect=failure) as identity, \
+                 patch.object(adb, "write_lease") as write_lease, \
+                 patch("run_served_ime.emulator_processes", return_value=[PROCESS.copy()]), \
+                 patch("run_served_ime.subprocess.Popen", return_value=child) as popen, \
+                 patch("run_served_ime.os.killpg", create=True) as kill, \
+                 patch("run_served_ime.signal.signal"), patch("run_served_ime.time.sleep"):
+                self.assertEqual(runtime(args), 143)
+                state = json.loads(Path(args.state).read_text())
+                identity.assert_called_once()
+                write_lease.assert_not_called()
+                popen.assert_called_once()
+                kill.assert_called_once_with(123, runner.signal.SIGTERM)
+            self.assertEqual(json.loads(state["hostError"].split(": ", 1)[1]), diagnostic)
+            self.assertEqual(state["cleanup"], "not-leased")
+            self.assertEqual(state["receivedSignals"], [runner.signal.SIGTERM])
+            self.assertNotIn("lease", state)
+            self.assertEqual(adb.commands, [])
+
+    def test_avd_validation_failure_is_not_postlease_teardown_transport(self):
+        failure, _ = self.failure(b"\n")
+        lease = lease_for(IDENTITY, NONCE, SOURCE, SETTINGS)
+        with tempfile.TemporaryDirectory() as directory:
+            state = {"lease": lease, "lastRecovery": recovery(lease, "restored"), "emulator": PROCESS.copy()}
+            supervisor = Supervisor(FakeAdb(), state, Path(directory) / "state.json", lambda: [])
+            self.assertFalse(supervisor.teardown_read(failure))
+
+
 class ProcessTests(unittest.TestCase):
     def test_actual_socket_inode_joins_only_listeners_owned_by_this_pid(self):
         with tempfile.TemporaryDirectory() as directory:

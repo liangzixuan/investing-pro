@@ -38,8 +38,10 @@ are needed. See the [report guide](MANAGED_ANNUAL_PASS_REPORT.md).
 The preceding [fresh-pass review](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md) is
 source accepted at main `3c7ccca0e86eba49b907f268294873de78c9a116`, with original
 source/parser checks and all 160 native cases passing. Its earlier paced-wait
-test failure remains history. The report is locally implemented and verified;
-hosted verification and delivery remain pending.
+test failure remains history. The report passed its original PR source/parser checks and all 166 native cases.
+Merged-main native acceptance remains open after one shard stopped before testing
+on an invalid emulator identity response. Retain that response diagnostically
+without weakening identity checks, then complete verified Android delivery.
 
 At PR 282 head `a930e93fe58fd4503e24639f8e355a326c28a401`, original
 source/parser checks and all 159 native cases passed. The prior 158 cases remained
