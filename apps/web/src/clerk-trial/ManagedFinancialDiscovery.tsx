@@ -1,3 +1,4 @@
+import type { ScreenPassReviewReportDeliveryAdapter } from "./screen-pass-review-report-ports";
 import { ManagedScreenResearchReport } from "./ManagedScreenResearchReport";
 import type { ScreenResearchReportDeliveryAdapter } from "./screen-research-report-ports";
 import {
@@ -21,6 +22,7 @@ interface Props extends ScreenResearchOpenProps {
   readonly workspace: ManagedWorkspace;
   readonly recipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   readonly comparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
+  readonly passReportDelivery?: ScreenPassReviewReportDeliveryAdapter;
   readonly researchReportDelivery?: ScreenResearchReportDeliveryAdapter;
   readonly recipesRouteActive: () => boolean;
   readonly navigationPending: boolean;
@@ -52,6 +54,9 @@ export function ManagedFinancialDiscovery(props: Props) {
         model={props.workspace.financialScreen}
         onOpenReport={props.onOpenReport}
         recipesRouteActive={props.recipesRouteActive}
+        {...(props.passReportDelivery
+          ? { passReportDelivery: props.passReportDelivery }
+          : {})}
         {...(props.comparisonReportDelivery
           ? { comparisonReportDelivery: props.comparisonReportDelivery }
           : {})}
@@ -97,6 +102,8 @@ interface DiscoveryOptions {
     ManagedFinancialScreenRecipeDeliveryAdapter | undefined;
   readonly researchReportDelivery?:
     ScreenResearchReportDeliveryAdapter | undefined;
+  readonly passReportDelivery?:
+    ScreenPassReviewReportDeliveryAdapter | undefined;
   readonly comparisonReportDelivery:
     ScreenComparisonReportDeliveryAdapter | undefined;
 }
@@ -109,6 +116,7 @@ export function useManagedFinancialDiscovery({
   onReviewFollowup,
   recipeDelivery,
   comparisonReportDelivery,
+  passReportDelivery,
   researchReportDelivery,
 }: DiscoveryOptions): Props {
   const recipesRouteActive = useManagedScreenRecipeRoute(workspace, navigation);
@@ -117,6 +125,7 @@ export function useManagedFinancialDiscovery({
     navigationPending: navigation?.pending ?? false,
     ...(recipeDelivery ? { recipeDelivery } : {}),
     ...(comparisonReportDelivery ? { comparisonReportDelivery } : {}),
+    ...(passReportDelivery ? { passReportDelivery } : {}),
     ...(researchReportDelivery ? { researchReportDelivery } : {}),
     recipesRouteActive,
     onReviewWatchlist,

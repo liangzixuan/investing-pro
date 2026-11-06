@@ -1,3 +1,5 @@
+import type { ScreenPassReviewReportDeliveryAdapter } from "./screen-pass-review-report-ports";
+import { ManagedScreenPassReviewReport } from "./ManagedScreenPassReviewReport";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ManagedWorkspace } from "./managed-workspace";
 import type { FinancialScreenPassReviewController } from "./financial-screen-pass-review-controller";
@@ -8,9 +10,11 @@ const id = "managed-screen-pass-review";
 export function ManagedFinancialScreenPassReview({
   workspace,
   routeActive,
+  delivery,
 }: {
   workspace: ManagedWorkspace;
   routeActive: () => boolean;
+  delivery?: ScreenPassReviewReportDeliveryAdapter | undefined;
 }) {
   const [owner, setOwner] = useState<{
     workspace: ManagedWorkspace;
@@ -33,6 +37,7 @@ export function ManagedFinancialScreenPassReview({
       workspace={workspace}
       controller={owner.controller}
       routeActive={routeActive}
+      delivery={delivery}
     />
   ) : null;
 }
@@ -40,10 +45,12 @@ export function FinancialScreenPassReviewControls({
   workspace,
   controller,
   routeActive,
+  delivery,
 }: {
   workspace: ManagedWorkspace;
   controller: FinancialScreenPassReviewController;
   routeActive: () => boolean;
+  delivery?: ScreenPassReviewReportDeliveryAdapter | undefined;
 }) {
   const screen = workspace.financialScreen;
   const source = useSyncExternalStore(
@@ -126,6 +133,13 @@ export function FinancialScreenPassReviewControls({
       >
         Preview fresh Annual pass
       </button>
+      <ManagedScreenPassReviewReport
+        workspace={workspace}
+        pass={controller}
+        active={available}
+        routeActive={routeActive}
+        delivery={delivery}
+      />
       <p role="status">{state.message}</p>
       {state.plan && (
         <>

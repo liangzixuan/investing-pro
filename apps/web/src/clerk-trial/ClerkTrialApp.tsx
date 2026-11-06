@@ -1,3 +1,4 @@
+import { browserScreenPassReviewReportAdapter } from "./screen-pass-review-report-delivery";
 import { browserPortfolioComparisonReportAdapter } from "./portfolio-comparison-report-delivery";
 import { browserResearchDraftSetFileAdapter } from "./research-draft-set-file-delivery";
 import { browserValuationCollectionDraftFileAdapter } from "./valuation-collection-draft-file-delivery";
@@ -127,6 +128,8 @@ function ClerkSession({
               followupsDraftFileDelivery: browserFollowupsDraftFileAdapter,
               followupsReviewReportDelivery:
                 browserFollowupsReviewReportAdapter,
+              screenPassReviewReportDelivery:
+                browserScreenPassReviewReportAdapter,
               dueCheckEvidenceReportDelivery:
                 browserDueCheckEvidenceReportAdapter,
               valuationDraftFileDelivery: browserValuationDraftFileAdapter,

@@ -1,5 +1,6 @@
 import {
   nativeReport,
+  nativeScreenPassReviewReport,
   nativeDueCheckEvidenceReport,
   nativeWatchlistDailyReport,
   nativeExport,
@@ -11,6 +12,11 @@ import {
 } from "./native-fixture-environment";
 export function nativeFixtureRouterPorts() {
   return {
+    ...(nativeScreenPassReviewReport
+      ? {
+          screenPassReviewReportDelivery: nativeScreenPassReviewReport.delivery,
+        }
+      : {}),
     ...(nativeDueCheckEvidenceReport
       ? {
           dueCheckEvidenceReportDelivery: nativeDueCheckEvidenceReport.delivery,

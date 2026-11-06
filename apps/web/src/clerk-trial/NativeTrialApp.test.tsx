@@ -1,3 +1,4 @@
+import type { ScreenPassReviewReportDeliveryAdapter } from "./screen-pass-review-report-ports";
 import type { DueCheckEvidenceReportDeliveryAdapter } from "./due-check-evidence-report-ports";
 import type { WatchlistDailyReportDeliveryAdapter } from "./watchlist-daily-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
@@ -189,6 +190,11 @@ async function mount(
     write: vi.fn(),
     cancel: vi.fn(),
   };
+  const screenPassReviewReportPlugin = {
+    choose: vi.fn(),
+    write: vi.fn(),
+    cancel: vi.fn(),
+  };
   const dueCheckEvidenceReportPlugin = {
     choose: vi.fn(),
     write: vi.fn(),
@@ -206,6 +212,7 @@ async function mount(
     ["InvestmentFollowupsReviewReport", followupsReviewReportPlugin],
     ["InvestmentFollowupsDraftFile", followupsDraftFilePlugin],
     ["InvestmentDueCheckEvidenceReport", dueCheckEvidenceReportPlugin],
+    ["InvestmentScreenPassReviewReport", screenPassReviewReportPlugin],
     ["InvestmentResearchDraftSetFile", researchDraftSetFilePlugin],
     [
       "InvestmentValuationCollectionDraftFile",
@@ -252,6 +259,7 @@ async function mount(
     portfolioComparisonReportPlugin,
     followupsReviewReportPlugin,
     dueCheckEvidenceReportPlugin,
+    screenPassReviewReportPlugin,
     followupsDraftFilePlugin,
     researchDraftSetFilePlugin,
     valuationCollectionDraftFilePlugin,
@@ -276,6 +284,7 @@ function findScreen(node: ReactNode):
       portfolioComparisonReportDelivery?: PortfolioComparisonReportDeliveryAdapter;
       followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
       dueCheckEvidenceReportDelivery?: DueCheckEvidenceReportDeliveryAdapter;
+      screenPassReviewReportDelivery?: ScreenPassReviewReportDeliveryAdapter;
       followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
       researchDraftSetFileDelivery?: ManagedResearchDraftSetFileDeliveryAdapter;
       valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
@@ -308,6 +317,7 @@ function findScreen(node: ReactNode):
         portfolioComparisonReportDelivery?: PortfolioComparisonReportDeliveryAdapter;
         followupsReviewReportDelivery?: FollowupsReviewReportDeliveryAdapter;
         dueCheckEvidenceReportDelivery?: DueCheckEvidenceReportDeliveryAdapter;
+        screenPassReviewReportDelivery?: ScreenPassReviewReportDeliveryAdapter;
         followupsDraftFileDelivery?: ManagedFollowupsDraftFileDeliveryAdapter;
         researchDraftSetFileDelivery?: ManagedResearchDraftSetFileDeliveryAdapter;
         valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
@@ -370,6 +380,7 @@ describe("native shared workspace composition", () => {
         portfolioComparisonReportPlugin,
         followupsReviewReportPlugin,
         dueCheckEvidenceReportPlugin,
+        screenPassReviewReportPlugin,
         followupsDraftFilePlugin,
         researchDraftSetFilePlugin,
         valuationCollectionDraftFilePlugin,
@@ -401,6 +412,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentFollowupsReviewReport"],
               ["InvestmentFollowupsDraftFile"],
               ["InvestmentDueCheckEvidenceReport"],
+              ["InvestmentScreenPassReviewReport"],
               ["InvestmentResearchDraftSetFile"],
               ["InvestmentValuationCollectionDraftFile"],
               ["InvestmentValuationDraftFile"],
@@ -475,6 +487,15 @@ describe("native shared workspace composition", () => {
       );
       for (const method of Object.values(dueCheckEvidenceReportPlugin))
         expect(method).not.toHaveBeenCalled();
+      expect(typeof screen?.props.screenPassReviewReportDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.screenPassReviewReportDelivery).toBe(
+        screen?.props.screenPassReviewReportDelivery,
+      );
+      for (const method of Object.values(screenPassReviewReportPlugin))
+        expect(method).not.toHaveBeenCalled();
+
       expect(typeof screen?.props.followupsDraftFileDelivery?.deliver).toBe(
         config.environment === "production" ? "function" : "undefined",
       );

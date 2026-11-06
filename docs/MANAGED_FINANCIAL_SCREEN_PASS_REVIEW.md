@@ -67,7 +67,10 @@ Android-system Java compilation pass. The original PR native run passed the prio
 was still waiting. A real workspace regression confirms that the residual
 cooldown plus the next pacing interval can exceed one 30-second wait. The test
 now checks the exact first fresh result and pending second listing before its
-unchanged full-pass assertion, using the existing bounded waits. Hosted
-verification of that repair is pending; no browser or phone verification is
-claimed. The delivered baseline is Android 1.77.0; see
-[current work](CURRENT_WORK.md).
+unchanged full-pass assertion, using the existing bounded waits. The repaired PR and merged main
+`3c7ccca0e86eba49b907f268294873de78c9a116` passed their own original source/parser
+checks and all 160 native cases. Scoped Preview and Return evidence was inspected.
+The earlier failed attempt remains historical. No browser or phone verification
+is claimed. The delivered baseline is Android 1.77.0; this fresh-pass increment
+is source accepted. A [portable comparison report](MANAGED_ANNUAL_PASS_REPORT.md)
+is the current increment. See [current work](CURRENT_WORK.md).

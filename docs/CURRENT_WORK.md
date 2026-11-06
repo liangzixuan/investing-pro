@@ -1,25 +1,33 @@
 # Current work
 
-Updated November 5, 2026. This is the current capability and delivery record.
+Updated November 6, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: review a fresh Annual pass
+## Current increment: portable Annual-pass comparison report
 
-Preview one complete previous reading, then explicitly run a fresh full pass for
-the same ordered companies and applied filters. Inspect previous and current
-results, raw source packets, financial periods and separate evaluation clocks.
-Current Research/Back, shortlist and personal Save remain separate. See the
-[workflow guide](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md).
-Local affected tests, web types, lint, formatting, source boundaries, client
-bundles and Android-system Java compilation pass. Its 160-case native roster
-preserves all 159 prior case declarations. PR 283's original source/parser checks
-passed. Its new native case stopped while the fourth read correctly waited for
-the existing pacing interval; the other 159 cases passed. The test now observes
-the first fresh result before waiting for the complete pass, with both existing
-deadlines and the full final assertion retained. Hosted verification of this
-repair is pending.
+Prepare and inspect the complete previous/current Annual-pass comparison, then
+save a private HTML document. Preserve full packets, criteria, results and all
+source/request/evaluation clocks. Document Save/Cancel stays separate from
+Watchlist Save. Focused local tests, web types, lint, formatting, source boundaries,
+fixture checks, client bundles and Android-system source compilation pass.
+The 166-case native roster preserves all 160 previous declarations. Hosted checks
+and APK delivery are pending. See the
+[report guide](MANAGED_ANNUAL_PASS_REPORT.md).
+
+## Source accepted: review a fresh Annual pass
+
+[PR 283](https://github.com/liangzixuan/investing-pro/pull/283) and merged main
+`3c7ccca0e86eba49b907f268294873de78c9a116` passed their original source/parser
+checks and all 160 native cases. All 159 previous declarations were retained.
+The original failed attempt remains history: its new case waited across two
+correct source pacing intervals in one observation window. The repair observes
+the first fresh result, then the unchanged complete-pass assertion with the
+existing bounded waits. Scoped Preview and Return evidence was inspected.
+CodeScene structural findings remain unsuppressed; source review found no
+remaining functional defect. This source increment is not yet in the delivered
+Android 1.77 release. See the [workflow guide](MANAGED_FINANCIAL_SCREEN_PASS_REVIEW.md).
 
 ## Delivered: complete missing Annual reads
 

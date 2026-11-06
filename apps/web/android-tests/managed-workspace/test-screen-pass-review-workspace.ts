@@ -4,8 +4,10 @@ import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { prepareWatchlistScreenSelection } from "../../src/clerk-trial/managed-watchlist-screen-selection";
 import { portfolioScreenIds } from "./portfolio-screen-selection-fixture-data";
 import { watchlistScreenAuthoredNote } from "./watchlist-screen-selection-fixture";
-export async function screenPassReviewWorkspaceFixture() {
-  const fixture = await createFixture("screen-pass-review"),
+export async function screenPassReviewWorkspaceFixture(
+  scenario: "screen-pass-review" | "screen-pass-report" = "screen-pass-review",
+) {
+  const fixture = await createFixture(scenario),
     meta = fixture.watchlistScreenSelection!;
   const w = new ManagedWorkspace(fixture.api, fixture.session, undefined, {
     researchCoverage: fixture.researchCoverage,

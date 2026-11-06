@@ -1,3 +1,4 @@
+import { createNativeScreenPassReviewReportFixture } from "./native-screen-pass-review-report-fixture";
 import { createNativeDueCheckEvidenceReportFixture } from "./native-due-check-evidence-report-fixture";
 import { createNativeWatchlistDailyReportFixture } from "./native-watchlist-daily-report-fixture";
 import { createNativePortfolioComparisonReportFixture } from "./native-portfolio-comparison-report-fixture";
@@ -62,6 +63,7 @@ const allowedScenarios = [
   "report-comparison-check",
   "watchlist-screen-selection",
   "screen-refinement",
+  "screen-pass-report",
   "screen-pass-review",
   "screen-continuation",
   "portfolio-screen-selection",
@@ -198,4 +200,9 @@ export const nativeWatchlistDailyReport =
 export const nativeDueCheckEvidenceReport =
   scenario === "due-check-evidence-report"
     ? createNativeDueCheckEvidenceReportFixture()
+    : null;
+
+export const nativeScreenPassReviewReport =
+  scenario === "screen-pass-report"
+    ? createNativeScreenPassReviewReportFixture()
     : null;

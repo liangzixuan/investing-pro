@@ -1,3 +1,4 @@
+import type { ScreenPassReviewReportDeliveryAdapter } from "./screen-pass-review-report-ports";
 import { ManagedScreenResearchCapture } from "./ManagedScreenResearchReview";
 import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
@@ -113,6 +114,7 @@ interface ManagedFileDeliveries {
   valuationCollectionDraftFileDelivery?: ManagedValuationCollectionDraftFileDeliveryAdapter;
   financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
   screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
+  screenPassReviewReportDelivery?: ScreenPassReviewReportDeliveryAdapter;
   screenResearchReportDelivery?: ScreenResearchReportDeliveryAdapter;
   watchlistDailyReportDelivery?: WatchlistDailyReportDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
@@ -269,6 +271,7 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
     researchDraftSetFileDelivery: initial.researchDraftSetFileDelivery,
     financialScreenRecipeDelivery: initial.financialScreenRecipeDelivery,
     screenComparisonReportDelivery: initial.screenComparisonReportDelivery,
+    screenPassReviewReportDelivery: initial.screenPassReviewReportDelivery,
     screenResearchReportDelivery: initial.screenResearchReportDelivery,
     watchlistDailyReportDelivery: initial.watchlistDailyReportDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
@@ -510,6 +513,7 @@ export function ManagedWorkspaceScreen({
   researchDraftSetFileDelivery,
   financialScreenRecipeDelivery,
   screenComparisonReportDelivery,
+  screenPassReviewReportDelivery,
   screenResearchReportDelivery,
   watchlistDailyReportDelivery,
   reportDelivery,
@@ -869,6 +873,7 @@ export function ManagedWorkspaceScreen({
     onReviewFollowup: calendarFollowupNavigation.review,
     recipeDelivery: financialScreenRecipeDelivery,
     comparisonReportDelivery: screenComparisonReportDelivery,
+    passReportDelivery: screenPassReviewReportDelivery,
     researchReportDelivery: screenResearchReportDelivery,
   });
   const busy = saved.phase !== "idle";
