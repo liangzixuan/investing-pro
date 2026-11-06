@@ -1,7 +1,7 @@
 "use client";
 
 import type { HistoricalPointDto } from "@research-cockpit/contracts";
-import * as echarts from "echarts";
+import * as echarts from "../../lib/echarts";
 import { useEffect, useRef } from "react";
 
 import type { EvidenceSelection } from "./evidence-selection";

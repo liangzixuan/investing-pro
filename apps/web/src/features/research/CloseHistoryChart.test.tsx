@@ -47,7 +47,7 @@ vi.mock("react", async (original) => ({
   },
   useRef: () => ({ current: hooks.element }),
 }));
-vi.mock("echarts", () => ({ init: chart.init }));
+vi.mock("../../lib/echarts", () => ({ init: chart.init }));
 beforeEach(() => {
   chart.init.mockReturnValue(chart);
   dom.elements = [];

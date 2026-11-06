@@ -13,6 +13,13 @@ after review, one explicit Apply, and Cancel with the original draft unchanged.
 Existing Portfolio Review, Save and fresh Load remain separate. Source validation
 is in progress; no new native or release acceptance is claimed.
 
+The first native run compiled but stopped during fixture setup: the bundled
+assets exceeded the existing 4 MiB copy limit. A shared ECharts entry now includes
+the chart types, components and renderers used by the product. It reduces the
+fixture by about 522 kB while preserving chart options and legal notices. A build
+check rejects oversized fixtures before emulator startup. Native size, file and
+depth limits remain unchanged; the repaired native journey still needs to pass.
+
 ## Delivered: complete Annual-pass comparison
 
 Main `bc7c37f058b2ea04b2123e06a280c0751cfe34e1` passed its original source,

@@ -1,7 +1,7 @@
 "use client";
 
 import { PERSONAL_FINANCIAL_REPORTED_FIELDS } from "@research-cockpit/personal-financial-analytics";
-import * as echarts from "echarts";
+import * as echarts from "../../lib/echarts";
 import { useEffect, useRef, useState } from "react";
 import {
   PERSONAL_ANNUAL_FINANCIAL_TREND_FIELDS,

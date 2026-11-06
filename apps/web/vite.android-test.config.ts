@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { buildIdentity } from "./build-identity";
 import { compressedNotices } from "./compressed-notices";
+import { androidTestAssetLimits } from "./android-test-assets";
 
 const sourceSha = buildIdentity(process.env.INVESTMENT_BUILD_SHA);
 if (!sourceSha)
@@ -16,6 +17,7 @@ export default defineConfig({
   envDir: false,
   plugins: [
     compressedNotices(),
+    androidTestAssetLimits(),
     {
       name: "android-test-boundary",
       moduleParsed({ id }) {

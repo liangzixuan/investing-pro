@@ -1,5 +1,5 @@
 import type { ManagedEodCloseDto } from "@research-cockpit/contracts";
-import * as echarts from "echarts";
+import * as echarts from "../../lib/echarts";
 import { useEffect, useRef, type ReactNode } from "react";
 import { RawCloseComparison } from "./RawCloseComparison";
 

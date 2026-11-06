@@ -1,7 +1,7 @@
 "use client";
 
 import type { PersonalValuationHistoryPointDto } from "@research-cockpit/contracts";
-import * as echarts from "echarts";
+import * as echarts from "../../lib/echarts";
 import { useEffect, useRef } from "react";
 
 export type ValuationHistoryMetric =

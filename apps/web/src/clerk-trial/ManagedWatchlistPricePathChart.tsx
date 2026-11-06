@@ -1,4 +1,4 @@
-import * as echarts from "echarts";
+import * as echarts from "../lib/echarts";
 import { useEffect, useRef, useState } from "react";
 import type { ManagedWatchlistPricePath } from "./managed-watchlist-price-path";
 import {
