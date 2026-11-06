@@ -17,6 +17,7 @@ import {
 import { ManagedPortfolioWatchlist } from "./ManagedPortfolioWatchlist";
 import { ManagedPortfolioCloseReview } from "./ManagedPortfolioCloseReview";
 import { ManagedPortfolioDraftFiles } from "./ManagedPortfolioDraftFiles";
+import { ManagedPortfolioGroupEdits } from "./ManagedPortfolioGroupEdits";
 import type { PortfolioReviewReportDeliveryAdapter } from "./portfolio-review-report-ports";
 import type { ManagedPortfolioDraftFileDeliveryAdapter } from "./portfolio-draft-file-delivery";
 
@@ -251,16 +252,17 @@ export function ManagedPortfolio({
   } | null>(null);
   const draft = saved.draft;
   const ledger = draft?.ledger ?? null;
-  const current = () => {
+  const currentRoute = () => {
     const now = workspace.getSnapshot();
     return (
       workspace.sessionOwner.getSnapshot().phase === "active" &&
       now.view === "portfolio" &&
       !now.research &&
-      !now.companyRoute &&
-      model.coordinator.getSnapshot().draft === draft
+      !now.companyRoute
     );
   };
+  const current = () =>
+    currentRoute() && model.coordinator.getSnapshot().draft === draft;
   const ready = () =>
     current() &&
     !model.getSnapshot().pendingEditor &&
@@ -654,20 +656,27 @@ export function ManagedPortfolio({
             onResearch={onResearch}
           />
           <ActivityHistory ledger={ledger} />
-          <PersonalPortfolioLedgerEditor
-            ledger={ledger}
-            profile="managed"
-            saveHelp="Apply edits to this portfolio draft, then Review portfolio and Save Portfolio to keep the complete ledger on your signed-in devices."
-            selectedListing={null}
-            disabled={!editable}
-            onPendingEditsChange={(value) => {
-              if (current()) model.setPendingEditor(draft, value);
-            }}
-            onChange={(next) => {
-              if (current() && next.schemaVersion === 3)
-                model.replace(draft, next);
-            }}
+          <ManagedPortfolioGroupEdits
+            workspace={workspace}
+            active={currentRoute}
+            disabled={!editable || pending || navigationPending}
           />
+          {!state.groupedEditing && (
+            <PersonalPortfolioLedgerEditor
+              ledger={ledger}
+              profile="managed"
+              saveHelp="Apply edits to this portfolio draft, then Review portfolio and Save Portfolio to keep the complete ledger on your signed-in devices."
+              selectedListing={null}
+              disabled={!editable}
+              onPendingEditsChange={(value) => {
+                if (current()) model.setPendingEditor(draft, value);
+              }}
+              onChange={(next) => {
+                if (current() && next.schemaVersion === 3)
+                  model.replace(draft, next);
+              }}
+            />
+          )}
           {reviewCurrent && !state.pendingEditor && (
             <PortfolioReview ledger={ledger} />
           )}

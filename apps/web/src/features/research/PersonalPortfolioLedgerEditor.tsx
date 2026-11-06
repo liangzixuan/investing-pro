@@ -26,6 +26,7 @@ export interface PersonalPortfolioLedgerEditorProps {
   readonly profile: "local" | "managed";
   readonly disabled: boolean;
   readonly selectedListing: PersonalPortfolioIdentity | null;
+  readonly destination?: "portfolio" | "group";
   readonly onChange: (next: PersonalPortfolioLedgerPayload) => void;
   readonly onPendingEditsChange?: (pending: boolean) => void;
 }
@@ -61,9 +62,14 @@ export function PersonalPortfolioLedgerEditor({
   selectedListing,
   onChange,
   onPendingEditsChange,
+  destination = "portfolio",
 }: PersonalPortfolioLedgerEditorProps) {
   const saveLabel =
-    profile === "managed" ? "Save Portfolio" : "Save My Portfolio";
+    destination === "group"
+      ? "Apply all changes, then Save Portfolio"
+      : profile === "managed"
+        ? "Save Portfolio"
+        : "Save My Portfolio";
   const [form, setForm] = useState<TransactionForm>(emptyForm(ledger));
   const [formBaseline, setFormBaseline] = useState<TransactionForm>(
     emptyForm(ledger),
@@ -958,7 +964,9 @@ export function PersonalPortfolioLedgerEditor({
                 onClick={submitTransaction}
               >
                 {editingId === null
-                  ? "Add transaction to draft"
+                  ? destination === "group"
+                    ? "Add transaction to group"
+                    : "Add transaction to draft"
                   : "Apply transaction edit"}
               </button>
               {editingId !== null && (

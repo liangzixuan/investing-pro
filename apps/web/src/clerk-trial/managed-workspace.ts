@@ -1126,6 +1126,7 @@ export class ManagedWorkspace {
     try {
       this.followupsReview.setAvailable(false);
       this.navigationRevision++;
+      this.portfolio.invalidateGroupedEdits();
       this.valuationRevenueBasis.invalidate();
       this.companySourcePass.reconcile();
       this.companySnapshotLoad.cancel();
@@ -2294,6 +2295,26 @@ export class ManagedWorkspace {
   }
   capturePortfolioScreenRoute(): (() => boolean) | null {
     return this.captureScreenSelectionRoute();
+  }
+  /** Exact Portfolio visit, including while its owned grouped editor blocks navigation. */
+  capturePortfolioGroupEditsRoute(): (() => boolean) | null {
+    const view = this.state;
+    const navigation = this.navigationRevision;
+    const revision = this.viewRevision;
+    const current = () =>
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.sessionOwner.getSnapshot().phase === "active" &&
+      this.navigationRevision === navigation &&
+      this.viewRevision === revision &&
+      this.state === view &&
+      view.view === "portfolio" &&
+      !view.research &&
+      !view.companyRoute &&
+      !view.read &&
+      !view.review &&
+      !view.reviewing;
+    return current() ? current : null;
   }
   captureWatchlistScreenRoute(): (() => boolean) | null {
     return this.captureScreenSelectionRoute();

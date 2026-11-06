@@ -25,6 +25,12 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   gap: 12px;
 }
+.managed-portfolio .portfolio-group-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 12px;
+  min-width: 0;
+}
 .managed-portfolio dt,
 .managed-portfolio .ledger-help,
 .managed-portfolio-coverage {

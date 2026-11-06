@@ -5,7 +5,23 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: retain failed emulator identity evidence
+## Current increment: review a group of Portfolio edits
+
+The [grouped-edit candidate](MANAGED_PORTFOLIO_GROUP_EDITS.md) keeps several
+authored ledger changes in a separate working copy. It adds complete before and
+after review, one explicit Apply, and Cancel with the original draft unchanged.
+Existing Portfolio Review, Save and fresh Load remain separate. Source validation
+is in progress; no new native or release acceptance is claimed.
+
+## Delivered: complete Annual-pass comparison
+
+Main `bc7c37f058b2ea04b2123e06a280c0751cfe34e1` passed its original source,
+parser and 166-case native checks. Android 1.78.0, code 79, was built once with
+the existing signer and delivered locally on November 6. All four automated APK
+checks and local copy/checksum readback passed. Browser and physical-phone
+acceptance are not claimed. No API or website deployment was performed.
+
+## Historical emulator identity failure
 
 The portable Annual-pass report passed the original PR source/parser checks and
 all 166 native cases. [PR 284](https://github.com/liangzixuan/investing-pro/pull/284)
@@ -20,7 +36,8 @@ The report provides complete previous/current Annual-pass evidence through
 explicit preparation, preview and private HTML Save/Cancel. Watchlist Save remains
 separate. Local checks and the original PR native workflow passed; both scoped
 report frames were inspected. CodeScene structural findings remain unsuppressed.
-Android delivery and physical-phone acceptance remain pending. See the
+The completed source and Android delivery above supersede this earlier pending
+state; physical-phone acceptance remains separate. See the
 [report guide](MANAGED_ANNUAL_PASS_REPORT.md).
 
 ## Source accepted: review a fresh Annual pass

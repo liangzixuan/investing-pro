@@ -24,6 +24,10 @@ import type { TrialSession } from "./session";
 export interface PortfolioDraft {
   readonly ledger: ManagedPortfolioPayload | null;
 }
+export interface PortfolioGroupEditLease {
+  readonly draft: PortfolioDraft;
+  readonly catalog: ManagedCatalogSnapshotDto;
+}
 export interface PortfolioDraftFileContext {
   readonly saved: VersionedPayload<PortfolioDraft>;
   readonly draft: PortfolioDraft;
@@ -43,6 +47,7 @@ export interface PortfolioCatalogReview {
 export interface ManagedPortfolioState {
   readonly catalogSnapshotSha256: string | null;
   readonly pendingEditor: boolean;
+  readonly groupedEditing: boolean;
   readonly reviewing: boolean;
   readonly review: PortfolioCatalogReview | null;
   readonly message: string;
@@ -117,6 +122,7 @@ export class ManagedPortfolio {
   private operation: AbortController | null = null;
   private observedDraft: PortfolioDraft | null = null;
   private approval: IdentityApproval | null = null;
+  private groupLease: PortfolioGroupEditLease | null = null;
 
   constructor(
     private readonly api: Pick<
@@ -136,6 +142,7 @@ export class ManagedPortfolio {
       catalogSnapshotSha256:
         options.getCatalogSnapshot()?.snapshotSha256 ?? null,
       pendingEditor: false,
+      groupedEditing: false,
       reviewing: false,
       review: null,
       message: "",
@@ -208,6 +215,14 @@ export class ManagedPortfolio {
       this.observedDraft = state.draft;
       if (this.retired) return;
       if (changed || state.phase !== "idle") this.clearReview();
+      if (this.groupLease && (changed || state.phase !== "idle")) {
+        this.groupLease = null;
+        this.state = Object.freeze({
+          ...this.state,
+          groupedEditing: false,
+          pendingEditor: false,
+        });
+      }
       if (changed)
         this.state = Object.freeze({ ...this.state, pendingEditor: false });
       if (
@@ -238,6 +253,7 @@ export class ManagedPortfolio {
   }
   setPendingEditor(capturedDraft: PortfolioDraft, pending: boolean) {
     if (
+      this.groupLease !== null ||
       !this.canEdit() ||
       this.coordinator.getSnapshot().draft !== capturedDraft ||
       this.state.pendingEditor === pending
@@ -275,6 +291,7 @@ export class ManagedPortfolio {
   private close() {
     if (this.retired) return;
     this.retired = true;
+    this.groupLease = null;
     this.draftFileActivities.clear();
     this.draftFileActivityRevision = {};
     this.approval = null;
@@ -282,6 +299,7 @@ export class ManagedPortfolio {
     this.state = Object.freeze({
       catalogSnapshotSha256: null,
       pendingEditor: false,
+      groupedEditing: false,
       reviewing: false,
       review: null,
       message: "",
@@ -292,6 +310,11 @@ export class ManagedPortfolio {
   }
   syncCatalog() {
     if (this.retired) return;
+    if (
+      this.groupLease &&
+      this.groupLease.catalog !== this.options.getCatalogSnapshot()
+    )
+      this.cancelGroupedEdits(this.groupLease);
     const digest = this.options.getCatalogSnapshot()?.snapshotSha256 ?? null;
     if (digest === this.state.catalogSnapshotSha256) return;
     this.approval = null;
@@ -468,6 +491,7 @@ export class ManagedPortfolio {
   }
   replace(capturedDraft: PortfolioDraft, value: ManagedPortfolioPayload) {
     if (
+      this.groupLease !== null ||
       !this.canEdit() ||
       this.coordinator.getSnapshot().draft !== capturedDraft ||
       capturedDraft.ledger === null
@@ -476,6 +500,90 @@ export class ManagedPortfolio {
     const ledger = parsePortfolioPayload(value);
     if (!ledger) return;
     this.coordinator.replaceDraft({ ledger });
+  }
+  beginGroupedEdits(): PortfolioGroupEditLease | null {
+    const saved = this.coordinator.getSnapshot();
+    const catalog = this.options.getCatalogSnapshot();
+    if (
+      this.groupLease ||
+      !catalog ||
+      !saved.draft?.ledger ||
+      !saved.latestLoaded ||
+      !saved.saved ||
+      saved.baseVersion !== saved.saved.version ||
+      saved.phase !== "idle" ||
+      this.state.review ||
+      this.state.reviewing ||
+      this.hasDraftFileActivity() ||
+      !this.canSavePayload()
+    )
+      return null;
+    const lease = Object.freeze({ draft: saved.draft, catalog });
+    this.groupLease = lease;
+    this.update({
+      groupedEditing: true,
+      pendingEditor: true,
+      message: "Apply or cancel the edit group before saving or leaving.",
+    });
+    if (this.ownsGroupedEdits(lease)) return lease;
+    this.cancelGroupedEdits(lease);
+    return null;
+  }
+  ownsGroupedEdits(lease: PortfolioGroupEditLease) {
+    return (
+      this.groupLease === lease &&
+      this.canEdit() &&
+      this.state.groupedEditing &&
+      this.state.pendingEditor &&
+      this.coordinator.getSnapshot().draft === lease.draft &&
+      this.options.getCatalogSnapshot() === lease.catalog &&
+      !this.hasDraftFileActivity()
+    );
+  }
+  cancelGroupedEdits(lease: PortfolioGroupEditLease) {
+    if (this.groupLease !== lease) return;
+    this.groupLease = null;
+    this.update({ groupedEditing: false, pendingEditor: false, message: "" });
+  }
+  invalidateGroupedEdits() {
+    if (this.groupLease) this.cancelGroupedEdits(this.groupLease);
+  }
+  applyGroupedEdits(
+    lease: PortfolioGroupEditLease,
+    value: ManagedPortfolioPayload,
+    evaluationDay: string,
+  ): PortfolioDraft | null {
+    if (!this.ownsGroupedEdits(lease) || utcDay(this.now()) !== evaluationDay)
+      return null;
+    const ledger = parsePortfolioPayload(value);
+    const baseline = lease.draft.ledger;
+    if (
+      !ledger ||
+      !baseline ||
+      ledger.schemaVersion !== 3 ||
+      ledger.snapshotSha256 !== baseline.snapshotSha256 ||
+      ledger.name !== baseline.name ||
+      ledger.currency !== baseline.currency ||
+      ledger.basisMethod !== baseline.basisMethod ||
+      !sameRegistry(ledger.identities, baseline.identities) ||
+      !this.identitiesApproved(ledger, lease.catalog.snapshotSha256) ||
+      projectPersonalPortfolioLedger(ledger, evaluationDay).status !== "valid"
+    )
+      return null;
+    // Consume before replaceDraft notifies listeners; ordinary editor cleanup cannot release another lease.
+    this.groupLease = null;
+    this.state = Object.freeze({
+      ...this.state,
+      groupedEditing: false,
+      pendingEditor: false,
+      message: "",
+    });
+    const installed = this.coordinator.replaceDraft({ ledger });
+    return installed &&
+      !this.retired &&
+      this.coordinator.getSnapshot().draft === installed
+      ? installed
+      : null;
   }
   private reviewCurrent(
     operation: AbortController,

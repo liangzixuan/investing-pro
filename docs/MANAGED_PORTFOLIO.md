@@ -17,6 +17,10 @@ Implementation and verification are in progress.
 
 ## Record holdings and activity
 
+The [grouped-edit source candidate](MANAGED_PORTFOLIO_GROUP_EDITS.md) adds a
+separate working copy for multiple ledger changes, complete before/after review
+and explicit Apply or Cancel. Portfolio Review and Save remain separate.
+
 1. Open **Portfolio** and choose **Load portfolio**. A successful first load can
    show that no portfolio has been saved. Enter the opening date from your own
    records and known opening cash, or leave cash blank when it is unknown.
