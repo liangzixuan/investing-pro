@@ -5,15 +5,22 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: portable Annual-pass comparison report
+## Current increment: retain failed emulator identity evidence
 
-Prepare and inspect the complete previous/current Annual-pass comparison, then
-save a private HTML document. Preserve full packets, criteria, results and all
-source/request/evaluation clocks. Document Save/Cancel stays separate from
-Watchlist Save. Focused local tests, web types, lint, formatting, source boundaries,
-fixture checks, client bundles and Android-system source compilation pass.
-The 166-case native roster preserves all 160 previous declarations. Hosted checks
-and APK delivery are pending. See the
+The portable Annual-pass report passed the original PR source/parser checks and
+all 166 native cases. [PR 284](https://github.com/liangzixuan/investing-pro/pull/284)
+merged at `77f4a725f6d5f4f83e0b37312fa1a1caf38c28f5`. Original main source and parser
+checks passed. Native shard 0 passed 88 cases; shard 1 stopped before its 78 cases
+on an invalid emulator AVD response. That main revision is not fully accepted.
+The failed response bytes were not retained, so no transient cause is established.
+The current repair retains bounded diagnostics at the strict AVD rejection.
+Device identity, lease, cleanup, timeout and retry rules stay in force.
+
+The report provides complete previous/current Annual-pass evidence through
+explicit preparation, preview and private HTML Save/Cancel. Watchlist Save remains
+separate. Local checks and the original PR native workflow passed; both scoped
+report frames were inspected. CodeScene structural findings remain unsuppressed.
+Android delivery and physical-phone acceptance remain pending. See the
 [report guide](MANAGED_ANNUAL_PASS_REPORT.md).
 
 ## Source accepted: review a fresh Annual pass

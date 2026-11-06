@@ -32,6 +32,14 @@ write, readback and cleanup failures remain strict. The bounded managed-device
 shutdown reconciliation below permits only provisional waiting until final proof.
 An uncertain lease write is never retried as discovery.
 
+A successful `adb emu avd name` command must still return exactly two decoded
+lines, with `OK` as the second line. A malformed or non-UTF-8 response remains a
+hard identity failure. Its `hostError` retains the exact command arguments, exit
+code, original output byte lengths and at most 1,000 characters from each output
+stream. Replacement characters are used only to record invalid UTF-8 safely;
+they do not make the response valid. No environment values or input bodies are
+recorded. This diagnostic does not classify the cause or permit a retry.
+
 After both exact packages support `run-as` and the test IME is installed, the host
 captures the original IME settings and atomically writes this target-private file:
 

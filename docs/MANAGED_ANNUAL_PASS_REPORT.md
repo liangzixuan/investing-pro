@@ -47,5 +47,10 @@ The current roster has 166 cases and retains all 160 prior declarations. Focused
 tests, web types, lint, formatting, source boundaries, fixture checks, client
 bundles and Android-system source compilation pass.
 
-Hosted native execution, browser inspection, APK delivery and physical phone
-acceptance for this report remain pending. See [current work](CURRENT_WORK.md).
+PR 284 passed its original source/parser checks and all 166 native cases, with
+both scoped report frames inspected. On merged main, source/parser checks passed
+and 88 native cases passed; the other shard stopped before its 78 cases on an
+invalid emulator AVD response. Main acceptance and Android delivery remain open.
+The original failed response was not retained; the follow-up diagnostic change
+keeps strict identity validation. Browser inspection and physical phone acceptance
+are not claimed. See [current work](CURRENT_WORK.md).

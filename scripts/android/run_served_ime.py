@@ -194,8 +194,20 @@ class Adb:
         user = self.shell(serial, ["am", "get-current-user"])
         require(user.isdigit(), "Invalid current user")
         boot = self.shell(serial, ["cat", "/proc/sys/kernel/random/boot_id"])
-        avd_lines = self.call(["-s", serial, "emu", "avd", "name"]).stdout.decode().splitlines()
-        require(len(avd_lines) == 2 and avd_lines[1] == "OK", "Invalid emulator AVD response")
+        avd_args = ["-s", serial, "emu", "avd", "name"]
+        avd_result = self.call(avd_args)
+        try:
+            avd_lines = avd_result.stdout.decode().splitlines()
+        except UnicodeDecodeError:
+            avd_lines = None
+        if avd_lines is None or not (len(avd_lines) == 2 and avd_lines[1] == "OK"):
+            diagnostic = {"argv": [str(self.executable), *avd_args],
+                          "exitCode": avd_result.returncode,
+                          "stdoutBytes": len(avd_result.stdout), "stderrBytes": len(avd_result.stderr),
+                          "stdout": avd_result.stdout.decode(errors="replace")[:1000],
+                          "stderr": avd_result.stderr.decode(errors="replace")[:1000]}
+            # Identity rejection stays a hard failure, never pending transport.
+            raise ValueError("Invalid emulator AVD response: " + json.dumps(diagnostic))
         return {"serial": serial, "qemu": qemu, "api": api, "user": int(user), "bootId": boot,
                 "avd": avd_lines[0]}
 
