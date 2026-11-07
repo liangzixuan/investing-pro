@@ -10,8 +10,8 @@ and test reports; their pending labels do not describe current status.
 The [grouped-edit candidate](MANAGED_PORTFOLIO_GROUP_EDITS.md) keeps several
 authored ledger changes in a separate working copy. It adds complete before and
 after review, one explicit Apply, and Cancel with the original draft unchanged.
-Existing Portfolio Review, Save and fresh Load remain separate. Source validation
-is in progress; no new native or release acceptance is claimed.
+Existing Portfolio Review, Save and fresh Load remain separate. The original PR
+source checks and all 167 native cases passed. Android delivery remains pending.
 
 The first native run compiled but stopped during fixture setup: the bundled
 assets exceeded the existing 4 MiB copy limit. A shared ECharts entry now includes
@@ -21,8 +21,18 @@ check rejects oversized fixtures before emulator startup. Native size, file and
 depth limits remain unchanged. With that repair, all 166 prior native cases
 passed. The new journey reached its separate Save, then incorrectly waited for
 a sign-out confirmation after all changes were saved. The test now follows the
-existing direct clean sign-out and still requires fresh-session Load. Its final
-native acceptance remains pending.
+existing direct clean sign-out and still requires fresh-session Load. PR 286
+merged at `f8824bcd83951e33c2b58f658ce8110901ae08ff`. Its original main native
+run also passed all 167 cases; both scoped images exactly match the inspected PR
+images. Ubuntu, parser and custody checks passed.
+
+The main Windows check failed one inherited Annual-pass UI fixture assertion:
+the first report had not settled within a one-second polling wait. The fixture
+now advances its owned 20-second pacing clock and awaits the complete run. A
+regression holds the first report beyond the former polling window and verifies
+both evaluated rows and exact request spacing. This focused test repair still
+needs source acceptance. Main `f8824bcd` is not fully accepted, and Android 1.79
+has not been built or delivered.
 
 ## Delivered: complete Annual-pass comparison
 

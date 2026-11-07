@@ -129,7 +129,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
-async function fixture() {
+async function fixture(firstReportDelayMs = 0) {
   const transport = await createFixture("screen-pass-review");
   const workspace = new ManagedWorkspace(
     transport.api,
@@ -159,10 +159,19 @@ async function fixture() {
   vi.useFakeTimers({
     toFake: ["Date", "setTimeout", "clearTimeout", "performance"],
   });
+  if (firstReportDelayMs) {
+    const read = transport.api.annualReport;
+    vi.spyOn(transport.api, "annualReport").mockImplementationOnce(
+      async (...args) => {
+        const report = await read(...args);
+        await new Promise((resolve) => setTimeout(resolve, firstReportDelayMs));
+        return report;
+      },
+    );
+  }
   const running = screen.run(screen.getSnapshot());
-  await vi.waitFor(() =>
-    expect(screen.getSnapshot().run?.rows[0]?.evaluation).not.toBeNull(),
-  );
+  // Drive the owned pacing clock, then await report admission and the whole run.
+  // Report admission can outlast waitFor's one-second polling deadline.
   await vi.advanceTimersByTimeAsync(20000);
   await running;
   let active = true;
@@ -203,6 +212,17 @@ async function fixture() {
     },
   };
 }
+it("settles the initial pass when its first report outlasts the polling window", async () => {
+  const f = await fixture(1100);
+  const run = f.screen.getSnapshot().run!;
+  expect(run.status).toBe("completed");
+  expect(run.rows).toHaveLength(2);
+  expect(run.rows.every((row) => row.evaluation !== null)).toBe(true);
+  const requests =
+    f.transport.watchlistScreenSelection!.getSnapshot().annualRequests;
+  expect(requests).toHaveLength(2);
+  expect(requests[1]!.at - requests[0]!.at).toBe(20000);
+});
 it("previews both full rows, cancels without effects, then reads exactly one fresh full pass", async () => {
   const f = await fixture(),
     original = f.screen.getSnapshot();
