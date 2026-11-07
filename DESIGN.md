@@ -11,6 +11,16 @@ This guide describes the selected direction and implementation. [Current work](d
 records source, visual and release acceptance with their limits. The design
 reference alone establishes no accessibility or release acceptance.
 
+## Direct Watchlist research comparison
+
+Place pair selection in My Watchlist with complete identities and 25-row paging.
+Show the two chosen listings before explicit Start. In Research, keep capture
+separate from source loads and calculations. On owned Back, show both complete
+passive readings with their own periods and clocks. Reuse the source disclosures,
+valuation results, 44px controls and wrapping layouts. Recapture, Clear and End
+are explicit; resource Save stays elsewhere. Focus only the result of a committed
+action that still owns focus. See the [guide](docs/MANAGED_WATCHLIST_RESEARCH_PAIR.md).
+
 ## Grouped Portfolio edits
 
 Place **Start group of edits** beside the existing ledger editor. During a group,

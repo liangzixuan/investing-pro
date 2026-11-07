@@ -1,0 +1,29 @@
+.managed-watchlist-research-pair {
+  margin-block: 1.25rem;
+  min-width: 0;
+}
+
+.managed-watchlist-research-pair :is(button, select, summary) {
+  min-height: 44px;
+}
+
+.managed-watchlist-research-pair :is(button, p, h3, dt, dd, li, summary) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.managed-watchlist-research-pair :is(li, dl) {
+  min-width: 0;
+}
+
+.managed-watchlist-research-pair li {
+  margin-block: 0.75rem;
+}
+
+.managed-watchlist-research-pair select {
+  max-width: 100%;
+}
+
+.managed-watchlist-research-pair dl > div {
+  margin-block: 0.5rem;
+}

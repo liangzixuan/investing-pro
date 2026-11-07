@@ -1,3 +1,4 @@
+import { WatchlistResearchPairFixtureDiagnostics } from "./watchlist-research-pair-fixture-diagnostics";
 import { ScreenPassReviewReportFixtureControls } from "./screen-pass-review-report-fixture-controls";
 import { ScreenPassReviewFixtureControls } from "./screen-pass-review-fixture-controls";
 import { ScreenContinuationFixtureControls } from "./screen-continuation-fixture-controls";
@@ -122,6 +123,7 @@ function useFixtureWorkspace(session: TrialSession) {
     )
       current.setView("followups");
     if (
+      scenario === "watchlist-research-pair" ||
       scenario === "two-company-research-review" ||
       scenario === "watchlist-daily-review" ||
       scenario === "watchlist-saved-scenario" ||
@@ -138,6 +140,7 @@ function useFixtureWorkspace(session: TrialSession) {
     if (
       scenario !== "followups-review-evidence" &&
       scenario !== "due-check-evidence-report" &&
+      scenario !== "watchlist-research-pair" &&
       scenario !== "two-company-research-review" &&
       scenario !== "saved-valuation-reassessment" &&
       scenario !== "watchlist-daily-review" &&
@@ -453,6 +456,12 @@ export function FixtureSession({ session, onFreshSession }: Props) {
       {nativePortfolioComparisonReport && (
         <PortfolioComparisonReportFixtureDiagnostics
           delivery={nativePortfolioComparisonReport}
+        />
+      )}
+      {workspace && fixture.watchlistResearchPair && (
+        <WatchlistResearchPairFixtureDiagnostics
+          workspace={workspace}
+          fixture={fixture.watchlistResearchPair}
         />
       )}
       {workspace && fixture.twoCompanyResearchReview && (

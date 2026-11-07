@@ -5,16 +5,29 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: correct settled Portfolio group edits
+## Current increment: compare two watched companies
 
-The [group history candidate](MANAGED_PORTFOLIO_GROUP_EDITS.md#correct-a-settled-group-edit)
+The [Watchlist research pair](MANAGED_WATCHLIST_RESEARCH_PAIR.md) lets the owner
+choose two exact watched listings, retain each complete Research reading and
+compare them directly in My Watchlist. Source requests, authored calculations,
+thesis edits, dated checks and resource Saves remain explicit. The pair needs
+no Annual-screen result and adds no source coverage or saved schema. Source
+integration, native verification and Android delivery remain in progress.
+
+## Delivered: correct settled Portfolio group edits
+
+The [group history workflow](MANAGED_PORTFOLIO_GROUP_EDITS.md#correct-a-settled-group-edit)
 adds Undo and Redo for up to 20 complete edits inside a group. It preserves the
 starting draft, exact ledger values and separate Review, Apply, Save and fresh
 Load. Pending forms block history movement; stale callbacks cannot restore an
 old candidate's authority. All 151 affected local checks, web types, scoped lint
-and source boundaries pass. The native journey now exercises pending-form
-blocking, full Undo/Redo, Apply, separate Save and fresh Load. Its execution,
-source acceptance and Android delivery remain separate.
+and source boundaries passed. PR 288 and accepted main
+`faf214278c1dc9924fa73c48297851b43bbc3c2e` passed their original source/parser
+checks and all 167 native cases, including both host cleanup records. Android
+1.80.0, code 81, was built once with the existing signer and delivered locally
+on November 7. All four actual APK checks and copied-file checksum checks passed.
+Browser and physical-phone acceptance are not claimed; no API or website was
+deployed.
 
 ## Delivered: review a group of Portfolio edits
 
