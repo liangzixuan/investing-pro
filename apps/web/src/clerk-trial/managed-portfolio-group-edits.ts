@@ -11,6 +11,7 @@ export type GroupEditProjection = Extract<
   PersonalPortfolioLedgerProjection,
   { status: "valid" }
 >;
+export const PORTFOLIO_GROUP_HISTORY_LIMIT = 20;
 export interface ManagedPortfolioGroupEditsState {
   readonly phase: "idle" | "editing" | "preview" | "applied" | "retired";
   readonly baseline: ManagedPortfolioPayload | null;
@@ -19,6 +20,8 @@ export interface ManagedPortfolioGroupEditsState {
   readonly after: GroupEditProjection | null;
   readonly evaluationDay: string | null;
   readonly formPending: boolean;
+  readonly undoCount: number;
+  readonly redoCount: number;
   readonly message: string;
 }
 const empty = (
@@ -33,6 +36,8 @@ const empty = (
     after: null,
     evaluationDay: null,
     formPending: false,
+    undoCount: 0,
+    redoCount: 0,
     message,
   });
 const stale =
@@ -60,6 +65,8 @@ export class ManagedPortfolioGroupEdits {
   private unsubscribe: (() => void)[] = [];
   private disposed = false;
   private busy = false;
+  private past: ManagedPortfolioPayload[] = [];
+  private future: ManagedPortfolioPayload[] = [];
   constructor(
     private readonly workspace: ManagedWorkspace,
     private readonly routeActive: () => boolean = () => true,
@@ -72,12 +79,19 @@ export class ManagedPortfolioGroupEdits {
   };
   private update(next: Partial<ManagedPortfolioGroupEditsState>) {
     this.state = Object.freeze({ ...this.state, ...next });
+    const installed = this.state;
     for (const listener of this.listeners) listener();
+    return installed;
+  }
+  private clearHistory() {
+    this.past = [];
+    this.future = [];
   }
   private detach() {
     this.unsubscribe.splice(0).forEach((off) => off());
   }
   private release() {
+    this.clearHistory();
     const lease = this.lease;
     this.lease = null;
     this.context = null;
@@ -217,15 +231,80 @@ export class ManagedPortfolioGroupEdits {
       });
       return false;
     }
-    this.update({
+    if (JSON.stringify(candidate) !== JSON.stringify(expectedCandidate)) {
+      this.past = [...this.past, expectedCandidate].slice(
+        -PORTFOLIO_GROUP_HISTORY_LIMIT,
+      );
+      this.future = [];
+    }
+    const installed = this.update({
       candidate,
       formPending: false,
       before: null,
       after: null,
       evaluationDay: null,
+      undoCount: this.past.length,
+      redoCount: this.future.length,
       message: "",
     });
-    return true;
+    return this.current() && this.state === installed;
+  }
+  undo(expectedState: ManagedPortfolioGroupEditsState) {
+    return this.traverseHistory(expectedState, "undo");
+  }
+  redo(expectedState: ManagedPortfolioGroupEditsState) {
+    return this.traverseHistory(expectedState, "redo");
+  }
+  private traverseHistory(
+    expectedState: ManagedPortfolioGroupEditsState,
+    direction: "undo" | "redo",
+  ) {
+    if (
+      !this.current() ||
+      this.state !== expectedState ||
+      this.state.phase !== "editing" ||
+      this.state.formPending ||
+      !this.state.candidate ||
+      !this.state.baseline
+    )
+      return false;
+    const source = direction === "undo" ? this.past : this.future;
+    const value = source.at(-1);
+    if (!value) return false;
+    // Install a fresh identity even when returning to equal values. Old editor
+    // callbacks must never regain ownership through an undo/redo round trip.
+    const candidate = parsePortfolioPayload(value),
+      today = day(this.now());
+    if (
+      !candidate ||
+      !today ||
+      !sameRegistry(candidate, this.state.baseline) ||
+      projectPersonalPortfolioLedger(candidate, today).status !== "valid"
+    ) {
+      this.update({
+        message:
+          "This group change is not valid on the current UTC day. The group is unchanged.",
+      });
+      return false;
+    }
+    if (direction === "undo") {
+      this.past = this.past.slice(0, -1);
+      this.future = [...this.future, this.state.candidate];
+    } else {
+      this.future = this.future.slice(0, -1);
+      this.past = [...this.past, this.state.candidate];
+    }
+    const installed = this.update({
+      candidate,
+      before: null,
+      after: null,
+      evaluationDay: null,
+      undoCount: this.past.length,
+      redoCount: this.future.length,
+      message:
+        direction === "undo" ? "Group change undone." : "Group change redone.",
+    });
+    return this.current() && this.state === installed;
   }
   setEditorPending(
     expectedCandidate: ManagedPortfolioPayload,
@@ -307,6 +386,7 @@ export class ManagedPortfolioGroupEdits {
       candidate = this.state.candidate;
     const evaluationDay = this.state.evaluationDay;
     this.busy = true;
+    this.clearHistory();
     this.detach();
     this.lease = null;
     this.context = null;

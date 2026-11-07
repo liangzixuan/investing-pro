@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated November 6, 2026. This document defines the durable product goals and
+Updated November 7, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -27,7 +27,16 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: review a group of Portfolio edits
+## Current priority: correct settled Portfolio group edits
+
+Extend the delivered group workflow with Undo and Redo for up to 20 recent
+complete edits. Preserve exact ledger values, the original Portfolio draft and
+separate Preview, Apply, Save and fresh Load. A new edit after Undo replaces the
+redo branch. Pending forms and stale sessions cannot move history. This completes
+the correction path for multiple edits and CSV imports without restarting a group.
+No source request, saved schema or market coverage changes.
+
+## Delivered: review a group of Portfolio edits
 
 Extend the M4 Portfolio workflow with a separate working copy for several ledger
 changes, complete before/after review, and explicit atomic Apply or Cancel.

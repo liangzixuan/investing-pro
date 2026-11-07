@@ -22,6 +22,12 @@ columns, existing 44px controls and passive full-ledger disclosures. Move focus
 only after an explicit committed action that still owns focus. Portfolio Save
 remains separate. See the [guide](docs/MANAGED_PORTFOLIO_GROUP_EDITS.md).
 
+Keep **Undo group edit** and **Redo group edit** beside the group editor with
+visible available-step counts and the 20-step limit. Disable both while a form
+or file read is unfinished. Use the existing wrapping actions and 44px controls;
+after explicit traversal, focus the group heading only if the action still owns
+focus. History belongs to this group and is cleared when it ends.
+
 ## Portable Annual-pass comparison
 
 Place **Prepare Annual-pass report** inside the settled comparison, after the
