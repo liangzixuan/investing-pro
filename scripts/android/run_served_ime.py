@@ -145,6 +145,13 @@ class AdbFailure(RuntimeError):
         super().__init__("adb command failed: " + json.dumps(self.diagnostic))
 
 
+class EmptyAvdObservation(ValueError):
+    """An exact successful console read supplied no identity observation."""
+    def __init__(self, diagnostic):
+        self.diagnostic = diagnostic
+        super().__init__("Invalid emulator AVD response: " + json.dumps(diagnostic))
+
+
 class Adb:
     def __init__(self, sdk):
         self.executable = sdk / "platform-tools/adb"
@@ -206,7 +213,9 @@ class Adb:
                           "stdoutBytes": len(avd_result.stdout), "stderrBytes": len(avd_result.stderr),
                           "stdout": avd_result.stdout.decode(errors="replace")[:1000],
                           "stderr": avd_result.stderr.decode(errors="replace")[:1000]}
-            # Identity rejection stays a hard failure, never pending transport.
+            if avd_result.returncode == 0 and avd_result.stdout == b"" and avd_result.stderr == b"":
+                raise EmptyAvdObservation(diagnostic)
+            # Malformed identity stays a hard failure, never pending transport.
             raise ValueError("Invalid emulator AVD response: " + json.dumps(diagnostic))
         return {"serial": serial, "qemu": qemu, "api": api, "user": int(user), "bootId": boot,
                 "avd": avd_lines[0]}
@@ -327,6 +336,11 @@ class Supervisor:
                 if not self.alive(process) or self.adb.devices().get(serial) != "device":
                     self.pending("candidate-disappeared-before-lease", serial)
                     continue
+            except EmptyAvdObservation as failure:
+                # No identity is admitted. Only pre-lease discovery may wait for
+                # a complete new observation within the unchanged Gradle budget.
+                self.pending("prelease-avd-observation-empty", serial, failure)
+                continue
             except AdbFailure as failure:
                 if failure.transport_pending:
                     self.pending("transport-not-ready", serial, failure)
