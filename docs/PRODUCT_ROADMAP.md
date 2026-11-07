@@ -27,14 +27,26 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: correct settled Portfolio group edits
+## Current priority: compare two watched companies
+
+Complete the M2/M4 research and valuation comparison directly from My Watchlist.
+Choose two exact listings, retain both complete company readings, compare their
+evidence and authored cases, then reopen the chosen company for a thesis and
+dated next check. Keep source requests, calculations, resource Saves and fresh
+Loads explicit. Reuse existing capture and navigation boundaries without
+requiring Annual-screen eligibility. See the [guide](MANAGED_WATCHLIST_RESEARCH_PAIR.md).
+
+## Delivered: correct settled Portfolio group edits
 
 Extend the delivered group workflow with Undo and Redo for up to 20 recent
 complete edits. Preserve exact ledger values, the original Portfolio draft and
 separate Preview, Apply, Save and fresh Load. A new edit after Undo replaces the
 redo branch. Pending forms and stale sessions cannot move history. This completes
 the correction path for multiple edits and CSV imports without restarting a group.
-No source request, saved schema or market coverage changes.
+No source request, saved schema or market coverage changes. Android 1.80.0,
+code 81, delivers this workflow from accepted main
+`faf214278c1dc9924fa73c48297851b43bbc3c2e`. Source/parser checks, all 167 native
+cases and all four actual APK checks passed. Phone acceptance remains separate.
 
 ## Delivered: review a group of Portfolio edits
 

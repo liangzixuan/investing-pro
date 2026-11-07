@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { PassiveCompanyResearchCapture } from "./managed-screen-research-review";
+import type { PassiveCompanyResearchCapture } from "./passive-company-research";
 import { identityLabels } from "./ManagedListingIdentity";
 import { CompanyReportDocumentView } from "./CompanyReportDocument";
 import { ManagedValuationResults } from "./ManagedValuationResults";

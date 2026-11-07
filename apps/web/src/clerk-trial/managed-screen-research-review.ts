@@ -1,16 +1,15 @@
-import { MANAGED_SEC_FILINGS_LIMITS } from "@research-cockpit/contracts";
 import { companyEvidenceSelectionMatches } from "./managed-company-snapshot";
 import {
   companyReportBlock,
   companyReportIsCurrent,
   prepareCompanyReport,
   type CompanyReportEvidence,
-  type PreparedCompanyReport,
 } from "./managed-company-report";
 import {
-  COMPANY_REPORT_DOCUMENT_MAX_BYTES,
-  formatCompanyReportDocument,
-} from "./managed-company-report-document";
+  createPassiveCompanyResearchCapture,
+  type CompanyResearchSide,
+  type PassiveCompanyResearchCapture,
+} from "./passive-company-research";
 import type {
   ManagedFinancialScreen,
   ManagedFinancialScreenReportCapture,
@@ -24,21 +23,6 @@ import type {
 import type { ManagedValuationWorkbench } from "./managed-valuation-workbench";
 import type { PreparedScreenComparisonReport } from "./screen-comparison-report";
 
-export type ScreenResearchSide = "left" | "right";
-/** Detached reading data: calculations here have no registered editor authority. */
-export interface PassiveCompanyResearchCapture {
-  readonly kind: "passive_company_research";
-  readonly side: ScreenResearchSide;
-  readonly capturedAt: string;
-  readonly selection: ManagedResearchSelection;
-  readonly note: string | null;
-  readonly evidence: CompanyReportEvidence;
-  readonly valuation: PreparedCompanyReport["valuation"];
-  readonly evaluatedAt: string | null;
-  readonly valuationPrice: PreparedCompanyReport["valuationPrice"];
-  readonly priceStudies: PreparedCompanyReport["priceStudies"];
-  readonly document: Readonly<{ text: string; byteLength: number }>;
-}
 export interface ScreenResearchReading {
   readonly kind: "screen_research_reading";
   readonly comparison: PreparedScreenComparisonReport;
@@ -47,7 +31,7 @@ export interface ScreenResearchReading {
 }
 export interface ManagedScreenResearchReviewState {
   readonly reading: ScreenResearchReading | null;
-  readonly activeSide: ScreenResearchSide | null;
+  readonly activeSide: CompanyResearchSide | null;
   readonly canCapture: boolean;
   readonly reason: string | null;
 }
@@ -80,12 +64,6 @@ export interface ScreenResearchReviewOptions {
   readonly available: () => boolean;
   readonly now?: () => Date;
 }
-// The existing bounded document plus its full passive projection and a separate
-// Filings lastCheck/comparison must fit together. Nothing is truncated.
-export const PASSIVE_COMPANY_RESEARCH_MAX_BYTES =
-  2 * COMPANY_REPORT_DOCUMENT_MAX_BYTES +
-  2 * MANAGED_SEC_FILINGS_LIMITS.responseBytes +
-  32_768;
 const idle = (): ManagedScreenResearchReviewState =>
   Object.freeze({
     reading: null,
@@ -93,48 +71,14 @@ const idle = (): ManagedScreenResearchReviewState =>
     canCapture: false,
     reason: null,
   });
-function frozen<T>(value: T): T {
-  if (value && typeof value === "object" && !Object.isFrozen(value)) {
-    for (const child of Object.values(value)) frozen(child);
-    Object.freeze(value);
-  }
-  return value;
-}
-function passive(
-  report: PreparedCompanyReport,
-  side: ScreenResearchSide,
-  evaluatedAt: string | null,
-): PassiveCompanyResearchCapture | null {
-  const document = formatCompanyReportDocument(report);
-  if (!document) return null;
-  const value: PassiveCompanyResearchCapture = {
-    kind: "passive_company_research",
-    side,
-    capturedAt: report.preparedAt,
-    selection: report.selection,
-    note: report.note,
-    evidence: report.evidence,
-    valuation: report.valuation,
-    evaluatedAt,
-    valuationPrice: report.valuationPrice,
-    priceStudies: report.priceStudies,
-    document: { text: document.text, byteLength: document.byteLength },
-  };
-  if (
-    new TextEncoder().encode(JSON.stringify(value)).byteLength >
-    PASSIVE_COMPANY_RESEARCH_MAX_BYTES
-  )
-    return null;
-  return frozen(structuredClone(value));
-}
 interface Opening {
   readonly token: PendingScreenResearchVisit;
   readonly lease: ScreenResearchPairLease;
-  readonly side: ScreenResearchSide;
+  readonly side: CompanyResearchSide;
   readonly selection: ManagedResearchSelection;
 }
 interface VisitOwner {
-  readonly side: ScreenResearchSide;
+  readonly side: CompanyResearchSide;
   readonly selection: ManagedResearchSelection;
 }
 /** One retained reading for the existing screen pair, with one explicit visit. */
@@ -374,7 +318,7 @@ export class ManagedScreenResearchReview {
   }
   prepareSide(
     expected: ManagedScreenResearchReviewState,
-    side: ScreenResearchSide,
+    side: CompanyResearchSide,
   ): ManagedFinancialScreenReportCapture | null {
     this.reconcile();
     if (
@@ -427,7 +371,11 @@ export class ManagedScreenResearchReview {
       ? this.options.valuation.captureCalculationMetadata(report.valuation)
       : null;
     if (report.valuation && !metadata) return null;
-    const reading = passive(report, owner.side, metadata?.evaluatedAt ?? null);
+    const reading = createPassiveCompanyResearchCapture(
+      report,
+      owner.side,
+      metadata?.evaluatedAt ?? null,
+    );
     const fresh = this.context();
     if (
       !reading ||
@@ -517,7 +465,7 @@ export class ManagedScreenResearchReview {
   }
   clearSide(
     expected: ManagedScreenResearchReviewState,
-    side: ScreenResearchSide,
+    side: CompanyResearchSide,
   ) {
     if (
       this.retired ||

@@ -35,7 +35,7 @@ values cannot restore its authority. A UTC day change requires another preview.
 
 ## Correct a settled group edit
 
-The source candidate adds history for up to 20 recent edits in the active group.
+Android 1.80 adds history for up to 20 recent edits in the active group.
 The controls show how many edits can be undone or redone. At the limit, a new edit
 removes the oldest undo step. The complete starting draft remains the baseline
 for comparison and Cancel. A new valid edit after Undo replaces the redo branch;
@@ -44,9 +44,9 @@ activity order and exact listing identities are preserved.
 
 Review and Continue editing keep this history. Apply, Cancel, session retirement
 or leaving the owned Portfolio visit clears it. History is held only in memory;
-it is not saved to Portfolio or a draft file. The delivered Android 1.79 grouped
-workflow predates these history controls; later delivery is recorded separately
-in [Current work](CURRENT_WORK.md).
+it is not saved to Portfolio or a draft file. Android 1.79 introduced grouped
+edits; Android 1.80 adds these history controls. Source and delivery evidence are
+recorded in [Current work](CURRENT_WORK.md).
 
 ## Ownership and checks
 

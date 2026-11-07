@@ -1,5 +1,9 @@
 import type { ScreenPassReviewReportDeliveryAdapter } from "./screen-pass-review-report-ports";
 import { ManagedScreenResearchCapture } from "./ManagedScreenResearchReview";
+import {
+  ManagedWatchlistResearchPair,
+  ManagedWatchlistResearchCapture,
+} from "./ManagedWatchlistResearchPair";
 import type { PortfolioComparisonReportDeliveryAdapter } from "./portfolio-comparison-report-ports";
 import type { ManagedResearchDraftSetFileDeliveryAdapter } from "./research-draft-set-file-delivery";
 import { ManagedResearchDraftSetFiles } from "./ManagedResearchDraftSetFiles";
@@ -1172,6 +1176,12 @@ export function ManagedWorkspaceScreen({
                 />
               )}
               {discovery.research && (
+                <ManagedWatchlistResearchCapture
+                  workspace={workspace}
+                  navigationPending={navigationPending}
+                />
+              )}
+              {discovery.research && (
                 <ManagedFollowupEvidenceCapture
                   workspace={workspace}
                   navigationPending={navigationPending}
@@ -1758,6 +1768,15 @@ export function ManagedWorkspaceScreen({
                 )}
                 {saved.draft && (
                   <>
+                    <ManagedWatchlistResearchPair
+                      workspace={workspace}
+                      navigationPending={navigationPending}
+                      onOpenSide={(state, side, opener) =>
+                        openResearch(opener, () =>
+                          workspace.openWatchlistResearchSide(state, side),
+                        )
+                      }
+                    />
                     <ManagedFilingsReviewEntry
                       {...(watchlistDailyReportDelivery
                         ? { reportDelivery: watchlistDailyReportDelivery }

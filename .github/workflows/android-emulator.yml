@@ -743,6 +743,10 @@ jobs:
           required.add(portfolio_group_edits_case)
           if len(required) != 167:
               raise SystemExit("Grouped Portfolio edits must preserve all 166 prior native cases.")
+          watchlist_research_pair_case = ("local.investment.personal.ManagedWatchlistResearchPairTest", "watchlistPairKeepsBothReadingsThroughOwnedBackAndIndependentFreshLoads")
+          required.add(watchlist_research_pair_case)
+          if len(required) != 168:
+              raise SystemExit("Watchlist research pairs must preserve all 167 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)
@@ -836,6 +840,13 @@ jobs:
                           raise SystemExit("Grouped Portfolio edits must retain all three scoped frames.")
                   elif frames:
                       raise SystemExit("Grouped Portfolio frames belong only to their executed shard.")
+              for filename in ("newWatchlistResearchPair.png", "newWatchlistResearchReturn.png"):
+                  frames = list(root.rglob(filename))
+                  if watchlist_research_pair_case in executed:
+                      if len(frames) != 1 or frames[0].stat().st_size == 0:
+                          raise SystemExit("Watchlist research pairs must retain both scoped frames.")
+                  elif frames:
+                      raise SystemExit("Watchlist research pair frames belong only to their executed shard.")
               for filename in ("newScreenPassReviewPreview.png", "newScreenPassReviewReturn.png"):
                   frames = list(root.rglob(filename))
                   if screen_pass_review_case in executed:
