@@ -33,12 +33,22 @@ shutdown reconciliation below permits only provisional waiting until final proof
 An uncertain lease write is never retried as discovery.
 
 A successful `adb emu avd name` command must still return exactly two decoded
-lines, with `OK` as the second line. A malformed or non-UTF-8 response remains a
-hard identity failure. Its `hostError` retains the exact command arguments, exit
+lines, with `OK` as the second line. Before a lease, an exit-zero response with
+exactly zero stdout and stderr bytes supplies no identity observation. Discovery
+records this as pending and probes the complete identity again on its next pass.
+It cannot read package settings or prepare or write a lease from the empty result.
+This uses the existing Gradle step deadline and eight-second probe limit; external
+cancellation and natural Gradle failure remain failures. No cause is inferred for
+the empty response. After a lease, the same empty response remains a hard failure
+and cannot enter shutdown reconciliation.
+
+Whitespace, partial, malformed and non-UTF-8 responses remain hard identity
+failures in every phase. Their `hostError` retains the exact command arguments, exit
 code, original output byte lengths and at most 1,000 characters from each output
 stream. Replacement characters are used only to record invalid UTF-8 safely;
 they do not make the response valid. No environment values or input bodies are
-recorded. This diagnostic does not classify the cause or permit a retry.
+recorded. The exact empty pre-lease observation is retained in the existing bounded
+pending record; all other diagnostics remain failures.
 
 After both exact packages support `run-as` and the test IME is installed, the host
 captures the original IME settings and atomically writes this target-private file:

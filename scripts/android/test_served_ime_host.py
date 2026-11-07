@@ -578,6 +578,85 @@ class AvdResponseTests(unittest.TestCase):
             with self.subTest(ending=ending):
                 self.assertEqual(self.identity_response(b"observed-gmd-name" + ending + b"OK" + ending), IDENTITY)
 
+    def test_empty_console_observation_waits_without_authority_then_reprobes_full_identity(self):
+        failure, diagnostic = self.failure(b"")
+        with tempfile.TemporaryDirectory() as directory:
+            adb = FakeAdb()
+            state = {"initialDevices": {}, "nonce": NONCE, "sourceSha": SOURCE, "events": []}
+            host = Supervisor(adb, state, Path(directory) / "state.json", lambda: [PROCESS.copy()],
+                              alive=lambda _process: True)
+            with patch.object(adb, "identity", side_effect=failure), \
+                 patch.object(adb, "package_identities") as packages, \
+                 patch.object(adb, "settings") as settings, patch.object(adb, "write_lease") as write:
+                for _ in range(100):
+                    host.discover()
+                packages.assert_not_called()
+                settings.assert_not_called()
+                write.assert_not_called()
+            self.assertNotIn("lease", state)
+            self.assertEqual(adb.commands, [])
+            pending = state["discoveryPending"]
+            self.assertEqual(pending["count"], 100)
+            self.assertEqual(set(pending), {"count", "first", "last", "firstFailure", "lastFailure"})
+            self.assertEqual(pending["last"]["reason"], "prelease-avd-observation-empty")
+            self.assertEqual(pending["last"]["command"], diagnostic)
+            self.assertLess(len(json.dumps(state)), 2400)
+            with patch.object(adb, "identity", wraps=adb.identity) as identity, \
+                 patch.object(adb, "package_identities", wraps=adb.package_identities) as packages, \
+                 patch.object(adb, "settings", wraps=adb.settings) as settings:
+                host.discover()
+                identity.assert_called_once_with(IDENTITY["serial"])
+                packages.assert_called_once_with(IDENTITY)
+                settings.assert_called_once_with(IDENTITY)
+            self.assertEqual(state["lease"], adb.lease)
+            self.assertEqual(state["emulator"], PROCESS)
+            self.assertEqual(state["events"][-1]["event"], "lease-written")
+
+    def test_only_exact_empty_console_can_wait_and_later_wrong_avd_still_refuses(self):
+        for stdout, stderr in [(b" ", b""), (b"\n", b""), (b"", b" "),
+                               (b"observed-gmd-name\n", b""), (b"bad\xff", b"")]:
+            failure, _ = self.failure(stdout, stderr)
+            with self.subTest(stdout=stdout, stderr=stderr), tempfile.TemporaryDirectory() as directory:
+                adb = FakeAdb()
+                state = {"initialDevices": {}, "nonce": NONCE, "sourceSha": SOURCE, "events": []}
+                host = Supervisor(adb, state, Path(directory) / "state.json", lambda: [PROCESS.copy()])
+                with patch.object(adb, "identity", side_effect=failure), self.assertRaises(ValueError):
+                    host.discover()
+                self.assertNotIn("discoveryPending", state)
+                self.assertNotIn("lease", state)
+        failure, _ = self.failure(b"")
+        with tempfile.TemporaryDirectory() as directory:
+            adb = FakeAdb()
+            state = {"initialDevices": {}, "nonce": NONCE, "sourceSha": SOURCE, "events": []}
+            host = Supervisor(adb, state, Path(directory) / "state.json", lambda: [PROCESS.copy()])
+            with patch.object(adb, "identity", side_effect=failure):
+                host.discover()
+            adb.identity_value["avd"] = "another-avd"
+            with self.assertRaises(ValueError):
+                host.discover()
+            self.assertNotIn("lease", state)
+            self.assertIsNone(adb.lease)
+
+    def test_empty_console_remains_hard_failure_after_lease_for_every_recovery_phase(self):
+        failure, _ = self.failure(b"")
+        for phase in ("prepared", "active", "restoring", "restored"):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                adb = FakeAdb()
+                state = {"initialDevices": {}, "nonce": NONCE, "sourceSha": SOURCE, "events": []}
+                host = Supervisor(adb, state, Path(directory) / "state.json", lambda: [PROCESS.copy()],
+                                  alive=lambda _process: True)
+                host.discover()
+                adb.recovery = recovery(state["lease"], phase)
+                host.observe()
+                with patch.object(adb, "identity", side_effect=failure):
+                    with self.assertRaises(ValueError):
+                        host.discover()
+                    with self.assertRaises(ValueError):
+                        host.cleanup()
+                self.assertFalse(host.teardown_read(failure))
+                self.assertNotIn("discoveryPending", state)
+                self.assertEqual(adb.commands, [])
+
     def test_malformed_successful_responses_keep_exact_public_diagnostics(self):
         for stdout in (b"", b"observed-gmd-name\n", b"observed-gmd-name\nKO\n",
                        b"observed-gmd-name\nOK\nextra\n", b"observed-gmd-name\n OK\n"):
@@ -697,7 +776,7 @@ class ProcessTests(unittest.TestCase):
                 fields["exe"].resolve.return_value = sdk / "foreign/qemu-system-x86_64"
                 self.assertEqual(emulator_processes(sdk, NONCE, proc), [])
 
-    def run_simulated(self, exit_code, foreign_cleanup=False, discovery_failure=None):
+    def run_simulated(self, exit_code, foreign_cleanup=False, discovery_failure=None, stop_signal=None):
         with tempfile.TemporaryDirectory() as directory:
             sdk = Path(directory) / "sdk"
             (sdk / "platform-tools").mkdir(parents=True)
@@ -711,6 +790,7 @@ class ProcessTests(unittest.TestCase):
             child.pid = 123
             child.returncode = None
             polls = 0
+            handlers = {}
 
             def poll():
                 nonlocal polls
@@ -718,6 +798,10 @@ class ProcessTests(unittest.TestCase):
                 if polls == 1:
                     adb.devices_value = {IDENTITY["serial"]: "device"}
                     return None
+                if stop_signal is not None and polls == 3 and child.returncode is None:
+                    return None
+                if stop_signal is not None and polls == 2:
+                    handlers[stop_signal](stop_signal, None)
                 if adb.lease is not None:
                     adb.recovery = recovery(adb.lease, "restored" if exit_code == 0 else "active")
                 if exit_code and adb.lease is not None:
@@ -740,11 +824,15 @@ class ProcessTests(unittest.TestCase):
                  patch("run_served_ime.emulator_processes", return_value=[PROCESS.copy()]), \
                  patch("run_served_ime.subprocess.Popen", return_value=child) as popen, \
                  patch("run_served_ime.os.killpg", create=True) as kill, \
-                 patch("run_served_ime.signal.signal"), patch("run_served_ime.time.sleep"):
+                 patch("run_served_ime.signal.signal", side_effect=lambda number, handler:
+                       handlers.update({number: handler})), patch("run_served_ime.time.sleep"):
                 result = runtime(args)
                 state = json.loads(Path(args.state).read_text())
                 self.assertEqual(popen.call_count, 1)
-                kill.assert_not_called()
+                if stop_signal is None:
+                    kill.assert_not_called()
+                else:
+                    kill.assert_called_once_with(123, runner.signal.SIGTERM)
                 self.assertEqual(popen.call_args.kwargs["env"]["INVESTMENT_SERVED_IME_HOST_NONCE"], state["nonce"])
                 return result, state, adb.commands
 
@@ -789,6 +877,21 @@ class ProcessTests(unittest.TestCase):
         self.assertNotIn("lease", state)
         self.assertEqual(commands, [])
         self.assertEqual(state["discoveryPending"]["last"]["reason"], "prelease-read-completion-unconfirmed")
+
+    def test_prelease_empty_console_preserves_natural_exit_and_external_deadline_stop(self):
+        failure, _ = AvdResponseTests().failure(b"")
+        for exit_code, stop in ((7, None), (143, runner.signal.SIGTERM)):
+            with self.subTest(exit_code=exit_code, stop=stop):
+                result, state, commands = self.run_simulated(exit_code, discovery_failure=failure,
+                                                             stop_signal=stop)
+                self.assertEqual(result, exit_code)
+                self.assertEqual(state["gradleExitCode"], exit_code)
+                self.assertEqual(state["receivedSignals"], [] if stop is None else [stop])
+                self.assertIsNone(state["hostError"])
+                self.assertEqual(state["cleanup"], "not-leased")
+                self.assertNotIn("lease", state)
+                self.assertEqual(commands, [])
+                self.assertEqual(state["discoveryPending"]["last"]["reason"], "prelease-avd-observation-empty")
 
 
 class Clock:
