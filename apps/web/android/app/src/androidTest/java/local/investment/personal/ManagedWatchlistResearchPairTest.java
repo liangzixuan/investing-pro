@@ -4,6 +4,7 @@ import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
 import static org.junit.Assert.*;
 import android.os.Handler;
+import android.content.Context;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
@@ -14,6 +15,8 @@ import android.webkit.WebView;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -40,6 +43,7 @@ public class ManagedWatchlistResearchPairTest {
     private ReportRevisitTouch touch;
     private ReportRevisitKeyboard keyboard;
     private String sha,origin,stage="startup",paired,leftReading,editingSelector,nativeEditingState;
+    private String firstReportHtml,firstReportFilename;
     @Before public void launchInventedDecision()throws Exception {
         assertFalse(BuildConfig.CLERK_AUTH_ENABLED);
         sha=InstrumentationRegistry.getArguments().getString("expectedSourceSha");assertNotNull(sha);assertTrue(sha.matches("[a-f0-9]{40}"));
@@ -51,7 +55,7 @@ public class ManagedWatchlistResearchPairTest {
         scenario.onActivity(a->a.getBridge().getWebView().clearHistory());origin=page.read(new Script("String(performance.timeOrigin)"));
     }
     @Test public void watchlistPairKeepsBothReadingsThroughOwnedBackAndIndependentFreshLoads()throws Exception {
-        try {loadAndStartPair();valueAndCapture("left",0,"ZERO");valueAndCapture("right",1,"ONE");inspectPair();authorDecisionAndSave();freshLoad();}catch(Exception|AssertionError failure){diagnose();throw failure;}
+        try {loadAndStartPair();valueAndCapture("left",0,"ZERO");valueAndCapture("right",1,"ONE");inspectPair();saveWatchlistReport(0);authorDecisionAndSave();freshLoad();}catch(Exception|AssertionError failure){diagnose();throw failure;}
     }
     private void loadAndStartPair()throws Exception {
         stage="independent Loads and direct Watchlist pair";
@@ -112,11 +116,73 @@ public class ManagedWatchlistResearchPairTest {
         open(".managed-thesis-followup");replace("#managed-research-note-followup-date",read(".dueOn"));tap("#managed-research-note-followup-create");
         await("exact chosen-company check and thesis remain separately unsaved",D+".watchlistCanonical==="+D+".expectedWatchlistCanonical&&"+D+".followupsCanonical==="+D+".expectedFollowupsCanonical&&"+D+".watchlist.dirty&&"+D+".followups.dirty&&JSON.stringify("+D+".review.reading)==="+q(paired));
         pressBack();await("owned Back retains original readings after authored decision",D+".view.view==='watchlist'&&JSON.stringify("+D+".review.reading)==="+q(paired));boundary(2,2,0,0);
+        recaptureChosenReadingAndReport();
         navigate("My Watchlist");open("#managed-unsaved-review");click("//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']");
         await("Watchlist alone committed full chosen thesis and unchanged ZERO",D+".watchlist.baseVersion===8&&!"+D+".watchlist.dirty&&"+D+".followups.dirty");boundary(2,2,1,0);
         tap(".managed-watchlist-choices li:first-child .managed-watchlist-choice");replace("#managed-note-0",read(".unsaved"));
         navigate("Follow-ups");tap("#managed-followups-save");await("independent Follow-ups save keeps unrelated check",D+".followups.baseVersion===4&&!"+D+".followups.dirty&&"+D+".watchlist.dirty");boundary(2,2,1,1);
     }
+    private void saveWatchlistReport(int previousWrites)throws Exception {
+        stage="complete Watchlist report chosen-document save "+(previousWrites+1);
+        if(previousWrites==0)WatchlistTestDocuments.clear(context());
+        String retained=page.read(new Script("JSON.stringify("+D+".review.reading)"));
+        String transport="JSON.parse(document.querySelector('#fixture-watchlist-research-report').textContent)";
+        tap("#managed-watchlist-research-report-prepare");
+        await("complete explicit Watchlist report captured", "document.querySelector('[data-watchlist-research-payload]')!==null");
+        String captured=page.read(new Script("document.querySelector('[data-watchlist-research-payload]').textContent"));
+        await("preview preserves both complete readings and exact ordered identities", "(()=>{const p=JSON.parse(document.querySelector('[data-watchlist-research-payload]').textContent),r="+D+".review.reading,same="+SAME_JSON+";return p.kind==='watchlist_company_research'&&p.reading.kind==='watchlist_research_reading'&&same(p.reading.listings,r.members.map(m=>m.listing))&&same(p.reading.left,r.left)&&same(p.reading.right,r.right)&&Object.keys(p.reading).sort().join('|')==='kind|left|listings|right'&&new Date(p.preparedAt).toISOString()===p.preparedAt&&document.activeElement===document.querySelector('#managed-watchlist-research-report-heading');})()");
+        click("//details[summary[normalize-space(.)='Preview complete Watchlist research report']]/summary");
+        await("preview includes full identities and both capture/evaluation clocks", "(()=>{const report=document.querySelector('[aria-label=\"Complete Watchlist company research report\"]'),p=JSON.parse(report.querySelector('[data-watchlist-research-payload]').textContent);return report.querySelectorAll('[data-research-reading-side]').length===2&&['left','right'].every((s,i)=>{const c=p.reading[s],a=report.querySelector('[data-research-reading-side='+s+']');return a.textContent.includes(c.capturedAt)&&a.textContent.includes(c.evaluatedAt)&&Object.values(p.reading.listings[i]).every(v=>report.textContent.includes(v))&&a.querySelector('textarea').value===c.document.text;})&&report.querySelectorAll('script,img,iframe,form,button,input,select,canvas,object').length===0;})()");
+        boundary(2,2,0,0);
+        tap("#managed-watchlist-research-report-save");
+        WatchlistSystemPicker picker=new WatchlistSystemPicker();picker.awaitOpen(30_000);picker.cancel();
+        await("cancelled picker keeps the entire preview and performs no write",transport+".choices==="+(previousWrites*2+1)+"&&"+transport+".writeRequests==="+previousWrites+"&&"+transport+".writes==="+previousWrites+"&&document.querySelector('[data-watchlist-research-payload]').textContent==="+q(captured));
+        assertEquals(previousWrites,WatchlistTestDocuments.outputs(context()).length);
+        tap("#managed-watchlist-research-report-save");picker.awaitOpen(30_000);picker.saveToInventedRoot();
+        await("one additional exact Watchlist report write confirmed",transport+".choices==="+(previousWrites*2+2)+"&&"+transport+".writeRequests==="+(previousWrites+1)+"&&"+transport+".writes==="+(previousWrites+1));
+        WatchlistTestDocuments.Output[] outputs=WatchlistTestDocuments.outputs(context());assertEquals(previousWrites+1,outputs.length);
+        String filename=page.read(new Script(transport+".filename"));
+        WatchlistTestDocuments.Output output=null;
+        for(WatchlistTestDocuments.Output candidate:outputs)if(candidate.name.equals(filename)){assertNull(output);output=candidate;}
+        assertNotNull(output);assertTrue(filename.matches("Investment-watchlist-research-[0-9]{8}T[0-9]{9}Z\\.html"));
+        assertEquals("Investment-watchlist-research-"+new JSONObject(captured).getString("preparedAt").replaceAll("[-:.]","")+".html",filename);
+        assertEquals("text/html",context().getContentResolver().getType(output.uri));
+        byte[] bytes;try(InputStream stream=context().getContentResolver().openInputStream(output.uri)){assertNotNull(stream);bytes=stream.readNBytes(8388609);}
+        assertTrue(bytes.length>0&&bytes.length<=8388608);assertEquals(output.size,bytes.length);
+        assertEquals(Integer.parseInt(page.read(new Script("String("+transport+".byteLength)"))),bytes.length);
+        String html=new String(bytes,StandardCharsets.UTF_8);assertArrayEquals(bytes,html.getBytes(StandardCharsets.UTF_8));
+        assertTrue(WatchlistResearchReportHtmlDocumentPolicy.INSTANCE.acceptsText(filename,html));
+        String readback=page.read(new Script("JSON.stringify((()=>{const d=new DOMParser().parseFromString("+q(html)+",'text/html');return {payload:d.querySelector('[data-watchlist-research-payload]').textContent,title:d.title,active:d.querySelectorAll('script,img,iframe,form,button,input,select,canvas,object').length,models:d.querySelectorAll('[aria-label=\"Authored valuation results\"]').length,documents:[...d.querySelectorAll('[data-research-reading-side]')].map(a=>a.querySelector('textarea').value),text:d.body.textContent};})())"));
+        JSONObject observed=new JSONObject(readback);assertEquals(captured,observed.getString("payload"));assertEquals("Watchlist company research",observed.getString("title"));assertEquals(0,observed.getInt("active"));assertEquals(2,observed.getInt("models"));
+        JSONObject reading=new JSONObject(captured).getJSONObject("reading");
+        for(int i=0;i<2;i++){
+            JSONObject side=reading.getJSONObject(i==0?"left":"right");
+            assertEquals(side.getJSONObject("document").getString("text"),observed.getJSONArray("documents").getString(i));
+            assertTrue(observed.getString("text").contains(side.getString("capturedAt")));assertTrue(observed.getString("text").contains(side.getString("evaluatedAt")));
+        }
+        assertTrue(observed.getString("text").contains("No Annual response was retained."));
+        assertEquals(previousWrites==0?"price_invalid":"price_not_loaded",reading.getJSONObject("right").getJSONObject("valuationPrice").getString("reason"));
+        assertTrue(observed.getString("text").contains(previousWrites==0?"The loaded history does not provide an admitted latest raw USD close for this comparison.":"Load raw closing prices explicitly in the Price section to compare this scenario."));
+        if(previousWrites==0){firstReportHtml=html;firstReportFilename=filename;}
+        else{
+            assertNotEquals(firstReportFilename,filename);assertNotEquals(firstReportHtml,html);
+            assertEquals(read(".thesis"),reading.getJSONObject("right").getString("note"));
+            boolean preserved=false;for(WatchlistTestDocuments.Output candidate:outputs)if(candidate.name.equals(firstReportFilename)){
+                try(InputStream stream=context().getContentResolver().openInputStream(candidate.uri)){assertNotNull(stream);assertArrayEquals(firstReportHtml.getBytes(StandardCharsets.UTF_8),stream.readNBytes(8388609));}preserved=true;
+            }assertTrue("The first saved report remains unchanged",preserved);
+        }
+        await("report actions preserve current retained readings", "JSON.stringify("+D+".review.reading)==="+q(retained));boundary(2,2,0,0);
+    }
+    private void recaptureChosenReadingAndReport()throws Exception {
+        stage="explicit chosen-side recapture before preparing a new report";
+        tap("#managed-watchlist-pair-open-right");
+        page.await(new Check("chosen return opens without a new request or calculation",new Script(D+".review.activeSide==='right'&&!"+D+".annual.checkingSeed&&JSON.stringify("+D+".review.reading)==="+q(paired))).nativeReady());
+        tap("#managed-watchlist-pair-capture");
+        await("explicit recapture changes only ONE and includes its authored thesis", "JSON.stringify("+D+".review.reading.left)==="+q(leftReading)+"&&"+D+".review.reading.right.note==="+D+".thesis&&JSON.stringify("+D+".review.reading)!=="+q(paired));
+        pressBack();await("owned Back retains the recaptured chosen reading",D+".view.view==='watchlist'&&"+D+".review.activeSide===null&&"+D+".review.reading.right.note==="+D+".thesis");
+        saveWatchlistReport(1);boundary(2,2,0,0);
+    }
+    private Context context(){return InstrumentationRegistry.getInstrumentation().getTargetContext();}
     private void freshLoad()throws Exception {
         stage="fresh session exact full saved payloads";tap("#fixture-followups-fresh-session");
         await("fresh session clears captures, live sources and calculations",D+".counts.status===2&&"+D+".watchlist.draft===null&&"+D+".valuations.draft===null&&"+D+".followups.draft===null&&"+D+".review.reading===null&&"+D+".workbench.calculation===null&&"+D+".annual.response===null");

@@ -1,3 +1,4 @@
+import { browserWatchlistResearchReportAdapter } from "./watchlist-research-report-delivery";
 import { browserScreenPassReviewReportAdapter } from "./screen-pass-review-report-delivery";
 import { browserPortfolioComparisonReportAdapter } from "./portfolio-comparison-report-delivery";
 import { browserResearchDraftSetFileAdapter } from "./research-draft-set-file-delivery";
@@ -139,6 +140,8 @@ function ClerkSession({
               financialScreenRecipeDelivery:
                 browserFinancialScreenRecipeAdapter,
               screenResearchReportDelivery: browserScreenResearchReportAdapter,
+              watchlistResearchReportDelivery:
+                browserWatchlistResearchReportAdapter,
               watchlistDailyReportDelivery: browserWatchlistDailyReportAdapter,
               screenComparisonReportDelivery:
                 browserScreenComparisonReportAdapter,

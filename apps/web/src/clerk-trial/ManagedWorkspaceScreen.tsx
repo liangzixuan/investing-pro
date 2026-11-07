@@ -1,3 +1,4 @@
+import type { WatchlistResearchReportDeliveryAdapter } from "./watchlist-research-report-ports";
 import type { ScreenPassReviewReportDeliveryAdapter } from "./screen-pass-review-report-ports";
 import { ManagedScreenResearchCapture } from "./ManagedScreenResearchReview";
 import {
@@ -120,6 +121,7 @@ interface ManagedFileDeliveries {
   screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
   screenPassReviewReportDelivery?: ScreenPassReviewReportDeliveryAdapter;
   screenResearchReportDelivery?: ScreenResearchReportDeliveryAdapter;
+  watchlistResearchReportDelivery?: WatchlistResearchReportDeliveryAdapter;
   watchlistDailyReportDelivery?: WatchlistDailyReportDeliveryAdapter;
   exportDelivery?: WatchlistExportDeliveryAdapter;
   draftFileDelivery?: ManagedWatchlistDraftFileDeliveryAdapter;
@@ -277,6 +279,7 @@ function definedSessionWorkspacePorts(initial: SessionProps) {
     screenComparisonReportDelivery: initial.screenComparisonReportDelivery,
     screenPassReviewReportDelivery: initial.screenPassReviewReportDelivery,
     screenResearchReportDelivery: initial.screenResearchReportDelivery,
+    watchlistResearchReportDelivery: initial.watchlistResearchReportDelivery,
     watchlistDailyReportDelivery: initial.watchlistDailyReportDelivery,
     portfolioDraftFileDelivery: initial.portfolioDraftFileDelivery,
     portfolioReviewReportDelivery: initial.portfolioReviewReportDelivery,
@@ -519,6 +522,7 @@ export function ManagedWorkspaceScreen({
   screenComparisonReportDelivery,
   screenPassReviewReportDelivery,
   screenResearchReportDelivery,
+  watchlistResearchReportDelivery,
   watchlistDailyReportDelivery,
   reportDelivery,
 }: WorkspaceScreenProps) {
@@ -1769,6 +1773,13 @@ export function ManagedWorkspaceScreen({
                 {saved.draft && (
                   <>
                     <ManagedWatchlistResearchPair
+                      {...(watchlistResearchReportDelivery
+                        ? { reportDelivery: watchlistResearchReportDelivery }
+                        : {})}
+                      reportRouteActive={() =>
+                        watchlistRouteActive() &&
+                        workspace.getSnapshot().view === "watchlist"
+                      }
                       workspace={workspace}
                       navigationPending={navigationPending}
                       onOpenSide={(state, side, opener) =>

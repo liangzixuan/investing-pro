@@ -747,6 +747,18 @@ jobs:
           required.add(watchlist_research_pair_case)
           if len(required) != 168:
               raise SystemExit("Watchlist research pairs must preserve all 167 prior native cases.")
+          watchlist_research_policy_cases = {("local.investment.personal.WatchlistResearchReportHtmlPolicyInstrumentedTest", method) for method in {
+              "admitsTheFixedHtmlMetadataAndCompleteEnvelope",
+              "refusesUnknownOptionsCrossFormatPurposeAndUnsafeFilename",
+              "reusesTheCompleteUtcCalendarAndExactChosenFilename",
+              "refusesChangedHeadCspStyleIdentityOrIncompleteEnvelope",
+              "inheritsTheEightMibStrictUtf8WriterBoundary",
+          }}
+          if required.intersection(watchlist_research_policy_cases):
+              raise SystemExit("Watchlist research report policy cases must be distinct.")
+          required.update(watchlist_research_policy_cases)
+          if len(required) != 173:
+              raise SystemExit("Watchlist research reports must preserve all 168 prior native cases.")
           combined = set()
           for shard in ("0", "1"):
               root = Path("android-shards") / ("shard-" + shard)

@@ -9,9 +9,16 @@ import {
   nativeFollowupsReviewReport,
   nativeScreenComparisonReport,
   nativeScreenResearchReport,
+  nativeWatchlistResearchReport,
 } from "./native-fixture-environment";
 export function nativeFixtureRouterPorts() {
   return {
+    ...(nativeWatchlistResearchReport
+      ? {
+          watchlistResearchReportDelivery:
+            nativeWatchlistResearchReport.delivery,
+        }
+      : {}),
     ...(nativeScreenPassReviewReport
       ? {
           screenPassReviewReportDelivery: nativeScreenPassReviewReport.delivery,

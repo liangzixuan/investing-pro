@@ -20,6 +20,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(InvestmentFollowupsReviewReportPlugin.class);
         registerPlugin(InvestmentScreenComparisonReportPlugin.class);
         registerPlugin(InvestmentScreenResearchReportPlugin.class);
+        registerPlugin(InvestmentWatchlistResearchReportPlugin.class);
         registerPlugin(InvestmentWatchlistDailyReportPlugin.class);
         registerPlugin(InvestmentDueCheckEvidenceReportPlugin.class);
         registerPlugin(InvestmentScreenPassReviewReportPlugin.class);

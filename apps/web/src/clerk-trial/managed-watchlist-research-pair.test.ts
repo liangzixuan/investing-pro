@@ -5,6 +5,7 @@ import { ManagedCompanyFilings } from "./managed-company-filings";
 import { filingsResponse } from "./sec-filings-fixture";
 import { createManagedResearchCoverageFixture } from "./test-managed-research-coverage-fixture";
 import { ManagedEodHistory } from "./managed-eod-history";
+import { isPreparedWatchlistResearchReport } from "./managed-watchlist-research-pair";
 afterEach(() => vi.useRealTimers());
 
 describe("direct Watchlist research pair", () => {
@@ -353,5 +354,224 @@ describe("direct Watchlist research pair", () => {
     expect(f.model.capture(f.model.getSnapshot(), visit)).toBeNull();
     f.model.reconcile();
     expect(f.model.getSnapshot().reading).toBeNull();
+  });
+});
+
+async function completeWatchlistReportPair() {
+  const f = await createWatchlistResearchPairFixture();
+  f.choose(1);
+  for (const side of ["left", "right"] as const) {
+    const visit = f.open(side);
+    if (side === "left") await f.loadAnnual();
+    else {
+      f.valuation.setDcfField("startingUnleveredCashFlowUsd", "0.000001");
+      f.valuation.calculate();
+      f.model.reconcile();
+    }
+    expect(f.model.capture(f.model.getSnapshot(), visit)).not.toBeNull();
+    f.back();
+  }
+  return f;
+}
+
+describe("prepared Watchlist research report", () => {
+  it.each([0, 1, 2, 3])(
+    "retires on resource %s revision ABA while retaining both readings",
+    async (index) => {
+      const f = await completeWatchlistReportPair();
+      const state = f.model.getSnapshot();
+      const captured = f.model.captureReport(state)!;
+      const original = f.getContext().reportRevisions;
+      f.setContext({ reportRevisions: [...original] });
+      expect(f.model.getSnapshot()).toBe(state);
+      expect(captured.current()).toBe(true);
+      const changed = [...original];
+      changed[index] = {};
+      f.setContext({ reportRevisions: changed });
+      f.setContext({ reportRevisions: original });
+      expect(captured.current()).toBe(false);
+      expect(f.model.getSnapshot().reading).toBe(state.reading);
+      expect(f.model.captureReport(f.model.getSnapshot())?.current()).toBe(
+        true,
+      );
+    },
+  );
+
+  it("prepares a branded immutable complete reading without exporting member or draft authority", async () => {
+    const f = await completeWatchlistReportPair();
+    const state = f.model.getSnapshot();
+    const beforeRequests = f.annualRead.mock.calls.length;
+    const listener = vi.fn();
+    const stop = f.model.subscribe(listener);
+    expect(typeof f.model.captureReport).toBe("function");
+    const captured = f.model.captureReport(state)!;
+    expect(captured).not.toBeNull();
+    expect(captured.current()).toBe(true);
+    expect(captured.report.kind).toBe("watchlist_company_research");
+    expect(captured.report.preparedAt).toBe("2026-11-07T12:00:00.000Z");
+    expect(isPreparedWatchlistResearchReport(captured.report)).toBe(true);
+    for (const foreign of [
+      null,
+      {},
+      { ...captured.report },
+      structuredClone(captured.report),
+      JSON.parse(JSON.stringify(captured.report)),
+    ])
+      expect(isPreparedWatchlistResearchReport(foreign)).toBe(false);
+    expect(Object.keys(captured.report)).toEqual([
+      "kind",
+      "preparedAt",
+      "reading",
+    ]);
+    expect(Object.keys(captured.report.reading)).toEqual([
+      "kind",
+      "listings",
+      "left",
+      "right",
+    ]);
+    expect(captured.report.reading.listings).toEqual(
+      state.reading!.members.map((member) => member.listing),
+    );
+    expect(captured.report.reading.listings[0]).not.toBe(
+      state.reading!.members[0].listing,
+    );
+    expect(captured.report.reading.left).toBe(state.reading!.left);
+    expect(captured.report.reading.right).toBe(state.reading!.right);
+    expect(captured.report.reading.left.note).toBe("Thesis 東京 Ω 2.000001");
+    for (const value of [
+      captured,
+      captured.report,
+      captured.report.reading,
+      captured.report.reading.listings,
+      ...captured.report.reading.listings,
+      captured.report.reading.left,
+      captured.report.reading.right,
+    ])
+      expect(Object.isFrozen(value)).toBe(true);
+    expect(f.model.getSnapshot()).toBe(state);
+    expect(listener).not.toHaveBeenCalled();
+    expect(f.annualRead).toHaveBeenCalledTimes(beforeRequests);
+    expect(f.unexpected).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it("requires both readings, exact state and an idle owned return", async () => {
+    const f = await createWatchlistResearchPairFixture();
+    expect(f.model.captureReport(f.model.getSnapshot())).toBeNull();
+    f.choose();
+    const visit = f.open("left");
+    await f.loadAnnual();
+    f.model.capture(f.model.getSnapshot(), visit);
+    expect(f.model.captureReport(f.model.getSnapshot())).toBeNull();
+    f.back();
+    expect(f.model.captureReport(f.model.getSnapshot())).toBeNull();
+    const full = await completeWatchlistReportPair();
+    const stale = full.model.getSnapshot();
+    full.note("new authored note");
+    expect(full.model.captureReport(stale)).toBeNull();
+    const current = full.model.getSnapshot();
+    expect(full.model.prepareOpen(current, "left")).not.toBeNull();
+    expect(full.model.captureReport(full.model.getSnapshot())).toBeNull();
+  });
+
+  it("retires report authority across note and Save ABA while preserving the original readings", async () => {
+    const f = await completeWatchlistReportPair();
+    const before = f.model.getSnapshot();
+    const original = f.getContext();
+    const captured = f.model.captureReport(before)!;
+    f.note("updated note");
+    f.setContext(original);
+    expect(captured.current()).toBe(false);
+    expect(captured.current()).toBe(false);
+    expect(f.model.getSnapshot().reading).toBe(before.reading);
+    const fresh = f.model.captureReport(f.model.getSnapshot())!;
+    expect(fresh.current()).toBe(true);
+    f.setContext({ available: false, canStart: false, revision: Symbol() });
+    f.setContext({
+      ...original,
+      draft: structuredClone(original.draft),
+      revision: Symbol(),
+    });
+    expect(fresh.current()).toBe(false);
+    expect(f.model.getSnapshot().reading).toBe(before.reading);
+    expect(
+      f.model.captureReport(f.model.getSnapshot())?.report.reading.left.note,
+    ).toBe("Thesis 東京 Ω 2.000001");
+  });
+
+  it.each([
+    "available",
+    "canStart",
+    "load",
+    "session",
+    "catalog",
+    "file",
+    "order",
+    "revision",
+  ] as const)(
+    "permanently retires a prepared report on %s even when restored before polling",
+    async (kind) => {
+      const f = await completeWatchlistReportPair();
+      const captured = f.model.captureReport(f.model.getSnapshot())!;
+      const original = f.getContext();
+      if (kind === "available") f.setContext({ available: false });
+      if (kind === "canStart") f.setContext({ canStart: false });
+      if (kind === "load") f.setContext({ retire: true });
+      if (kind === "session") f.setContext({ session: {} });
+      if (kind === "catalog")
+        f.setContext({ catalog: { ...original.catalog! } });
+      if (kind === "file") f.setContext({ fileEpochs: [1, 0, 0] });
+      if (kind === "order")
+        f.setContext({
+          draft: {
+            ...original.draft!,
+            memberships: [...original.draft!.memberships].reverse(),
+          },
+        });
+      if (kind === "revision") f.setContext({ revision: Symbol() });
+      f.setContext(original);
+      expect(captured.current()).toBe(false);
+    },
+  );
+
+  it("rechecks an unobserved current context and never revives a rejected lease", async () => {
+    const f = await completeWatchlistReportPair();
+    const captured = f.model.captureReport(f.model.getSnapshot())!;
+    const original = f.getContext();
+    f.setContext({ available: false }, false);
+    expect(captured.current()).toBe(false);
+    f.setContext(original);
+    expect(captured.current()).toBe(false);
+  });
+
+  it.each(["open-back", "clear", "end", "retire"] as const)(
+    "withdraws report ownership on %s",
+    async (kind) => {
+      const f = await completeWatchlistReportPair();
+      const captured = f.model.captureReport(f.model.getSnapshot())!;
+      if (kind === "open-back") {
+        f.open("left");
+        f.back();
+      }
+      if (kind === "clear") f.model.clearSide(f.model.getSnapshot(), "right");
+      if (kind === "end") f.model.end(f.model.getSnapshot());
+      if (kind === "retire") f.model.retire();
+      expect(captured.current()).toBe(false);
+    },
+  );
+
+  it("refuses a reentrant preparation clock and invalid dates", async () => {
+    const f = await completeWatchlistReportPair();
+    f.setClock(() => {
+      f.note("clock reentered");
+      return new Date("2026-11-08T00:00:00Z");
+    });
+    expect(f.model.captureReport(f.model.getSnapshot())).toBeNull();
+    f.setClock(() => new Date(Number.NaN));
+    expect(f.model.captureReport(f.model.getSnapshot())).toBeNull();
+    f.setClock(() => new Date("2026-11-08T00:00:00Z"));
+    expect(
+      f.model.captureReport(f.model.getSnapshot())?.report.preparedAt,
+    ).toBe("2026-11-08T00:00:00.000Z");
   });
 });

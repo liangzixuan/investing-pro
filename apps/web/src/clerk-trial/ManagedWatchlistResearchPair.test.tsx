@@ -166,6 +166,7 @@ function render(
         workspace: f.workspace,
         navigationPending: pending,
         onOpenSide: f.open,
+        reportRouteActive: () => !pending,
       });
 }
 function click(
@@ -249,6 +250,7 @@ it("requires a full identity preview before Start and labels same-issuer share c
   const $ = load(
     renderToStaticMarkup(
       <ManagedWatchlistResearchPair
+        reportRouteActive={() => true}
         workspace={f.workspace}
         navigationPending={false}
         onOpenSide={f.open}
@@ -355,6 +357,7 @@ it("renders complete passive readings and opens the current side with its actual
   const $ = load(
     renderToStaticMarkup(
       <ManagedWatchlistResearchPair
+        reportRouteActive={() => true}
         workspace={f.workspace}
         navigationPending={false}
         onOpenSide={f.open}
@@ -467,6 +470,7 @@ it("completes the rendered selection and capture flow with the real Watchlist pa
   const $ = load(
     renderToStaticMarkup(
       <ManagedWatchlistResearchPair
+        reportRouteActive={() => true}
         workspace={workspace}
         navigationPending={false}
         onOpenSide={context.open}

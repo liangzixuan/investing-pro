@@ -1140,6 +1140,7 @@ export class ManagedWorkspace {
         this.valuation.getDraftFileActivityRevision(),
       ],
       revision: saved,
+      reportRevisions: resources,
       retire,
       available,
       canStart:

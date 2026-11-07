@@ -21,6 +21,13 @@ valuation results, 44px controls and wrapping layouts. Recapture, Clear and End
 are explicit; resource Save stays elsewhere. Focus only the result of a committed
 action that still owns focus. See the [guide](docs/MANAGED_WATCHLIST_RESEARCH_PAIR.md).
 
+Keep **Prepare Watchlist research report** after the two retained readings.
+Use a closed complete-preview disclosure, separate Save and Cancel controls,
+and a clear report status. Move focus to the report heading only after an
+explicit preparation that still owns focus. Use the existing wrapping layout
+and 44px controls. The offline HTML uses the fixed passive print style and full
+JSON appendix; the report preserves each reading's independent dates.
+
 ## Grouped Portfolio edits
 
 Place **Start group of edits** beside the existing ledger editor. During a group,

@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
 import { ManagedScreenResearchReading } from "../../src/clerk-trial/ManagedScreenResearchReading";
+import { WatchlistResearchReportSnapshot } from "../../src/clerk-trial/WatchlistResearchReportSnapshot";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { createFixture } from "./fixture";
 import {
@@ -195,7 +196,31 @@ it("uses a direct Watchlist pair with one Annual and an uncovered reading, then 
       "This source was unavailable for the captured company.",
     );
     const counts = meta.getSnapshot();
+    const firstReport = pair.captureReport(pair.getSnapshot())!;
+    expect(firstReport.current()).toBe(true);
+    expect(firstReport.report.reading).toEqual({
+      kind: "watchlist_research_reading",
+      listings: reading.members.map((member) => member.listing),
+      left: reading.left,
+      right: reading.right,
+    });
+    const reportHtml = load(
+      renderToStaticMarkup(
+        createElement(WatchlistResearchReportSnapshot, {
+          report: firstReport.report,
+        }),
+      ),
+    );
+    expect(
+      JSON.parse(reportHtml("[data-watchlist-research-payload]").text()),
+    ).toEqual(firstReport.report);
+    expect(reportHtml("[data-research-reading-side]")).toHaveLength(2);
+    expect(
+      reportHtml("script,img,iframe,form,button,input,select,canvas,object"),
+    ).toHaveLength(0);
+    expect(meta.getSnapshot()).toBe(counts);
     w.openWatchlistResearchSide(pair.getSnapshot(), "right");
+    expect(firstReport.current()).toBe(false);
     expect(meta.getSnapshot()).toBe(counts);
     const selection = w.getSnapshot().research!.selection;
     w.noteResearch(selection, decisionThesis);
@@ -211,8 +236,39 @@ it("uses a direct Watchlist pair with one Annual and an uncovered reading, then 
     )!;
     expect(pair.getSnapshot().reading).toBe(reading);
     w.returnFromResearch();
-    await w.coordinator.save();
     expect(pair.getSnapshot().reading).toBe(reading);
+    w.openWatchlistResearchSide(pair.getSnapshot(), "right");
+    const recaptured = w.captureWatchlistResearchReading(
+      pair.getSnapshot(),
+    )!.reading!;
+    expect(recaptured.left).toBe(reading.left);
+    expect(recaptured.right!.note).toBe(decisionThesis);
+    expect(recaptured.right!.valuationPrice!.reason).toBe("price_not_loaded");
+    expect(recaptured.right).not.toBe(reading.right);
+    w.returnFromResearch();
+    const nextReport = pair.captureReport(pair.getSnapshot())!;
+    expect(nextReport.current()).toBe(true);
+    expect(nextReport.report.reading.left).toBe(
+      firstReport.report.reading.left,
+    );
+    expect(nextReport.report.reading.right).toBe(recaptured.right);
+    const nextReportHtml = load(
+      renderToStaticMarkup(
+        createElement(WatchlistResearchReportSnapshot, {
+          report: nextReport.report,
+        }),
+      ),
+    );
+    expect(
+      nextReportHtml('[data-research-reading-side="right"]').text(),
+    ).toContain(
+      "Load raw closing prices explicitly in the Price section to compare this scenario.",
+    );
+    expect(firstReport.report.reading.right).toBe(reading.right);
+    expect(meta.getSnapshot()).toBe(counts);
+    await w.coordinator.save();
+    expect(nextReport.current()).toBe(false);
+    expect(pair.getSnapshot().reading).toBe(recaptured);
     w.note("listing-zero", decisionUnsaved);
     await w.followups.coordinator.save();
     expect(meta.saved().valuations.payload.entries).toEqual(

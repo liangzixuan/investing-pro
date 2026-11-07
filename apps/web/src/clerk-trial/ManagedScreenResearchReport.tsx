@@ -1,17 +1,41 @@
 import { useLayoutEffect, useState, useSyncExternalStore } from "react";
-import type { ManagedScreenResearchReview } from "./managed-screen-research-review";
 import {
-  ScreenResearchReportController,
-  type ScreenResearchReportSource,
-} from "./screen-research-report-controller";
+  isPreparedScreenResearchReport,
+  type ManagedScreenResearchReview,
+  type PreparedScreenResearchReport,
+} from "./managed-screen-research-review";
+import {
+  OwnedReportController,
+  type OwnedReportMessages,
+  type OwnedReportSource,
+} from "./owned-report-controller";
 import { formatScreenResearchReportHtml } from "./screen-research-report-html";
-import type { ScreenResearchReportDeliveryAdapter } from "./screen-research-report-ports";
+import type {
+  ScreenResearchReportDeliveryAdapter,
+  ScreenResearchReportHtmlDocument,
+} from "./screen-research-report-ports";
 import { ScreenResearchReportSnapshot } from "./ScreenResearchReportSnapshot";
+
+export const screenResearchReportMessages: OwnedReportMessages = Object.freeze({
+  withdrawn:
+    "The captured paired research is no longer current. Capture it again after review.",
+  captureUnavailable:
+    "The complete paired research could not be captured. Review the current loaded pair and its admission and complete-size limits; nothing was clipped.",
+  prepared: "Captured for review. No source request or online Save was made.",
+  cancelled: "Paired research report save cancelled.",
+  formatUnavailable: "Complete paired research report unavailable.",
+  preparing: "Preparing the complete paired research HTML report…",
+  saveFailed:
+    "The complete paired research report could not be saved. No draft was changed.",
+  written: "Paired research report written to the chosen document.",
+  downloadRequested:
+    "Paired research report download requested. Check the browser destination.",
+});
 
 export function createScreenResearchReportSource(
   model: ManagedScreenResearchReview,
   routeActive: () => boolean,
-): ScreenResearchReportSource {
+): OwnedReportSource<PreparedScreenResearchReport> {
   return {
     subscribe: model.subscribe,
     capture: () => {
@@ -41,13 +65,19 @@ export function ManagedScreenResearchReport({
   readonly delivery: ScreenResearchReportDeliveryAdapter | undefined;
   readonly routeActive: () => boolean;
 }) {
-  const [controller, setController] =
-    useState<ScreenResearchReportController | null>(null);
+  const [controller, setController] = useState<OwnedReportController<
+    PreparedScreenResearchReport,
+    ScreenResearchReportHtmlDocument
+  > | null>(null);
   useLayoutEffect(() => {
-    const next = new ScreenResearchReportController(
+    const next = new OwnedReportController(
       createScreenResearchReportSource(model, routeActive),
       delivery,
-      formatScreenResearchReportHtml,
+      {
+        admit: isPreparedScreenResearchReport,
+        format: formatScreenResearchReportHtml,
+        messages: screenResearchReportMessages,
+      },
     );
     setController(next);
     return () => next.dispose();
