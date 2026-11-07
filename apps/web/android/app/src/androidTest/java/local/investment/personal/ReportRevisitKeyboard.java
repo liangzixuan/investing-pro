@@ -161,6 +161,7 @@ final class ReportRevisitKeyboard {
                     if (remaining <= 0) break;
                     uiController.loopMainThreadForAtLeast(Math.min(50, remaining));
                 } while (SystemClock.uptimeMillis() < deadline);
+                Log.e("ManagedInput", "Native editor readiness timed out: " + diagnostic);
                 throw new PerformException.Builder().withActionDescription(getDescription())
                     .withViewDescription("Managed fixture editor: " + diagnostic)
                     .withCause(new IllegalStateException("Visible native editor did not settle")).build();
