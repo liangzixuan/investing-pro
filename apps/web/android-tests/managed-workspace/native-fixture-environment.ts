@@ -3,6 +3,7 @@ import { createNativeDueCheckEvidenceReportFixture } from "./native-due-check-ev
 import { createNativeWatchlistDailyReportFixture } from "./native-watchlist-daily-report-fixture";
 import { createNativePortfolioComparisonReportFixture } from "./native-portfolio-comparison-report-fixture";
 import { createNativeScreenResearchReportFixture } from "./native-screen-research-report-fixture";
+import { createNativeWatchlistResearchReportFixture } from "./native-watchlist-research-report-fixture";
 import { createNativeScreenComparisonReportFixture } from "./native-screen-comparison-report-fixture";
 import { createNativeFollowupsReviewReportFixture } from "./native-followups-review-report-fixture";
 import { createNativeValuationCollectionDraftFileFixture } from "./native-valuation-collection-file-fixture";
@@ -191,6 +192,11 @@ export const nativePortfolioComparisonReport =
 export const nativeScreenResearchReport =
   scenario === "two-company-research-review"
     ? createNativeScreenResearchReportFixture()
+    : null;
+
+export const nativeWatchlistResearchReport =
+  scenario === "watchlist-research-pair"
+    ? createNativeWatchlistResearchReportFixture()
     : null;
 
 export const nativeWatchlistDailyReport =

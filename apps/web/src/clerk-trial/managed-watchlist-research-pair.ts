@@ -32,6 +32,7 @@ export interface WatchlistResearchPairContext {
   readonly draft: MainWatchlistPayload | null;
   readonly fileEpochs: readonly unknown[];
   readonly revision: unknown;
+  readonly reportRevisions: readonly unknown[];
   readonly retire: boolean;
   readonly canStart: boolean;
   readonly available: boolean;
@@ -59,6 +60,22 @@ export interface ManagedWatchlistResearchPairState {
   readonly canStart: boolean;
   readonly canCapture: boolean;
   readonly reason: string | null;
+}
+export interface PreparedWatchlistResearchReport {
+  readonly kind: "watchlist_company_research";
+  readonly preparedAt: string;
+  readonly reading: {
+    readonly kind: "watchlist_research_reading";
+    readonly listings: readonly [ManagedEodIdentity, ManagedEodIdentity];
+    readonly left: PassiveCompanyResearchCapture;
+    readonly right: PassiveCompanyResearchCapture;
+  };
+}
+const reports = new WeakSet<object>();
+export function isPreparedWatchlistResearchReport(
+  value: unknown,
+): value is PreparedWatchlistResearchReport {
+  return typeof value === "object" && value !== null && reports.has(value);
 }
 export interface PendingWatchlistResearchVisit {
   readonly kind: "watchlist_research_visit";
@@ -151,6 +168,7 @@ export class ManagedWatchlistResearchPair {
       watchlist,
       fence: [
         resource.revision,
+        ...resource.reportRevisions,
         resource.canStart,
         resource.available,
         resource.retire,
@@ -569,6 +587,54 @@ export class ManagedWatchlistResearchPair {
       ...expected,
       reading: Object.freeze({ ...expected.reading, [side]: null }),
     });
+  }
+  /** Delivery authority belongs to this exact state; retained pair data can outlive it. */
+  captureReport(expected: ManagedWatchlistResearchPairState) {
+    if (!this.current(expected)) return null;
+    const reading = expected.reading;
+    if (!reading?.left || !reading.right) return null;
+    const generation = this.generation;
+    let valid = true;
+    const current = () => {
+      if (!valid) return false;
+      this.reconcile();
+      const context = this.context();
+      valid =
+        !!context &&
+        context.resource.available &&
+        context.resource.canStart &&
+        !context.resource.retire &&
+        !context.fileActive &&
+        !context.visit &&
+        !this.retired &&
+        !this.pending &&
+        !this.owner &&
+        !this.returning &&
+        this.state === expected &&
+        this.generation === generation &&
+        same(context.fence, this.fence);
+      return valid;
+    };
+    if (!current()) return null;
+    const prepared = this.options.now?.() ?? new Date();
+    if (!Number.isFinite(prepared.getTime())) return null;
+    const preparedAt = prepared.toISOString();
+    if (!current()) return null;
+    const report: PreparedWatchlistResearchReport = Object.freeze({
+      kind: "watchlist_company_research",
+      preparedAt,
+      reading: Object.freeze({
+        kind: "watchlist_research_reading",
+        listings: Object.freeze([
+          Object.freeze({ ...reading.members[0].listing }),
+          Object.freeze({ ...reading.members[1].listing }),
+        ] as const),
+        left: reading.left,
+        right: reading.right,
+      }),
+    });
+    reports.add(report);
+    return Object.freeze({ report, current });
   }
   end(expected: ManagedWatchlistResearchPairState) {
     if (!this.current(expected)) return null;

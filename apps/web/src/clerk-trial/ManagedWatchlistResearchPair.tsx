@@ -1,3 +1,5 @@
+import { ManagedWatchlistResearchReport } from "./ManagedWatchlistResearchReport";
+import type { WatchlistResearchReportDeliveryAdapter } from "./watchlist-research-report-ports";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ManagedWorkspace } from "./managed-workspace";
 import type { ManagedWatchlistResearchPairState } from "./managed-watchlist-research-pair";
@@ -96,7 +98,13 @@ export function ManagedWatchlistResearchPair({
   workspace,
   navigationPending,
   onOpenSide,
-}: Context & WatchlistResearchOpenProps) {
+  reportDelivery,
+  reportRouteActive,
+}: Context &
+  WatchlistResearchOpenProps & {
+    readonly reportDelivery?: WatchlistResearchReportDeliveryAdapter;
+    readonly reportRouteActive: () => boolean;
+  }) {
   const { model, state, heading, isCurrent, commit } = usePairContext({
     workspace,
     navigationPending,
@@ -195,6 +203,11 @@ export function ManagedWatchlistResearchPair({
               );
             })}
           </div>
+          <ManagedWatchlistResearchReport
+            model={model}
+            delivery={reportDelivery}
+            routeActive={() => !navigationPending && reportRouteActive()}
+          />
           <button
             id="managed-watchlist-pair-end"
             className="trial-secondary"

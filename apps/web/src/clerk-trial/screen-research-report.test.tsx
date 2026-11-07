@@ -10,8 +10,11 @@ import {
 } from "./managed-screen-research-review";
 import { ScreenResearchReportSnapshot } from "./ScreenResearchReportSnapshot";
 import { ManagedScreenResearchReading } from "./ManagedScreenResearchReading";
-import { createScreenResearchReportSource } from "./ManagedScreenResearchReport";
-import { ScreenResearchReportController } from "./screen-research-report-controller";
+import {
+  createScreenResearchReportSource,
+  screenResearchReportMessages,
+} from "./ManagedScreenResearchReport";
+import { OwnedReportController } from "./owned-report-controller";
 import {
   screenResearchReportHtmlByteLength,
   SCREEN_RESEARCH_REPORT_HTML_MAX_BYTES,
@@ -94,10 +97,14 @@ async function controlled() {
       byteLength: 23,
     }),
   );
-  const controller = new ScreenResearchReportController(
+  const controller = new OwnedReportController(
     source,
     { deliver },
-    format,
+    {
+      admit: isPreparedScreenResearchReport,
+      format,
+      messages: screenResearchReportMessages,
+    },
   );
   return {
     ...f,

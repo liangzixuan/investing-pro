@@ -27,14 +27,18 @@ passed. The existing API and website stayed unchanged. Phone acceptance and
 sustained use of that release remain separate. Android 1.33 now also includes
 the dated thesis Next-check workflow.
 
-## Current priority: compare two watched companies
+## Current priority: keep the Watchlist research comparison
 
-Complete the M2/M4 research and valuation comparison directly from My Watchlist.
-Choose two exact listings, retain both complete company readings, compare their
-evidence and authored cases, then reopen the chosen company for a thesis and
-dated next check. Keep source requests, calculations, resource Saves and fresh
-Loads explicit. Reuse existing capture and navigation boundaries without
-requiring Annual-screen eligibility. See the [guide](MANAGED_WATCHLIST_RESEARCH_PAIR.md).
+Complete the M4 export step for the delivered direct-Watchlist research pair.
+Prepare both retained readings, inspect the complete preview, then save one
+private offline HTML file through the existing browser or Android document
+control. Preserve exact identities, authored notes, source refusals, raw values
+and independent dates. Report Save does not save Watchlist, Follow-ups or
+valuation inputs. See the [report workflow](MANAGED_WATCHLIST_RESEARCH_PAIR.md#keep-a-private-offline-report).
+
+Android 1.81 delivers the preceding M2/M4 comparison workflow: choose two exact
+watched listings, retain both full readings and reopen either company for its
+thesis or dated next check. Broader M2/M4 work remains on this roadmap.
 
 ## Delivered: correct settled Portfolio group edits
 

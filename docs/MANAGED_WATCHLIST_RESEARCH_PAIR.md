@@ -1,6 +1,6 @@
 # Compare two watched companies
 
-The source candidate adds a complete research comparison directly to My
+The application provides a complete research comparison directly in My
 Watchlist. It uses the exact watched listings and existing Research controls.
 Choosing a pair makes no source request and does not run an Annual screen.
 
@@ -30,6 +30,34 @@ The pair stays in memory only. It does not rank the companies, align reporting
 periods or give a retained reading authority to edit inputs, make requests or
 save anything.
 
+## Keep a private offline report
+
+After both readings are retained, choose **Prepare Watchlist research report**.
+Open the complete preview to inspect the two listings, source disclosures,
+valuation inputs and results, unsupported states, exact raw values and full JSON
+payload. Each side keeps its original capture, calculation and source times.
+The report identifies a Watchlist selection; it has no Annual-screen criteria.
+
+Choose **Download Watchlist research (HTML)** in the browser, or **Save Watchlist
+research (HTML)** on Android and choose a document destination. Cancelling the
+picker preserves the pair and drafts. Clear report preview removes only that
+preview. Browser confirmation means the download was requested; check the browser
+destination for the file. A failed write can leave an incomplete chosen document.
+
+The file contains both complete readings and no scripts or external assets. It
+can be read after the in-memory comparison ends. Output must fit within 8 MiB of
+UTF-8; oversized or malformed text is refused before destination selection.
+Nothing is clipped. This private historical copy cannot restore inputs, create
+a check or update an account.
+
+A prepared report belongs to one settled resource and route state. Changes to
+Watchlist, Follow-ups, Portfolio or saved valuation inputs, pending operations,
+file activity, navigation, recapture, Clear or End withdraw its save authority.
+Restoring equal values cannot revive it. Prepare again after the work settles.
+The readings themselves can survive ordinary note edits and confirmed Saves;
+to include a later note in the file, recapture that company first. Resource Save
+and fresh Load remain separate from report delivery.
+
 ## Lifetime
 
 A fresh, settled Watchlist Load is required to start. Once started, the pair
@@ -53,6 +81,12 @@ navigation completions cannot silently capture another company or move focus.
 shared with screen comparisons. The Watchlist interface reuses the complete
 reading presenter. Workspace navigation owns the current company visit; URL
 state does not own the retained data.
+
+`OwnedReportController` shares capture, cancellation and delivery sequencing
+with the Annual-screen paired report. Each consumer has its own admission,
+payload and formatter. The browser and native adapters use the existing text
+document mechanisms; Android checks the exact purpose, UTC filename, envelope,
+CSP, style hash and UTF-8 size before writing.
 
 The saved schemas, source coverage, quotas, API and deployment are unchanged.
 Model, rendered, workspace and native workflow checks cover their specified

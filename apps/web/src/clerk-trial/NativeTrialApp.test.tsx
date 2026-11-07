@@ -1,3 +1,4 @@
+import type { WatchlistResearchReportDeliveryAdapter } from "./watchlist-research-report-ports";
 import type { ScreenPassReviewReportDeliveryAdapter } from "./screen-pass-review-report-ports";
 import type { DueCheckEvidenceReportDeliveryAdapter } from "./due-check-evidence-report-ports";
 import type { WatchlistDailyReportDeliveryAdapter } from "./watchlist-daily-report-ports";
@@ -223,6 +224,7 @@ async function mount(
     ["InvestmentScreenComparisonReport", screenComparisonReportPlugin],
     ["InvestmentScreenResearchReport", screenComparisonReportPlugin],
     ["InvestmentWatchlistDailyReport", watchlistDailyReportPlugin],
+    ["InvestmentWatchlistResearchReport", watchlistDailyReportPlugin],
   ]);
   hooks.register.mockImplementation((name: string) => plugins.get(name));
   const loading = NativeTrialApp({ config });
@@ -292,6 +294,7 @@ function findScreen(node: ReactNode):
       financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
       screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
       watchlistDailyReportDelivery?: WatchlistDailyReportDeliveryAdapter;
+      watchlistResearchReportDelivery?: WatchlistResearchReportDeliveryAdapter;
       reportDelivery?: CompanyReportDeliveryAdapter;
     }>
   | undefined {
@@ -325,6 +328,7 @@ function findScreen(node: ReactNode):
         financialScreenRecipeDelivery?: ManagedFinancialScreenRecipeDeliveryAdapter;
         screenComparisonReportDelivery?: ScreenComparisonReportDeliveryAdapter;
         watchlistDailyReportDelivery?: WatchlistDailyReportDeliveryAdapter;
+        watchlistResearchReportDelivery?: WatchlistResearchReportDeliveryAdapter;
         reportDelivery?: CompanyReportDeliveryAdapter;
       }>;
     }
@@ -418,6 +422,7 @@ describe("native shared workspace composition", () => {
               ["InvestmentValuationDraftFile"],
               ["InvestmentFinancialScreenRecipe"],
               ["InvestmentWatchlistDailyReport"],
+              ["InvestmentWatchlistResearchReport"],
               ["InvestmentScreenResearchReport"],
               ["InvestmentScreenComparisonReport"],
             ]
@@ -544,6 +549,12 @@ describe("native shared workspace composition", () => {
       );
       for (const method of Object.values(screenComparisonReportPlugin))
         expect(method).not.toHaveBeenCalled();
+      expect(
+        typeof screen?.props.watchlistResearchReportDelivery?.deliver,
+      ).toBe(config.environment === "production" ? "function" : "undefined");
+      expect(findScreen(frame())?.props.watchlistResearchReportDelivery).toBe(
+        screen?.props.watchlistResearchReportDelivery,
+      );
       expect(typeof screen?.props.watchlistDailyReportDelivery?.deliver).toBe(
         config.environment === "production" ? "function" : "undefined",
       );
@@ -581,6 +592,9 @@ describe("native shared workspace composition", () => {
     emit({ ...signedIn, generation: 2 });
     const current = findScreen(frame())!;
     expect(current.key).toBe("2");
+    expect(current.props.watchlistResearchReportDelivery).toBe(
+      previous.props.watchlistResearchReportDelivery,
+    );
     expect(current.props.watchlistDailyReportDelivery).toBe(
       previous.props.watchlistDailyReportDelivery,
     );

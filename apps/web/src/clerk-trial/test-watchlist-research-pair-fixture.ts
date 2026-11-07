@@ -44,6 +44,7 @@ export async function createWatchlistResearchPairFixture() {
     draft,
     fileEpochs: [0, 0, 0],
     revision: Symbol(),
+    reportRevisions: [{}, {}, {}, {}],
     retire: false,
     canStart: true,
     available: true,

@@ -65,6 +65,7 @@ import {
   nativeFollowupsReviewReport,
   nativeScreenComparisonReport,
   nativeScreenResearchReport,
+  nativeWatchlistResearchReport,
   nativeDraftFile,
   nativeValuationDraftFile,
   nativeValuationCollectionDraftFile,
@@ -77,6 +78,7 @@ import { ReportRevisitFixtureControls } from "./report-revisit-fixture-controls"
 import { PortfolioReviewReportFixtureControls } from "./portfolio-review-report-fixture-controls";
 import { ScreenComparisonFollowupFixtureDiagnostics } from "./screen-comparison-followup-fixture-diagnostics";
 import { ScreenResearchReportFixtureControls } from "./screen-research-report-fixture-controls";
+import { WatchlistResearchReportFixtureControls } from "./watchlist-research-report-fixture-controls";
 import { ScreenComparisonReportFixtureControls } from "./screen-comparison-report-fixture-controls";
 import { FollowupsReviewReportFixtureControls } from "./followups-review-report-fixture-controls";
 import { PortfolioFixtureControls } from "./portfolio-fixture-controls";
@@ -268,6 +270,9 @@ function NativeDeliveryControls({
       )}
       {workspace && nativeScreenResearchReport && (
         <ScreenResearchReportFixtureControls />
+      )}
+      {workspace && nativeWatchlistResearchReport && (
+        <WatchlistResearchReportFixtureControls />
       )}
       {workspace && nativeScreenComparisonReport && (
         <ScreenComparisonReportFixtureControls workspace={workspace} />

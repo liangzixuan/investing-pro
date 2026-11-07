@@ -5,14 +5,29 @@ The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: compare two watched companies
+## Current increment: keep the complete Watchlist research report
+
+The [Watchlist research pair](MANAGED_WATCHLIST_RESEARCH_PAIR.md#keep-a-private-offline-report)
+adds explicit Prepare, complete preview and private offline HTML Save or Cancel.
+Both retained readings keep their exact identities, notes, raw values, source
+states and independent dates. A resource or route change withdraws the prepared
+report; it does not silently update a retained reading. The report uses the
+existing document delivery controls and adds no provider or saved schema.
+Source integration and native verification remain in progress.
+
+## Delivered: compare two watched companies
 
 The [Watchlist research pair](MANAGED_WATCHLIST_RESEARCH_PAIR.md) lets the owner
 choose two exact watched listings, retain each complete Research reading and
 compare them directly in My Watchlist. Source requests, authored calculations,
 thesis edits, dated checks and resource Saves remain explicit. The pair needs
-no Annual-screen result and adds no source coverage or saved schema. Source
-integration, native verification and Android delivery remain in progress.
+no Annual-screen result. PR 289 and accepted main
+`697812a1a8bd7c4f5fe0eb64b1b7644bfa55dd1a` passed their original source/parser
+checks and all 168 native cases, including both host cleanup records. Android
+1.81.0, code 82, was built once with the existing signer and delivered locally
+on November 7. All four actual APK checks and copied-file checksum checks passed.
+Browser and physical-phone acceptance are not claimed; no API or website was
+deployed. The CodeScene complexity finding remains visible.
 
 ## Delivered: correct settled Portfolio group edits
 
