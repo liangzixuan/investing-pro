@@ -142,6 +142,19 @@ and
 [ActivityManagerService](https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android16-release/services/core/java/com/android/server/am/ActivityManagerService.java).
 An active instrumentation or uncertain dump refuses cleanup.
 
+## Workflow time budgets
+
+The native test step has a 45-minute limit inside a 55-minute shard job. Two
+runs reached the former 30-minute limit while the suite was still advancing,
+with no reported test failures. Comparing the completed prefixes with a passing
+run projected about 31–33 minutes for the full run, including startup and
+finalization. The bounded margin allows for hosted-runner timing variation.
+
+This budget does not change a test assertion, editor deadline, ADB probe limit,
+lease rule or cleanup requirement. Acceptance still requires the full native
+test union from one attempt and both completed host cleanup records. A workflow
+timeout remains a failure; an incomplete run cannot establish acceptance.
+
 Tests:
 
 ```sh
