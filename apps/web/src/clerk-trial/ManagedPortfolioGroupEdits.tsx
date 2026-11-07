@@ -6,7 +6,10 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { ManagedWorkspace } from "./managed-workspace";
-import { ManagedPortfolioGroupEdits as GroupEditModel } from "./managed-portfolio-group-edits";
+import {
+  ManagedPortfolioGroupEdits as GroupEditModel,
+  PORTFOLIO_GROUP_HISTORY_LIMIT,
+} from "./managed-portfolio-group-edits";
 import { PersonalPortfolioLedgerEditor } from "../features/research/PersonalPortfolioLedgerEditor";
 import { PortfolioGroupComparison } from "./PortfolioGroupComparison";
 
@@ -117,6 +120,44 @@ export function ManagedPortfolioGroupEdits({
               model.replaceCandidate(state.candidate, next);
           }}
         />
+      )}
+      {editing && (
+        <div aria-label="Group edit history">
+          <p id="managed-portfolio-group-history-help">
+            Keeps up to {PORTFOLIO_GROUP_HISTORY_LIMIT} recent edits in this
+            group. Apply or reset unfinished forms before Undo or Redo.
+            Cancelling or applying the group clears this history.
+          </p>
+          <p id="managed-portfolio-group-history-counts" aria-live="polite">
+            Edits to undo: {state.undoCount}. Edits to redo: {state.redoCount}.
+          </p>
+          <div className="trial-actions">
+            <button
+              id="managed-portfolio-group-undo"
+              className="trial-secondary"
+              aria-describedby="managed-portfolio-group-history-help"
+              disabled={state.formPending || state.undoCount === 0}
+              onClick={(event) => {
+                requestFocus(event.currentTarget);
+                model.undo(state);
+              }}
+            >
+              Undo group edit
+            </button>
+            <button
+              id="managed-portfolio-group-redo"
+              className="trial-secondary"
+              aria-describedby="managed-portfolio-group-history-help"
+              disabled={state.formPending || state.redoCount === 0}
+              onClick={(event) => {
+                requestFocus(event.currentTarget);
+                model.redo(state);
+              }}
+            >
+              Redo group edit
+            </button>
+          </div>
+        </div>
       )}
       {preview &&
         state.baseline &&

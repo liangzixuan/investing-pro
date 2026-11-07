@@ -1,17 +1,31 @@
 # Current work
 
-Updated November 6, 2026. This is the current capability and delivery record.
+Updated November 7, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: review a group of Portfolio edits
+## Current increment: correct settled Portfolio group edits
+
+The [group history candidate](MANAGED_PORTFOLIO_GROUP_EDITS.md#correct-a-settled-group-edit)
+adds Undo and Redo for up to 20 complete edits inside a group. It preserves the
+starting draft, exact ledger values and separate Review, Apply, Save and fresh
+Load. Pending forms block history movement; stale callbacks cannot restore an
+old candidate's authority. All 151 affected local checks, web types, scoped lint
+and source boundaries pass. The native journey now exercises pending-form
+blocking, full Undo/Redo, Apply, separate Save and fresh Load. Its execution,
+source acceptance and Android delivery remain separate.
+
+## Delivered: review a group of Portfolio edits
 
 The [grouped-edit candidate](MANAGED_PORTFOLIO_GROUP_EDITS.md) keeps several
 authored ledger changes in a separate working copy. It adds complete before and
 after review, one explicit Apply, and Cancel with the original draft unchanged.
 Existing Portfolio Review, Save and fresh Load remain separate. The original PR
-source checks and all 167 native cases passed. Android delivery remains pending.
+source checks and all 167 native cases passed. Android 1.79.0, code 80, was built
+once with the existing signer and delivered locally on November 7. All four
+automated APK checks and local copy/checksum readback passed. Browser and
+physical-phone acceptance are not claimed; no API or website was deployed.
 
 The first native run compiled but stopped during fixture setup: the bundled
 assets exceeded the existing 4 MiB copy limit. A shared ECharts entry now includes
@@ -40,8 +54,11 @@ host repair admits only that exact empty response into the existing 30-second
 disposal check, without synthesizing a signal or accepting success automatically.
 Success still requires natural Gradle exit zero, an absent device serial and the
 owned emulator process to have exited. All 73 host policy tests pass, including
-the reproduced failure and refusal cases. Both repairs need source acceptance;
-main `f8824bcd` is not fully accepted. Android 1.79 has not been built or delivered.
+the reproduced failure and refusal cases. Both repairs are now accepted at main
+`c0b46fb17505d0bd17f75bf78f61a1067e8eb70f`. Its source/parser checks and all 167
+native cases passed, including both host cleanup records. This accepted revision
+is the source for the delivered Android 1.79. The earlier failed attempts remain
+historical evidence.
 
 ## Delivered: complete Annual-pass comparison
 

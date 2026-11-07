@@ -829,11 +829,11 @@ jobs:
                           raise SystemExit("Annual-pass report must retain both current scoped frames.")
                   elif frames:
                       raise SystemExit("Annual-pass report frames belong only to their executed shard.")
-              for filename in ("newPortfolioGroupEditsPreview.png", "newPortfolioGroupEditsReturn.png"):
+              for filename in ("newPortfolioGroupEditsHistory.png", "newPortfolioGroupEditsPreview.png", "newPortfolioGroupEditsReturn.png"):
                   frames = list(root.rglob(filename))
                   if portfolio_group_edits_case in executed:
                       if len(frames) != 1 or frames[0].stat().st_size == 0:
-                          raise SystemExit("Grouped Portfolio edits must retain both scoped frames.")
+                          raise SystemExit("Grouped Portfolio edits must retain all three scoped frames.")
                   elif frames:
                       raise SystemExit("Grouped Portfolio frames belong only to their executed shard.")
               for filename in ("newScreenPassReviewPreview.png", "newScreenPassReviewReturn.png"):

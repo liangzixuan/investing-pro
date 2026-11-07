@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { ManagedPortfolioGroupEdits } from "./managed-portfolio-group-edits";
+import {
+  ManagedPortfolioGroupEdits,
+  PORTFOLIO_GROUP_HISTORY_LIMIT,
+} from "./managed-portfolio-group-edits";
 import { portfolioScreenFixture } from "./test-portfolio-screen-selection-fixture";
 
 function changeCash(owner: ManagedPortfolioGroupEdits, cashUsd = "200") {
@@ -11,6 +14,222 @@ function changeCash(owner: ManagedPortfolioGroupEdits, cashUsd = "200") {
     }),
   ).toBe(true);
 }
+it("undoes and redoes settled group changes without changing the Portfolio draft", async () => {
+  const f = await fixture();
+  const original = f.workspace.portfolio.coordinator.getSnapshot();
+  f.owner.start();
+  expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 0, redoCount: 0 });
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(false);
+  changeCash(f.owner, "200");
+  changeCash(f.owner, "300");
+  const last = f.owner.getSnapshot();
+  expect(last).toMatchObject({ undoCount: 2, redoCount: 0 });
+  expect(f.owner.undo(last)).toBe(true);
+  expect(f.owner.getSnapshot()).toMatchObject({
+    undoCount: 1,
+    redoCount: 1,
+    candidate: { opening: { cashUsd: "200" } },
+  });
+  expect(f.owner.undo(last)).toBe(false);
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate?.opening.cashUsd).toBe("100.00");
+  expect(f.owner.preview()).toBe(false);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate).toEqual(last.candidate);
+  expect(f.owner.getSnapshot().candidate).not.toBe(last.candidate);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(false);
+  expect(f.workspace.portfolio.coordinator.getSnapshot()).toBe(original);
+  expect(f.api.savePortfolio).not.toHaveBeenCalled();
+});
+it("clears redo only for a valid semantic change and completes no-op forms", async () => {
+  const f = await fixture();
+  f.owner.start();
+  changeCash(f.owner);
+  changeCash(f.owner, "300");
+  f.owner.undo(f.owner.getSnapshot());
+  const current = f.owner.getSnapshot().candidate!;
+  f.owner.setEditorPending(current, true);
+  expect(f.owner.replaceCandidate(current, { ...current })).toBe(true);
+  expect(f.owner.getSnapshot()).toMatchObject({
+    undoCount: 1,
+    redoCount: 1,
+    formPending: false,
+  });
+  const equal = f.owner.getSnapshot().candidate!;
+  expect(f.owner.replaceCandidate(equal, { ...equal, identities: [] })).toBe(
+    false,
+  );
+  expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 1, redoCount: 1 });
+  changeCash(f.owner, "400");
+  expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 2, redoCount: 0 });
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(false);
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate?.opening.cashUsd).toBe("200");
+});
+it("bounds history to the twenty latest changes and preserves the full group baseline", async () => {
+  const f = await fixture();
+  f.owner.start();
+  expect(PORTFOLIO_GROUP_HISTORY_LIMIT).toBe(20);
+  const baseline = f.owner.getSnapshot().baseline;
+  for (let i = 1; i <= 25; i++) changeCash(f.owner, String(100 + i));
+  expect(f.owner.getSnapshot().undoCount).toBe(20);
+  for (let i = 0; i < 20; i++)
+    expect(f.owner.undo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate?.opening.cashUsd).toBe("105");
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(false);
+  expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 0, redoCount: 20 });
+  expect(f.owner.getSnapshot().baseline).toBe(baseline);
+  for (let i = 0; i < 20; i++)
+    expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate?.opening.cashUsd).toBe("125");
+});
+it("blocks traversal with unfinished forms and never revives old candidate callbacks", async () => {
+  const f = await fixture();
+  f.owner.start();
+  const first = f.owner.getSnapshot().candidate!;
+  changeCash(f.owner);
+  const changed = f.owner.getSnapshot();
+  f.owner.setEditorPending(changed.candidate!, true);
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(false);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(false);
+  f.owner.setEditorPending(changed.candidate!, false);
+  expect(f.owner.undo(changed)).toBe(false);
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(true);
+  const restored = f.owner.getSnapshot();
+  expect(restored.candidate).toEqual(first);
+  expect(restored.candidate).not.toBe(first);
+  expect(f.owner.replaceCandidate(first, changed.candidate!)).toBe(false);
+  f.owner.setEditorPending(first, true);
+  expect(f.owner.getSnapshot()).toBe(restored);
+  f.owner.setEditorPending(restored.candidate!, true);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(false);
+  f.owner.setEditorPending(restored.candidate!, false);
+  expect(f.owner.redo(restored)).toBe(false);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.replaceCandidate(changed.candidate!, first)).toBe(false);
+});
+it("preserves history through review but requires a current valid UTC date for traversal", async () => {
+  const f = await fixture();
+  f.owner.start();
+  changeCash(f.owner);
+  changeCash(f.owner, "300");
+  f.owner.undo(f.owner.getSnapshot());
+  expect(f.owner.preview()).toBe(true);
+  const preview = f.owner.getSnapshot();
+  expect(f.owner.undo(preview)).toBe(false);
+  expect(f.owner.redo(preview)).toBe(false);
+  expect(f.owner.edit()).toBe(true);
+  const editing = f.owner.getSnapshot();
+  expect(editing).toMatchObject({ undoCount: 1, redoCount: 1 });
+  vi.setSystemTime(new Date("2020-01-01T00:00:00Z"));
+  expect(f.owner.redo(editing)).toBe(false);
+  expect(f.owner.getSnapshot().candidate).toBe(editing.candidate);
+  expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 1, redoCount: 1 });
+  vi.setSystemTime(new Date("2026-11-07T00:00:01Z"));
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.preview()).toBe(true);
+  expect(f.owner.getSnapshot().evaluationDay).toBe("2026-11-07");
+});
+it.each(["cancel", "session", "dispose"] as const)(
+  "does not report traversal success after synchronous %s",
+  async (kind) => {
+    const f = await fixture();
+    f.owner.start();
+    changeCash(f.owner);
+    const before = f.owner.getSnapshot();
+    const off = f.owner.subscribe(() => {
+      off();
+      if (kind === "cancel") f.owner.cancel();
+      if (kind === "session") f.workspace.sessionOwner.retire("Signed out.");
+      if (kind === "dispose") f.owner.dispose();
+    });
+    expect(f.owner.undo(before)).toBe(false);
+    expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 0, redoCount: 0 });
+    expect(f.owner.redo(before)).toBe(false);
+  },
+);
+it("publishes consistent history before notifying and refuses superseded traversal success", async () => {
+  const f = await fixture();
+  f.owner.start();
+  changeCash(f.owner);
+  changeCash(f.owner, "300");
+  const before = f.owner.getSnapshot();
+  const off = f.owner.subscribe(() => {
+    off();
+    const next = f.owner.getSnapshot();
+    expect(next).toMatchObject({ undoCount: 1, redoCount: 1 });
+    expect(f.owner.undo(before)).toBe(false);
+    expect(f.owner.redo(next)).toBe(true);
+  });
+  expect(f.owner.undo(before)).toBe(false);
+  expect(f.owner.getSnapshot()).toMatchObject({
+    undoCount: 2,
+    redoCount: 0,
+    candidate: { opening: { cashUsd: "300" } },
+  });
+});
+it("restores a multi-row import as one step and preserves exact split activity", async () => {
+  const f = await fixture();
+  f.owner.start();
+  const original = f.owner.getSnapshot().candidate!;
+  expect(
+    f.owner.replaceCandidate(original, {
+      ...original,
+      transactions: [
+        {
+          id: "import-deposit",
+          date: "2026-11-05",
+          type: "deposit",
+          listingId: null,
+          shares: null,
+          grossUsd: "10.01",
+          feeUsd: "0",
+        },
+        {
+          id: "import-fee",
+          date: "2026-11-05",
+          type: "fee",
+          listingId: null,
+          shares: null,
+          grossUsd: "0.01",
+          feeUsd: "0",
+        },
+      ],
+    }),
+  ).toBe(true);
+  const imported = f.owner.getSnapshot().candidate!;
+  expect(f.owner.getSnapshot().undoCount).toBe(1);
+  expect(
+    f.owner.replaceCandidate(imported, {
+      ...imported,
+      transactions: [
+        ...imported.transactions,
+        {
+          id: "exact-split",
+          date: "2026-11-05",
+          type: "split",
+          listingId: imported.identities[0]!.listingId,
+          ratioNumerator: "2",
+          ratioDenominator: "1",
+        },
+      ],
+    }),
+  ).toBe(true);
+  const split = f.owner.getSnapshot().candidate!;
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate).toEqual(imported);
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate).toEqual(original);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate).toEqual(split);
+  expect(f.owner.preview()).toBe(true);
+  expect(f.owner.getSnapshot().after?.portfolio.cashUsd).toBe("110.00");
+  expect(f.owner.getSnapshot().after?.portfolio.holdings[0]?.shares).toBe(
+    "4.000002",
+  );
+});
 it("explains blocked entry and preserves pending ordinary edits", async () => {
   const f = await fixture();
   const model = f.workspace.portfolio;
@@ -113,6 +332,9 @@ it.each(["draft", "file", "navigation", "catalog", "session"] as const)(
     if (kind === "session") f.workspace.sessionOwner.retire("Signed out.");
     const current = model.coordinator.getSnapshot();
     expect(f.owner.getSnapshot().phase).toBe("retired");
+    expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 0, redoCount: 0 });
+    expect(f.owner.undo(preview)).toBe(false);
+    expect(f.owner.redo(preview)).toBe(false);
     expect(f.owner.apply(preview)).toBe(false);
     expect(model.coordinator.getSnapshot()).toBe(current);
   },
@@ -177,6 +399,14 @@ it("keeps unknown cash and basis, closed positions and exact activity order in b
       ],
     }),
   ).toBe(true);
+  const authored = f.owner.getSnapshot().candidate!;
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate).toEqual(candidate);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.getSnapshot().candidate).toEqual(authored);
+  expect(JSON.stringify(f.owner.getSnapshot().candidate)).toBe(
+    JSON.stringify(authored),
+  );
   f.owner.preview();
   const state = f.owner.getSnapshot();
   expect(state.before?.portfolio.cashUsd).toBeNull();
@@ -264,10 +494,15 @@ it("keeps Save and fresh Load separate after Apply", async () => {
   const f = await fixture();
   f.owner.start();
   changeCash(f.owner);
+  changeCash(f.owner, "300");
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(true);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(true);
   f.owner.preview();
   f.owner.apply(f.owner.getSnapshot());
   const model = f.workspace.portfolio;
   const applied = model.coordinator.getSnapshot().draft!.ledger!;
+  expect(applied.opening.cashUsd).toBe("300");
+  expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 0, redoCount: 0 });
   expect(f.api.savePortfolio).not.toHaveBeenCalled();
   f.api.savePortfolio.mockResolvedValueOnce({
     version: 2,
@@ -383,6 +618,10 @@ it("cancels without changing the original draft or saved base", async () => {
   f.owner.cancel();
   expect(f.workspace.portfolio.coordinator.getSnapshot()).toBe(original);
   expect(f.workspace.portfolio.getSnapshot().pendingEditor).toBe(false);
+  expect(f.owner.getSnapshot()).toMatchObject({ undoCount: 0, redoCount: 0 });
+  expect(f.owner.start()).toBe(true);
+  expect(f.owner.undo(f.owner.getSnapshot())).toBe(false);
+  expect(f.owner.redo(f.owner.getSnapshot())).toBe(false);
 });
 it("settles cancellation before a subscriber can acquire another lease", async () => {
   const f = await fixture();

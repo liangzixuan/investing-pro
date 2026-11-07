@@ -94,7 +94,7 @@ public class ManagedPortfolioGroupEditsTest {
         String otherDraft = page.read(new Script("document.querySelector('#fixture-workspace-draft').textContent"));
 
         stage = "isolated proposal and complete preview";
-        proposeAndPreview(original);
+        proposeAndPreview(original, true);
         frame(FollowupsReportFrameCapture.Frame.PORTFOLIO_GROUP_EDITS_PREVIEW,
             GROUP + " .portfolio-group-comparison > .portfolio-group-pair");
 
@@ -103,7 +103,7 @@ public class ManagedPortfolioGroupEditsTest {
         await("cancel preserves complete baseline, saved base and dirty state", snapshot() + "===" + q(original) + "&&!" + DRAFT + ".pendingEditor&&document.querySelector('" + GROUP + "').dataset.phase==='idle'&&" + COUNTS + ".save===0");
 
         stage = "reopen, review and apply exactly once";
-        proposeAndPreview(original);
+        proposeAndPreview(original, false);
         click("#managed-portfolio-group-apply");
         await("single apply installs four authored activities without saving", projection("1122.00", 0, "97.00") + "&&" + DRAFT + ".ledger.transactions.length===4&&" + DRAFT + ".dirty&&" + DRAFT + ".baseVersion===0&&!" + DRAFT + ".pendingEditor&&" + COUNTS + ".save===0&&" + COUNTS + ".commits===0&&document.querySelector('" + GROUP + "').dataset.phase==='applied'&&document.querySelector('#managed-portfolio-group-apply')===null");
         String applied = page.read(new Script("JSON.stringify(" + DRAFT + ".ledger)"));
@@ -136,7 +136,7 @@ public class ManagedPortfolioGroupEditsTest {
             ".managed-portfolio [aria-label='Current authored holdings']");
     }
 
-    private void proposeAndPreview(String original) throws Exception {
+    private void proposeAndPreview(String original, boolean captureHistory) throws Exception {
         click("#managed-portfolio-group-start");
         await("group owns the pending lock without changing the draft", "document.querySelector('" + GROUP + "').dataset.phase==='editing'&&" + DRAFT + ".pendingEditor&&" + snapshot() + "===" + q(original) + "&&document.querySelector('#managed-portfolio-save').disabled&&document.querySelector('#managed-portfolio-load').disabled");
         choose(GROUP + " [aria-label='Transaction type']", "deposit", "Deposit");
@@ -146,6 +146,7 @@ public class ManagedPortfolioGroupEditsTest {
         await("proposal deposit settles only inside the group", "!document.querySelector('#managed-portfolio-group-review').disabled&&" + snapshot() + "===" + q(original));
         trade(GROUP, "sell", "Sell", "1.000000", "150.00");
         await("both valid edits leave the original unchanged", "!document.querySelector('#managed-portfolio-group-review').disabled&&" + snapshot() + "===" + q(original) + "&&" + COUNTS + ".save===0");
+        correctSettledEdits(original, captureHistory);
         click("#managed-portfolio-group-review");
         await("whole before and after projections expose closed holding and exact amounts",
             "document.querySelector('" + GROUP + "').dataset.phase==='preview'&&document.activeElement?.id==='managed-portfolio-group-heading'&&" +
@@ -155,6 +156,30 @@ public class ManagedPortfolioGroupEditsTest {
             snapshot() + "===" + q(original) + "&&" + COUNTS + ".save===0");
         button(GROUP, "Complete before and after ledgers");
         await("every original and proposed activity appears in authored order", completeLedgers());
+    }
+
+    private void correctSettledEdits(String original, boolean captureHistory) throws Exception {
+        String rows = "JSON.stringify([...document.querySelectorAll('" + GROUP + " .ledger-transaction')].map(e=>e.textContent))";
+        String complete = page.read(new Script(rows));
+        await("two edits can be undone without a redo branch", historyCounts(2, 0));
+        input(GROUP + " [aria-label='Transaction amount']", "7.00");
+        await("unfinished form blocks history and review without discarding settled work", "document.querySelector('#managed-portfolio-group-undo').disabled&&document.querySelector('#managed-portfolio-group-redo').disabled&&document.querySelector('#managed-portfolio-group-review').disabled&&" + rows + "===" + q(complete));
+        button(GROUP, "Reset transaction form");
+        await("reset restores settled history controls", "!document.querySelector('#managed-portfolio-group-undo').disabled&&" + historyCounts(2, 0));
+        click("#managed-portfolio-group-undo");
+        await("Undo removes the last complete sale only", historyCounts(1, 1) + "&&document.querySelectorAll('" + GROUP + " .ledger-transaction').length===3&&document.activeElement?.id==='managed-portfolio-group-heading'&&" + snapshot() + "===" + q(original));
+        if (captureHistory) frame(FollowupsReportFrameCapture.Frame.PORTFOLIO_GROUP_EDITS_HISTORY,
+            GROUP + " [aria-label='Group edit history']");
+        click("#managed-portfolio-group-undo");
+        await("Undo returns to baseline and keeps the group lock", historyCounts(0, 2) + "&&document.querySelectorAll('" + GROUP + " .ledger-transaction').length===2&&document.querySelector('#managed-portfolio-group-undo').disabled&&" + DRAFT + ".pendingEditor&&" + snapshot() + "===" + q(original));
+        click("#managed-portfolio-group-redo");
+        await("Redo restores only the deposit", historyCounts(1, 1) + "&&document.querySelectorAll('" + GROUP + " .ledger-transaction').length===3");
+        click("#managed-portfolio-group-redo");
+        await("Redo restores every exact authored row without saving", historyCounts(2, 0) + "&&" + rows + "===" + q(complete) + "&&document.querySelector('#managed-portfolio-group-redo').disabled&&" + snapshot() + "===" + q(original) + "&&" + COUNTS + ".save===0");
+    }
+
+    private static String historyCounts(int undo, int redo) {
+        return "document.querySelector('#managed-portfolio-group-history-counts').textContent==='Edits to undo: " + undo + ". Edits to redo: " + redo + ".'";
     }
 
     private static String completeLedgers() {
