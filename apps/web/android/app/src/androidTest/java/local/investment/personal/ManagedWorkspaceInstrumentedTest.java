@@ -1128,7 +1128,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click("#managed-portfolio-load");
         awaitPage("Portfolio latest version is loaded only explicitly", PORTFOLIO + ".load === 1 && " + PORTFOLIO_DRAFT + ".baseVersion === 0");
         typeIntoInput("managed-portfolio-opening-date", "2026-10-01");
-        typeIntoInput("managed-portfolio-opening-cash", "1000.00");
+        typeIntoInput("managed-portfolio-opening-cash", "1000.00", true);
         click("#managed-portfolio-start");
         typeIntoInput("managed-portfolio-search", "ZERO");
         clickPortfolioButton("Search catalog");
