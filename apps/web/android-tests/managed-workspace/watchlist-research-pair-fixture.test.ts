@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
 import { ManagedScreenResearchReading } from "../../src/clerk-trial/ManagedScreenResearchReading";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { createFixture } from "./fixture";
@@ -108,6 +109,84 @@ it("uses a direct Watchlist pair with one Annual and an uncovered reading, then 
     const reading = pair.getSnapshot().reading!;
     expect(reading.right!.evidence.annual?.response ?? null).toBeNull();
     expect(reading.right!.evidence.price?.available).toBe(false);
+    for (const [side, expectedReason, expectedText] of [
+      [
+        "left",
+        "price_not_loaded",
+        "Load raw closing prices explicitly in the Price section to compare this scenario.",
+      ],
+      [
+        "right",
+        "price_invalid",
+        "The loaded history does not provide an admitted latest raw USD close for this comparison.",
+      ],
+    ] as const) {
+      const capture = reading[side]!,
+        price = capture.valuationPrice!,
+        $ = load(
+          renderToStaticMarkup(
+            createElement(ManagedScreenResearchReading, { capture }),
+          ),
+        ),
+        context = $('[aria-label="Dated valuation price comparison"]'),
+        labels = {
+          conservative: "Conservative",
+          base: "Base",
+          expansion: "Expansion",
+        };
+      expect(price.reason).toBe(expectedReason);
+      expect(price.reference).toBeNull();
+      expect(price.selection).toEqual(capture.selection);
+      expect(price.calculation).toEqual(capture.valuation);
+      const dcf = capture.valuation!.dcfResult,
+        exit = capture.valuation!.exitResult;
+      if (dcf.status !== "available" || exit.status !== "available")
+        throw new Error("Both authored fixture models must be available.");
+      expect(price.rows.map((row) => `${row.model}|${row.scenario}`)).toEqual([
+        "dcf|conservative",
+        "dcf|base",
+        "dcf|expansion",
+        "exit|conservative",
+        "exit|base",
+        "exit|expansion",
+      ]);
+      for (const row of price.rows) {
+        const dcfScenario = dcf.scenarios[row.scenario];
+        if (dcfScenario.status !== "available")
+          throw new Error("Every fixture DCF scenario must be available.");
+        expect(row.result).toMatchObject({
+          status: "unavailable",
+          reason: expectedReason,
+        });
+        expect(row.modelValuePerShareUsd).toBe(
+          row.model === "dcf"
+            ? dcfScenario.valuePerShareUsd
+            : exit.scenarios[row.scenario].valuePerShare,
+        );
+      }
+      expect(context.find("table")).toHaveLength(1);
+      expect(
+        context
+          .find("tbody tr")
+          .toArray()
+          .map((row) =>
+            $(row)
+              .find("th, td")
+              .toArray()
+              .map((cell) => $(cell).text()),
+          ),
+      ).toEqual(
+        price.rows.map((row) => [
+          row.model === "dcf" ? "Cash flow DCF" : "Exit multiple",
+          labels[row.scenario],
+          row.modelValuePerShareUsd,
+          `Unavailable. ${expectedText}`,
+        ]),
+      );
+      expect(context.find('[role="status"]').text()).toBe(
+        `Comparison unavailable. ${expectedText}`,
+      );
+    }
     const html = renderToStaticMarkup(
       createElement(ManagedScreenResearchReading, { capture: reading.right! }),
     );
@@ -206,7 +285,6 @@ it("keeps native touch, IME, full result and passive JSON assertions while regis
   };
   for (const name of [
     "void fullResults",
-    "void fullPriceContext",
     "void tap",
     "void committedFrame",
     "ReassessmentNativeEditor.Dom readEditingDom",
@@ -214,6 +292,29 @@ it("keeps native touch, IME, full result and passive JSON assertions while regis
     "void replace",
   ])
     expect(body(current, name)).toBe(body(original, name));
+  // The unsupported right Price visit has a distinct refusal. Reverse only
+  // these parameter substitutions; every remaining native assertion stays exact.
+  const priceBody = body(current, "void fullPriceContext")
+    .replace(
+      "String side,String expectedReason,String expectedReasonText",
+      "String side",
+    )
+    .replace(
+      'reason="+q(expectedReasonText)+",keys=',
+      "reason='Load raw closing prices explicitly in the Price section to compare this scenario.',keys=",
+    )
+    .replace(
+      'p.reason!=="+q(expectedReason)+"',
+      "p.reason!=='price_not_loaded'",
+    )
+    .replace(
+      'r.result.reason==="+q(expectedReason)+"',
+      "r.result.reason==='price_not_loaded'",
+    );
+  expect(priceBody).toBe(body(original, "void fullPriceContext"));
+  expect(current).toContain(
+    'fullPriceContext(side, "left".equals(side) ? "price_not_loaded" : "price_invalid", "left".equals(side) ? "Load raw closing prices explicitly in the Price section to compare this scenario." : "The loaded history does not provide an admitted latest raw USD close for this comparison.");',
+  );
   expect(current).not.toContain("Load screening cohort");
   expect(current).not.toContain("Run screen (2 companies)");
   expect(current).toContain("#managed-watchlist-pair-preview");
