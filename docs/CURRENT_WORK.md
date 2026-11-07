@@ -30,9 +30,18 @@ The main Windows check failed one inherited Annual-pass UI fixture assertion:
 the first report had not settled within a one-second polling wait. The fixture
 now advances its owned 20-second pacing clock and awaits the complete run. A
 regression holds the first report beyond the former polling window and verifies
-both evaluated rows and exact request spacing. This focused test repair still
-needs source acceptance. Main `f8824bcd` is not fully accepted, and Android 1.79
-has not been built or delivered.
+both evaluated rows and exact request spacing.
+
+PR 287 then passed all 167 native cases, but both jobs failed during host cleanup.
+After authenticated IME restoration, the exact current-user read returned exit
+255 with no output during emulator teardown. The host treated it as fatal and
+recorded its own termination signal despite Gradle completing successfully. The
+host repair admits only that exact empty response into the existing 30-second
+disposal check, without synthesizing a signal or accepting success automatically.
+Success still requires natural Gradle exit zero, an absent device serial and the
+owned emulator process to have exited. All 73 host policy tests pass, including
+the reproduced failure and refusal cases. Both repairs need source acceptance;
+main `f8824bcd` is not fully accepted. Android 1.79 has not been built or delivered.
 
 ## Delivered: complete Annual-pass comparison
 

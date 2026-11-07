@@ -802,7 +802,7 @@ class Clock:
 def simulated_finalization(module=runner, *, failure_kind="closed", entry_exit=0, process_alive_at_entry=False,
                            terminal=0, statuses=("offline", None), phase="restored", written=True,
                            wait_seconds=0, wait_timeout=False, external_signal=False, mutate=None,
-                           process_alive_after_wait=None):
+                           process_alive_after_wait=None, identity_failure=None):
     """Run the real supervisor/runtime against invented processes, never adb/Gradle."""
     with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
         sdk = Path(directory) / "sdk"
@@ -818,6 +818,15 @@ def simulated_finalization(module=runner, *, failure_kind="closed", entry_exit=0
         statuses = list(statuses)
         original_supervisor = module.Supervisor
         original_recovery = adb.read_recovery
+        original_identity = adb.identity
+
+        def identity(serial):
+            nonlocal closing, failed
+            if polls >= 3 and failure_kind == "identity-empty":
+                closing, failed = True, True
+                raise identity_failure or module.AdbFailure(
+                    ["-s", serial, "shell", "-T", "am get-current-user"], 255)
+            return original_identity(serial)
 
         def devices(timeout=8):
             probes.append({"at": clock.now, "timeout": timeout, "closing": closing})
@@ -892,7 +901,7 @@ def simulated_finalization(module=runner, *, failure_kind="closed", entry_exit=0
                                                          else process_alive_at_entry) if closing else True)
 
         child.poll.side_effect, child.wait.side_effect = poll, wait
-        adb.devices, adb.read_recovery = devices, read_recovery
+        adb.devices, adb.read_recovery, adb.identity = devices, read_recovery, identity
         stack.enter_context(patch.object(module.sys, "platform", "linux"))
         stack.enter_context(patch.dict("os.environ", {"GITHUB_ACTIONS": "true", "GITHUB_RUN_ID": "100", "GITHUB_RUN_ATTEMPT": "1"}))
         stack.enter_context(patch.object(module, "Adb", return_value=adb))
@@ -910,6 +919,58 @@ def simulated_finalization(module=runner, *, failure_kind="closed", entry_exit=0
 
 
 class FinalizationTests(unittest.TestCase):
+    def test_observed_empty_current_user_read_uses_natural_closure_and_disposal(self):
+        for entry_exit, alive in ((0, False), (None, True)):
+            with self.subTest(entry_exit=entry_exit):
+                result = simulated_finalization(failure_kind="identity-empty", entry_exit=entry_exit,
+                                                process_alive_at_entry=alive, process_alive_after_wait=False)
+                self.assertEqual(result["result"], 0)
+                self.assertEqual(result["gradleStarts"], 1)
+                self.assertEqual(result["kills"], [])
+                self.assertEqual(result["commands"], [])
+                state = result["state"]
+                self.assertEqual(state["gradleExitCode"], 0)
+                self.assertEqual(state["receivedSignals"], [])
+                self.assertEqual(state["cleanup"], "disposed")
+                self.assertIsNone(state["hostError"])
+                failure = state["finalizationReadFailure"]
+                self.assertEqual(failure["argv"], ["-s", IDENTITY["serial"], "shell", "-T", "am get-current-user"])
+                self.assertEqual((failure["exitCode"], failure["stdoutBytes"], failure["stderrBytes"]), (255, 0, 0))
+                self.assertEqual(state["finalizationObservation"]["devices"], {})
+                self.assertFalse(state["finalizationObservation"]["ownedProcessAlive"])
+
+    def test_current_user_failure_near_matches_remain_fatal(self):
+        argv = ["-s", IDENTITY["serial"], "shell", "-T", "am get-current-user"]
+        failures = [AdbFailure(argv, 255, stdout=b"0\n"),
+                    AdbFailure(argv, 255, stdout=b" "),
+                    AdbFailure(argv, 255, stderr=b" "),
+                    AdbFailure(argv, 255, stderr=b"Permission denied"),
+                    AdbFailure(argv, 1), AdbFailure(argv, 255, has_input=True),
+                    AdbFailure(["-s", "emulator-9999", *argv[2:]], 255),
+                    AdbFailure([*argv[:-1], "am get-current-user; ime reset"], 255),
+                    AdbFailure([*argv[:-1], "am  get-current-user"], 255),
+                    AdbFailure(PROBE, 255)]
+        for failure in failures:
+            with self.subTest(diagnostic=failure.diagnostic):
+                result = simulated_finalization(failure_kind="identity-empty", identity_failure=failure)
+                self.assertNotEqual(result["result"], 0)
+                self.assertNotIn("finalizationReadFailure", result["state"])
+                self.assertEqual(result["commands"], [])
+
+    def test_current_user_read_still_requires_all_finalization_guards(self):
+        for options in ({"phase": "active"}, {"phase": "restoring"}, {"written": False},
+                        {"mutate": lambda s: s["lastRecovery"].update(nonce="c" * 64)},
+                        {"terminal": 7}, {"external_signal": True},
+                        {"entry_exit": None, "wait_timeout": True},
+                        {"statuses": ("offline",)}, {"statuses": ("device",)},
+                        {"statuses": (None,), "process_alive_at_entry": True}):
+            with self.subTest(options=options):
+                result = simulated_finalization(failure_kind="identity-empty", **options)
+                self.assertNotEqual(result["result"], 0)
+                self.assertNotEqual(result["state"].get("cleanup"), "disposed")
+                self.assertEqual(result["commands"], [])
+                self.assertLessEqual(result["elapsed"], 31)
+
     def test_both_observed_read_failures_require_natural_zero_and_fresh_disposal(self):
         for kind in ("closed", "empty"):
             with self.subTest(kind=kind):

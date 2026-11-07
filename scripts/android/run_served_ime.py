@@ -394,6 +394,14 @@ class Supervisor:
         recovery_read = ["-s", lease["serial"], "shell", "-T", shlex.join([
             "run-as", TARGET, "--user", str(lease["user"]), "sh", "-c",
             "if [ -f " + RECOVERY_PATH + " ]; then cat " + RECOVERY_PATH + "; fi"])]
+        # GMD can close this identity read without a shell exit packet after
+        # native restoration. This only permits bounded disposal proof, not success.
+        current_user_read = ["-s", lease["serial"], "shell", "-T", "am get-current-user"]
+        diagnostic = failure.diagnostic
+        if args == current_user_read and diagnostic["exitCode"] == 255 \
+                and not diagnostic["timedOut"] and diagnostic["stdoutBytes"] == 0 \
+                and diagnostic["stderrBytes"] == 0:
+            return True
         return failure.transport_pending or (args == recovery_read and (
             failure.transport_response or (failure.empty_response and failure.diagnostic["exitCode"] == 255)))
 
