@@ -68,6 +68,7 @@ function fixture(count = 3) {
     selected: [],
     preview: null,
     reading: null,
+    replacement: null,
     activeSide: null,
     canStart: false,
     canCapture: false,
@@ -517,3 +518,97 @@ it.each([
     );
   },
 );
+
+it("previews both complete versions before applying or keeping the retained reading", async () => {
+  const f = await createWatchlistResearchPairFixture();
+  f.choose();
+  const rightVisit = f.open("right");
+  f.valuation.discardAndUse(rightVisit.selection);
+  f.valuation.calculate();
+  f.model.reconcile();
+  f.model.capture(f.model.getSnapshot(), rightVisit);
+  f.back();
+  const visit = f.open("left");
+  f.valuation.discardAndUse(visit.selection);
+  await f.loadAnnual();
+  f.model.capture(f.model.getSnapshot(), visit);
+  const original = f.model.getSnapshot().reading!;
+  const previous = original.left!;
+  f.note("Updated thesis 東京 Ω 7.0000001");
+  f.setClock(() => new Date("2026-11-08T12:00:00Z"));
+  const workspace: Props["workspace"] = {
+    watchlistResearchPair: f.model,
+    captureWatchlistResearchReading: (state) =>
+      f.model.capture(state, f.getVisit()),
+  };
+  const context = { workspace, open: vi.fn() };
+  let tree = render(context, false, true);
+  expect(byId(tree, "managed-watchlist-pair-capture").props.children).toBe(
+    "Review updated company reading",
+  );
+  click(byId(tree, "managed-watchlist-pair-capture"));
+  expect(f.model.getSnapshot().reading).toBe(original);
+  const proposal = f.model.getSnapshot().replacement!;
+  expect(proposal.previous).toBe(previous);
+  hooks.direct = false;
+  const $ = load(
+    renderToStaticMarkup(
+      <ManagedWatchlistResearchCapture
+        workspace={workspace}
+        navigationPending={false}
+      />,
+    ),
+  );
+  expect($("#managed-watchlist-pair-previous-document").text()).toBe(
+    previous.document.text,
+  );
+  expect($("#managed-watchlist-pair-updated-document").text()).toBe(
+    proposal.updated.document.text,
+  );
+  expect($("[data-watchlist-reading-version=previous]").text()).toContain(
+    previous.capturedAt,
+  );
+  expect($("[data-watchlist-reading-version=updated]").text()).toContain(
+    "2026-11-08T12:00:00.000Z",
+  );
+  expect($("[data-watchlist-reading-version=updated]").text()).toContain(
+    "Updated thesis 東京 Ω 7.0000001",
+  );
+  const ids = $("[id]")
+    .map((_, element) => $(element).attr("id"))
+    .get();
+  expect(new Set(ids).size).toBe(ids.length);
+  expect(
+    $(
+      "[data-watchlist-reading-version] button, [data-watchlist-reading-version] input",
+    ),
+  ).toHaveLength(0);
+  expect($("#managed-watchlist-pair-capture")).toHaveLength(0);
+  const stale = render(context, false, true);
+  click(byId(stale, "managed-watchlist-pair-keep-previous"));
+  expect(f.model.getSnapshot().reading).toBe(original);
+  expect(f.model.getSnapshot().replacement).toBeNull();
+  click(byId(stale, "managed-watchlist-pair-use-updated"));
+  expect(f.model.getSnapshot().reading).toBe(original);
+  click(byId(render(context, false, true), "managed-watchlist-pair-capture"));
+  const updated = f.model.getSnapshot().replacement!.updated;
+  tree = render(context, true, true);
+  expect(byId(tree, "managed-watchlist-pair-use-updated").props.disabled).toBe(
+    true,
+  );
+  expect(
+    byId(tree, "managed-watchlist-pair-keep-previous").props.disabled,
+  ).toBe(true);
+  click(byId(tree, "managed-watchlist-pair-use-updated"));
+  expect(f.model.getSnapshot().reading).toBe(original);
+  const focus = focusContext();
+  tree = render(context, false, true);
+  commit(tree, focus.target);
+  click(byId(tree, "managed-watchlist-pair-use-updated"), focus.owner);
+  expect(f.model.getSnapshot().reading!.left).toBe(updated);
+  expect(f.model.getSnapshot().reading!.right).toBe(original.right);
+  commit(render(context, false, true), focus.target);
+  expect(focus.focus).toHaveBeenCalledTimes(1);
+  expect(f.annualRead).toHaveBeenCalledTimes(1);
+  expect(f.unexpected).not.toHaveBeenCalled();
+});

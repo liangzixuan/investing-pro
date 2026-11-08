@@ -30105,8 +30105,15 @@ async function walk(directory: string): Promise<string[]> {
     throw error;
   }
   for (const entry of entries) {
-    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
     const path = join(directory, entry.name);
+    // Windows junctions are symbolic links in Dirent, including installed stores.
+    // Ignore only actual directories; a source file with this name stays in scope.
+    if (
+      ignoredDirectories.has(entry.name) &&
+      (entry.isDirectory() ||
+        (entry.isSymbolicLink() && (await stat(path)).isDirectory()))
+    )
+      continue;
     if (
       entry.isDirectory() &&
       androidGeneratedDirectories.has(resolvePath(path))

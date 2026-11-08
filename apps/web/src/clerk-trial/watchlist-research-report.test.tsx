@@ -137,6 +137,50 @@ async function controlled() {
   };
 }
 describe("owned Watchlist report delivery", () => {
+  it("rejects a late delivery across replacement review and reports only the explicitly applied reading", async () => {
+    const f = await controlled();
+    let context!: TextDocumentDeliveryContext;
+    let finish!: (result: TextDocumentDeliveryResult) => void;
+    f.deliver.mockImplementation((_document, current) => {
+      context = current;
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    });
+    f.controller.prepare();
+    const original = f.model.getSnapshot().reading!;
+    const saving = f.controller.save();
+    const visit = f.open("right");
+    f.note("A complete revised thesis 東京");
+    const preview = f.model.capture(f.model.getSnapshot(), visit)!;
+    expect(preview.replacement).not.toBeNull();
+    expect(preview.reading).toBe(original);
+    expect(context.signal.aborted).toBe(true);
+    expect(context.isCurrent()).toBe(false);
+    f.controller.prepare();
+    expect(f.controller.getSnapshot().report).toBeNull();
+    f.model.cancelReplacement(preview);
+    f.back();
+    finish("written");
+    await saving;
+    expect(f.controller.getSnapshot().message).not.toContain("written");
+    f.controller.prepare();
+    expect(f.controller.getSnapshot().report?.reading.right).toBe(
+      original.right,
+    );
+    const nextVisit = f.open("right");
+    const next = f.model.capture(f.model.getSnapshot(), nextVisit)!;
+    const updated = next.replacement!.updated;
+    f.model.applyReplacement(next);
+    f.back();
+    f.controller.prepare();
+    expect(f.controller.getSnapshot().report?.reading.right).toBe(updated);
+    expect(f.controller.getSnapshot().report?.reading.left).toBe(original.left);
+    expect(f.annualRead).toHaveBeenCalledOnce();
+    expect(f.calculate).toHaveBeenCalledTimes(2);
+    f.controller.dispose();
+  });
+
   it("prepares explicitly, retains a cancelled preview, and saves with no extra reads or calculations", async () => {
     const f = await controlled();
     expect(f.controller.getSnapshot().report).toBeNull();

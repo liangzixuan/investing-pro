@@ -251,7 +251,7 @@ describe("direct Watchlist research pair", () => {
     expect(f.model.getSnapshot().reading).toBe(reading);
     expect(f.model.capture(settled, visit)).toBeNull();
     expect(
-      f.model.capture(f.model.getSnapshot(), visit)?.reading?.left?.note,
+      f.model.capture(f.model.getSnapshot(), visit)?.replacement?.updated.note,
     ).toBe("Changed thesis");
   });
 
@@ -573,5 +573,193 @@ describe("prepared Watchlist research report", () => {
     expect(
       f.model.captureReport(f.model.getSnapshot())?.report.preparedAt,
     ).toBe("2026-11-08T00:00:00.000Z");
+  });
+});
+
+describe("review an updated Watchlist reading", () => {
+  async function proposal() {
+    const f = await completeWatchlistReportPair();
+    const reading = f.model.getSnapshot().reading!;
+    const oldReport = f.model.captureReport(f.model.getSnapshot())!;
+    const visit = f.open("left");
+    f.valuation.discardAndUse(visit.selection);
+    await f.loadAnnual();
+    f.note("Updated thesis 東京 Ω 3.000002");
+    f.setClock(() => new Date("2026-11-08T12:00:00Z"));
+    const state = f.model.capture(f.model.getSnapshot(), visit)!;
+    expect(state).not.toBeNull();
+    expect(state.replacement).not.toBeNull();
+    return { ...f, reading, oldReport, visit, state };
+  }
+
+  it("previews one complete detached candidate without replacing either side, then applies it once", async () => {
+    const f = await proposal();
+    const { replacement } = f.state;
+    expect(f.state.reading).toBe(f.reading);
+    expect(replacement!.side).toBe("left");
+    expect(replacement!.previous).toBe(f.reading.left);
+    expect(replacement!.updated.note).toBe("Updated thesis 東京 Ω 3.000002");
+    expect(replacement!.updated.capturedAt).toBe("2026-11-08T12:00:00.000Z");
+    expect(replacement!.updated.evidence.annual?.response).toEqual(f.packet);
+    expect(replacement!.updated.evidence.annual?.response).not.toBe(f.packet);
+    expect(Object.isFrozen(replacement)).toBe(true);
+    expect(f.state.canCapture).toBe(false);
+    expect(f.model.capture(f.state, f.visit)).toBeNull();
+    expect(f.model.captureReport(f.state)).toBeNull();
+    expect(f.oldReport.current()).toBe(false);
+    const requests = f.annualRead.mock.calls.length;
+    const applied = f.model.applyReplacement(f.state)!;
+    expect(applied).toBe(f.model.getSnapshot());
+    expect(applied.replacement).toBeNull();
+    expect(applied.reading!.left).toBe(replacement!.updated);
+    expect(applied.reading!.right).toBe(f.reading.right);
+    expect(f.model.applyReplacement(f.state)).toBeNull();
+    expect(f.model.applyReplacement(applied)).toBeNull();
+    expect(f.annualRead).toHaveBeenCalledTimes(requests);
+    expect(f.unexpected).not.toHaveBeenCalled();
+    f.back();
+    expect(
+      f.model.captureReport(f.model.getSnapshot())?.report.reading.left,
+    ).toBe(replacement!.updated);
+    expect(f.oldReport.current()).toBe(false);
+  });
+
+  it.each(["cancel", "back"] as const)(
+    "%s keeps both readings and lets a fresh report use the previous reading",
+    async (action) => {
+      const f = await proposal();
+      if (action === "cancel") {
+        const cancelled = f.model.cancelReplacement(f.state)!;
+        expect(cancelled).toBe(f.model.getSnapshot());
+        expect(cancelled.reading).toBe(f.reading);
+        expect(cancelled.canCapture).toBe(true);
+        expect(f.model.cancelReplacement(f.state)).toBeNull();
+      }
+      f.back();
+      expect(f.model.getSnapshot().replacement).toBeNull();
+      expect(f.model.getSnapshot().reading).toBe(f.reading);
+      expect(f.model.applyReplacement(f.state)).toBeNull();
+      expect(
+        f.model.captureReport(f.model.getSnapshot())?.report.reading.left,
+      ).toBe(f.reading.left);
+      expect(f.oldReport.current()).toBe(false);
+    },
+  );
+
+  it.each([
+    "source",
+    "note",
+    "availability",
+    "resource",
+    "section",
+    "calculation",
+  ] as const)(
+    "retires the proposal on %s while preserving the retained pair",
+    async (change) => {
+      const f = await proposal();
+      if (change === "source") {
+        const evidence = f.getEvidence();
+        f.setEvidence({
+          ...evidence,
+          annual: { ...evidence.annual!, running: true },
+        });
+        f.setEvidence(evidence);
+      }
+      if (change === "note") f.note("Later note");
+      if (change === "availability") {
+        f.setContext({ available: false });
+        f.setContext({ available: true });
+      }
+      if (change === "resource") {
+        const original = f.getContext().reportRevisions;
+        f.setContext({ reportRevisions: [{}, ...original.slice(1)] });
+        f.setContext({ reportRevisions: original });
+      }
+      if (change === "section") {
+        const next = { ...f.visit, section: "eod" as const };
+        expect(f.model.continueVisit(f.visit, next)).toBe(true);
+        expect(f.model.getSnapshot().replacement).toBeNull();
+        f.setVisit(next);
+      }
+      if (change === "calculation") {
+        f.valuation.setDcfField("startingUnleveredCashFlowUsd", "42");
+        f.model.reconcile();
+      }
+      expect(f.model.getSnapshot().replacement).toBeNull();
+      expect(f.model.getSnapshot().reading).toBe(f.reading);
+      expect(f.model.applyReplacement(f.state)).toBeNull();
+      expect(f.model.applyReplacement(f.model.getSnapshot())).toBeNull();
+      expect(f.model.cancelReplacement(f.state)).toBeNull();
+    },
+  );
+
+  it.each(["file", "session", "catalog", "load"] as const)(
+    "preserves existing pair retirement on %s and never revives a proposal",
+    async (change) => {
+      const f = await proposal();
+      const original = f.getContext();
+      if (change === "file") f.setContext({ fileEpochs: [1, 0, 0] });
+      if (change === "session") f.setContext({ session: {} });
+      if (change === "catalog")
+        f.setContext({ catalog: { ...original.catalog! } });
+      if (change === "load") f.setContext({ retire: true });
+      f.setContext(original);
+      expect(f.model.getSnapshot().replacement).toBeNull();
+      expect(f.model.getSnapshot().reading).toBeNull();
+      expect(f.model.applyReplacement(f.state)).toBeNull();
+    },
+  );
+
+  it.each(["open", "clear", "end", "retire", "valuation-file"] as const)(
+    "%s discards proposal authority before another action",
+    async (action) => {
+      const f = await proposal();
+      if (action === "open") {
+        expect(f.model.prepareOpen(f.state, "right")).not.toBeNull();
+        expect(f.model.getSnapshot().reading).toBe(f.reading);
+      }
+      if (action === "clear") {
+        expect(f.model.clearSide(f.state, "right")).not.toBeNull();
+        expect(f.model.getSnapshot().reading!.left).toBe(f.reading.left);
+        expect(f.model.getSnapshot().reading!.right).toBeNull();
+      }
+      if (action === "end") f.model.end(f.state);
+      if (action === "retire") f.model.retire();
+      if (action === "valuation-file") {
+        const operation = {};
+        f.valuation.beginDraftFileActivity(operation);
+        f.model.reconcile();
+        f.valuation.endDraftFileActivity(operation);
+        f.model.reconcile();
+        expect(f.model.getSnapshot().reading).toBeNull();
+      }
+      expect(f.model.getSnapshot().replacement).toBeNull();
+      expect(f.model.applyReplacement(f.state)).toBeNull();
+    },
+  );
+
+  it("does not report a successful preview after a subscriber cancels it", async () => {
+    const f = await proposal();
+    f.model.cancelReplacement(f.state);
+    const stop = f.model.subscribe(() => {
+      const current = f.model.getSnapshot();
+      if (current.replacement) f.model.cancelReplacement(current);
+    });
+    expect(f.model.capture(f.model.getSnapshot(), f.visit)).toBeNull();
+    stop();
+    expect(f.model.getSnapshot().replacement).toBeNull();
+    expect(f.model.getSnapshot().reading).toBe(f.reading);
+  });
+
+  it("refuses success after reentrant Apply or Cancel publications", async () => {
+    for (const action of ["applyReplacement", "cancelReplacement"] as const) {
+      const f = await proposal();
+      const stop = f.model.subscribe(() => {
+        if (!f.model.getSnapshot().replacement) f.model.foreignClose();
+      });
+      expect(f.model[action](f.state)).toBeNull();
+      stop();
+      expect(f.model.getSnapshot().reading).toBeNull();
+    }
   });
 });

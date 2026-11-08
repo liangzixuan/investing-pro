@@ -51,11 +51,17 @@ export interface WatchlistResearchReading {
   readonly left: PassiveCompanyResearchCapture | null;
   readonly right: PassiveCompanyResearchCapture | null;
 }
+export interface WatchlistResearchReplacement {
+  readonly side: CompanyResearchSide;
+  readonly previous: PassiveCompanyResearchCapture;
+  readonly updated: PassiveCompanyResearchCapture;
+}
 export interface ManagedWatchlistResearchPairState {
   readonly memberships: readonly WatchlistResearchPairMember[];
   readonly selected: readonly WatchlistResearchPairMember[];
   readonly preview: PairMembers | null;
   readonly reading: WatchlistResearchReading | null;
+  readonly replacement: WatchlistResearchReplacement | null;
   readonly activeSide: CompanyResearchSide | null;
   readonly canStart: boolean;
   readonly canCapture: boolean;
@@ -103,6 +109,7 @@ const idle = (): ManagedWatchlistResearchPairState =>
     preview: null,
     reading: null,
     activeSide: null,
+    replacement: null,
     canStart: false,
     canCapture: false,
     reason: null,
@@ -128,6 +135,7 @@ export class ManagedWatchlistResearchPair {
     previous: ManagedResearchVisit | null;
   } | null = null;
   private returning: ManagedResearchVisit | null = null;
+  private replacementVisit: ManagedResearchVisit | null = null;
   private readonly listeners = new Set<() => void>();
   constructor(private readonly options: WatchlistResearchPairOptions) {
     this.reconcile();
@@ -277,6 +285,13 @@ export class ManagedWatchlistResearchPair {
       this.returning = null;
       next = { ...idle(), memberships };
     }
+    const changed = !same(context.fence, this.fence);
+    if (
+      next.replacement &&
+      (changed || !this.owner || this.owner.visit !== this.replacementVisit)
+    )
+      next = { ...next, replacement: null };
+    if (!next.replacement) this.replacementVisit = null;
     const reason = this.pending
       ? "Opening the selected company…"
       : next.reading
@@ -285,19 +300,23 @@ export class ManagedWatchlistResearchPair {
           ? null
           : "Load and review My Watchlist before starting a research pair.";
     const canCapture =
-      !!next.reading && !!this.owner && !this.pending && reason === null;
+      !!next.reading &&
+      !!this.owner &&
+      !this.pending &&
+      !next.replacement &&
+      reason === null;
     const canStart =
       !!next.preview &&
       !next.reading &&
       admitted &&
       resource.canStart &&
       resource.available;
-    const changed = !same(context.fence, this.fence);
     this.fence = context.fence;
     if (
       changed ||
       next.memberships !== this.state.memberships ||
       next.reading !== this.state.reading ||
+      next.replacement !== this.state.replacement ||
       next.preview !== this.state.preview ||
       next.selected !== this.state.selected ||
       this.state.canCapture !== canCapture ||
@@ -424,6 +443,7 @@ export class ManagedWatchlistResearchPair {
     this.returning = null;
     const installed = this.installed({
       ...expected,
+      replacement: null,
       activeSide: null,
       canCapture: false,
       reason: "Opening the selected company…",
@@ -500,6 +520,7 @@ export class ManagedWatchlistResearchPair {
     return (
       this.installed({
         ...this.state,
+        replacement: null,
         activeSide: null,
         canCapture: false,
         reason: "Open a company from this pair before capturing its reading.",
@@ -566,9 +587,49 @@ export class ManagedWatchlistResearchPair {
       )
     )
       return null;
+    const previous = expected.reading[owner.side];
+    if (previous) {
+      this.replacementVisit = visit;
+      return this.installed({
+        ...expected,
+        canCapture: false,
+        replacement: Object.freeze({
+          side: owner.side,
+          previous,
+          updated: reading,
+        }),
+      });
+    }
     return this.installed({
       ...expected,
       reading: Object.freeze({ ...expected.reading, [owner.side]: reading }),
+    });
+  }
+  applyReplacement(expected: ManagedWatchlistResearchPairState) {
+    if (
+      !this.current(expected) ||
+      !expected.replacement ||
+      !expected.reading ||
+      !this.owner ||
+      expected.reason !== null ||
+      this.owner.side !== expected.replacement.side ||
+      expected.reading[this.owner.side] !== expected.replacement.previous
+    )
+      return null;
+    const { side, updated } = expected.replacement;
+    return this.installed({
+      ...expected,
+      replacement: null,
+      canCapture: true,
+      reading: Object.freeze({ ...expected.reading, [side]: updated }),
+    });
+  }
+  cancelReplacement(expected: ManagedWatchlistResearchPairState) {
+    if (!this.current(expected) || !expected.replacement) return null;
+    return this.installed({
+      ...expected,
+      replacement: null,
+      canCapture: expected.reason === null,
     });
   }
   clearSide(
@@ -585,6 +646,8 @@ export class ManagedWatchlistResearchPair {
       return null;
     return this.installed({
       ...expected,
+      replacement: null,
+      canCapture: !!this.owner && expected.reason === null,
       reading: Object.freeze({ ...expected.reading, [side]: null }),
     });
   }
@@ -592,7 +655,7 @@ export class ManagedWatchlistResearchPair {
   captureReport(expected: ManagedWatchlistResearchPairState) {
     if (!this.current(expected)) return null;
     const reading = expected.reading;
-    if (!reading?.left || !reading.right) return null;
+    if (!reading?.left || !reading.right || expected.replacement) return null;
     const generation = this.generation;
     let valid = true;
     const current = () => {
@@ -669,6 +732,7 @@ export class ManagedWatchlistResearchPair {
   retire() {
     if (this.retired) return;
     this.retired = true;
+    this.replacementVisit = null;
     this.pending = null;
     this.owner = null;
     this.returning = null;

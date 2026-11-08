@@ -238,9 +238,33 @@ it("uses a direct Watchlist pair with one Annual and an uncovered reading, then 
     w.returnFromResearch();
     expect(pair.getSnapshot().reading).toBe(reading);
     w.openWatchlistResearchSide(pair.getSnapshot(), "right");
-    const recaptured = w.captureWatchlistResearchReading(
-      pair.getSnapshot(),
-    )!.reading!;
+    const proposed = w.captureWatchlistResearchReading(pair.getSnapshot())!;
+    expect(proposed.reading).toBe(reading);
+    expect(proposed.replacement!.side).toBe("right");
+    expect(proposed.replacement!.previous).toBe(reading.right);
+    expect(proposed.replacement!.updated.note).toBe(decisionThesis);
+    expect(pair.captureReport(proposed)).toBeNull();
+    expect(meta.getSnapshot()).toBe(counts);
+    expect(pair.cancelReplacement(proposed)!.reading).toBe(reading);
+    expect(pair.getSnapshot().replacement).toBeNull();
+    expect(pair.applyReplacement(proposed)).toBeNull();
+    const abandoned = w.captureWatchlistResearchReading(pair.getSnapshot())!;
+    expect(abandoned.replacement).not.toBeNull();
+    w.returnFromResearch();
+    expect(pair.getSnapshot().replacement).toBeNull();
+    expect(pair.getSnapshot().reading).toBe(reading);
+    expect(pair.applyReplacement(abandoned)).toBeNull();
+    const retainedReport = pair.captureReport(pair.getSnapshot())!;
+    expect(retainedReport.report.reading.right).toBe(reading.right);
+    w.openWatchlistResearchSide(pair.getSnapshot(), "right");
+    expect(retainedReport.current()).toBe(false);
+    const reviewed = w.captureWatchlistResearchReading(pair.getSnapshot())!;
+    const updated = reviewed.replacement!.updated;
+    expect(reviewed.reading).toBe(reading);
+    const recaptured = pair.applyReplacement(reviewed)!.reading!;
+    expect(recaptured.right).toBe(updated);
+    expect(pair.getSnapshot().replacement).toBeNull();
+    expect(pair.applyReplacement(reviewed)).toBeNull();
     expect(recaptured.left).toBe(reading.left);
     expect(recaptured.right!.note).toBe(decisionThesis);
     expect(recaptured.right!.valuationPrice!.reason).toBe("price_not_loaded");

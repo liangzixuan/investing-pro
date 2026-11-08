@@ -177,10 +177,31 @@ public class ManagedWatchlistResearchPairTest {
         stage="explicit chosen-side recapture before preparing a new report";
         tap("#managed-watchlist-pair-open-right");
         page.await(new Check("chosen return opens without a new request or calculation",new Script(D+".review.activeSide==='right'&&!"+D+".annual.checkingSeed&&JSON.stringify("+D+".review.reading)==="+q(paired))).nativeReady());
-        tap("#managed-watchlist-pair-capture");
-        await("explicit recapture changes only ONE and includes its authored thesis", "JSON.stringify("+D+".review.reading.left)==="+q(leftReading)+"&&"+D+".review.reading.right.note==="+D+".thesis&&JSON.stringify("+D+".review.reading)!=="+q(paired));
+        reviewUpdatedReading();
+        tap("#managed-watchlist-pair-keep-previous");
+        await("Keep previous discards only the proposal and retains both complete readings", D+".review.replacement===null&&JSON.stringify("+D+".review.reading)==="+q(paired)+"&&document.querySelector('#managed-watchlist-pair-replacement')===null&&document.activeElement===document.querySelector('#managed-watchlist-pair-capture-heading')");
+        boundary(2,2,0,0);
+        reviewUpdatedReading();
+        pressBack();
+        await("owned Back discards the unaccepted proposal without replacing either side", D+".view.view==='watchlist'&&"+D+".review.replacement===null&&JSON.stringify("+D+".review.reading)==="+q(paired));
+        tap("#managed-watchlist-pair-open-right");
+        page.await(new Check("reopened company keeps the previous pair without new source work",new Script(D+".review.activeSide==='right'&&!"+D+".annual.checkingSeed&&JSON.stringify("+D+".review.reading)==="+q(paired))).nativeReady());
+        reviewUpdatedReading();
+        String updated=page.read(new Script("JSON.stringify("+D+".review.replacement.updated)"));
+        tap("#managed-watchlist-pair-use-updated");
+        await("Use updated installs exactly the reviewed ONE reading and preserves ZERO", D+".review.replacement===null&&JSON.stringify("+D+".review.reading.left)==="+q(leftReading)+"&&JSON.stringify("+D+".review.reading.right)==="+q(updated)+"&&"+D+".review.reading.right.note==="+D+".thesis&&JSON.stringify("+D+".review.reading)!=="+q(paired)+"&&document.activeElement===document.querySelector('#managed-watchlist-pair-capture-heading')");
         pressBack();await("owned Back retains the recaptured chosen reading",D+".view.view==='watchlist'&&"+D+".review.activeSide===null&&"+D+".review.reading.right.note==="+D+".thesis");
         saveWatchlistReport(1);boundary(2,2,0,0);
+    }
+    private void reviewUpdatedReading()throws Exception {
+        tap("#managed-watchlist-pair-capture");
+        await("replacement preview preserves both readings and exposes the complete previous and updated ONE capture", "(()=>{const p="+D+".review.replacement,r="+D+".review.reading,same="+SAME_JSON+";return p&&p.side==='right'&&JSON.stringify(r)==="+q(paired)+"&&same(p.previous,r.right)&&p.updated.note==="+D+".thesis&&same(p.updated.selection,p.previous.selection)&&same(p.updated.valuation,p.previous.valuation)&&p.updated.evaluatedAt===p.previous.evaluatedAt&&p.updated.valuationPrice.reason==='price_not_loaded'&&p.previous.valuationPrice.reason==='price_invalid'&&document.activeElement===document.querySelector('#managed-watchlist-pair-capture-heading')&&!document.querySelector('#managed-watchlist-research-report-prepare');})()");
+        for(String version:new String[]{"previous","updated"}) {
+            String section="//*[@data-watchlist-reading-version="+q(version)+"]";
+            click(section+"//details[summary[normalize-space(.)='Complete retained report document (JSON)']]/summary");
+            await("full "+version+" document, identity, thesis and independent clocks remain readable", "(()=>{const p="+D+".review.replacement,c=p["+q(version)+"],e=document.querySelector('[data-watchlist-reading-version="+version+"]'),l=c.selection.listing,doc=document.querySelector('#managed-watchlist-pair-"+version+"-document');return doc.value===c.document.text&&[l.symbol,l.securityName,l.shareClassName,l.exchangeMic,c.note,c.capturedAt,c.evaluatedAt].every(v=>e.textContent.includes(v))&&e.textContent.includes('No Annual response was retained.');})()");
+        }
+        boundary(2,2,0,0);
     }
     private Context context(){return InstrumentationRegistry.getInstrumentation().getTargetContext();}
     private void freshLoad()throws Exception {

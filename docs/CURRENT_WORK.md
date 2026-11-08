@@ -1,11 +1,22 @@
 # Current work
 
-Updated November 7, 2026. This is the current capability and delivery record.
+Updated November 8, 2026. This is the current capability and delivery record.
 The [roadmap](PRODUCT_ROADMAP.md) defines the broader InvestingPro goal.
 [Historical work notes](WORK_HISTORY_20261017.md) preserve earlier implementation
 and test reports; their pending labels do not describe current status.
 
-## Current increment: keep the complete Watchlist research report
+## Current increment: review an updated Watchlist reading
+
+The [replacement review](MANAGED_WATCHLIST_RESEARCH_PAIR.md#review-an-updated-reading)
+keeps the previous reading while showing one complete updated candidate. Keep
+previous discards it; Use updated replaces exactly one side. Source, resource
+and visit changes withdraw the proposal. First capture, the other company and
+separate thesis/check/resource Save workflows remain intact. Implementation and
+source integration are in progress. The managed client tests, web types and scoped
+lint/format checks pass. Native execution remains pending; no release of this
+increment is claimed.
+
+## Delivered: keep the complete Watchlist research report
 
 The [Watchlist research pair](MANAGED_WATCHLIST_RESEARCH_PAIR.md#keep-a-private-offline-report)
 adds explicit Prepare, complete preview and private offline HTML Save or Cancel.
@@ -13,7 +24,11 @@ Both retained readings keep their exact identities, notes, raw values, source
 states and independent dates. A resource or route change withdraws the prepared
 report; it does not silently update a retained reading. The report uses the
 existing document delivery controls and adds no provider or saved schema.
-Source integration and native verification remain in progress.
+Accepted main `7b54d8dcbe280c43688bf9b79024a14de8fb9e6a` passed its original
+source/parser checks and all 173 native cases. Android 1.82.0, code 83, was built
+once with the existing signer and delivered locally on November 8. All four APK
+checks and copied-file checks passed. Browser and physical-phone acceptance are
+not claimed; no API or website was deployed.
 
 ## Delivered: compare two watched companies
 
