@@ -237,8 +237,10 @@ export function CapturedCompanySources({
 
 export function ManagedScreenResearchReading({
   capture,
+  documentId,
 }: {
   capture: PassiveCompanyResearchCapture;
+  documentId?: string;
 }) {
   const { selection, evidence } = capture;
   const offline = useContext(OfflineResearchReading);
@@ -312,7 +314,10 @@ export function ManagedScreenResearchReading({
         <summary>Complete retained report document (JSON)</summary>
         <CompanyReportDocumentView
           document={capture.document}
-          id={`${offline ? "paired-report" : "managed-screen-research"}-document-${capture.side}`}
+          id={
+            documentId ??
+            `${offline ? "paired-report" : "managed-screen-research"}-document-${capture.side}`
+          }
         />
       </details>
     </article>

@@ -55,6 +55,86 @@ function calculate(w: ManagedWorkspace, amount: string) {
 }
 
 describe("direct Watchlist research comparison", () => {
+  it("reviews a revised thesis without changing either reading, cancels, then applies one exact candidate", async () => {
+    const f = await fixture();
+    const w = f.workspace;
+    const pair = start(w);
+    for (const side of ["left", "right"] as const) {
+      w.openWatchlistResearchSide(pair.getSnapshot(), side);
+      if (side === "right")
+        w.valuation.discardAndUse(w.getSnapshot().research!.selection);
+      calculate(w, side === "left" ? "100.050" : "200.125");
+      expect(
+        w.captureWatchlistResearchReading(pair.getSnapshot()),
+      ).not.toBeNull();
+      w.returnFromResearch();
+    }
+    const original = pair.getSnapshot().reading!;
+    const oldReport = pair.captureReport(pair.getSnapshot())!;
+    w.openWatchlistResearchSide(pair.getSnapshot(), "right");
+    const selection = w.getSnapshot().research!.selection;
+    w.noteResearch(
+      selection,
+      "Updated thesis 東京; keep the original source dates.",
+    );
+    const draft = w.coordinator.getSnapshot().draft;
+    const preview = w.captureWatchlistResearchReading(pair.getSnapshot())!;
+    expect(preview.replacement?.previous).toBe(original.right);
+    expect(preview.replacement?.updated.note).toContain("Updated thesis 東京");
+    expect(preview.reading).toBe(original);
+    expect(oldReport.current()).toBe(false);
+    expect(pair.captureReport(preview)).toBeNull();
+    expect(pair.cancelReplacement(preview)?.reading).toBe(original);
+    expect(pair.applyReplacement(preview)).toBeNull();
+    const next = w.captureWatchlistResearchReading(pair.getSnapshot())!;
+    const updated = next.replacement!.updated;
+    expect(pair.applyReplacement(next)?.reading?.right).toBe(updated);
+    expect(pair.getSnapshot().reading?.left).toBe(original.left);
+    expect(pair.applyReplacement(next)).toBeNull();
+    expect(w.coordinator.getSnapshot().draft).toBe(draft);
+    w.returnFromResearch();
+    const report = pair.captureReport(pair.getSnapshot())!.report;
+    expect(report.reading.right).toBe(updated);
+    expect(report.reading.left).toBe(original.left);
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.unexpected).not.toHaveBeenCalled();
+  });
+
+  it.each(["note", "section", "back", "pending"] as const)(
+    "withdraws a replacement after workspace %s changes without overwriting the retained reading",
+    async (change) => {
+      const { workspace: w, api } = await fixture();
+      const pair = start(w);
+      w.openWatchlistResearchSide(pair.getSnapshot(), "left");
+      const visit = w.getSnapshot().research!;
+      calculate(w, "123.450");
+      const original = w.captureWatchlistResearchReading(
+        pair.getSnapshot(),
+      )!.reading;
+      const preview = w.captureWatchlistResearchReading(pair.getSnapshot())!;
+      expect(preview.replacement).not.toBeNull();
+      if (change === "note") w.noteResearch(visit.selection, "A later edit");
+      if (change === "section")
+        await w.setCompanyRoute({
+          kind: "company",
+          listingId: visit.selection.listing.listingId,
+          section: "eod",
+        });
+      if (change === "back") w.returnFromResearch();
+      if (change === "pending") {
+        w.setNavigationBlocked(true);
+        w.setNavigationBlocked(false);
+      }
+      expect(pair.getSnapshot().replacement).toBeNull();
+      expect(pair.getSnapshot().reading).toBe(original);
+      expect(pair.applyReplacement(preview)).toBeNull();
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+    },
+  );
+
   it("starts two exact share classes without loading a source or running an Annual screen", async () => {
     const f = await fixture();
     const w = f.workspace;

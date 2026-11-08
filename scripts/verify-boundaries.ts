@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import type { Dirent } from "node:fs";
 import { open, readFile, readdir, realpath, stat } from "node:fs/promises";
 import {
   basename,
@@ -30094,6 +30095,18 @@ function isComposeFileName(fileName: string): boolean {
   return /^(?:docker-)?compose(?:[.-].*)?\.ya?ml$/i.test(fileName);
 }
 
+async function isIgnoredDirectory(
+  entry: Dirent,
+  path: string,
+): Promise<boolean> {
+  if (!ignoredDirectories.has(entry.name)) return false;
+  if (entry.isDirectory()) return true;
+  if (!entry.isSymbolicLink()) return false;
+  // Windows junctions are symbolic links in Dirent, including installed stores.
+  // Ignore only actual directories; a source file with this name stays in scope.
+  return (await stat(path)).isDirectory();
+}
+
 async function walk(directory: string): Promise<string[]> {
   const output: string[] = [];
   let entries;
@@ -30105,8 +30118,8 @@ async function walk(directory: string): Promise<string[]> {
     throw error;
   }
   for (const entry of entries) {
-    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
     const path = join(directory, entry.name);
+    if (await isIgnoredDirectory(entry, path)) continue;
     if (
       entry.isDirectory() &&
       androidGeneratedDirectories.has(resolvePath(path))

@@ -21,6 +21,12 @@ valuation results, 44px controls and wrapping layouts. Recapture, Clear and End
 are explicit; resource Save stays elsewhere. Focus only the result of a committed
 action that still owns focus. See the [guide](docs/MANAGED_WATCHLIST_RESEARCH_PAIR.md).
 
+Before replacing a retained reading, show complete Previous and Updated readings
+in the existing wrapping columns. Keep **Use updated reading** and **Keep previous
+reading** explicit. Each reading keeps its full document, exact identity and
+independent source clocks. Use distinct disclosure IDs for the two versions of
+the same side. A withdrawn proposal must not move focus or change either reading.
+
 Keep **Prepare Watchlist research report** after the two retained readings.
 Use a closed complete-preview disclosure, separate Save and Cancel controls,
 and a clear report status. Move focus to the report heading only after an

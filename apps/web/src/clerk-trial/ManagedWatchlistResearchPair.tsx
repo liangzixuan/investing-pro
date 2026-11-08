@@ -375,15 +375,16 @@ export function ManagedWatchlistResearchCapture({
   workspace,
   navigationPending,
 }: Context) {
-  const { state, heading, isCurrent, commit } = usePairContext({
+  const { model, state, heading, isCurrent, commit } = usePairContext({
     workspace,
     navigationPending,
   });
   if (!state.reading || !state.activeSide) return null;
   const retained = state.reading[state.activeSide];
+  const replacement = state.replacement;
   return (
     <section
-      className="managed-watchlist-research-pair"
+      className="managed-watchlist-research-pair managed-screen-research-review"
       aria-labelledby="managed-watchlist-pair-capture-heading"
     >
       <h2
@@ -391,32 +392,94 @@ export function ManagedWatchlistResearchCapture({
         ref={heading}
         tabIndex={-1}
       >
-        Retain this company reading
+        {replacement
+          ? "Review the updated company reading"
+          : "Retain this company reading"}
       </h2>
-      <p>
-        Keep the current sources, authored thesis and valuation beside the other
-        company in your Watchlist comparison. Saved resources remain separate.
-      </p>
-      {retained && (
-        <p>
-          Current retained reading captured at {retained.capturedAt}. Replacing
-          it changes only this side.
-        </p>
+      {replacement ? (
+        <div id="managed-watchlist-pair-replacement">
+          <p>
+            Compare the complete previous and updated readings. Each keeps its
+            own source dates and calculation time. A new capture time does not
+            establish newer source evidence. Both retained readings stay
+            unchanged until you choose Use updated reading.
+          </p>
+          <div className="managed-screen-research-pair">
+            {(["previous", "updated"] as const).map((version) => (
+              <section
+                key={version}
+                data-watchlist-reading-version={version}
+                aria-label={`${version === "previous" ? "Previous" : "Updated"} company reading`}
+              >
+                <h3>
+                  {version === "previous"
+                    ? "Previous retained reading"
+                    : "Updated reading to review"}
+                </h3>
+                <ManagedScreenResearchReading
+                  capture={replacement[version]}
+                  documentId={`managed-watchlist-pair-${version}-document`}
+                />
+              </section>
+            ))}
+          </div>
+          <div className="managed-screen-research-actions">
+            <button
+              id="managed-watchlist-pair-use-updated"
+              disabled={navigationPending}
+              onClick={(event) =>
+                commit(event.currentTarget, () => model.applyReplacement(state))
+              }
+            >
+              Use updated reading
+            </button>
+            <button
+              id="managed-watchlist-pair-keep-previous"
+              className="trial-secondary"
+              disabled={navigationPending}
+              onClick={(event) =>
+                commit(event.currentTarget, () =>
+                  model.cancelReplacement(state),
+                )
+              }
+            >
+              Keep previous reading
+            </button>
+          </div>
+          <p>
+            This choice changes only this comparison. Resource Saves remain
+            separate.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p>
+            Keep the current sources, authored thesis and valuation beside the
+            other company in your Watchlist comparison. Saved resources remain
+            separate.
+          </p>
+          {retained && (
+            <p>
+              Current retained reading captured at {retained.capturedAt}. Review
+              an updated reading before replacing this side.
+            </p>
+          )}
+          <button
+            id="managed-watchlist-pair-capture"
+            disabled={navigationPending || !state.canCapture}
+            onClick={(event) => {
+              if (isCurrent() && state.canCapture)
+                commit(event.currentTarget, () =>
+                  workspace.captureWatchlistResearchReading(state),
+                );
+            }}
+          >
+            {retained
+              ? "Review updated company reading"
+              : "Retain current company reading"}
+          </button>
+        </>
       )}
-      <button
-        id="managed-watchlist-pair-capture"
-        disabled={navigationPending || !state.canCapture}
-        onClick={(event) => {
-          if (isCurrent() && state.canCapture)
-            commit(event.currentTarget, () =>
-              workspace.captureWatchlistResearchReading(state),
-            );
-        }}
-      >
-        {retained
-          ? "Replace retained company reading"
-          : "Retain current company reading"}
-      </button>
       {state.reason && <p role="status">{state.reason}</p>}
     </section>
   );

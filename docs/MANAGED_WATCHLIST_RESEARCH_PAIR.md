@@ -20,7 +20,8 @@ Choosing a pair makes no source request and does not run an Annual screen.
    explicitly discard the previous company's editor state as required.
 5. Inspect both readings. Each keeps its own fiscal periods, source clocks,
    authored thesis, assumptions, results and refusals. A later source refresh
-   does not replace a retained reading. Explicit recapture replaces one side.
+   does not replace a retained reading. Review an updated reading before replacing
+   one side.
 6. Open the chosen company's current Research to edit its thesis or prepare a
    dated check. Save Watchlist, Follow-ups and valuation inputs separately.
    Explicit fresh Loads confirm the saved resources.
@@ -29,6 +30,25 @@ Clear a reading or end the pair without changing a saved resource or draft.
 The pair stays in memory only. It does not rank the companies, align reporting
 periods or give a retained reading authority to edit inputs, make requests or
 save anything.
+
+## Review an updated reading
+
+Open a company from the pair and use its normal source, note and calculation
+controls. Choose **Review updated company reading** to inspect the complete
+previous and updated readings. Both retain exact identities, notes, inputs,
+results, source states and independent dates. A new capture time does not mean
+that a source was refreshed.
+
+**Keep previous reading** discards the proposal. **Use updated reading** replaces
+only that side with the exact previewed candidate. The other side stays unchanged.
+The first capture needs no replacement review. Use owned Back to return to the
+pair, then continue the separate thesis, dated-check and resource Save workflow.
+
+Changes to the source, calculation, note, resource state or current visit withdraw
+the proposal. Back also discards it. The retained readings keep their existing
+lifetime rules below. A pending proposal cannot prepare a report; after Cancel or
+Apply and Back, prepare a fresh report from the readings you kept. None of these
+review actions requests a source, calculates a result or saves a resource.
 
 ## Keep a private offline report
 
