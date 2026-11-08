@@ -1,11 +1,13 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
+import type * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
 import { ManagedScreenResearchReading } from "../../src/clerk-trial/ManagedScreenResearchReading";
 import { WatchlistResearchReportSnapshot } from "../../src/clerk-trial/WatchlistResearchReportSnapshot";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
+import { ManagedWorkspaceScreen } from "../../src/clerk-trial/ManagedWorkspaceScreen";
 import { createFixture } from "./fixture";
 import {
   decisionQuestion,
@@ -16,6 +18,25 @@ import {
   decisionExpectedValuations,
   decisionExpectedFollowups,
 } from "./two-company-research-review-fixture-data";
+
+// Render the real workspace against its current fixture stores on the server.
+// No effects or event handlers are substituted; native execution checks focus.
+vi.mock("react", async (original) => {
+  const actual = await original<typeof React>();
+  return {
+    ...actual,
+    useSyncExternalStore: (
+      subscribe: (listener: () => void) => () => void,
+      getSnapshot: () => unknown,
+      getServerSnapshot?: () => unknown,
+    ) =>
+      actual.useSyncExternalStore(
+        subscribe,
+        getSnapshot,
+        getServerSnapshot ?? getSnapshot,
+      ),
+  };
+});
 
 it("uses a direct Watchlist pair with one Annual and an uncovered reading, then independently saves and fresh-loads whole resources", async () => {
   const f = await createFixture("watchlist-research-pair"),
@@ -243,6 +264,30 @@ it("uses a direct Watchlist pair with one Annual and an uncovered reading, then 
     expect(proposed.replacement!.side).toBe("right");
     expect(proposed.replacement!.previous).toBe(reading.right);
     expect(proposed.replacement!.updated.note).toBe(decisionThesis);
+    const proposal = proposed.replacement!;
+    expect(proposal.updated.selection).toEqual(proposal.previous.selection);
+    expect(proposal.updated.valuation).toEqual(proposal.previous.valuation);
+    expect(proposal.updated.evaluatedAt).toBe(proposal.previous.evaluatedAt);
+    expect(proposal.updated.valuationPrice!.reason).toBe("price_not_loaded");
+    expect(proposal.previous.valuationPrice!.reason).toBe("price_invalid");
+    const previewScreen = load(
+      renderToStaticMarkup(
+        createElement(ManagedWorkspaceScreen, { workspace: w }),
+      ),
+    );
+    // Research preserves the mounted Watchlist subtree. Presence alone does
+    // not grant report authority: its control is disabled inside a hidden panel.
+    const reportControl = previewScreen(
+      "#managed-watchlist-research-report-prepare",
+    );
+    expect(reportControl).toHaveLength(1);
+    expect(reportControl.is("[disabled]")).toBe(true);
+    expect(reportControl.closest("[hidden]").attr("aria-labelledby")).toBe(
+      "managed-watchlist-heading",
+    );
+    expect(
+      previewScreen("#managed-watchlist-pair-replacement").closest("[hidden]"),
+    ).toHaveLength(0);
     expect(pair.captureReport(proposed)).toBeNull();
     expect(meta.getSnapshot()).toBe(counts);
     expect(pair.cancelReplacement(proposed)!.reading).toBe(reading);
